@@ -1030,13 +1030,15 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get none => 'No hay equipo configurado';
 	@override String get add => 'Agregar equipo';
 	@override String get addTitle => 'Agregar equipo';
-	@override String get searching => 'Buscando radios en tu red…';
-	@override String get found => 'Encontradas';
-	@override String get addManually => 'Agregar por dirección';
+	@override String get searchHint => 'Buscar equipos';
+	@override String get noMatches => 'Ningún equipo coincide';
+	@override String get lookingForEquipment => 'Buscando equipos nuevos…';
 	@override String discoveryUnavailable({required Object error}) => 'No se puede buscar radios: ${error}';
 	@override String get edit => 'Editar equipo';
 	@override String get name => 'Nombre';
 	@override String get nameDescription => 'Cómo lo llamas — «Radio Izquierda». Opcional.';
+	@override String get transport => 'Conexión';
+	@override String get transportDescription => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.';
 	@override String get host => 'Dirección';
 	@override String get hostDescription => 'El nombre de host o la dirección IP de la radio en tu red.';
 	@override String get port => 'Puerto';
@@ -1049,6 +1051,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get removeMessage => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.';
 	@override String unknownType({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»';
 	@override String get unverified => 'No probado con este hardware';
+	@override String get unverifiedShort => 'sin probar';
+	@override String get troubleshootingNotes => 'Notas de resolución de problemas';
 	@override String get mainVfo => 'VFO principal';
 	@override String get useAsMainVfo => 'Usar como VFO principal';
 	@override String get serialPort => 'Puerto serie';
@@ -1065,9 +1069,12 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get radioPass => 'Contraseña de la radio';
 	@override String get radioLoginDescription => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.';
 	@override String get radioUserRequired => 'Se requiere el usuario de control remoto de la radio';
-	@override late final _Translations$settings$station$types$es types = _Translations$settings$station$types$es._(_root);
+	@override late final _Translations$settings$station$models$es models = _Translations$settings$station$models$es._(_root);
+	@override late final _Translations$settings$station$transports$es transports = _Translations$settings$station$transports$es._(_root);
 	@override String get troubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get ft891Troubleshooting => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
+	@override String get yaesuTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
+	@override String get yaesuTroubleshooting => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.';
 	@override String get statusConnected => 'Conectado';
 	@override String get currentConfiguration => 'Configuración actual';
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
@@ -1464,19 +1471,32 @@ class _Translations$settings$privacy$shareOpData$es extends Translations$setting
 	@override String get descriptionOff => 'Mantener privados los datos de operaciones';
 }
 
-// Path: settings.station.types
-class _Translations$settings$station$types$es extends Translations$settings$station$types$en {
-	_Translations$settings$station$types$es._(TranslationsEs root) : this._root = root, super.internal(root);
+// Path: settings.station.models
+class _Translations$settings$station$models$es extends Translations$settings$station$models$en {
+	_Translations$settings$station$models$es._(TranslationsEs root) : this._root = root, super.internal(root);
 
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get flexRadioTcp => 'FlexRadio (SmartSDR) — Red';
-	@override String get ft891Serial => 'Yaesu FT-891 — USB serie';
-	@override String get icomCivSerial => 'Icom (CI-V) — USB serie';
-	@override String get ic705Network => 'Icom IC-705 — WiFi';
-	@override String get rigctldTcp => 'Hamlib rigctld — Red';
-	@override String get flrigTcp => 'flrig — Red';
+	@override String get flexRadio => 'FlexRadio (SmartSDR)';
+	@override String get ft891 => 'Yaesu FT-891';
+	@override String get yaesuGeneric => 'Yaesu - Genérico';
+	@override String get icomGeneric => 'Icom - Genérico';
+	@override String get ic705 => 'Icom IC-705';
+	@override String get rigctld => 'Radio genérica vía rigctld';
+	@override String get flrig => 'Radio genérica vía flrig';
+}
+
+// Path: settings.station.transports
+class _Translations$settings$station$transports$es extends Translations$settings$station$transports$en {
+	_Translations$settings$station$transports$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get network => 'Red';
+	@override String get usbSerial => 'USB serie';
+	@override String get wifi => 'WiFi';
 }
 
 /// The flat map containing all translations for locale <es>.
@@ -1924,13 +1944,15 @@ extension on TranslationsEs {
 			'settings.station.none' => 'No hay equipo configurado',
 			'settings.station.add' => 'Agregar equipo',
 			'settings.station.addTitle' => 'Agregar equipo',
-			'settings.station.searching' => 'Buscando radios en tu red…',
-			'settings.station.found' => 'Encontradas',
-			'settings.station.addManually' => 'Agregar por dirección',
+			'settings.station.searchHint' => 'Buscar equipos',
+			'settings.station.noMatches' => 'Ningún equipo coincide',
+			'settings.station.lookingForEquipment' => 'Buscando equipos nuevos…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
+			'settings.station.transport' => 'Conexión',
+			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',
 			'settings.station.hostDescription' => 'El nombre de host o la dirección IP de la radio en tu red.',
 			'settings.station.port' => 'Puerto',
@@ -1943,6 +1965,8 @@ extension on TranslationsEs {
 			'settings.station.removeMessage' => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»',
 			'settings.station.unverified' => 'No probado con este hardware',
+			'settings.station.unverifiedShort' => 'sin probar',
+			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
 			'settings.station.mainVfo' => 'VFO principal',
 			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
 			'settings.station.serialPort' => 'Puerto serie',
@@ -1959,14 +1983,20 @@ extension on TranslationsEs {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
-			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Red',
-			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serie',
-			'settings.station.types.icomCivSerial' => 'Icom (CI-V) — USB serie',
-			'settings.station.types.ic705Network' => 'Icom IC-705 — WiFi',
-			'settings.station.types.rigctldTcp' => 'Hamlib rigctld — Red',
-			'settings.station.types.flrigTcp' => 'flrig — Red',
+			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
+			'settings.station.models.ft891' => 'Yaesu FT-891',
+			'settings.station.models.yaesuGeneric' => 'Yaesu - Genérico',
+			'settings.station.models.icomGeneric' => 'Icom - Genérico',
+			'settings.station.models.ic705' => 'Icom IC-705',
+			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
+			'settings.station.models.flrig' => 'Radio genérica vía flrig',
+			'settings.station.transports.network' => 'Red',
+			'settings.station.transports.usbSerial' => 'USB serie',
+			'settings.station.transports.wifi' => 'WiFi',
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
+			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
+			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
@@ -1989,6 +2019,8 @@ extension on TranslationsEs {
 			'settings.offlineData.refreshing' => 'Actualizando…',
 			'settings.offlineData.updateAll' => 'Actualizar todo',
 			'settings.offlineData.updatingAll' => 'Actualizando todos los archivos de datos…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.neverDownloaded' => 'Nunca descargado',
 			'settings.offlineData.updatedJustNow' => 'Actualizado hace un momento',
 			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Actualizado hace ${days}d',
@@ -1999,8 +2031,6 @@ extension on TranslationsEs {
 			'settings.offlineData.extensionsSection' => 'Extensiones',
 			'settings.profiles.notSet' => 'Sin definir',
 			'settings.search.clear' => 'Borrar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.search.hint' => 'Buscar en la configuración',
 			'settings.developer.options' => 'Opciones de desarrollador',
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',

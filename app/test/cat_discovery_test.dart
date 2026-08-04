@@ -168,7 +168,7 @@ void main() {
       cat = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         registry: EquipmentRegistry(
-          types: [_fakeDiscoverableType(announcements.stream)],
+          models: [_fakeDiscoverableModel(announcements.stream)],
           transports: const {},
         ),
       );
@@ -279,13 +279,18 @@ void main() {
 
 /// A type that announces itself on a stream the test controls, so the
 /// service's dedupe and filtering can be exercised without a socket.
-EquipmentType _fakeDiscoverableType(Stream<DiscoveredEquipment> announcements) => EquipmentType(
-      key: 'fake-discoverable',
+EquipmentModel _fakeDiscoverableModel(Stream<DiscoveredEquipment> announcements) => EquipmentModel(
+      key: 'fake-discoverable-radio',
       category: kCategoryTransceiver,
       name: () => 'Fake Discoverable Radio',
-      driver: const _NeverConnectsDriver(),
-      transport: const _NeverConnectsTransport(),
-      discoverer: _FakeDiscoverer(announcements),
+      variants: [
+        EquipmentVariant(
+          key: 'fake-discoverable',
+          driver: const _NeverConnectsDriver(),
+          transport: const _NeverConnectsTransport(),
+          discoverer: _FakeDiscoverer(announcements),
+        ),
+      ],
     );
 
 class _FakeDiscoverer implements EquipmentDiscoverer {

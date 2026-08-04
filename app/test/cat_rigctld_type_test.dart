@@ -13,7 +13,7 @@ import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/tcp_transport.dart';
 
 void main() {
-  final type = rigctldTcpType;
+  final type = EquipmentRegistry().typeFor('rigctld-tcp')!;
 
   test('is a transceiver reached over plain TCP', () {
     expect(type.key, 'rigctld-tcp');
@@ -73,7 +73,7 @@ void main() {
 
   test('the registry offers it over the shared TCP transport', () {
     final registry = EquipmentRegistry();
-    expect(registry.typeFor('rigctld-tcp'), same(rigctldTcpType));
+    expect(registry.typeFor('rigctld-tcp')?.key, 'rigctld-tcp');
     // The transport FlexRadio proved, reused — no rigctld transport exists.
     expect(registry.transportFor('tcp'), isNotNull);
   });

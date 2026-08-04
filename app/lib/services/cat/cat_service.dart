@@ -99,6 +99,32 @@ String? resolveSideband(String? mode, double? freqKHz, {String? band}) {
   return _lsbBands.contains(resolved) ? 'LSB' : 'USB';
 }
 
+/// [base], or the first `base N` nobody is using yet.
+///
+/// Pure and top-level so it can be tested without a service, a keychain or a
+/// SharedPreferences mock — the same reason `assignWebSerialPortKeys` is its
+/// own function.
+///
+/// The FIRST one is unnumbered: a one-radio shack should read "Icom IC-705",
+/// not "Icom IC-705 1". Numbering starts at 2 and skips whatever is taken, so
+/// removing the middle of three reuses that number rather than counting ever
+/// upward. Comparison ignores surrounding whitespace and case, because two
+/// rows differing only in those is the collision this exists to avoid.
+String uniqueEquipmentName(String base, Iterable<String> taken) {
+  final used = {for (final name in taken) name.trim().toLowerCase()};
+  if (!used.contains(base.trim().toLowerCase())) return base;
+  // Terminates without needing a bound: every iteration consumes a distinct
+  // member of a finite set, so it runs at most `used.length` times. Written
+  // this way deliberately — a bounded loop needs a fallback return, and the
+  // only value available there is a name already known to be taken, which is
+  // the one thing this function exists not to hand back.
+  var n = 2;
+  while (used.contains('$base $n'.trim().toLowerCase())) {
+    n++;
+  }
+  return '$base $n';
+}
+
 class CatService extends ChangeNotifier {
   final SettingsService _settings;
   final EquipmentRegistry registry;
@@ -252,6 +278,19 @@ class CatService extends ChangeNotifier {
         'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
       });
 
+  /// What to call a new node of [typeKey] — the radio's own name, numbered
+  /// if the shack already has one.
+  ///
+  /// The model's name rather than the pairing's: "Icom IC-705", not
+  /// "Icom IC-705 — WiFi". How it is connected is already shown by the row's
+  /// transport icon and its address, so spelling it into the name too would
+  /// say the same thing three times — and the name outlives the choice,
+  /// since the transport can be changed in the editor afterwards.
+  String suggestedNameFor(String typeKey) => uniqueEquipmentName(
+        registry.typeFor(typeKey)?.model.name ?? typeKey,
+        _nodes.values.map((node) => node.name),
+      );
+
   Future<EquipmentNode> addNode({
     required String typeKey,
     String name = '',
@@ -260,7 +299,11 @@ class CatService extends ChangeNotifier {
     final node = EquipmentNode(
       uuid: _uuidGenerator.v4(),
       typeKey: typeKey,
-      name: name,
+      // Named here rather than only in the editor, because the editor is not
+      // the only way in: `addDiscovered` goes straight to this method, and a
+      // radio that announced itself under a blank name would list as nothing
+      // but its type.
+      name: name.trim().isEmpty ? suggestedNameFor(typeKey) : name,
       config: config,
     );
     final stored = await _stashSecrets(node);
@@ -275,17 +318,35 @@ class CatService extends ChangeNotifier {
   }
 
   Future<void> updateNode(EquipmentNode node) async {
-    if (!_nodes.containsKey(node.uuid)) return;
+    final previous = _nodes[node.uuid];
+    if (previous == null) return;
+    // Re-typing a node — the operator switching the same radio from WiFi to
+    // USB — replaces both its transport and its driver, and a live runtime
+    // holds a session the OLD driver built over a connection the OLD
+    // transport opened. Neither can be handed to the new pairing, so the
+    // connection goes first and the operator reconnects.
+    //
+    // Only on a type change. An edited host or baud rate leaves the pairing
+    // intact, and disconnecting for those would drop a working radio every
+    // time its name was corrected.
+    if (previous.typeKey != node.typeKey) await disconnect(node.uuid);
     _nodes[node.uuid] = await _stashSecrets(node);
     await _save();
     notifyListeners();
   }
 
-  /// Moves a type's secret fields out of the config and into the platform
-  /// keychain. The stored config is a plain SharedPreferences JSON blob —
-  /// the right home for a hostname, the wrong one for a radio password.
+  /// Moves secret fields out of the config and into the platform keychain.
+  /// The stored config is a plain SharedPreferences JSON blob — the right
+  /// home for a hostname, the wrong one for a radio password.
+  ///
+  /// Asks the whole CATALOGUE what counts as a secret, not this node's own
+  /// pairing. The editor renders every variant's fields at once, so a node
+  /// bound to a transport with no secrets of its own still arrives here
+  /// carrying the password belonging to the transport beside it — an IC-705
+  /// switched from WiFi to USB is exactly that. Scoped to the node's pairing,
+  /// this method hands that password straight to the prefs blob in clear.
   Future<EquipmentNode> _stashSecrets(EquipmentNode node) async {
-    final secretKeys = _secretFieldsFor(node.typeKey);
+    final secretKeys = registry.allSecretFields;
     if (secretKeys.isEmpty) return node;
 
     final cleaned = <String, dynamic>{};
@@ -311,9 +372,10 @@ class CatService extends ChangeNotifier {
     return node.copyWith(config: cleaned);
   }
 
-  /// Asks the TYPE, rather than testing for one. A manager that named a
-  /// concrete type here would quietly write the next type's password into
-  /// the plain prefs blob, and nothing would say so.
+  /// What THIS pairing needs to open its connection — narrower than
+  /// [EquipmentRegistry.allSecretFields], and deliberately so: injecting
+  /// every catalogue secret into a connect-time config would hand a serial
+  /// driver an empty `password` key it never asked for.
   Set<String> _secretFieldsFor(String typeKey) => registry.typeFor(typeKey)?.secretFields ?? const {};
 
   /// Which of a node's secret fields have something stored — the field KEYS,
@@ -329,7 +391,12 @@ class CatService extends ChangeNotifier {
     final node = _nodes[uuid];
     if (node == null) return const {};
     final stored = <String>{};
-    for (final field in _secretFieldsFor(node.typeKey)) {
+    // Catalogue-wide, because the editor renders every variant's fields: a
+    // password stored while the node was on WiFi has to show its placeholder
+    // when the operator switches back to it, whatever the node is bound to
+    // right now. Reporting only the current pairing's shows an empty box
+    // beside a password that is still in force.
+    for (final field in registry.allSecretFields) {
       final value = await _settings.equipmentSecret(uuid, field);
       if (value != null && value.isNotEmpty) stored.add(field);
     }
@@ -350,8 +417,11 @@ class CatService extends ChangeNotifier {
 
   Future<void> removeNode(String uuid) async {
     await disconnect(uuid);
-    // The keychain entry outlives the prefs blob unless we say otherwise.
-    for (final field in _secretFieldsFor(_nodes[uuid]?.typeKey ?? '')) {
+    // The keychain entry outlives the prefs blob unless we say otherwise —
+    // and catalogue-wide, since a node re-typed away from the pairing that
+    // stored a secret would otherwise leave it behind with nothing left that
+    // could ever name it.
+    for (final field in registry.allSecretFields) {
       await _settings.setEquipmentSecret(uuid, field, null);
     }
     _nodes.remove(uuid);

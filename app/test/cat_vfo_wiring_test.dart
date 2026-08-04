@@ -158,16 +158,21 @@ class _FakeDriver extends EquipmentDriver {
   }
 }
 
-EquipmentType _fakeType(EquipmentDriver driver, EquipmentTransport transport) => EquipmentType(
-      key: 'fake-type',
+EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
+      key: 'fake',
       category: kCategoryTransceiver,
       name: () => 'Fake Radio',
-      driver: driver,
-      transport: transport,
-      // Exercises the same "the pairing hands the driver something the user
-      // never typed" path `Ic705NetworkType` uses for its controller
-      // address — here just a marker the test can look for.
-      overrides: const {'injectedByType': 'yes'},
+      variants: [
+        EquipmentVariant(
+          key: 'fake-type',
+          driver: driver,
+          transport: transport,
+          // Exercises the same "the pairing hands the driver something the
+          // user never typed" path the IC-705's network variant uses for its
+          // controller address — here just a marker the test can look for.
+          overrides: const {'injectedByType': 'yes'},
+        ),
+      ],
     );
 
 void main() {
@@ -190,7 +195,7 @@ void main() {
       settings,
       radio: radio,
       registry: EquipmentRegistry(
-        types: [_fakeType(driver, transport)],
+        models: [_fakeModel(driver, transport)],
         transports: {'fake': transport},
       ),
     );
@@ -611,7 +616,7 @@ void main() {
       final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(types: [_fakeType(driver, gated)], transports: {'fake': gated}),
+        registry: EquipmentRegistry(models: [_fakeModel(driver, gated)], transports: {'fake': gated}),
         // Otherwise every one of these tests sleeps through the real 3s
         // gap between retries, for real, three times over.
         reconnectDelay: Duration.zero,
@@ -718,7 +723,7 @@ void main() {
       final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(types: [_fakeType(driver, gated)], transports: {'fake': gated}),
+        registry: EquipmentRegistry(models: [_fakeModel(driver, gated)], transports: {'fake': gated}),
         // Otherwise every one of these tests sleeps through the real 3s
         // gap between retries, for real, three times over.
         reconnectDelay: Duration.zero,
@@ -756,7 +761,7 @@ void main() {
       final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(types: [_fakeType(driver, gated)], transports: {'fake': gated}),
+        registry: EquipmentRegistry(models: [_fakeModel(driver, gated)], transports: {'fake': gated}),
         // Short, but not zero: this test needs the gap between retries to
         // exist at all — that gap is what the Connect lands in.
         reconnectDelay: const Duration(milliseconds: 500),
@@ -786,7 +791,7 @@ void main() {
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
         registry: EquipmentRegistry(
-          types: [_fakeType(driver, _RefusingTransport())],
+          models: [_fakeModel(driver, _RefusingTransport())],
           transports: {'fake': _RefusingTransport()},
         ),
         reconnectDelay: Duration.zero,

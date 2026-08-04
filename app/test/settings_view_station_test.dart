@@ -27,8 +27,14 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<HaLoServices> pumpSettings(WidgetTester tester,
-      {required bool catEnabled, Object? equipment, FlutterSecureStorage? secureStorage}) async {
-    tester.view.physicalSize = const Size(1000, 1400);
+      {required bool catEnabled,
+      Object? equipment,
+      FlutterSecureStorage? secureStorage,
+      // Short windows are how the Add dialog's list is made to overflow: the
+      // catalogue is only a handful of radios, so at the default size it
+      // never scrolls and the scroll-driven fold cannot be exercised at all.
+      Size viewSize = const Size(1000, 1400)}) async {
+    tester.view.physicalSize = viewSize;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -132,23 +138,34 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    // Discovery is still listening at this point; the manual list is what
-    // makes a radio on another subnet — or behind a router that doesn't
-    // forward broadcasts — configurable at all.
-    expect(find.text('Add by address'), findsOneWidget);
-    expect(find.text('FlexRadio (SmartSDR) — Network'), findsOneWidget);
-    expect(find.text('Yaesu FT-891 — USB serial'), findsOneWidget);
-    // The caveat marks the DISTINCTION, and it is now down to one. The Flex
-    // (a FLEX-6600), the FT-891 over its own USB bridge, and the IC-705 over
-    // WiFi have all met their hardware.
-    //
-    // What still carries it is Icom CI-V over USB SERIAL: same driver, but
-    // that pairing has never been pointed at a radio. The flag lives on the
-    // TYPE for exactly this reason — marking the driver verified would have
-    // dropped the caveat from a combination nobody has tested.
-    expect(find.text('Not tested against this hardware'), findsOneWidget);
+    // The whole list IS the manual path now, so it carries no heading of its
+    // own — a radio on another subnet, or behind a router that doesn't
+    // forward broadcasts, is reached from the same list as everything else.
+    expect(find.text('Add by address'), findsNothing);
+    // The RADIO is what the operator picks, named as it is on its own front
+    // panel — how it is connected is the next question, not part of this one.
+    expect(find.text('FlexRadio (SmartSDR)'), findsOneWidget);
+    expect(find.text('Yaesu FT-891'), findsOneWidget);
+    expect(find.text('Icom IC-705'), findsOneWidget);
 
-    await tester.tap(find.text('FlexRadio (SmartSDR) — Network'));
+    // Permanent, not a state readout: discovery runs for as long as this
+    // dialog is open, so a heading that flipped between "searching" and
+    // "found" would be naming one unfinished activity twice.
+    expect(find.text('Looking for new equipment…'), findsOneWidget);
+
+    // The bare caveat belongs to a radio whose EVERY pairing is untested, and
+    // there are two: the generic Icom, whose CI-V driver is proven over WiFi
+    // but never over a cable, and the generic Yaesu, whose driver is proven
+    // on an FT-891 and whose mode table is that radio's.
+    expect(find.text('Not tested against this hardware'), findsNWidgets(2));
+    // The IC-705's WiFi is verified on a real radio and its USB side never
+    // tried, so a single marker for the model would be wrong either way
+    // round — the mixed case names only what is untested. It does NOT name
+    // the verified transport: that is what the row's trailing glyph says,
+    // and repeating it in words is the duplication the icons removed.
+    expect(find.text('USB serial (untested)'), findsOneWidget);
+
+    await tester.tap(find.text('FlexRadio (SmartSDR)'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -161,6 +178,322 @@ void main() {
     // The pane's chrome comes from the app's translations, not the form
     // renderer's English fallbacks.
     expect(find.text('Cancel'), findsWidgets);
+  });
+
+  /// What the fold actually hides: the found-devices body under the permanent
+  /// title. The title and its spinner never fold, so they cannot stand in for
+  /// the section's state.
+  final discoveryBody = find.descendant(
+    of: find.byType(AnimatedSize),
+    matching: find.byType(SingleChildScrollView),
+  );
+
+  /// Opens Station Configuration and the Add dialog. Never pumpAndSettle:
+  /// while nothing has announced itself the discovery section holds a
+  /// CircularProgressIndicator, which never settles.
+  Future<void> openAddDialog(WidgetTester tester) async {
+    // Only navigate in if we are not already there: opening the dialog a
+    // second time in one test starts from the panel, where the sidebar row
+    // may not be hit-testable.
+    if (find.text('Equipment Inventory').evaluate().isEmpty) {
+      await tester.tap(find.text('Station Configuration'));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('Add equipment').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('the equipment list is alphabetical, not grouped by brand', (tester) async {
+    // Sorted at BUILD time, from the names as the current locale renders
+    // them. An order fixed where the catalogue is declared would be
+    // alphabetical only in whichever language happened to be active first.
+    //
+    // Mutation check: drop the sort and this fails on the very first pair,
+    // since the catalogue declares FlexRadio, then the two Yaesus.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+
+    const expected = [
+      'FlexRadio (SmartSDR)',
+      'Generic Radio via flrig',
+      'Generic Radio via rigctld',
+      'Icom - Generic',
+      'Icom IC-705',
+      'Yaesu - Generic',
+      'Yaesu FT-891',
+    ];
+    final tops = [
+      for (final name in expected)
+        tester.getTopLeft(find.descendant(of: find.byType(HaloDialog), matching: find.text(name))).dy,
+    ];
+    for (var i = 1; i < tops.length; i++) {
+      expect(tops[i], greaterThan(tops[i - 1]),
+          reason: '"${expected[i]}" should sit below "${expected[i - 1]}"');
+    }
+  });
+
+  testWidgets('the search box filters by radio name and by how it plugs in', (tester) async {
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'icom');
+    await tester.pump();
+    expect(find.text('Icom IC-705'), findsOneWidget);
+    expect(find.text('Icom - Generic'), findsOneWidget);
+    expect(find.text('Yaesu FT-891'), findsNothing);
+
+    // Matching the transport too is the point: an operator with a cable in
+    // their hand knows how the radio plugs in long before they know whether
+    // its protocol is called CI-V.
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'usb');
+    await tester.pump();
+    expect(find.text('Yaesu FT-891'), findsOneWidget);
+    expect(find.text('Yaesu - Generic'), findsOneWidget);
+    expect(find.text('Icom IC-705'), findsOneWidget, reason: 'it has a USB serial pairing');
+    expect(find.text('Generic Radio via rigctld'), findsNothing, reason: 'network only');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'zzzz');
+    await tester.pump();
+    expect(find.text('No equipment matches'), findsOneWidget);
+  });
+
+  testWidgets('scrolling the equipment list folds the discovery section away', (tester) async {
+    // A window short enough that the catalogue overflows — at full size the
+    // list never scrolls and this behaviour is unreachable.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+    await openAddDialog(tester);
+
+    // The title and its spinner are permanent — discovery is still running,
+    // and the fold is about the found-devices body below them.
+    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(discoveryBody, findsOneWidget);
+
+    // The dialog's own list, not the settings sidebar behind it.
+    final list = find.byType(ListView).last;
+    await tester.drag(list, const Offset(0, -120));
+    await tester.pump();
+
+    expect(discoveryBody, findsNothing, reason: 'scrolling into the list gives its room to the list');
+    // The title and its spinner stay: they are what tell the operator
+    // discovery is still running, and losing them would read as it having
+    // stopped.
+    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.drag(list, const Offset(0, 400));
+    await tester.pump();
+    expect(discoveryBody, findsOneWidget,
+        reason: 'back at the top, what announced itself is worth the room again');
+  });
+
+  testWidgets('a transport glyph sits beside the radio\'s name, not halfway down the row', (tester) async {
+    // Material 3 centres a ListTile's trailing widget against the WHOLE tile
+    // unless titleAlignment says otherwise, so on a row carrying an untested
+    // caveat the glyph drops a full line below the name it belongs to. A
+    // shrink-wrapping Column around the glyph does NOT fix this — it looks
+    // like it should, which is why this measures instead of trusting it.
+    //
+    // Mutation check: remove titleAlignment and the IC-705 row's glyph lands
+    // ~13pt lower than its name.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+
+    // A two-line row: "Icom IC-705" over "USB serial (untested)".
+    final nameTop = tester.getRect(find.text('Icom IC-705')).top;
+    final glyphTop = tester
+        .getRect(find.descendant(
+          of: find.widgetWithText(ListTile, 'Icom IC-705'),
+          matching: find.byIcon(resolveIconName('wifi')),
+        ))
+        .top;
+    expect(glyphTop, lessThan(nameTop + 4),
+        reason: 'the glyph belongs level with the name, not centred against the caveat below it');
+  });
+
+  testWidgets('the fold reopens when the list stops being scrollable under it', (tester) async {
+    // The trap: a scroll position corrected during LAYOUT — the list shrinking
+    // under a filter, or growing back when one is cleared — moves `pixels`
+    // without dispatching any ScrollNotification. Watching only that
+    // notification leaves the section folded shut over a list that no longer
+    // scrolls, with no gesture anywhere that reopens it.
+    //
+    // Mutation check: drop the ScrollMetricsNotification listener and the
+    // final expectation here fails.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+    await openAddDialog(tester);
+
+    final list = find.byType(ListView).last;
+    await tester.drag(list, const Offset(0, -120));
+    await tester.pump();
+    expect(discoveryBody, findsNothing, reason: 'folded, as it should be');
+
+    // Filter to nothing: the ListView unmounts entirely and takes its
+    // Scrollable with it.
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'zzzz');
+    await tester.pump();
+    expect(find.text('No equipment matches'), findsOneWidget);
+
+    // Clearing it mounts a FRESH scrollable at offset 0. The operator is
+    // looking at a full, unscrolled list — the section has to be back.
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), '');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(discoveryBody, findsOneWidget,
+        reason: 'the list is back at the top, so what announced itself is worth the room again');
+  });
+
+  testWidgets('a short window does not overflow the dialog', (tester) async {
+    // With scrollable: false the search row and the discovery section are the
+    // Column's inflexible children — an unbounded section pushes the whole
+    // dialog past its height cap and paints overflow stripes. Any thrown
+    // layout exception fails this test on its own.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(900, 420));
+    await openAddDialog(tester);
+
+    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    expect(find.text('Looking for new equipment…'), findsOneWidget);
+  });
+
+  testWidgets('a new radio is named after the model, numbered once that name is taken', (tester) async {
+    await pumpSettings(tester, catEnabled: true, secureStorage: FakeSecureStorage());
+    await openAddDialog(tester);
+
+    await tester.tap(find.text('Generic Radio via rigctld'));
+    await tester.pumpAndSettle();
+
+    // Prefilled, and prefilled EDITABLY — the operator sees what it will be
+    // called before agreeing to it.
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Name').first).controller?.text,
+      'Generic Radio via rigctld',
+    );
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+
+    await openAddDialog(tester);
+    // Scoped to the dialog: the name is now also on the equipment row and in
+    // the Main VFO dropdown behind it.
+    await tester.tap(find.descendant(
+      of: find.byType(HaloDialog),
+      matching: find.text('Generic Radio via rigctld'),
+    ));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Name').first).controller?.text,
+      'Generic Radio via rigctld 2',
+      reason: 'the shack already has one, and two identical rows cannot be told apart',
+    );
+  });
+
+  testWidgets('a radio with two ways in asks which, and only that one has to validate', (tester) async {
+    // The trap this exists to catch: FormRenderer registers EVERY declared
+    // field, visible or not, and `submit` runs the validator over all of them
+    // (see its `_visibleElements` doc). The IC-705's serial pairing declares a
+    // serial port and requires one — so a validator that asked the pairing the
+    // node OPENED on, rather than the one the `transport` field currently
+    // names, would refuse to save a perfectly good WiFi radio with "a serial
+    // port is required" anchored on a field the operator cannot even see.
+    //
+    // Mutation check: point the validator at anything but `values['transport']`
+    // and the Save below stops producing a node.
+    final services = await pumpSettings(tester, catEnabled: true, secureStorage: FakeSecureStorage());
+
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add equipment'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.text('Icom IC-705'));
+    await tester.pumpAndSettle();
+
+    // Opened on the verified pairing, and the choice is a field in the form
+    // rather than a fork before it.
+    expect(find.text('Connection'), findsWidgets);
+    expect(find.text('WiFi'), findsWidgets);
+    // The network pairing's own fields are showing...
+    expect(find.text("Radio username"), findsWidgets);
+    // ...and the serial pairing's are not, though they are registered.
+    expect(find.text('Serial port'), findsNothing);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Address').first, '10.0.0.9');
+    await tester.enterText(find.widgetWithText(TextField, 'Radio username').first, 'op');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+
+    final node = services.cat.nodes.single;
+    expect(node.typeKey, 'ic705-network', reason: 'the pairing the transport field named');
+    expect(node.config['host'], '10.0.0.9');
+    // The discriminator chose a typeKey; it is not itself a setting any
+    // transport or driver reads, so it must not be stored as one.
+    expect(node.config.containsKey('transport'), isFalse);
+  });
+
+  testWidgets('switching transport swaps which pairing the form is describing', (tester) async {
+    // Stops at the swap, deliberately: saving the serial pairing needs a
+    // serial port to pick, and a test process has none (libserialport is not
+    // loadable there, and the picker degrades to an empty list by design).
+    // That the re-typed node then persists is cat_service_test's to prove.
+    await pumpSettings(
+      tester,
+      catEnabled: true,
+      secureStorage: FakeSecureStorage(),
+      equipment: {
+        'version': 1,
+        'nodes': {
+          'radio-1': {
+            'typeKey': 'ic705-network',
+            'name': 'The 705',
+            'config': {'host': '10.0.0.9', 'username': 'op'},
+          },
+        },
+      },
+    );
+
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    // The row, not the Main VFO dropdown above it — the name appears in both.
+    await tester.tap(find.text('The 705').last);
+    await tester.pumpAndSettle();
+
+    // The transport dropdown is found by its CURRENT value, not by position:
+    // choosing serial adds a baud-rate dropdown of its own, so an index would
+    // start aiming at that instead.
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, 'WiFi'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('USB serial (untested)').last);
+    await tester.pumpAndSettle();
+
+    // The other pairing's fields took over, and its prefill came with it —
+    // seeded up front from every variant's defaultConfig, so switching lands
+    // on sensible values with nothing to plumb through onChange.
+    expect(find.text('Serial port'), findsWidgets);
+    expect(find.text("Radio username"), findsNothing);
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Radio CI-V address').first).controller?.text,
+      'A4',
+      reason: "the serial pairing's own prefill, seeded before the operator ever chose it",
+    );
+
+    // Switching back finds what was already there. FormRenderer keeps a
+    // hidden field's value, which is exactly why nothing here has to thread
+    // the old transport's settings anywhere.
+    await tester.tap(
+        find.widgetWithText(DropdownButtonFormField<dynamic>, 'USB serial (untested)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WiFi').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Address').first).controller?.text,
+      '10.0.0.9',
+    );
   });
 
   testWidgets('a stored password shows as a hint in the editor, never as a value', (tester) async {

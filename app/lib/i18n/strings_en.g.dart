@@ -1991,14 +1991,14 @@ class Translations$settings$station$en {
 	/// en: 'Add equipment'
 	String get addTitle => 'Add equipment';
 
-	/// en: 'Looking for radios on your network…'
-	String get searching => 'Looking for radios on your network…';
+	/// en: 'Search equipment'
+	String get searchHint => 'Search equipment';
 
-	/// en: 'Found'
-	String get found => 'Found';
+	/// en: 'No equipment matches'
+	String get noMatches => 'No equipment matches';
 
-	/// en: 'Add by address'
-	String get addManually => 'Add by address';
+	/// en: 'Looking for new equipment…'
+	String get lookingForEquipment => 'Looking for new equipment…';
 
 	/// en: 'Can't listen for radios: ${error}'
 	String discoveryUnavailable({required Object error}) => 'Can\'t listen for radios: ${error}';
@@ -2011,6 +2011,12 @@ class Translations$settings$station$en {
 
 	/// en: 'What you call it — "Left Radio". Optional.'
 	String get nameDescription => 'What you call it — "Left Radio". Optional.';
+
+	/// en: 'Connection'
+	String get transport => 'Connection';
+
+	/// en: 'How the app reaches this radio. Each one has its own settings.'
+	String get transportDescription => 'How the app reaches this radio. Each one has its own settings.';
 
 	/// en: 'Address'
 	String get host => 'Address';
@@ -2047,6 +2053,12 @@ class Translations$settings$station$en {
 
 	/// en: 'Not tested against this hardware'
 	String get unverified => 'Not tested against this hardware';
+
+	/// en: 'untested'
+	String get unverifiedShort => 'untested';
+
+	/// en: 'Troubleshooting Notes'
+	String get troubleshootingNotes => 'Troubleshooting Notes';
 
 	/// en: 'Main VFO'
 	String get mainVfo => 'Main VFO';
@@ -2096,13 +2108,20 @@ class Translations$settings$station$en {
 	/// en: 'The radio's remote-control username is required'
 	String get radioUserRequired => 'The radio\'s remote-control username is required';
 
-	late final Translations$settings$station$types$en types = Translations$settings$station$types$en.internal(_root);
+	late final Translations$settings$station$models$en models = Translations$settings$station$models$en.internal(_root);
+	late final Translations$settings$station$transports$en transports = Translations$settings$station$transports$en.internal(_root);
 
 	/// en: 'If the radio connects but shows no frequency'
 	String get troubleshootingTitle => 'If the radio connects but shows no frequency';
 
 	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. - **Speed must match** the radio's CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
 	String get ft891Troubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+
+	/// en: 'If the radio connects but shows no frequency'
+	String get yaesuTroubleshootingTitle => 'If the radio connects but shows no frequency';
+
+	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.'
+	String get yaesuTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.';
 
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
@@ -2795,31 +2814,52 @@ class Translations$settings$privacy$shareOpData$en {
 	String get descriptionOff => 'Keep operation data private';
 }
 
-// Path: settings.station.types
-class Translations$settings$station$types$en {
-	Translations$settings$station$types$en.internal(this._root);
+// Path: settings.station.models
+class Translations$settings$station$models$en {
+	Translations$settings$station$models$en.internal(this._root);
 
 	final Translations _root; // ignore: unused_field
 
 	// Translations
 
-	/// en: 'FlexRadio (SmartSDR) — Network'
-	String get flexRadioTcp => 'FlexRadio (SmartSDR) — Network';
+	/// en: 'FlexRadio (SmartSDR)'
+	String get flexRadio => 'FlexRadio (SmartSDR)';
 
-	/// en: 'Yaesu FT-891 — USB serial'
-	String get ft891Serial => 'Yaesu FT-891 — USB serial';
+	/// en: 'Yaesu FT-891'
+	String get ft891 => 'Yaesu FT-891';
 
-	/// en: 'Icom (CI-V) — USB serial'
-	String get icomCivSerial => 'Icom (CI-V) — USB serial';
+	/// en: 'Yaesu - Generic'
+	String get yaesuGeneric => 'Yaesu - Generic';
 
-	/// en: 'Icom IC-705 — WiFi'
-	String get ic705Network => 'Icom IC-705 — WiFi';
+	/// en: 'Icom - Generic'
+	String get icomGeneric => 'Icom - Generic';
 
-	/// en: 'Hamlib rigctld — Network'
-	String get rigctldTcp => 'Hamlib rigctld — Network';
+	/// en: 'Icom IC-705'
+	String get ic705 => 'Icom IC-705';
 
-	/// en: 'flrig — Network'
-	String get flrigTcp => 'flrig — Network';
+	/// en: 'Generic Radio via rigctld'
+	String get rigctld => 'Generic Radio via rigctld';
+
+	/// en: 'Generic Radio via flrig'
+	String get flrig => 'Generic Radio via flrig';
+}
+
+// Path: settings.station.transports
+class Translations$settings$station$transports$en {
+	Translations$settings$station$transports$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Network'
+	String get network => 'Network';
+
+	/// en: 'USB serial'
+	String get usbSerial => 'USB serial';
+
+	/// en: 'WiFi'
+	String get wifi => 'WiFi';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -3267,13 +3307,15 @@ extension on Translations {
 			'settings.station.none' => 'No equipment configured',
 			'settings.station.add' => 'Add equipment',
 			'settings.station.addTitle' => 'Add equipment',
-			'settings.station.searching' => 'Looking for radios on your network…',
-			'settings.station.found' => 'Found',
-			'settings.station.addManually' => 'Add by address',
+			'settings.station.searchHint' => 'Search equipment',
+			'settings.station.noMatches' => 'No equipment matches',
+			'settings.station.lookingForEquipment' => 'Looking for new equipment…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
+			'settings.station.transport' => 'Connection',
+			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
 			'settings.station.port' => 'Port',
@@ -3286,6 +3328,8 @@ extension on Translations {
 			'settings.station.removeMessage' => 'This only removes it from the app. Nothing on the equipment changes.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
 			'settings.station.unverified' => 'Not tested against this hardware',
+			'settings.station.unverifiedShort' => 'untested',
+			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
 			'settings.station.mainVfo' => 'Main VFO',
 			'settings.station.useAsMainVfo' => 'Use as Main VFO',
 			'settings.station.serialPort' => 'Serial port',
@@ -3302,14 +3346,20 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
-			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Network',
-			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serial',
-			'settings.station.types.icomCivSerial' => 'Icom (CI-V) — USB serial',
-			'settings.station.types.ic705Network' => 'Icom IC-705 — WiFi',
-			'settings.station.types.rigctldTcp' => 'Hamlib rigctld — Network',
-			'settings.station.types.flrigTcp' => 'flrig — Network',
+			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
+			'settings.station.models.ft891' => 'Yaesu FT-891',
+			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
+			'settings.station.models.icomGeneric' => 'Icom - Generic',
+			'settings.station.models.ic705' => 'Icom IC-705',
+			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
+			'settings.station.models.flrig' => 'Generic Radio via flrig',
+			'settings.station.transports.network' => 'Network',
+			'settings.station.transports.usbSerial' => 'USB serial',
+			'settings.station.transports.wifi' => 'WiFi',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
@@ -3332,6 +3382,8 @@ extension on Translations {
 			'settings.offlineData.refreshing' => 'Refreshing…',
 			'settings.offlineData.updateAll' => 'Update All',
 			'settings.offlineData.updatingAll' => 'Updating all data files…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.neverDownloaded' => 'Never downloaded',
 			'settings.offlineData.updatedJustNow' => 'Updated just now',
 			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Updated ${days}d ago',
@@ -3342,8 +3394,6 @@ extension on Translations {
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
 			'settings.search.clear' => 'Clear',
-			_ => null,
-		} ?? switch (path) {
 			'settings.search.hint' => 'Search settings',
 			'settings.developer.options' => 'Developer Options',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',

@@ -77,13 +77,19 @@ class _Attempt {
 class _FakeTransport extends EquipmentTransport {
   final attempts = <_Attempt>[];
 
+  /// Distinct keys let one fake model carry two variants, which is what the
+  /// re-typing tests need — a model's transports have to be distinguishable.
+  final String transportKey;
+
+  _FakeTransport({this.transportKey = 'fake'});
+
   /// Whether a cancelled attempt gives up. True mirrors the real
   /// transports; setting it false is how the "the transport ignored us and
   /// connected anyway" case gets exercised.
   var honorsCancellation = true;
 
   @override
-  String get key => 'fake';
+  String get key => transportKey;
 
   @override
   List<Map<String, dynamic>> configElements({
@@ -192,13 +198,18 @@ class _FakeDriver extends EquipmentDriver {
   }
 }
 
-EquipmentType _fakeType(EquipmentDriver driver, EquipmentTransport transport) => EquipmentType(
-      key: 'fake-type',
+EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
+      key: 'fake',
       category: kCategoryTransceiver,
-      name: () => 'Fake Radio (Network)',
-      driver: driver,
-      transport: transport,
-      defaultConfig: const {'host': ''},
+      name: () => 'Fake Radio',
+      variants: [
+        EquipmentVariant(
+          key: 'fake-type',
+          driver: driver,
+          transport: transport,
+          defaultConfig: const {'host': ''},
+        ),
+      ],
     );
 
 // ----------------------------------------------------------------- setup
@@ -224,7 +235,7 @@ void main() {
       settings,
       radio: radio,
       registry: EquipmentRegistry(
-        types: [_fakeType(driver, transport)],
+        models: [_fakeModel(driver, transport)],
         transports: {'fake': transport},
       ),
       reconnectDelay: Duration.zero,
@@ -1170,6 +1181,125 @@ void main() {
       await cat.removeNode(node.uuid);
       expect(connection.closeCalled, isTrue);
       expect(cat.nodes, isEmpty);
+    });
+  });
+
+  group('naming a new radio after the one it is', () {
+    test('the first of a kind is unnumbered', () {
+      expect(uniqueEquipmentName('Icom IC-705', []), 'Icom IC-705');
+      expect(uniqueEquipmentName('Icom IC-705', ['Yaesu FT-891']), 'Icom IC-705');
+    });
+
+    test('numbering starts at 2, because "Icom IC-705 1" reads as a shack with two', () {
+      expect(uniqueEquipmentName('Icom IC-705', ['Icom IC-705']), 'Icom IC-705 2');
+      expect(uniqueEquipmentName('Icom IC-705', ['Icom IC-705', 'Icom IC-705 2']), 'Icom IC-705 3');
+    });
+
+    test('a freed number is reused rather than counted past', () {
+      // Removing the middle of three and adding another should land back on
+      // 2, not 4 — the number says which one, not how many there have ever
+      // been.
+      expect(uniqueEquipmentName('Icom IC-705', ['Icom IC-705', 'Icom IC-705 3']), 'Icom IC-705 2');
+    });
+
+    test('a name that differs only in case or padding is still taken', () {
+      // Two rows the operator cannot tell apart is the whole failure being
+      // avoided, and trailing space is invisible.
+      expect(uniqueEquipmentName('Icom IC-705', ['icom ic-705']), 'Icom IC-705 2');
+      expect(uniqueEquipmentName('Icom IC-705', ['  Icom IC-705  ']), 'Icom IC-705 2');
+    });
+
+    test('addNode names an unnamed node after its model, not its pairing', () async {
+      // The model, deliberately: the transport is already shown by the row's
+      // icon and address, and it can be changed in the editor afterwards —
+      // baking it into the name would leave the name lying.
+      final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a.local'});
+      expect(first.name, 'Fake Radio');
+
+      final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b.local'});
+      expect(second.name, 'Fake Radio 2');
+    });
+
+    test('a name the operator typed is never second-guessed', () async {
+      final node = await cat.addNode(typeKey: 'fake-type', name: 'Left Radio', config: {'host': 'a.local'});
+      expect(node.name, 'Left Radio');
+
+      // Not even when it collides: two radios called the same thing is the
+      // operator's call to make, and renaming what they just typed is worse
+      // than letting them repeat themselves.
+      final same = await cat.addNode(typeKey: 'fake-type', name: 'Left Radio', config: {'host': 'b.local'});
+      expect(same.name, 'Left Radio');
+    });
+  });
+
+  group('re-typing a node — the same radio, reached a different way', () {
+    late _FakeTransport altTransport;
+    late CatService service;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final log = <String>[];
+      final driver = _FakeDriver(log);
+      transport = _FakeTransport();
+      altTransport = _FakeTransport(transportKey: 'fake-alt');
+      service = CatService(
+        settings,
+        registry: EquipmentRegistry(
+          models: [
+            EquipmentModel(
+              key: 'fake',
+              category: kCategoryTransceiver,
+              name: () => 'Fake Radio',
+              variants: [
+                EquipmentVariant(key: 'fake-type', driver: driver, transport: transport),
+                EquipmentVariant(key: 'fake-type-alt', driver: driver, transport: altTransport),
+              ],
+            ),
+          ],
+          transports: {'fake': transport, 'fake-alt': altTransport},
+        ),
+        reconnectDelay: Duration.zero,
+      );
+      addTearDown(service.dispose);
+    });
+
+    test('switching transport drops the live connection', () async {
+      // The connection is the OLD transport's and the session was built by
+      // the pairing the node is leaving. Neither can be handed to the new
+      // one, so leaving the runtime attached would show a green row whose
+      // link belongs to a configuration that no longer exists.
+      final node = await service.addNode(typeKey: 'fake-type', config: {'host': 'a.local'});
+      final connecting = service.connect(node.uuid);
+      await pumpEventQueue();
+      final connection = _FakeConnection('c1', <String>[]);
+      transport.attempts.last.completer.complete(connection);
+      await connecting;
+      expect(service.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      await service.updateNode(node.copyWith(typeKey: 'fake-type-alt'));
+
+      expect(connection.closeCalled, isTrue);
+      expect(service.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(service.nodes.single.typeKey, 'fake-type-alt');
+      expect(service.typeFor(service.nodes.single)?.transport.key, 'fake-alt');
+    });
+
+    test('editing a setting on the SAME pairing leaves the connection alone', () async {
+      // The other half of the rule, and the reason it is a typeKey comparison
+      // rather than "updateNode disconnects": correcting a radio's NAME must
+      // not drop a working link mid-QSO.
+      final node = await service.addNode(typeKey: 'fake-type', config: {'host': 'a.local'});
+      final connecting = service.connect(node.uuid);
+      await pumpEventQueue();
+      final connection = _FakeConnection('c1', <String>[]);
+      transport.attempts.last.completer.complete(connection);
+      await connecting;
+
+      await service.updateNode(node.copyWith(name: 'Left Radio'));
+
+      expect(connection.closeCalled, isFalse);
+      expect(service.stateFor(node.uuid).status, EquipmentStatus.connected);
     });
   });
 }

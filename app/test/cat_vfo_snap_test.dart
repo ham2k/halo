@@ -129,12 +129,13 @@ class _FakeDriver extends EquipmentDriver {
   }
 }
 
-EquipmentType _fakeType(EquipmentDriver driver, EquipmentTransport transport) => EquipmentType(
-      key: 'fake-type',
+EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
+      key: 'fake',
       category: kCategoryTransceiver,
       name: () => 'Fake Radio',
-      driver: driver,
-      transport: transport,
+      variants: [
+        EquipmentVariant(key: 'fake-type', driver: driver, transport: transport),
+      ],
     );
 
 void main() {
@@ -311,7 +312,7 @@ void main() {
         radio: radio,
         now: () => fakeNow,
         registry: EquipmentRegistry(
-          types: [_fakeType(driver, transport)],
+          models: [_fakeModel(driver, transport)],
           transports: {'fake': transport},
         ),
       );

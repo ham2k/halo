@@ -55,7 +55,7 @@ Dart — not executable JS.
 Settings → Station Configuration      app/lib/views/station_panel.dart
    │ reads/writes
 CatService (ChangeNotifier)          app/lib/services/cat/cat_service.dart
-   ├── EquipmentRegistry              equipment_registry.dart   — the type catalogue
+   ├── EquipmentRegistry              equipment_registry.dart   — models, and the variants derived from them
    ├── transports                     transports/tcp_transport.dart (conditional export)
    └── per-node _NodeRuntime          connection + session + status, keyed by node uuid
    │ writes vfoA (P3)
@@ -73,11 +73,57 @@ bytes handed to it by a transport — it has no idea whether those bytes arrived
 USB-serial, or anything else."* Its architecture review explicitly *undid* the one place the
 separation had leaked (radio-model identification by USB VID/PID had ended up inside the transport).
 
-The user-facing **equipment type** is the (model × transport) pair — the picker offers
-"FlexRadio (SmartSDR) — Network" and would offer "Yaesu FT-891 — USB serial" and
-"Yaesu FT-891 — Bluetooth" as separate entries, each with its own transport and its own connection
-parameters. That is the duplication that is worth having: it is glue, it is small, and it lets each
-combination present exactly the settings it needs.
+The (model × transport) pair is still what a configured node is bound to — that pair is what decides
+the connection settings, and `EquipmentVariant.key` is what a node stores. What changed is who
+authors it and what the operator picks.
+
+The authoring and picking unit is an **`EquipmentModel`**: one radio, named once, holding a variant
+per transport it can be reached over. The operator picks "Icom IC-705" and then how it is
+connected; a model with one variant never asks. The registry **derives** the flat `EquipmentType`
+list from the models, so a model and its pairings cannot disagree about which variants exist.
+
+Everything that varies between a radio's transports lives on the variant, and that list is longer
+than it looks — for the IC-705 the driver's overrides, the prefilled defaults, the hardware-verified
+status and the troubleshooting notes *all* differ between WiFi and USB. Hoisting any of them onto
+the model would be wrong for the one radio that has two variants.
+
+The reason this beats a flat list of pairs is not tidiness, it is that the flat list asked the
+operator the wrong question first. Finding an IC-705 under "Icom (CI-V) — USB serial" requires
+already knowing the radio speaks CI-V. The name on the front of the radio is what they have.
+
+Two consequences worth stating, because both are load-bearing:
+
+- **Variant keys are persisted, and renaming one requires a forwarding entry.** Nothing fails when a
+  key changes on its own — the node simply stops resolving, and the panel shows it as a type that no
+  longer exists with everything the operator configured still inside it. So a rename goes in two
+  places: the variant, and `renamedTypeKeys` in `equipment.dart`, which is applied when a record is
+  read so the new key is what gets written back at the next save. Those entries are permanent —
+  the record being migrated was written by a build with no upper bound on its age. The shipped key
+  set and every forwarding entry are asserted in `cat_equipment_registry_test.dart`, so a rename has
+  to be a deliberate edit and cannot point at a pairing that no longer exists.
+- **A secret belongs to the catalogue, not to the pairing a node is on.** The editor renders every
+  variant's fields at once, so a node bound to a transport with no credentials of its own still
+  arrives at storage carrying the password belonging to the transport beside it. `_stashSecrets`,
+  `storedSecretFields` and `removeNode` therefore all ask `EquipmentRegistry.allSecretFields`;
+  scoping any of them to the node's own pairing writes that password into the plain prefs blob, or
+  strands it in the keychain, or hides that it exists. Only `_configWithSecrets` — "what does THIS
+  connection need?" — is the pairing's question.
+- **Two variants of one model may not disagree about a default.** All of their `defaultConfig`s seed
+  the form together (that is what makes switching transport land on sensible values with no
+  re-seeding logic), so a key they prefill differently has one box and one of the two answers is
+  unreachable. A registry self-check forbids it, because there is no run-time symptom.
+- **Re-typing a node drops its connection.** Switching transport replaces both the transport and
+  the driver, and a live runtime holds a session the old driver built over a connection the old
+  transport opened. `CatService.updateNode` disconnects on a typeKey change *only* — an edited host
+  or a corrected name must not drop a working radio.
+
+The editor renders every supported variant's fields at once and narrows them with FormRenderer's
+`visibleWhen`, rather than rebuilding per transport. That inherits one contract, stated in
+FormRenderer's own `_visibleElements` doc: a hidden field is still registered, still holds its
+value, and is **still passed to the validator on submit**. So the editor resolves the pairing from
+the form's `transport` value and asks only that one — otherwise the IC-705's serial port, required
+and invisible, would refuse to save a perfectly good WiFi radio. The upside of the same contract is
+why it is worth it: switching transport and back keeps what was typed, with no state to thread.
 
 The **protocol codec stays one shared pure file per protocol family**. Duplicating glue is cheap;
 duplicating frame parsing duplicates parsing bugs. Polo's evidence is unambiguous — its pure codec

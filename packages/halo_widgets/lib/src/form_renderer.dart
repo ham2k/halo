@@ -775,11 +775,17 @@ class FormRendererState extends State<FormRenderer> {
       padding: _rowContentPadding,
       child: Row(
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: devModeColor ?? onSurfaceAccent,
-              fontWeight: FontWeight.bold,
+          // Flexible, not bare: the title is a full sentence in some forms
+          // ("If two serial ports show up for the same radio"), and an
+          // unbounded Text beside an Expanded divider overflows the row in a
+          // narrow pane rather than wrapping.
+          Flexible(
+            child: Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: devModeColor ?? onSurfaceAccent,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 8),

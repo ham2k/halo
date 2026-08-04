@@ -17,6 +17,24 @@ import 'package:flutter/foundation.dart';
 /// behaviour today, so an enum would churn for nothing.
 const kCategoryTransceiver = 'transceiver';
 
+/// Old [EquipmentNode.typeKey] values, mapped to what the catalogue calls
+/// them now.
+///
+/// A node resolves to its pairing by this key alone, and a rename that
+/// forgot to land here fails silently in the worst way available: the record
+/// survives, the panel lists it as an unrecognized type, and everything the
+/// operator configured is still inside it with no way to reach it. Applied
+/// on read, so the new key is what gets written back at the next save.
+///
+/// Entries are permanent. The whole point is a record written by a build
+/// that predates the rename, and there is no upper bound on how old that
+/// build can be.
+const renamedTypeKeys = {
+  // Named for the protocol, which only finds you if you already know your
+  // radio speaks CI-V.
+  'icom-civ-serial': 'icom-generic-serial',
+};
+
 @immutable
 class EquipmentNode {
   /// Stable id, also the key this record is stored under.
@@ -41,9 +59,13 @@ class EquipmentNode {
     this.config = const {},
   });
 
-  EquipmentNode copyWith({String? name, Map<String, dynamic>? config}) => EquipmentNode(
+  /// [typeKey] changes when the operator picks a different transport for the
+  /// same radio — the node is then bound to a different driver and transport,
+  /// which is why [CatService.updateNode] drops any live connection rather
+  /// than leaving a session built by the old pairing attached to it.
+  EquipmentNode copyWith({String? typeKey, String? name, Map<String, dynamic>? config}) => EquipmentNode(
         uuid: uuid,
-        typeKey: typeKey,
+        typeKey: typeKey ?? this.typeKey,
         name: name ?? this.name,
         config: config ?? this.config,
       );
@@ -64,7 +86,7 @@ class EquipmentNode {
     final config = raw['config'];
     return EquipmentNode(
       uuid: uuid,
-      typeKey: typeKey,
+      typeKey: renamedTypeKeys[typeKey] ?? typeKey,
       name: raw['name'] is String ? raw['name'] as String : '',
       config: config is Map ? config.cast<String, dynamic>() : const {},
     );

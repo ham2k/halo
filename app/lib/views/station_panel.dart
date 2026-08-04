@@ -66,112 +66,98 @@ class StationPanel extends StatelessWidget {
       return;
     }
 
-    final type = choice.type!;
-    final values = await _editValues(context, type: type, name: '', config: type.defaultConfig);
+    final model = choice.model!;
+    final variants = _supportedVariants(model);
+    if (variants.isEmpty) return;
+    final values = await _editValues(
+      context,
+      model: model,
+      type: variants.first,
+      // Prefilled rather than left blank, and editable: the operator sees
+      // what it will be called before agreeing to it. addNode computes the
+      // same suggestion again if they clear the field, since this one is
+      // already stale by the time they submit.
+      name: _cat.suggestedNameFor(variants.first.key),
+      config: const {},
+    );
     if (values == null) return;
 
-    await _cat.addNode(typeKey: type.key, name: values.name, config: values.config);
+    await _cat.addNode(typeKey: values.typeKey, name: values.name, config: values.config);
   }
 
   Future<_AddChoice?> _showAddDialog(BuildContext context, {required bool showDiscovery}) {
     return showHaloDialog<_AddChoice>(
       context: context,
-      builder: (context) => ListenableBuilder(
-        listenable: _cat,
-        builder: (context, _) {
-          final st = context.t.settings.station;
-          final found = _cat.discovered;
-          final error = _cat.discoveryError;
-          // A radio whose transport can't connect on this platform at all
-          // (TCP, Icom network, on web) would only fail loudly once picked
-          // — no point offering it.
-          final manualTypes = _cat.registry.types.where((type) => type.isSupportedOnThisPlatform).toList();
-
-          return HaloDialog(
-            title: Text(st.addTitle),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showDiscovery) ...[
-                  // What announced itself, first: for a Flex this is the
-                  // whole interaction — tap it and it's configured.
-                  if (error != null)
-                    ListTile(
-                      leading: Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.error),
-                      title: Text(st.discoveryUnavailable(error: error)),
-                    )
-                  else if (found.isEmpty)
-                    const ListTile(
-                      leading: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child:
-                              Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2))),
-                      title: _SearchingLabel(),
-                    )
-                  else ...[
-                    SectionHeader(st.found),
-                    for (final device in found)
-                      ListTile(
-                        leading: Icon(_iconForCategory(_cat.registry.typeFor(device.typeKey)?.category)),
-                        title: Text(device.name),
-                        subtitle: device.detail == null ? null : Text(device.detail!),
-                        onTap: () => Navigator.of(context).pop(_AddChoice.discovered(device)),
-                        mouseCursor: SystemMouseCursors.click,
-                      ),
-                  ],
-                  const Divider(),
-                ],
-                // A radio on another subnet, or behind a router that doesn't
-                // forward broadcasts, never announces — the manual path must
-                // always be offered.
-                SectionHeader(st.addManually),
-                for (final type in manualTypes)
-                  ListTile(
-                    leading: Icon(_iconForCategory(type.category)),
-                    title: Text(type.name),
-                    // Which drivers have actually been run against the real
-                    // hardware, rather than presenting them all as equal.
-                    subtitle: type.hardwareVerified ? null : Text(st.unverified),
-                    onTap: () => Navigator.of(context).pop(_AddChoice.type(type)),
-                    mouseCursor: SystemMouseCursors.click,
-                  ),
-              ],
-            ),
-            cancel: TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.t.common.cancel),
-            ),
-          );
-        },
+      builder: (context) => _AddEquipmentDialog(
+        cat: _cat,
+        showDiscovery: showDiscovery,
+        supportedVariants: _supportedVariants,
       ),
     );
   }
+
+  /// The pairings of [model] this platform could actually connect — web has
+  /// no raw sockets and no serial, so a model can be reachable everywhere
+  /// but here.
+  List<EquipmentType> _supportedVariants(EquipmentModel model) => [
+        for (final variant in model.variants)
+          if (_cat.registry.typeFor(variant.key) case final type?)
+            if (type.isSupportedOnThisPlatform) type,
+      ];
 
   Future<void> _editEquipment(BuildContext context, EquipmentNode node) async {
     final type = _cat.typeFor(node);
     if (type == null) return;
 
-    final values = await _editValues(context, type: type, name: node.name, config: node.config, node: node);
+    final values =
+        await _editValues(context, model: type.model, type: type, name: node.name, config: node.config, node: node);
     // Null also means the editor removed the node, or was cancelled — either
     // way there is nothing left to write back.
     if (values == null) return;
 
-    await _cat.updateNode(node.copyWith(name: values.name, config: values.config));
+    await _cat.updateNode(
+      node.copyWith(typeKey: values.typeKey, name: values.name, config: values.config),
+    );
   }
 
-  /// The name field plus whatever the type asks for, in one form.
-  /// [node] is null when adding: the actions below act on equipment that
-  /// already exists, so they only appear once it does.
-  Future<({String name, Map<String, dynamic> config})?> _editValues(
+  /// The name field, how the radio is connected, and whatever that choice
+  /// asks for, in one form. [node] is null when adding: the actions below act
+  /// on equipment that already exists, so they only appear once it does.
+  ///
+  /// Every supported pairing's fields are rendered at once and narrowed with
+  /// `visibleWhen`, rather than the form being rebuilt per transport. That is
+  /// FormRenderer's own mechanism and it carries one contract with it (see
+  /// its `_visibleElements` doc): a hidden field is still registered, still
+  /// holds its value, and is still passed to the validator on submit. So
+  /// everything below resolves the pairing from the `transport` value first
+  /// and asks only that one — otherwise a serial port left over from a
+  /// transport the operator switched away from would block the save.
+  ///
+  /// The upside of that same contract is what makes it worth it: switching
+  /// transport and back keeps what was typed, with no state to thread.
+  Future<({String typeKey, String name, Map<String, dynamic> config})?> _editValues(
     BuildContext context, {
+    required EquipmentModel model,
     required EquipmentType type,
     required String name,
     required Map<String, dynamic> config,
     EquipmentNode? node,
   }) async {
     final st = context.t.settings.station;
+    final variants = _supportedVariants(model);
+    // A model with one way in asks no question — the form is exactly what it
+    // was before transports were selectable.
+    final choosable = variants.length > 1;
+
+    /// Which pairing the form is currently describing. Falls back to the one
+    /// it opened on, so a missing or stale `transport` value can never leave
+    /// this without a type to validate against.
+    EquipmentType typeForState(Map<String, dynamic> state) {
+      for (final candidate in variants) {
+        if (candidate.transportKey == state['transport']) return candidate;
+      }
+      return type;
+    }
 
     // Which secrets already exist — the keys only; the values stay in the
     // keychain and never enter this form. A stored password otherwise renders
@@ -187,8 +173,12 @@ class StationPanel extends StatelessWidget {
     // No-op for every transport except the web serial one, which uses this
     // to fetch and cache navigator.serial's already-granted device list
     // before configElements() (synchronous, so it can't await this itself)
-    // reads it.
-    await type.transport.prepareConfigElements();
+    // reads it. Every offered pairing's transport gets prepared, not just
+    // the selected one: they all render, so they all have to be ready before
+    // the first build.
+    for (final candidate in variants) {
+      await candidate.transport.prepareConfigElements();
+    }
     if (!context.mounted) return null;
 
     // Reused whenever an action changes what's available to pick (a newly
@@ -203,24 +193,72 @@ class StationPanel extends StatelessWidget {
             'label': st.name,
             'description': st.nameDescription,
           },
-          for (final element in type.configElements())
-            if (storedSecrets.contains(element['key'])) {...element, 'placeholder': _storedSecretPlaceholder} else element,
+          if (choosable)
+            {
+              'type': 'field',
+              'fieldType': 'select',
+              'key': 'transport',
+              'label': st.transport,
+              'description': st.transportDescription,
+              'options': [
+                for (final candidate in variants)
+                  {
+                    'value': candidate.transportKey,
+                    // The short marker, not the sentence the Add list uses: a
+                    // dropdown item is one unwrapped row, and the full wording
+                    // overflows it.
+                    'label': candidate.hardwareVerified
+                        ? candidate.transportLabel
+                        : '${candidate.transportLabel} (${st.unverifiedShort})',
+                  },
+              ],
+            },
+          for (final candidate in variants)
+            for (final element in candidate.configElements())
+              {
+                ...element,
+                if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
+                // Only when there is a choice to hide behind: an unconditional
+                // visibleWhen on a single-transport radio would depend on a
+                // `transport` value no field sets.
+                if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
+              },
         ];
 
     final result = await showFormPane(
       context,
-      formDefinition: {'title': type.name, 'elements': buildElements()},
-      initialState: {'name': name, ...config},
+      // The radio, not the pairing: how it is connected is a field inside the
+      // form now, so putting it in the title too would contradict itself the
+      // moment the operator changed it.
+      formDefinition: {'title': model.name, 'elements': buildElements()},
+      // Seeding every pairing up front is what makes switching transport
+      // arrive at sensible defaults with no onChange plumbing — the fields of
+      // a transport not currently chosen are inert until it is.
+      initialState: {
+        'name': name,
+        // Every offered pairing's prefill, then the SELECTED one's on top:
+        // two variants can name the same key, and the one the form actually
+        // opens on is the one whose value belongs in the box. (A registry
+        // self-check forbids them disagreeing at all, so this only decides
+        // the order in which identical values land — it is the guard that
+        // makes the merge safe, and this makes it correct anyway.)
+        for (final candidate in variants) ...candidate.defaultConfig,
+        ...type.defaultConfig,
+        ...config,
+        if (choosable) 'transport': type.transportKey,
+      },
       // Runs per field on submit, so a bad address blocks the save and says
       // so on the address field rather than failing later at connect time.
-      validator: (key, value, values) async => type.validateField(key, value, values),
+      // Asks the pairing the form is currently on: a field belonging to a
+      // transport the operator switched away from is not theirs to get right.
+      validator: (key, value, values) async => typeForState(values).validateField(key, value, values),
       // A transport's own action — the web serial transport's "add a USB
       // device" option, so far, living inside the port field's own list —
       // CatService's layer speaks its own EquipmentActionResult rather
       // than importing halo_widgets, so this is the one place that
       // translates.
       onAction: (actionKey, method, state) async {
-        final actionResult = await type.runAction(actionKey, method, state);
+        final actionResult = await typeForState(state).runAction(actionKey, method, state);
         if (actionResult == null) return null;
         return FormActionResult(
           message: actionResult.message,
@@ -253,10 +291,16 @@ class StationPanel extends StatelessWidget {
     if (result == null) return null;
 
     return (
+      typeKey: typeForState(result).key,
       name: (result['name'] as String? ?? '').trim(),
+      // `transport` is the form's own discriminator, not a setting any
+      // transport or driver reads — it leaves with the typeKey it chose.
+      // Everything else stays, including fields belonging to a transport not
+      // currently selected: switching back has to find them still there, and
+      // `targetFor` narrows to what the connection actually needs anyway.
       config: {
         for (final entry in result.entries)
-          if (entry.key != 'name') entry.key: entry.value,
+          if (entry.key != 'name' && entry.key != 'transport') entry.key: entry.value,
       },
     );
   }
@@ -328,13 +372,26 @@ class StationPanel extends StatelessWidget {
                 // the first transceiver added, and re-designating when the
                 // current one is removed — and neither would have appeared.
                       key: ValueKey(_cat.radio1),
+                      // Without this the button lays its SELECTED item out
+                      // unbounded, so ellipsizing the menu entries is not
+                      // enough — a name wider than the field overflows the
+                      // row rather than truncating.
+                      isExpanded: true,
                       initialValue: transceivers.any((n) => n.uuid == _cat.radio1) ? _cat.radio1 : null,
                       decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
                       menuMaxHeight: dropdownMenuMaxHeight(context),
                       items: [
                         DropdownMenuItem<String?>(value: null, child: Text(st.noTransceiver)),
                         for (final radio in transceivers)
-                          DropdownMenuItem<String?>(value: radio.uuid, child: Text(_displayName(radio))),
+                          DropdownMenuItem<String?>(
+                            value: radio.uuid,
+                            // Ellipsized: a DropdownMenuItem lays its child out
+                            // unbounded, so a name longer than the field is wide
+                            // — the operator's own, or a default like "Generic
+                            // Radio via rigctld" — overflows the row rather
+                            // than truncating.
+                            child: Text(_displayName(radio), overflow: TextOverflow.ellipsis),
+                          ),
                       ],
                       onChanged: (uuid) => unawaited(_cat.setRadio1(uuid)),
                     ),
@@ -393,29 +450,398 @@ class StationPanel extends StatelessWidget {
   }
 }
 
+/// How far the equipment list has to scroll before the discovery section
+/// folds away. Plain logical pixels, deliberately: every Scrollable lives
+/// BELOW the app's UiScale wrapper, so `metrics.pixels` is already in the
+/// same scaled space this constant is written in — multiplying by the font
+/// scale would double-scale it (docs/design/ui-scaling.md). Matches the
+/// threshold the Home screen's FAB collapse uses.
+const _discoveryCollapseAfter = 10.0;
+
+/// Picking what to add: every radio the app knows, filtered by a search box,
+/// with whatever announced itself on the network pinned underneath.
+///
+/// Stateful because two things here are the dialog's own and belong to
+/// nothing else — the filter text and whether the discovery section is
+/// currently folded away.
+class _AddEquipmentDialog extends StatefulWidget {
+  final CatService cat;
+
+  /// False when no pairing on this platform could discover anything, in
+  /// which case the section is absent rather than permanently empty.
+  final bool showDiscovery;
+
+  final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
+
+  const _AddEquipmentDialog({
+    required this.cat,
+    required this.showDiscovery,
+    required this.supportedVariants,
+  });
+
+  @override
+  State<_AddEquipmentDialog> createState() => _AddEquipmentDialogState();
+}
+
+class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
+  final _searchController = TextEditingController();
+
+  /// Folded away once the operator scrolls into the list. Starts open: with
+  /// a short list nothing ever scrolls, and the section is the whole point
+  /// of the dialog for a radio that announces itself.
+  var _discoveryExpanded = true;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Decides the fold from a scrollable's current metrics.
+  ///
+  /// Folding gives the list the room the section was using, which can stop
+  /// the list overflowing at all — so this reads `maxScrollExtent` as well as
+  /// `pixels`. A list with nowhere left to scroll is not being browsed, and
+  /// the operator has no way to scroll back up to ask for the section
+  /// either, so it comes back.
+  ///
+  /// The consequence, which is the intended one: a list that overflows by
+  /// less than the section gives up settles back OPEN after one frame,
+  /// because folding it away bought nothing. Only a list still scrollable
+  /// after the fold stays folded.
+  void _applyScrollMetrics(ScrollMetrics metrics) {
+    if (metrics.maxScrollExtent <= 0) return _setDiscoveryExpanded(true);
+    _setDiscoveryExpanded(metrics.pixels <= _discoveryCollapseAfter);
+  }
+
+  void _setDiscoveryExpanded(bool expanded) {
+    if (_discoveryExpanded == expanded) return;
+    setState(() => _discoveryExpanded = expanded);
+  }
+
+  /// Matches the radio's name and the ways it can be reached, so "usb" finds
+  /// every rig with a cable and "705" finds the one radio — an operator
+  /// searching this list is as likely to know how a radio plugs in as what
+  /// its family is called.
+  bool _matches(({EquipmentModel model, List<EquipmentType> variants, String name}) row, String query) {
+    if (query.isEmpty) return true;
+    if (row.name.toLowerCase().contains(query)) return true;
+    return row.variants.any((type) => type.transportLabel.toLowerCase().contains(query));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.cat,
+      builder: (context, _) {
+        final st = context.t.settings.station;
+        final query = _searchController.text.trim().toLowerCase();
+        // A radio whose transport can't connect on this platform at all
+        // (TCP, Icom network, on web) would only fail loudly once picked —
+        // no point offering it.
+        // Resolved ONCE per model. Both the variants and the name cost real
+        // work — `supportedVariants` scans the type list per variant, and
+        // `name` is a localization lookup — and every one of them would
+        // otherwise be repeated for the filter, the subtitle, the glyphs and
+        // each comparison the sort makes, on every keystroke in the search box.
+        final rows = [
+          for (final model in widget.cat.registry.models)
+            if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
+              (model: model, variants: variants, name: model.name),
+        ]
+          // Sorted HERE rather than in the registry, because a model's name is
+          // read from the current locale at call time — an order fixed at
+          // declaration would be alphabetical in whichever language happened
+          // to be active first. Case-insensitive, so a lower-case brand name
+          // doesn't sort below every capitalised one.
+          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        final models = [
+          for (final row in rows)
+            if (_matches(row, query)) row,
+        ];
+
+        return HaloDialog(
+          // Rows run edge to edge and the content scrolls itself, so the
+          // shell must not also try to scroll it — halo_dialog.dart says an
+          // Expanded/self-scrolling child REQUIRES scrollable: false.
+          wide: true,
+          scrollable: false,
+          contentPadding: EdgeInsets.zero,
+          title: Text(st.addTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  // Per docs/design/user-interface.md: focusing a field must
+                  // not select what is in it.
+                  selectAllOnFocus: false,
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    suffixIcon: query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(Icons.close, size: 18, semanticLabel: context.t.formChrome.clear),
+                            onPressed: () => setState(_searchController.clear),
+                          ),
+                    hintText: st.searchHint,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              if (widget.showDiscovery) ..._discoverySection(context),
+              // BOTH scrolling regions are flex children, and that is what
+              // keeps this dialog from overflowing: with `scrollable: false`
+              // an inflexible child takes its full height off the top, so a
+              // handful of announced radios would squeeze the catalogue to
+              // nothing and one more would overflow the card outright.
+              //
+              // Loose flex, so neither claims room it does not want: on a tall
+              // dialog each takes its natural height and the card shrink-wraps.
+              // The weighting only decides who yields when there is not enough
+              // — and the catalogue is what the operator came for.
+              Flexible(
+                flex: 4,
+                // TWO listeners, and the second is not redundant. A scroll
+                // position corrected during LAYOUT — the list shrinking under
+                // a filter, or growing back when one is cleared, or gaining
+                // the room the fold just freed — moves `pixels` without ever
+                // dispatching a ScrollNotification. Only ScrollMetricsNotification
+                // reports it, and it is not a ScrollNotification. Listening to
+                // the first alone leaves the section folded shut with an
+                // un-scrollable list under it and no gesture that reopens it.
+                child: NotificationListener<ScrollMetricsNotification>(
+                  onNotification: (notification) {
+                    _applyScrollMetrics(notification.metrics);
+                    return false;
+                  },
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      _applyScrollMetrics(notification.metrics);
+                      // Keep bubbling: these listeners observe, they do not consume.
+                      return false;
+                    },
+                    child: models.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                          child: Text(st.noMatches, textAlign: TextAlign.center),
+                        )
+                      : ListView(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.only(bottom: 8),
+                          children: [
+                            for (final row in models)
+                              ListTile(
+                                leading: Icon(_iconForCategory(row.model.category)),
+                                title: Text(row.name),
+                                subtitle: _modelSubtitle(context, row.variants),
+                                // The glyphs belong beside the radio's NAME,
+                                // not halfway down the row. Material 3 centres
+                                // `leading`/`trailing` against the whole tile
+                                // unless told otherwise, so a row carrying an
+                                // untested caveat would otherwise drop them a
+                                // line — wrapping them in a shrink-wrapping
+                                // Column does NOT do this, only the alignment
+                                // does.
+                                titleAlignment: ListTileTitleAlignment.top,
+                                trailing: _TransportIcons(types: row.variants),
+                                onTap: () => Navigator.of(context).pop(_AddChoice.model(row.model)),
+                                mouseCursor: SystemMouseCursors.click,
+                              ),
+                          ],
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          cancel: TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.t.common.cancel),
+          ),
+        );
+      },
+    );
+  }
+
+  /// What announced itself, under a title that never changes.
+  ///
+  /// The title is permanent on purpose: discovery runs for as long as this
+  /// dialog is open, so a heading that switched between "searching" and
+  /// "found" would be describing the same unfinished activity twice, and the
+  /// section would jump around as radios appeared.
+  ///
+  /// Spread into the dialog's own Column rather than returned as one widget:
+  /// the body has to be a flex sibling of the equipment list for the two to
+  /// share a short dialog, and a nested Column would hide it from that.
+  List<Widget> _discoverySection(BuildContext context) {
+    final st = context.t.settings.station;
+    final theme = Theme.of(context);
+    final found = widget.cat.discovered;
+    final error = widget.cat.discoveryError;
+
+    return [
+        // The spinner rides the title rather than taking a row of its own:
+        // discovery runs for as long as this dialog is open, so a row that
+        // exists only to say so pushed the catalogue down the whole time.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  st.lookingForEquipment,
+                  style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
+                ),
+              ),
+              if (error == null) ...[
+                const SizedBox(width: 8),
+                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
+            ],
+          ),
+        ),
+        // AnimatedSize alone, with no controller: the collapse is a plain
+        // implicit animation, the way the Home screen's FAB does it. No
+        // settle-epoch guard like that one either — a RenderAnimatedSize can
+        // be stranded mid-flight by a muted ticker, but this lives in a modal
+        // that is rebuilt from scratch every time it opens.
+        Flexible(
+          flex: 1,
+          child: AnimatedSize(
+          duration: layoutAnimationDuration,
+          curve: layoutAnimationCurve,
+          // Fold upward, so the rows slide out under the title rather than
+          // the title walking down the dialog.
+          alignment: Alignment.topCenter,
+          child: !_discoveryExpanded
+              ? const SizedBox(width: double.infinity)
+              : SingleChildScrollView(
+                    child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (error != null)
+                      ListTile(
+                        leading: Icon(Icons.wifi_off, color: theme.colorScheme.error),
+                        title: Text(st.discoveryUnavailable(error: error)),
+                      )
+                    else
+                      for (final device in found)
+                        ListTile(
+                          leading: Icon(_iconForCategory(widget.cat.registry.typeFor(device.typeKey)?.category)),
+                          title: Text(device.name),
+                          subtitle: device.detail == null ? null : Text(device.detail!),
+                          titleAlignment: ListTileTitleAlignment.top,
+                          trailing: switch (widget.cat.registry.typeFor(device.typeKey)) {
+                            final type? => _TransportIcons(types: [type]),
+                            _ => null,
+                          },
+                          onTap: () => Navigator.of(context).pop(_AddChoice.discovered(device)),
+                          mouseCursor: SystemMouseCursors.click,
+                        ),
+                    ],
+                    ),
+                ),
+        ),
+        ),
+        const Divider(height: 1),
+    ];
+  }
+}
+
 /// Either a device that announced itself (ready to add as-is) or a type to
 /// configure by hand.
 class _AddChoice {
-  final EquipmentType? type;
+  /// The radio, not the pairing: how it is connected is chosen in the
+  /// editor, alongside the settings that choice decides.
+  final EquipmentModel? model;
   final DiscoveredEquipment? discovered;
 
-  const _AddChoice.type(this.type) : discovered = null;
-  const _AddChoice.discovered(this.discovered) : type = null;
-}
-
-/// Its own widget so the const ListTile above can hold it while the label
-/// still comes from the ambient translations.
-class _SearchingLabel extends StatelessWidget {
-  const _SearchingLabel();
-
-  @override
-  Widget build(BuildContext context) => Text(context.t.settings.station.searching);
+  const _AddChoice.model(this.model) : discovered = null;
+  const _AddChoice.discovered(this.discovered) : model = null;
 }
 
 /// The same glyph the logging panel's own Radio control uses — a
 /// transceiver should look like one thing throughout the app.
 IconData _iconForCategory(String? category) =>
     category == kCategoryTransceiver ? MdiIcons.radio : Icons.developer_board;
+
+/// What the Add list says under a radio's name: which of its pairings have
+/// never met a radio, and nothing else.
+///
+/// Only the caveat, because the transports themselves are now the row's
+/// trailing glyphs — naming them here as well would say the same thing twice
+/// in one row. A model with every pairing untested carries the caveat whole
+/// rather than per transport; a MIXED one has to name which, since the
+/// IC-705's WiFi is proven on hardware and its USB side has never been
+/// pointed at a radio, and one marker for the model would be wrong either
+/// way round.
+Widget? _modelSubtitle(BuildContext context, List<EquipmentType> variants) {
+  final st = context.t.settings.station;
+  final untested = [
+    for (final type in variants)
+      if (!type.hardwareVerified) type,
+  ];
+  if (untested.isEmpty) return null;
+  if (untested.length == variants.length) return Text(st.unverified);
+  return Text(untested.map((type) => '${type.transportLabel} (${st.unverifiedShort})').join(' · '));
+}
+
+/// How a pairing is plugged in, as a glyph — see `transportIconNameFor`.
+///
+/// Null when the transport has no glyph, so a caller leaves the slot empty.
+/// Deliberately not defaulted to something generic: `resolveIconName` answers
+/// an unknown name with a puzzle piece, and a puzzle piece next to a radio
+/// says less than nothing.
+IconData? _iconForTransport(EquipmentType type) {
+  final name = type.transportIconName;
+  return name == null ? null : resolveIconName(name);
+}
+
+/// The transport glyphs of a model's pairings, in one small row.
+///
+/// Size is spelled out because this is not a ListTile slot — those inherit 24
+/// from the tile's own IconTheme, and this sits beside body text.
+class _TransportIcons extends StatelessWidget {
+  final List<EquipmentType> types;
+
+  const _TransportIcons({required this.types});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final icons = [
+      for (final type in types)
+        if (_iconForTransport(type) case final icon?) (icon: icon, label: type.transportLabel),
+    ];
+    if (icons.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // By index, not by `entry != icons.first`: these are records, which
+        // compare by VALUE, so two pairings sharing a glyph and a label would
+        // both count as the first and the second would lose its gap.
+        for (final (index, entry) in icons.indexed) ...[
+          if (index > 0) const SizedBox(width: 4),
+          Icon(
+            entry.icon,
+            size: 16,
+            // The app has no hover tooltips, so this is the only place the
+            // glyph is named for anyone who cannot see it.
+            semanticLabel: entry.label,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 class _EquipmentTile extends StatelessWidget {
   final EquipmentNode node;
@@ -532,11 +958,25 @@ class _EquipmentTile extends StatelessWidget {
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(left: 12),
-              child: Text(
-                resolvedType.describeTarget(node.config),
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Flexible so the address ellipsizes instead of pushing the
+                  // glyph off the row — the glyph is a fixed width competing
+                  // with text that can be any length.
+                  Flexible(
+                    child: Text(
+                      resolvedType.describeTarget(node.config),
+                      textAlign: TextAlign.right,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  // How it is plugged in, right where it says where it is.
+                  _TransportIcons(types: [resolvedType]),
+                ],
               ),
             ),
           ),

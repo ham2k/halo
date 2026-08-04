@@ -11,6 +11,7 @@
 // tested yet.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -83,10 +84,163 @@ void main() {
     });
   }
 
+  // resolveIconName answers an unknown name with a puzzle-piece glyph — no
+  // exception, no analyzer error, no log. A typo like 'usbport' for
+  // 'usb-port' therefore ships as a jigsaw next to a radio and nothing
+  // anywhere says so. This is the only thing that can catch it.
+  test('every transport names an icon the codepoint table actually has', () {
+    for (final type in registry.types) {
+      final name = type.transportIconName;
+      expect(name, isNotNull, reason: '${type.transportKey} has no icon, so its rows show nothing');
+      expect(resolveIconName(name!), isNot(MdiIcons.puzzle),
+          reason: '"$name" is not in the generated codepoint table — resolveIconName '
+              'falls back to a puzzle piece rather than failing');
+    }
+  });
+
+  // The section header is the operator's only clue about what is behind a
+  // collapsed tile, and FormRenderer renders a missing one as an empty
+  // string: a bare chevron with no label, silently.
+  test('every variant with notes gives them a collapsible section with a title', () {
+    for (final type in registry.types) {
+      for (final note in type.notes) {
+        if (note['type'] != 'markdown') continue;
+        expect(note['collapsible'], isTrue, reason: '${type.key} renders notes open, burying its own fields');
+        expect(note['title'], isA<String>().having((t) => t.isNotEmpty, 'is not empty', isTrue),
+            reason: '${type.key} would render a chevron with no label at all');
+        expect(note['text'], isA<String>().having((t) => t.isNotEmpty, 'is not empty', isTrue));
+      }
+    }
+  });
+
+  // A renamed key is the one change to this file that fails silently and
+  // destructively: the stored record survives, resolves to nothing, and the
+  // panel lists it as an unrecognized type with the operator's whole
+  // configuration sealed inside. Every rename has to leave a forwarding
+  // address, and every forwarding address has to point somewhere real.
+  group('renamed keys still find their pairing', () {
+    test('every old key maps to one the catalogue still has', () {
+      for (final entry in renamedTypeKeys.entries) {
+        expect(registry.typeFor(entry.value), isNotNull,
+            reason: '"${entry.key}" forwards to "${entry.value}", which no longer exists');
+        expect(registry.typeFor(entry.key), isNull,
+            reason: '"${entry.key}" is still a live key, so nothing was actually renamed');
+      }
+    });
+
+    test('a node stored under the old key loads as the new one', () {
+      // The pre-rename record, exactly as a build from before it wrote one.
+      final node = EquipmentNode.fromJson('radio-1', {
+        'typeKey': 'icom-civ-serial',
+        'name': 'The 7300',
+        'config': {'port': '/dev/cu.usbserial', 'civAddress': '94'},
+      });
+
+      expect(node, isNotNull);
+      expect(node!.typeKey, 'icom-generic-serial');
+      expect(registry.typeFor(node.typeKey), isNotNull, reason: 'it has to resolve, not just be renamed');
+      // And it keeps everything that made it worth migrating.
+      expect(node.name, 'The 7300');
+      expect(node.config['civAddress'], '94');
+    });
+  });
+
+  // The equipment editor puts two of its own fields alongside whatever a
+  // pairing declares — `name`, and `transport` when a radio offers more than
+  // one — and strips both from the config on the way out. A transport or
+  // driver declaring either name would have its value overwritten by the
+  // editor's and then deleted at every save, silently: the config map is
+  // free-form, so nothing else in the system can notice.
+  test('nothing declares a config key the editor reserves for itself', () {
+    for (final type in registry.types) {
+      for (final key in {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys}) {
+        expect(key, isNot(anyOf('name', 'transport')),
+            reason: '${type.key} declares "$key", which the editor uses for its own field '
+                'and removes before saving — the value would never survive');
+      }
+    }
+  });
+
   test('every type key is unique', () {
     final keys = registry.types.map((t) => t.key).toList();
     expect(keys.toSet().length, keys.length, reason: 'a duplicate key makes typeFor() find the wrong one');
   });
+
+  // A variant key is what a configured node stores. Renaming one does not
+  // fail anywhere — the node simply stops resolving, and the panel shows it
+  // as a type that no longer exists with everything the operator set up
+  // still inside it. So the shipped set is written down, and changing it has
+  // to be a deliberate edit here rather than a side effect of moving a
+  // variant between models.
+  test('the shipped variant keys are exactly these', () {
+    expect(
+      registry.types.map((t) => t.key).toSet(),
+      {
+        'flexradio-tcp',
+        'ft891-serial',
+        'yaesu-serial',
+        'icom-generic-serial',
+        'ic705-network',
+        'ic705-serial',
+        'rigctld-tcp',
+        'flrig-tcp',
+      },
+    );
+  });
+
+  for (final model in registry.models) {
+    group('model ${model.key}', () {
+      test('has at least one way in', () => expect(model.variants, isNotEmpty));
+
+      test('names each transport once', () {
+        final keys = model.variants.map((v) => v.transportKey).toList();
+        expect(keys.toSet().length, keys.length,
+            reason: 'two variants on one transport make the editor offer the same choice twice, '
+                'and variantForTransport pick whichever comes first');
+      });
+
+      // The editor renders EVERY variant's fields at once and narrows them
+      // with `visibleWhen`, so two variants sharing a key share one field and
+      // one controller. That is deliberate for a genuinely shared setting
+      // (`host` on two network transports — type the address once). It is a
+      // bug when the key means different things: `port` is a numeric TCP port
+      // to one transport and a `/dev/cu.*` device path to another, and
+      // switching transport would pour one into the other with no warning.
+      // The editor seeds the form from EVERY variant's defaultConfig at once,
+      // because that is what lets switching transport land on sensible values
+      // with no re-seeding logic. The price is that a key two variants
+      // disagree about has one box and can only show one of the two answers —
+      // so they are not allowed to disagree. Caught here rather than in the
+      // panel because there is no run-time symptom: the operator simply sees
+      // a prefill that belongs to the other cable.
+      test('two variants never prefill the same key with different values', () {
+        final seen = <String, dynamic>{};
+        for (final variant in model.variants) {
+          for (final entry in variant.defaultConfig.entries) {
+            expect(seen.putIfAbsent(entry.key, () => entry.value), entry.value,
+                reason: '${model.key}\'s variants prefill "${entry.key}" differently, but the editor '
+                    'renders one field for it — one of the two values can never be shown');
+          }
+        }
+      });
+
+      test('a field key shared between its variants means the same thing in each', () {
+        final fieldTypes = <String, String>{};
+        for (final variant in model.variants) {
+          for (final element in [...variant.transport.configElements(), ...variant.driver.configElements()]) {
+            if (element['type'] != 'field') continue;
+            final key = element['key'] as String;
+            final fieldType = element['fieldType'] as String;
+            final seen = fieldTypes[key];
+            expect(seen ?? fieldType, fieldType,
+                reason: '"$key" is a $seen on one of ${model.key}\'s transports and a $fieldType on another — '
+                    'they share a field in the editor, so one would overwrite the other');
+            fieldTypes[key] = fieldType;
+          }
+        }
+      });
+    });
+  }
 
   // None of the 4 registered radios pass a non-empty `restrictions` map
   // today, so the per-type "narrows, never adds" checks above never

@@ -376,7 +376,7 @@ void main() {
   });
 
   group('the equipment type', () {
-    final type = ic705NetworkType;
+    final type = EquipmentRegistry().typeFor('ic705-network')!;
 
     test('rides the Icom network transport', () {
       expect(type.transportKey, IcomNetworkTransport.transportKey);
@@ -404,7 +404,7 @@ void main() {
     });
 
     test('the list row shows only the host — A4 is a network protocol constant, not the operator\'s to see', () {
-      // Unlike icomCivSerialType (where the address really is the user's
+      // Unlike the CI-V serial pairing (where the address really is the user's
       // setting, and belongs in the row — see cat_icom_civ_test.dart), this
       // pairing hardcodes civAddress via `overrides`. A CI-V suffix here
       // would be reporting a fixed RS-BA1 fact back to the operator as if
@@ -440,6 +440,65 @@ void main() {
       // And nothing resembling it in the JSON that actually gets persisted.
       expect(settings.stationEquipment.toString(), isNot(contains('hunter2')));
       expect(await settings.equipmentSecret(node.uuid, 'password'), 'hunter2');
+    });
+
+    // The whole group above asks the question of a node whose OWN pairing
+    // declares the secret. These three ask it of a node bound to a pairing
+    // that does not — which is reachable the moment one radio offers two
+    // transports, because the editor renders both variants' fields at once
+    // and submits every value regardless of which transport is selected.
+    //
+    // Mutation check: scope any of the three back to the node's own pairing
+    // (`_secretFieldsFor(node.typeKey)`) and the matching test fails.
+    group('a pairing with no secrets of its own still holds the line', () {
+      test('a password submitted on the serial pairing never reaches the blob', () async {
+        // Exactly what the editor produces when the operator types the radio
+        // password and then switches Connection to USB serial before saving.
+        final node = await cat.addNode(typeKey: 'ic705-serial', config: {
+          'port': '/dev/cu.usbserial',
+          'civAddress': 'A4',
+          'username': 'op',
+          'password': 'hunter2',
+        });
+
+        expect(cat.nodes.single.config.containsKey('password'), isFalse,
+            reason: 'SerialTransport declares no secretFields, but the value is still a credential');
+        expect(settings.stationEquipment.toString(), isNot(contains('hunter2')),
+            reason: 'a radio password in the plain prefs JSON');
+        // Not dropped either — switching back to WiFi has to find it.
+        expect(await settings.equipmentSecret(node.uuid, 'password'), 'hunter2');
+        // And what the pairing genuinely needs is untouched.
+        expect(cat.nodes.single.config['port'], '/dev/cu.usbserial');
+      });
+
+      test('the placeholder still shows for a secret the current pairing does not declare', () async {
+        final node = await cat.addNode(typeKey: 'ic705-network', config: {
+          'host': '10.0.0.9',
+          'username': 'op',
+          'password': 'hunter2',
+        });
+        // The operator moves the same radio onto its USB cable.
+        await cat.updateNode(cat.nodes.single.copyWith(typeKey: 'ic705-serial'));
+
+        // Switching back must not present an empty box beside a password that
+        // is still in force: an untouched save submits empty, which
+        // _stashSecrets reads as "unchanged", so the stored one keeps working.
+        expect(await cat.storedSecretFields(node.uuid), {'password'});
+      });
+
+      test('removing a re-typed node still takes its password with it', () async {
+        final node = await cat.addNode(typeKey: 'ic705-network', config: {
+          'host': '10.0.0.9',
+          'username': 'op',
+          'password': 'hunter2',
+        });
+        await cat.updateNode(cat.nodes.single.copyWith(typeKey: 'ic705-serial'));
+
+        await cat.removeNode(node.uuid);
+
+        expect(await settings.equipmentSecret(node.uuid, 'password'), isNull,
+            reason: 'the node is gone and nothing left can name the field that held its password');
+      });
     });
 
     test('the editor can tell a password exists without being given it', () async {
@@ -551,7 +610,7 @@ void main() {
     // The failure mode is a handshake that succeeds and a login that is
     // ignored. Every remedy is something the operator does at the radio or to
     // another program, which makes the editor the place to say it.
-    final type = ic705NetworkType;
+    final type = EquipmentRegistry().typeFor('ic705-network')!;
     final note = type.configElements().firstWhere((e) => e['type'] == 'markdown');
     final text = note['text'] as String;
     expect(text, contains('wfview'), reason: 'the other client that holds the one session');
@@ -605,15 +664,19 @@ void main() {
     expect(const IcomCredentialsMissing().toString(), contains('required'));
   });
 
-  test('the registry offers all six types over three transports', () {
+  test('the registry offers every model\'s every variant over three transports', () {
     final registry = EquipmentRegistry();
-    expect(registry.typeFor('ic705-network'), same(ic705NetworkType));
-    expect(registry.types, hasLength(6));
+    expect(registry.typeFor('ic705-network')?.key, 'ic705-network');
+    // Seven models, and the IC-705 contributes two — the flat list is derived
+    // from the models, so a variant added to one has to appear here without
+    // anything else being edited.
+    expect(registry.types, hasLength(8));
+    expect(registry.models, hasLength(7));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network']));
   });
 
   group('what the driver is told, versus what the user typed', () {
-    final type = ic705NetworkType;
+    final type = EquipmentRegistry().typeFor('ic705-network')!;
 
     test('the network controller address is injected, not asked for', () {
       // 0xE1, not the 0xE0 a PC uses on a CI-V wire. The bench tool that
@@ -646,8 +709,8 @@ void main() {
       // A manager that asked "is this the IC-705 type?" would write the
       // NEXT type's password into the plain prefs blob, silently.
       expect(type.secretFields, {'password'});
-      expect(icomCivSerialType.secretFields, isEmpty);
-      expect(ft891SerialType.secretFields, isEmpty);
+      expect(EquipmentRegistry().typeFor('icom-generic-serial')!.secretFields, isEmpty);
+      expect(EquipmentRegistry().typeFor('ft891-serial')!.secretFields, isEmpty);
     });
   });
 }
