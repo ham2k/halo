@@ -22,6 +22,7 @@ void main() {
     int? ituRegion = 2,
     String appVersion = '26.8.0',
     String appBuild = '1234',
+    String appSha = '',
     String platform = 'macos',
     Set<String> dismissedKeys = const {},
     DateTime? now,
@@ -36,6 +37,7 @@ void main() {
         appVersion: appVersion,
         appVersionName: "August '26",
         appBuild: appBuild,
+        appSha: appSha,
         platform: platform,
         dismissedKeys: dismissedKeys,
         now: now ?? DateTime.utc(2026, 8, 1),
@@ -76,6 +78,42 @@ void main() {
         {'key': 'b', 'text': 'x', 'builds': ['9999']},
       ];
       expect(keys(evaluateNotices(notices, ctx(appBuild: '1234'))), ['a']);
+    });
+
+    test('shas match exactly, and exceptShas withholds one build from a wider notice', () {
+      // The SHA is the only build identity a Dev-edition build has — which is
+      // what the hosted web app and every preview deploy are — so this is the
+      // only way to name one of them.
+      final notices = [
+        {'key': 'a', 'text': 'x', 'shas': ['04e3d1']},
+        {'key': 'b', 'text': 'x', 'shas': ['deadbe']},
+        {'key': 'c', 'text': 'x', 'exceptShas': ['04e3d1']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appSha: '04e3d1'))), ['a']);
+      expect(keys(evaluateNotices(notices, ctx(appSha: 'deadbe'))), ['b', 'c']);
+    });
+
+    test('a build with no SHA is targeted by no sha rule, and withheld by no exceptShas rule', () {
+      // Every local build bakes in no SHA. Treating '' as a matchable value
+      // would make one `shas` typo hit every developer's machine at once.
+      final notices = [
+        {'key': 'a', 'text': 'x', 'shas': ['04e3d1']},
+        {'key': 'b', 'text': 'x', 'exceptShas': ['04e3d1']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appSha: ''))), ['b']);
+    });
+
+    test('an empty string in a sha list is inert, not a wildcard for unidentified builds', () {
+      // A flags file templated from an unset variable serializes `[""]`.
+      // Matching it would broadcast a commit-targeted notice to every local,
+      // OSS and non-CI build at once — or, for exceptShas, mute one for all
+      // of them. Both are silent: nobody authoring the file sees it happen.
+      final notices = [
+        {'key': 'a', 'text': 'x', 'shas': ['']},
+        {'key': 'b', 'text': 'x', 'exceptShas': ['']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appSha: ''))), ['b']);
+      expect(keys(evaluateNotices(notices, ctx(appSha: '04e3d1'))), ['b']);
     });
   });
 
@@ -300,6 +338,17 @@ void main() {
       final n = evaluateNotices(notices, ctx(baseCall: 'KI2D', platform: 'macos')).single;
       expect(n.text, 'Hi KI2D on macos');
       expect(n.title, '!'); // unknown path resolves to empty
+    });
+
+    test('a notice can print the build identity the user reads off their own screen', () {
+      // The point of exposing these: "tell us which build you're on" is
+      // answerable from the notice itself rather than by walking the user
+      // into Settings → About.
+      final notices = [
+        {'key': 'a', 'text': 'build {{app.build}} - {{app.sha}}'},
+      ];
+      final n = evaluateNotices(notices, ctx(appBuild: '126', appSha: '04e3d1')).single;
+      expect(n.text, 'build 126 - 04e3d1');
     });
 
     test('does not mutate the source notice map', () {

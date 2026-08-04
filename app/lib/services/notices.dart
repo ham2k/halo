@@ -4,8 +4,10 @@
 // The server-notice rule engine — a straight port of app-polo's `useNotices`
 // (src/store/system/useNotices.js). Feature-flag files (see FlagsService)
 // can carry a `notices` array; each entry declares who should see it
-// (platform/version/build/callsign/DXCC-entity/continent, a date window, and
-// a pseudo-random "segment" bucket for staged rollouts). This module applies
+// (platform/version/build/sha/callsign/DXCC-entity/continent, a date window,
+// and a pseudo-random "segment" bucket for staged rollouts). `shas` is the
+// one filter with no app-polo counterpart: HaLo ships Dev-edition web builds
+// whose only identity is the commit. This module applies
 // those rules against the current operator + app context and returns the
 // notices that pass, adjusted (platform-specific keys resolved, template
 // variables substituted) and sorted by priority.
@@ -51,9 +53,18 @@ class NoticeContext {
   /// A human display name for the version (`app.versionName` in templates).
   final String appVersionName;
 
-  /// The native build number (e.g. `1234`) — matched exactly against
-  /// `builds`/`exceptBuilds`.
+  /// The release build number (e.g. `126`) — matched exactly against
+  /// `builds`/`exceptBuilds`. This is the number the release ledger and every
+  /// version display use, so a rule authored against a released build matches
+  /// the build a reporter names.
   final String appBuild;
+
+  /// The short git SHA this build was cut from (e.g. `04e3d1`), or empty when
+  /// none was baked in — matched exactly against `shas`/`exceptShas`. It is
+  /// the ONLY build identity a Dev-edition build carries, which is what the
+  /// hosted web app and every preview deploy are, so it is the only way to
+  /// target a notice at one of those.
+  final String appSha;
 
   /// Lowercase platform token: `ios`, `android`, `macos`, `windows`,
   /// `linux`, or `web`. Used for the `platforms` filter and `-<platform>`
@@ -77,6 +88,7 @@ class NoticeContext {
     required this.appVersion,
     required this.appVersionName,
     required this.appBuild,
+    required this.appSha,
     required this.platform,
     this.dismissedKeys = const {},
     this.now,
@@ -198,6 +210,16 @@ bool _passes(
   if (exceptVersions.isNotEmpty && exceptVersions.any((v) => ctx.appVersion.startsWith(v))) return false;
   final exceptBuilds = _stringList(notice['exceptBuilds']);
   if (exceptBuilds.isNotEmpty && exceptBuilds.contains(ctx.appBuild)) return false;
+  // A build with no SHA baked in matches no `shas` list and is excluded by no
+  // `exceptShas` list — an unidentified build is not the one being targeted.
+  // The empty-SHA checks are explicit rather than left to `contains`, because
+  // a flags file templated from an unset variable serializes `[""]`: that
+  // would otherwise broadcast a commit-targeted notice to every local, OSS
+  // and non-CI build at once, or mute one for all of them.
+  final shas = _stringList(notice['shas']);
+  if (shas.isNotEmpty && (ctx.appSha.isEmpty || !shas.contains(ctx.appSha))) return false;
+  final exceptShas = _stringList(notice['exceptShas']);
+  if (exceptShas.isNotEmpty && ctx.appSha.isNotEmpty && exceptShas.contains(ctx.appSha)) return false;
 
   final calls = _stringList(notice['calls']);
   if (calls.isNotEmpty && !calls.any((c) => c.toUpperCase() == ctx.baseCall)) return false;
@@ -330,6 +352,8 @@ Map<String, dynamic> _templateData(NoticeContext ctx) => {
       'app': {
         'version': ctx.appVersion,
         'versionName': ctx.appVersionName,
+        'build': ctx.appBuild,
+        'sha': ctx.appSha,
         'platform': ctx.platform,
       },
     };

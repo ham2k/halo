@@ -7,10 +7,11 @@
 //
 // Do NOT read the app's version from package_info_plus — that reads the
 // frozen native build identity (§2.2), which a patch can't change. The same
-// goes for the build number shown anywhere in the UI: [kBuildNumber] below is
-// the one displays use. package_info_plus's build number is still what the
-// User-Agent and the flags environment report, deliberately — those describe
-// the native binary, not what the user is looking at.
+// goes for the build number shown anywhere in the UI, and for the one notice
+// rules are matched against: [kBuildNumber] below is what both use.
+// package_info_plus's build number is still what the User-Agent reports,
+// deliberately — that describes the native binary, not what the user is
+// looking at.
 
 import 'package:halo_build_tools/halo_build_tools.dart';
 

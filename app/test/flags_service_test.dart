@@ -13,6 +13,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/services/flags_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,8 +32,41 @@ void main() {
     appVersion: '26.8.0',
     appVersionName: "August '26",
     appBuild: '1234',
+    appSha: 'abc123',
     platform: 'macos',
   );
+
+  group('the environment a real build reports', () {
+    test('an official build reports the release build number, not the native metadata', () async {
+      // A `builds` rule is authored against a RELEASED build number, so the
+      // environment must report that same number. package_info_plus reports
+      // the native one: `1` on any local run, and frozen at the shipped value
+      // after a Shorebird patch — a rule naming the patched build would miss
+      // every install it was written for.
+      final e = await FlagsService.defaultNoticeEnvironment(
+        edition: Edition.next,
+        build: 126,
+        sha: '04e3d1',
+      );
+      expect(e.appBuild, '126');
+      expect(e.appSha, '04e3d1');
+      expect(e.appVersion, kPublicVersion);
+    });
+
+    test('a Dev build reports no build number, so a release rule cannot fire on it', () async {
+      // kBuildNumber in a Dev build names the last RELEASE. Dev is what the
+      // hosted web app, every preview deploy and every local run are, so
+      // reporting it would fire `builds: ["126"]` on all of them at once.
+      final e = await FlagsService.defaultNoticeEnvironment(
+        edition: Edition.dev,
+        build: 126,
+        sha: '04e3d1',
+      );
+      expect(e.appBuild, isEmpty);
+      // The SHA is what remains to target it by — it names the running commit.
+      expect(e.appSha, '04e3d1');
+    });
+  });
 
   /// Builds a service whose fetcher serves [files] (keyed by location) and
   /// records the request order, annotating any call to [guess].
@@ -248,6 +282,25 @@ void main() {
       // One active notice for key 'k', and it's the HaLo-specific one.
       expect(statusBar.activeNotices.where((n) => n.key == 'k'), hasLength(1));
       expect(statusBar.activeNotices.single.title, 'from-halo');
+    });
+
+    test('the environment\'s SHA reaches the shas filter', () async {
+      // The one assignment carrying appSha from the environment into the
+      // matcher. Without it the whole feature is inert in the real app while
+      // every unit test of the filter still passes, because those build a
+      // NoticeContext directly.
+      final b = build({
+        'defaults.json': {
+          'halo-notices': [
+            {...plea('mine'), 'shas': ['abc123']},
+            {...plea('theirs'), 'shas': ['deadbe']},
+          ],
+        },
+        'entities/k.json': {},
+        'ki/ki2d.json': {},
+      });
+      await b.service.refreshForCall('KI2D');
+      expect(statusBar.activeNotices.map((n) => n.key), ['mine']);
     });
 
     test('pushes qualifying notices from halo-notices alone', () async {

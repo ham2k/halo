@@ -30,7 +30,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:halo_build_tools/halo_build_tools.dart' show isNewerRelease;
 import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/user_agent.dart';
@@ -63,17 +62,26 @@ typedef CallAnnotator = Future<Map<String, dynamic>?> Function(String call);
 typedef NoticeActionHandler = void Function(String noticeKey, Map<String, dynamic> action);
 
 /// The app/version/platform facts notice rules are matched against. Resolved
-/// once per refresh; injectable so tests don't touch PackageInfo.
+/// once per refresh; injectable so a test can name a build and SHA that the
+/// compiled-in constants can't be made to report.
 class NoticeEnvironment {
   final String appVersion;
   final String appVersionName;
   final String appBuild;
+
+  /// Empty when no SHA was baked in (`--dart-define=HALO_GIT_SHA`, which only
+  /// CI sets), which is every local build.
+  final String appSha;
   final String platform;
 
+  /// Every field is required, [appSha] included: it reaches the matcher through
+  /// exactly one assignment, and a default would let that assignment be
+  /// dropped without a single test going red.
   const NoticeEnvironment({
     required this.appVersion,
     required this.appVersionName,
     required this.appBuild,
+    required this.appSha,
     required this.platform,
   });
 }
@@ -115,7 +123,7 @@ class FlagsService extends ChangeNotifier {
     void Function(String event, [Map<String, Object?> properties])? onTrack,
   })  : _fetcher = fetcher,
         _client = client ?? http.Client(),
-        _environmentProvider = environmentProvider ?? _defaultEnvironment,
+        _environmentProvider = environmentProvider ?? defaultNoticeEnvironment,
         _onNoticeAction = onNoticeAction,
         _prefs = prefs,
         _onTrack = onTrack;
@@ -313,6 +321,7 @@ class FlagsService extends ChangeNotifier {
         appVersion: env.appVersion,
         appVersionName: env.appVersionName,
         appBuild: env.appBuild,
+        appSha: env.appSha,
         platform: env.platform,
         dismissedKeys: dismissedKeys,
       ),
@@ -456,7 +465,18 @@ class FlagsService extends ChangeNotifier {
     return decoded is Map ? decoded.cast<String, dynamic>() : null;
   }
 
-  static Future<NoticeEnvironment> _defaultEnvironment() async {
+  /// The environment a real build reports.
+  ///
+  /// [edition]/[build]/[sha] default to the compiled-in values and exist only
+  /// so tests can reach the combinations those constants can't be made to
+  /// report — the same seam, for the same reason, as `buildDetails` in
+  /// views/version_label.dart. Taking the wrong constant here is silent: a
+  /// notice rule simply targets the wrong installs.
+  static Future<NoticeEnvironment> defaultNoticeEnvironment({
+    Edition edition = kEdition,
+    int build = kBuildNumber,
+    String sha = kGitSha,
+  }) async {
     String platform;
     if (kIsWeb) {
       platform = 'web';
@@ -476,16 +496,22 @@ class FlagsService extends ChangeNotifier {
           platform = defaultTargetPlatform.name.toLowerCase();
       }
     }
-    String build = '';
-    try {
-      build = (await PackageInfo.fromPlatform()).buildNumber;
-    } catch (e) {
-      debugPrint('[flags] could not read build number: $e');
-    }
+    // kBuildNumber, not package_info_plus's native build: the native value is
+    // `1` on any local run and stays frozen at whatever the binary shipped
+    // with, so a `builds` rule authored against a released build number would
+    // miss the very installs it names.
+    //
+    // A Dev build reports NO build number, exactly as its version display
+    // shows none (views/version_label.dart's buildDetails): kBuildNumber there
+    // is the last release's, and Dev is what the hosted web app, every preview
+    // deploy and every local run are — so reporting it would fire a
+    // release-targeted rule on all of them. `shas` is how a Dev build is
+    // targeted, and it names the commit actually running.
     return NoticeEnvironment(
       appVersion: kPublicVersion,
       appVersionName: kVersionName,
-      appBuild: build,
+      appBuild: edition == Edition.dev ? '' : build.toString(),
+      appSha: sha,
       platform: platform,
     );
   }

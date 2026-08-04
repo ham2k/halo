@@ -171,10 +171,13 @@ the patch and updates on-device when the patch lands.
 - **Version displays take the build number from compiled Dart too**
   (`kBuildNumber`), for the same reason plus a second one: a local `flutter run`
   reports a native build number of `1`, which names no release at all.
-  `package_info_plus` still supplies the build number to the User-Agent
-  (`config/user_agent.dart`) and the flags/notice environment
-  (`services/flags_service.dart`); those report the *native* identity and will
-  disagree with the UI on a local build or after a Shorebird patch.
+  The notice environment (`services/flags_service.dart`) reads the same
+  constants, so a `builds` rule targets the build a reporter reads off their
+  screen — and, like the display, a Dev build reports no build number at all
+  and is targeted by its `shas` (git SHA) instead. `package_info_plus` still
+  supplies the build number to the User-Agent (`config/user_agent.dart`) alone;
+  it reports the *native* identity and will disagree with the UI on a local
+  build or after a Shorebird patch.
 - **Optionally derive it** from the Shorebird runtime's current patch number
   (`"$base.${patchNumber ?? 0}"`) so you can't forget to bump it; keep an explicit
   override for `-preN` labels and full-rebuild jumps.
