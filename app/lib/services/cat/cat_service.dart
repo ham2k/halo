@@ -602,6 +602,17 @@ class CatService extends ChangeNotifier {
         if (runtime.connection != connection) return;
         _applyReading(uuid, reading);
       },
+      onDiagnostic: (note) {
+        // Same guard, same reason: a superseded session's account of itself
+        // is about a connection nobody is looking at any more.
+        if (runtime.connection != connection) return;
+        // Deduped HERE rather than in the driver, because this is what holds
+        // the value: a driver remembering what it last said would be wrong
+        // the moment a status transition replaced the state underneath it,
+        // and every driver would have to remember separately.
+        if (stateFor(uuid).diagnostic == note) return;
+        _setState(uuid, stateFor(uuid).copyWith(diagnostic: note, clearDiagnostic: note == null));
+      },
     );
     // driverConfig, not config: a type may know something about its
     // protocol that is not a setting anyone should be asked for — the
@@ -1181,12 +1192,16 @@ class _NodeRuntime {
 class _NodeSink implements EquipmentSink {
   final EquipmentConnection connection;
   final void Function(VfoReading) onReading;
+  final void Function(String?) onDiagnostic;
 
-  _NodeSink({required this.connection, required this.onReading});
+  _NodeSink({required this.connection, required this.onReading, required this.onDiagnostic});
 
   @override
   void send(List<int> bytes) => connection.send(bytes);
 
   @override
   void report(VfoReading reading) => onReading(reading);
+
+  @override
+  void reportDiagnostic(String? note) => onDiagnostic(note);
 }

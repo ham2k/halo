@@ -180,6 +180,7 @@ void main() {
         'ft891-serial',
         'yaesu-serial',
         'icom-generic-serial',
+        'kenwood-serial',
         'ic705-network',
         'ic705-serial',
         'rigctld-tcp',
@@ -307,4 +308,6 @@ class _SilentSink implements EquipmentSink {
   void send(List<int> bytes) {}
   @override
   void report(VfoReading reading) {}
+  @override
+  void reportDiagnostic(String? note) {}
 }

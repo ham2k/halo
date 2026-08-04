@@ -31,12 +31,16 @@ const _otherSliceStatusLine = 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final diagnostics = <String?>[];
 
   @override
   void send(List<int> bytes) => sent.add(utf8.decode(bytes));
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportDiagnostic(String? note) => diagnostics.add(note);
 }
 
 extension on FlexRadioSession {

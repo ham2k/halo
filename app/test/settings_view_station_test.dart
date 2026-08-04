@@ -154,10 +154,11 @@ void main() {
     expect(find.text('Looking for new equipment…'), findsOneWidget);
 
     // The bare caveat belongs to a radio whose EVERY pairing is untested, and
-    // there are two: the generic Icom, whose CI-V driver is proven over WiFi
-    // but never over a cable, and the generic Yaesu, whose driver is proven
-    // on an FT-891 and whose mode table is that radio's.
-    expect(find.text('Not tested against this hardware'), findsNWidgets(2));
+    // there are three: the generic Icom, whose CI-V driver is proven over
+    // WiFi but never over a cable; the generic Yaesu, whose driver is proven
+    // on an FT-891 and whose mode table is that radio's; and the generic
+    // Kenwood, which has never met a radio at all.
+    expect(find.text('Not tested against this hardware'), findsNWidgets(3));
     // The IC-705's WiFi is verified on a real radio and its USB side never
     // tried, so a single marker for the model would be wrong either way
     // round — the mixed case names only what is untested. It does NOT name
@@ -220,6 +221,7 @@ void main() {
       'Generic Radio via rigctld',
       'Icom - Generic',
       'Icom IC-705',
+      'Kenwood - Generic',
       'Yaesu - Generic',
       'Yaesu FT-891',
     ];

@@ -7,10 +7,22 @@
 // there is no other framing.
 //
 // Pure: it builds and parses strings and knows nothing about sockets,
-// serial ports or timers. Ported from app-polo's YaesuCatProtocol.js, which
+// serial ports or timers. The `;` framing itself is shared with Kenwood and
+// lives in cat_ascii_codec.dart; this file is only what Yaesu puts inside it. Ported from app-polo's YaesuCatProtocol.js, which
 // was the highest-confidence code on that branch precisely because it had
 // no I/O in it. See docs/design/cat.md on why the codec is shared while
 // the glue around it is not.
+
+export 'cat_ascii_codec.dart' show AsciiCatCommand, AsciiCatFramer, parseAsciiCatCommand;
+
+/// Auto-Information: the radio pushes a status line whenever the VFO changes,
+/// instead of us polling for it. Yaesu's CAT manual doesn't spell out the
+/// unsolicited format beyond "reports change of status", which is why
+/// [Ft891Session] polls as well rather than trusting this alone.
+///
+/// Yaesu's, not shared: Kenwood spells the same command with a different
+/// level (see kenwood_cat_codec.dart).
+String buildAutoInformationCommand(bool on) => 'AI${on ? 1 : 0};';
 
 /// P2 mode digit, per the FT-891 CAT manual's MD/MR tables. 'A' is
 /// unused/reserved, which is why the letters skip it.
@@ -60,76 +72,6 @@ String? buildSetModeCommand(String? mode) {
 
 String buildReadModeCommand() => 'MD0;';
 
-/// Auto-Information: the radio pushes a status line whenever the VFO
-/// changes, instead of us polling for it. The CAT manual doesn't spell out
-/// the unsolicited format beyond "reports change of status", which is why
-/// [Ft891Driver] polls as well rather than trusting this alone.
-String buildAutoInformationCommand(bool on) => 'AI${on ? 1 : 0};';
-
-/// One complete command off the wire.
-class YaesuCommand {
-  /// The two-letter command, e.g. `FA`.
-  final String command;
-
-  /// Everything between the command and the `;`.
-  final String params;
-
-  const YaesuCommand(this.command, this.params);
-
-  @override
-  bool operator ==(Object other) =>
-      other is YaesuCommand && other.command == command && other.params == params;
-
-  @override
-  int get hashCode => Object.hash(command, params);
-
-  @override
-  String toString() => 'YaesuCommand($command, $params)';
-}
-
-/// Splits an ASCII stream into complete `;`-terminated commands, carrying
-/// whatever follows the last `;` over to the next call.
-///
-/// Serial delivers arbitrary chunks — a command can and does arrive split
-/// across two reads — so the residual is not an edge case.
-class YaesuFramer {
-  String _residual = '';
-
-  /// The complete commands in [incoming], with any partial tail retained.
-  List<YaesuCommand> add(String incoming) {
-    final text = _residual + incoming;
-    final parts = text.split(';');
-    // Whatever follows the last ';' is incomplete (or empty).
-    _residual = parts.removeLast();
-    return [
-      for (final part in parts)
-        if (parseCommand('$part;') case final command?) command,
-    ];
-  }
-
-  /// Drops any partial command — for a fresh connection, so a truncated
-  /// tail from the previous one can't prefix the first real command.
-  void reset() => _residual = '';
-}
-
-final _commandPattern = RegExp(r'^([A-Z]{2})(.*);$');
-
-/// Parses one complete command, or null if it isn't one.
-///
-/// Leading junk is skipped rather than fatal. [Ft891Session.handleData]
-/// decodes with `allowInvalid`, so one noise byte on the wire becomes a
-/// replacement character sitting in FRONT of a perfectly good command —
-/// and an anchored match would throw the whole reading away silently. On a
-/// 4800-baud line beside a transmitting rig that is the expected case, not
-/// a rare one.
-YaesuCommand? parseCommand(String line) {
-  final start = line.indexOf(_commandStart);
-  if (start < 0) return null;
-  final match = _commandPattern.firstMatch(start == 0 ? line : line.substring(start));
-  return match == null ? null : YaesuCommand(match.group(1)!, match.group(2)!);
-}
-
-final _commandStart = RegExp(r'[A-Z]{2}');
 
 /// `FA014250000;` → 14250000 Hz. Null unless it's exactly nine digits —
 /// a truncated or over-long response is not a frequency.

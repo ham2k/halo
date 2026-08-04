@@ -24,12 +24,16 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final diagnostics = <String?>[];
 
   @override
   void send(List<int> bytes) => sent.add(ascii.decode(bytes));
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportDiagnostic(String? note) => diagnostics.add(note);
 }
 
 extension on Ft891Session {
@@ -71,44 +75,44 @@ void main() {
     });
 
     test('a command is only a command once terminated', () {
-      expect(parseCommand('FA014250000;'), const YaesuCommand('FA', '014250000'));
-      expect(parseCommand('FA014250000'), isNull, reason: 'no terminator');
-      expect(parseCommand('fa014250000;'), isNull, reason: 'commands are uppercase');
-      expect(parseCommand(';'), isNull);
+      expect(parseAsciiCatCommand('FA014250000;'), const AsciiCatCommand('FA', '014250000'));
+      expect(parseAsciiCatCommand('FA014250000'), isNull, reason: 'no terminator');
+      expect(parseAsciiCatCommand('fa014250000;'), isNull, reason: 'commands are uppercase');
+      expect(parseAsciiCatCommand(';'), isNull);
     });
   });
 
   group('framing', () {
     test('splits several commands out of one chunk', () {
-      final framer = YaesuFramer();
+      final framer = AsciiCatFramer();
       expect(framer.add('FA014250000;MD02;'), [
-        const YaesuCommand('FA', '014250000'),
-        const YaesuCommand('MD', '02'),
+        const AsciiCatCommand('FA', '014250000'),
+        const AsciiCatCommand('MD', '02'),
       ]);
     });
 
     test('carries a partial command across chunks', () {
       // Serial hands over arbitrary chunk sizes, so this is the normal case
       // rather than an edge one.
-      final framer = YaesuFramer();
+      final framer = AsciiCatFramer();
       expect(framer.add('FA0142'), isEmpty);
-      expect(framer.add('50000;'), [const YaesuCommand('FA', '014250000')]);
+      expect(framer.add('50000;'), [const AsciiCatCommand('FA', '014250000')]);
     });
 
     test('survives a command split one byte at a time', () {
-      final framer = YaesuFramer();
-      final found = <YaesuCommand>[];
+      final framer = AsciiCatFramer();
+      final found = <AsciiCatCommand>[];
       for (final char in 'MD03;FA007074000;'.split('')) {
         found.addAll(framer.add(char));
       }
       expect(found, [
-        const YaesuCommand('MD', '03'),
-        const YaesuCommand('FA', '007074000'),
+        const AsciiCatCommand('MD', '03'),
+        const AsciiCatCommand('FA', '007074000'),
       ]);
     });
 
     test('reset drops a partial tail so it cannot prefix the next connection', () {
-      final framer = YaesuFramer();
+      final framer = AsciiCatFramer();
       framer.add('FA0142');
       framer.reset();
       // Without the reset this would frame as 'FA014250000;' — a frequency

@@ -150,14 +150,27 @@ class EquipmentState {
   /// Liveness that counts datagrams cannot see this. Only the readings can.
   final bool stale;
 
+  /// What the driver worked out about this session, for developer mode only —
+  /// see [EquipmentSink.reportDiagnostic]. In-memory like everything else
+  /// here, and cleared with the connection it belonged to.
+  final String? diagnostic;
+
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
     this.vfo = const VfoReading(),
     this.stale = false,
+    this.diagnostic,
   });
 
-  EquipmentState copyWith({EquipmentStatus? status, String? error, VfoReading? vfo, bool? stale}) =>
+  EquipmentState copyWith({
+    EquipmentStatus? status,
+    String? error,
+    VfoReading? vfo,
+    bool? stale,
+    String? diagnostic,
+    bool clearDiagnostic = false,
+  }) =>
       EquipmentState(
         status: status ?? this.status,
         // An explicit null clears it: any transition out of `error` should
@@ -165,5 +178,9 @@ class EquipmentState {
         error: status == null || status == EquipmentStatus.error ? (error ?? this.error) : null,
         vfo: vfo ?? this.vfo,
         stale: stale ?? this.stale,
+        // Needs its own flag rather than a null argument: a driver saying
+        // "nothing to report any more" and a caller not mentioning it at all
+        // are different, and `??` cannot tell them apart.
+        diagnostic: clearDiagnostic ? null : (diagnostic ?? this.diagnostic),
       );
 }

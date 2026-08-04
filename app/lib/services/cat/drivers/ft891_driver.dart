@@ -78,7 +78,7 @@ class Ft891Driver extends EquipmentDriver {
 
 class Ft891Session implements EquipmentSession {
   final EquipmentSink _sink;
-  final _framer = YaesuFramer();
+  final _framer = AsciiCatFramer();
 
   /// Transceive (`AI1;`) is the primary path — this only covers the cases it
   /// can't: the radio's AI menu switched off, or a frame lost to line noise.
@@ -135,7 +135,7 @@ class Ft891Session implements EquipmentSession {
     }
   }
 
-  void _handle(YaesuCommand command) {
+  void _handle(AsciiCatCommand command) {
     switch (command.command) {
       case 'FA':
         final freqHz = parseFrequencyParams(command.params);

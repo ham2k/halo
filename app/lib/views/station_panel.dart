@@ -338,7 +338,11 @@ class StationPanel extends StatelessWidget {
     final st = context.t.settings.station;
 
     return ListenableBuilder(
-      listenable: _cat,
+      // Settings as well as CAT: developer mode decides whether the rows show
+      // what a driver worked out, and toggling it has to reach them. Both are
+      // ChangeNotifiers, and listening to one left the other's changes
+      // invisible until something else happened to rebuild this.
+      listenable: Listenable.merge([_cat, services.settings]),
       builder: (context, _) {
         final safeLeft = PaneSafeArea.leftOf(context);
         final nodes = _cat.nodes;
@@ -431,6 +435,7 @@ class StationPanel extends StatelessWidget {
                 node: node,
                 type: _cat.typeFor(node),
                 state: _cat.stateFor(node.uuid),
+                developerMode: services.settings.developerMode,
                 displayName: _displayName(node),
                 isMainVfo: _cat.isRadio1(node.uuid),
                 onEdit: () => _editEquipment(context, node),
@@ -853,6 +858,11 @@ class _EquipmentTile extends StatelessWidget {
   /// This is `radio1` — the node whose VFO is the logging panel's, shown
   /// to the operator as "Main VFO".
   final bool isMainVfo;
+
+  /// Whether to show what the driver worked out about this session. Off for
+  /// everyone else: a line reading "IF mode offset 21 (learned)" is
+  /// meaningless to an operator and alarming to some.
+  final bool developerMode;
   final VoidCallback onEdit;
 
   /// Only reachable for a record whose type isn't in the catalogue — every
@@ -865,6 +875,7 @@ class _EquipmentTile extends StatelessWidget {
     required this.node,
     required this.type,
     required this.state,
+    required this.developerMode,
     required this.displayName,
     required this.isMainVfo,
     required this.onEdit,
@@ -984,13 +995,28 @@ class _EquipmentTile extends StatelessWidget {
         ],
       ),
       subtitle: failed
-          ? Text(
-              state.error!,
-              // Two lines' worth: these say what to do about it, and the
-              // useful part is rarely in the first forty characters.
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  state.error!,
+                  // Two lines' worth: these say what to do about it, and the
+                  // useful part is rarely in the first forty characters.
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                ),
+                // Under the error, not instead of it: what the driver worked
+                // out is most worth reading when something has gone wrong,
+                // and this is the one row state that used to hide it.
+                if (developerMode && state.diagnostic != null)
+                  Text(
+                    state.diagnostic!,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(color: HaLoColors.of(context).devMode),
+                  ),
+              ],
             )
           : Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1010,6 +1036,18 @@ class _EquipmentTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (developerMode && state.diagnostic != null)
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(
+                        state.diagnostic!,
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(color: HaLoColors.of(context).devMode),
+                      ),
+                    ),
+                  ),
                 if (connected)
                   Padding(
                     padding: const EdgeInsets.only(left: 12),

@@ -413,6 +413,44 @@ void main() {
     });
   });
 
+  group('a driver\'s account of itself', () {
+    late SettingsService settings;
+    late CatService cat;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
+      cat = CatService(settings);
+    });
+
+    tearDown(() => cat.dispose());
+
+    test('a status transition drops the previous connection\'s diagnostic', () {
+      // Connect and disconnect build a FRESH EquipmentState rather than
+      // copyWith-ing the old one, and that is what keeps a note about a
+      // connection that is gone off the row. Nothing else clears it.
+      const carried = EquipmentState(status: EquipmentStatus.connected, diagnostic: 'IF mode offset 21 (learned)');
+      expect(carried.copyWith(stale: true).diagnostic, 'IF mode offset 21 (learned)',
+          reason: 'a stale link is the same connection, still saying the same thing');
+      expect(const EquipmentState(status: EquipmentStatus.disconnected).diagnostic, isNull);
+    });
+
+    test('an explicit null clears the note, and saying nothing keeps it', () {
+      // `??` cannot tell "clear this" from "I did not mention it", which is
+      // the whole reason clearDiagnostic is a separate flag. Invert them and
+      // a driver could never take back something it had reported.
+      const said = EquipmentState(diagnostic: 'IF mode offset 15 declared, radio says 21');
+
+      expect(said.copyWith(stale: true).diagnostic, isNotNull, reason: 'not mentioned, so kept');
+      expect(said.copyWith(clearDiagnostic: true).diagnostic, isNull, reason: 'explicitly taken back');
+      expect(said.copyWith(diagnostic: 'something else').diagnostic, 'something else');
+    });
+
+    test('a node nobody has connected has nothing to say', () {
+      expect(cat.stateFor('no-such-node').diagnostic, isNull);
+    });
+  });
+
   group('the radio password never reaches the prefs blob', () {
     late SettingsService settings;
     late CatService cat;
@@ -667,11 +705,11 @@ void main() {
   test('the registry offers every model\'s every variant over three transports', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ic705-network')?.key, 'ic705-network');
-    // Seven models, and the IC-705 contributes two — the flat list is derived
+    // Eight models, and the IC-705 contributes two — the flat list is derived
     // from the models, so a variant added to one has to appear here without
     // anything else being edited.
-    expect(registry.types, hasLength(8));
-    expect(registry.models, hasLength(7));
+    expect(registry.types, hasLength(9));
+    expect(registry.models, hasLength(8));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network']));
   });
 
@@ -721,4 +759,6 @@ class _CountingSink implements EquipmentSink {
   void send(List<int> bytes) => sent.add(bytes);
   @override
   void report(VfoReading reading) {}
+  @override
+  void reportDiagnostic(String? note) {}
 }

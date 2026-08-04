@@ -22,12 +22,16 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <List<int>>[];
   final readings = <VfoReading>[];
+  final diagnostics = <String?>[];
 
   @override
   void send(List<int> bytes) => sent.add(bytes);
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportDiagnostic(String? note) => diagnostics.add(note);
 }
 
 void main() {

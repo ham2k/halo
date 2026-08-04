@@ -22,6 +22,20 @@ abstract class EquipmentSink {
 
   /// A fresh reading from the equipment.
   void report(VfoReading reading);
+
+  /// Something a DEVELOPER would want to know about this session — what a
+  /// protocol negotiated, what a driver had to work out for itself. Not an
+  /// error (nothing is wrong) and not a reading (it is about the session, not
+  /// the radio's state), which is why it is neither of those.
+  ///
+  /// Shown only under developer mode and never persisted. A driver that has
+  /// nothing to say never calls it, and null clears whatever it last said.
+  ///
+  /// The point is diagnosing a rig we do not have: the Kenwood driver works
+  /// out where the mode sits in an `IF` packet, and if that goes wrong on
+  /// someone's radio the alternative to reporting it is a bench session with
+  /// hardware nobody on the project owns.
+  void reportDiagnostic(String? note);
 }
 
 /// One driver's state for one open connection.

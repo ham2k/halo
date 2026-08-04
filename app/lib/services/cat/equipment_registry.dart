@@ -29,6 +29,7 @@ import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/icom_civ_driver.dart';
+import 'drivers/kenwood_driver.dart';
 import 'drivers/rigctld_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
@@ -322,6 +323,7 @@ const _rigctldTcpKey = 'rigctld-tcp';
 const _ft891SerialKey = 'ft891-serial';
 const _icomGenericSerialKey = 'icom-generic-serial';
 const _yaesuSerialKey = 'yaesu-serial';
+const _kenwoodSerialKey = 'kenwood-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
 
@@ -499,6 +501,43 @@ List<Map<String, dynamic>> _yaesuSerialNotes() => [
       },
     ];
 
+/// Any radio speaking Kenwood CAT over a serial port — the Kenwood line, and
+/// equally the Elecraft rigs and SDR front-ends that implement the same
+/// protocol.
+///
+/// NEVER RUN AGAINST A RADIO: written from published CAT references rather
+/// than a capture, which is exactly what `hardwareVerified: false` is for.
+/// The one field those references disagree about — where the mode sits inside
+/// the `IF` status packet — is learned from the radio at runtime instead of
+/// assumed, because a wrong offset would report a plausible wrong mode
+/// forever rather than failing. See kenwood_driver.dart.
+const kenwoodGenericModel = EquipmentModel(
+  key: 'kenwood-generic',
+  category: kCategoryTransceiver,
+  name: _kenwoodGenericName,
+  variants: [
+    EquipmentVariant(
+      key: _kenwoodSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      notes: _kenwoodSerialNotes,
+    ),
+  ],
+);
+
+String _kenwoodGenericName() => t.settings.station.models.kenwoodGeneric;
+
+List<Map<String, dynamic>> _kenwoodSerialNotes() => [
+      {
+        'type': 'markdown',
+        'collapsible': true,
+        'title': t.settings.station.troubleshootingNotes,
+        'text': '**${t.settings.station.kenwoodTroubleshootingTitle}**\n\n'
+            '${t.settings.station.kenwoodTroubleshooting}',
+      },
+    ];
+
 /// Any Icom transceiver over CI-V on a serial port — the IC-705's USB
 /// connection, and equally an IC-7300 or IC-9700 with a different address.
 ///
@@ -623,10 +662,28 @@ class EquipmentRegistry {
   final List<EquipmentType> types;
 
   EquipmentRegistry({List<EquipmentModel>? models, Map<String, EquipmentTransport>? transports})
-      : models = models ?? const [flexRadioModel, ft891Model, yaesuGenericModel, ic705Model, icomGenericModel, rigctldModel, flrigModel],
+      : models = models ?? const [
+          flexRadioModel,
+          ft891Model,
+          yaesuGenericModel,
+          ic705Model,
+          icomGenericModel,
+          kenwoodGenericModel,
+          rigctldModel,
+          flrigModel,
+        ],
         types = [
           for (final model
-              in models ?? const [flexRadioModel, ft891Model, yaesuGenericModel, ic705Model, icomGenericModel, rigctldModel, flrigModel])
+              in models ?? const [
+          flexRadioModel,
+          ft891Model,
+          yaesuGenericModel,
+          ic705Model,
+          icomGenericModel,
+          kenwoodGenericModel,
+          rigctldModel,
+          flrigModel,
+        ])
             for (final variant in model.variants) EquipmentType(model, variant),
         ],
         transports = transports ??
