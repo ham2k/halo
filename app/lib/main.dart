@@ -1847,8 +1847,9 @@ class _TesterOverlayGateState extends State<_TesterOverlayGate> {
     final lastSeen = widget.services.settings.lastSeenTesterBuild;
     if (lastSeen >= kBuildNumber) return;
     final notes = await loadTesterNotes();
-    // Entries above kBuildNumber can exist in a dev tree (notes written for
-    // a build not yet cut) — this build shouldn't promise them.
+    // The release cut numbers an entry and bumps kBuildNumber in one commit,
+    // so an entry above this build means someone hand-typed a number the
+    // tooling would never write — this build still shouldn't promise it.
     final pending = notes.where((entry) => entry.build > lastSeen && entry.build <= kBuildNumber).toList();
     if (pending.isEmpty || !mounted) return;
     // Shown before the backdrop resolves — onboarding mounts synchronously
@@ -1865,8 +1866,10 @@ class _TesterOverlayGateState extends State<_TesterOverlayGate> {
   /// current build, ignoring the edition and `lastSeenTesterBuild` gates
   /// entirely, for re-previewing the overlay on demand (DEVSPLASH's
   /// sibling). Falls back to the whole file when nothing is ≤ the current
-  /// build (a dev tree whose only notes are for an uncut build) — the
-  /// command has already confirmed in the UI, so it must never no-op.
+  /// build — the command has already confirmed in the UI, so it must never
+  /// no-op. Notes accumulated since the last cut are NOT previewable here:
+  /// they live under tester-notes.yaml's `upcoming` key, which the parser
+  /// drops until a release names it.
   Future<void> _showDevTester() async {
     // Same edition guard as the organic path — a prod build has no
     // business rendering tester-only content, dev command or not.

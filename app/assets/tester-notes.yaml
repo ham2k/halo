@@ -1,9 +1,31 @@
 # Per-build "what's new for testers", shown in the tester overlay on the
 # Dev and Next editions only — see config/tester_notes.dart. Keyed by the
 # native build number (config/version.dart's kBuildNumber); testers see every
-# entry newer than the last build they dismissed, so append an entry when a
-# build ships changes worth flagging to them. Each entry under `changes` is
-# rendered as markdown.
+# entry newer than the last build they dismissed. Each entry under `changes`
+# is rendered as markdown.
+#
+# Notes are written as work merges, not at release time: add them under an
+# `upcoming` key at the left margin, creating it when the last cut took it —
+#
+#     upcoming:
+#       changes:
+#         - "Something a tester should try, in markdown"
+#
+# `halo-ops release` renames that key to the build it ships in, so nobody
+# types a build number here and no note lands under a build that never ships.
+# `upcoming` is not a number, so the parser skips it: accumulated notes stay
+# invisible to testers until the build carrying them exists.
+#
+# The cut refuses rather than ship something wrong — it rejects a key spelled
+# any other way (`Upcoming`, a typo), a document that no longer parses, and a
+# file with uncommitted changes; a key with no `changes` yet is simply left
+# for the next cut. Notes belong to their own task's commit, not the
+# release's.
+
+upcoming:
+  changes:
+    - "Spots sorted **By Spot Time** now really are in time order — they used to stay grouped by band no matter the sort. Please check the order looks right to you"
+    - "New **Group by Band** toggle in the Spots panel, independent of the sort: on gives you the band sections you're used to, off gives one flat list. Try it both ways and tell us which you'd want as the default"
 
 "126":
   changes:

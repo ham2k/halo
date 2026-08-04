@@ -90,6 +90,28 @@ narrowing. `halo-ops release` advances it automatically: it takes the highest
 `+<build>` across the `v<version>+<build>` release tags, adds one, writes it into
 `version.dart`, and tags the release — so nobody bumps it by hand.
 
+The same cut also names the build's **tester notes**. They are written as work
+merges, under the `upcoming` key of `app/assets/tester-notes.yaml`; the cut
+renames that key to the build number it just computed and commits it alongside
+`version.dart`, inside the tagged commit. No build number is typed there
+either, and a note can't end up filed under a build that never ships. Until the
+rename, `upcoming` is a non-numeric key the app's parser skips — that is what
+keeps accumulated notes off a tester's screen before the build carrying them
+exists.
+
+Because that file is hand-edited and the cut commits, tags and pushes it
+unseen, the cut vets it rather than trusting it. It parses the document on both
+sides of the rename and **refuses** — before writing, tagging or pushing
+anything — on a file that no longer parses, a top-level key that is neither a
+build number nor `upcoming` (a typo there would otherwise be dropped silently
+by the cut *and* the app), a build that already has an entry, or **any
+uncommitted change to the file**: notes ride in their own task's commit, so at
+cut time it must match `HEAD`, and `git commit --only` would otherwise sweep an
+in-progress note into the release. A key created ahead of its notes is simply
+left for the next cut. Every planning surface (`--json`, `--dry-run`, a
+dev-branch preview) reports the problem instead of failing, since none of them
+writes anything.
+
 > Earlier lines used a date-encoded `YYMM·MMDD·S` id. That overflowed the 16-bit
 > Windows/Linux field (forcing a separate desktop part) and, being large, pinned
 > every platform of a release to whatever build number iOS had already floored at.

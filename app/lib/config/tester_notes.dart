@@ -7,6 +7,11 @@
 // is keyed by the native build number (config/version.dart's kBuildNumber)
 // and shown only on the Dev and Next editions. Each entry's changes are
 // rendered as markdown by the overlay.
+//
+// Notes are written as work merges, under the file's `upcoming` key, and the
+// release cut renames that key to the build shipping them. Dropping
+// non-numeric keys (below) is therefore load-bearing, not just tolerance:
+// it's what keeps accumulated notes invisible until their build exists.
 
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
