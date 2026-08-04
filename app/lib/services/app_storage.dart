@@ -97,9 +97,14 @@ Future<_Storage> _storage() => _resolved ??= _resolveStorage().then((storage) {
 });
 
 Future<_Storage> _resolveStorage() async {
-  final documents = await getApplicationDocumentsDirectory();
-  if (kIsWeb) return (directory: documents, relocated: false);
+  // Web resolves before the first path_provider call — the plugin has no web
+  // implementation, so asking it anything throws. The placeholder is never
+  // consumed there: drift opens IndexedDB, and every other user of this path
+  // (data-file cache, the Developer panel's data-folder row) is
+  // !kIsWeb-guarded.
+  if (kIsWeb) return (directory: Directory('.'), relocated: false);
 
+  final documents = await getApplicationDocumentsDirectory();
   try {
     final Directory target;
     if (Platform.isWindows) {
