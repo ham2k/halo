@@ -233,6 +233,54 @@ void main() {
     });
   });
 
+  group('fetch transport transience', () {
+    // A ClientException or TimeoutException from _hostFetch's own send()
+    // call stringifies through the kernel into an ExtensionHostException
+    // with that exception's toString() as its message — the caller (e.g.
+    // SyncEngine's backoff loop) already retries, so this is worth
+    // uploading in aggregate but not worth an operator notice.
+    test('a connection reset is reported, not noticed', () {
+      expect(
+        dispositionFor(ExtensionHostException('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')),
+        ErrorDisposition.report,
+      );
+    });
+
+    test('other transport-layer failures are reported too', () {
+      expect(
+        dispositionFor(ExtensionHostException('ClientException: Connection refused, uri=https://lofi.ham2k.net/v1/sync')),
+        ErrorDisposition.report,
+      );
+      expect(
+        dispositionFor(ExtensionHostException('ClientException: Connection closed while receiving data, uri=https://lofi.ham2k.net/v1/sync')),
+        ErrorDisposition.report,
+      );
+      expect(
+        dispositionFor(ExtensionHostException('TimeoutException after 0:00:15.000000: Future not completed')),
+        ErrorDisposition.report,
+      );
+    });
+
+    test('a hook call timing out on its own is NOT swallowed', () {
+      // Distinct from _hostFetch's transport timeout: a hook that simply
+      // takes too long (spots.fetchSpots, say) throws its own message,
+      // which does not start with "TimeoutException" — that's a real
+      // extension-side hang, not TCP flakiness.
+      expect(
+        dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')),
+        ErrorDisposition.notify,
+      );
+    });
+
+    test('a foreign exception quoting the message is NOT swallowed', () {
+      // Only the host's own exception type is exempt.
+      expect(
+        dispositionFor(StateError('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')),
+        ErrorDisposition.notify,
+      );
+    });
+  });
+
   group('console logging', () {
     test('an unclassified error prints nothing of its own', () {
       // Its console dump is the framework's / report()'s job; a policy line

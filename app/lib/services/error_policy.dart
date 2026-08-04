@@ -160,6 +160,14 @@ class ErrorPolicy {
       disposition: ErrorDisposition.logOnly,
       matches: _isConnectivityBackendUnavailable,
     ),
+    ErrorRule(
+      id: 'fetch-transport-transient',
+      reason: "a host.fetch call failed at the transport layer (connection reset, refused or "
+          'closed mid-body, or a fetch timeout) rather than anything our code did; worth seeing '
+          'in aggregate, not worth an operator notice for a TCP blip the caller already retries',
+      disposition: ErrorDisposition.report,
+      matches: _isFetchTransportTransient,
+    ),
   ];
 
   /// Flutter's own focus-traversal crash on web (ham2k/halo-dist#271),
@@ -290,6 +298,28 @@ class ErrorPolicy {
   static bool _isConnectivityBackendUnavailable(Object error, FlutterErrorDetails? details) {
     if (error.runtimeType.toString() == 'DBusException') return true;
     return error is SocketException && error.toString().contains('dbus');
+  }
+
+  /// `_hostFetch`'s own transport call — `http.Client.send`, or either of
+  /// the two `.timeout()`s wrapped around it — failing below the
+  /// application layer: a `ClientException` (connection reset, refused, or
+  /// closed mid-body) or the fetch's own `TimeoutException`. Both
+  /// stringify through `_handleHostCall`'s catch-all into the
+  /// `ExtensionHostException` this app sees. Only ONE case gets a
+  /// same-call retry inside `_hostFetch` itself ("Failed host lookup"),
+  /// because retrying anything else risks resending a non-idempotent POST
+  /// after its body may already be in flight — everything else surfaces
+  /// here instead, where the caller (SyncEngine's backoff loop, or
+  /// whatever else called host.fetch) already tolerates it. An operator
+  /// can't act on a TCP reset, and it isn't a bug of ours.
+  ///
+  /// Matched by prefix on the wrapped exception's own class name, not by
+  /// scanning for a substring anywhere in the message — a hook that
+  /// legitimately throws its own "timed out" message (the sibling test in
+  /// `_isExtensionRuntimeDead`'s group) must stay loud.
+  static bool _isFetchTransportTransient(Object error, FlutterErrorDetails? details) {
+    if (error is! ExtensionHostException) return false;
+    return error.message.startsWith('ClientException:') || error.message.startsWith('TimeoutException');
   }
 
   static final _oncePerSessionLogged = <String>{};
