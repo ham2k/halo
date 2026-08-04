@@ -10,6 +10,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -252,6 +253,50 @@ bool spotPassesContinentFilter(
   });
 }
 
+/// The spots left once the operator's enabled bands (Settings › Logging ›
+/// Bands) are applied — the narrowing that happens whenever no single band is
+/// selected, so `auto` with no VFO band and `any` both mean "any of MY bands"
+/// rather than every band on the air. An explicitly chosen band bypasses this
+/// entirely (see `_filteredSpotsSummary`): picking a band you don't normally
+/// use is a deliberate act, and must still show its spots.
+///
+/// Two fail-open rules keep the panel from going mysteriously blank: a spot
+/// with no band at all is kept, since there is no band for the operator to
+/// have disabled, and an empty [enabledBands] narrows nothing.
+/// Public for `spots_panel_merge_test.dart`.
+List<Map<String, dynamic>> spotsOnEnabledBands(
+  List<Map<String, dynamic>> spots,
+  Set<String> enabledBands,
+) {
+  if (enabledBands.isEmpty) return spots;
+  return spots.where((s) {
+    final band = _bandOf(s);
+    return band == null || enabledBands.contains(band);
+  }).toList();
+}
+
+/// The bands the filter dropdown offers, in the canonical [bands] order and
+/// without the leading `auto`/`any` entries.
+///
+/// The enabled bands are the point of the list, but two more earn a place:
+/// a band that currently HAS spots (so nothing visible under `any` is
+/// unfilterable), and the [selected] one (a filter persisted before its band
+/// was disabled stays on screen instead of the dropdown disagreeing with what
+/// is actually filtering). Public for `spots_panel_merge_test.dart`.
+List<String> spotsFilterBandOptions({
+  required Set<String> enabledBands,
+  required Map<String, int> bandSpotCounts,
+  required String selected,
+}) =>
+    [
+      for (final band in bands.map((b) => b.name))
+        if (enabledBands.isEmpty ||
+            enabledBands.contains(band) ||
+            (bandSpotCounts[band] ?? 0) > 0 ||
+            band == selected)
+          band,
+    ];
+
 String _timeAgo(int millis) {
   final seconds = (DateTime.now().millisecondsSinceEpoch - millis) ~/ 1000;
   if (seconds < 60) return '${seconds}s ago';
@@ -293,11 +338,17 @@ class _SpotsPanelState extends State<SpotsPanel> {
   final Map<String, ({bool hasNote, String? emoji, String? continent})> _callNotes = {};
   String? _lastVfoBand;
   String? _lastVfoMode;
+  /// Mirrors Settings › Logging › Bands, kept here rather than read per build
+  /// so `_onSettingsChanged` can tell an edit to THIS list from the many other
+  /// settings writes that notify — including this panel's own filter persist.
+  late Set<String> _enabledBands;
 
   @override
   void initState() {
     super.initState();
     _loadPersistedFilters();
+    _enabledBands = widget.services.settings.enabledBands.toSet();
+    widget.services.settings.addListener(_onSettingsChanged);
     _lastVfoBand = widget.services.radio.vfoA.band;
     _lastVfoMode = widget.services.radio.vfoA.mode;
     widget.services.radio.addListener(_onVfoChanged);
@@ -326,6 +377,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   @override
   void dispose() {
+    widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onVfoChanged);
     widget.services.spots.removeListener(_onSpotsChanged);
     _unsubscribeSpots?.call();
@@ -372,6 +424,17 @@ class _SpotsPanelState extends State<SpotsPanel> {
       _lastVfoBand = vfo.band;
       _lastVfoMode = vfo.mode;
     });
+  }
+
+  /// The operator changed a setting — only their band list reaches this
+  /// panel, and only through `_filteredSpotsSummary`'s narrowing, so anything
+  /// else notifying (this panel's own `_persistFilters` among them) must not
+  /// cost a rebuild of the whole spot list.
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    final enabled = widget.services.settings.enabledBands.toSet();
+    if (setEquals(enabled, _enabledBands)) return;
+    setState(() => _enabledBands = enabled);
   }
 
   /// A fetch settled in the shared cache (the refresh timer, this panel's
@@ -444,10 +507,13 @@ class _SpotsPanelState extends State<SpotsPanel> {
     });
   }
 
-  /// `total` is the merged spot count after source enable/disable but
-  /// BEFORE band/mode/age filtering — the "of 72" in "Showing 45 of 72
-  /// spots" — so toggling a source (an intentional exclusion) changes what
-  /// counts as "all", while band/mode/age (temporary narrowing) don't.
+  /// `total` is the merged spot count after source enable/disable and the
+  /// operator's enabled bands, but BEFORE band/mode/age filtering — the
+  /// "of 72" in "Showing 45 of 72 spots". Standing exclusions (a disabled
+  /// source, a band the operator doesn't use) decide what counts as "all";
+  /// band/mode/age, which narrow temporarily, don't. Explicitly choosing a
+  /// band opts out of the enabled-bands narrowing, and then every fetched
+  /// spot is back in play — so "all" is everything again.
   ({List<Map<String, dynamic>> filtered, int total}) get _filteredSpotsSummary {
     final vfo = widget.services.radio.vfoA;
     final band = _bandFilter == 'auto' ? vfo.band : _bandFilter;
@@ -458,10 +524,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
         ? superModeForMode(vfo.mode)
         : (_modeFilter == 'any' ? null : _modeFilter);
 
-    var spots = _mergedRawSpots;
+    final singleBand = band != null && band != 'any';
+    var spots = singleBand ? _mergedRawSpots : spotsOnEnabledBands(_mergedRawSpots, _enabledBands);
     final total = spots.length;
 
-    if (band != null && band != 'any') {
+    if (singleBand) {
       spots = spots.where((s) => _bandOf(s) == band).toList();
     }
     if (superMode != null) {
@@ -544,6 +611,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // each count map would re-run the merge pipeline from scratch 4x per
     // dialog open.
     final merged = _mergedRawSpots;
+    // Every count except the per-band ones is drawn from the spots the panel
+    // would actually show, so the "any (n)" entries agree with what picking
+    // them does. Per-band counts stay drawn from the full merge: they are what
+    // qualifies a non-enabled band for the list at all, and what tells the
+    // operator there is something out there worth switching bands for.
+    final onEnabledBands = spotsOnEnabledBands(merged, _enabledBands);
     return showHaloDialog<void>(
         context: context,
         builder: (context) => _SpotsFilterDialog(
@@ -552,10 +625,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
           ageMinutes: _ageMinutes,
           autoBand: widget.services.radio.vfoA.band,
           autoMode: superModeForMode(widget.services.radio.vfoA.mode),
-          totalSpotCount: merged.length,
+          enabledBands: _enabledBands,
+          totalSpotCount: onEnabledBands.length,
           bandSpotCounts: _bandSpotCountsOf(merged),
-          modeSpotCounts: _modeSpotCountsOf(merged),
-          ageSpotCounts: _ageSpotCountsOf(merged),
+          modeSpotCounts: _modeSpotCountsOf(onEnabledBands),
+          ageSpotCounts: _ageSpotCountsOf(onEnabledBands),
           sortBy: _sortBy,
           groupByBand: _groupByBand,
           groupCallsWithNotes: _groupCallsWithNotes,
@@ -1246,6 +1320,9 @@ class _SpotsFilterDialog extends StatefulWidget {
   final int? ageMinutes;
   final String? autoBand;
   final String? autoMode;
+  /// The operator's enabled bands, which decide the Band dropdown's entries
+  /// (see [spotsFilterBandOptions]).
+  final Set<String> enabledBands;
   final int totalSpotCount;
   final Map<String, int> bandSpotCounts;
   final Map<String, int> modeSpotCounts;
@@ -1274,6 +1351,7 @@ class _SpotsFilterDialog extends StatefulWidget {
     required this.ageMinutes,
     required this.autoBand,
     required this.autoMode,
+    required this.enabledBands,
     required this.totalSpotCount,
     required this.bandSpotCounts,
     required this.modeSpotCounts,
@@ -1315,7 +1393,15 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   Widget build(BuildContext context) {
     final t = context.t;
     // 'auto' first (it's the default and tracks the live VFO), then 'any'.
-    final bandOptions = ['auto', 'any', ...bands.map((b) => b.name)];
+    final bandOptions = [
+      'auto',
+      'any',
+      ...spotsFilterBandOptions(
+        enabledBands: widget.enabledBands,
+        bandSpotCounts: widget.bandSpotCounts,
+        selected: _bandFilter,
+      ),
+    ];
     final modeOptions = ['auto', 'any', ..._superModes];
 
     return HaloDialog(

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show bands;
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
@@ -472,6 +473,80 @@ void main() {
     test('a call-less spot passes', () {
       expect(spotPassesContinentFilter('', {'EU'}, continents), isTrue);
       expect(spotPassesContinentFilter(null, {'EU'}, continents), isTrue);
+    });
+  });
+
+  group('spotsOnEnabledBands', () {
+    List<Map<String, dynamic>> spotsOn(List<String?> bandList) => [
+          for (final band in bandList) _spot(call: 'K1ABC', band: band, timeInMillis: 1000),
+        ];
+    List<String?> bandsOf(List<Map<String, dynamic>> spots) => [for (final s in spots) s['band'] as String?];
+
+    // The operator configured 40m and 20m; a 15m spot is not theirs to work,
+    // so it has no business in the list when no band is chosen.
+    test('drops spots on bands the operator has not enabled', () {
+      expect(bandsOf(spotsOnEnabledBands(spotsOn(['40m', '15m', '20m']), {'40m', '20m'})), ['40m', '20m']);
+    });
+
+    // Fail-open, both directions: deselecting every band in Settings must not
+    // blank the panel, and a spot the source never gave a band cannot be
+    // attributed to a band the operator disabled.
+    test('an empty enabled list narrows nothing', () {
+      expect(bandsOf(spotsOnEnabledBands(spotsOn(['40m', '15m']), {})), ['40m', '15m']);
+    });
+
+    test('a spot with no band survives the narrowing', () {
+      expect(bandsOf(spotsOnEnabledBands(spotsOn(['15m', null]), {'40m'})), [null]);
+    });
+  });
+
+  group('spotsFilterBandOptions', () {
+    // The dropdown is the settings list first: this is the whole bug report —
+    // 40m/20m enabled, 19 bands offered.
+    test('offers the enabled bands, not the whole band table', () {
+      expect(
+        spotsFilterBandOptions(enabledBands: {'40m', '20m'}, bandSpotCounts: {}, selected: 'auto'),
+        ['40m', '20m'],
+      );
+    });
+
+    // Spots on a non-enabled band still reach the screen under an explicit
+    // pick, so the band must remain selectable or those spots are unfilterable.
+    test('adds a non-enabled band that currently has spots', () {
+      expect(
+        spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {'15m': 3}, selected: 'auto'),
+        ['40m', '15m'],
+      );
+    });
+
+    test('a non-enabled band with zero spots stays out', () {
+      expect(
+        spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {'15m': 0}, selected: 'auto'),
+        ['40m'],
+      );
+    });
+
+    // A filter persisted before its band was disabled: dropping it would leave
+    // the dropdown showing something other than what is actually filtering.
+    test('keeps the selected band even when disabled and spotless', () {
+      expect(
+        spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {}, selected: '15m'),
+        ['40m', '15m'],
+      );
+    });
+
+    test('orders options by the band table, not by how they qualified', () {
+      expect(
+        spotsFilterBandOptions(enabledBands: {'10m', '80m'}, bandSpotCounts: {'160m': 2}, selected: '40m'),
+        ['160m', '80m', '40m', '10m'],
+      );
+    });
+
+    test('an empty enabled list offers every band', () {
+      expect(
+        spotsFilterBandOptions(enabledBands: {}, bandSpotCounts: {}, selected: 'auto'),
+        hasLength(bands.length),
+      );
     });
   });
 }
