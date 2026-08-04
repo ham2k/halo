@@ -642,6 +642,22 @@ class QsosRepository {
   /// `historyForCall` does — a QSO is gone when its own flag says so or when
   /// its operation's does — so deleting an operation drops its contacts from
   /// the count without touching a single QSO row.
+  ///
+  /// Event markers (start/break/end, `Qso.isEvent`) are not contacts and are
+  /// excluded, the same way [syncCountsForOperation] excludes them: anything
+  /// labelled "QSOs" to the operator must mean the number they logged. LoFi's
+  /// `Account#stats` applies the same filter so the two sides stay comparable
+  /// in the Sync panel's Synced Data row.
+  /// A row of the qsos table that is a contact rather than a start/break/end
+  /// marker. The ONE definition — every count the operator reads as "QSOs"
+  /// uses it, and LoFi's `QSO.contacts` scope mirrors it so the Sync panel can
+  /// put the two numbers side by side.
+  ///
+  /// `band` is nullable, and `NOT (band = 'event')` is NULL — not true — for a
+  /// QSO logged without one, so the null case has to be spelled out or those
+  /// QSOs silently leave the count.
+  Expression<bool> get _isContact => db.qsos.band.equals('event').not() | db.qsos.band.isNull();
+
   Future<({int total, int pending})> syncCounts() async {
     final count = db.qsos.uuid.count();
 
@@ -650,6 +666,7 @@ class QsosRepository {
     ])
       ..addColumns([count])
       ..where(db.qsos.deleted.equals(false) &
+          _isContact &
           (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
     final totalCount = (await totalQuery.getSingle()).read(count) ?? 0;
 
@@ -677,10 +694,12 @@ class QsosRepository {
     }
 
     final base = db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false);
+    // Not `_isContact.not()`: a QSO with no band belongs to neither side under
+    // a naive negation, and would vanish from the panel entirely.
     final isEvent = db.qsos.band.equals('event');
 
-    final total = await countWhere(base & isEvent.not());
-    final pending = await countWhere(base & isEvent.not() & db.qsos.synced.equals(false));
+    final total = await countWhere(base & _isContact);
+    final pending = await countWhere(base & _isContact & db.qsos.synced.equals(false));
     final eventTotal = await countWhere(base & isEvent);
     final eventPending = await countWhere(base & isEvent & db.qsos.synced.equals(false));
 

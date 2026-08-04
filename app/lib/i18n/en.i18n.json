@@ -513,16 +513,22 @@
       "switchAccountsDescription": "Link this device to another account with a QR code or email",
       "checking": "Checking…",
       "notLinked": "Not linked yet",
-      "linkedAs": "Linked as ${account}",
+      "linkedAccount": "${account} (#${id})",
       "replaceDialogTitle": "Replace local data?",
-      "replaceDialogOperations": {
+      "countOperations": {
         "one": "${n} operation",
         "other": "${n} operations"
       },
-      "replaceDialogQsos": {
+      "countQsos": {
         "one": "${n} QSO",
         "other": "${n} QSOs"
       },
+      "counts": "Synced Data",
+      "countsLocal": "This device: ${qsos} · ${operations}",
+      "countsServer": "Server: ${qsos} · ${operations}",
+      "countsLocalChecking": "This device: checking…",
+      "countsServerChecking": "Server: checking…",
+      "countsServerUnavailable": "Server: not available",
       "replaceDialogBody": "This backs up and clears ${operations} and ${qsos} from this device, then downloads the account's data instead. The backup stays in this device's database.",
       "replace": "Replace",
       "pendingBannerTitle": "New Ham2K Log Filer account detected",
@@ -822,7 +828,8 @@
   },
   "syncAccount": {
     "anonymous": "Anonymous Account (#${id})",
-    "pendingConfirmation": "${email} (pending confirmation)"
+    "pendingConfirmation": "${email} (pending confirmation)",
+    "pendingConfirmationWithId": "${email} (pending confirmation - #${id})"
   },
   "switchAccounts": {
     "noAccountDetails": "No account details yet",

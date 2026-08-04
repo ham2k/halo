@@ -122,6 +122,45 @@ void main() {
       expect((await operations.syncCounts()).pending, 1, reason: 'the tombstone still owes the server a push');
       expect((await operations.syncCounts()).total, 0);
     });
+
+    // `band` is nullable, and `NOT (band = 'event')` is NULL — not true — for
+    // a QSO logged without one. Written that way, the marker filter drops
+    // those QSOs from `total` without putting them anywhere else: under a
+    // naive negation they are neither a contact nor an event, and simply
+    // vanish from every number the operator is shown.
+    test('a QSO with no band is a contact, not an event, in both count methods', () async {
+      final op = await operations.create(stationCall: 'N0DEV');
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'band': '20m',
+      });
+      await qsos.addEvent(op.uuid, kind: 'start', atMillis: 1000);
+
+      expect((await qsos.syncCounts()).total, 2);
+
+      final perOperation = await qsos.syncCountsForOperation(op.uuid);
+      expect(perOperation.total, 2, reason: 'the band-less QSO is a contact');
+      expect(perOperation.pending, 2, reason: 'and it is one the export panel still owes a push');
+      expect(perOperation.eventTotal, 1, reason: 'and it is not an event either');
+    });
+
+    test('per-operation counts split contacts from markers, pending included', () async {
+      final op = await operations.create(stationCall: 'N0DEV');
+      final contact = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await qsos.addEvent(op.uuid, kind: 'start', atMillis: 1000);
+      await qsos.markSynced([await qsos.get(contact.uuid) as Qso]);
+
+      final counts = await qsos.syncCountsForOperation(op.uuid);
+      expect(counts.total, 1);
+      expect(counts.pending, 0, reason: 'the only contact is synced');
+      expect(counts.eventTotal, 1);
+      expect(counts.eventPending, 1, reason: 'the marker still owes a push');
+    });
   });
 
   test('a QSO whose operation row is missing still counts — sync can deliver them out of order', () async {

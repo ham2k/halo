@@ -513,16 +513,22 @@
       "switchAccountsDescription": "Vincula este dispositivo a otra cuenta con un código QR o por email",
       "checking": "Comprobando…",
       "notLinked": "Aún no vinculado",
-      "linkedAs": "Vinculado como ${account}",
+      "linkedAccount": "${account} (#${id})",
       "replaceDialogTitle": "¿Reemplazar los datos locales?",
-      "replaceDialogOperations": {
+      "countOperations": {
         "one": "${n} operación",
         "other": "${n} operaciones"
       },
-      "replaceDialogQsos": {
+      "countQsos": {
         "one": "${n} QSO",
         "other": "${n} QSOs"
       },
+      "counts": "Datos Sincronizados",
+      "countsLocal": "Este dispositivo: ${qsos} · ${operations}",
+      "countsServer": "Servidor: ${qsos} · ${operations}",
+      "countsLocalChecking": "Este dispositivo: comprobando…",
+      "countsServerChecking": "Servidor: comprobando…",
+      "countsServerUnavailable": "Servidor: no disponible",
       "replaceDialogBody": "Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.",
       "replace": "Reemplazar",
       "pendingBannerTitle": "Nueva cuenta de Ham2K Log Filer detectada",
@@ -822,7 +828,8 @@
   },
   "syncAccount": {
     "anonymous": "Cuenta anónima (#${id})",
-    "pendingConfirmation": "${email} (pendiente de confirmación)"
+    "pendingConfirmation": "${email} (pendiente de confirmación)",
+    "pendingConfirmationWithId": "${email} (pendiente de confirmación - #${id})"
   },
   "switchAccounts": {
     "noAccountDetails": "Aún sin detalles de la cuenta",

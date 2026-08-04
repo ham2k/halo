@@ -1163,6 +1163,9 @@ class Translations$syncAccount$en {
 
 	/// en: '${email} (pending confirmation)'
 	String pendingConfirmation({required Object email}) => '${email} (pending confirmation)';
+
+	/// en: '${email} (pending confirmation - #${id})'
+	String pendingConfirmationWithId({required Object email, required Object id}) => '${email} (pending confirmation - #${id})';
 }
 
 // Path: switchAccounts
@@ -1796,23 +1799,41 @@ class Translations$settings$syncPanel$en {
 	/// en: 'Not linked yet'
 	String get notLinked => 'Not linked yet';
 
-	/// en: 'Linked as ${account}'
-	String linkedAs({required Object account}) => 'Linked as ${account}';
+	/// en: '${account} (#${id})'
+	String linkedAccount({required Object account, required Object id}) => '${account} (#${id})';
 
 	/// en: 'Replace local data?'
 	String get replaceDialogTitle => 'Replace local data?';
 
 	/// en: '(one) {${n} operation} (other) {${n} operations}'
-	String replaceDialogOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	String countOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${n} operation',
 		other: '${n} operations',
 	);
 
 	/// en: '(one) {${n} QSO} (other) {${n} QSOs}'
-	String replaceDialogQsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	String countQsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${n} QSO',
 		other: '${n} QSOs',
 	);
+
+	/// en: 'Synced Data'
+	String get counts => 'Synced Data';
+
+	/// en: 'This device: ${qsos} · ${operations}'
+	String countsLocal({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}';
+
+	/// en: 'Server: ${qsos} · ${operations}'
+	String countsServer({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}';
+
+	/// en: 'This device: checking…'
+	String get countsLocalChecking => 'This device: checking…';
+
+	/// en: 'Server: checking…'
+	String get countsServerChecking => 'Server: checking…';
+
+	/// en: 'Server: not available'
+	String get countsServerUnavailable => 'Server: not available';
 
 	/// en: 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account's data instead. The backup stays in this device's database.'
 	String replaceDialogBody({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.';
@@ -3190,10 +3211,16 @@ extension on Translations {
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.checking' => 'Checking…',
 			'settings.syncPanel.notLinked' => 'Not linked yet',
-			'settings.syncPanel.linkedAs' => ({required Object account}) => 'Linked as ${account}',
+			'settings.syncPanel.linkedAccount' => ({required Object account, required Object id}) => '${account} (#${id})',
 			'settings.syncPanel.replaceDialogTitle' => 'Replace local data?',
-			'settings.syncPanel.replaceDialogOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
-			'settings.syncPanel.replaceDialogQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
+			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			'settings.syncPanel.counts' => 'Synced Data',
+			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
+			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
+			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
+			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
+			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.',
 			'settings.syncPanel.replace' => 'Replace',
 			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
@@ -3315,14 +3342,14 @@ extension on Translations {
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
 			'settings.search.clear' => 'Clear',
+			_ => null,
+		} ?? switch (path) {
 			'settings.search.hint' => 'Search settings',
 			'settings.developer.options' => 'Developer Options',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'Patch Track',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.patchTrackDescription' => 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.',
 			'settings.developer.trackStable' => 'Stable',
 			'settings.developer.trackUnstable' => 'Unstable',
@@ -3446,6 +3473,7 @@ extension on Translations {
 			'notices.emptyHistory' => 'No notices yet',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
+			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',

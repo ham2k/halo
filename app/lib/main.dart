@@ -937,8 +937,10 @@ class HaLoServices {
     statusBar.setProgress(
       key: syncProgressStatusKey,
       icon: 'cloud-sync',
-      title: 'Syncing account history',
-      text: qsoTotal > 0 ? '$qsoDone of $qsoTotal QSOs' : '$done of $total records',
+      title: 'Syncing in progress…',
+      text: qsoTotal > 0
+          ? '${formatNumber(qsoDone)} of ${formatNumber(qsoTotal)} QSOs'
+          : '${formatNumber(done)} of ${formatNumber(total)} records',
       value: done / total,
     );
   }

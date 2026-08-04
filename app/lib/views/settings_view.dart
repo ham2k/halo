@@ -931,6 +931,8 @@ class _SyncPanel extends StatefulWidget {
 class _SyncPanelState extends State<_SyncPanel> {
   Map<String, dynamic>? _syncAccount;
   bool _loadingSyncAccount = false;
+  int? _localOperationCount;
+  int? _localQsoCount;
 
   @override
   void initState() {
@@ -940,15 +942,30 @@ class _SyncPanelState extends State<_SyncPanel> {
     }
   }
 
+  /// The local counts are two fast database queries and must not wait on the
+  /// account fetch's network round-trip — offline, that request can take its
+  /// full timeout to fail, and the operator's own numbers are knowable the
+  /// whole time. The `finally` matters for the same reason the counts do:
+  /// `syncAccountData` only swallows `ExtensionHostException`, so anything
+  /// else (a dead host, a timeout) would otherwise leave the panel stuck on
+  /// "Checking…" with no way back — the Refresh button just re-enters here.
   Future<void> _refreshSyncAccount() async {
     if (!mounted) return;
     setState(() => _loadingSyncAccount = true);
-    final account = await widget.services.extensions.syncAccountData();
+    final operations = await widget.services.operations.syncCounts();
+    final qsos = await widget.services.qsos.syncCounts();
     if (!mounted) return;
     setState(() {
-      _syncAccount = account;
-      _loadingSyncAccount = false;
+      _localOperationCount = operations.total;
+      _localQsoCount = qsos.total;
     });
+    try {
+      final account = await widget.services.extensions.syncAccountData();
+      if (!mounted) return;
+      setState(() => _syncAccount = account);
+    } finally {
+      if (mounted) setState(() => _loadingSyncAccount = false);
+    }
   }
 
   Future<void> _toggleSync(bool enabled) async {
@@ -993,9 +1010,9 @@ class _SyncPanelState extends State<_SyncPanel> {
         title: Text(context.t.settings.syncPanel.replaceDialogTitle),
         content: Text(
           context.t.settings.syncPanel.replaceDialogBody(
-            operations: context.t.settings.syncPanel
-                .replaceDialogOperations(count: opCount, n: formatNumber(opCount)),
-            qsos: context.t.settings.syncPanel.replaceDialogQsos(count: qsoCount, n: formatNumber(qsoCount)),
+            operations:
+                context.t.settings.syncPanel.countOperations(count: opCount, n: formatNumber(opCount)),
+            qsos: context.t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
           ),
         ),
         cancel: TextButton(
@@ -1017,6 +1034,46 @@ class _SyncPanelState extends State<_SyncPanel> {
     if (_loadingSyncAccount) return t.settings.syncPanel.checking;
     return syncAccountLabel(_syncAccount);
   }
+
+  /// Both sides count the same thing — the log the operator still has, with
+  /// tombstones and the QSOs of deleted operations left out (see
+  /// `QsosRepository.syncCounts`, and LoFi's `Account#stats`). The two numbers
+  /// sit side by side precisely so a difference means work still in flight;
+  /// counting them by different rules would turn that signal into noise.
+  String _countsLine(String Function({required String operations, required String qsos}) line,
+      int operationCount, int qsoCount) {
+    return line(
+      operations: t.settings.syncPanel.countOperations(count: operationCount, n: formatNumber(operationCount)),
+      qsos: t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
+    );
+  }
+
+  /// Null until the local counts have been read.
+  String? get _localCountsLine {
+    final operations = _localOperationCount, qsos = _localQsoCount;
+    if (operations == null || qsos == null) return null;
+    return _countsLine(t.settings.syncPanel.countsLocal, operations, qsos);
+  }
+
+  /// Null when the server did not report BOTH counts — no account payload
+  /// yet, or one that predates these fields. Either alone is not enough:
+  /// substituting 0 for the missing half would read as the account having
+  /// lost everything on that side, which is precisely the alarm this row must
+  /// not raise falsely.
+  String? get _serverCountsLine {
+    final operations = ((_syncAccount?['operations'] as Map?)?['total'] as num?)?.toInt();
+    final qsos = ((_syncAccount?['qsos'] as Map?)?['total'] as num?)?.toInt();
+    if (operations == null || qsos == null) return null;
+    return _countsLine(t.settings.syncPanel.countsServer, operations, qsos);
+  }
+
+  /// "not available" is a claim about the server, so it must not be made
+  /// while the fetch that would answer it is still in flight.
+  String get _serverCountsText =>
+      _serverCountsLine ??
+      (_loadingSyncAccount
+          ? t.settings.syncPanel.countsServerChecking
+          : t.settings.syncPanel.countsServerUnavailable);
 
   @override
   Widget build(BuildContext context) {
@@ -1082,6 +1139,17 @@ class _SyncPanelState extends State<_SyncPanel> {
                   icon: Icon(resolveIconName('refresh'), semanticLabel: context.t.settings.syncPanel.refresh),
                   onPressed: _refreshSyncAccount,
                   mouseCursor: SystemMouseCursors.click,
+                ),
+              ),
+              ListTile(
+                leading: Icon(resolveIconName('database')),
+                title: Text(context.t.settings.syncPanel.counts),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_localCountsLine ?? context.t.settings.syncPanel.countsLocalChecking),
+                    Text(_serverCountsText),
+                  ],
                 ),
               ),
               ListTile(

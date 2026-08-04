@@ -610,6 +610,7 @@ class _Translations$syncAccount$es extends Translations$syncAccount$en {
 	// Translations
 	@override String anonymous({required Object id}) => 'Cuenta anónima (#${id})';
 	@override String pendingConfirmation({required Object email}) => '${email} (pendiente de confirmación)';
+	@override String pendingConfirmationWithId({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})';
 }
 
 // Path: switchAccounts
@@ -949,16 +950,22 @@ class _Translations$settings$syncPanel$es extends Translations$settings$syncPane
 	@override String get switchAccountsDescription => 'Vincula este dispositivo a otra cuenta con un código QR o por email';
 	@override String get checking => 'Comprobando…';
 	@override String get notLinked => 'Aún no vinculado';
-	@override String linkedAs({required Object account}) => 'Vinculado como ${account}';
+	@override String linkedAccount({required Object account, required Object id}) => '${account} (#${id})';
 	@override String get replaceDialogTitle => '¿Reemplazar los datos locales?';
-	@override String replaceDialogOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String countOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${n} operación',
 		other: '${n} operaciones',
 	);
-	@override String replaceDialogQsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String countQsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${n} QSO',
 		other: '${n} QSOs',
 	);
+	@override String get counts => 'Datos Sincronizados';
+	@override String countsLocal({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}';
+	@override String countsServer({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}';
+	@override String get countsLocalChecking => 'Este dispositivo: comprobando…';
+	@override String get countsServerChecking => 'Servidor: comprobando…';
+	@override String get countsServerUnavailable => 'Servidor: no disponible';
 	@override String replaceDialogBody({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.';
 	@override String get replace => 'Reemplazar';
 	@override String get pendingBannerTitle => 'Nueva cuenta de Ham2K Log Filer detectada';
@@ -1861,10 +1868,16 @@ extension on TranslationsEs {
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.checking' => 'Comprobando…',
 			'settings.syncPanel.notLinked' => 'Aún no vinculado',
-			'settings.syncPanel.linkedAs' => ({required Object account}) => 'Vinculado como ${account}',
+			'settings.syncPanel.linkedAccount' => ({required Object account, required Object id}) => '${account} (#${id})',
 			'settings.syncPanel.replaceDialogTitle' => '¿Reemplazar los datos locales?',
-			'settings.syncPanel.replaceDialogOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
-			'settings.syncPanel.replaceDialogQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
+			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			'settings.syncPanel.counts' => 'Datos Sincronizados',
+			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
+			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
+			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
+			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
+			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.',
 			'settings.syncPanel.replace' => 'Reemplazar',
 			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
@@ -1986,14 +1999,14 @@ extension on TranslationsEs {
 			'settings.offlineData.extensionsSection' => 'Extensiones',
 			'settings.profiles.notSet' => 'Sin definir',
 			'settings.search.clear' => 'Borrar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.search.hint' => 'Buscar en la configuración',
 			'settings.developer.options' => 'Opciones de desarrollador',
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',
 			'settings.developer.experiments' => 'Experimentos',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} habilitado', other: '${count} habilitados', ), 
 			'settings.developer.patchTrack' => 'Canal de parches',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.patchTrackDescription' => 'Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.',
 			'settings.developer.trackStable' => 'Estable',
 			'settings.developer.trackUnstable' => 'Inestable',
@@ -2117,6 +2130,7 @@ extension on TranslationsEs {
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',
+			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})',
 			'switchAccounts.noAccountDetails' => 'Aún sin detalles de la cuenta',
 			'switchAccounts.currentAccount' => 'Cuenta actual',
 			'switchAccounts.otherAccounts' => 'Otras cuentas',

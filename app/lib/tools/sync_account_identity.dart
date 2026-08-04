@@ -17,33 +17,62 @@ String? syncAccountIdentity(Map? account, {bool includePending = true}) =>
     _emailIdentity(account, includePending: includePending) ?? _anonymousIdentity(account);
 
 /// The one-line account description shared by the Sync panel and the All
-/// Settings sync group, from the whole `getAccountData` payload: "Linked as
-/// <email>" when an email identifies the account, the bare anonymous label
-/// for an email-less account (the auto-created account every device gets is
-/// not presented as "linked" — app-polo shows the same bare title), or
-/// "Not linked yet" when there is no account data at all.
+/// Settings sync group, from the whole `getAccountData` payload: the email
+/// followed by the account's short id when an email identifies the account,
+/// the bare anonymous label (which already carries that id) for an
+/// email-less account, or "Not linked yet" when there is no account data at
+/// all. The id belongs on the row because it is what support asks for; no
+/// "Linked as" prefix — the row is already titled "Account".
+///
+/// A pending email folds the id into the one parenthesis it already carries —
+/// "(pending confirmation - #XXXXXXXX)" — rather than trailing a second set
+/// after the first.
 String syncAccountLabel(Object? accountData) {
   final current = accountData is Map ? accountData['current_account'] : null;
   final account = current is Map ? current : null;
-  final email = _emailIdentity(account, includePending: true);
-  if (email != null) return t.settings.syncPanel.linkedAs(account: email);
+  final id = _shortId(account);
+
+  final pending = _pendingEmail(account);
+  if (pending != null) {
+    return id == null
+        ? t.syncAccount.pendingConfirmation(email: pending)
+        : t.syncAccount.pendingConfirmationWithId(email: pending, id: id);
+  }
+
+  final email = _field(account, 'email');
+  if (email != null) {
+    return id == null ? email : t.settings.syncPanel.linkedAccount(account: email, id: id);
+  }
   return _anonymousIdentity(account) ?? t.settings.syncPanel.notLinked;
 }
 
 String? _emailIdentity(Map? account, {required bool includePending}) {
-  final email = _field(account, 'email');
   if (includePending) {
-    final pending = _field(account, 'pending_email');
-    if (pending != null && pending != email) return t.syncAccount.pendingConfirmation(email: pending);
+    final pending = _pendingEmail(account);
+    if (pending != null) return t.syncAccount.pendingConfirmation(email: pending);
   }
-  return email;
+  return _field(account, 'email');
+}
+
+/// The address awaiting confirmation, or null when there is none — a
+/// `pending_email` equal to the confirmed one is not a change in flight.
+String? _pendingEmail(Map? account) {
+  final pending = _field(account, 'pending_email');
+  return pending == _field(account, 'email') ? null : pending;
 }
 
 String? _anonymousIdentity(Map? account) {
+  final id = _shortId(account);
+  if (id == null) return null;
+  return t.syncAccount.anonymous(id: id);
+}
+
+/// The uuid's first 8 characters, upper-cased — app-polo's convention, and
+/// short enough to read aloud to support.
+String? _shortId(Map? account) {
   final uuid = _field(account, 'uuid');
   if (uuid == null) return null;
-  final id = uuid.length > 8 ? uuid.substring(0, 8) : uuid;
-  return t.syncAccount.anonymous(id: id.toUpperCase());
+  return (uuid.length > 8 ? uuid.substring(0, 8) : uuid).toUpperCase();
 }
 
 String? _field(Map? account, String key) {

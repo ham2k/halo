@@ -55,12 +55,60 @@ void main() {
     );
   });
 
-  test('label: an email-identified account is "Linked as …"', () {
+  // No "Linked as" prefix: the row is already titled "Account". The short id
+  // rides along because it is what support asks for.
+  test('label: an email-identified account is the email plus the short id', () {
     expect(
       syncAccountLabel({
-        'current_account': {'uuid': 'abc', 'email': 'me@example.com'},
+        'current_account': {'uuid': '0a1b2c3d-4e5f', 'email': 'me@example.com'},
       }),
-      'Linked as me@example.com',
+      'me@example.com (#0A1B2C3D)',
+    );
+  });
+
+  // One parenthesis, not two back to back: the id joins the note the label
+  // already carries rather than trailing its own "(#…)" after it.
+  test('label: a pending email folds the short id into its own parenthesis', () {
+    expect(
+      syncAccountLabel({
+        'current_account': {
+          'uuid': '0a1b2c3d-4e5f',
+          'email': 'old@example.com',
+          'pending_email': 'new@example.com',
+        },
+      }),
+      'new@example.com (pending confirmation - #0A1B2C3D)',
+    );
+  });
+
+  test('label: a pending email with no uuid keeps the plain pending note', () {
+    expect(
+      syncAccountLabel({
+        'current_account': {'email': 'old@example.com', 'pending_email': 'new@example.com'},
+      }),
+      'new@example.com (pending confirmation)',
+    );
+  });
+
+  test('label: a pending email equal to the confirmed one is not pending', () {
+    expect(
+      syncAccountLabel({
+        'current_account': {
+          'uuid': '0a1b2c3d-4e5f',
+          'email': 'me@example.com',
+          'pending_email': 'me@example.com',
+        },
+      }),
+      'me@example.com (#0A1B2C3D)',
+    );
+  });
+
+  test('label: an email with no uuid to pair it with degrades to the bare email', () {
+    expect(
+      syncAccountLabel({
+        'current_account': {'email': 'me@example.com'},
+      }),
+      'me@example.com',
     );
   });
 
