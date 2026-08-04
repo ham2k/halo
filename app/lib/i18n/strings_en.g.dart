@@ -1720,6 +1720,9 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
 	late final Translations$settings$logging$jumpAfterRST$en jumpAfterRST = Translations$settings$logging$jumpAfterRST$en.internal(_root);
+	late final Translations$settings$logging$defaultReport$en defaultReport = Translations$settings$logging$defaultReport$en.internal(_root);
+	late final Translations$settings$logging$defaultReportCW$en defaultReportCW = Translations$settings$logging$defaultReportCW$en.internal(_root);
+	late final Translations$settings$logging$defaultReportFT8$en defaultReportFT8 = Translations$settings$logging$defaultReportFT8$en.internal(_root);
 	late final Translations$settings$logging$numbersRow$en numbersRow = Translations$settings$logging$numbersRow$en.internal(_root);
 	late final Translations$settings$logging$numbersRowExtra$en numbersRowExtra = Translations$settings$logging$numbersRowExtra$en.internal(_root);
 	late final Translations$settings$logging$numbersRowVibrate$en numbersRowVibrate = Translations$settings$logging$numbersRowVibrate$en.internal(_root);
@@ -2677,6 +2680,51 @@ class Translations$settings$logging$jumpAfterRST$en {
 	String get descriptionOff => 'Don\'t jump automatically';
 }
 
+// Path: settings.logging.defaultReport
+class Translations$settings$logging$defaultReport$en {
+	Translations$settings$logging$defaultReport$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Default report — Phone'
+	String get title => 'Default report — Phone';
+
+	/// en: 'Used when Sent or Rcvd is left empty on SSB, FM or AM'
+	String get description => 'Used when Sent or Rcvd is left empty on SSB, FM or AM';
+}
+
+// Path: settings.logging.defaultReportCW
+class Translations$settings$logging$defaultReportCW$en {
+	Translations$settings$logging$defaultReportCW$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Default report — CW and data'
+	String get title => 'Default report — CW and data';
+
+	/// en: 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes'
+	String get description => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes';
+}
+
+// Path: settings.logging.defaultReportFT8
+class Translations$settings$logging$defaultReportFT8$en {
+	Translations$settings$logging$defaultReportFT8$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Default report — FT8 and FT4'
+	String get title => 'Default report — FT8 and FT4';
+
+	/// en: 'Used when Sent or Rcvd is left empty on the FT modes'
+	String get description => 'Used when Sent or Rcvd is left empty on the FT modes';
+}
+
 // Path: settings.logging.numbersRow
 class Translations$settings$logging$numbersRow$en {
 	Translations$settings$logging$numbersRow$en.internal(this._root);
@@ -3254,6 +3302,12 @@ extension on Translations {
 			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'Jump after RST is entered',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
+			'settings.logging.defaultReport.title' => 'Default report — Phone',
+			'settings.logging.defaultReport.description' => 'Used when Sent or Rcvd is left empty on SSB, FM or AM',
+			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
+			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
+			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
+			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
@@ -3419,14 +3473,14 @@ extension on Translations {
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.noTransceiver' => 'None',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',

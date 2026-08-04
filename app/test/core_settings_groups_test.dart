@@ -61,6 +61,37 @@ void main() {
       await group.commit('leftieMode', true);
       expect(settings.leftieMode, isTrue);
     });
+
+    test('HALO-83: a default-report field commits uppercased and trimmed', () async {
+      // The logging fields are uppercase throughout, so a CW operator typing
+      // "5nn" must not end up with a report that reads differently from every
+      // other value in the row.
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final group = LoggingSettingsGroup(settings);
+
+      expect(settings.defaultReportCW, isEmpty, reason: 'unset means "the standard report"');
+      await group.commit('defaultReportCW', ' 5nn ');
+      expect(settings.defaultReportCW, '5NN');
+
+      // Clearing has to be possible: a whitespace-only value is cleared, not
+      // stored, or the operator would log a blank report with no way back.
+      await group.commit('defaultReportCW', '   ');
+      expect(settings.defaultReportCW, isEmpty);
+    });
+
+    test('HALO-83: the default-report fields show the standard report as their placeholder', () async {
+      // The placeholder is what makes an empty field readable as "599 unless
+      // you say otherwise" rather than as a missing setting.
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final elements = await LoggingSettingsGroup(settings).buildElements();
+      final byKey = {for (final el in elements) el['key'] as String: el};
+
+      expect(byKey['defaultReport']?['placeholder'], '59');
+      expect(byKey['defaultReportCW']?['placeholder'], '599');
+      expect(byKey['defaultReportFT8']?['placeholder'], '+0');
+    });
   });
 
   group('RadioSettingsGroup', () {

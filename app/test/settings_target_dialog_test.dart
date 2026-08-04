@@ -341,6 +341,37 @@ void main() {
           'without any unrelated field edit or restart forcing a refresh',
     );
   });
+
+  testWidgets('HALO-83: a core text setting renders in the dialog and commits on blur', (tester) async {
+    // The three default-report fields are the first `text` fields any core
+    // settings group declares, and a core group's text commit runs through
+    // FormRenderer's blur path — not the switch path every existing core
+    // field uses. A field that renders but never saves looks identical in the
+    // dialog, so this drives the whole round trip rather than the element map.
+    final services = await _services(const {});
+    await _openDialog(tester, services, target: 'logging-extended');
+
+    expect(find.text(t.settings.logging.defaultReportCW.title), findsOneWidget);
+    // Located by its hint, not its label: the compact row puts the label in a
+    // sibling ListTile rather than inside the field's own decoration. The hint
+    // is what makes an empty field read as "599 unless you say otherwise"
+    // instead of as a missing setting, so it is worth matching on.
+    final field = find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == '599');
+    expect(field, findsOneWidget);
+
+    await tester.ensureVisible(field);
+    await tester.enterText(field, '5nn');
+    // Blur is what commits — FormRenderer's text fields have no per-keystroke
+    // autosave, so a test that only types proves nothing. Moving focus to a
+    // neighbouring field is the gesture; tapping a label is not, since a bare
+    // Text takes no focus and the edit would still be sitting uncommitted.
+    final phoneField = find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == '59');
+    await tester.ensureVisible(phoneField);
+    await tester.tap(phoneField);
+    await tester.pumpAndSettle();
+
+    expect(services.settings.defaultReportCW, '5NN');
+  });
 }
 
 class _AccountRoundTripExtensionService extends ExtensionServiceWithMockHost {

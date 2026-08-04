@@ -385,6 +385,31 @@ callsign — see [backlog.md](../backlog.md).
 
 ## Related conventions
 
+- **A default is a placeholder, never a pre-filled value.** The Sent and Rcvd
+  reports show the mode's default as a faint hint over an empty field, the
+  same way a looked-up Grid or State does, so giving a true report is one
+  keystroke rather than a clear-then-type. The default becomes real on the way
+  out, in the one place every consumer reads the QSO from, so what is logged,
+  scored, spotted and exported is exactly what it was when the field held the
+  text. The hint is absent while editing a saved record: there a blank field is
+  stored data, and a hint would promise a value the save would not write.
+- **A report is completed from its significant part.** `5` becomes `55`, `2`
+  becomes `32` (readability tracks strength — an S2 signal isn't fully
+  readable), and on CW and RTTY the tone digit is filled in too: `5` → `559`,
+  `57` → `579`, with `4A` → `44A` for aurora. It happens when focus leaves the
+  field *and* again where the default materializes — Enter never blurs, so the
+  field the operator logs from is one that never left focus, and would
+  otherwise carry a bare `5` into the record. `defaultRSTFor`/`expandRST` in
+  halo_core hold both rules. The FT modes are exempt from all of it: their
+  exchange is a signal-to-noise figure (`+0`, `-12`), which every rule above
+  would mangle.
+- **The default is the operator's to change, in three bands** — phone, CW and
+  data, and the FT modes — from Logging settings. An empty setting means the
+  standard report rather than a blank one, so clearing the field restores
+  `59`/`599`/`+0` and nothing outside `defaultRSTFor` has to name them. The
+  override changes the *value* only: which modes fall in which band, and what
+  the completion above does with a partial report, stay properties of the
+  mode.
 - All logging input is uppercase unless the input explicitly declares
   otherwise — `uppercase` defaults to true for exchange controls
   ([contests.md](contests.md)), callsign fields are always uppercase

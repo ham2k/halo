@@ -11,6 +11,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart';
 
 import '../i18n/strings.g.dart';
 import '../services/extension_service.dart';
@@ -56,6 +57,26 @@ Map<String, dynamic> _select({
   if (environment != null) 'environment': environment,
   if (target != null) 'target': target,
   if (devMode) 'devMode': true,
+};
+
+Map<String, dynamic> _text({
+  required String key,
+  required String label,
+  required String icon,
+  String? description,
+  required String value,
+  String? placeholder,
+  String? target,
+}) => {
+  'type': 'field',
+  'fieldType': 'text',
+  'key': key,
+  'label': label,
+  'icon': icon,
+  if (description != null) 'description': description,
+  'value': value,
+  if (placeholder != null) 'placeholder': placeholder,
+  if (target != null) 'target': target,
 };
 
 Map<String, dynamic> _toggle({
@@ -279,6 +300,38 @@ class LoggingSettingsGroup extends SettingsGroup {
         value: settings.jumpAfterRST,
         target: 'logging-extended',
       ),
+      // The report an empty Sent/Rcvd stands for, one field per mode band.
+      // Shown with the standard report as the PLACEHOLDER rather than the
+      // value, the same rule the logging fields themselves follow: an empty
+      // setting means "the standard one", so clearing it restores the
+      // default instead of storing a blank report.
+      _text(
+        key: 'defaultReport',
+        label: s.defaultReport.title,
+        icon: 'signal',
+        description: s.defaultReport.description,
+        value: settings.defaultReport,
+        placeholder: defaultRSTFor('SSB'),
+        target: 'logging-extended',
+      ),
+      _text(
+        key: 'defaultReportCW',
+        label: s.defaultReportCW.title,
+        icon: 'signal',
+        description: s.defaultReportCW.description,
+        value: settings.defaultReportCW,
+        placeholder: defaultRSTFor('CW'),
+        target: 'logging-extended',
+      ),
+      _text(
+        key: 'defaultReportFT8',
+        label: s.defaultReportFT8.title,
+        icon: 'signal',
+        description: s.defaultReportFT8.description,
+        value: settings.defaultReportFT8,
+        placeholder: defaultRSTFor('FT8'),
+        target: 'logging-extended',
+      ),
       // The mobile numbers row — irrelevant without an
       // on-screen keyboard, hence `environment: 'ios,android'`, filtered out
       // everywhere (not just Common Preferences) on desktop/web. Flagged
@@ -391,6 +444,14 @@ class LoggingSettingsGroup extends SettingsGroup {
         // $core.modes vocabularies, already in canonical order.
         if (value is List) {
           await settings.setSettingValue(SettingsService.loggingGroup, fieldKey, value.whereType<String>().toList());
+        }
+      case 'defaultReport' || 'defaultReportCW' || 'defaultReportFT8':
+        // Uppercased so a CW operator's "5nn" matches the rest of the
+        // logging fields, which are uppercase throughout; stored trimmed so a
+        // field holding only spaces reads as cleared and falls back to the
+        // standard report.
+        if (value is String) {
+          await settings.setSettingValue(SettingsService.loggingGroup, fieldKey, value.trim().toUpperCase());
         }
       default:
         if (value is bool) await settings.setSettingValue(SettingsService.loggingGroup, fieldKey, value);

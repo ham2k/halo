@@ -66,6 +66,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   late bool _showGridField = widget.services.settings.showGridField;
   late bool _showDeletedQSOs = widget.services.settings.showDeletedQSOs;
   late bool _showQsoNumbers = widget.services.settings.showQsoNumbers;
+  late String _defaultReport = widget.services.settings.defaultReport;
+  late String _defaultReportCW = widget.services.settings.defaultReportCW;
+  late String _defaultReportFT8 = widget.services.settings.defaultReportFT8;
 
   /// Gate for the drag-and-drop dock layout (DESIGN.md §7), replacing the
   /// wide arrangement's fixed split-plus-tabs with a user-arrangeable
@@ -314,7 +317,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         s.showStateField != _showStateField ||
         s.showGridField != _showGridField ||
         s.showDeletedQSOs != _showDeletedQSOs ||
-        s.showQsoNumbers != _showQsoNumbers;
+        s.showQsoNumbers != _showQsoNumbers ||
+        s.defaultReport != _defaultReport ||
+        s.defaultReportCW != _defaultReportCW ||
+        s.defaultReportFT8 != _defaultReportFT8;
     if (changed && mounted) {
       setState(() {
         _customLayout = enabled;
@@ -323,6 +329,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         _showGridField = s.showGridField;
         _showDeletedQSOs = s.showDeletedQSOs;
         _showQsoNumbers = s.showQsoNumbers;
+        _defaultReport = s.defaultReport;
+        _defaultReportCW = s.defaultReportCW;
+        _defaultReportFT8 = s.defaultReportFT8;
       });
     }
   }
@@ -1190,6 +1199,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             showStateField: _showStateField,
             showGridField: _showGridField,
             showQsoNumbers: _showQsoNumbers,
+            defaultReport: _defaultReport,
+            defaultReportCW: _defaultReportCW,
+            defaultReportFT8: _defaultReportFT8,
             ourEntityPrefix: _ourEntityPrefix,
             ourItuRegion: _ourItuRegion,
             ourCountryCode: _ourCountryCode,

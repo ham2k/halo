@@ -275,7 +275,72 @@ const List<String> adifModes = [
 
 const Set<String> _phoneModes = {'SSB', 'FM', 'AM'};
 
-String defaultRSTFor(String mode) => _phoneModes.contains(mode) ? '59' : '599';
+/// Modes whose report is a signal-to-noise figure in dB, not an RST at all —
+/// so neither the default nor [expandRST] has any business rewriting one.
+const Set<String> _snrModes = {'FT8', 'FT4', 'FT2'};
+
+/// Modes carrying the third, tone digit of a full R-S-T report. Phone drops
+/// it because a voice signal has no tone; the other digital modes are left
+/// with the three-digit default they have always had.
+const Set<String> _toneModes = {'CW', 'RTTY'};
+
+/// What an untouched report field stands for, in three bands the operator can
+/// each override in Logging settings ([phone] for SSB/FM/AM, [snr] for the FT
+/// modes, [cw] for CW/RTTY and every other digital mode).
+///
+/// The overrides only change the VALUE — which modes fall in which band, and
+/// what [expandRST] does with a partial report, are properties of the mode and
+/// stay fixed. A blank or missing override is not one: an operator who clears
+/// the field gets the standard report back rather than an empty default.
+String defaultRSTFor(String mode, {String? phone, String? cw, String? snr}) {
+  String pick(String? override, String standard) {
+    final value = override?.trim();
+    return (value == null || value.isEmpty) ? standard : value;
+  }
+
+  if (_snrModes.contains(mode)) return pick(snr, '+0');
+  return _phoneModes.contains(mode) ? pick(phone, '59') : pick(cw, '599');
+}
+
+/// Completes a report the operator only typed the significant part of: `5`
+/// becomes `55` on phone and `559` on CW, `57` becomes `579` on CW, and the
+/// aurora shorthand `A` becomes `59A`. Anything already three characters or
+/// more is theirs and comes back untouched.
+///
+/// Readability tracks strength because the two move together in practice: a
+/// signal at S1-S3 isn't fully readable, so a bare `2` means `32`, not `52`.
+///
+/// [_snrModes] opt out entirely — `-12` is a real report on FT8 and every
+/// rule below would mangle it.
+///
+/// Empty in, empty out: this completes what was typed and never invents a
+/// report, so a caller that wants the default asks [defaultRSTFor] for it.
+String expandRST(String text, String mode) {
+  text = text.trim();
+  if (text.isEmpty || _snrModes.contains(mode)) return text;
+
+  final tone = _toneModes.contains(mode);
+  if (text.length == 1) {
+    if (text == 'A') return '59A';
+    if (!_isDigit(text)) return text;
+    final strength = text;
+    final readability = switch (strength) {
+      '1' || '2' || '3' => '3',
+      '4' => '4',
+      _ => '5',
+    };
+    return tone ? '$readability${strength}9' : '$readability$strength';
+  }
+  if (text.length == 2 && tone) {
+    // "4A" is an aurora report missing its readability, not a report missing
+    // its tone — the A IS the tone, so the digit doubles instead.
+    if (text[1] == 'A') return '${text[0]}$text';
+    if (_isDigit(text[0]) && _isDigit(text[1])) return '${text}9';
+  }
+  return text;
+}
+
+bool _isDigit(String s) => s.codeUnitAt(0) >= 0x30 && s.codeUnitAt(0) <= 0x39;
 
 /// Voice modes for [superModeForMode] — mirrors @ham2k/lib-operation-data's
 /// PHONE_MODES. Broader than [_phoneModes] (which is only the RST-default set),

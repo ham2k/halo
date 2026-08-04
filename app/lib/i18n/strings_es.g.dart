@@ -900,6 +900,9 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$es showBearing = _Translations$settings$logging$showBearing$es._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$es switchSentRcvd = _Translations$settings$logging$switchSentRcvd$es._(_root);
 	@override late final _Translations$settings$logging$jumpAfterRST$es jumpAfterRST = _Translations$settings$logging$jumpAfterRST$es._(_root);
+	@override late final _Translations$settings$logging$defaultReport$es defaultReport = _Translations$settings$logging$defaultReport$es._(_root);
+	@override late final _Translations$settings$logging$defaultReportCW$es defaultReportCW = _Translations$settings$logging$defaultReportCW$es._(_root);
+	@override late final _Translations$settings$logging$defaultReportFT8$es defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$es._(_root);
 	@override late final _Translations$settings$logging$numbersRow$es numbersRow = _Translations$settings$logging$numbersRow$es._(_root);
 	@override late final _Translations$settings$logging$numbersRowExtra$es numbersRowExtra = _Translations$settings$logging$numbersRowExtra$es._(_root);
 	@override late final _Translations$settings$logging$numbersRowVibrate$es numbersRowVibrate = _Translations$settings$logging$numbersRowVibrate$es._(_root);
@@ -1364,6 +1367,39 @@ class _Translations$settings$logging$jumpAfterRST$es extends Translations$settin
 	@override String get title => 'Saltar al siguiente campo al ingresar RST';
 	@override String get descriptionOn => 'Saltar después de ingresar el RST';
 	@override String get descriptionOff => 'No saltar automáticamente';
+}
+
+// Path: settings.logging.defaultReport
+class _Translations$settings$logging$defaultReport$es extends Translations$settings$logging$defaultReport$en {
+	_Translations$settings$logging$defaultReport$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Reporte por defecto — Fonía';
+	@override String get description => 'Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM';
+}
+
+// Path: settings.logging.defaultReportCW
+class _Translations$settings$logging$defaultReportCW$es extends Translations$settings$logging$defaultReportCW$en {
+	_Translations$settings$logging$defaultReportCW$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Reporte por defecto — CW y datos';
+	@override String get description => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales';
+}
+
+// Path: settings.logging.defaultReportFT8
+class _Translations$settings$logging$defaultReportFT8$es extends Translations$settings$logging$defaultReportFT8$en {
+	_Translations$settings$logging$defaultReportFT8$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Reporte por defecto — FT8 y FT4';
+	@override String get description => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT';
 }
 
 // Path: settings.logging.numbersRow
@@ -1869,6 +1905,12 @@ extension on TranslationsEs {
 			'settings.logging.jumpAfterRST.title' => 'Saltar al siguiente campo al ingresar RST',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'Saltar después de ingresar el RST',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'No saltar automáticamente',
+			'settings.logging.defaultReport.title' => 'Reporte por defecto — Fonía',
+			'settings.logging.defaultReport.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM',
+			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
+			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
+			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
+			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
@@ -2034,14 +2076,14 @@ extension on TranslationsEs {
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
 			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',

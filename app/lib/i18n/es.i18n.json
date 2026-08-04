@@ -445,6 +445,18 @@
         "descriptionOn": "Saltar después de ingresar el RST",
         "descriptionOff": "No saltar automáticamente"
       },
+      "defaultReport": {
+        "title": "Reporte por defecto — Fonía",
+        "description": "Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM"
+      },
+      "defaultReportCW": {
+        "title": "Reporte por defecto — CW y datos",
+        "description": "Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales"
+      },
+      "defaultReportFT8": {
+        "title": "Reporte por defecto — FT8 y FT4",
+        "description": "Se usa cuando Enviado o Recibido quedan vacíos en los modos FT"
+      },
       "numbersRow": {
         "title": "Fila de Números",
         "description": "Muestra una fila de teclas numéricas sobre el teclado al registrar"

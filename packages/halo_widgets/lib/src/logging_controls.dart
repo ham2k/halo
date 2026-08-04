@@ -575,6 +575,18 @@ class LoggingControls extends StatefulWidget {
   final bool showStateField;
   final bool showGridField;
 
+  /// What an untouched Sent/Rcvd stands for, per mode band — the operator's
+  /// own overrides from Logging settings ([defaultReport] for phone,
+  /// [defaultReportCW] for CW/RTTY and the other data modes,
+  /// [defaultReportFT8] for the FT modes).
+  ///
+  /// Empty means "the standard report", which is [defaultRSTFor]'s own
+  /// fallback, so an unconfigured app and one whose settings were cleared
+  /// behave identically and neither has to name `59`/`599`/`+0` here.
+  final String defaultReport;
+  final String defaultReportCW;
+  final String defaultReportFT8;
+
   /// The mobile numbers row (issue #27) — a bar of digit keys floated above
   /// the on-screen keyboard while a logging field has focus. Only ever shown
   /// on mobile platforms with the keyboard up (see `_buildNumberKeys`).
@@ -692,6 +704,9 @@ class LoggingControls extends StatefulWidget {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.defaultReport = '',
+    this.defaultReportCW = '',
+    this.defaultReportFT8 = '',
     this.keyboardAccessory,
     this.showNumbersRow = false,
     this.showExtraInNumbersRow = true,
@@ -779,7 +794,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// tells a real edit from a bare cursor move. Same idiom, and the same
   /// reason, as `_lastTimeDateText`.
   String _lastFreqText = '';
-  bool _rstsTouched = false;
 
   /// Which secondary control (if any) currently has its input expanded.
   String? _selectedControlKey;
@@ -1593,7 +1607,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       menu: _modeMenuController,
       step: _stepModeSelection,
     );
-    _applyDefaultRSTs();
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
     // constructed with editingQso already set (rather than transitioning
@@ -1670,6 +1683,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (widget.editingQso == null && _freqController.text.trim().length > 3) {
             _pushVfoToRadioService();
           }
+        } else if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
+          // Show the operator what their shorthand became, at the moment they
+          // are done with the field — the save expands it either way
+          // (`_rstOrDefault`), so without this the record would carry a
+          // report the field never displayed.
+          final expanded = expandRST(controller.text, _mode);
+          if (expanded != controller.text) controller.text = expanded;
         }
         // A squeezed row hands the focused field its full width back
         // (`_resolveMainFieldLayout`), which can only happen if a focus change
@@ -1943,21 +1963,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// spot) — same wrapping as `_populateFromEditingQso`, for a QSO being
   /// composed rather than an existing one being edited.
   ///
-  /// Unlike `editingQso` (a real saved record, where a blank Sent/Rcvd
-  /// faithfully represents stored data), a suggestion composes a NEW QSO —
-  /// `_applyFieldsFromData` unconditionally blanks Sent/Rcvd when the
-  /// suggestion doesn't carry RST (spots never do today), which would
-  /// wipe out the normal new-QSO default RST and — via `_rstsTouched` —
-  /// suppress it from ever coming back on a mode change. If the suggestion
-  /// DID carry RST (`our.sent`/`their.sent` — e.g. a future deeplink), keep
-  /// it, matching `_applyFieldsFromData`'s own behavior for editingQso.
+  /// A suggestion that carries no RST (spots never do today) leaves the
+  /// fields blank, which is the composing default — `_rstPlaceholder` shows
+  /// through it. One that DOES carry RST (`our.sent`/`their.sent` — e.g. a
+  /// future deeplink) keeps it, matching `_applyFieldsFromData`'s own
+  /// behavior for editingQso.
   void _applySuggestedQso(Map<String, dynamic> data) {
     _populating = true;
     _applyFieldsFromData(data);
-    final our = data['our'] as Map<String, dynamic>? ?? const {};
-    final their = data['their'] as Map<String, dynamic>? ?? const {};
-    final hasRst = (our['sent'] as String?)?.isNotEmpty == true || (their['sent'] as String?)?.isNotEmpty == true;
-    if (!hasRst) _applyDefaultRSTs();
     _manualStartAtMillis = null;
     setState(() {});
     _populating = false;
@@ -2011,7 +2024,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _callController.text = (their['call'] as String?) ?? '';
     _sentController.text = (our['sent'] as String?) ?? '';
     _rcvdController.text = (their['sent'] as String?) ?? '';
-    _rstsTouched = true;
     // Only the entered value fills the field; a guess (their.guess) stays a
     // faint placeholder (see the Grid/State decorations) instead of being
     // pre-filled as if it were a confirmed value.
@@ -2130,9 +2142,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (vfo.mode != null && vfo.mode != _mode) {
       _mode = vfo.mode!;
-      // What `_setMode` and the setVfo command both do — without it a CW
-      // radio leaves the default RSTs at 59.
-      if (!_rstsTouched) _applyDefaultRSTs();
     }
   }
 
@@ -2208,7 +2217,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // setState — while still inside didUpdateWidget.
     _populating = true;
     _callController.clear();
-    _applyDefaultRSTs();
+    _clearRSTs();
     _gridController.clear();
     _stateController.clear();
     _gridTouched = false;
@@ -2526,32 +2535,57 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   void _onSentOrRcvdChanged() => setState(() {});
 
-  void _applyDefaultRSTs() {
-    _sentController.text = defaultRSTFor(_mode);
-    _rcvdController.text = defaultRSTFor(_mode);
-    _rstsTouched = false;
+  void _clearRSTs() {
+    _sentController.clear();
+    _rcvdController.clear();
   }
 
-  /// Sets `_mode` to a band-plan guess (HALO-32) and refreshes the untouched
-  /// default RSTs — shared by [_onFreqChanged] and the frequency-command
-  /// branch of [_dispatchActions], both of which need exactly this and
-  /// nothing more: unlike [_setMode], no immediate radio push (the caller's
-  /// own debounce, or its own batched push alongside freq/band, handles
-  /// that) and no rescore (the caller already schedules one for the
-  /// frequency/band change this guess rides along with). Callers must wrap
+  /// The report a blank Sent/Rcvd stands for, shown as a faint placeholder
+  /// while the field is empty rather than pre-filled as a real value — the
+  /// same "a default is not something the operator typed" rule the Grid and
+  /// State guesses follow, so overtyping it never means clearing it first.
+  ///
+  /// Null while editing a saved record: there a blank field is stored data,
+  /// not a stand-in, and filling it in would rewrite a QSO the operator only
+  /// opened to look at. [_rstPlaceholder] and [_rstOrDefault] read the same
+  /// condition on purpose — a hint that promised a value the save didn't
+  /// write would be worse than no hint.
+  String? get _rstPlaceholder => widget.editingQso == null ? _defaultRST : null;
+
+  String get _defaultRST => defaultRSTFor(
+        _mode,
+        phone: widget.defaultReport,
+        cw: widget.defaultReportCW,
+        snr: widget.defaultReportFT8,
+      );
+
+  /// Where a report becomes what actually gets stored: the placeholder if the
+  /// field is blank, otherwise the operator's own shorthand completed by
+  /// [expandRST] (`5` → `55`, `57` → `579` on CW). Every consumer — the log,
+  /// scoring, dupe checks, spotting, export — reads the RSTs through here.
+  ///
+  /// The expansion has to happen here as well as on losing focus: Enter never
+  /// blurs (§ "Enter and focus"), so the field the operator logs from is one
+  /// that never left focus, and a bare `5` would otherwise reach the record.
+  String _rstOrDefault(String text) => text.isEmpty ? (_rstPlaceholder ?? '') : expandRST(text, _mode);
+
+  /// Sets `_mode` to a band-plan guess (HALO-32) — shared by [_onFreqChanged]
+  /// and the frequency-command branch of [_dispatchActions], both of which
+  /// need exactly this and nothing more: unlike [_setMode], no immediate
+  /// radio push (the caller's own debounce, or its own batched push alongside
+  /// freq/band, handles that) and no rescore (the caller already schedules one
+  /// for the frequency/band change this guess rides along with). Callers must wrap
   /// this in their own `setState` (or already be inside one). A no-op when
   /// [mode] already matches `_mode`, so callers can call it unconditionally
   /// once they have a non-null guess.
   void _applyModeGuess(String mode) {
     if (mode == _mode) return;
     _mode = mode;
-    if (!_rstsTouched) _applyDefaultRSTs();
   }
 
   void _setMode(String mode) {
     setState(() {
       _mode = mode;
-      if (!_rstsTouched) _applyDefaultRSTs();
     });
     if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', mode: mode);
     // New Mode / New Band notices depend on the mode — rescore the candidate.
@@ -3268,7 +3302,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     TextCapitalization textCapitalization = TextCapitalization.none,
     TextInputFormatter? filter,
     String? hintText,
-    required ValueChanged<String> onChanged,
+    /// Only for a field that tracks whether the operator has touched it.
+    /// Typing already reaches the controller's own listeners, so a field with
+    /// nothing extra to record omits this rather than passing a no-op.
+    ValueChanged<String>? onChanged,
   }) {
     return AnimatedContainer(
       duration: duration,
@@ -4493,7 +4530,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // whole text.
               keyboardType: _numbersAndPunctuationOnIOS,
               filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-              onChanged: (_) => _rstsTouched = true,
+              hintText: _rstPlaceholder,
             ),
           ),
           (
@@ -4512,7 +4549,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // Same letter-friendly rule as Sent above.
               keyboardType: _numbersAndPunctuationOnIOS,
               filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-              onChanged: (_) => _rstsTouched = true,
+              hintText: _rstPlaceholder,
             ),
           ),
         ],
@@ -4936,15 +4973,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// writes the controller value directly, which fires the controller
   /// listeners (lookup/dupe/rebuild) but NOT the TextField's `onChanged` — so
   /// the "touched" flags those onChanged handlers set are replicated here,
-  /// else a tapped digit wouldn't mark RST/Grid/State as user-edited.
+  /// else a tapped digit wouldn't mark Grid/State as user-edited.
   void _handleNumberKey(String key) {
     final field = _focusedNumberField;
     if (field == null || _fieldsLocked) return;
     final (focus, controller) = field;
     _insertAtCursor(controller, key);
-    if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
-      _rstsTouched = true;
-    } else if (identical(focus, _gridFocus)) {
+    if (identical(focus, _gridFocus)) {
       _gridTouched = true;
     } else if (identical(focus, _stateFocus)) {
       _stateTouched = true;
@@ -5005,7 +5040,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           }
           if (mode is String) {
             _mode = mode;
-            if (!_rstsTouched) _applyDefaultRSTs();
           } else if (freq is num) {
             // HALO-32: the frequency command (typing "14285 " into the call
             // field) doesn't carry a mode of its own — guess it from the
@@ -5150,7 +5184,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       'our': {
         ...?(base['our'] as Map<String, dynamic>?),
         'call': widget.operation.stationCall,
-        'sent': _sentController.text.trim(),
+        'sent': _rstOrDefault(_sentController.text.trim()),
       },
       'their': {
         ...?(base['their'] as Map<String, dynamic>?),
@@ -5169,7 +5203,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
         if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
         'call': call,
-        'sent': _rcvdController.text.trim(),
+        'sent': _rstOrDefault(_rcvdController.text.trim()),
         // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
         // CallInfo, lookups?: CallInfoLookup[]}`, @ham2k/lib-qson-tools) and
         // app-polo's convention: the merged lookup guess stays NESTED under
@@ -5210,8 +5244,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name', 'placeholder': guess?['name'] as String?},
         {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true, 'placeholder': guess?['grid'] as String?},
         {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true, 'placeholder': guess?['state'] as String?},
-        {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent', 'uppercase': true},
-        {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd', 'uppercase': true},
+        // Same blank-means-the-default rule as the Sent/Rcvd row, so the pane
+        // never shows a report the row is only standing in for.
+        {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent', 'uppercase': true, 'placeholder': _rstPlaceholder},
+        {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd', 'uppercase': true, 'placeholder': _rstPlaceholder},
         {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
         {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
         {
@@ -5302,7 +5338,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _stateController.text = state;
       _sentController.text = (result['sent'] as String?) ?? '';
       _rcvdController.text = (result['rcvd'] as String?) ?? '';
-      _rstsTouched = true;
 
       final freq = result['freq'];
       if (freq is num) {
@@ -5770,7 +5805,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _wipe() {
     _settlePendingFreqEdit();
     _callController.clear();
-    _applyDefaultRSTs();
+    _clearRSTs();
     _gridController.clear();
     _stateController.clear();
     _theirNameOverride = null;
@@ -6219,7 +6254,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           'their': {
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
             'call': call,
-            'sent': _rcvdController.text.trim(),
+            'sent': _rstOrDefault(_rcvdController.text.trim()),
             if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
             // Same normalization as _getCurrentQsoData: canonical Maidenhead
             // casing for grids, uppercase for states.

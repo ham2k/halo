@@ -626,6 +626,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   bool _loggingBool(String key, bool fallback) => (settingValue(loggingGroup, key) as bool?) ?? fallback;
 
+  String _loggingString(String key) => ((settingValue(loggingGroup, key) as String?) ?? '').trim();
+
   /// Exports panel's settings. Handed to the export hooks, which build their
   /// filenames from it (`exportFilename` in the extension SDK) — so it takes
   /// effect on the names the panel LISTS, not just the files it writes.
@@ -744,6 +746,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   bool get showBearing => _loggingBool('showBearing', false);
   bool get switchSentRcvd => _loggingBool('switchSentRcvd', false);
   bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
+
+  /// The report an untouched Sent/Rcvd field stands for, per mode band —
+  /// `5NN` instead of `599` for a CW operator, `+00` instead of `+0`.
+  ///
+  /// Empty here means "the standard report", which is what [defaultRSTFor]
+  /// resolves them against; storing the standard values as the defaults would
+  /// bake today's constants into every install's preferences.
+  String get defaultReport => _loggingString('defaultReport');
+  String get defaultReportCW => _loggingString('defaultReportCW');
+  String get defaultReportFT8 => _loggingString('defaultReportFT8');
 
   /// The mobile "numbers row" — a bar of digit keys the logging panel floats
   /// above the on-screen keyboard while a logging field has focus.

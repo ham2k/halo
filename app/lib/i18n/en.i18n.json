@@ -445,6 +445,18 @@
         "descriptionOn": "Jump after RST is entered",
         "descriptionOff": "Don't jump automatically"
       },
+      "defaultReport": {
+        "title": "Default report — Phone",
+        "description": "Used when Sent or Rcvd is left empty on SSB, FM or AM"
+      },
+      "defaultReportCW": {
+        "title": "Default report — CW and data",
+        "description": "Used when Sent or Rcvd is left empty on CW, RTTY and other data modes"
+      },
+      "defaultReportFT8": {
+        "title": "Default report — FT8 and FT4",
+        "description": "Used when Sent or Rcvd is left empty on the FT modes"
+      },
       "numbersRow": {
         "title": "Numbers Row",
         "description": "Show a row of number keys above the keyboard while logging"

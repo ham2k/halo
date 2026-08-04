@@ -293,7 +293,74 @@ void main() {
       expect(defaultRSTFor('SSB'), '59');
       expect(defaultRSTFor('FM'), '59');
       expect(defaultRSTFor('CW'), '599');
-      expect(defaultRSTFor('FT8'), '599');
+      expect(defaultRSTFor('PSK31'), '599');
+    });
+
+    test('the operator overrides the value, never which band a mode is in', () {
+      expect(defaultRSTFor('CW', cw: '5NN'), '5NN');
+      expect(defaultRSTFor('RTTY', cw: '5NN'), '5NN', reason: 'RTTY shares the CW band');
+      expect(defaultRSTFor('SSB', cw: '5NN'), '59', reason: 'the CW override must not reach phone');
+      expect(defaultRSTFor('FT8', snr: '+00'), '+00');
+    });
+
+    test('a blank override is not an override', () {
+      // Clearing the setting has to restore the standard report — an operator
+      // who empties the field would otherwise log a blank one forever.
+      expect(defaultRSTFor('CW', cw: ''), '599');
+      expect(defaultRSTFor('CW', cw: '   '), '599');
+      expect(defaultRSTFor('SSB', phone: null), '59');
+    });
+
+    test('the FT modes report signal-to-noise, not RST', () {
+      // A three-digit RST on FT8 is meaningless — the exchange is a dB
+      // figure, and 599 is what gets exported to a mode nobody sends it in.
+      expect(defaultRSTFor('FT8'), '+0');
+      expect(defaultRSTFor('FT4'), '+0');
+    });
+  });
+
+  group('expandRST', () {
+    test('a lone strength digit gains the readability that goes with it', () {
+      // Readability is not always 5: a signal at S1-S3 is not fully readable,
+      // so a bare 2 means 32 — the point of the expansion is to save typing
+      // the digit an operator would have typed anyway, not to guess wrong.
+      expect(expandRST('5', 'SSB'), '55');
+      expect(expandRST('9', 'SSB'), '59');
+      expect(expandRST('4', 'SSB'), '44');
+      expect(expandRST('2', 'SSB'), '32');
+      expect(expandRST('5', 'CW'), '559');
+      expect(expandRST('2', 'CW'), '329');
+    });
+
+    test('the tone digit is filled in for CW and RTTY only', () {
+      expect(expandRST('57', 'CW'), '579');
+      expect(expandRST('57', 'RTTY'), '579');
+      // Phone has no tone to report, and no other digital mode claims one
+      // here — only the two the operator actually sends a T in.
+      expect(expandRST('57', 'SSB'), '57');
+      expect(expandRST('57', 'PSK31'), '57');
+    });
+
+    test('aurora reports keep their A instead of gaining a tone', () {
+      expect(expandRST('A', 'CW'), '59A');
+      expect(expandRST('4A', 'CW'), '44A');
+      expect(expandRST('34A', 'CW'), '34A');
+    });
+
+    test('the FT modes are left entirely alone', () {
+      // -12 and +0 are real reports there; every rule above would mangle one.
+      expect(expandRST('-12', 'FT8'), '-12');
+      expect(expandRST('5', 'FT8'), '5');
+      expect(expandRST('-5', 'FT4'), '-5');
+    });
+
+    test('a complete report, and an empty field, come back untouched', () {
+      expect(expandRST('599', 'CW'), '599');
+      expect(expandRST('5NN', 'CW'), '5NN');
+      // Empty never becomes a default here — that is defaultRSTFor's job, and
+      // conflating them would have a blurred empty field fill itself in.
+      expect(expandRST('', 'CW'), '');
+      expect(expandRST('', 'SSB'), '');
     });
   });
 

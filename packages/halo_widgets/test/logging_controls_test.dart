@@ -85,6 +85,7 @@ void main() {
     String? bandOrFreqRequiredLabel,
     int? ourItuRegion,
     String? ourCountryCode,
+    String defaultReportCW = '',
   }) {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
@@ -118,6 +119,7 @@ void main() {
       sendSpot: sendSpot,
       showStateField: showStateField,
       showGridField: showGridField,
+      defaultReportCW: defaultReportCW,
       showNumbersRow: showNumbersRow,
       showExtraInNumbersRow: showExtraInNumbersRow,
       vibrateNumbersRow: vibrateNumbersRow,
@@ -1484,9 +1486,10 @@ void main() {
     expect(logged.single.sentRST, '57'); // the touched RST applied to the logged QSO
 
     // The field now holds the remainder, but the touched RST is gone —
-    // wiped back to the mode default, same as an ordinary log.
+    // wiped back to blank-means-the-default, same as an ordinary log.
     final sentField = tester.widget<TextField>(find.widgetWithText(TextField, 'Sent'));
-    expect(sentField.controller!.text, '59');
+    expect(sentField.controller!.text, isEmpty);
+    expect(sentField.decoration!.hintText, '59');
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, 'K1ABC');
   });
@@ -3590,7 +3593,7 @@ void main() {
 
     // Sent's own filter also strips spaces — the interceptor has to run there
     // too, or Space would be a dead key in every field but Call.
-    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59 ');
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), ' ');
     await tester.pump();
     expect(field('Rcvd').focusNode!.hasFocus, isTrue);
   });
@@ -4139,11 +4142,11 @@ void main() {
     await tester.pump();
     expect(field('Sent').focusNode!.hasFocus, isTrue);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59 ');
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), ' ');
     await tester.pump();
     expect(field('Rcvd').focusNode!.hasFocus, isTrue);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '59 ');
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), ' ');
     await tester.pump();
     expect(field('State').focusNode!.hasFocus, isTrue, reason: 'space advances Rcvd → State');
 
@@ -4273,9 +4276,9 @@ void main() {
     expect(field('Frequency').controller!.text, '14285');
     expect(find.text('20m'), findsWidgets);
 
-    // Mode command switches mode and resets untouched RSTs.
+    // Mode command switches mode, and the RST placeholder follows it.
     await command('CW');
-    expect(field('Sent').controller!.text, '599');
+    expect(field('Sent').decoration!.hintText, '599');
 
     // Band command overrides band and clears the frequency.
     await command('40M');
@@ -4308,7 +4311,8 @@ void main() {
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '+0',
+        reason: 'FT8 exchanges a signal-to-noise figure, not an RST');
   });
 
   // Enter must never cost the operator the field they were typing in. The
@@ -4729,8 +4733,8 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14074');
     await tester.pump();
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599',
-        reason: 'the mode guess refreshes the untouched default RST too');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '+0',
+        reason: 'the mode guess refreshes the default report placeholder too');
 
     // 5332 kHz (a 60m channel) is a frequency the band plan has no single
     // mode for. Both edits happen inside the same continuous session (the
@@ -5867,7 +5871,7 @@ void main() {
     // the pending push then sent the panel's stale SSB back at the rig,
     // taking it out of CW and logging the QSO as USB at 59.
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '599');
 
     await tester.pump(const Duration(seconds: 6));
     expect(fakeRadio.vfoA.mode, 'CW', reason: 'the push must not undo the mode change');
@@ -6000,18 +6004,18 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7040');
   });
 
-  testWidgets('a radio mode change refreshes the untouched default RSTs', (tester) async {
+  testWidgets('a radio mode change refreshes the default RST placeholder', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
     await tester.pumpWidget(host(radioService: fakeRadio));
     await openControl(tester, MdiIcons.radio);
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '59');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '59');
 
     fakeRadio.setVfo('vfoA', freq: 14030, mode: 'CW');
     await tester.pumpAndSettle();
 
-    // Seeding used to set the mode without re-deriving the RSTs, so a CW
-    // radio left 59 sitting in the report fields.
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599');
+    // A seed that sets the mode without rebuilding the fields leaves 59
+    // standing in for a CW report — and 59 is what then gets logged.
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '599');
   });
 
   testWidgets('a radio mode change leaves an RST the operator edited alone', (tester) async {
@@ -6026,6 +6030,130 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '57');
+  });
+
+  // The default report is a placeholder, never real text: an operator reaching
+  // for Sent to give a true 57 must be able to type it, not clear a pre-filled
+  // 59 first. What gets LOGGED is unchanged — the default becomes real on the
+  // way out, so nothing downstream (export, scoring, LoTW) ever sees a blank
+  // report.
+  testWidgets('HALO-83: a blank RST shows the mode default as a placeholder and logs it as a real value',
+      (tester) async {
+    await tester.pumpWidget(host());
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    expect(field('Sent').controller!.text, isEmpty, reason: 'the default must not be pre-filled');
+    expect(field('Rcvd').controller!.text, isEmpty);
+    expect(field('Sent').decoration!.hintText, '59');
+    expect(field('Rcvd').decoration!.hintText, '59');
+
+    // One keystroke replaces the default outright — the thing a pre-filled
+    // "59" costs you.
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.sentRST, '57', reason: 'a typed report wins over the default');
+    expect(logged.single.receivedRST, '59', reason: 'the untouched placeholder is what gets stored');
+  });
+
+  testWidgets('HALO-83: a shorthand report is completed when focus leaves the field', (tester) async {
+    await tester.pumpWidget(host());
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '5');
+    await tester.pump();
+    expect(field('Sent').controller!.text, '5', reason: 'never mid-keystroke — 5 could still be becoming 57');
+
+    // Space is the ordinary way out of a report field.
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '5 ');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'test setup');
+    expect(field('Sent').controller!.text, '55');
+  });
+
+  testWidgets('HALO-83: the report the operator logs from is completed too, though Enter never blurs it',
+      (tester) async {
+    // The trap: expanding only on blur (which is all PoLo does, where Enter
+    // DOES blur) leaves the very field the operator submitted from carrying a
+    // bare "5" into the record — and it is the last field they touch, so it is
+    // the commonest one.
+    await tester.pumpWidget(host());
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '4');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.receivedRST, '44');
+  });
+
+  testWidgets('HALO-83: on CW a shorthand report gains its tone digit', (tester) async {
+    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'CW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '5');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.mode, 'CW', reason: 'test setup');
+    expect(logged.single.sentRST, '579');
+    expect(logged.single.receivedRST, '559');
+  });
+
+  testWidgets('HALO-83: the operator\'s own default report replaces the standard one', (tester) async {
+    // A CW operator sending "5NN" wants that in the log, not 599 — and the
+    // placeholder has to show what will actually be stored, or the setting is
+    // invisible until the QSO is already logged.
+    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand, defaultReportCW: '5NN'));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    expect(field('Sent').decoration!.hintText, '59', reason: 'test setup: still on phone');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'CW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(field('Sent').decoration!.hintText, '5NN');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.sentRST, '5NN');
+    expect(logged.single.receivedRST, '5NN');
+  });
+
+  testWidgets('HALO-83: editing a saved QSO with no RST does not invent one', (tester) async {
+    // A blank field on a saved record is stored data, not a stand-in — filling
+    // it in would rewrite a QSO the operator only opened to look at, and the
+    // hint has to stay away for the same reason (it would promise a value the
+    // save never writes).
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7100,
+          'mode': 'SSB',
+        })))!;
+    await tester.pumpWidget(host(editingQso: existingQso));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    expect(field('Sent').controller!.text, isEmpty);
+    expect(field('Sent').decoration!.hintText, isNull);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.sentRST, anyOf(isNull, isEmpty));
+    expect(logged.single.receivedRST, anyOf(isNull, isEmpty));
   });
 
   testWidgets('a brand new operation sees the same vfoA as any other — it is not per-operation', (tester) async {

@@ -56,6 +56,14 @@ class LoggingPanel extends StatefulWidget {
   final bool showStateField;
   final bool showGridField;
   final bool showQsoNumbers;
+
+  /// The report an empty Sent/Rcvd stands for, per mode band (Logging
+  /// settings). Empty means "the standard one" — `defaultRSTFor` resolves
+  /// them, so nothing here has to know what the standard reports are.
+  final String defaultReport;
+  final String defaultReportCW;
+  final String defaultReportFT8;
+
   final String? ourEntityPrefix;
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
@@ -92,6 +100,9 @@ class LoggingPanel extends StatefulWidget {
     this.showStateField = false,
     this.showGridField = false,
     this.showQsoNumbers = true,
+    this.defaultReport = '',
+    this.defaultReportCW = '',
+    this.defaultReportFT8 = '',
     this.ourEntityPrefix,
     this.ourItuRegion,
     this.ourCountryCode,
@@ -652,6 +663,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             showRSTFields: widget.showRSTFields,
             showStateField: widget.showStateField,
             showGridField: widget.showGridField,
+            defaultReport: widget.defaultReport,
+            defaultReportCW: widget.defaultReportCW,
+            defaultReportFT8: widget.defaultReportFT8,
             keyboardAccessory: widget.services.keyboardAccessory,
             showNumbersRow: _showNumbersRow,
             showExtraInNumbersRow: _showExtraInNumbersRow,
