@@ -57,6 +57,30 @@ void main() {
       expect(sink.readings, [const VfoReading(freqKHz: 14074)]);
     });
 
+    group('expectedUpdateInterval', () {
+      // Nothing in CI-V asks whether transceive is on, so the driver has to
+      // notice. Getting it wrong is invisible either way — readings arrive —
+      // but Smart VFO Snap adds this to its settle delay, so claiming the
+      // 5s poll on a radio that announces in milliseconds makes the feature
+      // feel broken, and claiming none when the poll IS the cadence settles
+      // a snap in the silence between polls.
+      test('claims the poll rate until the radio proves it announces', () {
+        expect(session.expectedUpdateInterval, const Duration(seconds: 5));
+        // An answer to OUR read (0x03) proves nothing about transceive.
+        feed([0xFE, 0xFE, us, ic705, 0x03, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
+        expect(session.expectedUpdateInterval, const Duration(seconds: 5));
+      });
+
+      test('stops claiming one as soon as the radio announces on its own', () {
+        feed([0xFE, 0xFE, 0x00, ic705, 0x00, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
+        expect(session.expectedUpdateInterval, isNull);
+        // Transceive is a menu setting, not something that lapses between
+        // frames — a later poll answer must not take the claim back.
+        feed([0xFE, 0xFE, us, ic705, 0x03, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
+        expect(session.expectedUpdateInterval, isNull);
+      });
+    });
+
     test('mode comes through, filter byte and all', () {
       feed([0xFE, 0xFE, us, ic705, 0x04, 0x03, 0x01, 0xFD]);
       expect(sink.readings, [const VfoReading(mode: 'CW')]);

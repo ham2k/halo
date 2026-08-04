@@ -860,7 +860,26 @@ class CatService extends ChangeNotifier {
     // Read per reading, not cached: the operator tuning this setting is
     // turning the knob to feel the difference, and a cached period would make
     // the change take effect only after a reconnect.
-    _snapTimer = Timer(_settings.smartVfoSnapDebounce, _settleSnap);
+    _snapTimer = Timer(_snapQuietPeriod, _settleSnap);
+  }
+
+  /// How long the VFO must hold still before [_settleSnap] believes it.
+  ///
+  /// The operator's setting is how long a SETTLED VFO should sit before the
+  /// app acts. On a polling session that is not the same as how long the app
+  /// must wait: between polls no readings arrive whether the dial is still or
+  /// spinning, so the first poll period carries no information at all. Adding
+  /// it means the delay always measures silence we could have heard something
+  /// in — and a pushing session (`expectedUpdateInterval` null) adds nothing,
+  /// because there every quiet millisecond is evidence.
+  ///
+  /// Read at arming time, from the cadence in force DURING the movement —
+  /// AdaptivePoller is at its fast interval then, having just seen a change.
+  /// Re-reading it later would chase the back-off the moment the dial stops.
+  Duration get _snapQuietPeriod {
+    final configured = _settings.smartVfoSnapDebounce;
+    final expected = _runtimes[_radio1]?.session?.expectedUpdateInterval;
+    return expected == null ? configured : configured + expected;
   }
 
   /// Abandons any pending snap and takes [freqKHz] as the new resting point.

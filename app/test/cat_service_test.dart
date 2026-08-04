@@ -156,6 +156,11 @@ class _FakeSession implements EquipmentSession {
   @override
   void setMode(String mode) => log.add('setMode:$mode');
 
+  /// Pushes, like the FlexRadio this fake stands in for — so nothing
+  /// here has to reason about a poll cadence.
+  @override
+  Duration? get expectedUpdateInterval => null;
+
   @override
   void teardown() {
     log.add('teardown');

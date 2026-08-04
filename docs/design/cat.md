@@ -433,6 +433,45 @@ adjustment, too long leaves the frequency jumping after the operator has moved o
 field. It is read per reading, so changing it takes effect on the next turn of the knob rather than
 at the next reconnect.
 
+**On a polling session the driver's own cadence is added to it.** The setting means "how long a
+settled VFO should sit before the app acts", and on a radio that has to be asked, that is not how
+long the app must wait: between polls no readings arrive whether the dial is still or spinning, so
+the first poll period is silence carrying no information. `EquipmentSession.expectedUpdateInterval`
+is what each driver contributes. Null — FlexRadio, and CI-V once transceive proves itself — is a
+different claim from a short interval: it says every quiet millisecond is evidence, so nothing is
+added.
+
+**A backstop is not a cadence, and telling them apart is the whole difficulty.** Three of these
+drivers poll *and* expect to be pushed to, precisely because the radio-side setting that does the
+pushing (Yaesu `AI1;`, Icom transceive) cannot be read back:
+
+| driver | reports | contributes |
+|---|---|---|
+| flrig, rigctld | poll only — these servers push nothing at all | `AdaptivePoller.interval` |
+| FT-891 | `AI1;` pushes, poll is the backstop | `AdaptivePoller.interval` |
+| Icom CI-V | transceive pushes, the 5 s poll is the backstop | 5 s **until an unsolicited frame arrives**, null after |
+| FlexRadio | streams; the 60 s resync is the backstop | null |
+
+Measured on a bench IC-705 over both WiFi and serial, updates arrive far faster than the 5 s poll —
+transceive is on, and reading `_pollInterval` as the cadence would charge the snap five seconds on
+the hardware it works best on. So CI-V decides from what it sees: command `0x00` is the radio
+announcing on its own, `0x03` is an answer to our read, and only the former proves anything. The
+claim is one-way — transceive is a menu setting, not something that lapses between frames.
+
+Two details worth not rediscovering:
+
+- **The interval is read when the timer is ARMED, from the cadence in force during the movement.**
+  `AdaptivePoller` is at its fast interval then, having just seen a change (both poll drivers call
+  `noteChange()` *before* handing the reading up), and eases off the moment the dial stops — so
+  re-reading it when the timer fires would chase the back-off and settle later and later. The 3 s
+  slow interval can therefore never be added: a radio quiet enough to reach it has no burst open.
+- **FlexRadio's 60 s resync is not a cadence either.** Keying anything to it would treat a live
+  stream as a once-a-minute poll and add a minute to every snap.
+
+What this actually buys, in practice, is **200 ms** — `kPollFast` — on the drivers that are really
+polling while the dial moves. Small against a 300 ms delay, and worth having only because the
+alternative is settling inside a silence that proves nothing.
+
 All four are `select` fields over preset values rather than free-entry numbers: trying one is a
 single tap, and no half-typed value is ever committed and acted on. They sit in the
 `current-radio-extended` bucket, behind the tune dialog's "show more settings", and are **developer
@@ -465,9 +504,8 @@ is not on. `settle()` takes its own answer as the new resting point, so the radi
 the snap reads as no movement rather than as the start of another one.
 
 **A polled radio reports a whole knob turn as one jump.** The FT-891 and the CI-V drivers report
-every few seconds, so distance decides alone (see the unmeasurable-speed rule above). What they
-cannot do is tell a still-turning knob from a settled one, so on those radios a snap can land
-mid-turn; the operator's next move overrides it.
+every few seconds, so distance decides alone (see the unmeasurable-speed rule above). Telling a
+still-turning knob from a settled one is what the added poll period above buys.
 
 **A restated frequency is not movement.** Every polled driver calls `report` on each poll whether or
 not the value changed, and `AdaptivePoller`'s fast cadence is 200 ms — shorter than any settle delay
@@ -501,9 +539,10 @@ superseded sentinel of its own, or a retry storm ends up fighting the user.
 
 Next, in order:
 
-1. **Hardening** — a manager-level staleness watchdog (`lastExchangeAt` plus a per-driver expected
-   update interval) rather than each driver hand-rolling a resync timer; reconnect with a
-   superseded sentinel.
+1. **Hardening** — a manager-level staleness watchdog rather than each driver hand-rolling a resync
+   timer. Half its input already exists: `EquipmentSession.expectedUpdateInterval` is the per-driver
+   cadence Smart VFO Snap added, so the watchdog needs `lastExchangeAt` beside it rather than a
+   number of its own. Also: reconnect with a superseded sentinel.
 2. **A second driver for breadth** — Hamlib `rigctld` over TCP. Same transport, a completely
    different protocol, so it is what actually validates the driver abstraction, and it buys
    hundreds of radios for one codec.

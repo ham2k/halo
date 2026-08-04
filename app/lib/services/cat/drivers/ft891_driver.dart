@@ -190,6 +190,13 @@ class Ft891Session implements EquipmentSession {
     _send(buildAutoInformationCommand(false));
   }
 
+
+  /// The poller's CURRENT cadence, not its floor: it runs fast while the
+  /// dial is moving and eases off when it isn't, and a caller asking "how
+  /// long until I'd hear about a change" wants whichever is in force now.
+  @override
+  Duration? get expectedUpdateInterval => _poller.interval;
+
   @override
   void teardown() {
     // Via stopUpdates, so "stop talking to the radio" is written once.

@@ -255,6 +255,14 @@ class FlexRadioSession implements EquipmentSession {
     if (_handshakeDone) _sendCommand('unsub slice all');
   }
 
+  /// Null, and NOT [_resyncInterval]: this radio pushes a slice status the
+  /// moment the dial moves, so a quiet VFO is a still one. The 60 s resync
+  /// is a backstop against a missed push, not the rate at which movement is
+  /// reported — keying anything to it would treat a live stream as if it
+  /// were a once-a-minute poll.
+  @override
+  Duration? get expectedUpdateInterval => null;
+
   @override
   void teardown() {
     _stopResyncTimer();

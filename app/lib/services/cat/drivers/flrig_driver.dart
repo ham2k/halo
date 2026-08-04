@@ -242,6 +242,13 @@ class FlrigSession implements EquipmentSession {
   @override
   void stopUpdates() => _poller.stop();
 
+
+  /// The poller's CURRENT cadence, not its floor: it runs fast while the
+  /// dial is moving and eases off when it isn't, and a caller asking "how
+  /// long until I'd hear about a change" wants whichever is in force now.
+  @override
+  Duration? get expectedUpdateInterval => _poller.interval;
+
   @override
   void teardown() {
     // flrig holds no per-client state; stopping the poll is the farewell.

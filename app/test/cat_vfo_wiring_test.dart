@@ -126,6 +126,11 @@ class _FakeSession implements EquipmentSession {
     if (throwOnSet || throwOnSetMode) throw StateError('driver blew up');
     commands.add('mode:$mode');
   }
+  /// Pushes, like the FlexRadio this fake stands in for — so nothing
+  /// here has to reason about a poll cadence.
+  @override
+  Duration? get expectedUpdateInterval => null;
+
   var tornDown = false;
 
   @override

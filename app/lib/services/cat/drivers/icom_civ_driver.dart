@@ -174,6 +174,15 @@ class IcomCivSession implements EquipmentSession {
     }
     if (frame.isAck) return;
 
+    // The radio announcing on its own settles a question nothing in CI-V
+    // lets us ask: whether transceive is on. From here the dial is reported
+    // as it moves, so the poll is only the backstop it was written to be —
+    // see [expectedUpdateInterval]. One-way, because transceive is a menu
+    // setting, not something that lapses.
+    if (frame.command == CivCommand.transceiveFrequency || frame.command == CivCommand.transceiveMode) {
+      _sawTransceive = true;
+    }
+
     switch (frame.command) {
       // 0x00/0x03 are the same payload: an unsolicited announcement and an
       // answer to our read.
@@ -217,6 +226,23 @@ class IcomCivSession implements EquipmentSession {
 
   @override
   void stopUpdates() => _stopPolling();
+
+  /// Whether the radio has ever announced a change on its own — see
+  /// [handleData].
+  bool _sawTransceive = false;
+
+  /// Null once transceive has proved itself, [_pollInterval] until then.
+  ///
+  /// Reporting the poll rate outright would be reading a backstop as a
+  /// cadence: with transceive on — the default, and what a bench IC-705 does
+  /// on both WiFi and serial — the dial is announced as it moves, and
+  /// charging Smart VFO Snap five seconds for a radio that answers in
+  /// milliseconds makes the feature feel broken on the hardware it works
+  /// best on. The other direction is just as wrong, so this is measured
+  /// rather than assumed: with transceive OFF the poll IS the cadence, and
+  /// claiming otherwise settles a snap in the silence between polls.
+  @override
+  Duration? get expectedUpdateInterval => _sawTransceive ? null : _pollInterval;
 
   @override
   void teardown() => _stopPolling();

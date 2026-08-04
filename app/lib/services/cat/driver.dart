@@ -57,6 +57,23 @@ abstract class EquipmentSession {
   /// abandoned sessions accumulating on an IC-705 until it refused new
   /// connections — surviving a power cycle.
   void teardown();
+
+  /// How long the manager should expect to wait to hear about a change the
+  /// operator has already made — the poll period, live, on a session that
+  /// polls. **Null on a session that pushes**, which is a different claim
+  /// from a short interval: it says a change is reported as it happens, so
+  /// silence means the radio is not moving.
+  ///
+  /// The manager cannot infer this. Every session looks the same from
+  /// outside — readings arrive — and the difference between "nothing has
+  /// happened" and "nobody has asked yet" is invisible until a driver says
+  /// which it is. Smart VFO Snap needs it to know when a quiet VFO is
+  /// actually a settled one (docs/design/cat.md § Smart VFO Snap); the
+  /// staleness watchdog wants the same number.
+  ///
+  /// No default: `implements` would ignore one anyway, and a driver that
+  /// forgets to answer would silently claim to push.
+  Duration? get expectedUpdateInterval;
 }
 
 abstract class EquipmentDriver {

@@ -11,6 +11,8 @@
 // tested yet.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
@@ -112,4 +114,43 @@ void main() {
       expect(offered, [4800, 9600], reason: 'narrowed to the allowed subset, in the transport\'s own order');
     });
   });
+
+  group('expectedUpdateInterval', () {
+    // Which drivers PUSH state as it changes and which have to ask, as each
+    // one is BEFORE it has heard anything. Spelled out rather than derived,
+    // because a driver answering the wrong one is invisible: readings arrive
+    // either way. Smart VFO Snap adds the interval to its settle delay, so a
+    // pusher that claims a cadence slows every snap on that radio by it, and
+    // a poller that claims none settles during the silence between polls and
+    // snaps mid-turn (docs/design/cat.md § Smart VFO Snap).
+    //
+    // CI-V belongs on the polling side HERE and only here: transceive can't
+    // be read back, so a fresh session assumes the poll and drops the claim
+    // once the radio announces on its own (cat_icom_civ_test.dart).
+    const pushes = {'flexradio'};
+
+    for (final type in registry.types) {
+      test('${type.key} — ${pushes.contains(type.driver.key) ? 'pushes' : 'polls'}', () {
+        final session = type.driver.createSession(_SilentSink(), type.defaultConfig);
+        addTearDown(session.teardown);
+        final interval = session.expectedUpdateInterval;
+
+        if (pushes.contains(type.driver.key)) {
+          expect(interval, isNull, reason: 'a pushing driver reports changes as they happen');
+        } else {
+          expect(interval, isNotNull, reason: 'a polling driver must say how long silence proves nothing');
+          expect(interval, greaterThan(Duration.zero));
+        }
+      });
+    }
+  });
+}
+
+/// Enough of a sink to construct a session. Nothing here sends or reads —
+/// these tests only ask a session to describe itself.
+class _SilentSink implements EquipmentSink {
+  @override
+  void send(List<int> bytes) {}
+  @override
+  void report(VfoReading reading) {}
 }

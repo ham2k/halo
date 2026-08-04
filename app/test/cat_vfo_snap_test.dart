@@ -87,6 +87,12 @@ class _FakeSession implements EquipmentSession {
   final EquipmentSink sink;
   final List<String> commands = [];
 
+  /// Null is a session that pushes (FlexRadio); a duration is one that polls
+  /// at that cadence. Mutable because AdaptivePoller's is, and because the
+  /// manager is supposed to read it fresh each time it arms.
+  @override
+  Duration? expectedUpdateInterval;
+
   _FakeSession(this.sink);
 
   void radioReports({double? freqKHz, String? mode}) => sink.report(VfoReading(freqKHz: freqKHz, mode: mode));
@@ -458,6 +464,52 @@ void main() {
         async.elapse(const Duration(milliseconds: 500));
       });
       expect(session.commands, ['freq:14285.4']);
+    });
+
+    test('a polling session buys itself one poll period before the delay counts', () async {
+      // Between polls, no readings arrive whether the dial is still or
+      // spinning — so on a polled radio the first poll period is silence
+      // that means nothing, and settling inside it snaps mid-turn.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      session.expectedUpdateInterval = const Duration(milliseconds: 200);
+      fakeAsync((async) {
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(const Duration(milliseconds: 400));
+        expect(session.commands, isEmpty, reason: 'the bare 300ms delay would have fired by now');
+        // 200ms poll period + 300ms delay.
+        async.elapse(const Duration(milliseconds: 150));
+      });
+      expect(session.commands, ['freq:14285.4']);
+    });
+
+    test('a pushing session adds nothing to the delay', () async {
+      // The default fake pushes (null interval), which is what every other
+      // test in this group relies on — pinned here so a driver that starts
+      // reporting a cadence can't quietly slow every push radio down too.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      expect(session.expectedUpdateInterval, isNull);
+      fakeAsync((async) {
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(const Duration(milliseconds: 310));
+      });
+      expect(session.commands, ['freq:14285.4']);
+    });
+
+    test('the poll period is read when the timer is armed, not when it fires', () async {
+      // AdaptivePoller eases off the moment the dial stops, so by the time
+      // the timer fires the interval has grown. Re-reading it then would
+      // chase the back-off and settle later and later.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      session.expectedUpdateInterval = const Duration(milliseconds: 200);
+      fakeAsync((async) {
+        session.radioReports(freqKHz: 14285.43);
+        session.expectedUpdateInterval = const Duration(seconds: 3);
+        async.elapse(const Duration(milliseconds: 600));
+      });
+      expect(session.commands, ['freq:14285.4'], reason: 'settled on the cadence the movement happened at');
     });
 
     test('a knob turn on a radio that is not driving the panel is ignored', () async {
