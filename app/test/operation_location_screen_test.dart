@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -52,7 +53,7 @@ void main() {
 
     final leadingFinder = find.descendant(of: tileFinder, matching: find.byType(CircleAvatar));
     expect(leadingFinder, findsOneWidget);
-    expect(find.descendant(of: leadingFinder, matching: find.byIcon(Icons.question_mark)), findsOneWidget);
+    expect(find.descendant(of: leadingFinder, matching: find.byIcon(MdiIcons.help)), findsOneWidget);
   });
 
   testWidgets('does not flash the unknown-type treatment on the very first frame, before controls finish loading',
@@ -91,7 +92,7 @@ void main() {
     final theme = Theme.of(tester.element(tileFinder));
     expect(tile.tileColor, isNot(theme.colorScheme.errorContainer.withValues(alpha: 0.4)),
         reason: 'must not show the unknown-type treatment while controls are still loading');
-    expect(find.descendant(of: tileFinder, matching: find.byIcon(Icons.question_mark)), findsNothing);
+    expect(find.descendant(of: tileFinder, matching: find.byIcon(MdiIcons.help)), findsNothing);
 
     // Once loading finishes, THIS ref (its extension genuinely isn't
     // active) does become flagged — same end state as the test above.

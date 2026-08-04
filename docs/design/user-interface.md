@@ -113,7 +113,7 @@ it is unreachable anyway; an icon that needs a hover label to be understood
 needs a better icon, or a visible text label.
 
 Icons still need an accessible name for screen readers. Put it on the icon
-itself — `Icon(Icons.close, semanticLabel: t.common.close)` — which names the
+itself — `Icon(MdiIcons.close, semanticLabel: t.common.close)` — which names the
 button without displaying anything, and flips with state where the icon does
 (Show/Hide, Delete/Revert/Restore). Tests find these buttons with
 `find.bySemanticsLabel(...)`, not `find.byTooltip(...)`.
@@ -130,6 +130,42 @@ parameter (`closeLabel`, `expandLabel`/`collapseLabel`, `clearLabel`,
 `openPageLabel`) — the app passes a translated string, and the widget package
 defaults it to English so it stays i18n-free. Nothing named `…Tooltip`
 survives; don't add one back.
+
+### Icons
+
+The app's icon language is **Material Design Icons** (Pictogrammers MDI, the
+same set app-polo uses), with FontAwesome6 solid as a secondary set for
+extensions. Flutter's own `Icons.*` are **never used in our code** — they are
+Material-style glyphs in an MDI UI. The built-in MaterialIcons font still
+ships (`uses-material-design: true`), but only as a safety net: Flutter
+renders some glyphs internally with no override point (the Android
+text-selection toolbar's overflow buttons, flutter_markdown's task-list
+checkboxes), and those cannot be enumerated, so without the font each one
+would surface as a missing-glyph box.
+
+- **Core Dart uses `MdiIcons.*` consts** (generated, one per MDI icon —
+  `MdiIcons.cloudSync` for `'cloud-sync'`), so a bad name is an analyzer
+  error.
+- **Extensions name icons as strings** (`icon: 'pine-tree'`, or `'fa-tree'`
+  for FontAwesome solid), resolved at runtime by `resolveIconName` with a
+  puzzle-piece fallback (or the call site's `fallback:`) for unknown names.
+  Literal names in core Dart are not allowed — `resolveIconName` is for
+  extension-supplied data only.
+- **Framework widgets whose default glyph we can override get MDI**, the
+  canonical list: `buildHaLoTheme`'s `actionIconTheme` covers
+  Back/Close/Drawer buttons app-wide; `DropdownMenu` and
+  `DropdownButtonFormField` take the shared `dropdownTrailingIcon`/
+  `dropdownSelectedTrailingIcon` consts from theme.dart at each site;
+  `SegmentedButton` sets `showSelectedIcon: false`; `ExpansionTile` needs a
+  hand-flipped MDI `trailing:` (see `_CollapsibleMarkdown`). Adopting a new
+  Material widget with a built-in glyph means extending this list.
+
+All of this is enforced by `packages/halo_build_tools/test/icon_names_test.dart`,
+which validates every extension icon name against the vendored glyphmaps and
+rejects `Icons.*` or literal icon names in core Dart. Fonts and name tables
+are vendored as pinned pairs from the icon projects' own packages by
+`packages/halo_widgets/tool/update_icons.py`, which proves the pairing
+against each font's cmap.
 
 ### Header
 

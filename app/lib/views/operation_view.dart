@@ -694,7 +694,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // hands off to it as the sheet slides down (see _HeaderDotsControl).
         leading: Builder(
           builder: (context) => IconButton(
-            icon: Icon(Icons.check, semanticLabel: context.t.common.save),
+            icon: Icon(MdiIcons.check, semanticLabel: context.t.common.save),
             style: IconButton.styleFrom(
               backgroundColor: fabAccentColor,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -714,7 +714,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               children: [
                 TextButton.icon(
                   onPressed: () => sheetKey.currentState?.showOptions(),
-                  icon: const Icon(Icons.settings, size: 18),
+                  icon: const Icon(MdiIcons.cog, size: 18),
                   label: Text(context.t.activitiesView.options),
                   style: TextButton.styleFrom(foregroundColor: onColor),
                 ),
@@ -722,7 +722,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   opacity: operation.qsoCount == 0 ? 0.8 : 1.0,
                   child: TextButton.icon(
                     onPressed: () => _export(_draftOperation ?? operation),
-                    icon: Icon(resolveIconName('file-export-outline'), size: 18),
+                    icon: Icon(MdiIcons.fileExportOutline, size: 18),
                     label: Text(context.t.activitiesView.exports),
                     style: TextButton.styleFrom(foregroundColor: onColor),
                   ),
@@ -882,7 +882,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // A plain IconButton doesn't supply an accessible name by default —
         // set explicitly as a semanticLabel, not a tooltip, since the app
         // shows no hover labels (docs/design/user-interface.md).
-        icon: Icon(Icons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
+        icon: Icon(MdiIcons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
         onPressed: () => showSettingsForTarget(
           buttonContext,
           services: widget.services,

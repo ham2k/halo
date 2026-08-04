@@ -185,7 +185,43 @@ numbers. `flutter_js` looked maintained (its Dart side still shipped
 releases) while the native bridge that actually mattered had been dead for
 four years. Judge a dependency by the layer you depend on.
 
-## 10. This document
+## 10. Icon fonts and glyph tables
+
+**Pinned at:** `@mdi/font` + `@mdi/svg` **7.4.47**, `@fortawesome/fontawesome-free`
+**6.7.2** — the versions live in `packages/halo_widgets/tool/update_icons.py`,
+which vendors each font *and* its name→codepoint table as a pair from the same
+package version, and **proves the pairing** by parsing each TTF's cmap and
+failing on any table codepoint the font lacks. That check is the drift guard:
+the historical failure mode (font from one upstream, table from another, 177
+names silently rendering as blanks) fails the generator instead of shipping.
+Never edit the fonts or `tool/data/*.json` directly; change the pin and re-run
+`python3 tool/update_icons.py --fetch`.
+
+Both pins are **terminal releases** — MDI is in maintenance with 7.4.47 as its
+final release, and Font Awesome 6 Free ended at 6.7.2 — so there is no routine
+bump. What can still rot:
+
+- **app-polo moving.** The name sets currently match PoLo's
+  (`@react-native-vector-icons` repackages the same upstreams), which is what
+  keeps extension icon names portable. If PoLo ever changes icon sets or
+  versions, re-verify parity before following.
+- **Needing an icon that doesn't exist.** MDI is frozen; a genuinely new icon
+  means choosing a successor source (Pictogrammers' Memory set, FA7, …) — a
+  design decision, not a version bump.
+
+**Check:** `packages/halo_build_tools/test/icon_names_test.dart` runs in the
+full suite and fails on any icon name (extension or core) with no glyph in the
+vendored tables, and on any core-Dart `Icons.*` use — our UI is MDI-only; the
+built-in MaterialIcons font ships purely as a safety net for glyphs Flutter
+renders internally with no override point (docs/design/user-interface.md
+§Icons). Don't remove it: those internals can't be enumerated, and each one
+would surface as a missing-glyph box one user report at a time.
+
+**Silent failure:** only for icon names that arrive at runtime from
+*third-party* extensions — those degrade to a puzzle-piece placeholder by
+design and are nobody's bug. Everything in-repo fails loudly in the suite.
+
+## 11. This document
 
 **Check quarterly.** Update the "Last reviewed" date at the top. Remove
 sections that stop applying (section 2 is written to be deleted), and add

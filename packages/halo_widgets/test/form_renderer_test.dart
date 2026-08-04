@@ -614,7 +614,7 @@ void main() {
       // Delete (back in the editor) empties the list and the summary.
       await tester.tap(find.text('Presets'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.delete));
+      await tester.tap(find.byIcon(MdiIcons.delete));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
@@ -702,9 +702,9 @@ void main() {
       final listView = tester.widget<ReorderableListView>(find.byType(ReorderableListView));
       expect(listView.buildDefaultDragHandles, isFalse,
           reason: 'the framework auto-handle doubles the row\'s own on mouse platforms');
-      expect(find.byIcon(Icons.drag_handle), findsNWidgets(2), reason: 'one handle per row, no extras');
+      expect(find.byIcon(MdiIcons.dragHorizontalVariant), findsNWidgets(2), reason: 'one handle per row, no extras');
       expect(
-        find.ancestor(of: find.byIcon(Icons.drag_handle).first, matching: find.byType(ReorderableDragStartListener)),
+        find.ancestor(of: find.byIcon(MdiIcons.dragHorizontalVariant).first, matching: find.byType(ReorderableDragStartListener)),
         findsWidgets,
         reason: 'with the framework handle off, the row\'s icon must be the real drag listener',
       );
@@ -748,8 +748,8 @@ void main() {
       // The item, the reorder handle, delete button, and Add row are all
       // directly on the form — no summary row / "tap to open a dialog" step.
       expect(find.text('Club Roster'), findsOneWidget);
-      expect(find.byIcon(Icons.drag_handle), findsOneWidget);
-      expect(find.byIcon(Icons.delete), findsOneWidget);
+      expect(find.byIcon(MdiIcons.dragHorizontalVariant), findsOneWidget);
+      expect(find.byIcon(MdiIcons.delete), findsOneWidget);
       expect(find.widgetWithText(TextButton, 'Add custom note file'), findsOneWidget);
       expect(find.byType(HaloDialog), findsNothing, reason: 'no list-editor dialog should have opened yet');
 
@@ -777,7 +777,7 @@ void main() {
       expect(find.text('Second File'), findsOneWidget);
 
       // Delete removes the row directly, no dialog involved.
-      await tester.tap(find.byIcon(Icons.delete).first);
+      await tester.tap(find.byIcon(MdiIcons.delete).first);
       await tester.pumpAndSettle();
       expect(find.text('Club Roster'), findsNothing);
       expect(find.text('Second File'), findsOneWidget);
@@ -925,7 +925,7 @@ void main() {
 
       // No status row or clear button until a query is typed.
       expect(find.textContaining('Showing '), findsNothing);
-      expect(find.byIcon(Icons.close), findsNothing);
+      expect(find.byIcon(MdiIcons.close), findsNothing);
 
       // Focus survives the status row popping in on the FIRST letter and
       // out again on deleting it (the field shifts index in its column —
@@ -958,7 +958,7 @@ void main() {
       expect(find.text('Showing 4 of 24 (3 selected)'), findsOneWidget);
 
       // The X button clears the filter and restores the tier view.
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(MdiIcons.close));
       await tester.pumpAndSettle();
       expect(find.textContaining('Showing '), findsNothing);
       expect(find.widgetWithText(SwitchListTile, 'Alpha 1'), findsOneWidget);
@@ -1379,7 +1379,7 @@ void main() {
       expect(find.text('Always in Light Mode'), findsOneWidget);
       expect(find.text('Light'), findsNothing);
       // A tap-to-open affordance, not an inline dropdown, for the icon-row.
-      expect(find.byIcon(resolveIconName('chevron-right')), findsOneWidget);
+      expect(find.byIcon(MdiIcons.chevronRight), findsOneWidget);
 
       final title = tester.widget<Text>(find.text('Theme Mode'));
       expect(title.style?.fontWeight, FontWeight.bold);

@@ -107,7 +107,7 @@ void main() {
         ],
       );
 
-      final finder = find.byIcon(resolveIconName('earth'));
+      final finder = find.byIcon(MdiIcons.earth);
       final icon = tester.widget<Icon>(finder);
       final scheme = Theme.of(tester.element(finder)).colorScheme;
       expect(icon.color, const Color(0xFFFF00FF));
@@ -120,7 +120,7 @@ void main() {
     (tester) async {
       await _pump(tester, _operation());
 
-      final finder = find.byIcon(resolveIconName('earth'));
+      final finder = find.byIcon(MdiIcons.earth);
       final icon = tester.widget<Icon>(finder);
       final scheme = Theme.of(tester.element(finder)).colorScheme;
       expect(icon.color, scheme.onSurfaceVariant);

@@ -378,6 +378,7 @@ class StationPanel extends StatelessWidget {
                       // row rather than truncating.
                       isExpanded: true,
                       initialValue: transceivers.any((n) => n.uuid == _cat.radio1) ? _cat.radio1 : null,
+                      icon: dropdownTrailingIcon,
                       decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
                       menuMaxHeight: dropdownMenuMaxHeight(context),
                       items: [
@@ -405,7 +406,7 @@ class StationPanel extends StatelessWidget {
                       // The app shows no hover tooltips
                       // (docs/design/user-interface.md), so the accessible
                       // name is the only place this button is named.
-                      icon: Icon(Icons.tune, semanticLabel: st.currentRadioSettings),
+                      icon: Icon(MdiIcons.tune, semanticLabel: st.currentRadioSettings),
                       onPressed: () => showSettingsForTarget(
                         buttonContext,
                         services: services,
@@ -438,7 +439,7 @@ class StationPanel extends StatelessWidget {
                 onDisconnect: () => _cat.disconnect(node.uuid),
               ),
             ListTile(
-              leading: const Icon(Icons.add),
+              leading: const Icon(MdiIcons.plus),
               title: Text(st.add),
               onTap: () => _addEquipment(context),
               mouseCursor: SystemMouseCursors.click,
@@ -582,11 +583,11 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     isDense: true,
-                    prefixIcon: const Icon(Icons.search, size: 18),
+                    prefixIcon: const Icon(MdiIcons.magnify, size: 18),
                     suffixIcon: query.isEmpty
                         ? null
                         : IconButton(
-                            icon: Icon(Icons.close, size: 18, semanticLabel: context.t.formChrome.clear),
+                            icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.formChrome.clear),
                             onPressed: () => setState(_searchController.clear),
                           ),
                     hintText: st.searchHint,
@@ -728,7 +729,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                   children: [
                     if (error != null)
                       ListTile(
-                        leading: Icon(Icons.wifi_off, color: theme.colorScheme.error),
+                        leading: Icon(MdiIcons.wifiOff, color: theme.colorScheme.error),
                         title: Text(st.discoveryUnavailable(error: error)),
                       )
                     else
@@ -770,7 +771,7 @@ class _AddChoice {
 /// The same glyph the logging panel's own Radio control uses — a
 /// transceiver should look like one thing throughout the app.
 IconData _iconForCategory(String? category) =>
-    category == kCategoryTransceiver ? MdiIcons.radio : Icons.developer_board;
+    category == kCategoryTransceiver ? MdiIcons.radio : MdiIcons.developerBoard;
 
 /// What the Add list says under a radio's name: which of its pairings have
 /// never met a radio, and nothing else.
@@ -883,13 +884,13 @@ class _EquipmentTile extends StatelessWidget {
     // silently disappearing along with the user's settings.
     if (resolvedType == null) {
       return ListTile(
-        leading: Icon(Icons.help_outline, color: theme.colorScheme.error),
+        leading: Icon(MdiIcons.helpCircleOutline, color: theme.colorScheme.error),
         title: Text(displayName),
         subtitle: Text(st.unknownType(typeKey: node.typeKey)),
         // An unrecognized type has no editor to put Remove inside, so this
         // row keeps its own — it is the only way to get rid of the record.
         trailing: IconButton(
-          icon: Icon(Icons.delete_outline, semanticLabel: st.remove),
+          icon: Icon(MdiIcons.deleteOutline, semanticLabel: st.remove),
           onPressed: onRemoveUnknown,
         ),
       );

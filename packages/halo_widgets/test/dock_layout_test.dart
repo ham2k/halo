@@ -90,7 +90,7 @@ void main() {
     // selected tab, so an action registered for 'a' shows unconditionally.
     await tester.pumpWidget(harness(
       spec: twoGroups(),
-      tabActions: {'a': (context) => const Icon(Icons.tune, key: Key('action-a'))},
+      tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
     ));
     expect(find.byKey(const Key('action-a')), findsOneWidget);
   });
@@ -101,7 +101,7 @@ void main() {
     // has no room to show every tab's own action at once.
     await tester.pumpWidget(harness(
       spec: twoGroups(),
-      tabActions: {'c': (context) => const Icon(Icons.tune, key: Key('action-c'))},
+      tabActions: {'c': (context) => const Icon(MdiIcons.tune, key: Key('action-c'))},
     ));
     expect(find.byKey(const Key('action-c')), findsNothing);
 

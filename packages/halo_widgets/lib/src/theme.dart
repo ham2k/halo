@@ -29,6 +29,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'layout.dart';
+import 'mdi_icons.g.dart';
 
 const _tabularFigures = [FontFeature.tabularFigures()];
 
@@ -288,6 +289,15 @@ double dropdownMenuMaxHeight(BuildContext context) {
   return available.clamp(kMinInteractiveDimension, kMinInteractiveDimension * 10.5);
 }
 
+/// The MDI dropdown arrows every [DropdownMenu] (`trailingIcon:` /
+/// `selectedTrailingIcon:`) and [DropdownButtonFormField] (`icon:`) must be
+/// given — the framework's Icons.arrow_drop_down/up defaults are Material
+/// glyphs in an MDI app, and neither widget has a theme slot for the icon,
+/// so per-site is the only depth available. Shared here so the glyph choice
+/// lives in one place.
+const dropdownTrailingIcon = Icon(MdiIcons.menuDown);
+const dropdownSelectedTrailingIcon = Icon(MdiIcons.menuUp);
+
 /// The background for a modal's chrome — a dialog's header/footer bands and a
 /// Modal Pane's header — framing the [ColorScheme.surface] content area.
 ///
@@ -507,6 +517,19 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
     textTheme: textTheme,
     scaffoldBackgroundColor: colorScheme.surface,
     extensions: [isDark ? HaLoColors.dark : HaLoColors.light],
+    // The app's icon language is MDI; framework widgets default to built-in
+    // Icons.* glyphs in a different visual style. These builders re-point
+    // the framework's own buttons (including the BackButton an AppBar
+    // auto-injects) at MDI. A newly adopted Material widget with a built-in
+    // glyph gets the same treatment: an explicit MDI icon, here if it
+    // themes, per-site if not — see docs/design/user-interface.md §Icons
+    // for the canonical list of widgets needing per-site overrides.
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (_) => const Icon(MdiIcons.arrowLeft),
+      closeButtonIconBuilder: (_) => const Icon(MdiIcons.close),
+      drawerButtonIconBuilder: (_) => const Icon(MdiIcons.menu),
+      endDrawerButtonIconBuilder: (_) => const Icon(MdiIcons.menu),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,

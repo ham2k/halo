@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -281,17 +282,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: find.byType(AppBar), matching: find.byIcon(Icons.tune)),
+      find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.tune)),
       findsOneWidget,
       reason: 'lives with the tab bar now, not as a standalone action — but see the next check',
     );
     expect(
-      find.ancestor(of: find.byIcon(Icons.tune), matching: find.byType(Tab)),
+      find.ancestor(of: find.byIcon(MdiIcons.tune), matching: find.byType(Tab)),
       findsNothing,
       reason: "overlaid next to the tab, not nested inside its Tab — nesting would compete with "
           "the tab bar's own tap handling for the same tap and the button would never receive one",
     );
-    expect(find.byIcon(Icons.tune), findsOneWidget, reason: 'QSOs is the selected tab on mount');
+    expect(find.byIcon(MdiIcons.tune), findsOneWidget, reason: 'QSOs is the selected tab on mount');
 
     // The button's own space stays reserved even when hidden (so the tab
     // doesn't reflow on selection changes) — it fades via AnimatedOpacity
@@ -300,7 +301,7 @@ void main() {
     // check the opacity that actually controls it (pumpAndSettle above
     // and below waits out the fade, so it's always fully settled here).
     double tuneOpacity() =>
-        tester.widget<AnimatedOpacity>(find.ancestor(of: find.byIcon(Icons.tune), matching: find.byType(AnimatedOpacity))).opacity;
+        tester.widget<AnimatedOpacity>(find.ancestor(of: find.byIcon(MdiIcons.tune), matching: find.byType(AnimatedOpacity))).opacity;
 
     await tester.tap(find.text('SPOTS'));
     await tester.pumpAndSettle();
@@ -311,7 +312,7 @@ void main() {
     expect(tuneOpacity(), 1, reason: 'reappears once QSOs is selected again');
 
     // The menu itself is unchanged — same toggle, same effect.
-    await tester.tap(find.byIcon(Icons.tune));
+    await tester.tap(find.byIcon(MdiIcons.tune));
     await tester.pumpAndSettle();
     expect(find.text('Show RST fields'), findsOneWidget);
 
@@ -349,7 +350,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.tune));
+      await tester.tap(find.byIcon(MdiIcons.tune));
       await tester.pumpAndSettle();
 
       expect(find.text('Show RST fields'), findsOneWidget, reason: 'target: "logging" base elements show upfront');
@@ -409,7 +410,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.tune));
+      await tester.tap(find.byIcon(MdiIcons.tune));
       await tester.pumpAndSettle();
 
       await tester.ensureVisible(find.text('Show more settings'));
@@ -574,15 +575,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: find.byType(AppBar), matching: find.byIcon(Icons.tune)),
+      find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.tune)),
       findsNothing,
       reason: 'no longer a global AppBar action',
     );
     // Exactly one — the split's own logging pane always shows (it has no
     // other tab to hide behind), unlike the narrow case.
-    expect(find.byIcon(Icons.tune), findsOneWidget);
+    expect(find.byIcon(MdiIcons.tune), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.tune));
+    await tester.tap(find.byIcon(MdiIcons.tune));
     await tester.pumpAndSettle();
     expect(find.text('Show RST fields'), findsOneWidget);
 

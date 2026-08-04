@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 
 import 'halo_dialog.dart';
 import 'layout.dart';
+import 'mdi_icons.g.dart';
 import 'platform_chrome.dart';
 import 'theme.dart';
 
@@ -288,7 +289,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                             children: [
                               ...route.headerActions,
                               route.trailing ?? IconButton(
-                                icon: Icon(Icons.close, semanticLabel: route.closeLabel),
+                                icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
                                 // maybePop — see the barrier handler above.
                                 onPressed: () => Navigator.of(context).maybePop(),
                               ),
@@ -608,7 +609,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                     leading: route.leading,
                                     title: route.title,
                                     trailing: route.trailing ?? IconButton(
-                                      icon: Icon(Icons.close, semanticLabel: route.closeLabel),
+                                      icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
                                       onPressed: () => Navigator.of(context).maybePop(),
                                     ),
                                   ),

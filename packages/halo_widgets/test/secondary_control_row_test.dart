@@ -29,7 +29,7 @@ void main() {
 
   SecondaryControlSpec spec(String key) => SecondaryControlSpec(
         key: key,
-        icon: Icons.circle,
+        icon: MdiIcons.circle,
         summary: key,
         expandedBuilder: (_) => Text('expanded-$key'),
       );
@@ -93,7 +93,7 @@ void main() {
       for (var i = 0; i < 3; i++) spec('filler$i'),
       SecondaryControlSpec(
         key: 'target',
-        icon: Icons.circle,
+        icon: MdiIcons.circle,
         summary: 'target',
         expandedBuilder: (_) => const SizedBox(width: 600, child: Text('expanded-target')),
       ),

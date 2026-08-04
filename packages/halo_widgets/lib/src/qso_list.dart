@@ -20,6 +20,7 @@ import 'activity_controls.dart';
 import 'flags.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
+import 'mdi_icons.g.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'theme.dart';
@@ -1356,9 +1357,9 @@ class EventRow extends StatelessWidget {
   });
 
   static const _icons = {
-    'start': Icons.flag,
-    'break': Icons.pause_circle,
-    'end': Icons.flag,
+    'start': MdiIcons.flag,
+    'break': MdiIcons.pauseCircle,
+    'end': MdiIcons.flag,
   };
 
   @override
@@ -1380,7 +1381,7 @@ class EventRow extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                _icons[kind] ?? Icons.timelapse,
+                _icons[kind] ?? MdiIcons.timelapse,
                 size: 16,
                 color: theme.colorScheme.outline,
               ),

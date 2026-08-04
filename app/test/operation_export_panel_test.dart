@@ -202,7 +202,7 @@ void main() {
       await pump(tester);
 
       // The ADIF row's own icon: POTA's row uses 'pine-tree', so this is unique.
-      final iconX = tester.getCenter(find.byIcon(resolveIconName('file-export'))).dx;
+      final iconX = tester.getCenter(find.byIcon(MdiIcons.fileExport)).dx;
       final labelX = tester.getCenter(find.text('Full ADIF Export')).dx;
       final buttonX = tester.getCenter(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op.adi')).dx;
       final checkboxX = tester.getCenter(find.byType(Checkbox).last).dx;

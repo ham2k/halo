@@ -78,11 +78,11 @@ ExportAction rowExportAction({bool? isWeb, TargetPlatform? platform}) {
   return ExportAction.save;
 }
 
-String exportActionIcon(ExportAction action) => switch (action) {
-      ExportAction.save => 'content-save',
-      ExportAction.share => 'share-variant',
-      ExportAction.export => 'export-variant',
-      ExportAction.download => 'download',
+IconData exportActionIcon(ExportAction action) => switch (action) {
+      ExportAction.save => MdiIcons.contentSave,
+      ExportAction.share => MdiIcons.shareVariant,
+      ExportAction.export => MdiIcons.exportVariant,
+      ExportAction.download => MdiIcons.download,
     };
 
 /// Opens the Exports pane for [operation].
@@ -106,7 +106,7 @@ Future<void> showOperationExportPanel(
       Builder(
         builder: (context) => IconButton(
           icon: Icon(
-            resolveIconName('tune'),
+            MdiIcons.tune,
             // No hover tooltips in this app — the accessible name is
             // the only name this button has.
             semanticLabel: t.operation.export.settingsButton,
@@ -143,14 +143,14 @@ Future<void> showExportSettingsDialog(
             mainAxisSize: MainAxisSize.min,
             children: [
               SwitchListTile(
-                secondary: Icon(resolveIconName('file-code-outline')),
+                secondary: Icon(MdiIcons.fileCodeOutline),
                 title: Text(names.title),
                 subtitle: Text(settings.useCompactFileNames ? names.descriptionOn : names.descriptionOff),
                 value: settings.useCompactFileNames,
                 onChanged: settings.setUseCompactFileNames,
               ),
               SwitchListTile(
-                secondary: Icon(resolveIconName('account-lock')),
+                secondary: Icon(MdiIcons.accountLock),
                 title: Text(private.title),
                 subtitle: Text(
                   settings.includePrivateData ? private.descriptionOn : private.descriptionOff,
@@ -443,7 +443,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       padding: const EdgeInsets.only(bottom: 8),
       children: [
         ListTile(
-          leading: Icon(resolveIconName(widget.operation.synced ? 'cloud-check' : 'cloud-alert')),
+          leading: Icon(widget.operation.synced ? MdiIcons.cloudCheck : MdiIcons.cloudAlert),
           title: Text(widget.operation.synced
               ? t.operation.export.syncedOperation
               : t.operation.export.unsyncedOperation),
@@ -455,7 +455,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         ),
         if (syncCounts != null && syncCounts.eventTotal > 0)
           ListTile(
-            leading: Icon(resolveIconName('flag')),
+            leading: Icon(MdiIcons.flag),
             title: Text(syncCounts.eventPending == 0
                 ? t.operation.export.eventsSynced(total: syncCounts.eventTotal)
                 : t.operation.export.eventsPending(
@@ -528,7 +528,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
       child: Row(
         children: [
-          Icon(resolveIconName('radio-tower'), size: 20, color: colors.onSurfaceAccent),
+          Icon(MdiIcons.radioTower, size: 20, color: colors.onSurfaceAccent),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -614,7 +614,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
               ),
               IconButton(
                 icon: Icon(
-                  resolveIconName(exportActionIcon(rowAction)),
+                  exportActionIcon(rowAction),
                   // Names the FILE, not just the verb: a column of identical
                   // "Download" buttons tells a screen-reader user nothing about
                   // which one they are on, and this app has no tooltips.
@@ -642,7 +642,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// recognisably the same thing.
   Widget _optionIcon(Map<String, dynamic> option, Color? activityColor, HaLoColors colors) {
     final icon = Icon(
-      resolveIconName(option['icon'] as String? ?? 'file-export'),
+      resolveIconName(option['icon'] as String?, fallback: MdiIcons.fileExport),
       color: activityColor == null ? colors.onSurfaceAccent : null,
     );
     if (activityColor == null) return icon;
@@ -674,12 +674,12 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           index == 0
               ? FilledButton.icon(
                   onPressed: selected.isEmpty ? null : () => _run(action, selected),
-                  icon: Icon(resolveIconName(exportActionIcon(action)), size: 18),
+                  icon: Icon(exportActionIcon(action), size: 18),
                   label: Text(_bulkLabel(action, selected.length, combined: combined)),
                 )
               : OutlinedButton.icon(
                   onPressed: selected.isEmpty ? null : () => _run(action, selected),
-                  icon: Icon(resolveIconName(exportActionIcon(action)), size: 18),
+                  icon: Icon(exportActionIcon(action), size: 18),
                   label: Text(_bulkLabel(action, selected.length, combined: combined)),
                 ),
     ];

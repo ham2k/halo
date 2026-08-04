@@ -23,8 +23,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'icon_resolver.dart';
 import 'layout.dart';
+import 'mdi_icons.g.dart';
 import 'pane_divider.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'tab_chrome.dart';
@@ -549,7 +549,7 @@ class _DockTab extends StatelessWidget {
       if (showHandle)
         Padding(
           padding: const EdgeInsets.only(right: 4),
-          child: Icon(resolveIconName('drag-vertical'), size: 16, color: labelColor.withValues(alpha: 0.6)),
+          child: Icon(MdiIcons.dragVertical, size: 16, color: labelColor.withValues(alpha: 0.6)),
         ),
       Text(title, style: style?.copyWith(color: labelColor)),
     ],
@@ -657,7 +657,7 @@ class _RegionDropTarget extends StatelessWidget {
             borderRadius: region == DockRegion.center ? BorderRadius.circular(8) : null,
           ),
           child: active && region == DockRegion.center
-              ? Center(child: Icon(resolveIconName('tab-plus'), color: primary, size: 32))
+              ? Center(child: Icon(MdiIcons.tabPlus, color: primary, size: 32))
               : null,
         );
       },

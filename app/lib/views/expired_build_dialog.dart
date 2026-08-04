@@ -11,6 +11,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/version.dart';
@@ -42,7 +43,7 @@ class ExpiredBuildDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      icon: Icon(Icons.warning_amber_rounded, size: 48, color: Theme.of(context).colorScheme.error),
+      icon: Icon(MdiIcons.alertOutline, size: 48, color: Theme.of(context).colorScheme.error),
       title: Text(t.expiredBuild.title),
       content: Text(t.expiredBuild.body),
       actions: [

@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'layout.dart';
-import 'mdi_icons.dart';
+import 'mdi_icons.g.dart';
 import 'ui_scale.dart';
 
 bool get isMacOSChromelessWindow =>

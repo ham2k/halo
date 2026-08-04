@@ -149,7 +149,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           const SizedBox(height: 8),
           SectionHeader(t.suggestedLocations),
           ListTile(
-            leading: Icon(resolveIconName('crosshairs-gps')),
+            leading: Icon(MdiIcons.crosshairsGps),
             title: Text(t.deviceGps),
             subtitle: Text(gpsSubtitle),
             onTap: location.grid == null ? null : () => _adoptGrid(location.grid!, 'gps'),
@@ -160,7 +160,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                   ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                   : null,
               leading: _loadingControls
-                  ? Icon(resolveIconName('puzzle'))
+                  ? Icon(MdiIcons.puzzle)
                   : activityRefIcon(_controls, ref['type'] as String?),
               title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
               subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),

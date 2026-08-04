@@ -1342,7 +1342,7 @@ void main() {
     // Maidenhead casing back via normalizeGrid — so it must land as FN99xx
     // below — while Name is an explicitly mixed-case field and survives
     // exactly as typed.
-    await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Corrected Name');
     await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn99xx');
@@ -1368,7 +1368,7 @@ void main() {
   testWidgets('a name set via the More pane does not leak onto the next QSO after logging', (tester) async {
     await tester.pumpWidget(host());
 
-    await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Hiram');
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -1547,7 +1547,7 @@ void main() {
     expect(await waitForQsos(tester, 1), isEmpty);
 
     // Esc goes through the wipe button's path, so the 5s undo offer applies.
-    final undoIcon = resolveIconName('undo');
+    final undoIcon = MdiIcons.undo;
     expect(find.byIcon(undoIcon), findsOneWidget);
     await tester.tap(find.byIcon(undoIcon));
     await tester.pump();
@@ -1578,7 +1578,7 @@ void main() {
     await tester.pump();
 
     expect(callField.controller!.text, 'W1AW');
-    expect(find.byIcon(resolveIconName('undo')), findsNothing);
+    expect(find.byIcon(MdiIcons.undo), findsNothing);
   });
 
   testWidgets('Escape on an already-empty form is an inert no-op', (tester) async {
@@ -1594,7 +1594,7 @@ void main() {
     await tester.pump();
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, isEmpty);
-    expect(find.byIcon(resolveIconName('undo')), findsNothing);
+    expect(find.byIcon(MdiIcons.undo), findsNothing);
   });
 
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
@@ -1689,7 +1689,7 @@ void main() {
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, isEmpty);
 
-    await tester.tap(find.byIcon(resolveIconName('undo')));
+    await tester.tap(find.byIcon(MdiIcons.undo));
     await tester.pump();
     expect(callField.controller!.text, 'W1AW');
 
@@ -1728,7 +1728,7 @@ void main() {
     await tester.pump();
     expect(find.text('Dupe!'), findsNothing);
 
-    await tester.tap(find.byIcon(resolveIconName('undo')));
+    await tester.tap(find.byIcon(MdiIcons.undo));
     await tester.pump();
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, 'W1AW');
@@ -1801,7 +1801,7 @@ void main() {
     testWidgets('a secondary chip is still offered from an operation running nothing', (tester) async {
       await tester.pumpWidget(hostFor(operation, const [hunter]));
       await tester.pump();
-      expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
+      expect(find.byIcon(MdiIcons.pineTree), findsOneWidget);
     });
 
     testWidgets('a serial from a contest that is not running allocates no number', (tester) async {
@@ -3279,7 +3279,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
       await tester.pump();
 
-      await openControl(tester, resolveIconName('summit'));
+      await openControl(tester, MdiIcons.summit);
       expect(
         tester.widget<TextField>(find.widgetWithText(TextField, 'SOTA')).focusNode?.hasFocus,
         isTrue,
@@ -5116,7 +5116,7 @@ void main() {
   // _canLog — false for a command, which isn't a callsign — so a command could
   // previously only be run from Enter / the on-screen keyboard's return key,
   // never this button. Its icon carries no text, so it's found by its icon.
-  Finder submitButton() => find.widgetWithIcon(FilledButton, Icons.upload);
+  Finder submitButton() => find.widgetWithIcon(FilledButton, MdiIcons.upload);
 
   testWidgets('tapping the submit button accepts a recognized command, the same as Enter', (tester) async {
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
@@ -5706,10 +5706,10 @@ void main() {
       // into a solid trash can while a delete is staged. The button rather
       // than Enter: tapping the staging button took the text field's input
       // connection with it, and this test is about the guard's placement.
-      await tester.tap(find.byIcon(resolveIconName('trash-can-outline')));
+      await tester.tap(find.byIcon(MdiIcons.trashCanOutline));
       await tester.pump();
       expect(find.textContaining('will be deleted'), findsOneWidget, reason: 'the delete is staged');
-      await tester.tap(find.byIcon(resolveIconName('trash-can')));
+      await tester.tap(find.byIcon(MdiIcons.trashCan));
       await tester.pump(const Duration(milliseconds: 400));
 
       // `watchForOperation` excludes soft-deleted records, so an empty list is
@@ -7080,7 +7080,7 @@ void main() {
     testWidgets('saving the More pane without editing date/time keeps automatic timestamping', (tester) async {
       await tester.pumpWidget(host());
 
-      await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
+      await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
@@ -7228,9 +7228,9 @@ void main() {
           find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
         );
 
-    final wipeIcon = resolveIconName('backspace-outline');
-    final undoIcon = resolveIconName('undo');
-    final deleteIcon = resolveIconName('trash-can-outline');
+    final wipeIcon = MdiIcons.backspaceOutline;
+    final undoIcon = MdiIcons.undo;
+    final deleteIcon = MdiIcons.trashCanOutline;
 
     testWidgets('wipe is disabled with nothing entered, enabled once a call is typed, and wiping offers a 5s undo', (tester) async {
       await tester.pumpWidget(host());
@@ -7395,7 +7395,7 @@ void main() {
     });
 
     testWidgets('viewing a deleted QSO locks the fields and offers restore; tapping it undeletes (issue #59)', (tester) async {
-      final restoreIcon = resolveIconName('delete-restore');
+      final restoreIcon = MdiIcons.deleteRestore;
       final deletedQso = (await tester.runAsync(() async {
         final qso = await qsos.add(operation.uuid, {
           'their': {'call': 'W1AW', 'sent': '59'},
@@ -7869,7 +7869,7 @@ void main() {
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
-      await openControl(tester, resolveIconName('pine-tree'));
+      await openControl(tester, MdiIcons.pineTree);
       await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
       await tester.pump();
 

@@ -589,7 +589,7 @@ void main() {
       final icon = tester.widget<Icon>(
         find.descendant(of: find.byType(AnnotationRow), matching: find.byType(Icon)),
       );
-      expect(icon.icon, resolveIconName('sun-wireless'));
+      expect(icon.icon, MdiIcons.sunWireless);
     });
 
     testWidgets('a todo\'s icon tracks its done state, not the stored icon', (tester) async {
@@ -632,9 +632,9 @@ void main() {
             find.descendant(of: find.byType(AnnotationRow), matching: find.byType(Icon)),
           )
           .toList();
-      expect(icons[0].icon, resolveIconName('sticker'));
-      expect(icons[1].icon, resolveIconName('sticker-check-outline'));
-      expect(icons[2].icon, resolveIconName('sticker-check-outline'));
+      expect(icons[0].icon, MdiIcons.sticker);
+      expect(icons[1].icon, MdiIcons.stickerCheckOutline);
+      expect(icons[2].icon, MdiIcons.stickerCheckOutline);
     });
   });
 
@@ -1166,8 +1166,8 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
-      expect(find.byIcon(resolveIconName('image-filter-hdr')), findsOneWidget);
+      expect(find.byIcon(MdiIcons.pineTree), findsOneWidget);
+      expect(find.byIcon(MdiIcons.imageFilterHdr), findsOneWidget);
       expect(find.text('×2'), findsOneWidget);
     },
   );
@@ -1214,7 +1214,7 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(resolveIconName('flag-checkered')), findsNothing);
+      expect(find.byIcon(MdiIcons.flagCheckered), findsNothing);
       // And not mistaken for an unknown ref type either (issue #261's marker).
       expect(find.text('?'), findsNothing);
     },
@@ -1262,7 +1262,7 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(resolveIconName('flag-checkered')), findsNothing);
+      expect(find.byIcon(MdiIcons.flagCheckered), findsNothing);
       expect(find.text('?'), findsNothing);
     },
   );
@@ -1297,7 +1297,7 @@ void main() {
         ),
       );
 
-      final finder = find.byIcon(resolveIconName('pine-tree'));
+      final finder = find.byIcon(MdiIcons.pineTree);
       final icon = tester.widget<Icon>(finder);
       final scheme = Theme.of(tester.element(finder)).colorScheme;
       expect(icon.color, scheme.onSurface);
@@ -1359,10 +1359,10 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(resolveIconName('pine-tree')), findsNothing);
+      expect(find.byIcon(MdiIcons.pineTree), findsNothing);
       final markerFinder = find.byType(CircleAvatar);
       expect(markerFinder, findsOneWidget);
-      expect(find.descendant(of: markerFinder, matching: find.byIcon(Icons.question_mark)), findsOneWidget);
+      expect(find.descendant(of: markerFinder, matching: find.byIcon(MdiIcons.help)), findsOneWidget);
     },
   );
 
@@ -1515,9 +1515,9 @@ void main() {
           ),
         );
 
-        expect(find.byIcon(resolveIconName('earth')), findsOneWidget);
-        expect(find.byIcon(resolveIconName('radio')), findsNothing);
-        expect(find.byIcon(resolveIconName('pine-tree')), findsNothing);
+        expect(find.byIcon(MdiIcons.earth), findsOneWidget);
+        expect(find.byIcon(MdiIcons.radio), findsNothing);
+        expect(find.byIcon(MdiIcons.pineTree), findsNothing);
         expect(find.text('5'), findsOneWidget);
       },
     );

@@ -64,7 +64,7 @@ void main() {
     // still in the tree (barrier over it).
     expect(find.text('pane body'), findsOneWidget);
     expect(find.text('Account'), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(find.byIcon(MdiIcons.close), findsOneWidget);
     expect(find.byType(AppBar), findsNothing);
 
     // Now the same open route at phone width: full-screen with an AppBar
@@ -74,13 +74,13 @@ void main() {
     expect(find.text('pane body'), findsOneWidget);
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.byType(BackButton), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsNothing);
+    expect(find.byIcon(MdiIcons.close), findsNothing);
 
     // And back again.
     setWidth(tester, 900);
     await tester.pumpAndSettle();
     expect(find.byType(AppBar), findsNothing);
-    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(find.byIcon(MdiIcons.close), findsOneWidget);
   });
 
   testWidgets('pops with a result from the dialog presentation', (tester) async {
@@ -351,7 +351,7 @@ void main() {
 
       // Submit is now awaiting the validator: X must not dismiss. Fixed
       // pumps, not pumpAndSettle — the submitting spinner animates forever.
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(MdiIcons.close));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Edit QSO'), findsOneWidget);

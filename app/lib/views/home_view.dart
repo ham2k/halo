@@ -967,7 +967,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                     Row(
                       children: [
                         if (_engine.isError) ...[
-                          Icon(resolveIconName('alert-circle'), size: 16, color: theme.colorScheme.onPrimary),
+                          Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onPrimary),
                           const SizedBox(width: 8),
                         ],
                         Expanded(
@@ -1026,10 +1026,10 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
               decoration: InputDecoration(
                 filled: true,
                 fillColor: theme.colorScheme.surface,
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(MdiIcons.magnify),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.close, semanticLabel: context.t.common.clear),
+                        icon: Icon(MdiIcons.close, semanticLabel: context.t.common.clear),
                         onPressed: () {
                           _controller.clear();
                         },

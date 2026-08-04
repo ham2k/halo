@@ -1294,6 +1294,8 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: DropdownMenu<String>(
+                  trailingIcon: dropdownTrailingIcon,
+                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
                   initialSelection: _bandFilter,
                   width: _dropdownWidth,
                   menuHeight: dropdownMenuMaxHeight(context),
@@ -1316,6 +1318,8 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: DropdownMenu<String>(
+                  trailingIcon: dropdownTrailingIcon,
+                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
                   initialSelection: _modeFilter,
                   width: _dropdownWidth,
                   menuHeight: dropdownMenuMaxHeight(context),
@@ -1336,6 +1340,8 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: DropdownMenu<int?>(
+                  trailingIcon: dropdownTrailingIcon,
+                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
                   initialSelection: _ageMinutes,
                   width: _dropdownWidth,
                   menuHeight: dropdownMenuMaxHeight(context),
@@ -1360,6 +1366,9 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: SegmentedButton<String>(
+                  // MDI-only UI: skip the framework's Material check on the
+                  // selected segment (same as settings_view).
+                  showSelectedIcon: false,
                   segments: [
                     ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
                     ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),

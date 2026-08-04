@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 
 import 'icon_resolver.dart';
+import 'mdi_icons.g.dart';
 
 /// The controls entry for [refType], or null for a type with no active
 /// control.
@@ -58,7 +59,7 @@ Widget activityRefIcon(
     return CircleAvatar(
       radius: avatarRadius,
       backgroundColor: Colors.red,
-      child: Icon(Icons.question_mark, color: Colors.white, size: iconSize ?? 16),
+      child: Icon(MdiIcons.help, color: Colors.white, size: iconSize ?? 16),
     );
   }
   final icon = Icon(resolveIconName(control['icon'] as String?), size: iconSize);

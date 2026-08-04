@@ -11,6 +11,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -123,7 +124,7 @@ void main() {
     expect(find.text('Summits on the Air'), findsOneWidget);
     expect(find.text('Parks on the Air'), findsNothing);
     expect(find.text('Callsign Lookups'), findsNothing);
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(MdiIcons.close));
     await tester.pumpAndSettle();
 
     // Toggling persists an override in the dedicated store (not the

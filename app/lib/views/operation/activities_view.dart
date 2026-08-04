@@ -582,7 +582,7 @@ class OperationSheetState extends State<OperationSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit_note),
+              leading: const Icon(MdiIcons.noteEditOutline),
               title: Text(t.operationDetails),
               // Same editor the pills open — the menu closes first so the
               // details dialog isn't stacked on top of it.
@@ -593,16 +593,16 @@ class OperationSheetState extends State<OperationSheet> {
             ),
             ListTile(
               enabled: false,
-              leading: const Icon(Icons.share),
+              leading: const Icon(MdiIcons.shareVariant),
               title: Text(t.share),
             ),
             ListTile(
               enabled: false,
-              leading: Icon(resolveIconName('archive-outline')),
+              leading: Icon(MdiIcons.archiveOutline),
               title: Text(t.archive),
             ),
             ListTile(
-              leading: Icon(Icons.delete, color: theme.colorScheme.error),
+              leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
               title: Text(t.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
               // The sheet closes with the menu: deleting is about the
               // operation as a whole, and its confirmation belongs to the
@@ -981,7 +981,7 @@ class OperationSheetState extends State<OperationSheet> {
                     child: Transform.translate(
                       offset: const Offset(0, -1),
                       child: Icon(
-                        resolveIconName('file-document'),
+                        MdiIcons.fileDocument,
                         size: 16,
                         color: theme.colorScheme.onPrimary,
                       ),
@@ -1134,11 +1134,11 @@ class OperationSheetState extends State<OperationSheet> {
                   );
 
                   if (gridSource == 'gps') {
-                    locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
+                    locationPin = Icon(MdiIcons.mapMarker, color: onLocationColor);
                     label = operationGrid;
                     locationColor = const Color(0xFF1B5E20);
                   } else {
-                    locationPin = Icon(resolveIconName('pin'), color: onLocationColor);
+                    locationPin = Icon(MdiIcons.pin, color: onLocationColor);
                     label = operationGrid;
                     locationColor = const Color(0xFF455A64);
                   }
@@ -1148,7 +1148,7 @@ class OperationSheetState extends State<OperationSheet> {
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
                   } else if (locStatus == LocationStatus.available && widget.services.location.grid != null) {
-                    locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
+                    locationPin = Icon(MdiIcons.mapMarker, color: onLocationColor);
                     label = widget.services.location.grid!;
                     locationColor = const Color(0xFF1B5E20);
                   } else if (locStatus == LocationStatus.available && widget.services.location.grid == null) {
@@ -1156,7 +1156,7 @@ class OperationSheetState extends State<OperationSheet> {
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
                   } else {
-                    locationPin = Icon(resolveIconName('map-marker-off'), color: onLocationColor);
+                    locationPin = Icon(MdiIcons.mapMarkerOff, color: onLocationColor);
                     label = '';
                     locationColor = const Color(0xFFC62828);
                   }
@@ -1179,7 +1179,7 @@ class OperationSheetState extends State<OperationSheet> {
                             focusNode: _searchFocusNode,
                             decoration: InputDecoration(
                               hintText: t.searchHint,
-                              prefixIcon: Icon(Icons.search, color: onAccordionColor.withValues(alpha: 0.6)),
+                              prefixIcon: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
                               filled: true,
                               // Paler than the band it sits on, so the field
                               // reads as a well rather than blending in.
@@ -1261,7 +1261,7 @@ class OperationSheetState extends State<OperationSheet> {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(t.enableExtensionHint),
-                      trailing: const Icon(Icons.add),
+                      trailing: const Icon(MdiIcons.plus),
                       onTap: () => _enableExtension(info),
                     ),
                   for (final suggestion in _suggestions)
@@ -1283,7 +1283,7 @@ class OperationSheetState extends State<OperationSheet> {
                                 ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                                 : rowColor),
                         leading: _loadingControls
-                            ? Icon(resolveIconName('puzzle'))
+                            ? const Icon(MdiIcons.puzzle)
                             : activityRefIcon(_controls, suggestion['type'] as String?),
                         title: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1348,7 +1348,7 @@ class OperationSheetState extends State<OperationSheet> {
                               // size/padding) too.
                               contentPadding: const EdgeInsets.only(left: 16, right: 12),
                               leading: _loadingControls
-                                  ? Icon(resolveIconName('puzzle'))
+                                  ? const Icon(MdiIcons.puzzle)
                                   : activityRefIcon(_controls, ref['type'] as String?),
                               title: Text(
                                 activityRowTitle(control, ref),
@@ -1362,7 +1362,7 @@ class OperationSheetState extends State<OperationSheet> {
                               // already resolved.
                               onTap: refTypeIsEditable(control) ? () => _editRef(ref) : null,
                               trailing: IconButton(
-                                icon: Icon(Icons.delete, semanticLabel: t.removeActivity),
+                                icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
                                 onPressed: () => _deleteRef(ref),
                               ),
                             ),
@@ -1443,7 +1443,7 @@ class OperationSheetState extends State<OperationSheet> {
                   _search(_searchController.text);
                 }
               },
-              icon: Icon(Icons.extension, size: 18, color: onAccordionColor),
+              icon: Icon(MdiIcons.puzzle, size: 18, color: onAccordionColor),
               label: Text(
                 t.manage,
                 style: TextStyle(color: onAccordionColor),
@@ -1590,7 +1590,7 @@ class _AccordionSection extends StatelessWidget {
         duration: _duration,
         curve: Curves.easeInOut,
         child: Icon(
-          Icons.expand_more,
+          MdiIcons.chevronDown,
           color: onHeaderColor,
           semanticLabel: expanded ? context.t.common.collapse : context.t.common.expand,
         ),
@@ -1716,7 +1716,7 @@ class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProvide
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _animation,
-      child: Icon(resolveIconName('map-marker'), color: widget.color),
+      child: Icon(MdiIcons.mapMarker, color: widget.color),
     );
   }
 }

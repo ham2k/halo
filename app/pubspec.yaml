@@ -105,6 +105,14 @@ dev_dependencies:
   url_launcher_platform_interface: ^2.3.2
 
 flutter:
+  # The built-in MaterialIcons font ships ONLY as a safety net for glyphs
+  # Flutter renders internally with no override point (the Android
+  # text-selection toolbar's overflow buttons, e.g.) — those cannot be
+  # enumerated, so dropping the font trades ~1.6 MB for tofu boxes that
+  # surface one framework internal at a time. Our own code never uses
+  # Icons.*: the app's icon language is MDI (icon_names_test.dart enforces
+  # it), and framework defaults we CAN override are re-pointed at MDI in
+  # buildHaLoTheme's actionIconTheme and per-site dropdown/expansion icons.
   uses-material-design: true
   assets:
     - assets/extensions/

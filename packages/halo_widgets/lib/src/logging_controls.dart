@@ -45,7 +45,7 @@ import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_controller.dart';
-import 'mdi_icons.dart';
+import 'mdi_icons.g.dart';
 import 'option_matching.dart';
 import 'platform_chrome.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -3449,7 +3449,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (widget.suggestSpotSources != null && widget.sendSpot != null)
           _ControlDescriptor(
             key: 'spotting',
-            icon: resolveIconName('hand-wave'),
+            icon: MdiIcons.handWave,
             label: widget.spottingControlLabel ?? 'Spotting',
           ),
         for (final control in _effectiveActivityControls)
@@ -3463,7 +3463,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             ),
         _ControlDescriptor(
           key: 'more',
-          icon: resolveIconName('pencil'),
+          icon: MdiIcons.pencil,
           label: widget.moreLabel ?? 'More',
         ),
       ];
@@ -3865,6 +3865,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownMenu<String>(
+                trailingIcon: dropdownTrailingIcon,
+                selectedTrailingIcon: dropdownSelectedTrailingIcon,
                 controller: _bandDropdownController,
                 focusNode: _bandDropdownFocus,
                 menuController: _bandMenuController,
@@ -3948,6 +3950,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               ),
               const SizedBox(width: 6),
               DropdownMenu<String>(
+                trailingIcon: dropdownTrailingIcon,
+                selectedTrailingIcon: dropdownSelectedTrailingIcon,
                 controller: _modeDropdownController,
                 focusNode: _modeDropdownFocus,
                 menuController: _modeMenuController,
@@ -4100,7 +4104,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final state = _spotState;
     return SecondaryControlSpec(
       key: 'spotting',
-      icon: resolveIconName('hand-wave'),
+      icon: MdiIcons.handWave,
       summary: state.summary,
       expandedBuilder: (context) => Row(
         mainAxisSize: MainAxisSize.min,
@@ -4132,7 +4136,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             onPressed: state.enabled && !_spotSending ? _sendSpot : null,
             icon: _spotSending
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(resolveIconName('hand-wave')),
+                : const Icon(MdiIcons.handWave),
             label: Text(state.buttonLabel),
           ),
           // Up to 3 source-status icons per column, wrapping into another
@@ -4145,7 +4149,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   Padding(
                     padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
                     child: Icon(
-                      resolveIconName(source['icon'] as String? ?? 'radio-tower'),
+                      resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
                       size: 16,
                       color: switch (_spotStatus[source['hookKey'] as String? ?? '']) {
                         true => poloColors.important,
@@ -4566,7 +4570,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
-        icon: resolveIconName('pencil'),
+        icon: MdiIcons.pencil,
         summary: widget.moreLabel ?? 'More',
         // Never actually shown — _onSelectControl special-cases 'more' to
         // open the full-edit pane instead of expanding inline.
@@ -5367,7 +5371,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       key: ValueKey(key),
                       leading: ReorderableDragStartListener(
                         index: index,
-                        child: const Icon(Icons.drag_handle),
+                        child: const Icon(MdiIcons.dragHorizontalVariant),
                       ),
                       title: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -5917,11 +5921,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     if (editingQso == null) {
       if (_wipeUndoSlot.value != null) {
-        icon = resolveIconName('undo');
+        icon = MdiIcons.undo;
         actionLabel = widget.undoLabel ?? 'Undo';
         onPressed = _restoreFromUndoSlot;
       } else {
-        icon = resolveIconName('backspace-outline');
+        icon = MdiIcons.backspaceOutline;
         actionLabel = widget.wipeLabel ?? 'Wipe';
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }
@@ -5929,19 +5933,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // An already-deleted QSO (selected via the "show deleted QSOs"
       // toggle) — one tap restores it immediately (ham2k/halo-dist#59);
       // no staged-until-save step, since restoring isn't destructive.
-      icon = resolveIconName('delete-restore');
+      icon = MdiIcons.deleteRestore;
       actionLabel = widget.restoreLabel ?? 'Restore';
       onPressed = () => _handleRestoreTap(editingQso);
     } else if (_pendingDelete) {
-      icon = resolveIconName('undo');
+      icon = MdiIcons.undo;
       actionLabel = widget.undoDeleteLabel ?? 'Undo delete';
       onPressed = () => setState(() => _pendingDelete = false);
     } else if (_qsoDataChanged()) {
-      icon = resolveIconName('undo');
+      icon = MdiIcons.undo;
       actionLabel = widget.revertLabel ?? 'Revert';
       onPressed = () => _populateFromEditingQso(editingQso);
     } else {
-      icon = resolveIconName('trash-can-outline');
+      icon = MdiIcons.trashCanOutline;
       actionLabel = widget.deleteLabel ?? 'Delete';
       onPressed = () => setState(() => _pendingDelete = true);
     }
@@ -6575,8 +6579,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 ),
                                 child: Icon(
                                   _pendingDelete
-                                      ? resolveIconName('trash-can')
-                                      : (editing ? resolveIconName('content-save') : Icons.upload),
+                                      ? MdiIcons.trashCan
+                                      : (editing ? MdiIcons.contentSave : MdiIcons.upload),
                                   size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
                                 ),
                               ),
@@ -7043,7 +7047,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Widget _buildLockedWarning(ThemeData theme, bool deletedQso) {
     return Row(
       children: [
-        Icon(resolveIconName('alert'), size: 16, color: theme.colorScheme.error),
+        Icon(MdiIcons.alert, size: 16, color: theme.colorScheme.error),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -7073,7 +7077,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       theme,
       // Filled icon in the same accent as the main buttons (tertiary, or
       // secondary while editing — see `accentTheme`).
-      icon: resolveIconName('timer-outline'),
+      icon: MdiIcons.timerOutline,
       iconColor: theme.colorScheme.tertiary,
       children: [
         for (final line in lines)
@@ -7127,7 +7131,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       theme,
       // Filled icon in the same accent as the main buttons (tertiary, or
       // secondary while editing — see `accentTheme`).
-      icon: resolveIconName('account'),
+      icon: MdiIcons.account,
       iconColor: theme.colorScheme.tertiary,
       children: [
         // Line 1 — flag + distance/location (blank until the lookup resolves),

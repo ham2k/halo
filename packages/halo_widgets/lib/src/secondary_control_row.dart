@@ -28,6 +28,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
+import 'mdi_icons.g.dart';
 import 'theme.dart';
 import 'wall_clock.dart';
 
@@ -679,7 +680,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                 duration: _duration,
                 curve: Curves.easeInOut,
                 child: Icon(
-                  Icons.expand_more,
+                  MdiIcons.chevronDown,
                   semanticLabel: _gridExpanded
                       ? (widget.collapseLabel ?? 'Collapse')
                       : (widget.expandLabel ?? 'Expand'),
@@ -850,7 +851,7 @@ class _SettingsPill extends StatelessWidget {
           onTap: onTap,
           child: Center(
             child: Icon(
-              Icons.settings,
+              MdiIcons.cog,
               size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
               color: theme.colorScheme.onTertiaryContainer,
             ),

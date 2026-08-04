@@ -504,17 +504,17 @@ class _CommandDialogState extends State<CommandDialog> {
   List<_NavResult> _navResults(Translations t) => [
         _NavResult(
           label: t.commandDialog.goNewOperation,
-          icon: Icons.add,
+          icon: MdiIcons.plus,
           go: _createOperation,
         ),
         _NavResult(
           label: t.commandDialog.goHome,
-          icon: Icons.home_outlined,
+          icon: MdiIcons.homeOutline,
           go: () async => navigatorKey.currentState?.popUntil((route) => route.isFirst),
         ),
         _NavResult(
           label: t.commandDialog.goSettings,
-          icon: Icons.settings_outlined,
+          icon: MdiIcons.cogOutline,
           go: () async => navigatorKey.currentState
               ?.push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
         ),
@@ -786,7 +786,7 @@ class _CommandDialogState extends State<CommandDialog> {
           children: [
             // A console, not a magnifier: this bar runs commands as much as it
             // searches, and the magnifier undersold it as a search box.
-            Icon(resolveIconName('console'), color: HaLoColors.of(context).onSurfaceAccent),
+            Icon(MdiIcons.console, color: HaLoColors.of(context).onSurfaceAccent),
             const SizedBox(width: 12),
             Expanded(child: KeyedSubtree(key: _fieldKey, child: _textField(theme, t, results))),
             // Sized to the row rather than its own 48pt default, which would
@@ -798,7 +798,7 @@ class _CommandDialogState extends State<CommandDialog> {
                   : IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-                      icon: Icon(Icons.close, semanticLabel: t.common.clear),
+                      icon: Icon(MdiIcons.close, semanticLabel: t.common.clear),
                       onPressed: () => _controller.clear(),
                     ),
             ),
@@ -898,7 +898,7 @@ class _CommandDialogState extends State<CommandDialog> {
             // Static, not a CircularProgressIndicator: a continuous animation
             // over a focused field, for the length of the lookup. See the
             // note in initState — kept because the working build had it.
-            Icon(resolveIconName('console'), size: 16, color: HaLoColors.of(context).onSurfaceAccent),
+            Icon(MdiIcons.console, size: 16, color: HaLoColors.of(context).onSurfaceAccent),
             const SizedBox(width: 14),
             Text(
               t.commandDialog.lookingUp,
@@ -949,19 +949,22 @@ class _CommandDialogState extends State<CommandDialog> {
 
   Widget _row(ThemeData theme, Translations t, _Result result, {required bool isSelected}) {
     final (IconData icon, String title, String? trailing, String? subtitle) = switch (result) {
-      _TypedResult(:final text, :final describe) => (Icons.play_arrow, text, null, describe),
+      _TypedResult(:final text, :final describe) => (MdiIcons.play, text, null, describe),
       // The category rides along as a trailing label instead of a grouping
       // heading: results are ranked across every category, so grouping
       // them would either fight the ranking or repeat headings.
+      // console-line, not console: the bar's own field icon is the console
+      // glyph, and a row glyph that matches it would make the samples read
+      // as more search bars (and defeat counting them in tests).
       _CatalogResult(:final command, :final params, :final describe, :final category) => (
-          Icons.terminal,
+          MdiIcons.consoleLine,
           params == null ? command : '$command $params',
           category,
           describe,
         ),
       _NavResult(:final label, :final icon) => (icon, label, null, null),
       _OperationResult(:final title, :final subtitle) => (
-          Icons.folder_outlined,
+          MdiIcons.folderOutline,
           title,
           null,
           subtitle.isEmpty ? null : subtitle,
@@ -1080,7 +1083,7 @@ class _CommandDialogState extends State<CommandDialog> {
       child: Row(
         children: [
           if (isError) ...[
-            Icon(resolveIconName('alert-circle'), size: 16, color: theme.colorScheme.onErrorContainer),
+            Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onErrorContainer),
             const SizedBox(width: 8),
           ],
           Expanded(

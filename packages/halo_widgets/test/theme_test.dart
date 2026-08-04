@@ -187,7 +187,7 @@ void main() {
               appBar: AppBar(
                 title: const Text('Home'),
                 actions: [
-                  IconButton(key: const Key('gear'), icon: const Icon(Icons.settings), onPressed: () {}),
+                  IconButton(key: const Key('gear'), icon: const Icon(MdiIcons.cog), onPressed: () {}),
                 ],
               ),
             ),

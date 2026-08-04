@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -58,7 +59,7 @@ void main() {
     final leadingFinder = find.descendant(of: listTileFinder, matching: find.byType(CircleAvatar));
     expect(leadingFinder, findsOneWidget);
     
-    final iconFinder = find.descendant(of: leadingFinder, matching: find.byIcon(Icons.question_mark));
+    final iconFinder = find.descendant(of: leadingFinder, matching: find.byIcon(MdiIcons.help));
     expect(iconFinder, findsOneWidget);
     // Same 16px the pre-shared-helper inline markup used — activityRefIcon
     // must default to it, not the ambient IconTheme size (ham2k/halo-dist#261).
@@ -107,6 +108,6 @@ void main() {
 
     final leadingFinder = find.descendant(of: suggestionTileFinder, matching: find.byType(CircleAvatar));
     expect(leadingFinder, findsOneWidget);
-    expect(find.descendant(of: leadingFinder, matching: find.byIcon(Icons.question_mark)), findsOneWidget);
+    expect(find.descendant(of: leadingFinder, matching: find.byIcon(MdiIcons.help)), findsOneWidget);
   });
 }

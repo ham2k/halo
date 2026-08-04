@@ -26,7 +26,7 @@ void main() {
             flexibleSpace: windowHeaderGestureArea(),
             title: const Text('Title'),
             actions: [
-              IconButton(icon: const Icon(Icons.settings), onPressed: onSettingsPressed ?? () {}),
+              IconButton(icon: const Icon(MdiIcons.cog), onPressed: onSettingsPressed ?? () {}),
             ],
           ),
           body: const SizedBox.expand(),
@@ -56,7 +56,7 @@ void main() {
       // settings action.
       final appBar = tester.getRect(find.byType(AppBar));
       final titleRight = tester.getTopRight(find.text('Title')).dx;
-      final actionLeft = tester.getTopLeft(find.byIcon(Icons.settings)).dx;
+      final actionLeft = tester.getTopLeft(find.byIcon(MdiIcons.cog)).dx;
       await doubleTapAt(tester, Offset((titleRight + actionLeft) / 2, appBar.center.dy));
 
       expect(calls.map((c) => c.method), ['performHeaderDoubleClickAction']);
@@ -78,7 +78,7 @@ void main() {
       var pressed = 0;
       await tester.pumpWidget(host(onSettingsPressed: () => pressed++));
 
-      await doubleTapAt(tester, tester.getCenter(find.byIcon(Icons.settings)));
+      await doubleTapAt(tester, tester.getCenter(find.byIcon(MdiIcons.cog)));
 
       expect(pressed, 2);
       expect(calls, isEmpty);
@@ -137,7 +137,7 @@ void main() {
 
       final appBar = tester.getRect(find.byType(AppBar));
       final titleRight = tester.getTopRight(find.text('Title')).dx;
-      final actionLeft = tester.getTopLeft(find.byIcon(Icons.settings)).dx;
+      final actionLeft = tester.getTopLeft(find.byIcon(MdiIcons.cog)).dx;
       final empty = Offset((titleRight + actionLeft) / 2, appBar.center.dy);
 
       await tester.dragFrom(empty, const Offset(40, 0));
@@ -166,7 +166,7 @@ void main() {
 
       final appBar = tester.getRect(find.byType(AppBar));
       final titleRight = tester.getTopRight(find.text('Title')).dx;
-      final actionLeft = tester.getTopLeft(find.byIcon(Icons.settings)).dx;
+      final actionLeft = tester.getTopLeft(find.byIcon(MdiIcons.cog)).dx;
       final empty = Offset((titleRight + actionLeft) / 2, appBar.center.dy);
 
       await tester.dragFrom(empty, const Offset(40, 0));

@@ -99,7 +99,7 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
       _SettingsPanelEntry(
           key: 'settings',
           title: t.settings.panels.commonPreferences,
-          icon: Icons.tune,
+          icon: MdiIcons.tune,
           order: 0,
           description: t.settings.panels.commonPreferencesDescription),
       // Immediately after Common Preferences: every declared group — core,
@@ -107,25 +107,25 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
       _SettingsPanelEntry(
           key: 'all_settings',
           title: t.settings.panels.allSettings,
-          icon: Icons.settings,
+          icon: MdiIcons.cog,
           order: 5,
           description: t.settings.panels.allSettingsDescription),
       _SettingsPanelEntry(
           key: 'sync',
           title: t.settings.sync.title,
-          icon: Icons.sync,
+          icon: MdiIcons.sync,
           order: 10,
           description: t.settings.panels.syncDescription),
       _SettingsPanelEntry(
           key: 'accounts',
           title: t.settings.accounts.title,
-          icon: Icons.vpn_key,
+          icon: MdiIcons.key,
           order: 20,
           description: t.settings.panels.accountsDescription),
       _SettingsPanelEntry(
           key: 'extensions',
           title: t.settings.panels.extensions,
-          icon: Icons.extension,
+          icon: MdiIcons.puzzle,
           order: 40,
           description: t.settings.panels.extensionsDescription),
     ];
@@ -217,7 +217,7 @@ class _SettingsViewState extends State<SettingsView> {
         monoDetail: operatorCall.isEmpty ? null : operatorCall,
         description: t.settings.panels.profilesDescription,
         screenTitle: t.settings.panels.stationProfiles,
-        icon: resolveIconName('account'),
+        icon: MdiIcons.account,
         order: _profilesPanelOrder,
       ),
       // Station equipment and CAT control (docs/design/cat.md). Between
@@ -243,7 +243,7 @@ class _SettingsViewState extends State<SettingsView> {
       _SettingsPanelEntry(
         key: 'data_files',
         title: t.settings.panels.dataFiles,
-        icon: resolveIconName('file-cabinet'),
+        icon: MdiIcons.fileCabinet,
         order: 60,
         description: t.settings.panels.dataFilesDescription,
       ),
@@ -264,14 +264,14 @@ class _SettingsViewState extends State<SettingsView> {
         _SettingsPanelEntry(
           key: 'developer',
           title: t.settings.panels.developerSettings,
-          icon: Icons.bug_report,
+          icon: MdiIcons.bug,
           order: _developerPanelOrder,
           description: t.settings.panels.developerSettingsDescription,
         ),
       _SettingsPanelEntry(
           key: 'about',
           title: t.settings.panels.about,
-          icon: Icons.info,
+          icon: MdiIcons.information,
           order: _aboutPanelOrder,
           description: t.settings.panels.aboutDescription),
     ];
@@ -589,7 +589,7 @@ class _ProfilesPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           children: [
             ListTile(
-              leading: Icon(resolveIconName('account')),
+              leading: const Icon(MdiIcons.account),
               title: Text(context.t.common.callsign),
               subtitle: Text(call.isEmpty ? context.t.settings.profiles.notSet : call),
               onTap: () => _editCallsign(context),
@@ -871,11 +871,11 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               isDense: true,
-              prefixIcon: const Icon(Icons.search, size: 18),
+              prefixIcon: const Icon(MdiIcons.magnify, size: 18),
               suffixIcon: query.isEmpty
                   ? null
                   : IconButton(
-                      icon: Icon(Icons.close, size: 18, semanticLabel: context.t.settings.search.clear),
+                      icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.settings.search.clear),
                       onPressed: () => setState(() => _searchController.clear()),
                     ),
               hintText: context.t.settings.search.hint,
@@ -1092,7 +1092,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             // The operator-callsign row lives in the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
-              secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync' : 'cloud-off')),
+              secondary: Icon(settings.syncEnabled ? MdiIcons.cloudSync : MdiIcons.cloudOff),
               title: Text(context.t.settings.syncPanel.enableTitle),
               subtitle: Text(
                 settings.syncEnabled
@@ -1117,7 +1117,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 final progress = widget.services.statusBar.itemForKey(HaLoServices.syncProgressStatusKey);
                 if (progress == null || !settings.syncEnabled) return const SizedBox.shrink();
                 return ListTile(
-                  leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync')),
+                  leading: Icon(resolveIconName(progress.icon, fallback: MdiIcons.cloudSync)),
                   title: Text(progress.title ?? context.t.settings.syncPanel.syncing),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1132,17 +1132,17 @@ class _SyncPanelState extends State<_SyncPanel> {
             ),
             if (settings.syncEnabled) ...[
               ListTile(
-                leading: Icon(resolveIconName('account-check')),
+                leading: Icon(MdiIcons.accountCheck),
                 title: Text(context.t.settings.syncPanel.account),
                 subtitle: Text(_syncAccountSubtitle),
                 trailing: IconButton(
-                  icon: Icon(resolveIconName('refresh'), semanticLabel: context.t.settings.syncPanel.refresh),
+                  icon: Icon(MdiIcons.refresh, semanticLabel: context.t.settings.syncPanel.refresh),
                   onPressed: _refreshSyncAccount,
                   mouseCursor: SystemMouseCursors.click,
                 ),
               ),
               ListTile(
-                leading: Icon(resolveIconName('database')),
+                leading: const Icon(MdiIcons.database),
                 title: Text(context.t.settings.syncPanel.counts),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1153,7 +1153,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 ),
               ),
               ListTile(
-                leading: Icon(resolveIconName('account-switch')),
+                leading: Icon(MdiIcons.accountSwitch),
                 title: Text(context.t.settings.syncPanel.switchAccounts),
                 subtitle: Text(context.t.settings.syncPanel.switchAccountsDescription),
                 onTap: _switchAccounts,
@@ -1259,7 +1259,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
         // the top — beats each row claiming to be disconnected.
         if (_secureStorageUnavailable)
           ListTile(
-            leading: const Icon(Icons.key_off),
+            leading: const Icon(MdiIcons.keyRemove),
             title: Text(storageUnavailableMessage(context)),
           ),
         if (_accounts!.isEmpty)
@@ -1443,7 +1443,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     return ListTile(
       leading: Icon(resolveIconName(panel['icon'] as String?)),
       title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: const Icon(MdiIcons.chevronRight),
       onTap: () => _openExtensionPanel(context, panel),
       mouseCursor: SystemMouseCursors.click,
     );
@@ -1452,7 +1452,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
   Widget _buildUpdateAllRow(BuildContext context) {
     if (_updatingAll) {
       return ListTile(
-        leading: Icon(resolveIconName('refresh')),
+        leading: Icon(MdiIcons.refresh),
         title: Text(context.t.settings.offlineData.updateAll),
         subtitle: Text(context.t.settings.offlineData.updatingAll),
         trailing: const SizedBox(
@@ -1464,7 +1464,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     }
 
     return ListTile(
-      leading: Icon(resolveIconName('refresh')),
+      leading: Icon(MdiIcons.refresh),
       title: Text(context.t.settings.offlineData.updateAll),
       onTap: _updateAll,
       mouseCursor: SystemMouseCursors.click,
@@ -1472,7 +1472,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
   }
 
   Widget _buildRow(BuildContext context, DataFileStatus file) {
-    final icon = Icon(resolveIconName(file.icon ?? 'file-document-outline'));
+    final icon = Icon(resolveIconName(file.icon, fallback: MdiIcons.fileDocumentOutline));
 
     // While refreshing, mirror this data file's live status-bar progress
     // item (keyed `dataFile:$key`, set by DataFileManager) as the subtitle —
@@ -1508,7 +1508,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
       title: Text(file.name),
       subtitle: Text(_dataFileUpdatedLabel(file.updatedAt)),
       trailing: IconButton(
-        icon: Icon(resolveIconName('refresh'), semanticLabel: context.t.settings.offlineData.refresh),
+        icon: Icon(MdiIcons.refresh, semanticLabel: context.t.settings.offlineData.refresh),
         onPressed: () => _refresh(file),
         mouseCursor: SystemMouseCursors.click,
       ),
@@ -1917,7 +1917,7 @@ class _DeveloperPanel extends StatelessWidget {
                       if (!d.hidden) d.key,
                   ]);
                   return ListTile(
-                    leading: const Icon(Icons.science_outlined),
+                    leading: const Icon(MdiIcons.flaskOutline),
                     title: Text(context.t.settings.developer.experiments),
                     subtitle: Text(context.t.settings.developer.experimentsEnabled(count: enabledCount)),
                     contentPadding: EdgeInsets.zero,
@@ -2382,7 +2382,7 @@ class _AboutPanel extends StatelessWidget {
             SliverToBoxAdapter(
               child: centered(
                 ListTile(
-                  leading: const Icon(Icons.info),
+                  leading: const Icon(MdiIcons.information),
                   // VersionLabel renders SelectableText, whose own tap
                   // recognizer (for cursor placement) would otherwise win
                   // the gesture arena over this ListTile's onTap —
@@ -2416,10 +2416,10 @@ class _AboutPanel extends StatelessWidget {
             SliverToBoxAdapter(
               child: centered(
                 ListTile(
-                  leading: const Icon(Icons.notifications),
+                  leading: const Icon(MdiIcons.bell),
                   title: Text(context.t.settings.about.notices),
                   subtitle: Text(context.t.settings.about.noticesDescription),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const Icon(MdiIcons.chevronRight),
                   onTap: () => showModalPane<void>(
                     context,
                     title: context.t.settings.about.notices,
@@ -2595,7 +2595,7 @@ class _PendingAccountBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(resolveIconName('cloud-question'), color: theme.colorScheme.onTertiaryContainer),
+                Icon(MdiIcons.cloudQuestion, color: theme.colorScheme.onTertiaryContainer),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

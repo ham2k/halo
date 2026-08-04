@@ -234,7 +234,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
               children: [
                 if (image != null) _buildImage(theme, image),
                 ActionChip(
-                  avatar: const Icon(Icons.public, size: 18),
+                  avatar: const Icon(MdiIcons.earth, size: 18),
                   label: Text(t.qrz),
                   onPressed: _openQrz,
                 ),
@@ -293,7 +293,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: ActionChip(
-          avatar: const Icon(Icons.visibility, size: 18),
+          avatar: const Icon(MdiIcons.eye, size: 18),
           label: Text(context.t.callInfo.showImage),
           onPressed: () => setState(() => _showImage = true),
         ),
@@ -319,7 +319,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
               right: 0,
               bottom: 0,
               child: IconButton.filledTonal(
-                icon: const Icon(Icons.visibility_off, size: 18),
+                icon: const Icon(MdiIcons.eyeOff, size: 18),
                 onPressed: () => setState(() => _showImage = false),
               ),
             ),

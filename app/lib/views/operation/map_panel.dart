@@ -170,9 +170,12 @@ class _MapPanelState extends State<MapPanel> {
             top: 8 + PaneSafeArea.topOf(context),
             right: 8 + PaneSafeArea.rightOf(context),
             child: SegmentedButton<MapProjection>(
+              // Keeps each segment's own MDI icon when selected instead of
+              // the framework's Material check swap (same as settings_view).
+              showSelectedIcon: false,
               segments: [
-                ButtonSegment(value: MapProjection.mercator, icon: const Icon(Icons.map), label: Text(context.t.map.flat)),
-                ButtonSegment(value: MapProjection.globe, icon: const Icon(Icons.public), label: Text(context.t.map.globe)),
+                ButtonSegment(value: MapProjection.mercator, icon: const Icon(MdiIcons.map), label: Text(context.t.map.flat)),
+                ButtonSegment(value: MapProjection.globe, icon: const Icon(MdiIcons.earth), label: Text(context.t.map.globe)),
               ],
               selected: {_projection},
               onSelectionChanged: (selection) => setState(() => _projection = selection.first),

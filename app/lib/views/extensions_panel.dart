@@ -73,10 +73,10 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       };
 
   IconData _categoryIcon(String? category) => switch (category) {
-        'activity' => Icons.explore,
-        'contest' => Icons.emoji_events,
-        'lookup' => Icons.person_search,
-        _ => Icons.extension,
+        'activity' => MdiIcons.compass,
+        'contest' => MdiIcons.trophy,
+        'lookup' => MdiIcons.accountSearch,
+        _ => MdiIcons.puzzle,
       };
 
   @override
@@ -147,11 +147,11 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   isDense: true,
-                  prefixIcon: const Icon(Icons.search, size: 18),
+                  prefixIcon: const Icon(MdiIcons.magnify, size: 18),
                   suffixIcon: query.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.close, size: 18, semanticLabel: 'Clear'),
+                          icon: const Icon(MdiIcons.close, size: 18, semanticLabel: 'Clear'),
                           onPressed: () => setState(() => _searchController.clear()),
                         ),
                   hintText: t.extensionsPanel.searchHint,

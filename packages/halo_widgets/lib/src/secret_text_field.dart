@@ -9,6 +9,7 @@
 // silently fails.
 
 import 'package:flutter/material.dart';
+import 'mdi_icons.g.dart';
 
 /// An obscured [TextField] that reveals its text when the eye button in its
 /// suffix is tapped. The obscured state is held internally, so a call site
@@ -72,7 +73,7 @@ class _SecretTextFieldState extends State<SecretTextField> {
       // hide). No hover tooltip (user-interface.md); the label is for screen
       // readers only, and flips with the icon.
       icon: Icon(
-        _obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        _obscured ? MdiIcons.eyeOutline : MdiIcons.eyeOffOutline,
         semanticLabel: _obscured ? 'Show' : 'Hide',
       ),
       onPressed: () => setState(() => _obscured = !_obscured),

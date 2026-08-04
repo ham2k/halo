@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
+import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
 import 'secret_text_field.dart';
 import 'text_formatters.dart';
@@ -800,18 +801,14 @@ class FormRendererState extends State<FormRenderer> {
     final devModeColor = _devModeColor(el);
     final styleSheet = devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor));
     if (el['collapsible'] == true) {
-      // ExpansionTile carries its own expanded/collapsed state internally —
-      // nothing for this (stateless-per-build) method to track.
       return Theme(
         data: theme.copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: _rowContentPadding,
-          childrenPadding: _rowContentPadding,
+        child: _CollapsibleMarkdown(
           title: Text(
             el['title'] as String? ?? '',
             style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
           ),
-          children: [Align(alignment: Alignment.centerLeft, child: MarkdownBody(data: text, styleSheet: styleSheet))],
+          child: Align(alignment: Alignment.centerLeft, child: MarkdownBody(data: text, styleSheet: styleSheet)),
         ),
       );
     }
@@ -893,6 +890,7 @@ class FormRendererState extends State<FormRenderer> {
           key: ValueKey('$key-$_actionGeneration'),
           value: _values[key],
           focusNode: _focusNodes[key],
+          icon: dropdownTrailingIcon,
           menuMaxHeight: dropdownMenuMaxHeight(context),
           // Fill the field rather than taking the width of the widest OPTION,
           // which is what an unexpanded dropdown does — one long label (a
@@ -1094,7 +1092,7 @@ class FormRendererState extends State<FormRenderer> {
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
-      trailing: Icon(resolveIconName('chevron-right'), color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       onTap: _isSubmitting ? null : () => _openSelectDialog(el),
       mouseCursor: SystemMouseCursors.click,
     );
@@ -1125,7 +1123,7 @@ class FormRendererState extends State<FormRenderer> {
             for (final opt in options)
               ListTile(
                 title: Text(opt['label'] as String),
-                trailing: opt['value'] == current ? Icon(resolveIconName('check')) : null,
+                trailing: opt['value'] == current ? const Icon(MdiIcons.check) : null,
                 onTap: () => Navigator.pop(dialogContext, [opt['value']]),
                 mouseCursor: SystemMouseCursors.click,
               ),
@@ -1160,7 +1158,7 @@ class FormRendererState extends State<FormRenderer> {
       subtitle: description != null && description.isNotEmpty ? Text(description, style: TextStyle(color: devModeColor)) : null,
       trailing: IconButton(
         icon: Icon(
-          resolveIconName('open-in-new'),
+          MdiIcons.openInNew,
           size: 22,
           color: devModeColor,
           semanticLabel: widget.labels.openPageLabel,
@@ -1306,7 +1304,7 @@ class FormRendererState extends State<FormRenderer> {
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
-      trailing: Icon(resolveIconName('chevron-right'), color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       onTap: _isSubmitting ? null : () => _openListEditor(el),
       mouseCursor: SystemMouseCursors.click,
     );
@@ -1338,12 +1336,12 @@ class FormRendererState extends State<FormRenderer> {
         // the drag gesture is scoped to just this icon via the listener
         // below, so it can't be confused with the row's own onTap.
         leading: orderable
-            ? ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle))
+            ? ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant))
             : null,
         title: Text(title.isEmpty ? widget.labels.untitledItem : title),
         onTap: _isSubmitting ? null : () => actions.editItem(index),
         trailing: IconButton(
-          icon: Icon(Icons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
+          icon: Icon(MdiIcons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
           onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
         ),
         mouseCursor: SystemMouseCursors.click,
@@ -1376,7 +1374,7 @@ class FormRendererState extends State<FormRenderer> {
           padding: _rowContentPadding,
           child: TextButton.icon(
             onPressed: _isSubmitting ? null : () => actions.editItem(null),
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(MdiIcons.plus, size: 18),
             label: Text(widget.labels.addItemLabel(itemLabel)),
           ),
         ),
@@ -1512,10 +1510,10 @@ class FormRendererState extends State<FormRenderer> {
                   if (orderable)
                     ReorderableDragStartListener(
                       index: index,
-                      child: const Icon(Icons.drag_handle, size: 20),
+                      child: const Icon(MdiIcons.dragHorizontalVariant, size: 20),
                     ),
                   IconButton(
-                    icon: Icon(Icons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
+                    icon: Icon(MdiIcons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
                     onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
                   ),
                 ],
@@ -1553,7 +1551,7 @@ class FormRendererState extends State<FormRenderer> {
                       for (var i = 0; i < items.length; i++) rowFor(i),
                     TextButton.icon(
                       onPressed: _isSubmitting ? null : () => actions.editItem(null),
-                      icon: const Icon(Icons.add, size: 18),
+                      icon: const Icon(MdiIcons.plus, size: 18),
                       label: Text(widget.labels.addItemLabel(itemLabel)),
                     ),
                   ],
@@ -1603,7 +1601,7 @@ class FormRendererState extends State<FormRenderer> {
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
-      trailing: Icon(resolveIconName('chevron-right'), color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       onTap: _isSubmitting || options.isEmpty ? null : () => _openMultiselectEditor(el, options),
       mouseCursor: SystemMouseCursors.click,
     );
@@ -1770,11 +1768,11 @@ class FormRendererState extends State<FormRenderer> {
                         onChanged: (_) => setDialogState(() {}),
                         decoration: InputDecoration(
                           isDense: true,
-                          prefixIcon: const Icon(Icons.search, size: 18),
+                          prefixIcon: const Icon(MdiIcons.magnify, size: 18),
                           suffixIcon: !filtering
                               ? null
                               : IconButton(
-                                  icon: Icon(Icons.close, size: 18, semanticLabel: widget.labels.clearLabel),
+                                  icon: Icon(MdiIcons.close, size: 18, semanticLabel: widget.labels.clearLabel),
                                   onPressed: () => setDialogState(() => searchController!.clear()),
                                 ),
                           hintText: widget.labels.searchHint,
@@ -1801,7 +1799,7 @@ class FormRendererState extends State<FormRenderer> {
                           _ => 0,
                         };
                       }),
-                      icon: Icon(level >= 2 ? Icons.unfold_less : Icons.unfold_more, size: 18),
+                      icon: Icon(level >= 2 ? MdiIcons.unfoldLessHorizontal : MdiIcons.unfoldMoreHorizontal, size: 18),
                       label: Text(switch (level) {
                         0 when hasUncommon => widget.labels.showMore,
                         0 => widget.labels.showAll,
@@ -1820,7 +1818,7 @@ class FormRendererState extends State<FormRenderer> {
                               pinned.addAll(defaultValue);
                               commit({...defaultValue});
                             },
-                      icon: const Icon(Icons.restore, size: 18),
+                      icon: const Icon(MdiIcons.restore, size: 18),
                       label: Text(widget.labels.defaults),
                     ),
                   const Spacer(),
@@ -1860,7 +1858,7 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: Icon(
-        unavailable ? Icons.key_off : (connected ? Icons.check_circle : Icons.radio_button_unchecked),
+        unavailable ? MdiIcons.keyRemove : (connected ? MdiIcons.checkCircle : MdiIcons.radioboxBlank),
         color: devModeColor ??
             (connected
                 ? (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent
@@ -2149,3 +2147,35 @@ Future<Map<String, dynamic>?> showFormPane(
   );
 }
 
+
+/// A collapsible markdown section: an [ExpansionTile] with an MDI chevron
+/// (the framework's default trailing is a Material glyph in an MDI app).
+/// A widget of its own because the chevron has to flip with the tile's
+/// open/closed state — ExpansionTile rotates only its default trailing; a
+/// custom one is never rotated for us.
+class _CollapsibleMarkdown extends StatefulWidget {
+  final Widget title;
+  final Widget child;
+
+  const _CollapsibleMarkdown({required this.title, required this.child});
+
+  @override
+  State<_CollapsibleMarkdown> createState() => _CollapsibleMarkdownState();
+}
+
+class _CollapsibleMarkdownState extends State<_CollapsibleMarkdown> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final padding = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
+    return ExpansionTile(
+      tilePadding: padding,
+      childrenPadding: padding,
+      trailing: Icon(_expanded ? MdiIcons.chevronUp : MdiIcons.chevronDown),
+      onExpansionChanged: (open) => setState(() => _expanded = open),
+      title: widget.title,
+      children: [widget.child],
+    );
+  }
+}

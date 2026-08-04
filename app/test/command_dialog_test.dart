@@ -272,7 +272,7 @@ void main() {
 
     // Two, not the whole catalog: an empty field is a nudge toward what's
     // available, not a browse-everything list.
-    expect(find.byIcon(Icons.terminal), findsNWidgets(2));
+    expect(find.byIcon(MdiIcons.consoleLine), findsNWidgets(2));
     expect(find.text('Try'), findsOneWidget);
 
     await _unmount(tester);
@@ -322,7 +322,7 @@ void main() {
 
     await _pumpDialog(tester, services);
 
-    expect(find.byIcon(Icons.terminal), findsNothing, reason: 'the samples have done their job by now');
+    expect(find.byIcon(MdiIcons.consoleLine), findsNothing, reason: 'the samples have done their job by now');
     expect(find.text('Try'), findsNothing);
 
     await _unmount(tester);

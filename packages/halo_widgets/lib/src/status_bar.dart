@@ -16,6 +16,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'layout.dart';
+import 'mdi_icons.g.dart';
 import 'theme.dart';
 import 'ui_scale.dart';
 
@@ -370,7 +371,7 @@ class _DismissButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(Icons.close, size: 14, color: color, semanticLabel: label),
+      icon: Icon(MdiIcons.close, size: 14, color: color, semanticLabel: label),
       onPressed: onPressed,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -734,7 +735,7 @@ class NoticeCard extends StatelessWidget {
                   const Spacer(),
                 if (onDismiss != null)
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: onNotice, semanticLabel: dismissLabel),
+                    icon: Icon(MdiIcons.close, size: 18, color: onNotice, semanticLabel: dismissLabel),
                     onPressed: onDismiss,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

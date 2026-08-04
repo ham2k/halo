@@ -9,6 +9,7 @@
 // automatically on first show, and again whenever the row itself is tapped.
 
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart' show HaLoServices;
@@ -86,7 +87,7 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
           };
 
     return ListTile(
-      leading: const Icon(Icons.system_update),
+      leading: const Icon(MdiIcons.cellphoneArrowDown),
       title: Text(context.t.updates.checkForUpdates),
       subtitle: Text(subtitle),
       trailing: _checking
@@ -95,7 +96,7 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(Icons.refresh),
+          : const Icon(MdiIcons.refresh),
       onTap: _checking ? null : _check,
       mouseCursor: SystemMouseCursors.click,
     );

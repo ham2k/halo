@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // GENERATED FILE — do not edit by hand.
-// Regenerate with: python3 tool/generate_icon_codepoints.py
+// Regenerate with: python3 tool/update_icons.py
 //
-// Source: @react-native-vector-icons/material-design-icons (7448 icons),
-// @react-native-vector-icons/fontawesome6 solid style (1402 icons).
+// Source: @mdi/svg@7.4.47 meta.json; font from @mdi/font@7.4.47 (7447 icons),
+// @fortawesome/fontawesome-free@6.7.2 icon-families.json (free classic solid); font fa-solid-900.ttf (1402 icons).
 
 const Map<String, int> mdiCodepoints = {
   "ab-testing": 983497,
@@ -969,7 +969,6 @@ const Map<String, int> mdiCodepoints = {
   "bitbucket": 983208,
   "bitcoin": 985107,
   "black-mesa": 983209,
-  "blank": 63116,
   "blender": 986347,
   "blender-outline": 989210,
   "blender-software": 983211,

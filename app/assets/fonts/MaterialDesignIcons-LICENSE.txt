@@ -1,7 +1,7 @@
 Material Design Icons (Pictogrammers), materialdesignicons-webfont.ttf
 Licensed under the Apache License, Version 2.0.
-https://github.com/Templarian/MaterialDesign-Font
+https://pictogrammers.com/library/mdi/
 
-Font binary vendored from the material_design_icons_flutter pub package
-(https://pub.dev/packages/material_design_icons_flutter), MIT-licensed, whose
-Dart wrapper isn't used here — see mdi_icons.dart for why.
+Font vendored from the @mdi/font npm package; name->codepoint data from the
+matching @mdi/svg package's meta.json. Both are re-vendored as a pinned pair
+by packages/halo_widgets/tool/update_icons.py, which records the version.

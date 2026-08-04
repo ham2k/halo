@@ -185,7 +185,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   /// row must not display a pending address the action won't use.
   Widget _accountTile({
     required Map<String, dynamic> account,
-    required String iconName,
+    required IconData icon,
     bool includePending = true,
     int? qsoCount,
     int? operationCount,
@@ -195,7 +195,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     final counts = _countsLine(qsoCount, operationCount);
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(resolveIconName(iconName)),
+      leading: Icon(icon),
       // The placeholder shown before account data has loaded carries no
       // identity at all.
       title: Text(identity ?? t.switchAccounts.noAccountDetails),
@@ -467,7 +467,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
             Text(context.t.switchAccounts.currentAccount, style: theme.textTheme.titleSmall),
             _accountTile(
               account: current ?? const {},
-              iconName: 'account-check',
+              icon: MdiIcons.accountCheck,
               // The current account's counts come from the getAccountData
               // response's top-level totals, not per-account stats.
               qsoCount: ((_accountData?['qsos'] as Map?)?['total'] as num?)?.toInt(),
@@ -485,7 +485,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
                 final canSwitch = email != null && email.isNotEmpty;
                 return _accountTile(
                   account: account,
-                  iconName: 'account',
+                  icon: MdiIcons.account,
                   includePending: false,
                   qsoCount: (stats?['qso_count'] as num?)?.toInt(),
                   operationCount: (stats?['operation_count'] as num?)?.toInt(),
@@ -499,7 +499,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         ],
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(resolveIconName('qrcode')),
+          leading: Icon(MdiIcons.qrcode),
           title: Text(context.t.switchAccounts.linkWithQr),
           subtitle: Text(context.t.switchAccounts.linkWithQrDescription),
           enabled: !_busy,
@@ -508,7 +508,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(resolveIconName('email')),
+          leading: Icon(MdiIcons.email),
           title: Text(context.t.switchAccounts.linkWithEmail),
           subtitle: Text(context.t.switchAccounts.linkWithEmailDescription),
           enabled: !_busy,
@@ -573,7 +573,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               if (_challengeCode != null) ...[
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: Icon(resolveIconName('content-copy'), semanticLabel: context.t.switchAccounts.copyCode),
+                  icon: Icon(MdiIcons.contentCopy, semanticLabel: context.t.switchAccounts.copyCode),
                   onPressed: () => _copyChallengeCode(context),
                   mouseCursor: SystemMouseCursors.click,
                 ),

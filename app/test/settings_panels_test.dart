@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -240,7 +241,7 @@ void main() {
     expect(find.text('Leftie Mode'), findsNothing);
 
     // The X clears the filter.
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(MdiIcons.close));
     await tester.pumpAndSettle();
     expect(find.text('Theme Mode'), findsOneWidget);
     expect(find.text('Leftie Mode'), findsOneWidget);
