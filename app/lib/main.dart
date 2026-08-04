@@ -33,7 +33,6 @@ import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/expired_build_dialog.dart';
 import 'views/release_overlay.dart';
-import 'views/tester_overlay.dart';
 import 'views/splash_view.dart';
 import 'config/dev_bridge.dart';
 import 'config/dev_bridge_installer.dart';
@@ -41,7 +40,6 @@ import 'config/dev_fixture.dart';
 import 'config/dev_flags.dart';
 import 'config/experiments.dart';
 import 'config/release_notes.dart';
-import 'config/tester_notes.dart';
 import 'config/secrets.dart';
 import 'config/version.dart';
 import 'services/app_storage.dart';
@@ -864,10 +862,6 @@ class HaLoServices {
   /// gate.
   final DevOverlayTrigger devOnboardTrigger = DevOverlayTrigger();
 
-  /// DEVTESTER: `_TesterOverlayGateState` listens for this to force-show the
-  /// tester overlay, bypassing its edition and last-seen-build gates.
-  final DevOverlayTrigger devTesterTrigger = DevOverlayTrigger();
-
   /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
   /// here in Dart; only the network call crosses into the `ham2k-lofi`
   /// extension via `_syncTransportCall`.
@@ -1124,9 +1118,6 @@ class HaLoServices {
       case 'devOnboard':
         devOnboardTrigger.trigger();
         return null;
-      case 'devTester':
-        devTesterTrigger.trigger();
-        return null;
       case 'devSentry':
         // DEVSENTRY [message]: push a synthetic error through the real
         // reporting pipeline to verify the Sentry wiring end to end.
@@ -1345,12 +1336,6 @@ class _HaLoAppState extends State<HaLoApp> {
   }
 
   bool _handleKeyEvent(KeyEvent event) {
-    // The tester overlay owns the keyboard while covering the app. Its own
-    // Focus node can't block this handler (HardwareKeyboard dispatches
-    // ahead of the focus tree), and acting here would fire chords into
-    // chrome the overlay hides — ⌘K would open the command dialog invisibly
-    // beneath it and steal its focus.
-    if (testerOverlayCovering.value) return false;
     if (event is! KeyDownEvent) return false;
 
     final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
@@ -1506,18 +1491,11 @@ class _HaLoAppState extends State<HaLoApp> {
                     // own overlays and anything pushed on the Navigator (which is
                     // `content`, i.e. dialogs and panes) included.
                     child: TapToDismissEmptyField(
-                      // Outermost of the startup gates: the tester overlay
-                      // paints above even the onboarding flow — a tester's
-                      // fresh install gets the caution warning before
-                      // anything else.
-                      child: _TesterOverlayGate(
+                      child: _OnboardingGate(
                         services: widget.services,
-                        child: _OnboardingGate(
+                        child: _ReleaseOverlayGate(
                           services: widget.services,
-                          child: _ReleaseOverlayGate(
-                            services: widget.services,
-                            child: StatusBarOverlay(services: widget.services, child: content),
-                          ),
+                          child: StatusBarOverlay(services: widget.services, child: content),
                         ),
                       ),
                     ),
@@ -1801,135 +1779,10 @@ class _ReleaseOverlayGateState extends State<_ReleaseOverlayGate> {
   }
 }
 
-/// Shows `TesterOverlayView` on the Dev and Next editions whenever
-/// `kBuildNumber` has advanced past `SettingsService.lastSeenTesterBuild`,
-/// listing every tester-notes entry in between (tester_notes.dart,
-/// tester_overlay.dart). Outermost of the startup gates — it paints above
-/// the onboarding flow too, so even a fresh install leads with the caution
-/// warning. Dismissing persists `kBuildNumber`, so it won't show again until
-/// the next build with notes.
-class _TesterOverlayGate extends StatefulWidget {
-  final HaLoServices services;
-  final Widget child;
-
-  const _TesterOverlayGate({required this.services, required this.child});
-
-  @override
-  State<_TesterOverlayGate> createState() => _TesterOverlayGateState();
-}
-
-class _TesterOverlayGateState extends State<_TesterOverlayGate> {
-  List<TesterNotesEntry>? _pending;
-  ReleaseNotesEntry? _release;
-
-  /// Whether the current showing is the organic once-per-build one — only
-  /// that one stamps `lastSeenTesterBuild` on dismissal. A DEVTESTER
-  /// preview must not consume the real overlay (DEVONBOARD's `_firstRun`
-  /// rationale).
-  bool _organicShowing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkForNewBuild();
-    widget.services.devTesterTrigger.addListener(_showDevTester);
-  }
-
-  @override
-  void dispose() {
-    widget.services.devTesterTrigger.removeListener(_showDevTester);
-    super.dispose();
-  }
-
-  Future<void> _checkForNewBuild() async {
-    // Testers-only: prod users get the release overlay, never this one.
-    if (kEdition == Edition.prod) return;
-    final lastSeen = widget.services.settings.lastSeenTesterBuild;
-    if (lastSeen >= kBuildNumber) return;
-    final notes = await loadTesterNotes();
-    // Entries above kBuildNumber can exist in a dev tree (notes written for
-    // a build not yet cut) — this build shouldn't promise them.
-    final pending = notes.where((entry) => entry.build > lastSeen && entry.build <= kBuildNumber).toList();
-    if (pending.isEmpty || !mounted) return;
-    // Shown before the backdrop resolves — onboarding mounts synchronously
-    // beneath this gate, and every await here extends the window where a
-    // fresh install sees it flash before the tester overlay covers it. The
-    // photo crossfades in when it arrives, same as everywhere else.
-    _organicShowing = true;
-    setState(() => _pending = pending);
-    final release = await _loadBackdrop();
-    if (release != null && mounted && _pending != null) setState(() => _release = release);
-  }
-
-  /// DEVTESTER (dev-commands extension) — shows every entry up to the
-  /// current build, ignoring the edition and `lastSeenTesterBuild` gates
-  /// entirely, for re-previewing the overlay on demand (DEVSPLASH's
-  /// sibling). Falls back to the whole file when nothing is ≤ the current
-  /// build (a dev tree whose only notes are for an uncut build) — the
-  /// command has already confirmed in the UI, so it must never no-op.
-  Future<void> _showDevTester() async {
-    // Same edition guard as the organic path — a prod build has no
-    // business rendering tester-only content, dev command or not.
-    if (kEdition == Edition.prod) return;
-    final notes = await loadTesterNotes();
-    var pending = notes.where((entry) => entry.build <= kBuildNumber).toList();
-    if (pending.isEmpty) pending = notes;
-    if (pending.isEmpty || !mounted) return;
-    // A preview must never stamp — even one that lands while the organic
-    // showing is on screen and replaces its content.
-    _organicShowing = false;
-    setState(() => _pending = pending);
-    final release = await _loadBackdrop();
-    if (release != null && mounted && _pending != null) setState(() => _release = release);
-  }
-
-  /// The newest release's entry, for the overlay's backdrop photo — or null.
-  /// Tolerant the same way onboarding is: a broken/missing release-notes
-  /// asset just means no photo (the view falls back to a flat color), not a
-  /// broken overlay.
-  Future<ReleaseNotesEntry?> _loadBackdrop() async {
-    try {
-      final notes = await loadReleaseNotes();
-      return notes.isNotEmpty ? notes.first : null;
-    } catch (error, stackTrace) {
-      debugPrint('[tester-overlay] release notes unavailable: $error\n$stackTrace');
-      return null;
-    }
-  }
-
-  void _dismiss() {
-    if (_organicShowing) widget.services.settings.setLastSeenTesterBuild(kBuildNumber);
-    _organicShowing = false;
-    setState(() => _pending = null);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pending = _pending;
-    return Stack(
-      children: [
-        widget.child,
-        if (pending != null) _buildOverlay(context, pending),
-      ],
-    );
-  }
-
-  /// Always full screen, even on wide layouts — the same presentation choice
-  /// as `_OnboardingGate` (not `_ReleaseOverlayGate`'s centered modal): the
-  /// two overlays can show back-to-back on a fresh install, and switching
-  /// chrome between them would read as a glitch.
-  Widget _buildOverlay(BuildContext context, List<TesterNotesEntry> entries) {
-    return Positioned.fill(
-      child: TesterOverlayView(entries: entries, release: _release, onDismiss: _dismiss),
-    );
-  }
-}
-
 /// A bare `notifyListeners()` signal for the dev commands that force-show a
-/// startup overlay: `devSplashTrigger` (DEVSPLASH → release overlay),
-/// `devOnboardTrigger` (DEVONBOARD → onboarding overlay) and
-/// `devTesterTrigger` (DEVTESTER → tester overlay). Carries no state of its
-/// own.
+/// startup overlay: `devSplashTrigger` (DEVSPLASH → release overlay) and
+/// `devOnboardTrigger` (DEVONBOARD → onboarding overlay). Carries no state
+/// of its own.
 class DevOverlayTrigger extends ChangeNotifier {
   void trigger() => notifyListeners();
 }

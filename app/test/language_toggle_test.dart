@@ -11,7 +11,6 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
-import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -30,10 +29,7 @@ Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    setReleaseNotesForTesting(const []);
-    setTesterNotesForTesting(const []);
-  });
+  setUp(() => setReleaseNotesForTesting(const []));
 
   testWidgets('pressing Cmd+Shift+L toggles the app language/locale', (tester) async {
     final services = await makeServices();

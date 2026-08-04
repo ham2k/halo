@@ -5111,42 +5111,6 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
-  testWidgets('a paramless overlay action (devTester) forwards to onCommandAction', (tester) async {
-    // Same silent-no-op trap as the reloadDataFiles test above, for the
-    // paramless `{devTester: {}}` shape: without its _dispatchActions
-    // branch, DEVTESTER interprets fine but submitting it does nothing.
-    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeTesterCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
-      if (input.trim().toUpperCase() != 'DEVTESTER') return null;
-      return {
-        'describe': 'Show the tester-notes overlay?',
-        'confirm': 'Showing the tester-notes overlay',
-        'commands': [
-          {'devTester': <String, dynamic>{}},
-        ],
-      };
-    }
-
-    await tester.pumpWidget(host(
-      interpretCommand: fakeTesterCommand,
-      onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
-    ));
-
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVTESTER');
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pump(const Duration(milliseconds: 200));
-
-    expect(dispatched, hasLength(1));
-    expect(dispatched.single.key, 'devTester');
-    expect(dispatched.single.value, isNull);
-  });
-
   // The round submit button is the primary submit affordance on mobile (no
   // hardware keyboard). It calls the same _log() as Enter, but was gated on
   // _canLog — false for a command, which isn't a callsign — so a command could

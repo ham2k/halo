@@ -241,10 +241,7 @@ void main() {
       expect(sections.firstWhere((s) => s.key == '?').spots, hasLength(1));
     });
 
-    test('always groups by band — even age-sorted spots — keeping the incoming order within a band', () {
-      // What the panel feeds in when sorting by age: a single most-recent-first
-      // list. It must still come out grouped by band (not one flat section),
-      // with that age order preserved inside each band.
+    test('groupByBand (the default) groups by band, keeping the incoming order within a band', () {
       final spots = [
         _spot(call: 'K1ABC', band: '20m', timeInMillis: 3000),
         _spot(call: 'W1XYZ', band: '40m', timeInMillis: 2000),
@@ -258,6 +255,40 @@ void main() {
         sections.firstWhere((s) => s.key == '20m').spots.map((s) => (s['their'] as Map)['call']),
         ['K1ABC', 'N2BBB'],
       );
+    });
+
+    test('groupByBand: false produces one flat "spots" section, not band groups', () {
+      // Band-grouping a most-recent-first list would re-order it (all of one
+      // band's spots ahead of a more recent spot on another band), defeating
+      // the sort the user picked.
+      final spots = [
+        _spot(call: 'K1ABC', band: '20m', timeInMillis: 3000),
+        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 2000),
+        _spot(call: 'N2BBB', band: '20m', timeInMillis: 1000),
+      ];
+
+      final sections = sectionSpots(spots, callsWithNotes: {}, groupByBand: false);
+
+      expect(sections.map((s) => s.key), ['spots']);
+      expect(
+        sections.single.spots.map((s) => (s['their'] as Map)['call']),
+        ['K1ABC', 'W1XYZ', 'N2BBB'],
+      );
+    });
+
+    test('groupByBand: false still pins a "notes" section ahead of the flat "spots" section', () {
+      final spots = [
+        _spot(call: 'K1ABC', band: '20m', timeInMillis: 2000),
+        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
+      ];
+
+      final sections = sectionSpots(spots, callsWithNotes: {'W1XYZ'}, groupByBand: false);
+
+      expect(sections.map((s) => s.key), ['notes', 'spots']);
+    });
+
+    test('groupByBand: false with no spots produces no sections', () {
+      expect(sectionSpots([], callsWithNotes: {}, groupByBand: false), isEmpty);
     });
 
     test('an empty spot list produces no sections', () {
@@ -380,6 +411,17 @@ void main() {
 
     test('the retired "notDigital" resets to auto (it spanned two super modes)', () {
       expect(normalizeModeFilter('notDigital'), 'auto');
+    });
+  });
+
+  group('defaultGroupByBand', () {
+    test('time sort defaults to ungrouped, matching the pre-groupByBand shape', () {
+      expect(defaultGroupByBand('time'), isFalse);
+    });
+
+    test('frequency sort (and anything else) defaults to grouped', () {
+      expect(defaultGroupByBand('frequency'), isTrue);
+      expect(defaultGroupByBand('anything-else'), isTrue);
     });
   });
 

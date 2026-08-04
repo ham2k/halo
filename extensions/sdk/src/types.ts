@@ -882,10 +882,6 @@ export interface CommandAction {
   /// bypassing its callsign-undefined gate — see `app/lib/main.dart`'s
   /// `_OnboardingGate`.
   devOnboard?: Record<string, never>
-  /// Developer-only: re-shows the tester-notes overlay (DEVTESTER),
-  /// bypassing its edition and last-seen-build gates — see
-  /// `app/lib/main.dart`'s `_TesterOverlayGate`.
-  devTester?: Record<string, never>
   /// Toggles an experimental feature (EXP command). The app resolves
   /// `token` against `app/experiments.yaml`'s keys and aliases and flips
   /// that experiment's persisted state; an unknown token reports an error

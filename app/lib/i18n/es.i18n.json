@@ -43,14 +43,6 @@
   "startScreen": {
     "credits": "por KI2D y amigos"
   },
-  "testerOverlay": {
-    "tape": "PRECAUCIÓN: EN CONSTRUCCIÓN",
-    "build": "Build ${build}",
-    "warningTitle": "Esta aplicación es un trabajo en progreso",
-    "warningBody": "La mayoría de las funciones tienen superficies irregulares y hay peligros de tropiezo por todas partes. Por favor, busca actualizaciones con frecuencia.",
-    "whatsNew": "Novedades del build ${build}",
-    "thanks": "¡Gracias por poner tu log en riesgo para ayudarnos a mejorar esta aplicación!"
-  },
   "extensionsPanel": {
     "categoryActivity": "Actividades",
     "categoryContest": "Concursos",
@@ -188,6 +180,7 @@
       "spotsCountFiltered": "Mostrando ${count} de ${total} spots",
       "ageMinutes": "${minutes} minutos",
       "callsOfNote": "Indicativos destacados",
+      "allSpots": "Todos los spots",
       "continents": {
         "af": "África",
         "as": "Asia",
@@ -207,6 +200,7 @@
         "sorting": "Orden",
         "sortByTime": "Por hora del spot",
         "sortByFrequency": "Por frecuencia",
+        "groupByBand": "Agrupar por banda",
         "groupCallsWithNotes": "Agrupar indicativos destacados"
       }
     }

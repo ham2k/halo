@@ -120,7 +120,6 @@ flutter:
     - assets/images/
     - assets/images/releases/
     - assets/release-notes.yaml
-    - assets/tester-notes.yaml
     - experiments.yaml
     # Shorebird reads this at runtime to know which app/patch feed to check
     # (docs/releases.md §4). Inert in Dev/plain builds.

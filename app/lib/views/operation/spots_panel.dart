@@ -64,6 +64,12 @@ String normalizeModeFilter(String value) {
   return superModeForMode(value) ?? 'auto';
 }
 
+/// The `groupByBand` value to assume for a persisted filter map that
+/// predates that setting — from when time-sorting alone implied a flat
+/// list. Infers the grouping that old shape meant rather than defaulting
+/// every such map straight to grouped. Public for unit testing.
+bool defaultGroupByBand(String sortBy) => sortBy != 'time';
+
 /// Pass 1: same callsign, close in frequency (0.5kHz) and time (30min) —
 /// merge the second spot's refs into the first instead of listing it again.
 /// Public (not `_`-prefixed) so `app/test/spots_panel_merge_test.dart` can
@@ -162,16 +168,20 @@ List<Map<String, dynamic>> sortSpots(List<Map<String, dynamic>> spots, String so
 /// Splits already-sorted `spots` into display sections, mirroring
 /// app-polo's SpotsPanel.jsx: `callsWithNotes` spots get a leading
 /// `'notes'`-keyed section (a pinned DUPLICATE — those spots still appear
-/// again in their normal section below, never removed from it); then one
+/// again in their normal section below, never removed from it). Then, when
+/// `groupByBand` is false, one flat `'spots'`-keyed section holding `spots`
+/// in their incoming (already-sorted) order — band grouping would otherwise
+/// re-order same-band spots ahead of a spot the caller's sort placed earlier
+/// on another band, defeating that sort. Otherwise (the default), one
 /// section per band the spots belong to, band-list-ordered with unmatched
-/// spots keyed `'?'`. Each band keeps `spots`' incoming order, so whichever
-/// sort the caller applied (frequency or most-recent-first) is preserved
-/// WITHIN each band. Empty sections are omitted. Section `key` is a stable
-/// identifier, not a display label — the caller maps it to translated text.
-/// Public for `spots_panel_merge_test.dart`.
+/// spots keyed `'?'`; each band keeps `spots`' incoming order, so the
+/// caller's sort still applies WITHIN each band. Empty sections are omitted.
+/// Section `key` is a stable identifier, not a display label — the caller
+/// maps it to translated text. Public for `spots_panel_merge_test.dart`.
 List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
   List<Map<String, dynamic>> spots, {
   required Set<String> callsWithNotes,
+  bool groupByBand = true,
 }) {
   final sections = <({String key, List<Map<String, dynamic>> spots})>[];
 
@@ -180,6 +190,11 @@ List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
     // compound `their.call` never matches the per-call `callsWithNotes` set.
     final noted = spots.where((s) => _callsIn(_callOf(s)).any(callsWithNotes.contains)).toList();
     if (noted.isNotEmpty) sections.add((key: 'notes', spots: noted));
+  }
+
+  if (!groupByBand) {
+    if (spots.isNotEmpty) sections.add((key: 'spots', spots: spots));
+    return sections;
   }
 
   final grouped = <String, List<Map<String, dynamic>>>{};
@@ -273,6 +288,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   final Set<String> _disabledSources = {};
   final Set<String> _disabledContinents = {};
   String _sortBy = 'frequency';
+  bool _groupByBand = true;
   bool _groupCallsWithNotes = false;
   final Map<String, ({bool hasNote, String? emoji, String? continent})> _callNotes = {};
   String? _lastVfoBand;
@@ -329,6 +345,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _disabledSources.addAll((decoded['disabledSources'] as List?)?.cast<String>() ?? const []);
     _disabledContinents.addAll((decoded['disabledContinents'] as List?)?.cast<String>() ?? const []);
     _sortBy = decoded['sortBy'] as String? ?? _sortBy;
+    _groupByBand = decoded['groupByBand'] as bool? ?? defaultGroupByBand(_sortBy);
     _groupCallsWithNotes = decoded['groupCallsWithNotes'] as bool? ?? _groupCallsWithNotes;
   }
 
@@ -339,6 +356,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
         'disabledSources': _disabledSources.toList(),
         'disabledContinents': _disabledContinents.toList(),
         'sortBy': _sortBy,
+        'groupByBand': _groupByBand,
         'groupCallsWithNotes': _groupCallsWithNotes,
       });
 
@@ -539,6 +557,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
           modeSpotCounts: _modeSpotCountsOf(merged),
           ageSpotCounts: _ageSpotCountsOf(merged),
           sortBy: _sortBy,
+          groupByBand: _groupByBand,
           groupCallsWithNotes: _groupCallsWithNotes,
           sources: _spotsBySource.keys.toList()..sort(),
           sourceNames: _sourceNames,
@@ -560,6 +579,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
           },
           onSortByChanged: (v) {
             setState(() => _sortBy = v);
+            unawaited(_persistFilters());
+          },
+          onGroupByBandChanged: (v) {
+            setState(() => _groupByBand = v);
             unawaited(_persistFilters());
           },
           onGroupCallsWithNotesChanged: (v) {
@@ -631,8 +654,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// callsign has a note, per `_callNotes`) ahead of everything else —
   /// those spots still also appear in their normal section below, same as
   /// app-polo's SpotsPanel.jsx (a pinned duplicate, not an exclusive move).
-  /// `sortBy == 'time'` then shows one flat, already time-sorted section;
-  /// otherwise spots (already frequency-sorted) are grouped by band.
+  /// `_groupByBand` then decides band sections vs. one flat section; either
+  /// way `filtered` is already sorted per `_sortBy`, so that order is what
+  /// shows within each band (or across the whole flat list).
   Widget _buildSpotsList(BuildContext context, List<Map<String, dynamic>> filtered) {
     final t = context.t;
     final theme = Theme.of(context);
@@ -643,7 +667,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
               if (entry.value.hasNote) entry.key,
           }
         : const <String>{};
-    final rawSections = sectionSpots(filtered, callsWithNotes: callsWithNotes);
+    final rawSections = sectionSpots(filtered, callsWithNotes: callsWithNotes, groupByBand: _groupByBand);
     final sections = [
       for (final section in rawSections)
         (
@@ -699,12 +723,20 @@ class _SpotsPanelState extends State<SpotsPanel> {
     );
   }
 
-  /// Maps a `sectionSpots` section key to its display label.
+  /// Maps a `sectionSpots` section key to its display label. The flat
+  /// `'spots'` section reads as the actual band once the Band filter has
+  /// narrowed to one — "All Spots" while filtered to a single band would
+  /// misleadingly suggest the filter had no effect.
   String _sectionLabel(Translations t, String key) => switch (key) {
         'notes' => t.operation.spots.callsOfNote,
+        'spots' => _isSingleBandFilter ? _bandFilter : t.operation.spots.allSpots,
         '?' => t.operation.spots.unknownBand,
         _ => key,
       };
+
+  /// Whether the Band filter has narrowed to one specific band ('auto' and
+  /// 'any' both leave multiple bands possible).
+  bool get _isSingleBandFilter => _bandFilter != 'auto' && _bandFilter != 'any';
 }
 
 /// A section group row (a band or "Calls of Note"), styled to match
@@ -1219,6 +1251,7 @@ class _SpotsFilterDialog extends StatefulWidget {
   final Map<String, int> modeSpotCounts;
   final Map<int, int> ageSpotCounts;
   final String sortBy;
+  final bool groupByBand;
   final bool groupCallsWithNotes;
   final List<String> sources;
   final Map<String, String> sourceNames;
@@ -1230,6 +1263,7 @@ class _SpotsFilterDialog extends StatefulWidget {
   final ValueChanged<String> onModeChanged;
   final ValueChanged<int?> onAgeChanged;
   final ValueChanged<String> onSortByChanged;
+  final ValueChanged<bool> onGroupByBandChanged;
   final ValueChanged<bool> onGroupCallsWithNotesChanged;
   final ValueChanged<String> onToggleSource;
   final ValueChanged<String> onToggleContinent;
@@ -1245,6 +1279,7 @@ class _SpotsFilterDialog extends StatefulWidget {
     required this.modeSpotCounts,
     required this.ageSpotCounts,
     required this.sortBy,
+    required this.groupByBand,
     required this.groupCallsWithNotes,
     required this.sources,
     required this.sourceNames,
@@ -1256,6 +1291,7 @@ class _SpotsFilterDialog extends StatefulWidget {
     required this.onModeChanged,
     required this.onAgeChanged,
     required this.onSortByChanged,
+    required this.onGroupByBandChanged,
     required this.onGroupCallsWithNotesChanged,
     required this.onToggleSource,
     required this.onToggleContinent,
@@ -1270,6 +1306,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   late String _modeFilter = widget.modeFilter;
   late int? _ageMinutes = widget.ageMinutes;
   late String _sortBy = widget.sortBy;
+  late bool _groupByBand = widget.groupByBand;
   late bool _groupCallsWithNotes = widget.groupCallsWithNotes;
   late final Set<String> _disabledSources = {...widget.disabledSources};
   late final Set<String> _disabledContinents = {...widget.disabledContinents};
@@ -1384,6 +1421,25 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                 dense: true,
                 visualDensity: const VisualDensity(vertical: -4),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                // Grouping by band is meaningless once the Band filter has
+                // already narrowed to one band — every spot would land in
+                // the same single section anyway.
+                enabled: !_isSingleBandFilter,
+                title: Text(t.operation.spots.filters.groupByBand),
+                trailing: Switch(
+                  value: _groupByBand,
+                  onChanged: _isSingleBandFilter
+                      ? null
+                      : (value) {
+                          setState(() => _groupByBand = value);
+                          widget.onGroupByBandChanged(value);
+                        },
+                ),
+              ),
+              ListTile(
+                dense: true,
+                visualDensity: const VisualDensity(vertical: -4),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 title: Text(t.operation.spots.filters.groupCallsWithNotes),
                 trailing: Switch(
                   value: _groupCallsWithNotes,
@@ -1462,6 +1518,10 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
       ],
     );
   }
+
+  /// Whether the Band filter has narrowed to one specific band ('auto' and
+  /// 'any' both leave multiple bands possible).
+  bool get _isSingleBandFilter => _bandFilter != 'auto' && _bandFilter != 'any';
 
   /// `_bandOptionLabel` plus a "(N)" spot count — every option except
   /// "auto", which has no fixed count to show (it tracks the live VFO).

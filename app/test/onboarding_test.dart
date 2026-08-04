@@ -17,14 +17,12 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
-import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/onboarding_overlay.dart';
-import 'package:ham2k_logger/views/tester_overlay.dart' show testerOverlayCovering;
 import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/splash_view.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -62,10 +60,7 @@ Future<void> drainTimers(WidgetTester tester) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    setReleaseNotesForTesting(const []);
-    setTesterNotesForTesting(const []);
-  });
+  setUp(() => setReleaseNotesForTesting(const []));
 
   testWidgets('shows only while the default profile callsign is undefined', (tester) async {
     // Undefined → onboarding.
@@ -332,28 +327,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(OnboardingOverlayView), findsNothing);
     expect(services.settings.activeProfile.operatorCall, 'KI2D');
-    await drainTimers(tester);
-  });
-
-  testWidgets('Enter is inert while the tester overlay covers the flow', (tester) async {
-    // Onboarding's Enter shortcut is a HardwareKeyboard handler, which
-    // dispatches ahead of the focus tree — the tester overlay mounted on
-    // top (fresh installs) cannot swallow it, so the handler stands down
-    // via testerOverlayCovering instead. Without that, one Enter dismisses
-    // the overlay AND advances this flow past the welcome step.
-    final services = await makeServices();
-    await pumpApp(tester, services);
-    addTearDown(() => testerOverlayCovering.value = false);
-
-    testerOverlayCovering.value = true;
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
-    expect(find.text("What's your callsign?"), findsNothing);
-
-    testerOverlayCovering.value = false;
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
-    expect(find.text("What's your callsign?"), findsOneWidget);
     await drainTimers(tester);
   });
 

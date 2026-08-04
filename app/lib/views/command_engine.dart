@@ -471,8 +471,6 @@ class CommandEngine extends ChangeNotifier {
         await runAction('devSplash', null);
       } else if (map['devOnboard'] is Map) {
         await runAction('devOnboard', null);
-      } else if (map['devTester'] is Map) {
-        await runAction('devTester', null);
       } else if (map['reloadDataFiles'] is Map) {
         await runAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else if (map['toggleExperiment'] is Map) {

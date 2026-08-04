@@ -43,14 +43,6 @@
   "startScreen": {
     "credits": "by KI2D and friends"
   },
-  "testerOverlay": {
-    "tape": "CAUTION: UNDER CONSTRUCTION",
-    "build": "Build ${build}",
-    "warningTitle": "This app is a work in progress",
-    "warningBody": "Most features have uneven surfaces and there are trip hazards all over. Please check for updates regularly.",
-    "whatsNew": "What's new in build ${build}",
-    "thanks": "Thank you for putting your log at risk in order to help us make this app better!"
-  },
   "extensionsPanel": {
     "categoryActivity": "Activities",
     "categoryContest": "Contests",
@@ -188,6 +180,7 @@
       "spotsCountFiltered": "Showing ${count} of ${total} spots",
       "ageMinutes": "${minutes} minutes",
       "callsOfNote": "Calls of Note",
+      "allSpots": "All Spots",
       "continents": {
         "af": "Africa",
         "as": "Asia",
@@ -207,6 +200,7 @@
         "sorting": "Sorting",
         "sortByTime": "By Spot Time",
         "sortByFrequency": "By Frequency",
+        "groupByBand": "Group by Band",
         "groupCallsWithNotes": "Group Calls with Notes"
       }
     }

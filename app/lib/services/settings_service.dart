@@ -56,7 +56,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _onboardingKey = 'onboarding';
   static const _layoutKey = 'layout';
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
-  static const _lastSeenTesterBuildKey = 'lastSeenTesterBuild';
   static const _shorebirdTrackKey = 'shorebirdTrack';
 
   /// The Shorebird code-push tracks this build can follow, riskiest first
@@ -214,16 +213,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setLastSeenReleaseVersion(String version) async {
     await _prefs.setString(_lastSeenReleaseVersionKey, version);
-    notifyListeners();
-  }
-
-  /// The `kBuildNumber` the user last dismissed the tester overlay for
-  /// (tester_overlay.dart) — the overlay shows again once `kBuildNumber`
-  /// exceeds this, listing every tester-notes entry in between.
-  int get lastSeenTesterBuild => _prefs.getInt(_lastSeenTesterBuildKey) ?? 0;
-
-  Future<void> setLastSeenTesterBuild(int build) async {
-    await _prefs.setInt(_lastSeenTesterBuildKey, build);
     notifyListeners();
   }
 

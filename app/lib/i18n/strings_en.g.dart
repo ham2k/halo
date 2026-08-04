@@ -43,7 +43,6 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$common$en common = Translations$common$en.internal(_root);
 	late final Translations$onboarding$en onboarding = Translations$onboarding$en.internal(_root);
 	late final Translations$startScreen$en startScreen = Translations$startScreen$en.internal(_root);
-	late final Translations$testerOverlay$en testerOverlay = Translations$testerOverlay$en.internal(_root);
 	late final Translations$extensionsPanel$en extensionsPanel = Translations$extensionsPanel$en.internal(_root);
 	late final Translations$home$en home = Translations$home$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
@@ -210,33 +209,6 @@ class Translations$startScreen$en {
 
 	/// en: 'by KI2D and friends'
 	String get credits => 'by KI2D and friends';
-}
-
-// Path: testerOverlay
-class Translations$testerOverlay$en {
-	Translations$testerOverlay$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'CAUTION: UNDER CONSTRUCTION'
-	String get tape => 'CAUTION: UNDER CONSTRUCTION';
-
-	/// en: 'Build ${build}'
-	String build({required Object build}) => 'Build ${build}';
-
-	/// en: 'This app is a work in progress'
-	String get warningTitle => 'This app is a work in progress';
-
-	/// en: 'Most features have uneven surfaces and there are trip hazards all over. Please check for updates regularly.'
-	String get warningBody => 'Most features have uneven surfaces and there are trip hazards all over. Please check for updates regularly.';
-
-	/// en: 'What's new in build ${build}'
-	String whatsNew({required Object build}) => 'What\'s new in build ${build}';
-
-	/// en: 'Thank you for putting your log at risk in order to help us make this app better!'
-	String get thanks => 'Thank you for putting your log at risk in order to help us make this app better!';
 }
 
 // Path: extensionsPanel
@@ -1510,6 +1482,9 @@ class Translations$operation$spots$en {
 	/// en: 'Calls of Note'
 	String get callsOfNote => 'Calls of Note';
 
+	/// en: 'All Spots'
+	String get allSpots => 'All Spots';
+
 	late final Translations$operation$spots$continents$en continents = Translations$operation$spots$continents$en.internal(_root);
 	late final Translations$operation$spots$filters$en filters = Translations$operation$spots$filters$en.internal(_root);
 }
@@ -2556,6 +2531,9 @@ class Translations$operation$spots$filters$en {
 	/// en: 'By Frequency'
 	String get sortByFrequency => 'By Frequency';
 
+	/// en: 'Group by Band'
+	String get groupByBand => 'Group by Band';
+
 	/// en: 'Group Calls with Notes'
 	String get groupCallsWithNotes => 'Group Calls with Notes';
 }
@@ -2945,12 +2923,6 @@ extension on Translations {
 			'onboarding.consentOperationLabel' => 'Share Operation Data',
 			'onboarding.finishingSetup' => 'Finishing setup — downloading reference data…',
 			'startScreen.credits' => 'by KI2D and friends',
-			'testerOverlay.tape' => 'CAUTION: UNDER CONSTRUCTION',
-			'testerOverlay.build' => ({required Object build}) => 'Build ${build}',
-			'testerOverlay.warningTitle' => 'This app is a work in progress',
-			'testerOverlay.warningBody' => 'Most features have uneven surfaces and there are trip hazards all over. Please check for updates regularly.',
-			'testerOverlay.whatsNew' => ({required Object build}) => 'What\'s new in build ${build}',
-			'testerOverlay.thanks' => 'Thank you for putting your log at risk in order to help us make this app better!',
 			'extensionsPanel.categoryActivity' => 'Activities',
 			'extensionsPanel.categoryContest' => 'Contests',
 			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
@@ -3037,6 +3009,7 @@ extension on Translations {
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Calls of Note',
+			'operation.spots.allSpots' => 'All Spots',
 			'operation.spots.continents.af' => 'Africa',
 			'operation.spots.continents.as' => 'Asia',
 			'operation.spots.continents.eu' => 'Europe',
@@ -3053,6 +3026,7 @@ extension on Translations {
 			'operation.spots.filters.sorting' => 'Sorting',
 			'operation.spots.filters.sortByTime' => 'By Spot Time',
 			'operation.spots.filters.sortByFrequency' => 'By Frequency',
+			'operation.spots.filters.groupByBand' => 'Group by Band',
 			'operation.spots.filters.groupCallsWithNotes' => 'Group Calls with Notes',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -3419,12 +3393,12 @@ extension on Translations {
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
 			'settings.offlineData.refresh' => 'Refresh',
 			'settings.offlineData.refreshing' => 'Refreshing…',

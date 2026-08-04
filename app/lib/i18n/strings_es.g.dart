@@ -42,7 +42,6 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$common$es common = _Translations$common$es._(_root);
 	@override late final _Translations$onboarding$es onboarding = _Translations$onboarding$es._(_root);
 	@override late final _Translations$startScreen$es startScreen = _Translations$startScreen$es._(_root);
-	@override late final _Translations$testerOverlay$es testerOverlay = _Translations$testerOverlay$es._(_root);
 	@override late final _Translations$extensionsPanel$es extensionsPanel = _Translations$extensionsPanel$es._(_root);
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
@@ -133,21 +132,6 @@ class _Translations$startScreen$es extends Translations$startScreen$en {
 
 	// Translations
 	@override String get credits => 'por KI2D y amigos';
-}
-
-// Path: testerOverlay
-class _Translations$testerOverlay$es extends Translations$testerOverlay$en {
-	_Translations$testerOverlay$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get tape => 'PRECAUCIÓN: EN CONSTRUCCIÓN';
-	@override String build({required Object build}) => 'Build ${build}';
-	@override String get warningTitle => 'Esta aplicación es un trabajo en progreso';
-	@override String get warningBody => 'La mayoría de las funciones tienen superficies irregulares y hay peligros de tropiezo por todas partes. Por favor, busca actualizaciones con frecuencia.';
-	@override String whatsNew({required Object build}) => 'Novedades del build ${build}';
-	@override String get thanks => '¡Gracias por poner tu log en riesgo para ayudarnos a mejorar esta aplicación!';
 }
 
 // Path: extensionsPanel
@@ -789,6 +773,7 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutos';
 	@override String get callsOfNote => 'Indicativos destacados';
+	@override String get allSpots => 'Todos los spots';
 	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
 	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
 }
@@ -1288,6 +1273,7 @@ class _Translations$operation$spots$filters$es extends Translations$operation$sp
 	@override String get sorting => 'Orden';
 	@override String get sortByTime => 'Por hora del spot';
 	@override String get sortByFrequency => 'Por frecuencia';
+	@override String get groupByBand => 'Agrupar por banda';
 	@override String get groupCallsWithNotes => 'Agrupar indicativos destacados';
 }
 
@@ -1564,12 +1550,6 @@ extension on TranslationsEs {
 			'onboarding.consentOperationLabel' => 'Compartir datos de operaciones',
 			'onboarding.finishingSetup' => 'Terminando la configuración — descargando datos de referencia…',
 			'startScreen.credits' => 'por KI2D y amigos',
-			'testerOverlay.tape' => 'PRECAUCIÓN: EN CONSTRUCCIÓN',
-			'testerOverlay.build' => ({required Object build}) => 'Build ${build}',
-			'testerOverlay.warningTitle' => 'Esta aplicación es un trabajo en progreso',
-			'testerOverlay.warningBody' => 'La mayoría de las funciones tienen superficies irregulares y hay peligros de tropiezo por todas partes. Por favor, busca actualizaciones con frecuencia.',
-			'testerOverlay.whatsNew' => ({required Object build}) => 'Novedades del build ${build}',
-			'testerOverlay.thanks' => '¡Gracias por poner tu log en riesgo para ayudarnos a mejorar esta aplicación!',
 			'extensionsPanel.categoryActivity' => 'Actividades',
 			'extensionsPanel.categoryContest' => 'Concursos',
 			'extensionsPanel.categoryLookup' => 'Búsqueda de indicativos',
@@ -1656,6 +1636,7 @@ extension on TranslationsEs {
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
 			'operation.spots.callsOfNote' => 'Indicativos destacados',
+			'operation.spots.allSpots' => 'Todos los spots',
 			'operation.spots.continents.af' => 'África',
 			'operation.spots.continents.as' => 'Asia',
 			'operation.spots.continents.eu' => 'Europa',
@@ -1672,6 +1653,7 @@ extension on TranslationsEs {
 			'operation.spots.filters.sorting' => 'Orden',
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
+			'operation.spots.filters.groupByBand' => 'Agrupar por banda',
 			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar indicativos destacados',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -2038,12 +2020,12 @@ extension on TranslationsEs {
 			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
 			'settings.offlineData.refresh' => 'Actualizar',
 			'settings.offlineData.refreshing' => 'Actualizando…',
