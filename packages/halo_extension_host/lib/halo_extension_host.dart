@@ -819,6 +819,7 @@ class _HostCore {
         'www.sotadata.org.uk',
         'sotadata.org.uk',
         'www.hamqsl.com',
+        'llota.app',
       };
       if (allowedDomains.contains(uri.host)) {
         return Uri.parse('https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}');

@@ -363,6 +363,7 @@ class DataFileManager {
         'pota.app',
         'www.sotadata.org.uk',
         'sotadata.org.uk',
+        'llota.app',
         // Custom data-file hosts (e.g. call-notes' custom note files):
         // neither sends CORS headers on its share-link redirect hop, so a
         // direct browser fetch is blocked even though the final redirected
