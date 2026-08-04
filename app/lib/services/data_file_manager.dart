@@ -364,6 +364,16 @@ class DataFileManager {
         'www.sotadata.org.uk',
         'sotadata.org.uk',
         'llota.app',
+        // Award-program hosts serving reference lists with no CORS headers of
+        // their own. ham2k.com (ECA/ELA), polo.ham2k.com (Satellites/WCA) and
+        // api.wwbota.org are deliberately absent: all three already answer a
+        // cross-origin GET, verified against the real services.
+        'www.cqgma.org',
+        'www.sq7acp.pl',
+        'www.silosontheair.com',
+        'wwff.co',
+        'ontheair.nz',
+        'www.rozhledny.eu',
         // Custom data-file hosts (e.g. call-notes' custom note files):
         // neither sends CORS headers on its share-link redirect hop, so a
         // direct browser fetch is blocked even though the final redirected
