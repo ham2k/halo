@@ -1802,12 +1802,19 @@ class _ReleaseOverlayGateState extends State<_ReleaseOverlayGate> {
 }
 
 /// Shows `TesterOverlayView` on the Dev and Next editions whenever
-/// `kBuildNumber` has advanced past `SettingsService.lastSeenTesterBuild`,
-/// listing every tester-notes entry in between (tester_notes.dart,
-/// tester_overlay.dart). Outermost of the startup gates — it paints above
-/// the onboarding flow too, so even a fresh install leads with the caution
-/// warning. Dismissing persists `kBuildNumber`, so it won't show again until
-/// the next build with notes.
+/// `kBuildNumber` has advanced past `SettingsService.lastSeenTesterBuild`
+/// and the build carries no explicit `DEV_LABEL`, listing every tester-notes
+/// entry in between (tester_notes.dart, tester_overlay.dart). Outermost of
+/// the startup gates — it paints above the onboarding flow too, so even a
+/// fresh install leads with the caution warning. Dismissing persists
+/// `kBuildNumber`, so it won't show again until the next build with notes.
+///
+/// Because AGENTS.md has every `flutter run` pass a `DEV_LABEL`, the organic
+/// path below is unreachable in normal development, and DEVTESTER exercises
+/// only `_showDevTester` (no `lastSeen` filtering, no stamping). Checking a
+/// change to the pending-entry filter or to stamp-on-dismiss means running
+/// once WITHOUT the label; nothing else reaches that code before a tester's
+/// real build does.
 class _TesterOverlayGate extends StatefulWidget {
   final HaLoServices services;
   final Widget child;
@@ -1844,6 +1851,13 @@ class _TesterOverlayGateState extends State<_TesterOverlayGate> {
   Future<void> _checkForNewBuild() async {
     // Testers-only: prod users get the release overlay, never this one.
     if (kEdition == Edition.prod) return;
+    // A build carrying a DEV_LABEL is somebody's working copy, not a tester's:
+    // the overlay would cover the app on every cold start of the thing they
+    // are working on, and dismissing it would burn the once-per-build showing
+    // a real tester should get. Only the explicit label counts — a web
+    // preview derives its own from the URL, and those ARE handed to testers.
+    // DEVTESTER still previews the overlay on demand.
+    if (debugEnvFlag(const String.fromEnvironment('DEV_LABEL'), 'DEV_LABEL').isNotEmpty) return;
     final lastSeen = widget.services.settings.lastSeenTesterBuild;
     if (lastSeen >= kBuildNumber) return;
     final notes = await loadTesterNotes();
