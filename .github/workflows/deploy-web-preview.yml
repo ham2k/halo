@@ -96,9 +96,10 @@ jobs:
         env:
           MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
 
-      # HALO_GIT_SHA: short SHA of the built ref, shown after the build number in
-      # the About view (version_label.dart's kGitSha) so a preview identifies the
-      # exact commit it was built from. Matches the production deploy-web.yml.
+      # HALO_GIT_SHA: short SHA of the built ref, shown in the home and About
+      # version displays (version_label.dart's kGitSha) so a preview identifies
+      # the exact commit it was built from — and, this being a Dev-edition
+      # build, it is the only build identity shown. Matches deploy-web.yml.
       - name: Build Flutter web app
         run: |
           cd app

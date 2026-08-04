@@ -23,13 +23,16 @@ class PlatformVersions {
   final String iosMarketingVersion;
 
   /// macOS `CFBundleShortVersionString` — the full public version *with* the
-  /// pre-release suffix (`26.8.1-alpha1`). The macOS build is distributed
-  /// directly (Developer ID + Sparkle), not through App Store review, so
-  /// Apple's pure-`X.Y.Z` rule doesn't bind, and Sparkle's update dialog uses
-  /// this string: with the suffix, "26.8.1-alpha1 is available — you have
-  /// 26.8.1" can't misread as a same-version offer, and when the two display
-  /// versions ARE equal Sparkle appends the build numbers in parentheses on
-  /// its own ("26.8.1-alpha1 (84) — you have 26.8.1-alpha1 (83)").
+  /// pre-release suffix when the version carries one (`26.8.1-alpha1`). The
+  /// macOS build is distributed directly (Developer ID + Sparkle), not through
+  /// App Store review, so Apple's pure-`X.Y.Z` rule doesn't bind, and Sparkle's
+  /// update dialog uses this string: keeping the suffix means
+  /// "26.8.1-alpha1 is available — you have 26.8.1" can't misread as a
+  /// same-version offer. A version with no suffix — the common case, since the
+  /// product's maturity is carried by `kStageLabel` rather than a per-version
+  /// suffix — leaves consecutive builds sharing this string, and Sparkle
+  /// disambiguates them by appending the build numbers in parentheses on its
+  /// own ("26.8.1 (126) — you have 26.8.1 (125)").
   final String macMarketingVersion;
 
   /// `FILEVERSION`/MSIX `a.b.c.d`; revision is always `0`, as required for

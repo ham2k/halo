@@ -93,10 +93,13 @@ jobs:
       # reporter's placeholder separately (the app can't report a failure to
       # start — it never ran). Both no-op when the secret is unset: empty
       # define = disabled, placeholder left = disabled.
-      # HALO_GIT_SHA: the short SHA of the deployed commit, shown after the build
-      # number in the About view (version_label.dart's kGitSha) so we can tell
-      # exactly which commit halo-dev is serving. HEAD is the ref checked out
-      # above (workflow_run.head_sha), matching build-macos.sh's convention.
+      # HALO_GIT_SHA: the short SHA of the deployed commit, shown in the home
+      # and About version displays (version_label.dart's kGitSha) so we can tell
+      # exactly which commit halo-dev is serving. This job sets no HALO_EDITION,
+      # so the deploy is the Dev edition and the SHA is the ONLY build identity
+      # it shows — kBuildNumber names the last release, not this deploy. HEAD is
+      # the ref checked out above (workflow_run.head_sha), matching
+      # build-macos.sh's convention.
       - name: Build Flutter web app
         run: |
           cd app

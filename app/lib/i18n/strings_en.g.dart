@@ -1162,8 +1162,8 @@ class Translations$versionLabel$en {
 	/// en: 'Version ${version}'
 	String version({required Object version}) => 'Version ${version}';
 
-	/// en: 'Version ${version} - Build ${build}'
-	String versionBuild({required Object version, required Object build}) => 'Version ${version} - Build ${build}';
+	/// en: 'build ${build}'
+	String build({required Object build}) => 'build ${build}';
 }
 
 // Path: notices
@@ -3573,7 +3573,7 @@ extension on Translations {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
-			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Version ${version} - Build ${build}',
+			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',

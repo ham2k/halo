@@ -846,7 +846,7 @@
   },
   "versionLabel": {
     "version": "Versión ${version}",
-    "versionBuild": "Versión ${version} - Build ${build}"
+    "build": "build ${build}"
   },
   "notices": {
     "emptyHistory": "Aún no hay avisos"

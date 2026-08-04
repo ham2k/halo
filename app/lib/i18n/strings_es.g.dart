@@ -604,7 +604,7 @@ class _Translations$versionLabel$es extends Translations$versionLabel$en {
 
 	// Translations
 	@override String version({required Object version}) => 'Versión ${version}';
-	@override String versionBuild({required Object version, required Object build}) => 'Versión ${version} - Build ${build}';
+	@override String build({required Object build}) => 'build ${build}';
 }
 
 // Path: notices
@@ -2188,7 +2188,7 @@ extension on TranslationsEs {
 			'operationLocationScreen.stateOrProvince' => 'Estado o provincia (opcional)',
 			'operationLocationScreen.county' => 'Condado (opcional)',
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
-			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Versión ${version} - Build ${build}',
+			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',

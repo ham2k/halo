@@ -68,6 +68,14 @@ Section 2.3 explains how the patchable public version is stored.
   …), or an earlier stage such as `alpha`/`beta`/`rc` (`26.8.0-alpha0`). A
   Shorebird patch applied to a pre-release appends a further counter:
   `26.8.0-pre1.1`.
+- **Product stage label** — `kStageLabel` in `config/version.dart`, currently
+  `ALPHA`. Distinct from the pre-release suffix in both scope and lifetime: the
+  suffix marks one build's place within a release cycle, while this marks how
+  mature the product as a whole is, and it applies to every version and every
+  edition until deliberately changed (`''` removes it). It exists only in the
+  human name — `August '26 ALPHA patch 1`, ahead of the patch and pre-release
+  parts — and never in `MAJOR.MINOR.PATCH`, so it reaches no tag, plist, or
+  store field.
 
 Every patch/pre-release is bound to the exact release build it was compiled
 against (see §4.1).
@@ -159,14 +167,25 @@ A patch that bumps the public version edits this file; the new string ships insi
 the patch and updates on-device when the patch lands.
 
 - **Do not source it from `package_info_plus`** — that reads the native
-  Info.plist/manifest (the frozen build identity), which a patch can't change. Use
-  `package_info_plus` only to display the *build* number.
+  Info.plist/manifest (the frozen build identity), which a patch can't change.
+- **Version displays take the build number from compiled Dart too**
+  (`kBuildNumber`), for the same reason plus a second one: a local `flutter run`
+  reports a native build number of `1`, which names no release at all.
+  `package_info_plus` still supplies the build number to the User-Agent
+  (`config/user_agent.dart`) and the flags/notice environment
+  (`services/flags_service.dart`); those report the *native* identity and will
+  disagree with the UI on a local build or after a Shorebird patch.
 - **Optionally derive it** from the Shorebird runtime's current patch number
   (`"$base.${patchNumber ?? 0}"`) so you can't forget to bump it; keep an explicit
   override for `-preN` labels and full-rebuild jumps.
-- **About screen** should show all three layers: `26.8.1 (build 73, patch
-  3)` — public version for humans, build number pins the native binary, patch
-  number pins the Dart layer.
+- **Version displays** carry the version plus a build-identity parenthetical,
+  rendered by one shared helper (`buildDetails()` in `views/version_label.dart`)
+  so the home pane and the About row can never disagree: `Version 26.8.1
+  (build 125 - 04e3d1)` — the public version for humans, the build number
+  pinning the native binary, the git SHA pinning the commit. The Dev edition
+  shows the SHA alone: its `kBuildNumber` is the last *release's*, not the
+  running build's. Once Shorebird lands, the patch number joins the same
+  parenthetical to pin the Dart layer. The splash screens carry none of it.
 - **Sync/log metadata** should record both the public version *and* the
   build+patch fingerprint, since only the latter reproduces a device's exact code.
 

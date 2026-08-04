@@ -6,8 +6,11 @@
 // patch can rewrite it: bump the fields below when cutting a patch release.
 //
 // Do NOT read the app's version from package_info_plus — that reads the
-// frozen native build identity (§2.2), which a patch can't change. Use
-// package_info_plus only to display the *build* number alongside this.
+// frozen native build identity (§2.2), which a patch can't change. The same
+// goes for the build number shown anywhere in the UI: [kBuildNumber] below is
+// the one displays use. package_info_plus's build number is still what the
+// User-Agent and the flags environment report, deliberately — those describe
+// the native binary, not what the user is looking at.
 
 import 'package:halo_build_tools/halo_build_tools.dart';
 
@@ -23,9 +26,15 @@ export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
 const kPublicVersionInfo = PublicVersion(
   main: MainVersion(year: 26, month: 8),
   patch: 1,
-  preRelease: 1,
-  preReleaseLabel: 'alpha',
 );
+
+/// The product-wide stage marker carried by every human version name —
+/// `August '26 ALPHA patch 1` — across all versions and editions. It is not
+/// part of [kPublicVersionInfo]: the version's own `-preN` suffix marks ONE
+/// build's place in a release cycle (§2.1), while this marks the product's
+/// maturity and outlives any single version. Set it to `''` to drop it
+/// everywhere at once.
+const kStageLabel = 'ALPHA';
 
 /// The native build number (`CFBundleVersion` / Android `versionCode` /
 /// Windows·Linux `FILEVERSION` build), shared across every platform — a simple
@@ -70,17 +79,20 @@ bool isBuildExpired({DateTime? now}) {
   return expirationHasPassed(expiration, (now ?? DateTime.now()).toUtc());
 }
 
-/// e.g. `26.8.1-alpha1`.
+/// e.g. `26.8.1`, or `26.8.1-pre2` once a pre-release is cut.
 final kPublicVersion = kPublicVersionInfo.value;
 
-/// e.g. `August '26`, `August '26 patch 2`, `August '26 pre 1`.
-final kVersionName = kPublicVersionInfo.displayName;
+/// e.g. `August '26 ALPHA`, `August '26 ALPHA patch 2`,
+/// `August '26 ALPHA patch 2 pre 1`.
+final kVersionName = kPublicVersionInfo.displayName(stageLabel: kStageLabel);
 
 /// [kVersionName] with the edition qualifier appended for the non-stable
-/// editions — `August '26 (Dev)`, `August '26 (Next)` — so a build's edition
-/// is visible wherever the version name is shown. Unchanged for Regular
-/// (`kEdition.label` is null).
-final kEditionVersionName = kEdition.label == null ? kVersionName : '$kVersionName (${kEdition.label})';
+/// editions — `August '26 ALPHA (Dev Edition)`, `… (Next Edition)` — so a
+/// build's edition is visible wherever the version name is shown. Unchanged
+/// for Regular (`kEdition.label` is null). The word "Edition" is spelled out
+/// here rather than in `Edition.label`, which stays the bare token that build
+/// tooling names artifacts and flavors with.
+final kEditionVersionName = kEdition.label == null ? kVersionName : '$kVersionName (${kEdition.label} Edition)';
 
 /// The product-line/build channel in the User-Agent (user_agent.dart), e.g.
 /// `Ham2K Logger/26.8.0 (macos dev 1)`. Derived from [kEdition]

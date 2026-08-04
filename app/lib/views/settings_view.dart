@@ -2327,8 +2327,7 @@ const _aboutRecentReleaseCount = 3;
 /// Tapping the About screen's version row copies the full app name and
 /// version details — handy for pasting into a bug report or support email.
 Future<void> _copyVersionDetailsToClipboard(BuildContext context) async {
-  final details = await versionDetailsText();
-  await Clipboard.setData(ClipboardData(text: '$ham2kAppName\n$details'));
+  await Clipboard.setData(ClipboardData(text: '$ham2kAppName\n${versionDetailsText()}'));
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(context.t.settings.about.copiedVersion)));

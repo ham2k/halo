@@ -5,37 +5,68 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/views/version_label.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
-  setUp(() {
-    PackageInfo.setMockInitialValues(
-      appName: 'Ham2K Logger',
-      packageName: 'com.ham2k.logger.dev',
-      version: '0.1.0',
-      buildNumber: '260807291',
-      buildSignature: '',
-    );
-  });
-
-  test('the default (unset HALO_EDITION) build is the Dev edition, and its name carries the qualifier', () {
+  test('the default (unset HALO_EDITION) build is the Dev edition, and its name says "Edition"', () {
     // `flutter test` runs with no --dart-define, so the tree resolves to the
     // safe, non-distributed edition — and its qualifier is what makes a dev
     // build visibly distinct from a Regular one in the UI (docs/releases.md §2.6).
     expect(kEdition, Edition.dev);
-    expect(kEditionVersionName, '$kVersionName (Dev)');
+    expect(kEditionVersionName, '$kVersionName (Dev Edition)');
   });
 
-  testWidgets('shows the version name and public version immediately, then appends the native build number',
-      (tester) async {
+  test('the stage label rides the version name but never the version number', () {
+    // The label qualifies the product, not the version, so it must not reach
+    // kPublicVersion — which is what tags, plists and store fields project
+    // from. Asserted as a shape rather than as `isNot(contains(kStageLabel))`:
+    // `contains('')` is true of every string, so that form would fail the day
+    // someone retires the label by setting it to '', for a reason unrelated to
+    // what this guards.
+    expect(kVersionName, contains(kStageLabel));
+    expect(kPublicVersion, matches(RegExp(r'^\d+\.\d+\.\d+(-[a-z]+\d+(\.\d+)?)?$')));
+  });
+
+  group('buildDetails', () {
+    test('a Dev build names only the SHA', () {
+      // kBuildNumber in a Dev build is the last RELEASE's number, not this
+      // build's — printing it would name a build that isn't running.
+      expect(buildDetails(edition: Edition.dev, build: 125, sha: '04e3d1'), '(04e3d1)');
+    });
+
+    test('a Dev build with no SHA has nothing to say, so it says nothing', () {
+      // Every local `flutter run` — only CI sets --dart-define=HALO_GIT_SHA.
+      // The empty string is what lets callers drop the line entirely rather
+      // than render a bare "()".
+      expect(buildDetails(edition: Edition.dev, build: 125, sha: ''), isEmpty);
+    });
+
+    test('an official build names the build number and the SHA', () {
+      expect(buildDetails(edition: Edition.next, build: 125, sha: '04e3d1'), '(build 125 - 04e3d1)');
+      expect(buildDetails(edition: Edition.prod, build: 125, sha: '04e3d1'), '(build 125 - 04e3d1)');
+    });
+
+    test('an official build with no SHA still names the build number', () {
+      expect(buildDetails(edition: Edition.next, build: 125, sha: ''), '(build 125)');
+    });
+
+    test('an empty parenthetical leaves no trailing space on the detail line', () {
+      // The About row and the clipboard text both render this verbatim, so a
+      // dangling space would ship into pasted bug reports. This is the case
+      // `flutter test` actually runs (Dev, no SHA); the populated forms are
+      // covered by the matrix above, which the compiled-in constants keep out
+      // of reach of a widget test.
+      expect(buildDetails(), isEmpty);
+      expect(versionDetailLine(), 'Version $kPublicVersion');
+      expect(versionDetailsText(), '$kEditionVersionName\nVersion $kPublicVersion');
+    });
+  });
+
+  testWidgets('shows the version name and public version', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: VersionLabel()));
 
-    // Before PackageInfo.fromPlatform() resolves, only the version name/public version are known.
+    // No FutureBuilder: the build number is a compiled-in constant, so the
+    // full text is right on the first frame with no pumpAndSettle.
     expect(find.text('$kEditionVersionName · $kPublicVersion'), findsOneWidget);
-
-    await tester.pumpAndSettle();
-
-    expect(find.text('$kEditionVersionName · $kPublicVersion (build 260807291)'), findsOneWidget);
   });
 
   testWidgets('prefix is prepended to the version text', (tester) async {
@@ -50,21 +81,14 @@ void main() {
     expect(find.byType(SelectableText), findsOneWidget);
   });
 
-  testWidgets('detailed mode splits into two lines — version name, then "Version x.y.z[ - Build n]"',
-      (tester) async {
+  testWidgets('detailed mode splits into two lines — version name, then the version detail line', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: VersionLabel(detailed: true)));
-    await tester.pumpAndSettle();
 
-    // find.text() (rather than reading each SelectableText's own `data`)
-    // proved order-dependent on the shared, module-cached PackageInfo future
-    // this file's other tests also resolve — reading the two SelectableText
-    // widgets directly sidesteps that. The build-number suffix itself is
-    // already covered by the non-detailed test above (same snapshot logic,
-    // just a different template), so this only pins down what's new here:
-    // two lines, the first being the bare version name.
     final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).map((w) => w.data).toList();
     expect(lines, hasLength(2));
     expect(lines[0], kEditionVersionName);
+    // The shape, not `versionDetailLine()` — asserting the widget against the
+    // function it calls would survive that function regressing.
     expect(lines[1], startsWith('Version $kPublicVersion'));
   });
 
@@ -72,7 +96,6 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: VersionLabel(detailed: true, style: TextStyle(fontSize: 15))),
     );
-    await tester.pumpAndSettle();
 
     final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).toList();
     expect(lines, hasLength(2));
@@ -82,9 +105,9 @@ void main() {
 
   testWidgets('detailed + boldFirstLine: name is bold, detail is normal weight and exactly two points smaller',
       (tester) async {
-    // The About row's intent (Issue #42): the version name reads as the
-    // heading, the "Version … - Build …" detail as secondary — normal weight,
-    // two points smaller than the name.
+    // The About row's intent: the version name reads as the heading, the
+    // "Version … (build …)" detail as secondary — normal weight, two points
+    // smaller than the name.
     await tester.pumpWidget(
       const MaterialApp(
         home: VersionLabel(
@@ -94,7 +117,6 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
     final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).toList();
     expect(lines[0].style?.fontWeight, FontWeight.bold);
@@ -105,11 +127,10 @@ void main() {
 
   testWidgets('nameOnly shows just the release name — no edition qualifier, no detail line', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: VersionLabel(nameOnly: true)));
-    await tester.pumpAndSettle();
 
     // The bare release name (kVersionName), NOT the edition-qualified name —
     // the edition is shown separately by the badge SVG (docs/releases.md §2.6) —
-    // and none of the detailed mode's "Version … - Build …" line.
+    // and none of the detailed mode's "Version …" line.
     expect(find.text(kVersionName), findsOneWidget);
     expect(find.text(kEditionVersionName), findsNothing);
     expect(find.textContaining('Version '), findsNothing);

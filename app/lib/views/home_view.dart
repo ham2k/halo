@@ -10,7 +10,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../config/dev_bridge.dart';
 import '../config/dev_flags.dart';
-import '../config/version.dart';
 import '../config/web_preview_label.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
@@ -717,6 +716,7 @@ class _BrandingPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final details = buildDetails();
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
@@ -763,17 +763,19 @@ class _BrandingPane extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           // Just the release name, without the edition qualifier (the edition
-          // is already shown by the badge SVG above) and without the build
-          // detail line.
+          // is already shown by the badge SVG above).
           VersionLabel(
             nameOnly: true,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
-          // Build number + git SHA, dev builds only — lets a
-          // developer confirm exactly which build/commit is running.
-          if (!kReleaseMode)
+          // Build number and/or git SHA underneath, in every build mode: a bug
+          // report from a release build is the one that most needs to say which
+          // build it came from. Empty only when there is nothing to identify
+          // this build by (see buildDetails), and then the line is dropped
+          // rather than rendered as a bare "()".
+          if (details.isNotEmpty)
             Text(
-              '(build $kBuildNumber${kGitSha.isEmpty ? '' : ' - $kGitSha'})',
+              details,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
         ],

@@ -51,8 +51,16 @@ class PublicVersion {
 
   /// The human-friendly line name, e.g. `August '26`, `August '26 patch 2`,
   /// `August '26 pre 1`, `August '26 alpha 0`, or `August '26 patch 2 pre 1`.
-  String get displayName {
+  ///
+  /// [stageLabel] is a product-wide stage marker (`ALPHA`, `BETA`) that is NOT
+  /// part of the version: it applies to every version and every edition for as
+  /// long as the product sits in that stage, independent of this version's own
+  /// optional `-preN` suffix, and `''` drops it. It goes directly after the
+  /// main version, ahead of the patch and pre-release parts —
+  /// `August '26 ALPHA patch 1 pre 2`.
+  String displayName({String stageLabel = ''}) {
     final parts = <String>[main.displayName];
+    if (stageLabel.isNotEmpty) parts.add(stageLabel);
     if (patch != 0) parts.add('patch $patch');
     if (preRelease != null) {
       parts.add(
@@ -71,7 +79,7 @@ class PublicVersion {
 
   /// The human release message used for the release commit and annotated tag —
   /// e.g. `Release 26.8.1 alpha 1 (82)`. Note this spells the numeric core
-  /// (`26.8.1`), not [displayName] (`August '26 alpha 1`).
+  /// (`26.8.1`), not the [displayName] (`August '26 alpha 1`).
   String releaseMessage(int build) {
     final core = '${main.year}.${main.month}.$patch';
     final pre = preRelease == null
