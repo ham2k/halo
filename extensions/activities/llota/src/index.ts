@@ -41,6 +41,19 @@ const REFERENCE_REGEX = /^LL[A-Z0-9]+-(?:[0-9]{4,5}|TEST)$/i
 
 const API_BASE = 'https://llota.app/api/public'
 
+/// Ten contacts per UTC day, n-fers allowed, and a repeat contact counts again
+/// on a new day, band, mode or lake.
+const LLOTA_SCORING = {
+  label: 'LLOTA',
+  icon: manifest.icon,
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  qsosToActivate: 10,
+  allowsMultipleReferences: true,
+  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
+  activates: 'daily' as const,
+}
+
 const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   key: 'llota',
   label: 'LLOTA',
@@ -54,20 +67,10 @@ const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   // One record per hunted lake, like POTA.
   splitRecordsPerHuntedRef: true,
   adifRefField: 'LLOTA',
+  // Derived from the scorer's own rule, not a separate flag — the UI control
+  // and the scorer can't disagree about whether this award allows n-fers.
+  allowsMultiple: LLOTA_SCORING.allowsMultipleReferences,
 })
-
-/// Ten contacts per UTC day, n-fers allowed, and a repeat contact counts again
-/// on a new day, band, mode or lake.
-const LLOTA_SCORING = {
-  label: 'LLOTA',
-  icon: manifest.icon,
-  activationType: ACTIVATION_TYPE,
-  huntingType: HUNTING_TYPE,
-  qsosToActivate: 10,
-  allowsMultipleReferences: true,
-  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
-  activates: 'daily' as const,
-}
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)

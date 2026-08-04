@@ -34,6 +34,8 @@ const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   color: manifest.accentColor,
   placeholder: 'BEL 001',
   tFor,
+  // One operation can activate several lighthouses at once.
+  allowsMultiple: true,
 })
 
 /// app-polo's BLHA Info declares no scoring block at all, so the shared

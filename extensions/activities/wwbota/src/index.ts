@@ -44,20 +44,6 @@ const REFERENCE_REGEX = /^B\/(?:[0-9][A-Z][0-9A-Z]*|[A-Z][0-9A-Z]*)-[0-9]{4,}$/i
 
 const API_BASE = 'https://api.wwbota.org'
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
-  key: 'wwbota',
-  label: 'WWBOTA',
-  activationType: ACTIVATION_TYPE,
-  huntingType: HUNTING_TYPE,
-  referenceRegex: REFERENCE_REGEX,
-  icon: manifest.icon,
-  color: manifest.accentColor,
-  placeholder: 'B/G-0001',
-  tFor,
-  // app-polo names every hunted bunker in a single record's SIG_INFO.
-  splitRecordsPerHuntedRef: false,
-})
-
 /// Slovenia and North Macedonia ask 10 contacts; everywhere else asks 25. The
 /// country is the second segment of the reference (`B/S5-0001`).
 ///
@@ -84,6 +70,23 @@ const WWBOTA_SCORING = {
   uniquePer: ['band', 'day', 'ref'] as const,
   activates: 'once' as const,
 }
+
+const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+  key: 'wwbota',
+  label: 'WWBOTA',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  referenceRegex: REFERENCE_REGEX,
+  icon: manifest.icon,
+  color: manifest.accentColor,
+  placeholder: 'B/G-0001',
+  tFor,
+  // app-polo names every hunted bunker in a single record's SIG_INFO.
+  splitRecordsPerHuntedRef: false,
+  // Derived from the scorer's own rule, not a separate flag — the UI control
+  // and the scorer can't disagree about whether this award allows n-fers.
+  allowsMultiple: WWBOTA_SCORING.allowsMultipleReferences,
+})
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)

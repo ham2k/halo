@@ -38,20 +38,6 @@ const HUNTING_TYPE = 'mota'
 const ACTIVATION_TYPE = 'motaActivation'
 const REFERENCE_REGEX = /^X[0-9]{5}$/i
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
-  key: 'mota',
-  label: 'MOTA',
-  activationType: ACTIVATION_TYPE,
-  huntingType: HUNTING_TYPE,
-  referenceRegex: REFERENCE_REGEX,
-  icon: manifest.icon,
-  color: manifest.accentColor,
-  placeholder: 'X00001',
-  tFor,
-  // app-polo writes one record per hunted mill.
-  splitRecordsPerHuntedRef: true,
-})
-
 /// Duplicate rules only. A repeat contact on the same band and day is a
 /// duplicate; a new band or day makes it fresh again. A mill the station hasn't
 /// given before is called out — but it does NOT rescue the contact, and nothing
@@ -67,6 +53,23 @@ const MOTA_SCORING = {
   tracksActivation: false,
   freshRefRescuesActivation: false,
 }
+
+const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+  key: 'mota',
+  label: 'MOTA',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  referenceRegex: REFERENCE_REGEX,
+  icon: manifest.icon,
+  color: manifest.accentColor,
+  placeholder: 'X00001',
+  tFor,
+  // app-polo writes one record per hunted mill.
+  splitRecordsPerHuntedRef: true,
+  // Derived from the scorer's own rule, not a separate flag — the UI control
+  // and the scorer can't disagree about whether this award allows n-fers.
+  allowsMultiple: MOTA_SCORING.allowsMultipleReferences,
+})
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)

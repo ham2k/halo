@@ -33,6 +33,8 @@ const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   color: manifest.accentColor,
   placeholder: 'ENG 001',
   tFor,
+  // One operation can activate several lighthouses at once.
+  allowsMultiple: true,
 })
 
 /// 50 contacts activate a lighthouse, with band+mode uniqueness and no day

@@ -42,6 +42,8 @@ const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   color: manifest.accentColor,
   placeholder: 'ON-00558',
   tFor,
+  // One operation can activate several castles at once.
+  allowsMultiple: true,
 })
 
 /// 50 contacts activate a castle, and a repeat contact counts again on a new

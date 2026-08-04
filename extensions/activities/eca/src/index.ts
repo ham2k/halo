@@ -35,6 +35,8 @@ const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   color: manifest.accentColor,
   placeholder: 'G-00001',
   tFor,
+  // One operation can activate several castles at once.
+  allowsMultiple: true,
 })
 
 /// 50 contacts activate a castle. app-polo hand-writes this scorer rather than

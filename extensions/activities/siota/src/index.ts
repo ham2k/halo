@@ -27,6 +27,21 @@ const HUNTING_TYPE = 'siota'
 const ACTIVATION_TYPE = 'siotaActivation'
 const REFERENCE_REGEX = /^VK-[A-Z]{3}[0-9]+$/i
 
+/// A repeat contact is a duplicate on the same band, mode AND day. A silo the
+/// station hasn't given before is called out and earns the Silo-to-Silo
+/// credit, but does not advance the activation.
+const SIOTA_SCORING = {
+  label: 'SiOTA',
+  icon: manifest.icon,
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  allowsMultipleReferences: true,
+  qsosToActivate: 10,
+  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
+  activates: 'once' as const,
+  freshRefRescuesActivation: false,
+}
+
 const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   key: 'siota',
   label: 'SiOTA',
@@ -42,22 +57,10 @@ const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
   // The ADIF program name is upper-case even though the award styles itself
   // SiOTA.
   adifProgram: 'SIOTA',
+  // Derived from the scorer's own rule, not a separate flag — the UI control
+  // and the scorer can't disagree about whether this award allows n-fers.
+  allowsMultiple: SIOTA_SCORING.allowsMultipleReferences,
 })
-
-/// A repeat contact is a duplicate on the same band, mode AND day. A silo the
-/// station hasn't given before is called out and earns the Silo-to-Silo
-/// credit, but does not advance the activation.
-const SIOTA_SCORING = {
-  label: 'SiOTA',
-  icon: manifest.icon,
-  activationType: ACTIVATION_TYPE,
-  huntingType: HUNTING_TYPE,
-  allowsMultipleReferences: true,
-  qsosToActivate: 10,
-  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
-  activates: 'once' as const,
-  freshRefRescuesActivation: false,
-}
 
 const siotaDataFile: DataFileDefinition = {
   key: 'siota-all-silos',

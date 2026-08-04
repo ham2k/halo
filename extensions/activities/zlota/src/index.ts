@@ -54,20 +54,6 @@ function assetTypeOf(ref: string): string | undefined {
   return ASSET_TYPE_BY_CODE[ref[2]?.toUpperCase()]
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
-  key: 'zlota',
-  label: 'ZLOTA',
-  activationType: ACTIVATION_TYPE,
-  huntingType: HUNTING_TYPE,
-  referenceRegex: REFERENCE_REGEX,
-  icon: manifest.icon,
-  color: manifest.accentColor,
-  placeholder: 'ZLH/AA-001',
-  tFor,
-  // app-polo names every hunted reference in a single record's SIG_INFO.
-  splitRecordsPerHuntedRef: false,
-})
-
 /// The bar is the kind of place, and activating several at once takes the
 /// hardest of them — a hut alongside a lighthouse is not done at one contact.
 function zlotaThreshold(refs: string[]): number {
@@ -87,6 +73,23 @@ const ZLOTA_SCORING = {
   uniquePer: ['ref'] as const,
   activates: 'once' as const,
 }
+
+const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+  key: 'zlota',
+  label: 'ZLOTA',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  referenceRegex: REFERENCE_REGEX,
+  icon: manifest.icon,
+  color: manifest.accentColor,
+  placeholder: 'ZLH/AA-001',
+  tFor,
+  // app-polo names every hunted reference in a single record's SIG_INFO.
+  splitRecordsPerHuntedRef: false,
+  // Derived from the scorer's own rule, not a separate flag — the UI control
+  // and the scorer can't disagree about whether this award allows n-fers.
+  allowsMultiple: ZLOTA_SCORING.allowsMultipleReferences,
+})
 
 interface ZLOTAApiSpot {
   /// Shared by every row of a multi-reference spot.

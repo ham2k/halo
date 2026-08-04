@@ -43,20 +43,6 @@ const REFERENCE_REGEX = /^[A-Z0-9]+R-[0-9]{4}$/i
 
 const API_BASE = 'https://www.rozhledny.eu/apidata'
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
-  key: 'tota',
-  label: 'TOTA',
-  activationType: ACTIVATION_TYPE,
-  huntingType: HUNTING_TYPE,
-  referenceRegex: REFERENCE_REGEX,
-  icon: manifest.icon,
-  color: manifest.accentColor,
-  placeholder: 'OKR-0001',
-  tFor,
-  // One record per hunted tower.
-  splitRecordsPerHuntedRef: true,
-})
-
 /// Thirteen contacts activate a tower, per UTC day, and the only axis that
 /// makes a repeat contact fresh is the tower itself — not band, not mode.
 const TOTA_SCORING = {
@@ -69,6 +55,23 @@ const TOTA_SCORING = {
   uniquePer: ['ref'] as const,
   activates: 'daily' as const,
 }
+
+const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+  key: 'tota',
+  label: 'TOTA',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  referenceRegex: REFERENCE_REGEX,
+  icon: manifest.icon,
+  color: manifest.accentColor,
+  placeholder: 'OKR-0001',
+  tFor,
+  // One record per hunted tower.
+  splitRecordsPerHuntedRef: true,
+  // Derived from the scorer's own rule, not a separate flag — the UI control
+  // and the scorer can't disagree about whether this award allows n-fers.
+  allowsMultiple: TOTA_SCORING.allowsMultipleReferences,
+})
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
