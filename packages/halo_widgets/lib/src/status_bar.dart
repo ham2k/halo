@@ -702,6 +702,45 @@ class _NoticeSurface extends StatelessWidget {
   }
 }
 
+/// The post-it keeps its own paper color in both brightnesses (see
+/// [HaLoColors.notice]), so every markdown role has to be pinned to the notice
+/// ink rather than inherited: what `fromTheme` derives from the ambient
+/// surface is near-white under the dark theme and disappears on the yellow.
+MarkdownStyleSheet _noticeMarkdownStyle(ThemeData theme, Color onNotice) {
+  final body = theme.textTheme.bodyMedium?.copyWith(color: onNotice);
+  final faint = onNotice.withValues(alpha: 0.08);
+  final rule = onNotice.withValues(alpha: 0.3);
+  return MarkdownStyleSheet.fromTheme(theme).copyWith(
+    p: body,
+    listBullet: body,
+    blockquote: body,
+    tableBody: body,
+    img: body,
+    checkbox: body,
+    // Color only, never a body-derived style: the builder merges the link
+    // style onto its parent, and `merge` takes every non-null field — a
+    // fontSize or fontWeight here would override the heading or bold run the
+    // link sits inside. No underline either, since without an `onTapLink`
+    // these links do nothing; [StatusBarActionData]s are the actionable part.
+    a: TextStyle(color: Colors.blue.shade900),
+    code: body?.copyWith(
+      backgroundColor: faint,
+      fontFamily: 'monospace',
+      fontSize: theme.textTheme.bodyMedium!.fontSize! * 0.85,
+    ),
+    h1: theme.textTheme.headlineSmall?.copyWith(color: onNotice),
+    h2: theme.textTheme.titleLarge?.copyWith(color: onNotice),
+    h3: theme.textTheme.titleMedium?.copyWith(color: onNotice),
+    h4: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
+    h5: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
+    h6: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
+    codeblockDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
+    blockquoteDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
+    tableBorder: TableBorder.all(color: rule),
+    horizontalRuleDecoration: BoxDecoration(border: Border(top: BorderSide(width: 5, color: rule))),
+  );
+}
+
 /// One notice, as a "post-it" card: icon+title row, markdown body, action
 /// buttons. Used both live (dismissible, in [NoticeStack]) and read-only (no
 /// [onDismiss]) in the Recent Notices history screen.
@@ -745,6 +784,10 @@ class NoticeCard extends StatelessWidget {
                   IconButton(
                     icon: Icon(MdiIcons.close, size: 18, color: onNotice, semanticLabel: dismissLabel),
                     onPressed: onDismiss,
+                    // The hover/press overlay derives from foregroundColor, so
+                    // without this it resolves against the ambient theme and a
+                    // near-white state layer washes out on the yellow paper.
+                    style: IconButton.styleFrom(foregroundColor: onNotice),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     mouseCursor: SystemMouseCursors.click,
@@ -754,9 +797,7 @@ class NoticeCard extends StatelessWidget {
             const SizedBox(height: Space.xs),
             MarkdownBody(
               data: notice.text,
-              styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                p: theme.textTheme.bodyMedium?.copyWith(color: onNotice),
-              ),
+              styleSheet: _noticeMarkdownStyle(theme, onNotice),
             ),
             if (notice.actions.isNotEmpty) ...[
               const SizedBox(height: Space.md),

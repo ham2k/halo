@@ -13,6 +13,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+// WCAG 2.1 relative luminance / contrast ratio (spec formula), so the color
+// tests below pin an actual accessibility threshold, not just "some color".
+double _linear(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+double _luminance(Color c) => 0.2126 * _linear(c.r) + 0.7152 * _linear(c.g) + 0.0722 * _linear(c.b);
+double _contrast(Color a, Color b) {
+  final la = _luminance(a), lb = _luminance(b);
+  final hi = math.max(la, lb), lo = math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 void main() {
   group('haloMonoStyle', () {
     testWidgets('uses RobotoMono with tabular figures', (tester) async {
@@ -219,18 +229,44 @@ void main() {
     });
   });
 
-  group('HaLoColors.onSurfaceAccent (dark-mode contrast)', () {
-    // WCAG 2.1 relative luminance / contrast ratio (spec formula), so these
-    // tests pin an actual accessibility threshold, not just "some color".
-    double linear(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
-    double luminance(Color c) =>
-        0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
-    double contrast(Color a, Color b) {
-      final la = luminance(a), lb = luminance(b);
-      final hi = math.max(la, lb), lo = math.min(la, lb);
-      return (hi + 0.05) / (lo + 0.05);
-    }
+  group('HaLoColors.notice (the post-it, identical in both brightnesses)', () {
+    test('paper and ink are the same colors in light and dark', () {
+      // A post-it is a physical metaphor: it does not invert at night.
+      // Swapping fill and ink in the dark variant — yellow text on dark
+      // olive — reads as an error banner, not a note stuck to the app.
+      expect(HaLoColors.dark.notice, HaLoColors.light.notice);
+      expect(HaLoColors.dark.onNotice, HaLoColors.light.onNotice);
+    });
 
+    test('paper and ink are app-polo\'s eventRow/eventContent pair', () {
+      // Pins the ported values themselves — app-polo's eventRow and
+      // eventContent, not a hue somebody liked. AnnotationRow starts from the
+      // same two colors but blends its paper into the surface, so this is not
+      // a claim that the two yellows render alike.
+      expect(HaLoColors.light.notice, const Color(0xFFFCF4A7));
+      expect(HaLoColors.light.onNotice, const Color(0xFF15140A));
+    });
+
+    test('ink on paper clears WCAG AAA (7:1) in both brightnesses', () {
+      for (final colors in [HaLoColors.light, HaLoColors.dark]) {
+        expect(_contrast(colors.onNotice, colors.notice), greaterThanOrEqualTo(7.0));
+      }
+    });
+
+    test('the dark theme carries the light post-it, not a surface-derived one', () {
+      // HaLoColors.of falls back to `light` when the extension is missing, so
+      // asserting on the constants alone would pass even if buildHaLoTheme
+      // stopped attaching the dark extension.
+      final darkColors = buildHaLoTheme(Brightness.dark).extension<HaLoColors>()!;
+      expect(darkColors.notice, const Color(0xFFFCF4A7));
+      // The paper must stay far from the dark surface it sits on — a notice
+      // that blends into the chrome is not a notice.
+      expect(_contrast(darkColors.notice, buildHaLoTheme(Brightness.dark).colorScheme.surface),
+          greaterThanOrEqualTo(7.0));
+    });
+  });
+
+  group('HaLoColors.onSurfaceAccent (dark-mode contrast)', () {
     test('light mode is unchanged — same value colorScheme.primary already had', () {
       // Light mode's contrast was already fine (colorScheme.primary vs its
       // surface is ~6.3:1) — no reason to touch what users see there.
@@ -242,14 +278,14 @@ void main() {
       // The bug: dark mode's colorScheme.primary was identical to light
       // mode's (#006783), so as foreground text on the dark surface it had
       // only ~2.67:1 contrast — well under WCAG AA's 4.5:1 floor for text.
-      expect(contrast(darkScheme.primary, darkScheme.surface), lessThan(3.0));
+      expect(_contrast(darkScheme.primary, darkScheme.surface), lessThan(3.0));
       // The fix must actually be lighter, not just a different hue.
       expect(HaLoColors.dark.onSurfaceAccent.computeLuminance(), greaterThan(darkScheme.primary.computeLuminance()));
     });
 
     test('dark mode meets WCAG AA text contrast (4.5:1) against the dark surface', () {
       final darkScheme = buildHaLoTheme(Brightness.dark).colorScheme;
-      expect(contrast(HaLoColors.dark.onSurfaceAccent, darkScheme.surface), greaterThanOrEqualTo(4.5));
+      expect(_contrast(HaLoColors.dark.onSurfaceAccent, darkScheme.surface), greaterThanOrEqualTo(4.5));
     });
 
     test('does not touch colorScheme.primary itself — the AppBar/FAB fill stays exactly as before', () {

@@ -28,6 +28,7 @@ upcoming:
     - "New **Group by Band** toggle in the Spots panel, independent of the sort: on gives you the band sections you're used to, off gives one flat list. Try it both ways and tell us which you'd want as the default"
     - "ZLOTA, WWBOTA, WCA, TOTA, SiOTA, MOTA, LLOTA, ELA, ECA, BLHA and BCA now let you activate several references at once (n-fers), same as POTA already did. Please try stacking references for one of these on an operation"
     - "TOTA towers had no location at all — no distance, no grid, nothing on the map. Fixed. If you already downloaded the tower list, refresh it under **Settings → Data Files** to pick this up now (otherwise it sorts itself out within 30 days), then check that a tower shows a distance"
+    - "Notices (the post-it cards above the status bar, and About → Notices & Messages) stay black-on-yellow in **dark mode** instead of flipping to yellow-on-olive. Please check they still read well at night and don't feel too bright"
 
 "126":
   changes:

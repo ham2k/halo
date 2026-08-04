@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -170,6 +171,61 @@ void main() {
       );
 
       expect(tester.getSize(find.byType(StatusBarFooter)).height, 0);
+    },
+  );
+
+  testWidgets(
+    'under the dark theme the notice is still black ink on post-it yellow, '
+    'markdown roles included',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.dark),
+        home: Scaffold(
+          body: NoticeCard(
+            notice: StatusBarNoticeData(
+              key: 'n',
+              title: 'Heads up',
+              text: '# Head\n\nBody `code` [link](x)',
+              createdAt: DateTime(2026),
+            ),
+            onDismiss: () {},
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final paper = tester
+          .widgetList<Material>(find.descendant(of: find.byType(NoticeCard), matching: find.byType(Material)))
+          .first;
+      expect(paper.color, const Color(0xFFFCF4A7));
+
+      // Every markdown role has to be pinned, not just `p`: the rest of
+      // MarkdownStyleSheet.fromTheme is derived from the ambient (here dark)
+      // surface, so a heading or an inline code span would render near-white
+      // on the yellow paper and be unreadable.
+      final sheet = tester.widget<MarkdownBody>(find.byType(MarkdownBody)).styleSheet!;
+      const ink = Color(0xFF15140A);
+      expect(sheet.p!.color, ink);
+      expect(sheet.h1!.color, ink);
+      expect(sheet.code!.color, ink);
+      expect(sheet.blockquote!.color, ink);
+      expect(sheet.listBullet!.color, ink);
+      // Links stay a distinct color, but one that reads on yellow rather than
+      // fromTheme's mid-blue. Color and nothing else: the markdown builder
+      // merges the link style onto its parent and `merge` takes every non-null
+      // field, so a body-derived style here shrinks the `# Head` above to body
+      // size the moment a link appears inside a heading or a bold run.
+      expect(sheet.a!.color, Colors.blue.shade900);
+      expect(sheet.a!.fontSize, isNull);
+      expect(sheet.a!.fontWeight, isNull);
+
+      // The dismiss button's state layer follows its foregroundColor; left to
+      // the ambient dark theme it is a near-white wash, invisible on yellow.
+      final dismiss = tester.widget<IconButton>(find.byType(IconButton));
+      expect(dismiss.style?.foregroundColor?.resolve({}), ink);
+
+      final title = tester.widget<Text>(find.text('Heads up'));
+      expect(title.style!.color, ink);
     },
   );
 }

@@ -38,6 +38,17 @@ const _tabularFigures = [FontFeature.tabularFigures()];
 @immutable
 class HaLoColors extends ThemeExtension<HaLoColors> {
   final Color important;
+
+  /// The "post-it" notice card: app-polo's `eventRow` paper
+  /// (`rgb(252, 244, 167)`) and its near-black `eventContent` ink
+  /// (`rgb(21, 20, 10)`). Identical in both variants, like [tabIndicator] and
+  /// [bands]: a post-it that inverts to yellow-on-olive at night stops reading
+  /// as a note stuck to the screen and starts reading as an error banner.
+  ///
+  /// `AnnotationRow` starts from the same two app-polo colors but blends its
+  /// paper into the surface (0.85 light, 0.65 dark), so an event row is a
+  /// duller yellow than a notice — it tints a row inside a list, where this
+  /// is a card overlaid on top of one.
   final Color notice;
   final Color onNotice;
 
@@ -102,7 +113,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   static const light = HaLoColors(
     important: Color(0xFF1AA01A),
     notice: Color(0xFFFCF4A7),
-    onNotice: Color(0xFF615C2F),
+    onNotice: Color(0xFF15140A),
     tertiaryLight: Color(0xFFE6AB73),
     secondaryLight: Color(0xFF69A9DF),
     devMode: Color(0xFFDB7204),
@@ -113,8 +124,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
 
   static const dark = HaLoColors(
     important: Color(0xFF1AC81A),
-    notice: Color(0xFF615C2F),
-    onNotice: Color(0xFFFCF4A7),
+    notice: Color(0xFFFCF4A7),
+    onNotice: Color(0xFF15140A),
     tertiaryLight: Color(0xFF5D3918),
     secondaryLight: Color(0xFF244462),
     devMode: Color(0xFFF7A145),
