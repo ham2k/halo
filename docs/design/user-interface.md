@@ -104,6 +104,57 @@ How views arrange their panes at each window size — the shirt-size
 breakpoints, the ideal pane width, resizable splits, and Modal Panes — is
 specified in [layouts.md](layouts.md).
 
+### Spacing
+
+**Every padding, margin and gap is one of seven rungs**, named on `Space`
+([`spacing.dart`](../../packages/halo_widgets/lib/src/spacing.dart)):
+
+| Rung | Value | Role |
+|---|---|---|
+| `xxs` | 2 | hairline separation — two lines of one record; a nudge that must not read as a gap |
+| `xs` | 4 | a glyph and its label; the inset of a chip or pill |
+| `sm` | 6 | a compact row's vertical breathing room |
+| `md` | **8** | **the default** — between two related controls, and whenever no rung is obviously better |
+| `lg` | 12 | a list row's own inset; between a group's members |
+| `xl` | 16 | the padding of a panel, card or dialog body; between groups |
+| `xxl` | 24 | between major sections of a scrolling view |
+
+Pick by **role, not arithmetic**. The ladder is deliberately short — its job
+is to give new UI a small menu to choose from, and a rung two pixels from its
+neighbour defeats that. A new rung needs a role none of these covers, not a
+site that happens to want an in-between number.
+
+Values are plain logical pixels, like every other dimension
+([ui-scaling.md](ui-scaling.md) rule 2) — the root `UiScale` already
+multiplies the whole tree, so a spacing value is never scaled by hand.
+
+Three rules that are not obvious:
+
+- **A value that fits no rung is usually a *size*, not spacing** — a row
+  height, a control diameter, a map camera inset — and belongs in a named
+  constant of its own. Those are legitimately off-ladder; a handful exist
+  (the map views' camera and fit-bounds insets, the splash view's mirror of
+  the HTML loading page's box model, and two paddings that stand in for
+  content still loading — a spinner inside a fixed box, and a QR code's
+  reserved footprint) and each is recorded with its reason in the guard test
+  below.
+- **A measurement that mirrors a gap must name the same rung, never repeat
+  its value.** `TextPainter` width math that hand-copies a widget's padding
+  measures the wrong widget the moment the rung moves, and the layout still
+  builds — it just reserves the wrong width and mis-wraps. `logging_controls
+  .dart`'s notice-pill and call-note measurements are the worked examples.
+- **`Space` is not [`ShirtSize`](layouts.md).** They share the t-shirt idiom
+  and nothing else: `ShirtSize` classifies a *window* to choose a pane
+  arrangement, `Space` measures a *gap*. The rungs don't correspond and
+  neither derives from the other.
+
+`app/test/spacing_vocabulary_test.dart` enforces this: it parses every
+`EdgeInsets` argument and every childless single-axis `SizedBox` in both
+packages and fails on a bare literal, the same way
+`no_hover_tooltips_test.dart` enforces the no-tooltip rule. An off-ladder
+value that is genuinely a size goes in that test's allowlist, with the reason
+it is not spacing.
+
 ### Buttons and hover labels
 
 **No tooltips.** Icon-only buttons do not get a hover label — never pass

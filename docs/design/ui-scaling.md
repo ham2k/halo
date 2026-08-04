@@ -83,7 +83,10 @@ in a layout, stop — that's the bug. (The setting is read in exactly one place:
 
 **2. Write everything in plain logical pixels.** A row that should be 44pt tall
 is `height: 44`. It will render at `44 * scale` on screen. That's the whole
-contract.
+contract. Which logical pixels a *padding, margin or gap* may use is a
+separate question with its own answer — the seven `Space` rungs
+([user-interface.md § Spacing](user-interface.md#spacing)). Sizes like that
+44pt row are not on that ladder and don't belong on it.
 
 **3. Do not override `MediaQuery.textScaler` for the app font scale.** Text
 scales via the transform, along with everything else. (There used to be a

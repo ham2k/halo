@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The app-wide spacing vocabulary: seven rungs, and every padding, margin and
-// gap in the app is one of them.
+// gap in the app is one of them (docs/design/user-interface.md § Spacing).
 //
 // Values are plain logical pixels in the UiScale-divided space
 // (docs/design/ui-scaling.md rule 2) — the root `UiScale` already multiplies
