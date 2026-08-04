@@ -60,6 +60,7 @@ import 'services/restart_service.dart';
 import 'services/operation_title_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
+import 'services/spots_service.dart';
 import 'services/status_bar_service.dart';
 import 'settings/core_settings_groups.dart';
 import 'settings/settings_registry.dart';
@@ -728,6 +729,10 @@ class HaLoServices {
   /// `StatusBarOverlay` can draw it below the status footer and directly on
   /// the keyboard — an order no single route can produce for itself.
   final KeyboardAccessoryController keyboardAccessory = KeyboardAccessoryController();
+  /// Spots fetched once and shared by the Spots Panel and the `spot-history`
+  /// lookup hook. Idle until something subscribes (see SpotsService).
+  late final SpotsService spots = SpotsService(fetchSpots: extensions.getSpots);
+
   final LookupQueueService? _lookupQueueOverride;
   late final LookupQueueService lookupQueue = _lookupQueueOverride ??
       LookupQueueService(
@@ -963,6 +968,7 @@ class HaLoServices {
     this.extensions.operations = operations;
     this.extensions.qsos = qsos;
     this.extensions.location = location;
+    this.extensions.spots = spots;
     this.extensions.onOpenAccount =
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
   }

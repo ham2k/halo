@@ -39,17 +39,30 @@ export interface HookContext {
   /// whole-log read crossing the bridge: fine for command execution or an
   /// export-sized job, not for per-keystroke paths.
   getQsos?(operationUuid: string): Promise<Record<string, JSONValue>[] | null>
+  /// Every spot the host has already fetched for [call] (case-insensitive)
+  /// that is no older than `maxAgeMinutes` (default 30), newest first.
+  ///
+  /// Reads the host's cache only — it NEVER triggers a fetch, so it is cheap
+  /// enough to call from the per-keystroke lookup pipeline, and it returns
+  /// `[]` (not null) whenever the cache is cold or the host keeps no spots.
+  /// Age is the spot's own `spot.timeInMillis`, not when it was fetched.
+  getSpotsForCall?(call: string, maxAgeMinutes?: number): Promise<Spot[]>
 }
 
-export type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
-import type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
+export type { CallInfo, CallInfoLookup, AnnotatedCallInfo, RefInfo } from "@ham2k/lib-qson-tools"
+import type { CallInfo, CallInfoLookup, AnnotatedCallInfo, RefInfo } from "@ham2k/lib-qson-tools"
 
 /// A lookup hook may return zero or more records for one decoration pass —
 /// `[]` to skip (e.g. the field it would provide is already known). A result
 /// that supplies a location may tag it with a [LOCATION_ACCURACY] rank via
 /// `locAccuracy` (lower = more precise); `mergeLookupIntoGuess` keeps the most
 /// accurate location when several same-scope sources offer one.
-export type LookupResult = (CallInfoLookup & { locAccuracy?: number })[]
+///
+/// `refs` proposes activity references for the QSO being logged (what
+/// `spot-history` mines out of recent spots). They ride the guess to the
+/// host, which applies only those whose `type` the QSO doesn't already
+/// carry — a lookup never overrides a ref the operator entered.
+export type LookupResult = (CallInfoLookup & { locAccuracy?: number; refs?: RefInfo[] })[]
 
 /// Registered under category `lookup`. Called once per decoration pass, in
 /// priority order, by the core `lookupService/core` hook's internal
@@ -64,10 +77,32 @@ export interface LookupHook {
   ): Promise<LookupResult>
 }
 
+/// Registered under category `recentContextLookup`. Same interface as
+/// [LookupHook], run by the same orchestrator immediately after it — but
+/// ONLY when the request sets `recentContext`.
+///
+/// The distinction is what the answer depends on. A `lookup` hook answers
+/// "who is this callsign", which is true whenever it is asked. A
+/// `recentContextLookup` hook answers "what is this station doing right
+/// now" — from spots, from the last few minutes of the log, from whatever
+/// else is live — and that answer is only meaningful for a contact being
+/// composed at this moment. Asked about a QSO logged an hour ago, or about
+/// every callsign on the spots board, it is not merely useless but wrong,
+/// so the orchestrator does not ask at all rather than leaving each hook to
+/// recognize a context it cannot see.
+export type RecentContextLookupHook = LookupHook
+
 export interface LookupServiceRequest {
   callInfo: CallInfo
   qso: Record<string, JSONValue>
   operation: Record<string, JSONValue>
+  /// Whether this call is being composed right now — a callsign typed into
+  /// the logging field, or a suggested QSO taken from a spot. Only then are
+  /// `recentContextLookup` hooks run. Defaults to false: background
+  /// enrichment of saved QSOs, annotating the spots board, and the quick
+  /// lookup dialog are all lookups about a call, not about a contact in
+  /// progress.
+  recentContext?: boolean
 }
 
 export interface LookupServiceResult {

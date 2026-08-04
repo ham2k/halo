@@ -347,7 +347,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // rather than leaving the palette context-less — see
     // HaLoServices.openOperationContext.
     _commandContext = widget.services.openOperationContext(widget.operationUuid);
+    // Keeps spots flowing for as long as an operation is open, not just
+    // while the Spots Panel is on screen: the `spot-history` lookup reads
+    // that cache to pull a hunted park/summit into the QSO as the callsign
+    // is typed, which has to work from the logging panel alone. Refcounted,
+    // so closing every operation stops the fetching.
+    _unsubscribeSpots = widget.services.spots.subscribe();
   }
+
+  /// Releases this view's spot-cache subscription (see initState).
+  VoidCallback? _unsubscribeSpots;
 
   /// This view's entry on the command-context stack.
   late final OperationCommandContext _commandContext;
@@ -382,6 +391,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _rescoreDebounce?.cancel();
     _tabController?.dispose();
     widget.services.closeOperationContext(_commandContext);
+    _unsubscribeSpots?.call();
     super.dispose();
   }
 

@@ -15,6 +15,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
+import '../../services/spots_service.dart';
 import '../../i18n/strings.g.dart';
 
 /// Modes excluded from the callsign-merge pass (SpotsPanel.jsx: too many
@@ -256,14 +257,15 @@ class SpotsPanel extends StatefulWidget {
 }
 
 class _SpotsPanelState extends State<SpotsPanel> {
-  bool _loading = true;
-  String? _error;
-  final Map<String, List<Map<String, dynamic>>> _spotsBySource = {};
   Map<String, String> _sourceNames = {};
   List<Map<String, dynamic>> _activityControls = [];
-  Timer? _timer;
-  Future<void>? _inFlightFetch;
+  VoidCallback? _unsubscribeSpots;
   bool _refreshing = false;
+
+  SpotsService get _spots => widget.services.spots;
+  Map<String, List<Map<String, dynamic>>> get _spotsBySource => _spots.spotsBySource;
+  bool get _loading => !_spots.loaded;
+  String? get _error => _spots.error?.toString();
 
   String _bandFilter = 'auto';
   String _modeFilter = 'auto';
@@ -283,8 +285,13 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _lastVfoBand = widget.services.radio.vfoA.band;
     _lastVfoMode = widget.services.radio.vfoA.mode;
     widget.services.radio.addListener(_onVfoChanged);
-    _fetch();
-    _timer = Timer.periodic(const Duration(minutes: 2), (_) => _fetch());
+    // The panel is a consumer, not the owner: the Operation View already
+    // holds a subscription so the `spot-history` lookup has spots to mine
+    // whether or not this panel was ever opened. Subscribing again is what
+    // keeps the refresh running if that ever stops being true.
+    _unsubscribeSpots = widget.services.spots.subscribe();
+    widget.services.spots.addListener(_onSpotsChanged);
+    if (widget.services.spots.loaded) unawaited(_refreshCallInfo());
     // Fetched once, not on the 2-min spots refresh timer — a hook's
     // `sourceName` is a static field, not something that changes at runtime.
     widget.services.extensions.getSpotSourceNames().then((names) {
@@ -304,7 +311,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
   @override
   void dispose() {
     widget.services.radio.removeListener(_onVfoChanged);
-    _timer?.cancel();
+    widget.services.spots.removeListener(_onSpotsChanged);
+    _unsubscribeSpots?.call();
     super.dispose();
   }
 
@@ -348,44 +356,25 @@ class _SpotsPanelState extends State<SpotsPanel> {
     });
   }
 
-  /// Coalesces overlapping calls (the 2-minute timer tick and a manual
-  /// pull-to-refresh) into the one in-flight request instead of doubling
-  /// the fan-out to every spots-hook extension.
-  Future<void> _fetch() => _inFlightFetch ??= _doFetch().whenComplete(() => _inFlightFetch = null);
+  /// A fetch settled in the shared cache (the refresh timer, this panel's
+  /// pull-to-refresh, or another subscriber's) — rebuild against it and
+  /// annotate whatever callsigns are newly on the board.
+  void _onSpotsChanged() {
+    if (!mounted) return;
+    setState(() {});
+    unawaited(_refreshCallInfo());
+  }
 
   /// The filter-row refresh button's handler: drives a fetch while showing a
-  /// spinner in place of the button's icon. Pull-to-refresh keeps using
-  /// [_fetch] directly — the RefreshIndicator draws its own spinner.
+  /// spinner in place of the button's icon. Pull-to-refresh calls the cache
+  /// directly — the RefreshIndicator draws its own spinner.
   Future<void> _refresh() async {
     if (_refreshing) return;
     setState(() => _refreshing = true);
     try {
-      await _fetch();
+      await _spots.refresh();
     } finally {
       if (mounted) setState(() => _refreshing = false);
-    }
-  }
-
-  Future<void> _doFetch() async {
-    try {
-      final spots = await widget.services.extensions.getSpots();
-      if (!mounted) return;
-      setState(() {
-        _spotsBySource.clear();
-        for (final spot in spots) {
-          final hookKey = spot['hookKey'] as String? ?? 'unknown';
-          _spotsBySource.putIfAbsent(hookKey, () => []).add(spot);
-        }
-        _loading = false;
-        _error = null;
-      });
-      unawaited(_refreshCallInfo());
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
     }
   }
 
@@ -674,7 +663,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final leftWidth = _spotLeftColumnWidth(context, filtered, hzDigits);
 
     return RefreshIndicator(
-      onRefresh: _fetch,
+      onRefresh: _spots.refresh,
       child: filtered.isEmpty
           // While the initial fetch is still in flight (see the progress bar
           // above), "no spots" would be misleading — none have loaded yet,

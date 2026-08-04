@@ -380,6 +380,64 @@ __polo.defineExtension({
     });
   });
 
+  test('spot-history: a recent spot\'s refs reach the guess, but only when recent context is asked for', () async {
+    final spotCalls = <Map<String, dynamic>>[];
+    final host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: [
+        ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
+        ExtensionBundle(key: 'spot-history', source: bundleSource('spot-history')),
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method != 'getSpotsForCall') return null;
+        spotCalls.add(params);
+        return [
+          {
+            'their': {'call': params['call']},
+            'refs': [
+              {'type': 'potaHunter', 'ref': 'US-1234'}
+            ],
+            'spot': {'timeInMillis': 0, 'source': 'test'},
+          },
+        ];
+      },
+    );
+    addTearDown(host.dispose);
+    await host.activated;
+
+    Future<Map<String, dynamic>> lookup({required bool recentContext}) async {
+      final result = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo', args: {
+        'callInfo': {'call': 'KI2D'},
+        'qso': <String, dynamic>{},
+        'operation': <String, dynamic>{},
+        'recentContext': recentContext,
+      });
+      return (result['guess'] as Map).cast<String, dynamic>();
+    }
+
+    // Composing a contact: the park off the spot rides the guess back out.
+    final withContext = await lookup(recentContext: true);
+    expect((withContext['refs'] as List).single, containsPair('ref', 'US-1234'));
+    expect(spotCalls, hasLength(1));
+    expect(spotCalls.single['maxAgeMinutes'], 30);
+
+    // Everything else — the background queue re-enriching a saved QSO, the
+    // spots board annotating each call it shows, the quick lookup dialog.
+    // The hook must not merely return nothing: it must not be CONSULTED, or
+    // the spots board alone costs one bridge round-trip per spot shown.
+    final withoutContext = await lookup(recentContext: false);
+    expect(withoutContext.containsKey('refs'), isFalse);
+    expect(spotCalls, hasLength(1), reason: 'the hook was never asked');
+
+    // Omitting the flag entirely behaves like false — every pre-existing
+    // caller passes no such key.
+    final result = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo',
+        args: {'callInfo': {'call': 'KI2D'}, 'qso': {}, 'operation': {}});
+    expect((result['guess'] as Map).containsKey('refs'), isFalse);
+    expect(spotCalls, hasLength(1));
+  });
+
   test('call-notes extension: raw dataFile round-trip, lookup notes, and //KEY expansion', () async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),

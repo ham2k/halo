@@ -64,11 +64,18 @@ import 'wall_clock.dart';
 /// in-progress QSO; `online: false` asks every hook to skip network access,
 /// for a fast local-data-only preview pass. Returns `{lookups, guess}`, or
 /// null meaning "nothing known". Must never throw.
+///
+/// `recentContext` additionally runs the lookup sources whose answer only
+/// makes sense for a contact being composed right now — spot history, and
+/// whatever else comes to describe what a station is doing at this moment.
+/// Optional (defaulting to false in implementations) so a caller that only
+/// wants to know who a callsign belongs to needn't say so.
 typedef CallLookup = Future<Map<String, dynamic>?> Function(
   String call, {
   required Map<String, dynamic> qso,
   required Map<String, dynamic> operation,
   required bool online,
+  bool recentContext,
 });
 
 /// Tries the input as an extension-registered command (band/freq/mode
@@ -2030,6 +2037,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       ..remove('mode')
       ..remove('startAtMillis');
     _controlRefs.clear();
+    _guessedRefs = const [];
+    _guessedRefsForCall = null;
     _unmatchedRefs = [];
     _clearTextControls();
     final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
@@ -2216,6 +2225,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _clearScoreNotices();
     _lookupCache.clear();
     _controlRefs.clear();
+    _guessedRefs = const [];
+    _guessedRefsForCall = null;
     _unmatchedRefs = [];
     _clearTextControls();
     _currentQsoExtra.clear();
@@ -2319,6 +2330,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// literal joined string. A single call with no comma is just a one-item
   /// list, so this also covers the common case.
   List<String> get _callList => _call.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+
+  /// Every callsign the field currently holds, under either multi-call
+  /// syntax: the comma-separated list, or the "//" stack's segments (which
+  /// take priority, per [_callAtCursor]).
+  ///
+  /// This is what tells a call being CORRECTED — it leaves the field — from
+  /// one merely being typed alongside others, which moves the cursor off it
+  /// without replacing it. See the guessed-ref clearing in
+  /// [_scheduleLookup].
+  Iterable<String> get _callsInField {
+    final text = _callController.text;
+    final separator = widget.editingQso == null && text.contains('//') ? '//' : ',';
+    return text.split(separator).map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty);
+  }
 
   /// The single call that's actually relevant right now — the whole field
   /// for a plain callsign, whichever "//"-stacked segment
@@ -4137,6 +4162,127 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
+  /// Whether the lookup should also run the `recentContextLookup` sources —
+  /// true only while composing a new contact, which is the one case where
+  /// "what is this station doing right now" is a question about the QSO
+  /// being made. Editing a saved record is a question about the past: what
+  /// a spot says now has no bearing on a contact already logged, and
+  /// [_applyGuessRefs] would refuse the answer anyway.
+  bool get _recentContext => widget.editingQso == null;
+
+  /// Applies references a `lookup` hook proposed for this call — the park or
+  /// summit `spot-history` mined out of a recent spot — onto the QSO being
+  /// composed. Returns whether anything actually landed.
+  ///
+  /// A proposed ref is only ever ADDED, never allowed to replace a ref whose
+  /// type the QSO already carries: the operator's own entry outranks a
+  /// guess, and re-proposing an existing type on every pass is exactly what
+  /// would make the ref-change re-lookup (see `_relookupForRefsChanged`)
+  /// cycle forever.
+  ///
+  /// Skipped entirely while editing a saved QSO — refs describe where the
+  /// station is *now*, which says nothing about where it was when a contact
+  /// already in the log was made.
+  bool _applyGuessRefs(Map<String, dynamic>? result, String forCall) {
+    if (widget.editingQso != null || _fieldsLocked || _populating) return false;
+    final guess = result?['guess'];
+    if (guess is! Map) return false;
+    final proposed = (guess['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    if (proposed.isEmpty) return false;
+
+    final claimedTypes = <Object?>{
+      for (final list in _controlRefs.values)
+        for (final ref in list) ref['type'],
+      for (final ref in _unmatchedRefs) ref['type'],
+    };
+    final added = <String, List<Map<String, dynamic>>>{};
+    final addedUnmatched = <Map<String, dynamic>>[];
+    for (final ref in proposed) {
+      final type = ref['type'];
+      if (type is! String || type.isEmpty || ref['ref'] == null) continue;
+      if (!claimedTypes.add(type)) continue;
+      final key = _refListControlKeyForType(type);
+      if (key != null) {
+        (added[key] ??= []).add(ref);
+      } else {
+        addedUnmatched.add(ref);
+      }
+    }
+    if (added.isEmpty && addedUnmatched.isEmpty) return false;
+
+    setState(() {
+      added.forEach((key, refs) => (_controlRefs[key] ??= []).addAll(refs));
+      // Rebuilt rather than mutated: `_unmatchedRefs` starts life as a const
+      // literal, which cannot be added to.
+      if (addedUnmatched.isNotEmpty) _unmatchedRefs = [..._unmatchedRefs, ...addedUnmatched];
+      // Remembered so they can be taken back when the call changes — see
+      // [_guessedRefs]. Appended, not replaced: the offline pass and the
+      // online pass both contribute for the same call.
+      _guessedRefsForCall = forCall;
+      _guessedRefs = [
+        ..._guessedRefs,
+        for (final refs in added.values) ...refs,
+        ...addedUnmatched,
+      ];
+    });
+    return true;
+  }
+
+  /// References put on the QSO by a lookup guess rather than by the operator,
+  /// and the callsign they were resolved for.
+  ///
+  /// A guessed ref answers "where is THIS station right now", so it must not
+  /// outlive the call that was asked about: correcting KI2D to KI2E would
+  /// otherwise log the second station at the first one's park. Only refs this
+  /// widget actually inserted are tracked, and [_clearGuessedRefs] removes
+  /// them BY IDENTITY — an operator-typed ref that happens to equal one of
+  /// these is not ours to take back.
+  String? _guessedRefsForCall;
+  List<Map<String, dynamic>> _guessedRefs = const [];
+
+  /// Removes every ref a previous call's guess contributed, leaving the
+  /// operator's own untouched. Returns whether anything was removed; the
+  /// caller owns the `setState`.
+  bool _clearGuessedRefs() {
+    _guessedRefsForCall = null;
+    if (_guessedRefs.isEmpty) return false;
+    final stale = _guessedRefs;
+    _guessedRefs = const [];
+    bool isStale(Map<String, dynamic> ref) => stale.any((s) => identical(s, ref));
+
+    var removed = false;
+    for (final list in _controlRefs.values) {
+      final before = list.length;
+      list.removeWhere(isStale);
+      removed |= list.length != before;
+    }
+    if (_unmatchedRefs.any(isStale)) {
+      _unmatchedRefs = [
+        for (final ref in _unmatchedRefs)
+          if (!isStale(ref)) ref,
+      ];
+      removed = true;
+    }
+    return removed;
+  }
+
+  /// The activity control that would own a ref of [type] — the refList
+  /// control whose `refType` matches. Primary fields (`text`/`serial`/
+  /// `options`) read one field out of a ref rather than owning it and several
+  /// may share a type, so they never claim one; a ref they match still has to
+  /// reach a refList control or fall through to `_unmatchedRefs` (same rule
+  /// `_applyFieldsFromData` follows when loading a saved QSO).
+  String? _refListControlKeyForType(String type) {
+    for (final control in _effectiveActivityControls) {
+      final input = control['input'] as Map?;
+      if (input?['refType'] != type) continue;
+      final kind = input?['kind'];
+      if (kind == 'text' || kind == 'serial' || kind == 'options') continue;
+      return control['key'] as String?;
+    }
+    return null;
+  }
+
   /// Re-runs the callsign lookup after the QSO's refs change (e.g. adding a
   /// hunted POTA park or SOTA summit). The POTA/SOTA `lookup` hooks read the
   /// QSO's refs to resolve a park/summit grid, but the lookup is otherwise
@@ -5424,6 +5570,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // comma-separated list — the whole joined field text is never itself a
     // callsign once there's more than one call or stacked segment.
     final activeCall = _callAtCursor;
+    // A guessed ref belongs to the call it was resolved for, and is taken
+    // back once the field no longer holds that call — including mid-edit,
+    // with what's left not yet a valid callsign. Waiting for a replacement
+    // lookup would leave it standing through the intervening keystrokes, and
+    // a lookup that resolves nothing would never clear it at all. Correcting
+    // KI2D to KI2E must not log KI2E at KI2D's park.
+    //
+    // Keyed on the whole field, NOT on the call at the cursor: adding a
+    // second call to a stack moves the cursor off the first without
+    // correcting it, and a reference one stacked call earned is kept for the
+    // whole stack (refs are shared across the stack anyway — two operators
+    // at one park is exactly the case that produces a stack in the first
+    // place).
+    if (_guessedRefsForCall != null && !_callsInField.contains(_guessedRefsForCall) && _clearGuessedRefs()) {
+      setState(() {});
+    }
     if (_lookupFor == activeCall) return;
     if (!looksLikeCallsign(activeCall)) {
       setState(() {
@@ -5436,10 +5598,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     // Already looked up this call this session — show it instantly, no refetch.
     if (_lookupCache.containsKey(activeCall)) {
+      final cached = _lookupCache[activeCall];
       setState(() {
         _lookupFor = activeCall;
-        _lookupResult = _lookupCache[activeCall];
+        _lookupResult = cached;
       });
+      // Refs are re-applied off the cached result too, not just off a fresh
+      // one. Typing back to a call whose guessed refs were just cleared —
+      // KI2D, corrected to KI2E, corrected back — reaches the lookup only
+      // through this cache hit, and would otherwise show the guess in the
+      // info panel while the park it named is missing from the QSO. Runs
+      // its own setState, so it stays outside the one above.
+      _applyGuessRefs(cached, activeCall);
       unawaited(_refreshActivityControlsFor(activeCall));
       return;
     }
@@ -5455,6 +5625,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         qso: _getCurrentQsoData(callOverride: activeCall),
         operation: widget.operation.data,
         online: false,
+        recentContext: _recentContext,
       );
       if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
       _lookupCache[activeCall] = offlineResult;
@@ -5463,6 +5634,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupResult = offlineResult;
       });
       _logLookup('offline', activeCall, offlineResult);
+      // Spot-derived refs land here, off the OFFLINE pass, deliberately
+      // without a `_relookupForRefsChanged`: the online pass below rebuilds
+      // its `qso` argument from scratch, so the POTA/SOTA hooks see the
+      // just-added park/summit on that pass and resolve its grid — a
+      // re-lookup here would instead race the online pass already in flight.
+      _applyGuessRefs(offlineResult, activeCall);
       // QSO-scoped activity controls (e.g. POTA's DXCC-derived placeholder)
       // are refreshed off the offline pass ONLY, deliberately not fired
       // again after the online pass below. Two reasons: (1) the offline
@@ -5482,6 +5659,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         qso: _getCurrentQsoData(callOverride: activeCall),
         operation: widget.operation.data,
         online: true,
+        recentContext: _recentContext,
       );
       if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
       // A failed/timed-out online pass (host down, network error) must not
@@ -5493,6 +5671,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupResult = onlineResult;
       });
       _logLookup('online', activeCall, onlineResult);
+      // Anything the online pass proposes that the offline one didn't (a spot
+      // fetched in between) has had no chance to reach the activity hooks, so
+      // this one does re-look-up. It cannot cycle: the refs it just applied
+      // are filtered out as already-claimed on the next pass, which then
+      // applies nothing and re-triggers nothing.
+      if (_applyGuessRefs(onlineResult, activeCall)) _relookupForRefsChanged();
     });
   }
 
@@ -5595,6 +5779,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _clearScoreNotices();
     _lookupCache.clear();
     _controlRefs.clear();
+    _guessedRefs = const [];
+    _guessedRefsForCall = null;
     _clearTextControls();
     _currentQsoExtra.clear();
     _manualStartAtMillis = null;

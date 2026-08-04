@@ -140,6 +140,7 @@ class _CannedExtensions extends ExtensionService {
     Map<String, dynamic>? qso,
     Map<String, dynamic>? operation,
     bool online = true,
+    bool recentContext = false,
   }) async {
     lookupPasses.add((call, online));
     if (!online) {

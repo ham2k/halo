@@ -1,0 +1,29 @@
+{
+  "key": "spot-history",
+  "name": "Spot History",
+  "version": "0.0.1",
+  "description": "Brings park, summit and other activity references from recent spots into the QSO you are logging",
+  "category": "lookup",
+  "enabledByDefault": true,
+  "keywords": [
+    "spots",
+    "lookup",
+    "references",
+    "hunting"
+  ],
+  "hooks": [
+    "recentContextLookup"
+  ],
+  "translations": {
+    "es": {
+      "name": "Historial de spots",
+      "description": "Trae referencias de parques, cumbres y otras actividades desde spots recientes al QSO que estás registrando",
+      "keywords": [
+        "spots",
+        "búsqueda",
+        "referencias",
+        "cazando"
+      ]
+    }
+  }
+}

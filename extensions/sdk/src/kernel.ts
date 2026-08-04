@@ -27,7 +27,7 @@
 import { installNumberFormatPolyfill } from "./number-format.ts"
 installNumberFormatPolyfill()
 
-import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor } from "./types"
+import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot } from "./types"
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
@@ -302,6 +302,11 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // it means something different from [] (see HookContext.getQsos).
     getQsos: async (operationUuid: string) =>
       (await dispatchHostCall('getQsos', { operationUuid })) as Record<string, unknown>[] | null,
+    // Reads the host's already-fetched spot cache; never triggers a fetch,
+    // so it is cheap enough for the per-keystroke lookup pipeline (see
+    // HookContext.getSpotsForCall).
+    getSpotsForCall: async (call: string, maxAgeMinutes?: number) =>
+      ((await dispatchHostCall('getSpotsForCall', { call, maxAgeMinutes })) as Spot[] | null) ?? [],
   }
   return await member.call(record.hook, args, ctx)
 }

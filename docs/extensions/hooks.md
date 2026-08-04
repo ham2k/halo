@@ -33,6 +33,13 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   simply has no QSOs yet). Each call is a bridge round-trip carrying a whole
   log — fine at command-execution or export scale, not on per-keystroke
   paths.
+* `getSpotsForCall?(call, maxAgeMinutes = 30)` — the spots the host has
+  already fetched for `call`, no older than `maxAgeMinutes` (measured on the
+  spot's own `spot.timeInMillis`, not on when it was fetched), newest first.
+  Reads the host's cache and **never triggers a fetch**, so unlike the log
+  reads above it is cheap enough for the lookup path; it resolves `[]`
+  whenever the cache is cold or the host keeps no spots. Used by
+  `spot-history` to pull a hunted park or summit into the QSO being logged.
 
 Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 
@@ -52,9 +59,17 @@ interface LookupHook {
   lookupCall(args: { callInfo: AnnotatedCallInfo; qso; operation }, ctx): Promise<LookupResult>
 }
 // AnnotatedCallInfo: CallInfo & {guess?: CallInfo, lookups?: CallInfoLookup[]}
-// LookupResult:      CallInfoLookup[] — zero or more records; [] to skip
+// LookupResult:      (CallInfoLookup & {locAccuracy?, refs?: RefInfo[]})[] —
+//                    zero or more records; [] to skip
 // CallInfoLookup:    CallInfo & {source?, scope?: 'general'|'operation'|'qso', notes?, history?}
 ```
+
+A result's `refs` **proposes** activity references for the QSO being logged.
+The host applies only those whose `type` the QSO does not already carry — a
+lookup never overrides a reference the operator entered — and re-runs the
+lookup once afterwards so QSO-scoped hooks (POTA/SOTA) see the new ref and
+can resolve its grid. Because an already-applied type is filtered out on the
+next pass, that re-run settles instead of cycling.
 
 Return `[]` for "can't answer" (not configured, not found, or `!ctx.online`
 and this source has no offline data) — never throw for expected conditions.
@@ -66,18 +81,44 @@ hunted ref on the current QSO), and `call-notes` (`scope: 'general'`,
 offline — combined `note`/`emoji` extra fields from the Hams of Note file,
 issue #17).
 
+## ✅ `recentContextLookup` — live-context lookups
+
+Same `LookupHook` interface, run by the same orchestrator immediately after
+the `lookup` fan-out and folded through the same merge — but **only when the
+request sets `recentContext`**, which the logging panel does solely while
+composing a new contact.
+
+The split is about what the answer depends on. A `lookup` hook answers *who
+is this callsign*, which is true whenever asked. A `recentContextLookup` hook
+answers *what is this station doing right now* — from spots, from the last
+minutes of the log, from whatever else is live — and that is a question about
+a contact in progress. Asked about a QSO logged an hour ago, or about every
+callsign on the spots board, the answer is not just useless but wrong.
+
+Registering here rather than under `lookup` is therefore correctness first
+and economy second, though the economy is real: the spots board runs a lookup
+per distinct spotted call, and the background queue one per saved QSO, so an
+ordinary `lookup` hook is asked hundreds of times for answers nobody reads.
+
+Implemented by: `spot-history` (offline — `refs` from the host's recent
+spots, see `ctx.getSpotsForCall`).
+
 ## ✅ `lookupService` — the lookup orchestrator
 
 One hook call resolves an entire callsign decoration pass: the hardcoded
 callsign-annotation pre-step (via `@ham2k/lib-country-files`, always first,
 regardless of any other hook's priority) plus every registered `lookup` hook
-above, merged according to the `locationScope` rules — all inside the
+above — and, when `recentContext` is set, the `recentContextLookup` hooks
+after them — merged according to the `locationScope` rules, all inside the
 runtime, mirroring `scoring`'s "one coarse call in, everything back out"
 shape.
 
 ```ts
 interface LookupServiceHook {
-  lookupCallInfo(args: { callInfo: CallInfo; qso; operation }, ctx): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo }>
+  lookupCallInfo(
+    args: { callInfo: CallInfo; qso; operation; recentContext?: boolean },
+    ctx,
+  ): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo }>
 }
 ```
 

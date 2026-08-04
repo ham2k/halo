@@ -58,7 +58,7 @@ void main() {
 
     final order = <String>[];
     var concurrent = 0, maxConcurrent = 0;
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       concurrent += 1;
       maxConcurrent = concurrent > maxConcurrent ? concurrent : maxConcurrent;
       await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -96,7 +96,7 @@ void main() {
 
     // The lookup fn itself edits the QSO before returning — simulating the
     // operator changing the record while the network round-trip is running.
-    final editingQueue = service((call, {required qso, required operation, bool online = true}) async {
+    final editingQueue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       final current = (await qsos.get(qso['uuid'] as String))!;
       await qsos.update(Qso(
         uuid: current.uuid,
@@ -121,7 +121,7 @@ void main() {
     // returned data belongs to the OLD call and must not decorate the new
     // one — displays fall back to their.guess, so a stale merge would show
     // the wrong station's name with no visible hint.
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       final current = (await qsos.get(qso['uuid'] as String))!;
       await qsos.update(Qso(
         uuid: current.uuid,
@@ -151,7 +151,7 @@ void main() {
     // crossed merge would silently show the wrong station.
     final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       // A well-formed result, but for a different station than asked for.
       return {
         'guess': {'call': 'K1ABC', 'name': 'Wrong Station'},
@@ -186,7 +186,7 @@ void main() {
     final degradedStampBefore = (await qsos.get(degraded.uuid))!.updatedAtMillis;
     final unchangedStampBefore = (await qsos.get(unchanged.uuid))!.updatedAtMillis;
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       if (call == 'W1AW') {
         // Offline/erroring sources: the pipeline still returns the
         // annotation-only entry — QRZ's stored data must survive.
@@ -233,7 +233,7 @@ void main() {
     });
 
     var calls = 0;
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls += 1;
       return {
         'guess': {'name': 'Refreshed'},
@@ -267,7 +267,7 @@ void main() {
     });
 
     var calls = 0;
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls += 1;
       return {'guess': {'name': 'Refreshed'}};
     });
@@ -287,7 +287,7 @@ void main() {
     final empty = await qsos.add(operation.uuid, {'their': {'call': 'N2XYZ'}});
     final ok = await qsos.add(operation.uuid, {'their': {'call': 'W2AAA'}});
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       if (call == 'W1AW') fail('deleted QSOs must not be looked up');
       if (call == 'K1ABC') throw StateError('network down');
       if (call == 'N2XYZ') return null;
@@ -313,7 +313,7 @@ void main() {
     final event = await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 1000);
 
     final calls = <String>[];
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls.add(call);
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
@@ -339,7 +339,7 @@ void main() {
     Future<void>.delayed(const Duration(milliseconds: 100)).then((_) => ready = true);
 
     final queue = service(
-      (call, {required qso, required operation, bool online = true}) async {
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
         readyWhenCalled = ready;
         return {'guess': {'name': 'ARRL HQ'}};
       },
@@ -361,7 +361,7 @@ void main() {
     final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
     final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
     });
@@ -379,7 +379,7 @@ void main() {
     final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
     final c = await qsos.add(operation.uuid, {'their': {'call': 'N0CALL'}});
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
     });
@@ -404,7 +404,7 @@ void main() {
     final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
     final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
     });
@@ -425,7 +425,7 @@ void main() {
     final silent = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
     final tracked = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
 
-    final queue = service((call, {required qso, required operation, bool online = true}) async {
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
     });

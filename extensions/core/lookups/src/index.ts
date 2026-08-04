@@ -23,19 +23,37 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
   const lookups: CallInfoLookup[] = seeded.lookups
   let guess: CallInfo = seeded.guess
 
+  const fold = (currentArgs: unknown, hookResult: unknown) => {
+    const results = (hookResult as CallInfoLookup[] | null) ?? []
+    const folded = runLookupPipeline(guess, results)
+    lookups.push(...folded.lookups)
+    guess = folded.guess
+    return { ...(currentArgs as Record<string, unknown>), callInfo: guess }
+  }
+
   const entries = await hooks.invokeAllSequential(
     'lookup',
     'lookupCall',
     { callInfo: guess, qso: args.qso, operation: args.operation },
-    (currentArgs, hookResult) => {
-      const results = (hookResult as CallInfoLookup[] | null) ?? []
-      const folded = runLookupPipeline(guess, results)
-      lookups.push(...folded.lookups)
-      guess = folded.guess
-      return { ...(currentArgs as Record<string, unknown>), callInfo: guess }
-    },
+    fold,
     ctx.online,
   )
+
+  // Hooks whose answer describes what the station is doing right now, run
+  // only for a contact being composed — see RecentContextLookupHook. Last,
+  // and folded through the same pipeline, so they see everything the
+  // ordinary sources resolved and still lose any field one already filled.
+  if (args.recentContext) {
+    entries.push(
+      ...(await hooks.invokeAllSequential(
+        'recentContextLookup',
+        'lookupCall',
+        { callInfo: guess, qso: args.qso, operation: args.operation },
+        fold,
+        ctx.online,
+      )),
+    )
+  }
 
   // A hook that threw has already been isolated (its entry carries the
   // error instead of poisoning the others) — but it must not be *silent*,

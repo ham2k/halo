@@ -21,6 +21,7 @@ import 'package:halo_core/halo_core.dart';
 import 'error_reporting_service.dart';
 import 'location_service.dart';
 import 'settings_service.dart';
+import 'spots_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../config/secret_policy.dart';
@@ -225,6 +226,12 @@ class ExtensionService {
   /// one-shot device GPS fix for a command with no operation grid to fall
   /// back to. Optional like the other service references above.
   LocationService? location;
+
+  /// Backs the `getSpotsForCall` host call (HookContext.getSpotsForCall),
+  /// which the `spot-history` lookup hook reads. Optional like the other
+  /// service references — a host without it answers with an empty list, so
+  /// the hook simply contributes nothing.
+  SpotsService? spots;
 
   /// Extension keys allowed to call `getLocation` (manifest.json
   /// `requiresLocation`) — same allowlist shape as [_fetchAllowlists]
@@ -1298,6 +1305,19 @@ class ExtensionService {
         // records, keeps event markers; oldest first.
         final list = await qsos!.watchForOperation(operationUuid).first;
         return [for (final qso in list) qso.data];
+      case 'getSpotsForCall':
+        // Reads the already-fetched cache — never triggers a fetch. This
+        // runs inside the per-keystroke lookup pipeline, where waiting on a
+        // fan-out to every spot source's API would blow the lookup's own 8s
+        // budget; an empty answer before the first refresh lands is the
+        // correct trade.
+        final call = params['call'] as String?;
+        final maxAgeMinutes = params['maxAgeMinutes'];
+        if (call == null || spots == null) return const <Map<String, dynamic>>[];
+        return spots!.spotsForCall(
+          call,
+          maxAge: Duration(minutes: maxAgeMinutes is num ? maxAgeMinutes.toInt() : 30),
+        );
       case 'dbLookupSelectOne':
         final category = params['category'] as String;
         final key = params['key'] as String;
@@ -1592,11 +1612,20 @@ class ExtensionService {
   /// QSO-scoped hooks (e.g. POTA) access to refs already on the in-progress
   /// QSO. Returns `{lookups: [...], guess: {...}}`, or null if the runtime
   /// isn't up or nothing came back.
+  ///
+  /// `recentContext: true` additionally runs the `recentContextLookup` hooks
+  /// (spot history, and whatever else comes to describe what a station is
+  /// doing right now). Only the logging panel's compose path sets it: those
+  /// hooks' answers are meaningless for a saved QSO being re-enriched, for
+  /// the spots board's own per-call annotation, or for the quick lookup
+  /// dialog — and each of those fans out over far more callsigns than the
+  /// one being typed.
   Future<Map<String, dynamic>?> lookupCall(
     String call, {
     required Map<String, dynamic> qso,
     required Map<String, dynamic> operation,
     bool online = true,
+    bool recentContext = false,
   }) async {
     if (stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
     final host = _host;
@@ -1612,6 +1641,7 @@ class ExtensionService {
           'qso': qso,
           'operation': operation,
           'online': online,
+          'recentContext': recentContext,
         },
         timeout: const Duration(seconds: 8),
       );

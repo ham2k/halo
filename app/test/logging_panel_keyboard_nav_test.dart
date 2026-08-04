@@ -47,7 +47,7 @@ void main() {
       db,
       settings,
       lookupQueue: LookupQueueService(
-        lookup: (call, {required qso, required operation, required online}) async => null,
+        lookup: (call, {required qso, required operation, required online, recentContext = false}) async => null,
         qsos: QsosRepository(db),
         operations: OperationsRepository(db),
         statusBar: StatusBarService(settings.prefs),

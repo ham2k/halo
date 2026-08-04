@@ -112,6 +112,7 @@ const bundles = [
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
   { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },
+  { key: 'spot-history', entry: 'lookups/spot-history/src/index.ts', kind: 'extension' },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
   { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
   { key: 'wca', entry: 'activities/wca/src/index.ts', kind: 'extension' },
