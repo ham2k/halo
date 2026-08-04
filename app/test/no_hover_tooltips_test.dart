@@ -21,6 +21,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/config/release_notes.dart';
+import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -77,6 +78,7 @@ void main() {
   testWidgets('the app root suppresses the tooltips Flutter supplies itself', (tester) async {
     SharedPreferences.setMockInitialValues({});
     setReleaseNotesForTesting(const []);
+    setTesterNotesForTesting(const []);
     final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;

@@ -195,6 +195,22 @@ const DevOnboardCommand = {
   catalog: devCatalog('DEVONBOARD', 'Re-show the onboarding overlay'),
 }
 
+// DEVSPLASH's sibling for the tester overlay (the per-build "what's new for
+// testers" with the caution tape): re-shows it on demand, bypassing its
+// edition and last-seen-build gates.
+const DevTesterCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== 'DEVTESTER') return null
+    return {
+      describe: 'Show the tester-notes overlay?',
+      confirm: 'Showing the tester-notes overlay',
+      commands: [{ devTester: {} }],
+    }
+  },
+
+  catalog: devCatalog('DEVTESTER', 'Re-show the tester-notes overlay'),
+}
+
 // "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
 // the app's error-reporting pipeline to verify the Sentry wiring end
 // to end; the app reports back whether it uploaded or only logged locally
@@ -436,6 +452,7 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devtester', hook: DevTesterCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devsentry', hook: DevSentryCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })

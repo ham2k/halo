@@ -24,6 +24,7 @@ import '../services/error_reporting_service.dart';
 import '../services/settings_service.dart';
 import 'package:halo_core/halo_core.dart';
 import 'ham2k_logo.dart';
+import 'tester_overlay.dart' show testerOverlayCovering;
 import 'settings_view.dart';
 import 'switch_accounts_dialog.dart';
 import 'version_label.dart';
@@ -116,6 +117,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   /// event from reaching the callsign field's IME, so onSubmitted (kept for
   /// the mobile soft keyboard) can't double-fire.
   bool _handleKeyEvent(KeyEvent event) {
+    // HardwareKeyboard handlers dispatch ahead of the focus tree, so the
+    // tester overlay covering this flow (fresh installs — it mounts on top,
+    // see main.dart's gate nesting) can't swallow Enter before it lands
+    // here; without this stand-down one keystroke would dismiss that
+    // overlay AND advance this flow.
+    if (testerOverlayCovering.value) return false;
     if (event is! KeyDownEvent) return false;
     final key = event.logicalKey;
     if (key != LogicalKeyboardKey.enter && key != LogicalKeyboardKey.numpadEnter) return false;

@@ -22,6 +22,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
+import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
@@ -93,6 +94,7 @@ void main() {
     // means a Future set up outside it may never notify a FutureBuilder
     // listening from within it.
     setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
 
     // Wide viewport: settings shows sidebar + panel side by side, so
     // selecting "About" updates the panel in place (no route push needed).
@@ -137,6 +139,7 @@ void main() {
   testWidgets('Notices & Messages is not a sidebar panel; tapping it in About opens the notice history (issue #183)',
       (tester) async {
     setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
 
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
@@ -171,6 +174,7 @@ void main() {
 
   testWidgets('tapping the version row copies the app name and version details to the clipboard', (tester) async {
     setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
 
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
@@ -221,6 +225,7 @@ void main() {
   testWidgets('tapping the wordmark opens a photo+wordmark modal with the caption but no notes or Continue button',
       (tester) async {
     setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
 
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
