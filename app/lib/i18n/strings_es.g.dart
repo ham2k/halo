@@ -1150,6 +1150,7 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	@override String get systemInformation => 'Información del sistema';
 	@override String get activeExtensions => 'Extensiones activas';
 	@override String get appVersion => 'Versión de la app';
+	@override String get dataFolder => 'Carpeta de datos';
 	@override String get loading => '(cargando…)';
 	@override String get runtimeNotAvailable => 'El motor de extensiones no está disponible.';
 	@override String get panelLoadFailed => 'No se pudo cargar este panel de configuración.';
@@ -2005,6 +2006,7 @@ extension on TranslationsEs {
 			'settings.developer.systemInformation' => 'Información del sistema',
 			'settings.developer.activeExtensions' => 'Extensiones activas',
 			'settings.developer.appVersion' => 'Versión de la app',
+			'settings.developer.dataFolder' => 'Carpeta de datos',
 			'settings.developer.loading' => '(cargando…)',
 			'settings.developer.runtimeNotAvailable' => 'El motor de extensiones no está disponible.',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',

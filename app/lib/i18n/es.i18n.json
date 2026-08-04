@@ -679,6 +679,7 @@
       "systemInformation": "Información del sistema",
       "activeExtensions": "Extensiones activas",
       "appVersion": "Versión de la app",
+      "dataFolder": "Carpeta de datos",
       "loading": "(cargando…)",
       "runtimeNotAvailable": "El motor de extensiones no está disponible.",
       "panelLoadFailed": "No se pudo cargar este panel de configuración.",

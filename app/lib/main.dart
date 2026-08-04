@@ -42,6 +42,7 @@ import 'config/experiments.dart';
 import 'config/release_notes.dart';
 import 'config/secrets.dart';
 import 'config/version.dart';
+import 'services/app_storage.dart';
 import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
@@ -447,14 +448,22 @@ Future<HaLoServices> bootstrap({
   UpdateCheckService? updateCheck,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Before everything else: settles where the app's files live and moves any
+  // left in an older location, which SettingsService.load() below depends on
+  // — once shared_preferences has read its file, it caches it.
+  await initializeAppStorage();
   final db = HaLoDatabase(driftDatabase(
-    name: 'ham2k_logger',
+    name: kDatabaseName,
     web: kIsWeb
         ? DriftWebOptions(
             sqlite3Wasm: Uri.parse('sqlite3.wasm'),
             driftWorker: Uri.parse('drift_worker.js'),
           )
         : null,
+    // drift resolves this lazily, right before opening the file — which is
+    // what makes it the correct place to hang the one-shot relocation off
+    // Documents: no boot step can accidentally open the database first.
+    native: kIsWeb ? null : DriftNativeOptions(databaseDirectory: appDataDirectory),
   ));
   final extensions = ExtensionService();
   // Fire-and-forget, and kicked off before awaiting settings below so these

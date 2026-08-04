@@ -2272,6 +2272,9 @@ class Translations$settings$developer$en {
 	/// en: 'App Version'
 	String get appVersion => 'App Version';
 
+	/// en: 'Data Folder'
+	String get dataFolder => 'Data Folder';
+
 	/// en: '(loading…)'
 	String get loading => '(loading…)';
 
@@ -3332,6 +3335,7 @@ extension on Translations {
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.activeExtensions' => 'Active Extensions',
 			'settings.developer.appVersion' => 'App Version',
+			'settings.developer.dataFolder' => 'Data Folder',
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',

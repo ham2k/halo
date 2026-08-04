@@ -27,6 +27,7 @@ import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../services/app_storage.dart';
 import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
 import '../services/extension_service.dart';
@@ -2062,6 +2063,11 @@ class _DeveloperPanel extends StatelessWidget {
               context.t.settings.developer.appVersion,
               const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
             ),
+            // Where the log database and the data-file cache live. Platform-
+            // dependent, and relocated out of Documents on Windows and Linux
+            // (see app_storage.dart), so it's worth being able to read it back
+            // from a running build rather than guessing.
+            if (!kIsWeb) _infoRowWidget(context, context.t.settings.developer.dataFolder, const _DataFolderValue()),
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
@@ -2106,6 +2112,36 @@ class _DeveloperPanel extends StatelessWidget {
           ),
           Expanded(flex: 3, child: value),
         ],
+      ),
+    );
+  }
+}
+
+/// Where the log database and the data-file cache live. Platform-dependent,
+/// and relocated out of Documents on Windows and Linux (see app_storage.dart),
+/// so it's worth being able to read it back from a running build rather than
+/// guessing.
+///
+/// Stateful only to hold the future: `appDataDirectory()` hands back a new one
+/// on every call, and the Developer panel rebuilds on every settings change —
+/// so building it inline would drop the row back to "(loading…)" each time.
+class _DataFolderValue extends StatefulWidget {
+  const _DataFolderValue();
+
+  @override
+  State<_DataFolderValue> createState() => _DataFolderValueState();
+}
+
+class _DataFolderValueState extends State<_DataFolderValue> {
+  late final _directory = appDataDirectory();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _directory,
+      builder: (context, snapshot) => SelectableText(
+        snapshot.data?.path ?? context.t.settings.developer.loading,
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
       ),
     );
   }

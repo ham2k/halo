@@ -679,6 +679,7 @@
       "systemInformation": "System Information",
       "activeExtensions": "Active Extensions",
       "appVersion": "App Version",
+      "dataFolder": "Data Folder",
       "loading": "(loading…)",
       "runtimeNotAvailable": "Extension runtime not available.",
       "panelLoadFailed": "Could not load this settings panel.",

@@ -10,10 +10,10 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
+import 'app_storage.dart';
 import 'error_reporting_service.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
@@ -735,8 +735,8 @@ class DataFileManager {
 
     // 2. Cache processed JSON to local file
     if (!kIsWeb) {
-      final dir = await getApplicationDocumentsDirectory();
-      final dataFilesDir = Directory(p.join(dir.path, 'data_files'));
+      final dir = await appDataDirectory();
+      final dataFilesDir = Directory(p.join(dir.path, kDataFilesDirName));
       if (!await dataFilesDir.exists()) {
         await dataFilesDir.create(recursive: true);
       }
@@ -779,8 +779,8 @@ class DataFileManager {
       return;
     }
 
-    final dir = await getApplicationDocumentsDirectory();
-    final dataFilesDir = Directory(p.join(dir.path, 'data_files'));
+    final dir = await appDataDirectory();
+    final dataFilesDir = Directory(p.join(dir.path, kDataFilesDirName));
     if (!await dataFilesDir.exists()) return;
 
     for (final entry in entries) {
@@ -953,8 +953,8 @@ class DataFileManager {
       // is minor and self-heals on re-sync, so a filesystem hiccup here
       // mustn't abort the purge.
       try {
-        final dir = await getApplicationDocumentsDirectory();
-        final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
+        final dir = await appDataDirectory();
+        final cacheFile = File(p.join(dir.path, kDataFilesDirName, '$key.json'));
         if (await cacheFile.exists()) await cacheFile.delete();
       } catch (e) {
         debugPrint('[data-file] could not delete cache file for $key: $e');
@@ -983,8 +983,8 @@ class DataFileManager {
 
     // Delete raw cache files
     if (!kIsWeb) {
-      final dir = await getApplicationDocumentsDirectory();
-      final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
+      final dir = await appDataDirectory();
+      final cacheFile = File(p.join(dir.path, kDataFilesDirName, '$key.json'));
       if (await cacheFile.exists()) {
         await cacheFile.delete();
       }
