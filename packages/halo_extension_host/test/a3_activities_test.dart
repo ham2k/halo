@@ -139,18 +139,34 @@ void main() {
       expect(entries.first['subCategory'], 'LLUS');
       expect(entries.first['lat'], closeTo(44.28, 0.01));
       expect(entries.first['data']['grid'], isNotNull);
+      // `name` is the field the live list publishes; read under any other name
+      // every reference is nameless, and nothing else here would notice.
+      expect(entries.first['name'], 'Lake Placid');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('tota keeps the award fields it publishes', () async {
+      // Every numeric field arrives as a STRING — 'lat': '50.730000', not
+      // 50.73 — in all 5293 rows of the live tower list. A row written with
+      // real numbers here is a row no source ever sends, and it hides a
+      // `typeof === 'number'` guard that drops the coordinates of every tower.
       final entries = await mapRows('tota', 'tota-all-towers', 'mapJsonBatch', 'entries', [
-        {'ref': 'OKR-0001', 'name': 'Ještěd', 'lat': 50.73, 'lon': 15.00, 'height': 94},
+        {'ref': 'OKR-0001', 'name': 'Ještěd', 'lat': '50.730000', 'lon': '15.000000', 'height': '94.00'},
       ]);
 
       expect(entries.first['key'], 'OKR-0001');
       expect(entries.first['subCategory'], 'OKR');
+      expect(entries.first['name'], 'Ještěd');
+      expect(entries.first['lat'], closeTo(50.73, 0.001));
+      expect(entries.first['lon'], closeTo(15.0, 0.001));
+      // Without coordinates there is no grid, so distance and the map go with
+      // them — the visible cost of dropping the pair.
+      expect(entries.first['data']['grid'], 'JO70mr');
+      // `data` carries the parsed pair, not the published strings, so a
+      // consumer reading it gets the same shape every other award writes.
+      expect(entries.first['data']['lat'], closeTo(50.73, 0.001));
       // The whole published record is kept — the award has fields HaLo has no
       // opinion about, and dropping them would lose them silently.
-      expect(entries.first['data']['height'], 94);
+      expect(entries.first['data']['height'], '94.00');
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 

@@ -251,8 +251,15 @@ const totaDataFile: DataFileDefinition = {
     const ref = String(entry?.ref ?? '').trim().toUpperCase()
     if (!ref) return null
 
-    const lat = typeof entry?.lat === 'number' ? entry.lat : undefined
-    const lon = typeof entry?.lon === 'number' ? entry.lon : undefined
+    // rozhledny.eu publishes every numeric field as a string ('50.730000'),
+    // so a `typeof === 'number'` test leaves every tower without coordinates,
+    // and therefore without a grid, a distance or a place on the map. Parsed
+    // the way ECA and ELA parse theirs; a blank coordinate yields NaN and is
+    // dropped, which is the one row in the list that has none.
+    const parsedLat = Number.parseFloat(entry?.lat)
+    const parsedLon = Number.parseFloat(entry?.lon)
+    const lat = Number.isNaN(parsedLat) ? undefined : parsedLat
+    const lon = Number.isNaN(parsedLon) ? undefined : parsedLon
 
     return {
       // The country part of the reference (`OKR` of `OKR-0001`).
@@ -265,6 +272,11 @@ const totaDataFile: DataFileDefinition = {
       data: {
         ...entry,
         ref,
+        // Overriding the two the spread carries as strings: every other award
+        // puts parsed numbers in `data`, and a consumer reading `data.lat`
+        // must not get one shape here and another everywhere else.
+        lat,
+        lon,
         grid: lat != null && lon != null ? locationToGrid6(lat, lon) : undefined,
       },
     }

@@ -92,6 +92,9 @@ void main() {
     expect(entries.first['lon'], closeTo(172.7, 0.01));
     // The kind of place is both the search scope and what sets the bar.
     expect(entries.first['subCategory'], 'hut');
+    // `name` is the field the live list publishes; read under any other name
+    // every reference is nameless, and nothing else here would notice.
+    expect(entries.first['name'], 'Angelus Hut');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // --- thresholds that depend on the reference ------------------------------
