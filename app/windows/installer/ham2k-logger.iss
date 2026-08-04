@@ -36,18 +36,27 @@
 ; AppId GUIDs are STABLE per edition forever (change one and upgrades / uninstall
 ; break for installed users) and DISTINCT so dev/next/prod install side by side.
 ; Frozen 2026-07 — do not regenerate.
+; SecureStorageAppName is the window-title display name
+; (runner/CMakeLists.txt's HALO_PRODUCT_NAME) — deliberately shorter than
+; {#AppName} (docs/releases.md): it sits beside the taskbar icon, so it drops
+; the "Ham2K" prefix. flutter_secure_storage_windows keys its folder off this
+; same name, which is why the uninstaller below needs it separately from
+; {#InstallFolder}; it must keep matching CMakeLists.txt's per-edition values.
 #if HaloEdition == "prod"
   #define AppName "Ham2K Logger"
   #define AppId "{{C41D7E08-3A52-49B6-8F7C-1D6B90E2A344}"
   #define InstallFolder "Ham2K Logger"
+  #define SecureStorageAppName "Windows Logger"
 #elif HaloEdition == "next"
   #define AppName "Ham2K Logger (Next)"
   #define AppId "{{2E9B5D41-8C67-4F0A-B3D2-9A1E7C4055F8}"
   #define InstallFolder "Ham2K Logger Next"
+  #define SecureStorageAppName "Windows Logger Next"
 #else
   #define AppName "Ham2K Logger (Dev)"
   #define AppId "{{7F3C1A96-2B84-4D5E-9E11-4A0C6D2F8B31}"
   #define InstallFolder "Ham2K Logger Dev"
+  #define SecureStorageAppName "Windows Logger (Dev)"
 #endif
 
 #define ExeName "ham2k_logger.exe"
@@ -106,3 +115,39 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopic
 [Run]
 ; Offered after an interactive install; skipped during a silent (updater) run.
 Filename: "{app}\{#ExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// Uninstall only ever removes {app} (the program files) — never the
+// operator's own data, per Windows best practice: ask, default to keeping
+// it. Skipped for a silent uninstall (WinSparkle's background updater only
+// ever runs a silent INSTALL over the existing files, never an uninstall, so
+// this only fires for an interactive Settings > Apps run or a developer's
+// manual `/VERYSILENT`-less test).
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  DataDir, SecureStorageDir: String;
+begin
+  if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
+  begin
+    if MsgBox('Also delete your {#AppName} data - logged QSOs, settings, and your saved QRZ.com login? This cannot be undone.',
+       mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    begin
+      // The database, preferences and data-file cache all live together here
+      // (app_storage.dart's windowsDataFolderName). Not covered: a failed
+      // relocation leaves the database loose in the operator's real Documents
+      // folder instead — deliberately untouched, since matching individual
+      // files there risks catching something that isn't ours.
+      DataDir := ExpandConstant('{localappdata}\{#InstallFolder}');
+      // flutter_secure_storage_windows derives this path itself from the
+      // exe's own ProductName/CompanyName version info — {#SecureStorageAppName}
+      // must keep matching runner/CMakeLists.txt's HALO_PRODUCT_NAME or this
+      // stops finding it.
+      SecureStorageDir := ExpandConstant('{userappdata}\com.ham2k\{#SecureStorageAppName}');
+      DelTree(DataDir, True, True, True);
+      DelTree(SecureStorageDir, True, True, True);
+      // Remembered window position/size (win32_window.cpp) — cosmetic, but
+      // part of "completely uninstalled".
+      RegDeleteKeyIncludeSubkeys(HKCU, 'Software\Ham2K\Halo\{#SecureStorageAppName}');
+    end;
+  end;
+end;
