@@ -29,6 +29,9 @@ upcoming:
     - "ZLOTA, WWBOTA, WCA, TOTA, SiOTA, MOTA, LLOTA, ELA, ECA, BLHA and BCA now let you activate several references at once (n-fers), same as POTA already did. Please try stacking references for one of these on an operation"
     - "TOTA towers had no location at all — no distance, no grid, nothing on the map. Fixed. If you already downloaded the tower list, refresh it under **Settings → Data Files** to pick this up now (otherwise it sorts itself out within 30 days), then check that a tower shows a distance"
     - "Notices (the post-it cards above the status bar, and About → Notices & Messages) stay black-on-yellow in **dark mode** instead of flipping to yellow-on-olive. Please check they still read well at night and don't feel too bright"
+    - "Two Logging settings that did nothing now work — both off by default, under **Settings → Logging → show more settings**. **Switch signal report order** puts Rcvd before Sent everywhere at once: the entry row, the Space/Tab order through it, the QSO list and the More pane. **Jump to next field on RST entry** moves focus on as soon as a report is complete. Please try each one and tell us whether either should be easier to find"
+    - "With **Jump to next field on RST entry** on, a report is 'complete' at two characters on phone and three on CW/RTTY — so `44` on CW waits for its `A`, and `5NN` still works. It doesn't apply on FT8/FT4 at all, where a report has no fixed length. One known cost: with it on you can't type `59+` on phone, because the jump has already fired. Leave it off if you give `59+`"
+    - "If you log phone with a radio connected, your default report was `599` instead of `59` — the app was reading the rig's `USB`/`LSB` as a data mode. Now `59`, same as picking SSB by hand. Please check the Sent/Rcvd hints look right on your rig"
 
 "126":
   changes:

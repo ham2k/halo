@@ -64,6 +64,11 @@ class LoggingPanel extends StatefulWidget {
   final String defaultReportCW;
   final String defaultReportFT8;
 
+  /// Rcvd before Sent, and focus advancing on a complete report — both reach
+  /// the QSO list as well as the entry row, so the two never disagree.
+  final bool switchSentRcvd;
+  final bool jumpAfterRST;
+
   final String? ourEntityPrefix;
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
@@ -103,6 +108,8 @@ class LoggingPanel extends StatefulWidget {
     this.defaultReport = '',
     this.defaultReportCW = '',
     this.defaultReportFT8 = '',
+    this.switchSentRcvd = false,
+    this.jumpAfterRST = false,
     this.ourEntityPrefix,
     this.ourItuRegion,
     this.ourCountryCode,
@@ -543,6 +550,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       onSelect: _handleSelectQso,
       onSelectEvent: _handleSelectEvent,
       showRSTFields: widget.showRSTFields,
+      switchSentRcvd: widget.switchSentRcvd,
       showQsoNumbers: widget.showQsoNumbers,
       activityControls: widget.loggingControls,
       ourEntityPrefix: widget.ourEntityPrefix,
@@ -666,6 +674,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             defaultReport: widget.defaultReport,
             defaultReportCW: widget.defaultReportCW,
             defaultReportFT8: widget.defaultReportFT8,
+            switchSentRcvd: widget.switchSentRcvd,
+            jumpAfterRST: widget.jumpAfterRST,
             keyboardAccessory: widget.services.keyboardAccessory,
             showNumbersRow: _showNumbersRow,
             showExtraInNumbersRow: _showExtraInNumbersRow,

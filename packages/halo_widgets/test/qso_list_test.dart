@@ -1338,6 +1338,36 @@ void main() {
   );
 
   testWidgets(
+    'HALO-143: switchSentRcvd puts the received report first, matching the entry row',
+    (tester) async {
+      // The cell carries no labels, so the two reports are indistinguishable
+      // once swapped — which is exactly why it has to follow the entry row.
+      // An operator who set the row to Rcvd-first and reads a fixed
+      // Sent-first list is reading every contact backwards.
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op-1',
+        data: {
+          'our': {'sent': '57'},
+          'their': {'call': 'W1AW', 'sent': '33'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}))),
+      );
+      expect(find.text('57 33'), findsOneWidget);
+
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}, switchSentRcvd: true))),
+      );
+      expect(find.text('33 57'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'a ref of a type with no active control shows a red question-mark marker (issue #261)',
     (tester) async {
       final operation = await operations.create(stationCall: 'KI2D');

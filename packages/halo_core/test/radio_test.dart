@@ -292,6 +292,11 @@ void main() {
     test('phone vs everything else', () {
       expect(defaultRSTFor('SSB'), '59');
       expect(defaultRSTFor('FM'), '59');
+      // A connected rig reports the concrete sideband — no CAT protocol has an
+      // "SSB" mode and nothing maps it back — so USB/LSB must count as phone,
+      // or having a radio attached silently changes the report.
+      expect(defaultRSTFor('USB'), '59');
+      expect(defaultRSTFor('LSB'), '59');
       expect(defaultRSTFor('CW'), '599');
       expect(defaultRSTFor('PSK31'), '599');
     });
@@ -319,12 +324,43 @@ void main() {
     });
   });
 
+  group('rstLengthFor', () {
+    test('two on phone, three on CW and the data modes', () {
+      expect(rstLengthFor('SSB'), 2);
+      expect(rstLengthFor('USB'), 2);
+      expect(rstLengthFor('LSB'), 2);
+      expect(rstLengthFor('FM'), 2);
+      expect(rstLengthFor('CW'), 3);
+      expect(rstLengthFor('RTTY'), 3);
+      expect(rstLengthFor('PSK31'), 3);
+    });
+
+    test('the FT modes have no complete length, so nothing can call one done', () {
+      // -9, +05 and -12 are all real reports. Any fixed number here is wrong
+      // for some of them: 3 makes a -9 never finish, 2 throws the operator out
+      // of a -12 halfway. The setting does not apply, and says so.
+      expect(rstLengthFor('FT8'), isNull);
+      expect(rstLengthFor('FT4'), isNull);
+      expect(rstLengthFor('FT2'), isNull);
+    });
+
+    test('it is the FULL report, so the shorthand forms still fit under it', () {
+      // The jump-after-RST setting fires at this length. Were it the length of
+      // the significant part expandRST completes from, a CW `44` would jump
+      // before its aurora `A` and `5N` before `5NN` — both unreachable.
+      expect('44'.length, lessThan(rstLengthFor('CW')!));
+      expect('5N'.length, lessThan(rstLengthFor('CW')!));
+      expect(expandRST('44', 'CW').length, rstLengthFor('CW'));
+    });
+  });
+
   group('expandRST', () {
     test('a lone strength digit gains the readability that goes with it', () {
       // Readability is not always 5: a signal at S1-S3 is not fully readable,
       // so a bare 2 means 32 — the point of the expansion is to save typing
       // the digit an operator would have typed anyway, not to guess wrong.
       expect(expandRST('5', 'SSB'), '55');
+      expect(expandRST('5', 'USB'), '55');
       expect(expandRST('9', 'SSB'), '59');
       expect(expandRST('4', 'SSB'), '44');
       expect(expandRST('2', 'SSB'), '32');

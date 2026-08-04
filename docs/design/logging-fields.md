@@ -156,6 +156,55 @@ you want one. Nowhere else in the app is affected, because every other field
 consumes the first space before it can reach the text. This is recognized on
 iOS only; no other platform's smart punctuation has been traced.
 
+**Two settings bend this order, and both bend it everywhere at once.**
+
+*Switch signal report order* draws Rcvd before Sent, for an operator who takes
+the report before giving one. The row's order and the keyboard's path through
+it are the same list — reversing one without the other leaves Space walking
+backwards through fields the operator reads forwards — so one place resolves
+the order (`_rstPair`) and the row, the Space/Tab/arrow cycle, the QSO list's
+report cell and the More pane all read it. The list cell in particular carries
+no labels, so a fixed order there would have the operator reading every logged
+contact backwards. Which controller is Sent and which is Rcvd never changes;
+only where each is drawn does.
+
+*Jump to next field on RST entry* advances focus the moment a report is
+complete, so a full exchange costs no Spaces. "Complete" is the **full** report
+— two characters on phone, three on CW and the data modes (`rstLengthFor`) —
+not the significant part the completion rule above expands from: a `44` on CW
+still owes its `A` or its tone, and jumping at two characters would put `44A`
+and `5NN` out of reach entirely. **The FT modes have no complete length**, and
+so no jump: `-9`, `+05` and `-12` are equally real reports, and any threshold
+would either never fire or fire halfway through one — the same reason the
+completion rule leaves them alone.
+
+Phone pays a smaller version of that price knowingly: with the setting on,
+`59+` can't be typed, because the jump has already fired at `59` and the `+`
+lands in the next field. `59` and `59+` cannot both be "complete", the plain
+one is overwhelmingly the common case, and the setting is off by default — an
+operator who gives `59+` leaves it off. The alternative, exempting phone the
+way the FT modes are exempt, would remove the setting from the modes most
+people want it in.
+
+It fires only on **crossing that length from below**, so correcting a report
+that is already complete doesn't throw the operator out of the field on their
+first keystroke. That rule needs a baseline, and the baseline has to be seeded
+from the fields when a QSO arrives already loaded: a panel *constructed* around
+a QSO populates before the trigger is attached, and gaining focus is itself a
+value change (it collapses the selection), so an unseeded field jumps on the
+tap that arrives in it — and then again out of the next one.
+
+The trigger hangs off the text controller rather than the field's `onChanged`,
+which is what makes it work for the mobile numbers row (that row writes the
+controller directly and never reaches `onChanged`, and it is where saving a
+keypress matters most); a focus check is what keeps it to real typing, since
+every programmatic write happens to a field the operator isn't in.
+
+**USB and LSB count as phone here**, not as data. No CAT protocol has an "SSB"
+mode, so a connected rig reports the concrete sideband and nothing maps it
+back; treating them as anything else would give an operator with a radio
+attached a three-digit report while one who picked SSB by hand gets two.
+
 **Tab** rotates through the same fields in the same order, and stops there:
 from the last main field it returns to the callsign field, and Shift-Tab
 from the callsign field goes to the last main field. This deliberately

@@ -259,6 +259,12 @@ class QsoList extends StatefulWidget {
   /// menu) — the underlying data always exists, this only hides the column.
   final bool showRSTFields;
 
+  /// Rcvd before Sent, matching the logging row's own order (`switchSentRcvd`).
+  /// The cell has no labels, so the two are indistinguishable once swapped —
+  /// which is precisely why it must follow the entry row rather than keep a
+  /// fixed order the operator would read the wrong way round.
+  final bool switchSentRcvd;
+
   /// Whether to show the Number column (ham2k/halo-dist#2's logging-view
   /// menu) — the underlying numbering always exists, this only hides it.
   final bool showQsoNumbers;
@@ -301,6 +307,7 @@ class QsoList extends StatefulWidget {
     this.needsBandOrMode = false,
     this.bandOrModeWarningLabel,
     this.showRSTFields = true,
+    this.switchSentRcvd = false,
     this.showQsoNumbers = true,
     this.activityControls = const [],
     this.ourEntityPrefix,
@@ -949,7 +956,9 @@ class _QsoListState extends State<QsoList> {
                     SizedBox(
                       width: _rstWidth,
                       child: Text(
-                        '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
+                        widget.switchSentRcvd
+                            ? '${qso.receivedRST ?? ''} ${qso.sentRST ?? ''}'
+                            : '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
                         style: rowMonoDim,
                         textAlign: TextAlign.right,
                       ),

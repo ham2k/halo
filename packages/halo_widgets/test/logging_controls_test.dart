@@ -86,6 +86,8 @@ void main() {
     int? ourItuRegion,
     String? ourCountryCode,
     String defaultReportCW = '',
+    bool switchSentRcvd = false,
+    bool jumpAfterRST = false,
   }) {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
@@ -120,6 +122,8 @@ void main() {
       showStateField: showStateField,
       showGridField: showGridField,
       defaultReportCW: defaultReportCW,
+      switchSentRcvd: switchSentRcvd,
+      jumpAfterRST: jumpAfterRST,
       showNumbersRow: showNumbersRow,
       showExtraInNumbersRow: showExtraInNumbersRow,
       vibrateNumbersRow: vibrateNumbersRow,
@@ -6154,6 +6158,199 @@ void main() {
     final logged = await waitForQsos(tester, 1);
     expect(logged.single.sentRST, anyOf(isNull, isEmpty));
     expect(logged.single.receivedRST, anyOf(isNull, isEmpty));
+  });
+
+  testWidgets('HALO-143: jumpAfterRST moves on once a report is complete, and stays put until then', (tester) async {
+    await tester.pumpWidget(host(jumpAfterRST: true));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+
+    // One digit is not a report — jumping here would make a true 57
+    // untypeable.
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '5');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'two characters is a full report on phone');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '59');
+    await tester.pump();
+    expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'the last report wraps on to the callsign');
+  });
+
+  testWidgets('HALO-143: jumpAfterRST waits for the tone digit on CW, so aurora reports stay typeable',
+      (tester) async {
+    // The trap a two-character threshold would set: on CW a `44` still owes
+    // its `A` (or its tone), so jumping at two makes `44A` and `5NN`
+    // unreachable — the operator is thrown into the next field mid-report.
+    await tester.pumpWidget(host(jumpAfterRST: true, interpretCommand: fakeInterpretCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'CW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '44');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue, reason: 'two characters is not a full CW report');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '44A');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue);
+    expect(field('Sent').controller!.text, '44A', reason: 'the aurora report survives intact');
+  });
+
+  testWidgets('HALO-143: jumpAfterRST does not fire while correcting an already-complete report', (tester) async {
+    // PoLo tests `length >= full` on every keystroke, so editing a field that
+    // already holds a full report throws focus away on the first character.
+    // Firing on the upward crossing only is what makes a correction possible.
+    await tester.pumpWidget(host(jumpAfterRST: true));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'test setup: it jumped once');
+
+    // Back to Sent to fix it. Every keystroke from here leaves the field at or
+    // above the full length, and none of them may jump.
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '599');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '5991');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('HALO-143: jumpAfterRST off leaves focus alone', (tester) async {
+    await tester.pumpWidget(host());
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('HALO-143: jumpAfterRST does not apply on the FT modes, whose report has no fixed length',
+      (tester) async {
+    // -9, +05 and -12 are all real SNR reports, so no length means "done".
+    // Any threshold here is wrong for some of them; the setting sits out.
+    await tester.pumpWidget(host(jumpAfterRST: true, interpretCommand: fakeInterpretCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'FT8');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '-12');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('HALO-143: switchSentRcvd swaps the row and the keyboard path through it together', (tester) async {
+    // The pair that must not drift: the row's own order and the Space cycle's.
+    // A swap applied to only one of them leaves Space skipping backwards
+    // through fields the operator sees left to right.
+    await tester.pumpWidget(host(switchSentRcvd: true));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    double left(String label) => tester.getTopLeft(find.widgetWithText(TextField, label)).dx;
+    expect(left('Rcvd'), lessThan(left('Sent')), reason: 'Rcvd is drawn first');
+
+    // Space walks Call → Rcvd → Sent, following what is on screen. Entered in
+    // two steps because the interceptor only claims a genuine single-space
+    // insertion at the end of the value, not a bulk replacement that happens
+    // to end in one.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW ');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'Space reaches the leftmost report first');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), ' ');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('HALO-143: focusing a complete report on a QSO opened for editing does not jump', (tester) async {
+    // A QSO CONSTRUCTED already-editing is populated before the jump
+    // listeners exist, so the baseline they compare against has to be seeded
+    // from the fields rather than left at zero. Without it this needs no
+    // typing at all to go wrong: gaining focus collapses the selection, which
+    // is a value change, which reads as "0 -> 3" and jumps — and the next
+    // field, equally unseeded, jumps again. Tapping Sent to fix a 599 walks
+    // the operator straight past Rcvd and out of the reports entirely.
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'our': {'sent': '599'},
+          'their': {'call': 'W1AW', 'sent': '599'},
+          'startAtMillis': 1000000,
+          'freq': 7020,
+          'mode': 'CW',
+        })))!;
+    await tester.pumpWidget(host(editingQso: existingQso, jumpAfterRST: true));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    expect(field('Sent').controller!.text, '599', reason: 'test setup');
+    field('Sent').focusNode!.requestFocus();
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue, reason: 'merely arriving in a full field must not move on');
+
+    // And a correcting keystroke on top of it stays put too.
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '5991');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('HALO-143: switchSentRcvd reaches the More pane, which is a separate order expression',
+      (tester) async {
+    // The pane round-trips through a Map of field keys, not through the
+    // controllers the row shares, so its order is written out a second time —
+    // and a second expression is a second chance to get the ternary backwards.
+    // A pane contradicting the row that opened it is the whole failure.
+    await tester.pumpWidget(host(switchSentRcvd: true));
+    await openControl(tester, MdiIcons.pencil);
+    await tester.pumpAndSettle();
+
+    final sent = find.text('Sent');
+    final rcvd = find.text('Rcvd');
+    expect(sent, findsWidgets);
+    expect(rcvd, findsWidgets);
+    expect(
+      tester.getTopLeft(rcvd.last).dy,
+      lessThan(tester.getTopLeft(sent.last).dy),
+      reason: 'the pane stacks its fields, so Rcvd first means Rcvd higher',
+    );
+  });
+
+  testWidgets('HALO-143: switchSentRcvd keeps each value on its own field, it only moves them', (tester) async {
+    // The failure a pure-display swap invites: reversing the widgets without
+    // reversing what they are bound to silently logs the reports backwards.
+    await tester.pumpWidget(host(switchSentRcvd: true));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '33');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.sentRST, '57');
+    expect(logged.single.receivedRST, '33');
   });
 
   testWidgets('a brand new operation sees the same vfoA as any other — it is not per-operation', (tester) async {

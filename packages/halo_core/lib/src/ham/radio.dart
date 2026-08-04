@@ -273,7 +273,15 @@ const List<String> adifModes = [
   'VARA HF', 'VARA SATELLITE', 'VOI', 'WINMOR', 'WSPR',
 ];
 
-const Set<String> _phoneModes = {'SSB', 'FM', 'AM'};
+/// Modes whose report is two digits (`59`) rather than three.
+///
+/// `USB` and `LSB` belong here alongside the generic `SSB`: no CAT protocol
+/// has an "SSB" mode, so a connected rig reports the concrete sideband and
+/// nothing maps it back — `CatService` pushes it straight to the VFO, and the
+/// logging panel copies it into its own mode. Leave them out and an operator
+/// with a rig attached gets a three-digit report on phone while one who picked
+/// SSB by hand gets two.
+const Set<String> _phoneModes = {'SSB', 'USB', 'LSB', 'FM', 'AM'};
 
 /// Modes whose report is a signal-to-noise figure in dB, not an RST at all —
 /// so neither the default nor [expandRST] has any business rewriting one.
@@ -283,6 +291,22 @@ const Set<String> _snrModes = {'FT8', 'FT4', 'FT2'};
 /// it because a voice signal has no tone; the other digital modes are left
 /// with the three-digit default they have always had.
 const Set<String> _toneModes = {'CW', 'RTTY'};
+
+/// How many characters a complete report runs to — two on phone (`59`), three
+/// on CW and the data modes (`599`) — or **null** for the FT modes, whose
+/// report has no fixed length at all: `-9`, `+05` and `-12` are equally real,
+/// so nothing can tell when the operator has finished one. The same reason
+/// [expandRST] leaves them alone.
+///
+/// This is what "the operator has finished typing a report" means for the
+/// jump-after-RST setting, and it is deliberately the FULL length rather than
+/// the length of the significant part [expandRST] completes from: a `44` on CW
+/// is two characters and still owes its `A` or its tone, so jumping at two
+/// would put the aurora reports and `5NN` out of reach entirely.
+int? rstLengthFor(String mode) {
+  if (_snrModes.contains(mode)) return null;
+  return _phoneModes.contains(mode) ? 2 : 3;
+}
 
 /// What an untouched report field stands for, in three bands the operator can
 /// each override in Logging settings ([phone] for SSB/FM/AM, [snr] for the FT

@@ -587,6 +587,18 @@ class LoggingControls extends StatefulWidget {
   final String defaultReportCW;
   final String defaultReportFT8;
 
+  /// Rcvd before Sent, for an operator who takes the report before giving one.
+  ///
+  /// Swaps the pair everywhere it appears — the main row, the keyboard's own
+  /// order through it, the QSO list and the More pane — so no surface disagrees
+  /// with the one the operator is typing into.
+  final bool switchSentRcvd;
+
+  /// Move focus on once a report is complete, so a full exchange takes no
+  /// Spaces at all. "Complete" is [rstLengthFor]: two characters on phone,
+  /// three elsewhere.
+  final bool jumpAfterRST;
+
   /// The mobile numbers row (issue #27) — a bar of digit keys floated above
   /// the on-screen keyboard while a logging field has focus. Only ever shown
   /// on mobile platforms with the keyboard up (see `_buildNumberKeys`).
@@ -707,6 +719,8 @@ class LoggingControls extends StatefulWidget {
     this.defaultReport = '',
     this.defaultReportCW = '',
     this.defaultReportFT8 = '',
+    this.switchSentRcvd = false,
+    this.jumpAfterRST = false,
     this.keyboardAccessory,
     this.showNumbersRow = false,
     this.showExtraInNumbersRow = true,
@@ -1646,6 +1660,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // from "delete" to "revert changes".
     _sentController.addListener(_onSentOrRcvdChanged);
     _rcvdController.addListener(_onSentOrRcvdChanged);
+    _sentController.addListener(() => _maybeJumpAfterRST(_sentFocus, _sentController));
+    _rcvdController.addListener(() => _maybeJumpAfterRST(_rcvdFocus, _rcvdController));
+    // A QSO CONSTRUCTED already-editing (rather than transitioned into) is
+    // populated above, before these listeners exist — so without a baseline
+    // the first notification they see reads as "0 → 3" and jumps. And the
+    // first notification needs no typing: gaining focus collapses the
+    // selection, which is itself a value change. Seed from what the fields
+    // actually hold.
+    _rstLengthSeen[_sentFocus] = _sentController.text.trim().length;
+    _rstLengthSeen[_rcvdFocus] = _rcvdController.text.trim().length;
     // Same reasoning as Sent/Rcvd above — the button needs a rebuild when
     // an optional Grid/State field changes too.
     _gridController.addListener(_onSentOrRcvdChanged);
@@ -2535,6 +2559,38 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   void _onSentOrRcvdChanged() => setState(() {});
 
+  /// The length each report field held last time it was looked at, so a jump
+  /// can tell "the operator just finished a report" from "a full report is
+  /// already sitting there".
+  final Map<FocusNode, int> _rstLengthSeen = {};
+
+  /// `jumpAfterRST`: move on the moment a report reaches [rstLengthFor],
+  /// so a full exchange costs no Spaces.
+  ///
+  /// Deliberately fires on the **upward crossing** only, not on every keystroke
+  /// at or above the length: correcting a report that is already complete —
+  /// one just typed, or one loaded from a saved QSO — must not throw the
+  /// operator out of the field on their first character.
+  ///
+  /// Hung off the controller rather than the field's `onChanged` for the
+  /// mobile numbers row, which writes the controller directly
+  /// ([_handleNumberKey]) and never reaches `onChanged` — and that row is
+  /// where a setting saving a keypress earns its keep. `hasFocus` is what
+  /// keeps this to real typing: every programmatic write (a wipe, a
+  /// suggestion, the blur-time [expandRST]) happens to a field the operator
+  /// is not in.
+  void _maybeJumpAfterRST(FocusNode focus, TextEditingController controller) {
+    final length = controller.text.trim().length;
+    final previous = _rstLengthSeen[focus] ?? 0;
+    _rstLengthSeen[focus] = length;
+    if (!widget.jumpAfterRST || _populating || !focus.hasFocus) return;
+    // Null on the FT modes, whose report has no fixed length — there is no
+    // moment to call "done", so the setting simply doesn't apply.
+    final full = rstLengthFor(_mode);
+    if (full == null) return;
+    if (previous < full && length >= full) _advancePrimaryFocus();
+  }
+
   void _clearRSTs() {
     _sentController.clear();
     _rcvdController.clear();
@@ -2568,6 +2624,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// blurs (§ "Enter and focus"), so the field the operator logs from is one
   /// that never left focus, and a bare `5` would otherwise reach the record.
   String _rstOrDefault(String text) => text.isEmpty ? (_rstPlaceholder ?? '') : expandRST(text, _mode);
+
+  /// The two report fields in display order, which `switchSentRcvd` reverses.
+  ///
+  /// Every surface that shows both reads the order from here — the main row,
+  /// the keyboard's path through it, and the More pane — so the row can never
+  /// disagree with the order Space and Tab actually walk. Which controller is
+  /// Sent and which is Rcvd never changes; only where each is drawn does.
+  List<({FocusNode focus, TextEditingController controller, String label})> get _rstPair {
+    final pair = [
+      (focus: _sentFocus, controller: _sentController, label: widget.sentLabel ?? 'Sent'),
+      (focus: _rcvdFocus, controller: _rcvdController, label: widget.rcvdLabel ?? 'Rcvd'),
+    ];
+    return widget.switchSentRcvd ? pair.reversed.toList() : pair;
+  }
+
+  /// The More pane's own report fields, keyed by the form's field names rather
+  /// than by controller — the pane round-trips values through a `Map`, not
+  /// through [_rstPair]'s controllers, so it needs the order in its own terms.
+  List<String> get _rstPaneKeyOrder => widget.switchSentRcvd ? const ['rcvd', 'sent'] : const ['sent', 'rcvd'];
 
   /// Sets `_mode` to a band-plan guess (HALO-32) — shared by [_onFreqChanged]
   /// and the frequency-command branch of [_dispatchActions], both of which
@@ -4499,27 +4574,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
-  /// The main logging fields that follow the callsign, in row order.
+  /// Sent and Rcvd, in the order the operator reads them — reversed by
+  /// `switchSentRcvd`, which [_rstPair] resolves once for every surface.
   ///
-  /// The single source of truth for both [_resolveMainFieldLayout] and the row
-  /// that renders them in [build], so a field can never be in the layout
-  /// arithmetic and missing from the row (or the reverse) — the same drift
-  /// [_primaryFields] exists to prevent for the keyboard, and the same order.
-  ///
-  /// The callsign is deliberately not here: it is `Expanded` over whatever
-  /// these leave it, and it is never squeezed.
-  List<_MainField> _trailingMainFields(BuildContext context, {required bool enabled}) => [
-        if (widget.showRSTFields) ...[
+  /// The gaps belong to the POSITION, not to the field: whichever report comes
+  /// first opens the group after the callsign, and the second sits a plain
+  /// field gap along from it. Reversing the pair alone would carry the wide
+  /// gap into the middle of it.
+  List<_MainField> _rstMainFields(BuildContext context, {required bool enabled}) => [
+        for (final (index, field) in _rstPair.indexed)
           (
-            gapBefore: _mainFieldGroupGap,
+            gapBefore: index == 0 ? _mainFieldGroupGap : _mainFieldGap,
             minWidth: _fixedFieldMinWidth,
-            focusNode: _sentFocus,
+            focusNode: field.focus,
             build: (width, padding, duration) => _fixedField(
               context,
-              controller: _sentController,
-              focusNode: _sentFocus,
+              controller: field.controller,
+              focusNode: field.focus,
               enabled: enabled,
-              label: widget.sentLabel ?? 'Sent',
+              label: field.label,
               width: width,
               padding: padding,
               duration: duration,
@@ -4533,26 +4606,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               hintText: _rstPlaceholder,
             ),
           ),
-          (
-            gapBefore: _mainFieldGap,
-            minWidth: _fixedFieldMinWidth,
-            focusNode: _rcvdFocus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: _rcvdController,
-              focusNode: _rcvdFocus,
-              enabled: enabled,
-              label: widget.rcvdLabel ?? 'Rcvd',
-              width: width,
-              padding: padding,
-              duration: duration,
-              // Same letter-friendly rule as Sent above.
-              keyboardType: _numbersAndPunctuationOnIOS,
-              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-              hintText: _rstPlaceholder,
-            ),
-          ),
-        ],
+      ];
+
+  /// The main logging fields that follow the callsign, in row order.
+  ///
+  /// The single source of truth for both [_resolveMainFieldLayout] and the row
+  /// that renders them in [build], so a field can never be in the layout
+  /// arithmetic and missing from the row (or the reverse) — the same drift
+  /// [_primaryFields] exists to prevent for the keyboard, and the same order.
+  ///
+  /// The callsign is deliberately not here: it is `Expanded` over whatever
+  /// these leave it, and it is never squeezed.
+  List<_MainField> _trailingMainFields(BuildContext context, {required bool enabled}) => [
+        if (widget.showRSTFields) ..._rstMainFields(context, enabled: enabled),
         // Contest exchanges, inline right after the RSTs — see `_textControls`
         // for why these are primary.
         for (final control in _textControls)
@@ -4734,8 +4800,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// change at runtime, and so does the set of contest controls.
   List<(FocusNode, TextEditingController)> get _primaryFields => [
         (_callFocus, _callController),
-        if (widget.showRSTFields) (_sentFocus, _sentController),
-        if (widget.showRSTFields) (_rcvdFocus, _rcvdController),
+        // Display order, not Sent-then-Rcvd: the keyboard walks the row the
+        // operator is looking at (see [_rstPair]).
+        if (widget.showRSTFields)
+          for (final field in _rstPair) (field.focus, field.controller),
         // Only nodes already attached to a built field: creating one here for a
         // control whose widget hasn't been built leaves an orphan with no
         // context, which Flutter's focus traversal null-checks while sorting —
@@ -5245,9 +5313,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true, 'placeholder': guess?['grid'] as String?},
         {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true, 'placeholder': guess?['state'] as String?},
         // Same blank-means-the-default rule as the Sent/Rcvd row, so the pane
-        // never shows a report the row is only standing in for.
-        {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent', 'uppercase': true, 'placeholder': _rstPlaceholder},
-        {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd', 'uppercase': true, 'placeholder': _rstPlaceholder},
+        // never shows a report the row is only standing in for — and the same
+        // display order, so the pane doesn't contradict the row that opened it.
+        for (final key in _rstPaneKeyOrder)
+          {
+            'type': 'field',
+            'key': key,
+            'fieldType': 'text',
+            'label': (key == 'sent' ? widget.sentLabel ?? 'Sent' : widget.rcvdLabel ?? 'Rcvd'),
+            'uppercase': true,
+            'placeholder': _rstPlaceholder,
+          },
         {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
         {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
         {

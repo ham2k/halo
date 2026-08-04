@@ -738,12 +738,18 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setShowQsoNumbers(bool value) => setSettingValue(loggingGroup, _showQsoNumbersKey, value);
 
-  // New logging settings, defaults matching app-polo. Declared in the
-  // settings registry and persisted here, but NOT yet consumed by the
-  // logging UI — wiring the behavior is follow-up work per setting.
+  // Logging settings, defaults matching app-polo.
   bool get leftieMode => _loggingBool('leftieMode', false);
-  bool get fieldsOnTop => _loggingBool('fieldsOnTop', false);
   bool get showBearing => _loggingBool('showBearing', false);
+
+  /// Declared in the settings registry and persisted here, but NOT consumed
+  /// anywhere — the panel puts the logging fields below the QSO list whichever
+  /// way this is set. The toggle stays offered deliberately, waiting on the
+  /// layout work: wire it up, don't withdraw it.
+  bool get fieldsOnTop => _loggingBool('fieldsOnTop', false);
+
+  /// Both reach the logging row, its keyboard order, the QSO list and the More
+  /// pane — see `docs/design/logging-fields.md`, whose focus rules they bend.
   bool get switchSentRcvd => _loggingBool('switchSentRcvd', false);
   bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
 
