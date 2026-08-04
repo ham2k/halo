@@ -32,36 +32,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Keep `main` updated. Rebase your branches on top of the latest `main` before finalizing or merging.
 
-- **Merging to `main` requires the developer's approval, every time** — via `/merge` or by asking. Never land work on `main` on your own initiative. CI runs only on pushes to `main`, so the local `./scripts/test.sh` run before merging IS the gate; there is no CI safety net on branches.
-
-- The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task
-  steps below — refreshing `main`, naming the branch and worktree, bootstrapping
-  a fresh worktree, grilling the user with a short round of pointed questions,
-  recording the plan on the CaBo card, then a first pass. Invoke it as
-  `/next <card ref or description>`; keep it in step with this section.
-
-- The `/iterate` skill (`.claude/skills/iterate/SKILL.md`) covers the
-  "iterate with the developer" step: it keeps a build running and refreshed and
-  skips commits and test runs until the user says iteration is done, at which
-  point the steps below resume.
-
-- The `/finalize` skill (`.claude/skills/finalize/SKILL.md`) covers the "work
-  has settled" step: closes out an `/iterate` cycle if one's running, brings
-  the CaBo card up to date, runs the full test and checks suite, ensures a
-  code review has run (re-running it if more than trivial changes landed
-  since), and hands over a fresh build for the developer to check.
-
-- The `/merge` skill (`.claude/skills/merge/SKILL.md`) covers the last step,
-  run only with the developer's go-ahead: rebases the branch onto the latest
-  `main`, resolves any conflicts, verifies the full test and checks suite is
-  green locally, squash-merges onto `main` and pushes — then asks what's next.
-
-- The `/cleanup` skill (`.claude/skills/cleanup/SKILL.md`) is end-of-session
-  housekeeping: inventories stray files, this session's worktree, branches and
-  background processes, removes them after one batch confirmation once the
-  work has landed on `main`, and archives the session. `/cleanup all` widens
-  to a repo-wide sweep for leftovers from other finished sessions, skipping
-  anything an active session still claims.
+- **Merging to `main` requires the developer's approval, every time.** Never land work on `main` on your own initiative. CI runs only on pushes to `main`, so the local `./scripts/test.sh` run before merging IS the gate; there is no CI safety net on branches.
 
 - Steps when tackling a new task:
   - Open a new branch, off the latest `main`. Look for updates to AGENTS.md.
@@ -76,13 +47,13 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
 
-- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. Work lands on `main` as one squash commit per task, via `/merge`. Distribution-only code lives in `app_dist/`; commits may freely mix `app_dist` and public paths. On every push to `main`, the **Publish Public** workflow (`.github/workflows/publish-public.yml`) filters `app_dist/` out of the full history and force-pushes the result to the `public` branch. The open-source mirror `ham2k/halo` is updated **manually and deliberately** with `halo-ops publish-code` (`mise run ops -- publish-code`; `--ref` holds back recent work) — so features can sit on `main` for a while before going public. Rules: **commit messages are published verbatim — never describe `app_dist` contents in one**; **never push to `public` or `ham2k/halo` by hand** (generated artifacts; `publish-code` is the only path to the mirror); and agents never run `halo-ops publish-code` on their own — publishing is the maintainer's call.
+- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. Work lands on `main` as one squash commit per task. Distribution-only code lives in `app_dist/`; commits may freely mix `app_dist` and public paths. On every push to `main`, the **Publish Public** workflow (`.github/workflows/publish-public.yml`) filters `app_dist/` out of the full history and force-pushes the result to the `public` branch. The open-source mirror `ham2k/halo` is updated **manually and deliberately** with `halo-ops publish-code` (`mise run ops -- publish-code`; `--ref` holds back recent work) — so features can sit on `main` for a while before going public. Rules: **commit messages are published verbatim — never describe `app_dist` contents in one**; **never push to `public` or `ham2k/halo` by hand** (generated artifacts; `publish-code` is the only path to the mirror); and agents never run `halo-ops publish-code` on their own — publishing is the maintainer's call.
 
 - New branches are pushed to `origin` (ham2k/halo-dist).
 
 - Branches for CaBo cards should be named `halo-<number>-<short-description>` (e.g. `halo-24-cabo-tracker` for `HALO-24`) and should be based off `origin/main`. Keep the `halo-` prefix: CaBo numbers restart at 1, so a bare `24-…` is ambiguous against the older branches named after GitHub Issue numbers.
 
-- Squash commit messages should cite the CaBo card ref (`HALO-24`). GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card — `/merge` comments on it and moves it to the board's done column instead.
+- Squash commit messages should cite the CaBo card ref (`HALO-24`). GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card; closing one is a deliberate step — comment the outcome on it and move it to the board's done column.
 
 - Agents should name their sessions with "[HaLo]" as a prefix, followed by a very short description of the work at hand. It's ok to update the name of the session as we go along.
 

@@ -1,9 +1,14 @@
 # Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 # SPDX-License-Identifier: MPL-2.0
 #
-# Regenerates the publishable history on every push to `main`: filters
-# `app_dist/` out of the FULL history with git-filter-repo and force-pushes
+# Regenerates the publishable history on every push to `main`: filters the
+# private paths out of the FULL history with git-filter-repo and force-pushes
 # the result to the `public` branch here.
+#
+# WHICH paths, and the guards over the result, live in
+# `app_dist/ci/publish-filter.sh` — not here. This file is itself published,
+# so a path list in it would name in public the very directories it exists to
+# hide. Change the list there.
 #
 # Publishing to the open-source MIRROR (ham2k/halo) is deliberately NOT part
 # of this workflow — `halo-ops publish-code` does that, on demand, so work can sit
@@ -23,6 +28,9 @@
 #     contents in one (see AGENTS.md).
 #   - `public` is a generated artifact. Never push to it by hand; the next
 #     run overwrites it.
+#   - Adding a path to the filter that ALREADY has published history rewrites
+#     every published SHA. A path that never existed publicly leaves the
+#     previously published commits byte-for-byte identical.
 
 name: Publish Public
 
@@ -52,25 +60,10 @@ jobs:
       - name: Install git-filter-repo
         run: pip install git-filter-repo
 
-      # filter-repo insists on a fresh clone; --no-local makes this one count.
-      - name: Filter app_dist out of the full history
-        run: |
-          git clone --no-local --branch main source filtered
-          cd filtered
-          git filter-repo --invert-paths --path app_dist
-
-      # Belt and braces: the push below must never carry an app_dist path,
-      # in any commit or in the tip tree.
-      - name: Guard — no app_dist anywhere in the filtered history
-        run: |
-          cd filtered
-          if [ -n "$(git log --all --oneline -- app_dist)" ]; then
-            echo "::error::app_dist appears in the filtered history"; exit 1
-          fi
-          if git ls-tree -r main --name-only | grep -q '^app_dist/'; then
-            echo "::error::app_dist appears in the filtered tip tree"; exit 1
-          fi
-          echo "clean: $(git rev-list --count main) commits, no app_dist"
+      # Clones, filters and guards in one step — see the script for what it
+      # removes and what it refuses to publish.
+      - name: Filter private paths out of the full history
+        run: source/app_dist/ci/publish-filter.sh source filtered
 
       - name: Push the public branch (this repo)
         run: |
