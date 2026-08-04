@@ -138,15 +138,23 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
 
   @override
   Widget build(BuildContext context) {
-    final release = widget.release;
     // This panel's colors are fixed regardless of the app's light/dark theme
-    // mode (it sits over a photo, not the app chrome). `theme` is still
-    // `Theme.of(context)` — a standalone `buildHaLoTheme()` call isn't fully
-    // resolved the way a Theme threaded through the widget tree is (its
-    // textTheme font sizes come back null, tripping flutter_markdown's
-    // assertion) — but every color pulled from it below is overridden with a
-    // fixed value instead of the theme's, so nothing here can flip with
-    // light/dark mode.
+    // mode (it sits over a photo, not the app chrome), so the subtree is
+    // pinned to the light theme — anything not explicitly forced below
+    // (markdown styles beyond p/listBullet/strong, scrollbars, ink) would
+    // otherwise paint dark-mode colors onto the white band.
+    return Theme(
+      data: buildHaLoTheme(Brightness.light),
+      child: Builder(builder: _buildOverlay),
+    );
+  }
+
+  Widget _buildOverlay(BuildContext context) {
+    final release = widget.release;
+    // Theme.of below the pin, never a bare `buildHaLoTheme()` read — a
+    // standalone ThemeData isn't fully resolved the way a Theme threaded
+    // through the widget tree is (its textTheme font sizes come back null,
+    // tripping flutter_markdown's assertion).
     final theme = Theme.of(context);
     final versionLabelStyle = overlayVersionLabelStyle(theme);
     final creditsStyle = overlayCreditsStyle(theme);
@@ -478,6 +486,16 @@ class _PhotoWordmarkContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Pinned to the light theme like ReleaseOverlayView above — everything
+    // here is forced white today, but the pin keeps any future addition on
+    // the fixed palette too.
+    return Theme(
+      data: buildHaLoTheme(Brightness.light),
+      child: Builder(builder: _buildContent),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     // Same sizing math as ReleaseOverlayView above, so the brand mark,
     // credits, release name, and caption all read at the same relative
     // scale here as they do on the startup overlay.

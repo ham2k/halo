@@ -317,6 +317,20 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
 
   @override
   Widget build(BuildContext context) {
+    // The whole overlay resolves against the light theme regardless of the
+    // app's mode: the panel palette is fixed (see header comment), and any
+    // control left reading the ambient theme paints dark-mode colors onto
+    // the white band — a #40484C Skip chip under teal text, a pale TextField
+    // label. Theme.of BELOW this wrapper, never a bare buildHaLoTheme()
+    // read: only Theme.of resolves text geometry (release_overlay.dart
+    // documents the null-fontSize trap).
+    return Theme(
+      data: buildHaLoTheme(Brightness.light),
+      child: Builder(builder: _buildOverlay),
+    );
+  }
+
+  Widget _buildOverlay(BuildContext context) {
     final theme = Theme.of(context);
     final versionLabelStyle = overlayVersionLabelStyle(theme);
     final creditsStyle = overlayCreditsStyle(theme);

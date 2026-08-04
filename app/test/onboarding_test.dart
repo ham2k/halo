@@ -180,6 +180,21 @@ void main() {
     expect(services.settings.extensionOverrides, isEmpty);
   });
 
+  testWidgets('the overlay keeps its fixed light palette when the app is in dark mode', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    final services = await makeServices();
+    await pumpApp(tester, services);
+    expect(find.byType(OnboardingOverlayView), findsOneWidget);
+
+    // Without the light-theme pin the panel keeps its white band and black
+    // text but its controls resolve dark-mode colors — the Skip chip paints
+    // the dark surfaceContainerHighest under teal text.
+    final ambient = Theme.of(tester.element(find.text('Skip')));
+    expect(ambient.brightness, Brightness.light);
+    await drainTimers(tester);
+  });
+
   testWidgets('Skip marks the callsign as explicitly empty and finishes', (tester) async {
     final services = await makeServices();
     await pumpApp(tester, services);

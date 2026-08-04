@@ -124,5 +124,12 @@ void main() {
     expect(styleSheet.p!.color, Colors.black);
     expect(styleSheet.listBullet!.color, Colors.black);
     expect(styleSheet.strong!.color, Colors.black);
+
+    // The whole subtree is pinned to the light theme, not forced color by
+    // color — without the pin, anything NOT in the forced list (markdown
+    // headers, scrollbars, button ink) paints dark-mode colors onto the
+    // white band.
+    final ambient = Theme.of(tester.element(find.byType(MarkdownBody)));
+    expect(ambient.brightness, Brightness.light);
   });
 }
