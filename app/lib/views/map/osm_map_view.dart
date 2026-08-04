@@ -15,6 +15,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'map_marker_data.dart';
@@ -106,7 +107,7 @@ class _OsmMapViewState extends State<OsmMapView> {
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: Space.lg),
                   child: MapPopupCard(marker: selected),
                 ),
               ),
@@ -170,7 +171,7 @@ class _OsmAttribution extends StatelessWidget {
         child: ColoredBox(
           color: theme.colorScheme.surface,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs),
             child: Text(
               '© OpenStreetMap contributors',
               style: theme.textTheme.bodySmall,

@@ -139,7 +139,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(16 + safeLeft, 12, 16, 8),
+              padding: EdgeInsets.fromLTRB(Space.xl + safeLeft, Space.lg, Space.xl, Space.md),
               child: TextField(
                 selectAllOnFocus: false,
                 key: const ValueKey('extensions-search'),
@@ -164,16 +164,16 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 ignoring: _applying,
                 child: rows.isEmpty
                     ? Center(child: Text(t.extensionsPanel.noMatches))
-                    : ListView(padding: const EdgeInsets.symmetric(vertical: 8), children: rows),
+                    : ListView(padding: const EdgeInsets.symmetric(vertical: Space.md), children: rows),
               ),
             ),
             if (_applying)
               Padding(
-                padding: EdgeInsets.fromLTRB(16 + safeLeft, 8, 16, 12),
+                padding: EdgeInsets.fromLTRB(Space.xl + safeLeft, Space.md, Space.xl, Space.lg),
                 child: Row(
                   children: [
                     const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: Space.lg),
                     Expanded(child: Text(t.extensionsPanel.applying)),
                   ],
                 ),

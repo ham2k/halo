@@ -137,7 +137,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
         children: [
           SectionHeader(t.selectedLocation),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
             child: TextField(
               selectAllOnFocus: false,
               controller: _gridController,
@@ -146,7 +146,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               onSubmitted: (_) => _save(),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.md),
           SectionHeader(t.suggestedLocations),
           ListTile(
             leading: Icon(MdiIcons.crosshairsGps),
@@ -166,10 +166,10 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),
               onTap: () => _adoptGrid(ref['grid'] as String, 'manual'),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.md),
           SectionHeader(t.moreDetails),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
             child: Column(
               children: [
                 TextField(
@@ -179,7 +179,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                   decoration: poloFieldDecoration(context, t.stateOrProvince),
                   onSubmitted: (_) => _save(),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.md),
                 TextField(
                   selectAllOnFocus: false,
                   controller: _countyController,
@@ -190,7 +190,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: Space.xxl),
         ],
       ),
       actions: [

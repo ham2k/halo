@@ -13,6 +13,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 class HaLoErrorTile extends StatelessWidget {
   final FlutterErrorDetails details;
@@ -24,7 +25,7 @@ class HaLoErrorTile extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.md),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: const Color(0x14B3261E),
@@ -45,7 +46,7 @@ class HaLoErrorTile extends StatelessWidget {
             // the StatusBar notice's "Copy details" for support.
             if (kDebugMode)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: Space.xs),
                 child: Text(
                   details.exceptionAsString(),
                   style: const TextStyle(color: Color(0xFFB3261E), fontSize: 10),

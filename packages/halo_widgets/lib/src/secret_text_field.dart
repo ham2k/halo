@@ -10,6 +10,7 @@
 
 import 'package:flutter/material.dart';
 import 'mdi_icons.g.dart';
+import 'spacing.dart';
 
 /// An obscured [TextField] that reveals its text when the eye button in its
 /// suffix is tapped. The obscured state is held internally, so a call site
@@ -66,7 +67,7 @@ class _SecretTextFieldState extends State<SecretTextField> {
     // forcing the row taller — a default IconButton's 48px target would.
     final toggle = IconButton(
       visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: Space.xs),
       constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
       iconSize: 20,
       // Obscured → an eye (tap to show); revealed → eye-with-slash (tap to

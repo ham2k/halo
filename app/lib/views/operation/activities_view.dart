@@ -577,7 +577,7 @@ class OperationSheetState extends State<OperationSheet> {
         // The rows are the dialog's whole content, so they get the header's
         // horizontal inset from the ListTiles themselves rather than a
         // content padding that would double it.
-        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -937,7 +937,7 @@ class OperationSheetState extends State<OperationSheet> {
     final chipColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final lightChipColor = Color.lerp(chipColor, Colors.white, 0.25)!;
     Widget chip(Widget child, {bool light = false}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
           decoration: BoxDecoration(
             color: light ? lightChipColor : chipColor,
             borderRadius: BorderRadius.circular(12),
@@ -1065,13 +1065,13 @@ class OperationSheetState extends State<OperationSheet> {
           Material(
             color: accordionColor,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+              padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.lg, Space.md),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Flexible(
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 16),
+                      padding: const EdgeInsets.only(right: Space.xl),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -1092,7 +1092,7 @@ class OperationSheetState extends State<OperationSheet> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: Space.xxs),
                           Text(
                             refs.isEmpty ? context.t.activitiesView.emptySheet : _groupedActivitiesSubtitle(refs),
                             maxLines: 1,
@@ -1169,7 +1169,7 @@ class OperationSheetState extends State<OperationSheet> {
                       SizedBox(
                         height: MediaQuery.textScalerOf(context).scale(_searchBandHeight),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+                          padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.lg, Space.md),
                           child: Row(
                             children: [
                         Expanded(
@@ -1194,7 +1194,7 @@ class OperationSheetState extends State<OperationSheet> {
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.only(left: Space.md),
                           child: TextButton.icon(
                             icon: locationPin,
                             label: Text(
@@ -1297,7 +1297,7 @@ class OperationSheetState extends State<OperationSheet> {
                             ),
                             if (alreadySelected)
                               Padding(
-                                padding: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.only(left: Space.md),
                                 child: _AlreadySelectedChip(label: t.alreadySelected),
                               ),
                             const Spacer(),
@@ -1346,7 +1346,7 @@ class OperationSheetState extends State<OperationSheet> {
                               // lines up under the search row's location
                               // button — same IconButton defaults (no custom
                               // size/padding) too.
-                              contentPadding: const EdgeInsets.only(left: 16, right: 12),
+                              contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
                               leading: _loadingControls
                                   ? const Icon(MdiIcons.puzzle)
                                   : activityRefIcon(_controls, ref['type'] as String?),
@@ -1386,7 +1386,7 @@ class OperationSheetState extends State<OperationSheet> {
                       delegate: SliverChildListDelegate([
                         if (resultRows.isEmpty && !_loadingSuggestions)
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
                             child: Text(_suggestionsEmptyMessage, style: TextStyle(color: theme.colorScheme.outline)),
                           )
                         else
@@ -1400,7 +1400,7 @@ class OperationSheetState extends State<OperationSheet> {
           ),
           _AccordionSection(
             title: Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: Space.xl),
               child: Text(
                 _allOptionsTitle(context.t),
                 style: theme.textTheme.titleMedium?.copyWith(color: onAccordionColor, fontWeight: FontWeight.w600),
@@ -1449,7 +1449,7 @@ class OperationSheetState extends State<OperationSheet> {
                 style: TextStyle(color: onAccordionColor),
               ),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
               ),
             ),
             child: () {
@@ -1541,7 +1541,7 @@ class _AlreadySelectedChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondaryContainer,
         borderRadius: BorderRadius.circular(10),
@@ -1602,7 +1602,7 @@ class _AccordionSection extends StatelessWidget {
       // Extra room on the right so the trailing control doesn't sit flush
       // against the pane's edge — the rows below match it, see
       // `contentPadding`.
-      padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+      padding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.lg, Space.sm),
       child: Row(
         children: [
           arrow,

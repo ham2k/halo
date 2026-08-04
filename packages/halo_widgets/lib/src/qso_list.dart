@@ -23,6 +23,7 @@ import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
+import 'spacing.dart';
 import 'theme.dart';
 
 /// Horizontal gap between the row's fields (Number/Time/Frequency/Mode/
@@ -1246,7 +1247,7 @@ class DayHeaderRow extends StatelessWidget {
       if (icon == null || summary == null || summary.isEmpty) continue;
       badges.add(
         Padding(
-          padding: const EdgeInsets.only(left: 10),
+          padding: const EdgeInsets.only(left: Space.md),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1255,7 +1256,7 @@ class DayHeaderRow extends StatelessWidget {
                 size: 14,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: Space.xs),
               Text(summary, style: rowStyle),
             ],
           ),
@@ -1318,7 +1319,7 @@ class DayHeaderRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: Space.md),
                   // Deliberately NOT Flexible. Two loose Flexibles in one Row
                   // split the space proportionally and never hand back what
                   // they don't use, so the date would ellipsize at half the
@@ -1385,7 +1386,7 @@ class EventRow extends StatelessWidget {
                 size: 16,
                 color: theme.colorScheme.outline,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.md),
               // The only thing in this row that can give: the icon and the
               // time are fixed, and the label ("Operation started") is long
               // enough to overflow the list's minimum width on its own. One
@@ -1402,7 +1403,7 @@ class EventRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: Space.md),
               Text(
                 timeLabel,
                 style: haloMonoStyle(

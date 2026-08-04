@@ -386,16 +386,16 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                 ),
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 16),
+                      const SizedBox(height: Space.xl),
                       Center(child: Ham2kBrandMark(logoWidth: compact ? 90 : 140, showShadow: true)),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.md),
                       overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: Space.xs),
                       // The full release name, without the edition qualifier
                       // (the edition is shown by the brand mark's badge).
                       VersionLabel(nameOnly: true, style: versionLabelStyle),
@@ -416,7 +416,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                   children: [
                     if (caption.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                        padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
                         child: AnimatedOpacity(
                           duration: _bandAnimationDuration,
                           curve: Curves.easeInOut,
@@ -441,7 +441,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                           child: SafeArea(
                             top: false,
                             child: Padding(
-                              padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + keyboardInset),
+                              padding: EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl + keyboardInset),
                               // Steps slide horizontally: forward navigation
                               // enters from the right (and exits left), Back
                               // the mirror image. StackFit.expand keeps both
@@ -517,7 +517,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(s.callsignBody, style: bodyStyle),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.xl),
               TextField(
                 selectAllOnFocus: false,
                 controller: _callsignController,
@@ -532,7 +532,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                 ),
                 onSubmitted: (_) => _nextFromCallsign(),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.xl),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
@@ -573,7 +573,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(s.activitiesBody, style: bodyStyle),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.md),
               SwitchListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
@@ -595,7 +595,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                 value: _wwff,
                 onChanged: (v) => setState(() => _wwff = v),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.md),
               Text(s.activitiesFooter, style: bodyStyle?.copyWith(fontSize: (bodyStyle.fontSize ?? 16) * 0.8)),
             ],
           ),
@@ -612,9 +612,9 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 24),
+                    const SizedBox(height: Space.xxl),
                     const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Space.xl),
                     Text(s.finishingSetup, style: bodyStyle, textAlign: TextAlign.center),
                   ],
                 )
@@ -629,7 +629,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                       value: _consentAppData,
                       onChanged: (v) => setState(() => _consentAppData = v),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Space.md),
                     Text(s.consentOperationBody, style: bodyStyle),
                     SwitchListTile(
                       dense: true,
@@ -674,9 +674,9 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
           mainAxisSize: isHeightConstrained ? MainAxisSize.max : MainAxisSize.min,
           children: [
             title,
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.lg),
             isHeightConstrained ? Expanded(child: bodyWidget) : bodyWidget,
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             Row(
               children: [
                 TextButton(

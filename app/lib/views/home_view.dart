@@ -97,9 +97,9 @@ class _OperationRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.md),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
@@ -108,7 +108,7 @@ class _OperationRow extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: Space.xxs),
               Row(
                 children: [
                   Expanded(
@@ -367,9 +367,9 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
             8 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
-            8,
-            8,
-            8,
+            Space.md,
+            Space.md,
+            Space.md,
           ),
           child: SvgPicture.asset(ham2kSquareLogoAsset, width: 22, height: 22),
         ),
@@ -387,7 +387,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
             // first and further, rather than shrinking both equally.
             Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
             if (ham2kEditionBadgeAsset != null || _devLabel.isNotEmpty) ...[
-              const SizedBox(width: 10),
+              const SizedBox(width: Space.md),
               Flexible(
                 child: shrinkToFit(
                   // A free-form dev label (DEV_LABEL) — marks which dev build/session
@@ -418,7 +418,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
             mouseCursor: SystemMouseCursors.click,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.md),
           windowsCaptionSpacer(context),
         ],
       ),
@@ -532,7 +532,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                       borderRadius: BorderRadius.circular(16),
                                       onTap: () => _newOperation(context),
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        padding: const EdgeInsets.symmetric(horizontal: Space.xl),
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
@@ -547,7 +547,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                   curve: Curves.easeInOut,
                                                   opacity: _isFabExtended ? 1.0 : 0.0,
                                                   child: Padding(
-                                                    padding: const EdgeInsets.only(left: 8),
+                                                    padding: const EdgeInsets.only(left: Space.md),
                                                     child: Text(
                                                       context.t.home.newOperation,
                                                       maxLines: 1,
@@ -734,7 +734,7 @@ class _BrandingPane extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SvgPicture.asset(ham2kSquareLogoAsset, width: 180),
-          const SizedBox(height: 4),
+          const SizedBox(height: Space.xs),
           // The square mark already says "Ham2K", so per the branding rules
           // (docs/design/user-interface.md) only the product name — "Mac
           // Logger", "Browser Logger", etc. — goes below it.
@@ -744,7 +744,7 @@ class _BrandingPane extends StatelessWidget {
           ),
           // Edition badge below the name, centered, a bit smaller (Regular has none).
           if (ham2kEditionBadgeAsset != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             SvgPicture.asset(ham2kEditionBadgeAsset!, width: 130),
           ],
           // A free-form dev label (DEV_LABEL) — marks which dev build/session is
@@ -752,7 +752,7 @@ class _BrandingPane extends StatelessWidget {
           // badge's place), here it's shown alongside it, between the badge and the
           // version name.
           if (_devLabel.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             Text(
               _devLabel,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -761,7 +761,7 @@ class _BrandingPane extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.xl),
           // Just the release name, without the edition qualifier (the edition
           // is already shown by the badge SVG above).
           VersionLabel(
@@ -970,7 +970,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                       children: [
                         if (_engine.isError) ...[
                           Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onPrimary),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: Space.md),
                         ],
                         Expanded(
                           child: MarkdownBody(
@@ -991,7 +991,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                     Row(
                       children: [
                         Icon(MdiIcons.accountSearch, size: 16, color: theme.colorScheme.onPrimary),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: Space.md),
                         Expanded(
                           child: Text(
                             lookupLine,

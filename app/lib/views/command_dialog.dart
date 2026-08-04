@@ -609,9 +609,9 @@ class _CommandDialogState extends State<CommandDialog> {
                 // itself moving as results come and go.
                 padding: EdgeInsets.only(
                   top: (constraints.maxHeight * 0.22).clamp(24.0, 220.0),
-                  left: 16,
-                  right: 16,
-                  bottom: 24,
+                  left: Space.xl,
+                  right: Space.xl,
+                  bottom: Space.xxl,
                 ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
@@ -787,7 +787,7 @@ class _CommandDialogState extends State<CommandDialog> {
             // A console, not a magnifier: this bar runs commands as much as it
             // searches, and the magnifier undersold it as a search box.
             Icon(MdiIcons.console, color: HaLoColors.of(context).onSurfaceAccent),
-            const SizedBox(width: 12),
+            const SizedBox(width: Space.lg),
             Expanded(child: KeyedSubtree(key: _fieldKey, child: _textField(theme, t, results))),
             // Sized to the row rather than its own 48pt default, which would
             // otherwise set the bar's height on its own.
@@ -879,7 +879,7 @@ class _CommandDialogState extends State<CommandDialog> {
 
     return ListView(
       shrinkWrap: true,
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: Space.md),
       children: children,
     );
   }
@@ -891,7 +891,7 @@ class _CommandDialogState extends State<CommandDialog> {
   /// found".
   Widget _lookingUpLine(ThemeData theme, Translations t) => Container(
         height: _rowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: Space.xl),
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
@@ -899,7 +899,7 @@ class _CommandDialogState extends State<CommandDialog> {
             // over a focused field, for the length of the lookup. See the
             // note in initState — kept because the working build had it.
             Icon(MdiIcons.console, size: 16, color: HaLoColors.of(context).onSurfaceAccent),
-            const SizedBox(width: 14),
+            const SizedBox(width: Space.lg),
             Text(
               t.commandDialog.lookingUp,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -936,7 +936,7 @@ class _CommandDialogState extends State<CommandDialog> {
   Widget _sectionHeading(ThemeData theme, String label) => Container(
         height: _headingHeight,
         alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+        padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.xl, Space.xxs),
         child: Text(
           label,
           style: theme.textTheme.labelSmall?.copyWith(
@@ -983,11 +983,11 @@ class _CommandDialogState extends State<CommandDialog> {
       // rows with and without a subtitle have to measure the same.
       height: _rowHeight,
       color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.14) : null,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: Space.xl),
       child: Row(
         children: [
           Icon(icon, size: 20, color: HaLoColors.of(context).onSurfaceAccent),
-          const SizedBox(width: 12),
+          const SizedBox(width: Space.lg),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1027,7 +1027,7 @@ class _CommandDialogState extends State<CommandDialog> {
             ),
           ),
           if (trailing != null) ...[
-            const SizedBox(width: 12),
+            const SizedBox(width: Space.lg),
             Text(
               trailing,
               style: theme.textTheme.labelSmall?.copyWith(
@@ -1057,7 +1057,7 @@ class _CommandDialogState extends State<CommandDialog> {
       theme.textTheme.bodySmall?.copyWith(color: foreground.withValues(alpha: 0.75));
 
   Widget _emptyState(ThemeData theme, Translations t) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: const EdgeInsets.fromLTRB(Space.xl, Space.xs, Space.xl, Space.xl),
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
@@ -1079,12 +1079,12 @@ class _CommandDialogState extends State<CommandDialog> {
       color: isError
           ? theme.colorScheme.errorContainer
           : theme.colorScheme.primary.withValues(alpha: 0.10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
       child: Row(
         children: [
           if (isError) ...[
             Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onErrorContainer),
-            const SizedBox(width: 8),
+            const SizedBox(width: Space.md),
           ],
           Expanded(
             child: MarkdownBody(

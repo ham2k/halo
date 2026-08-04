@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'spacing.dart';
 import 'theme.dart';
 
 class SectionHeader extends StatelessWidget {
@@ -22,7 +23,7 @@ class SectionHeader extends StatelessWidget {
     // sits on the surface, and primary's dark-mode value is a fill color
     // tuned for the AppBar, not for reading directly on a dark background.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(Space.xl, Space.xl, Space.xl, Space.xs),
       child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: color ?? HaLoColors.of(context).onSurfaceAccent)),
     );
   }

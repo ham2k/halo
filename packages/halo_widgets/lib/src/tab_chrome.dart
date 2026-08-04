@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
+import 'spacing.dart';
+
 /// The selected/unselected chrome shared by this app's hand-rolled tab
 /// strips — [DockLayoutView]'s `_DockTab` and operation_view.dart's narrow
 /// tab bar both build a "Material tab" themselves instead of a stock
@@ -28,7 +30,7 @@ class TabChrome extends StatelessWidget {
     required this.onTap,
     required this.builder,
     this.indicatorWidth = 3,
-    this.padding = const EdgeInsets.symmetric(horizontal: 12),
+    this.padding = const EdgeInsets.symmetric(horizontal: Space.lg),
   });
 
   /// The bottom-border selection indicator, on its own so a caller that

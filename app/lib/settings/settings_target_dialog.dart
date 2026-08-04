@@ -74,7 +74,7 @@ Future<void> showSettingsForTarget(
         // themselves, the Actions items) carries its own via the ambient
         // ListTileTheme set up in _TargetSettingsFormState.build, so it
         // isn't stacked on top of a second, outer padding.
-        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
         content: _TargetSettingsForm(services: services, target: target, actions: actions),
         actions: [
           FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.done)),
@@ -382,7 +382,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     final base = _baseElements;
     final extended = _extendedElements;
     if (base == null || extended == null) {
-      return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+      return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
     }
     final theme = Theme.of(context);
     // One shared inset for every row in this dialog — Actions items and the
@@ -390,7 +390,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     // FormRenderer's own rows already read this from) rather than as a
     // separate wrapper around the whole list stacking on top of it.
     return ListTileTheme(
-      data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16)),
+      data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: Space.xl)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -424,7 +424,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
           ),
           if (!_showExtended && extended.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: Space.xs),
               child: TextButton(
                 onPressed: () => setState(() => _showExtended = true),
                 child: Text(context.t.settings.showMoreSettings),

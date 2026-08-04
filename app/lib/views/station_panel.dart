@@ -354,7 +354,7 @@ class StationPanel extends StatelessWidget {
         ];
 
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
           children: [
             // What the station IS right now: the choices that decide how the
             // rest of the app behaves. Today that is one question.
@@ -363,7 +363,7 @@ class StationPanel extends StatelessWidget {
               child: SectionHeader(st.currentConfiguration),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(safeLeft + 16, 8, 4, 8),
+              padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, Space.md, Space.xs, Space.md),
               child: Row(
                 children: [
                   Expanded(
@@ -579,7 +579,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.md),
                 child: TextField(
                   // Per docs/design/user-interface.md: focusing a field must
                   // not select what is in it.
@@ -634,12 +634,12 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                     },
                     child: models.isEmpty
                       ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                          padding: const EdgeInsets.symmetric(vertical: Space.xxl, horizontal: Space.xl),
                           child: Text(st.noMatches, textAlign: TextAlign.center),
                         )
                       : ListView(
                           shrinkWrap: true,
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: Space.md),
                           children: [
                             for (final row in models)
                               ListTile(
@@ -696,7 +696,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
         // discovery runs for as long as this dialog is open, so a row that
         // exists only to say so pushed the catalogue down the whole time.
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.xs),
           child: Row(
             children: [
               Expanded(
@@ -706,7 +706,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                 ),
               ),
               if (error == null) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.md),
                 const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
               ],
             ],
@@ -834,7 +834,7 @@ class _TransportIcons extends StatelessWidget {
         // compare by VALUE, so two pairings sharing a glyph and a label would
         // both count as the first and the second would lose its gap.
         for (final (index, entry) in icons.indexed) ...[
-          if (index > 0) const SizedBox(width: 4),
+          if (index > 0) const SizedBox(width: Space.xs),
           Icon(
             entry.icon,
             size: 16,
@@ -950,7 +950,7 @@ class _EquipmentTile extends StatelessWidget {
                 // Beside the name: which radio drives the logging panel is
                 // part of what this equipment IS, not what it is doing.
                 if (isMainVfo) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.md),
                   // Flexible, because the pill has an intrinsic width and a
                   // non-flex child in a bounded Row overflows rather than
                   // shrinking — the name collapses to nothing and the row
@@ -969,7 +969,7 @@ class _EquipmentTile extends StatelessWidget {
           Flexible(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(left: 12),
+              padding: const EdgeInsets.only(left: Space.lg),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -985,7 +985,7 @@ class _EquipmentTile extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: Space.sm),
                   // How it is plugged in, right where it says where it is.
                   _TransportIcons(types: [resolvedType]),
                 ],
@@ -1039,7 +1039,7 @@ class _EquipmentTile extends StatelessWidget {
                 if (developerMode && state.diagnostic != null)
                   Flexible(
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 12),
+                      padding: const EdgeInsets.only(left: Space.lg),
                       child: Text(
                         state.diagnostic!,
                         textAlign: TextAlign.right,
@@ -1050,7 +1050,7 @@ class _EquipmentTile extends StatelessWidget {
                   ),
                 if (connected)
                   Padding(
-                    padding: const EdgeInsets.only(left: 12),
+                    padding: const EdgeInsets.only(left: Space.lg),
                     child: _Pill(
                       // A link that is up but silent must not wear the same
                       // confident green as one that is working: the
@@ -1095,7 +1095,7 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(10)),
       child: Text(
         label,

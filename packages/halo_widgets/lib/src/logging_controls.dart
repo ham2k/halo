@@ -52,6 +52,7 @@ import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'ref_text_input.dart';
 import 'secondary_control_row.dart';
+import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 import 'timed_undo_slot.dart';
@@ -3577,7 +3578,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: Space.md),
             SizedBox(
               width: 120,
               child: TextField(
@@ -3603,7 +3604,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // no "automatic" time to reset to when editing an existing,
             // necessarily historical, entry.
             if (widget.editingQso == null && _manualStartAtMillis != null) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.md),
               TextButton(onPressed: _resetTimeToNow, child: Text(widget.nowLabel ?? 'Now')),
             ],
           ],
@@ -3894,7 +3895,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     fontSize: 14,
                     color: theme.colorScheme.onTertiaryContainer,
                   ),
-                  contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  contentPadding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.xs, Space.md),
                   // Without this the trailing arrow's 48px min tap target
                   // makes the field taller (56px) than the sibling
                   // poloFieldDecoration TextFields (53px); the whole field
@@ -3911,7 +3912,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   _callFocus.requestFocus();
                 },
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: Space.sm),
               SizedBox(
                 width: 100,
                 child: TextField(
@@ -3948,7 +3949,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   onSubmitted: (_) => _closeExpandedControl('radio'),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: Space.sm),
               DropdownMenu<String>(
                 trailingIcon: dropdownTrailingIcon,
                 selectedTrailingIcon: dropdownSelectedTrailingIcon,
@@ -3976,7 +3977,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     fontSize: 14,
                     color: theme.colorScheme.onTertiaryContainer,
                   ),
-                  contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  contentPadding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.xs, Space.md),
                   // Same height trim as the Band dropdown above.
                   suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),
@@ -4126,7 +4127,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 ),
               ),
             ),
-          const SizedBox(width: 6),
+          const SizedBox(width: Space.sm),
           FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: theme.colorScheme.tertiaryContainer,
@@ -4147,7 +4148,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               children: [
                 for (final source in _spotSources.skip(i).take(3))
                   Padding(
-                    padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
+                    padding: const EdgeInsets.only(left: Space.xs, top: Space.xxs, bottom: Space.xxs),
                     child: Icon(
                       resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
                       size: 16,
@@ -5379,7 +5380,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(descriptor.icon, size: 18),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: Space.lg),
                           Text(descriptor.label),
                         ],
                       ),
@@ -6374,7 +6375,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 // panel still stops short of the physical edge by that
                 // device inset instead of bleeding into it.
                 padding: PaneSafeArea.symmetricOf(context, horizontal: _secondaryPanelHorizontalInset)
-                    .add(const EdgeInsets.only(bottom: 8)),
+                    .add(const EdgeInsets.only(bottom: Space.md)),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
                 // rest of the theme (the log button keeps its own
@@ -6431,7 +6432,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.md),
                       // A min-height container: at least the second edit
                       // button's own diameter (see _buildWipeOrEditButton) so a
                       // one-line info area can't leave the button overflowing
@@ -6450,8 +6451,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // before it rather than rendering underneath.
                               child: Padding(
                                 padding: widget.leftieMode
-                                    ? EdgeInsets.only(left: (_editButtonDiameter ?? 44) + 8)
-                                    : EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
+                                    ? EdgeInsets.only(left: (_editButtonDiameter ?? 44) + Space.md)
+                                    : EdgeInsets.only(right: (_editButtonDiameter ?? 44) + Space.md),
                               // Top-aligned, with the height animating as the
                               // content grows/shrinks and content swaps
                               // cross-fading (issue #40). AnimatedSize drives the
@@ -6498,7 +6499,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.md),
                       // A Stack so the `options` suggestion pills can float over
                       // the info area above instead of pushing the fields down
                       // under the operator's cursor. Clip.none: the pills are
@@ -6971,7 +6972,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               SizedBox(
                 width: nameWidth,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: namePadding, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: namePadding, vertical: Space.xs),
                   child: Text(
                     option.name ?? option.code,
                     maxLines: 1,
@@ -6983,7 +6984,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               Container(
                 width: codeWidth,
                 color: haloDialogBandColor(context),
-                padding: const EdgeInsets.symmetric(vertical: 5),
+                padding: const EdgeInsets.symmetric(vertical: Space.xs),
                 alignment: Alignment.center,
                 child: Text(
                   option.code,
@@ -7050,7 +7051,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return Row(
       children: [
         Icon(MdiIcons.alert, size: 16, color: theme.colorScheme.error),
-        const SizedBox(width: 4),
+        const SizedBox(width: Space.xs),
         Expanded(
           child: Text(
             deletedQso
@@ -7113,7 +7114,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final firstLine = <Widget>[
       if (flag != null && flag.isNotEmpty) ...[
         flagGlyph(flag, fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14, shadows: _glyphGlow(theme)),
-        const SizedBox(width: 6),
+        const SizedBox(width: Space.sm),
       ],
       Expanded(
         child: Text(
@@ -7160,10 +7161,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.only(top: Space.xxs),
           child: Icon(icon, size: 16, color: iconColor),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: Space.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -7244,7 +7245,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ) {
     final pillsRow = <Widget>[
       for (var i = 0; i < notices.length; i++) ...[
-        if (i > 0) const SizedBox(width: 4),
+        if (i > 0) const SizedBox(width: Space.xs),
         _noticePill(theme, notices[i].label, alert: notices[i].alert),
       ],
     ];
@@ -7260,8 +7261,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final noteStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
     var pillsWidth = 0.0;
     for (var i = 0; i < notices.length; i++) {
-      pillsWidth += _measureTextWidth(notices[i].label, pillStyle) + 12; // 6px h-padding each side
-      if (i > 0) pillsWidth += 4; // inter-pill gap
+      // Both halves of each pair must name the same constant the widget does:
+      // a hand-copied number here measures a pill that is no longer that wide
+      // the moment the spacing rung moves, and the row silently mis-wraps.
+      pillsWidth += _measureTextWidth(notices[i].label, pillStyle) + Space.sm * 2; // _noticePill's padding
+      if (i > 0) pillsWidth += Space.xs; // the inter-pill SizedBox in pillsRow
     }
     final noteWidth = nameInfo!.isNote
         ? _measureNoteWidth(theme, nameInfo.text, noteStyle)
@@ -7281,7 +7285,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          children: [note, const SizedBox(height: 3), Row(children: pillsRow)],
+          children: [note, const SizedBox(height: Space.xxs), Row(children: pillsRow)],
         );
       },
     );
@@ -7323,7 +7327,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         for (final size in imageSizes) PlaceholderDimensions(size: size, alignment: PlaceholderAlignment.middle),
       ],
     );
-    if (parts.lead != null) width += _measureTextWidth(parts.lead!, noteStyle) + 4; // the SizedBox beside the glyph
+    // Names the same rung the rendered gap does — see the pill measurement above.
+    if (parts.lead != null) width += _measureTextWidth(parts.lead!, noteStyle) + Space.xs; // the SizedBox beside the glyph
     return width;
   }
 
@@ -7406,7 +7411,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // call_info_panel.dart's flag Text.
         flagGlyph(parts.lead!, fontSize: textStyle?.fontSize ?? 14, shadows: _glyphGlow(theme)),
         if (markdown != null) ...[
-          const SizedBox(width: 4),
+          const SizedBox(width: Space.xs),
           Flexible(child: markdown),
         ],
       ],
@@ -7420,7 +7425,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final background = alert ? theme.colorScheme.error : const Color(0xFF2E7D32);
     final foreground = alert ? theme.colorScheme.onError : Colors.white;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
       child: Text(
         label,

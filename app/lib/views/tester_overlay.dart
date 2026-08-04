@@ -290,16 +290,16 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 16),
+                        const SizedBox(height: Space.xl),
                         const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.md),
                         overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: Space.xs),
                         // The full release name (kVersionName), like the
                         // splash and onboarding, with the build number —
                         // what tester-notes entries are keyed by — beneath.
@@ -321,7 +321,7 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
                       child: Padding(
                         // Extra top room so the notes start below the tape,
                         // which straddles the band's top edge.
-                        padding: const EdgeInsets.fromLTRB(24, _tapeHeight, 24, 8),
+                        padding: const EdgeInsets.fromLTRB(Space.xxl, _tapeHeight, Space.xxl, Space.md),
                         // Caps the notes and the Continue button at the ideal
                         // reading width, centered — same convention as the
                         // onboarding steps (onboarding_overlay.dart) —
@@ -351,7 +351,7 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
                                           // construction-guy GIF, at its
                                           // native pixel size.
                                           Center(child: Image.asset('assets/images/under.gif')),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: Space.md),
                                           Text(
                                             context.t.testerOverlay.thanks,
                                             textAlign: TextAlign.center,
@@ -362,7 +362,7 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: Space.md),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: FilledButton(onPressed: onDismiss, child: Text(context.t.onboarding.kContinue)),

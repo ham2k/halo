@@ -72,7 +72,7 @@ Future<bool> confirmDeleteOperation(
               '${operation.stationCall} ${displayTitleFor(context, operation)}',
               style: theme.textTheme.titleMedium,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text(details, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
           ],
         ),
@@ -200,7 +200,7 @@ class _TimeDialogState extends State<_TimeDialog> {
               decoration: poloFieldDecoration(context, context.t.loggingControls.timeUtc),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.md),
           SizedBox(
             width: 120,
             child: TextField(
@@ -378,7 +378,7 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
             textCapitalization: widget.field1Capitalization,
             decoration: poloFieldDecoration(context, widget.field1Label),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.md),
           if (widget.field2Obscure)
             SecretTextField(
               controller: _controller2,
@@ -466,7 +466,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               decoration: poloFieldDecoration(context, context.t.dialogs.stationCallsign),
               onSubmitted: (_) => _save(),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.lg),
             TextField(
               selectAllOnFocus: false,
               controller: _operatorCallController,
@@ -480,7 +480,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               decoration: poloFieldDecoration(context, context.t.settings.operatorCall),
               onSubmitted: (_) => _save(),
             ),
-            const SizedBox(height: 72),
+            const SizedBox(height: Space.xxl),
             TextField(
               selectAllOnFocus: false,
               controller: _titleController,
@@ -488,7 +488,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               decoration: poloFieldDecoration(context, context.t.home.titleOptional),
               onSubmitted: (_) => _save(),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.lg),
             TextField(
               selectAllOnFocus: false,
               controller: _notesController,

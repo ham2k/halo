@@ -196,7 +196,7 @@ class _OAuthRelayLoginPageState extends State<OAuthRelayLoginPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(Space.xxl),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,15 +206,15 @@ class _OAuthRelayLoginPageState extends State<OAuthRelayLoginPage> {
                   style: Theme.of(context).textTheme.titleMedium,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: Space.xl),
                 const Center(child: CircularProgressIndicator()),
-                const SizedBox(height: 16),
+                const SizedBox(height: Space.xl),
                 Text(
                   _launchFailed ? t.relayLoginNotOpened : t.relayLoginWaiting,
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: Space.xl),
                 OutlinedButton(
                   onPressed: () => unawaited(_openBrowser()),
                   child: Text(t.openInBrowser),

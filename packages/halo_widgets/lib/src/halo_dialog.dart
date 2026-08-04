@@ -13,6 +13,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'spacing.dart';
 import 'theme.dart';
 
 /// The banded header shared by [HaloDialog] and Modal Panes, so the two can't
@@ -48,7 +49,7 @@ class HaloDialogHeader extends StatelessWidget {
           children: [
             if (leading != null) ...[
               leading!,
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.md),
             ],
             Expanded(
               child: DefaultTextStyle(
@@ -83,7 +84,7 @@ Widget haloDialogFooterRow({Widget? cancel, List<Widget> actions = const []}) {
       // A minimum gap even when actions is empty/narrow — Expanded alone
       // only guarantees cancel and actions don't overlap, not that they
       // don't end up flush against each other.
-      if (cancel != null) const SizedBox(width: 12),
+      if (cancel != null) const SizedBox(width: Space.lg),
       Expanded(
         child: OverflowBar(
           alignment: MainAxisAlignment.end,
@@ -140,7 +141,7 @@ class HaloDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final padding = contentPadding ?? const EdgeInsets.fromLTRB(24, 20, 24, 20);
+    final padding = contentPadding ?? const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl);
 
     Widget? body;
     if (content != null) {
@@ -180,7 +181,7 @@ class HaloDialog extends StatelessWidget {
             if (body != null) Flexible(child: body),
             if (actions.isNotEmpty || cancel != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
                 child: haloDialogFooterRow(cancel: cancel, actions: actions),
               ),
           ],

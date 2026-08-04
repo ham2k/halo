@@ -8,6 +8,7 @@
 // the same look in HTML/CSS instead (see mapbox_webview_map_view.dart).
 
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import 'map_marker_data.dart';
 
@@ -54,7 +55,7 @@ class MapPopupCard extends StatelessWidget {
 
     return Container(
       constraints: const BoxConstraints(maxWidth: maxWidth),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),

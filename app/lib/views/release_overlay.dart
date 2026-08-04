@@ -217,16 +217,16 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 16),
+                        const SizedBox(height: Space.xl),
                         const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.md),
                         overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: Space.xs),
                         Text(release.name, textAlign: TextAlign.center, style: versionLabelStyle),
                       ],
                     ),
@@ -251,7 +251,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                     children: [
                       if (release.photoCaption.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                          padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
                           child: AnimatedOpacity(
                             duration: _bandAnimationDuration,
                             curve: Curves.easeInOut,
@@ -274,7 +274,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                         child: SafeArea(
                           top: false,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.md),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -323,7 +323,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: Space.md),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: FilledButton(onPressed: widget.onDismiss, child: Text(context.t.onboarding.kContinue)),
@@ -519,16 +519,16 @@ class _PhotoWordmarkContent extends StatelessWidget {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Space.xl),
                     const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Space.md),
                     overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: Space.xs),
                     // The full release name (kVersionName), without the edition
                     // qualifier (shown by the brand mark's badge) — matching the
                     // splash and onboarding.
@@ -542,7 +542,7 @@ class _PhotoWordmarkContent extends StatelessWidget {
                 alignment: Alignment.bottomCenter,
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                    padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.xl),
                     child: Text(
                       caption,
                       textAlign: TextAlign.center,

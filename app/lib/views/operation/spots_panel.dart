@@ -697,7 +697,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
               ? const SizedBox.shrink()
               : ListView(children: [
                   Padding(
-                    padding: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(Space.xxl),
                     child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
                   ),
                 ]))
@@ -919,7 +919,7 @@ class _SpotTile extends StatelessWidget {
               width: leftWidth,
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [left]),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: Space.xl),
             Expanded(child: right),
           ],
         );
@@ -942,13 +942,13 @@ class _SpotTile extends StatelessWidget {
                 ),
               ),
               if (noteEmoji != null) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: Space.xs),
                 Text(noteEmoji!, style: emojiStyle()),
               ],
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.md),
         ageField,
       ],
     );
@@ -960,7 +960,7 @@ class _SpotTile extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Icon(resolveIconName(refIcon), size: mono.fontSize, color: theme.colorScheme.outline),
-              const SizedBox(width: 4),
+              const SizedBox(width: Space.xs),
               Expanded(
                 child: Text(
                   _labelOf(spot)!,
@@ -982,7 +982,7 @@ class _SpotTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           line(freqField, callLine),
-          const SizedBox(height: 2),
+          const SizedBox(height: Space.xxs),
           line(Text(_modeOf(spot) ?? '', style: proportional), labelLine),
         ],
       ),
@@ -1058,7 +1058,7 @@ class _SpotsFilterPill extends StatelessWidget {
               children: [
                 // Extra breathing room above and below the pill row.
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -1070,16 +1070,16 @@ class _SpotsFilterPill extends StatelessWidget {
                           loading: refreshing,
                           onTap: refreshing ? null : onRefresh,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: Space.sm),
                       ],
                       // The only pill that can grow; flex it so it ellipsizes on a
                       // narrow panel rather than overflowing the row.
                       Flexible(child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap)),
                       if (ageMinutes != null) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: Space.sm),
                         _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
                       ],
-                      const SizedBox(width: 6),
+                      const SizedBox(width: Space.sm),
                       _FilterInfoPill(icon: 'tune', onTap: onTap),
                     ],
                   ),
@@ -1131,7 +1131,7 @@ class _FilterInfoPill extends StatelessWidget {
     final effectiveColor = theme.colorScheme.onTertiaryContainer;
 
     final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
       decoration: BoxDecoration(
         color: poloColors.tertiaryLight,
         borderRadius: BorderRadius.circular(8),
@@ -1154,7 +1154,7 @@ class _FilterInfoPill extends StatelessWidget {
             else
               Icon(resolveIconName(icon), size: 14, color: effectiveColor),
             if (label != null) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: Space.xs),
               // Same size as the secondary logging controls' own pills
               // (SecondaryControlRow's Chip, which uses the ambient
               // ChipTheme's default labelLarge — no explicit style of its
@@ -1329,7 +1329,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
                 child: DropdownMenu<String>(
                   trailingIcon: dropdownTrailingIcon,
                   selectedTrailingIcon: dropdownSelectedTrailingIcon,
@@ -1353,7 +1353,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
                 child: DropdownMenu<String>(
                   trailingIcon: dropdownTrailingIcon,
                   selectedTrailingIcon: dropdownSelectedTrailingIcon,
@@ -1375,7 +1375,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
                 child: DropdownMenu<int?>(
                   trailingIcon: dropdownTrailingIcon,
                   selectedTrailingIcon: dropdownSelectedTrailingIcon,
@@ -1401,7 +1401,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               ),
               SectionHeader(t.operation.spots.filters.sorting),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.sm),
                 child: SegmentedButton<String>(
                   // MDI-only UI: skip the framework's Material check on the
                   // selected segment (same as settings_view).
@@ -1420,7 +1420,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               ListTile(
                 dense: true,
                 visualDensity: const VisualDensity(vertical: -4),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
                 // Grouping by band is meaningless once the Band filter has
                 // already narrowed to one band — every spot would land in
                 // the same single section anyway.
@@ -1439,7 +1439,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               ListTile(
                 dense: true,
                 visualDensity: const VisualDensity(vertical: -4),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
                 title: Text(t.operation.spots.filters.groupCallsWithNotes),
                 trailing: Switch(
                   value: _groupCallsWithNotes,
@@ -1455,7 +1455,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                   ListTile(
                     dense: true,
                     visualDensity: const VisualDensity(vertical: -4),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
                     title: Text(
                       widget.sourceNames[source] ?? source,
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1464,7 +1464,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(t.operation.spots.spotsCount(count: widget.sourceSpotCounts[source] ?? 0)),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: Space.md),
                         Switch(
                           value: !_disabledSources.contains(source),
                           onChanged: (_) {
@@ -1485,7 +1485,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                 ListTile(
                   dense: true,
                   visualDensity: const VisualDensity(vertical: -4),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
                   title: Text(
                     _continentLabel(t, code),
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1494,7 +1494,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.md),
                       Switch(
                         value: !_disabledContinents.contains(code),
                         onChanged: (_) {

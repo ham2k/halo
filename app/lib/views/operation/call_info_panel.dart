@@ -185,7 +185,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
 
     return ListView(
       shrinkWrap: widget.shrinkWrap,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Space.xl),
       children: [
         // Header: identity on the left, QSL image + QRZ on the right.
         Row(
@@ -198,17 +198,17 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
                   Text(widget.call, style: theme.textTheme.headlineSmall),
                   if (name != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: Space.xs),
                       child: Text(name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     ),
                   if (city != null || state != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: Space.xs),
                       child: Text([city, state].whereType<String>().join(', '), style: theme.textTheme.bodyLarge),
                     ),
                   if (country != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: Space.xs),
                       // The flag needs its own span in emojiStyle()'s font —
                       // a plain Text in bodyLarge (Roboto) never renders it
                       // at all, since Flutter doesn't fall back to the OS's
@@ -228,7 +228,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: Space.xl),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -245,14 +245,14 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
 
         if (distance != null)
           Padding(
-            padding: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.only(top: Space.xl),
             child: Text(distance, style: theme.textTheme.bodyLarge),
           ),
 
         // Scoring pills, above Notes.
         if (_pills(context).isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.only(top: Space.xl),
             child: Wrap(spacing: 6, runSpacing: 6, children: _pills(context)),
           ),
 
@@ -280,7 +280,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
           for (final q in otherOps.take(_otherOpsToShow)) _historyRow(theme, q),
           if (otherOps.length > _otherOpsToShow)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: Space.xs),
               child: Text(t.andMore(count: otherOps.length - _otherOpsToShow), style: theme.textTheme.bodyMedium),
             ),
         ],
@@ -291,7 +291,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   Widget _buildImage(ThemeData theme, String image) {
     if (!_showImage) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: Space.md),
         child: ActionChip(
           avatar: const Icon(MdiIcons.eye, size: 18),
           label: Text(context.t.callInfo.showImage),
@@ -300,7 +300,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: Space.md),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 200, maxHeight: 160),
         child: Stack(
@@ -335,7 +335,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       final bg = alert ? theme.colorScheme.error : const Color(0xFF2E7D32);
       final fg = alert ? theme.colorScheme.onError : Colors.white;
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
         child: Text(
           scoreNoticeLabel(context, key),
@@ -351,7 +351,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   }
 
   Widget _sectionTitle(ThemeData theme, String text) => Padding(
-        padding: const EdgeInsets.only(top: 20, bottom: 4),
+        padding: const EdgeInsets.only(top: Space.xl, bottom: Space.xs),
         child: Text(text, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       );
 
@@ -367,7 +367,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       if (withCall != null) withCall,
     ].where((s) => s.isNotEmpty);
     return Padding(
-      padding: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.only(top: Space.xxs),
       child: Text(parts.join('  '), style: theme.textTheme.bodyMedium),
     );
   }

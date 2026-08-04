@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'pane_divider.dart';
+import 'spacing.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'tab_chrome.dart';
 import 'ui_scale.dart';
@@ -548,7 +549,7 @@ class _DockTab extends StatelessWidget {
     children: [
       if (showHandle)
         Padding(
-          padding: const EdgeInsets.only(right: 4),
+          padding: const EdgeInsets.only(right: Space.xs),
           child: Icon(MdiIcons.dragVertical, size: 16, color: labelColor.withValues(alpha: 0.6)),
         ),
       Text(title, style: style?.copyWith(color: labelColor)),
@@ -575,7 +576,7 @@ class _DockTab extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           color: theme.colorScheme.primary,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
             child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary)),
           ),
         ),
@@ -586,7 +587,7 @@ class _DockTab extends StatelessWidget {
           opacity: 0.35,
           child: Container(
             decoration: TabChrome.indicatorDecoration(selected: selected, labelColor: ghostLabelColor, tabTheme: tabTheme),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: Space.lg),
             alignment: Alignment.center,
             child: _labelRow(ghostLabelColor, style: theme.textTheme.titleSmall),
           ),

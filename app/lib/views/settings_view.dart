@@ -379,7 +379,7 @@ class _SettingsViewState extends State<SettingsView> {
             // row backgrounds and dividers still reach the pane's true
             // edge, right up to the grab-strip clearance this cancels.
             body: ListTileTheme.merge(
-              contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
+              contentPadding: EdgeInsets.only(left: Space.xl + safeLeft, right: Space.xl),
               child: _buildPanelContent(effectivePanel, widget.services),
             ),
           ),
@@ -586,7 +586,7 @@ class _ProfilesPanel extends StatelessWidget {
       builder: (context, _) {
         final call = settings.activeProfile.operatorCall;
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
           children: [
             ListTile(
               leading: const Icon(MdiIcons.account),
@@ -684,7 +684,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   Widget build(BuildContext context) {
     var elements = _elements;
     if (elements == null) {
-      return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+      return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
     }
     // A group can decline to contribute anything at all — RadioSettingsGroup
     // does while the CAT experiment is off. Its title is chrome for the rows
@@ -784,13 +784,13 @@ class _CommonSettingsPanelState extends State<_CommonSettingsPanel> {
     // this is just the small margin between a row's background and the
     // pane edge — matching the ListTile-based panels' own ListView padding.
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final group in widget.services.settingsRegistry.groups) ...[
             _SettingsGroupForm(services: widget.services, group: group, commonOnly: true),
-            const SizedBox(height: 24),
+            const SizedBox(height: Space.xxl),
           ],
           if (extensionPanels != null)
             for (final descriptor in extensionPanels) ...[
@@ -801,7 +801,7 @@ class _CommonSettingsPanelState extends State<_CommonSettingsPanel> {
                 commonOnly: true,
                 sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: Space.xxl),
             ],
         ],
       ),
@@ -863,7 +863,7 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
         // key, title, and description; sections with no match disappear
         // entirely, title included.
         Padding(
-          padding: EdgeInsets.fromLTRB(24 + safeLeft, 16, 24, 0),
+          padding: EdgeInsets.fromLTRB(Space.xxl + safeLeft, Space.xl, Space.xxl, 0),
           child: TextField(
             selectAllOnFocus: false,
             key: const ValueKey('all-settings-search'),
@@ -889,16 +889,16 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
             // own content inset from the ambient ListTileTheme (see
             // _rowContentPadding in form_renderer.dart), matching the
             // search bar's 24 + safeLeft above.
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final group in widget.services.settingsRegistry.groups) ...[
                   _SettingsGroupForm(services: widget.services, group: group, searchQuery: query),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: Space.xxl),
                 ],
                 if (extensionPanels == null)
-                  const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+                  const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
                 else
                   for (final descriptor in extensionPanels) ...[
                     _ExtensionSettingsPanel(
@@ -908,7 +908,7 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
                       sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
                       searchQuery: query,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: Space.xxl),
                   ],
               ],
             ),
@@ -1084,7 +1084,7 @@ class _SyncPanelState extends State<_SyncPanel> {
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
           children: [
             Padding(
                 padding: EdgeInsets.only(left: safeLeft),
@@ -1123,7 +1123,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (progress.text != null) Text(progress.text!),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: Space.sm),
                       LinearProgressIndicator(value: progress.progressValue),
                     ],
                   ),
@@ -1251,7 +1251,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
       children: [
         Padding(
             padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.accounts.title)),
@@ -1410,7 +1410,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
       children: [
         Padding(
             padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.offlineData.title)),
@@ -1425,7 +1425,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
         ],
         if (_dataFileScopedPanels.isNotEmpty) ...[
           Padding(
-            padding: EdgeInsets.only(left: safeLeft, top: 8),
+            padding: EdgeInsets.only(left: safeLeft, top: Space.md),
             child: SectionHeader(context.t.settings.offlineData.extensionsSection),
           ),
           for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
@@ -1458,7 +1458,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
         trailing: const SizedBox(
           width: 24,
           height: 24,
-          child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)),
+          child: Padding(padding: EdgeInsets.all(Space.xxs), child: CircularProgressIndicator(strokeWidth: 2)),
         ),
       );
     }
@@ -1489,14 +1489,14 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(progress?.text ?? context.t.settings.offlineData.refreshing),
-                const SizedBox(height: 6),
+                const SizedBox(height: Space.sm),
                 LinearProgressIndicator(value: progress?.progressValue),
               ],
             ),
             trailing: const SizedBox(
               width: 24,
               height: 24,
-              child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)),
+              child: Padding(padding: EdgeInsets.all(Space.xxs), child: CircularProgressIndicator(strokeWidth: 2)),
             ),
           );
         },
@@ -1790,7 +1790,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
   Widget build(BuildContext context) {
     if (_loading) {
       return widget.embedded
-          ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+          ? const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
           : const Center(child: CircularProgressIndicator());
     }
     var definition = _definition;
@@ -1849,7 +1849,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: contentPadding.add(const EdgeInsets.only(bottom: 16)),
+            padding: contentPadding.add(const EdgeInsets.only(bottom: Space.xl)),
             child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent)),
           ),
           form,
@@ -1860,7 +1860,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     return SingleChildScrollView(
       // form's own rows pick up the content inset from the ambient
       // ListTileTheme; this is just the row-background margin.
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
       child: form,
     );
   }
@@ -1880,7 +1880,7 @@ class _DeveloperPanel extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: EdgeInsets.fromLTRB(24 + safeLeft, 16, 24, 16),
+          padding: EdgeInsets.fromLTRB(Space.xxl + safeLeft, Space.xl, Space.xxl, Space.xl),
           children: [
             Text(
               context.t.settings.developer.options,
@@ -1889,7 +1889,7 @@ class _DeveloperPanel extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
             SwitchListTile(
               title: Text(context.t.settings.developerMode),
               subtitle: Text(context.t.settings.developer.developerModeDescription),
@@ -1939,7 +1939,7 @@ class _DeveloperPanel extends StatelessWidget {
             // `shorebird release` build, not a local/debug/web one — so it's
             // invisible and inert everywhere it can't do anything.
             if (services.updates.isAvailable) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.xl),
               Text(
                 context.t.settings.developer.patchTrack,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -1948,7 +1948,7 @@ class _DeveloperPanel extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                padding: const EdgeInsets.only(top: Space.xs, bottom: Space.md),
                 child: Text(
                   context.t.settings.developer.patchTrackDescription,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -1980,7 +1980,7 @@ class _DeveloperPanel extends StatelessWidget {
                 },
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: Space.md),
                 child: FutureBuilder<int?>(
                   future: services.updates.currentPatchNumber(),
                   builder: (context, snapshot) {
@@ -1997,7 +1997,7 @@ class _DeveloperPanel extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
             ElevatedButton(
               onPressed: () async {
                 final formDefinition = {
@@ -2117,14 +2117,14 @@ class _DeveloperPanel extends StatelessWidget {
               },
               child: const Text('Test Custom Form Dialog'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
             const Divider(),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
             Text(
               context.t.settings.developer.systemInformation,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             _infoRow(context, context.t.settings.sync.deviceKey, settings.syncDeviceKey ?? context.t.settings.developer.loading),
             _infoRowWidget(
               context,
@@ -2136,14 +2136,14 @@ class _DeveloperPanel extends StatelessWidget {
             // (see app_storage.dart), so it's worth being able to read it back
             // from a running build rather than guessing.
             if (!kIsWeb) _infoRowWidget(context, context.t.settings.developer.dataFolder, const _DataFolderValue()),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
             const Divider(),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
             Text(
               context.t.settings.developer.activeExtensions,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             _ActiveExtensionsList(services: services),
           ],
         );
@@ -2167,7 +2167,7 @@ class _DeveloperPanel extends StatelessWidget {
 
   Widget _infoRowWidget(BuildContext context, String label, Widget value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: Space.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2284,7 +2284,7 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
       children: [
         for (final category in categories) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 2),
+            padding: const EdgeInsets.only(top: Space.md, bottom: Space.xxs),
             child: Text(
               categoryTitles[category] ?? category,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
@@ -2292,7 +2292,7 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
           ),
           for (final ext in grouped[category]!)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: Space.sm),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2437,7 +2437,7 @@ class _AboutPanel extends StatelessWidget {
               SliverToBoxAdapter(
                 child: centered(
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.md),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -2509,7 +2509,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
           blendMode: BlendMode.dstIn,
           child: SingleChildScrollView(
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
             child: MarkdownBody(data: markdown, styleSheet: styleSheet),
           ),
         ),
@@ -2556,7 +2556,7 @@ class _AboutHeader extends StatelessWidget {
           Align(
             alignment: Alignment.topCenter,
             child: Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: Space.xl),
               child: GestureDetector(
                 key: const Key('aboutWordmark'),
                 onTap: () => showPhotoWordmarkModal(context, release: release),
@@ -2585,17 +2585,17 @@ class _PendingAccountBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: EdgeInsets.fromLTRB(16 + extraLeftMargin, 4, 16, 12),
+      margin: EdgeInsets.fromLTRB(Space.xl + extraLeftMargin, Space.xs, Space.xl, Space.lg),
       color: theme.colorScheme.tertiaryContainer,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(MdiIcons.cloudQuestion, color: theme.colorScheme.onTertiaryContainer),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.md),
                 Expanded(
                   child: Text(
                     context.t.settings.syncPanel.pendingBannerTitle,
@@ -2604,17 +2604,17 @@ class _PendingAccountBanner extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             Text(
               context.t.settings.syncPanel.pendingBannerBody,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.lg),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(onPressed: onCombine, child: Text(context.t.settings.syncPanel.combine)),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.md),
                 FilledButton(onPressed: onReplace, child: Text(context.t.settings.syncPanel.replace)),
               ],
             ),
@@ -3064,7 +3064,7 @@ class _AccountPaneState extends State<_AccountPane> {
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.md),
             Text(
               context.t.settings.accounts.pressSaveToKeep,
               style: theme.textTheme.bodyMedium,
@@ -3096,13 +3096,13 @@ class _AccountPaneState extends State<_AccountPane> {
             if (controller == null) return const SizedBox.shrink();
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: Space.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (preface != null && preface.isNotEmpty) ...[
                     MarkdownBody(data: preface),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Space.md),
                   ],
                   if (field['type'] == 'secret')
                     SecretTextField(
@@ -3127,7 +3127,7 @@ class _AccountPaneState extends State<_AccountPane> {
                       onChanged: (_) => setState(() {}),
                     ),
                   if (postface != null && postface.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Space.md),
                     MarkdownBody(data: postface),
                   ],
                 ],
@@ -3136,7 +3136,7 @@ class _AccountPaneState extends State<_AccountPane> {
           }),
         ],
         if (_loggedIn && _pendingCredentials == null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.md),
           Center(
             child: OutlinedButton(
               onPressed: _clear,
@@ -3144,20 +3144,20 @@ class _AccountPaneState extends State<_AccountPane> {
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: Space.xl),
         const Divider(),
-        const SizedBox(height: 8),
+        const SizedBox(height: Space.md),
         Text(
           context.t.settings.accounts.connectedAs,
           style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: Space.md),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(Space.md),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
@@ -3170,11 +3170,11 @@ class _AccountPaneState extends State<_AccountPane> {
                     : MarkdownBody(data: _testResult ?? '—'),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: Space.md),
             TextButton(onPressed: _testing ? null : _test, child: Text(context.t.settings.accounts.test)),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: Space.xxl),
         haloDialogFooterRow(
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
           actions: [

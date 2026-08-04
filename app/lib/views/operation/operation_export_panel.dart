@@ -131,7 +131,7 @@ Future<void> showExportSettingsDialog(
     context: context,
     builder: (context) => HaloDialog(
       title: Text(t.operation.export.settingsTitle),
-      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
       content: ListenableBuilder(
         listenable: services.settings,
         builder: (context, _) {
@@ -163,7 +163,7 @@ Future<void> showExportSettingsDialog(
               // who turns this off would otherwise reasonably expect their
               // backup to be stripped too.
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
@@ -420,7 +420,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
               // needs its way out, and the header's close button is easy to
               // miss when the body is a wall of error text.
               ? Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(Space.xxl),
                   child: Center(child: Text(t.operation.export.exportFailed(error: _error!))),
                 )
               : _buildList(context),
@@ -440,7 +440,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final groups = _groups;
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: Space.md),
       children: [
         ListTile(
           leading: Icon(widget.operation.synced ? MdiIcons.cloudCheck : MdiIcons.cloudAlert),
@@ -475,7 +475,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         ],
         if (_options.isEmpty)
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(Space.xl),
             child: Text(t.operation.export.noOptions, style: theme.textTheme.bodyMedium),
           )
         else
@@ -503,7 +503,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
       // Trailing inset matches the group headers' (8), so the combined
       // button sits on the same edge as the per-callsign ones above it.
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.md, Space.lg),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [_buildBulkActions(context, _selectedOptions, dense: true, combined: true)],
@@ -525,11 +525,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
 
     return Container(
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.md, Space.lg),
       child: Row(
         children: [
           Icon(MdiIcons.radioTower, size: 20, color: colors.onSurfaceAccent),
-          const SizedBox(width: 12),
+          const SizedBox(width: Space.lg),
           Expanded(
             child: Text(
               // An operation with no callsign at all still groups; naming it
@@ -587,11 +587,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 64),
         child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 4),
+          padding: const EdgeInsets.only(left: Space.xl, right: Space.xs),
           child: Row(
             children: [
               _optionIcon(option, activityColor, colors),
-              const SizedBox(width: 16),
+              const SizedBox(width: Space.xl),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -663,7 +663,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final buttons = <Widget>[
       if (_busy)
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: Space.lg),
           child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
         )
       else
@@ -690,7 +690,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       return Wrap(spacing: 8, runSpacing: 4, alignment: WrapAlignment.end, children: buttons);
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.lg),
       child: Wrap(spacing: 8, runSpacing: 4, children: buttons),
     );
   }
@@ -707,7 +707,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
           child: haloDialogFooterRow(
             actions: [
               FilledButton(

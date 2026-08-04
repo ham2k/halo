@@ -77,18 +77,18 @@ class BootErrorScreen extends StatelessWidget {
       color: buildHaLoTheme(Brightness.light).colorScheme.primary,
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(Space.xxl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(MdiIcons.alertCircle, color: Colors.white, size: 48),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.xl),
               const Text(
                 'Ham2K Logger failed to start',
                 style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.md),
               Text(
                 '$error',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),

@@ -80,7 +80,7 @@ class InformationPanel extends StatelessWidget {
     return ListView(
       // Extra inset on every edge that's a divider grab strip or a real
       // device safe area.
-      padding: EdgeInsets.all(16).add(PaneSafeArea.paddingOf(context)),
+      padding: EdgeInsets.all(Space.xl).add(PaneSafeArea.paddingOf(context)),
       children: [
         Text(context.t.loggingPanel.stats, style: theme.textTheme.titleSmall),
         // The stats' "since last" segment is now-relative — re-derive once a
@@ -93,7 +93,7 @@ class InformationPanel extends StatelessWidget {
           ],
         )),
         if (operationSummary != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.xl),
           Text(
             context.t.loggingPanel.scoring,
             style: theme.textTheme.titleSmall,
@@ -142,7 +142,7 @@ class InformationPanel extends StatelessWidget {
     // scorer — falls back to a plain grey when the extension declares none.
     final iconColor = colorForRefType(activityControls, ref?['type'] as String?) ?? theme.colorScheme.onSurfaceVariant;
 
-    final widgets = <Widget>[const SizedBox(height: 16), Text(heading, style: theme.textTheme.titleSmall)];
+    final widgets = <Widget>[const SizedBox(height: Space.xl), Text(heading, style: theme.textTheme.titleSmall)];
 
     for (final entry in summary.entries) {
       final tally = entry.value;
@@ -157,7 +157,7 @@ class InformationPanel extends StatelessWidget {
           children: [
             if (tally['icon'] is String) ...[
               Icon(resolveIconName(tally['icon'] as String), size: 16, color: iconColor),
-              const SizedBox(width: 6),
+              const SizedBox(width: Space.sm),
             ],
             Expanded(child: Text(label)),
             if (score != null && score.isNotEmpty)
@@ -168,7 +168,7 @@ class InformationPanel extends StatelessWidget {
 
       if (detail != null && detail.isNotEmpty) {
         widgets.add(Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: Space.xs),
           child: MarkdownBody(
             data: detail,
             // The per-band table separates rows with single newlines, which

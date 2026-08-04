@@ -127,7 +127,7 @@ class _MapPanelState extends State<MapPanel> {
     if (markers.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(Space.xxl),
           child: Text(
             context.t.map.emptyState,
             textAlign: TextAlign.center,

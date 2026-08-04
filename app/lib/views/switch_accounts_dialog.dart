@@ -417,7 +417,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildContent(context),
-          const SizedBox(height: 24),
+          const SizedBox(height: Space.xxl),
           OverflowBar(
             alignment: MainAxisAlignment.end,
             spacing: 8,
@@ -460,7 +460,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         if (!widget.hideAccountsList) ...[
           if (_loadingAccountData)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: Space.xl),
               child: Center(child: CircularProgressIndicator()),
             )
           else ...[
@@ -474,7 +474,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               operationCount: ((_accountData?['operations'] as Map?)?['total'] as num?)?.toInt(),
             ),
             if (others.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: Space.lg),
               Text(context.t.switchAccounts.otherAccounts, style: theme.textTheme.titleSmall),
               ...others.map((account) {
                 final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
@@ -494,7 +494,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               }),
             ],
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.lg),
           Text(context.t.switchAccounts.linkToAnother, style: theme.textTheme.titleSmall),
         ],
         ListTile(
@@ -529,7 +529,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(context.t.switchAccounts.enterEmailPrompt),
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.lg),
         TextField(
           selectAllOnFocus: false,
           controller: _emailController,
@@ -561,7 +561,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         Text(
           context.t.switchAccounts.codePrompt(email: '$_pendingEmail'),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: Space.xl),
         Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -571,7 +571,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
                 style: theme.textTheme.displayMedium?.copyWith(fontFamily: 'RobotoMono', letterSpacing: 4),
               ),
               if (_challengeCode != null) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.md),
                 IconButton(
                   icon: Icon(MdiIcons.contentCopy, semanticLabel: context.t.switchAccounts.copyCode),
                   onPressed: () => _copyChallengeCode(context),
@@ -581,9 +581,9 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: Space.xl),
         Center(child: Text(context.t.switchAccounts.waitingForConfirmation)),
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.lg),
         Center(
           child: OutlinedButton(
             onPressed: _busy ? null : _sendConfirmationEmail,
@@ -601,9 +601,9 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(context.t.switchAccounts.emailSent(email: '$_pendingEmail')),
-        const SizedBox(height: 16),
+        const SizedBox(height: Space.xl),
         Center(child: Text(context.t.switchAccounts.waitingForConfirmation)),
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.lg),
         Center(
           child: OutlinedButton(onPressed: _busy ? null : _sendConfirmationEmail, child: Text(context.t.switchAccounts.resendEmail)),
         ),
@@ -621,20 +621,20 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         Text(
           context.t.switchAccounts.qrPrompt,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: Space.xl),
         Center(
           child: url == null
               ? const Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator())
               // White quiet zone regardless of theme so cameras can read it.
               : Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(Space.lg),
                   // Keyed by payload so a regenerated challenge (expiry)
                   // replaces, not just repaints, the QR widget.
                   child: QrImageView(key: ValueKey(url), data: url, size: 200),
                 ),
         ),
-        if (url != null) ...[const SizedBox(height: 16), Center(child: Text(context.t.switchAccounts.waitingForConfirmation))],
+        if (url != null) ...[const SizedBox(height: Space.xl), Center(child: Text(context.t.switchAccounts.waitingForConfirmation))],
         ..._errorAndBusy(context),
       ],
     );
@@ -644,10 +644,10 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     final theme = Theme.of(context);
     return [
       if (_error != null) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.lg),
         Text(_error!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
       ],
-      if (_busy) ...[const SizedBox(height: 12), const Center(child: CircularProgressIndicator())],
+      if (_busy) ...[const SizedBox(height: Space.lg), const Center(child: CircularProgressIndicator())],
     ];
   }
 }

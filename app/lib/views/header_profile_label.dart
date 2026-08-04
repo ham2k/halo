@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/settings_service.dart';
 
@@ -26,7 +27,7 @@ class HeaderProfileLabel extends StatelessWidget {
         // AppBar actions are already vertically centered by their Row, so a
         // padded Text is all that's needed here.
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: Space.lg),
           child: Text(
             call,
             style: TextStyle(

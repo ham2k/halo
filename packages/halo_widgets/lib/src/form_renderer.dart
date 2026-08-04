@@ -11,6 +11,7 @@ import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
 import 'secret_text_field.dart';
+import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 
@@ -186,7 +187,7 @@ Widget _formActionsRow({
       // in the body among the settings — and in the error colour, at the
       // leading edge, well away from Save.
       if (destructive != null) ...[
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.md),
         TextButton(
           // The colour travels WITH the action rather than as a second
           // optional beside it: the point of this button is that a
@@ -200,7 +201,7 @@ Widget _formActionsRow({
       ],
       // A minimum gap even on a narrow row — Expanded alone only keeps Save
       // from overlapping Cancel, not from sitting flush against it.
-      const SizedBox(width: 12),
+      const SizedBox(width: Space.lg),
       // Pins Save (and the submitting spinner) to the trailing edge, leaving
       // Cancel alone at the leading edge instead of merely first in a
       // right-packed group (issue #191, same convention as HaloDialog).
@@ -672,7 +673,7 @@ class FormRendererState extends State<FormRenderer> {
                 color: HaLoColors.of(context).onSurfaceAccent,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
           ],
           if (widget.showTitle && widget.formDefinition['subtitle'] != null) ...[
             Text(
@@ -681,13 +682,13 @@ class FormRendererState extends State<FormRenderer> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.xl),
           ],
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: elements.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            separatorBuilder: (context, index) => const SizedBox(height: Space.xl),
             itemBuilder: (context, index) {
               final el = elements[index];
               final type = el['type'] as String?;
@@ -710,7 +711,7 @@ class FormRendererState extends State<FormRenderer> {
             },
           ),
           if (widget.showActions) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: Space.xxl),
             _formActionsRow(isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, labels: widget.labels),
           ],
         ],
@@ -752,7 +753,7 @@ class FormRendererState extends State<FormRenderer> {
         children: [
           Text(title, style: titleStyle),
           if (subtitle != null && subtitle.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text(
               subtitle,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -789,7 +790,7 @@ class FormRendererState extends State<FormRenderer> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.md),
           const Expanded(child: Divider()),
         ],
       ),
@@ -942,7 +943,7 @@ class FormRendererState extends State<FormRenderer> {
                   color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: Space.xs),
               for (final opt in options)
                 RadioListTile<dynamic>(
                   title: Text(opt['label'] as String),
@@ -962,7 +963,7 @@ class FormRendererState extends State<FormRenderer> {
                 ),
               if (errorText != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
+                  padding: const EdgeInsets.only(top: Space.xs, left: Space.xs),
                   child: Text(
                     errorText,
                     style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
@@ -1048,7 +1049,7 @@ class FormRendererState extends State<FormRenderer> {
     // Text-like fields: the input renders full-width beneath the title/
     // description rather than trailing beside them, at every panel width.
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: Space.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1752,7 +1753,7 @@ class FormRendererState extends State<FormRenderer> {
                   if (filtering)
                     Padding(
                       key: const ValueKey('multiselect-status'),
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.only(top: Space.md),
                       child: Text(
                         widget.labels.multiselectStatusLabel(visible.length, options.length, selected.length),
                         style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
@@ -1761,7 +1762,7 @@ class FormRendererState extends State<FormRenderer> {
                   if (searchable)
                     Padding(
                       key: const ValueKey('multiselect-search'),
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.only(top: Space.md),
                       child: TextField(
                         selectAllOnFocus: false,
                         controller: searchController,
@@ -1968,7 +1969,7 @@ Future<Map<String, dynamic>?> showFormDialog(
         children: [
           Text(formDefinition['title'] as String? ?? labels.formTitle),
           if (formDefinition['subtitle'] != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text(
               formDefinition['subtitle'] as String,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -1978,7 +1979,7 @@ Future<Map<String, dynamic>?> showFormDialog(
           ],
         ],
       ),
-      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      contentPadding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
       // Width comes from the shared sizing, and the shell scrolls the body.
       content: FormRenderer(
         key: formKey,
@@ -2090,7 +2091,7 @@ Future<Map<String, dynamic>?> showFormPane(
         children: [
           Flexible(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+              padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
               child: ValueListenableBuilder<List<Map<String, dynamic>>>(
                 valueListenable: elementsNotifier,
                 builder: (context, elements, _) => FormRenderer(
@@ -2119,7 +2120,7 @@ Future<Map<String, dynamic>?> showFormPane(
           ValueListenableBuilder<bool>(
             valueListenable: submittingNotifier,
             builder: (context, isSubmitting, _) => Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
               child: _formActionsRow(
                 isSubmitting: isSubmitting,
                 onCancel: () => Navigator.of(context).pop(null),

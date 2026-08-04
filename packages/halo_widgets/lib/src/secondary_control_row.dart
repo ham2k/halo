@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'mdi_icons.g.dart';
+import 'spacing.dart';
 import 'theme.dart';
 import 'wall_clock.dart';
 
@@ -508,7 +509,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                       // exactly `horizontalBleed` in from the true edge
                       // (the parent's own padding, which this panel
                       // otherwise bleeds past).
-                      padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: Space.md),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(minHeight: _panelMinContentHeight),
                         // A closing panel's fields stay mounted for the

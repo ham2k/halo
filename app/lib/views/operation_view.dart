@@ -1342,14 +1342,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   // so the control's own edge doesn't sit flush against
                   // whatever's to its right (actions, or the window's own
                   // edge).
-                  padding: const EdgeInsets.only(left: 8, right: 12, top: 2, bottom: 2),
+                  padding: const EdgeInsets.only(left: Space.md, right: Space.lg, top: Space.xxs, bottom: Space.xxs),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _HeaderDotsControl(
                         progress: _sheetAnimation?.value ?? 0.0,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: Space.xs),
                       // Flexible (loose), not Expanded (tight): Expanded
                       // forces this Column — and so the InkWell's whole
                       // tap/hover area above — to stretch to the AppBar's
@@ -1447,7 +1447,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                                   children: [
                                     Expanded(
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        padding: const EdgeInsets.symmetric(horizontal: Space.xl),
                                         child: Text(
                                           context.t.operation.tabs.qsos(count: formatNumber(realQsoCount)),
                                           maxLines: 1,

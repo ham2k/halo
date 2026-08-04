@@ -137,7 +137,7 @@ void main() {
       // included — so the card's own viewport is that much shorter. It used to
       // bound the card, which left the stack 20pt over whatever it was given
       // and overran a tight budget by exactly that.
-      const bandHeight = 12.0 + 8.0;
+      const bandHeight = NoticeStack.bandHeight;
       final viewport = find.byType(SingleChildScrollView).first;
       final screenHeight = MediaQuery.of(tester.element(viewport)).size.height;
       expect(tester.getSize(viewport).height, closeTo(screenHeight * 0.4 - bandHeight, 1));

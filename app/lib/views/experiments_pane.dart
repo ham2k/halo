@@ -9,6 +9,7 @@
 // loading still fills in.
 
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/experiments.dart';
 import '../services/settings_service.dart';
@@ -25,7 +26,7 @@ class ExperimentsPane extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+            padding: EdgeInsets.symmetric(vertical: Space.xxl),
             child: Center(child: CircularProgressIndicator()),
           );
         }
@@ -35,7 +36,7 @@ class ExperimentsPane extends StatelessWidget {
           builder: (context, _) {
             if (visible.isEmpty) {
               return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: Space.xxl),
                 child: Text('No experiments available in this build.'),
               );
             }

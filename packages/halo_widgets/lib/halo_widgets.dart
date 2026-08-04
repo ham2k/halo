@@ -27,6 +27,7 @@ export 'src/secondary_control_row.dart';
 export 'src/secret_text_field.dart';
 export 'src/section_header.dart';
 export 'src/semantic_id.dart';
+export 'src/spacing.dart';
 export 'src/status_bar.dart';
 export 'src/tab_chrome.dart';
 export 'src/text_formatters.dart';

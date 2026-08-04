@@ -20,6 +20,7 @@ import 'halo_dialog.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'platform_chrome.dart';
+import 'spacing.dart';
 import 'theme.dart';
 
 /// `showDialog` with the app's shared modal sizing applied
@@ -220,7 +221,7 @@ class _ModalPaneScaffold extends StatelessWidget {
         ),
         body: SafeArea(
           child: route.scrollable
-              ? SingleChildScrollView(padding: const EdgeInsets.all(24), child: _body())
+              ? SingleChildScrollView(padding: const EdgeInsets.all(Space.xxl), child: _body())
               // Tight height, because here the pane IS the screen: the
               // Scaffold's body slot is LOOSE, and a body that shrink-wraps
               // given the chance would float its pinned actions up under the
@@ -306,7 +307,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                               child: SizedBox(
                                 width: double.infinity,
                                 child: SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                                  padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
                                   child: _body(),
                                 ),
                               ),
@@ -620,7 +621,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                         child: SizedBox(
                                           width: double.infinity,
                                           child: SingleChildScrollView(
-                                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                                            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
                                             child: _body(),
                                           ),
                                         ),

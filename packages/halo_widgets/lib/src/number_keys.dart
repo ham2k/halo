@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'spacing.dart';
+
 /// A row of digit keys the logging panel floats above the on-screen keyboard
 /// on mobile, so digits — and one contextual "/" or "." — are a
 /// single tap away while a callsign/RST/frequency field has focus. Ported
@@ -68,7 +70,7 @@ class NumberKeys extends StatelessWidget {
     return Material(
       color: backgroundColor,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: _verticalPadding),
+        padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: _verticalPadding),
         child: Row(
           children: [
             for (final key in keys)

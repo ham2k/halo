@@ -26,9 +26,9 @@ class NoticeHistoryView extends StatelessWidget {
     return history.isEmpty
         ? Center(child: Text(context.t.notices.emptyHistory))
         : ListView.separated(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(Space.lg),
             itemCount: history.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const SizedBox(height: Space.md),
             itemBuilder: (context, index) {
               final notice = history[index];
               return NoticeCard(

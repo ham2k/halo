@@ -17,6 +17,7 @@ import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
+import 'spacing.dart';
 import 'theme.dart';
 import 'ui_scale.dart';
 
@@ -80,8 +81,8 @@ const _expandedRowHeight = 36.0;
 /// The band `NoticeStack` paints around the card. Vertical chrome the stack
 /// costs on top of the card — so when the whole stack is held to a budget
 /// smaller than this, the band is what has to give (see `_bandFor`).
-const _noticeBandTop = 12.0;
-const _noticeBandBottom = 8.0;
+const _noticeBandTop = Space.lg;
+const _noticeBandBottom = Space.md;
 const _noticeBandHeight = _noticeBandTop + _noticeBandBottom;
 
 /// A progress item splits its row evenly: the title takes the left half and
@@ -230,7 +231,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
               },
               child: Padding(
                 key: _collapsedSwitchKey(last),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
                 // Hold the message to the ideal pane width, centered, rather
                 // than letting it stretch across a wide window.
                 child: Center(
@@ -241,12 +242,12 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                         if (showGroups)
                           for (final group in _groupByIcon(widget.items))
                             Padding(
-                              padding: const EdgeInsets.only(right: 4),
+                              padding: const EdgeInsets.only(right: Space.xs),
                               child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
                             ),
                         if (last.icon != null) ...[
                           Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: Space.sm),
                         ],
                         if (last.isProgress) ...[
                           Expanded(
@@ -259,7 +260,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                               style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: Space.md),
                           Expanded(
                             flex: _progressBarFlex,
                             child: _StatusBarProgressIndicator(item: last, color: foregroundColor),
@@ -273,7 +274,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                               style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
                             ),
                           ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: Space.xs),
                         _DismissButton(
                           color: foregroundColor,
                           onPressed: () => widget.onDismiss(last.key),
@@ -305,7 +306,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       // positions the expanded panel's top edge against the content above it.
       height: PixelGrid.of(context).snap(contentHeight.clamp(_expandedRowHeight, cap).toDouble()),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: Space.xs),
         itemCount: list.length,
         separatorBuilder: (context, index) => Divider(height: 1, color: foregroundColor.withValues(alpha: 0.3)),
         itemBuilder: (context, index) => _StatusBarItemRow(
@@ -339,7 +340,7 @@ class _IconCountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
@@ -349,7 +350,7 @@ class _IconCountPill extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Icon(resolveIconName(icon), size: 11, color: color),
-            const SizedBox(width: 3),
+            const SizedBox(width: Space.xs),
           ],
           Text(
             formatNumber(count),
@@ -426,7 +427,7 @@ class _StatusBarItemRow extends StatelessWidget {
     return SizedBox(
       height: _expandedRowHeight,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg),
         // Same ideal-width, centered treatment as the collapsed row.
         child: Center(
           child: ConstrainedBox(
@@ -435,7 +436,7 @@ class _StatusBarItemRow extends StatelessWidget {
               children: [
                 if (item.icon != null) ...[
                   Icon(resolveIconName(item.icon), size: 18, color: color),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.md),
                 ],
                 if (item.isProgress) ...[
                   Expanded(
@@ -448,7 +449,7 @@ class _StatusBarItemRow extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(color: color),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.md),
                   Expanded(
                     flex: _progressBarFlex,
                     child: _StatusBarProgressIndicator(item: item, color: color),
@@ -476,7 +477,7 @@ class _StatusBarItemRow extends StatelessWidget {
                       ],
                     ),
                   ),
-                const SizedBox(width: 4),
+                const SizedBox(width: Space.xs),
                 _DismissButton(color: color, onPressed: onDismiss, label: dismissLabel),
               ],
             ),
@@ -492,6 +493,13 @@ class _StatusBarItemRow extends StatelessWidget {
 /// drawn fully on top, with the next one peeking a few pixels behind when
 /// there's more than one.
 class NoticeStack extends StatefulWidget {
+  /// The vertical chrome this widget paints around its card, on top of
+  /// whatever the card itself needs. Public so that anything reasoning about
+  /// the stack's height — a caller's budget, a test's expected viewport —
+  /// reads it rather than re-deriving it from the two paddings, which is a
+  /// copy that goes stale silently the next time either one moves.
+  static const double bandHeight = _noticeBandHeight;
+
   final List<StatusBarNoticeData> notices;
   final void Function(String key) onDismiss;
 
@@ -551,7 +559,7 @@ class _NoticeStackState extends State<NoticeStack> {
   /// bottom in proportion means it reads as a tighter band, not a broken one.
   EdgeInsets _bandFor(double cap) {
     final scale = (cap / _noticeBandHeight).clamp(0.0, 1.0);
-    return EdgeInsets.fromLTRB(12, _noticeBandTop * scale, 12, _noticeBandBottom * scale);
+    return EdgeInsets.fromLTRB(Space.lg, _noticeBandTop * scale, Space.lg, _noticeBandBottom * scale);
   }
 
   /// Caps a notice card so the card PLUS the band fits the stack's budget,
@@ -713,7 +721,7 @@ class NoticeCard extends StatelessWidget {
 
     return _NoticeSurface(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +730,7 @@ class NoticeCard extends StatelessWidget {
               children: [
                 if (notice.icon != null) ...[
                   Icon(resolveIconName(notice.icon), size: 18, color: onNotice),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.md),
                 ],
                 if (notice.title != null)
                   Expanded(
@@ -743,7 +751,7 @@ class NoticeCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             MarkdownBody(
               data: notice.text,
               styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
@@ -751,14 +759,14 @@ class NoticeCard extends StatelessWidget {
               ),
             ),
             if (notice.actions.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.md),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
                     for (final action in notice.actions)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.only(right: Space.md),
                         child: TextButton(
                           onPressed: action.onTap,
                           style: TextButton.styleFrom(foregroundColor: onNotice),
