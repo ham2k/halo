@@ -1062,6 +1062,63 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       expect(scored, ['W1AW']);
     });
+
+    // New State is scored off `their.guess.state`, which the lookup resolves
+    // AFTER the scoring debounce has already run against a QSO that had no
+    // guess at all. Scoring once per call would show the pill only for a call
+    // already in the lookup cache.
+    testWidgets('a resolved lookup re-scores, so the guess it carries can be scored on', (tester) async {
+      final scoredStates = <String?>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'state': 'CT'}),
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+              final their = qso['their'] as Map;
+              scoredStates.add(((their['guess'] as Map?)?['state']) as String?);
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // The first pass runs before the lookup lands and legitimately has no
+      // guess; what matters is that a later pass sees the resolved state.
+      expect(scoredStates, contains('CT'));
+    });
+
+    // The operator typing a state is the other way it reaches the scorer.
+    testWidgets('typing a state re-scores', (tester) async {
+      final scoredStates = <String?>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            showStateField: true,
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+              scoredStates.add(((qso['their'] as Map)['state']) as String?);
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.enterText(find.widgetWithText(TextField, 'State'), 'CT');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(scoredStates.last, 'CT');
+    });
   });
 
   testWidgets('logging a comma-separated call list saves immediately without inline lookups; each entry is enqueued for background lookup', (tester) async {

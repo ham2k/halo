@@ -71,6 +71,12 @@ class InformationPanel extends StatelessWidget {
     final operationSummary = operationSummaryFor(scoring, 'core');
     final dxcc = operationSummary?['dxcc'] as Map<String, dynamic>?;
     final dxccCount = (dxcc?['entities'] as Map?)?.length ?? 0;
+    // Places, not contacts: the scorer's maps count QSOs per state, while what
+    // belongs on this line is how many distinct ones have been worked. Absent
+    // entirely for an operator outside North America, who tracks neither.
+    final places = operationSummary?['statesAndProvinces'] as Map<String, dynamic>?;
+    final stateCount = (places?['states'] as Map?)?.length ?? 0;
+    final provinceCount = (places?['provinces'] as Map?)?.length ?? 0;
     final duplicateCount =
         ((operationSummary?['qsoCount'] as Map?)?['duplicates'] as num?)
             ?.toInt() ??
@@ -99,6 +105,8 @@ class InformationPanel extends StatelessWidget {
             style: theme.textTheme.titleSmall,
           ),
           Text('${context.t.loggingPanel.dxccEntities}: ${formatNumber(dxccCount)}'),
+          if (stateCount > 0) Text('${context.t.loggingPanel.statesWorked}: ${formatNumber(stateCount)}'),
+          if (provinceCount > 0) Text('${context.t.loggingPanel.provincesWorked}: ${formatNumber(provinceCount)}'),
           Text('${context.t.loggingPanel.duplicates}: ${formatNumber(duplicateCount)}'),
         ],
         // Every non-core scorer's own summary, in full. Core keeps the curated

@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { scoreQso } from "./scoring.ts"
+import { scoreQso, scoreQsos } from "./scoring.ts"
 import type { HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 // A minimal HookContext whose getQsos returns the given log — the only field
@@ -20,15 +20,24 @@ function qso(call: string, band: string, mode: string, extra: Record<string, JSO
   return { their: { call }, band, mode, ...extra }
 }
 
-test("scoreQso: fresh call on a fresh band/entity flags newDXCC + newBand", async () => {
+// The whole point of rule 3 becoming a tally: an operation's first QSO is new
+// on every axis, and saying so about a station nobody has worked yet is noise.
+test("scoreQso: the first QSO of an operation is newDXCC only, never newBand/newMode", async () => {
   const notices = await scoreQso(
     { operation: op, qso: qso("W1AW", "20m", "SSB") },
     ctxWithLog([]),
   )
   assert.deepEqual(notices.alerts, [])
-  assert.ok(notices.notices.includes("newDXCC"))
-  assert.ok(notices.notices.includes("newBand"))
-  assert.ok(notices.notices.includes("newMode"))
+  assert.deepEqual(notices.notices, ["newDXCC"])
+})
+
+test("scoreQso: a band nobody has worked is silent unless we worked THAT station elsewhere", async () => {
+  const notices = await scoreQso(
+    { operation: op, qso: qso("DL1ABC", "40m", "CW") },
+    // 40m and CW are both new to the operation; DL1ABC is not in the log.
+    ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]),
+  )
+  assert.deepEqual(notices.notices, ["newDXCC"])
 })
 
 test("scoreQso: exact call+band+mode already worked is a duplicate", async () => {
@@ -97,4 +106,181 @@ test("scoreQso: no callsign yields no notices", async () => {
     ctxWithLog([]),
   )
   assert.deepEqual(notices, { notices: [], alerts: [] })
+})
+
+// --- Our own DXCC entity ---------------------------------------------------
+
+const usOp = { uuid: "op-us", stationCall: "W1XYZ" }
+
+test("scoreQso: our own entity never notifies, however new it is to the log", async () => {
+  const notices = await scoreQso(
+    { operation: usOp, qso: qso("W1AW", "20m", "SSB") },
+    ctxWithLog([]),
+  )
+  assert.ok(!notices.notices.includes("newDXCC"))
+})
+
+test("scoreQso: another entity still notifies for the same operator", async () => {
+  const notices = await scoreQso(
+    { operation: usOp, qso: qso("DL1ABC", "20m", "SSB") },
+    ctxWithLog([]),
+  )
+  assert.ok(notices.notices.includes("newDXCC"))
+})
+
+// Silent, not uncounted: the entity is worked and belongs in the tally, which
+// is what the operation summary and any award export read.
+test("scoreQsos: our own entity is counted even though it never notified", async () => {
+  const result = await scoreQsos(
+    { operation: usOp, qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" })] },
+    ctxWithLog([]),
+  )
+  const sheet = result.scoresheet as { entities: Record<string, number> }
+  assert.equal(sheet.entities.K, 1)
+  assert.deepEqual(result.qsoScores.q1.notices ?? [], [])
+})
+
+// --- States and provinces --------------------------------------------------
+
+const veOp = { uuid: "op-ve", stationCall: "VE3XYZ" }
+const dxOp = { uuid: "op-dx", stationCall: "DL1XYZ" }
+
+test("scoreQso: a US station's state is new the first time and quiet after", async () => {
+  const first = await scoreQso(
+    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
+    ctxWithLog([]),
+  )
+  assert.ok(first.notices.includes("newState"))
+
+  const second = await scoreQso(
+    { operation: usOp, qso: qso("K1ABC", "20m", "SSB", { their: { call: "K1ABC", state: "CT" } }) },
+    ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1", their: { call: "W1AW", state: "CT" } })]),
+  )
+  assert.ok(!second.notices.includes("newState"))
+})
+
+// Both lists apply to either operator: a US op working Canada is told.
+test("scoreQso: a Canadian province is newProvince, not newState", async () => {
+  const notices = await scoreQso(
+    { operation: usOp, qso: qso("VE3ABC", "20m", "SSB", { their: { call: "VE3ABC", state: "ON" } }) },
+    ctxWithLog([]),
+  )
+  assert.ok(notices.notices.includes("newProvince"))
+  assert.ok(!notices.notices.includes("newState"))
+})
+
+test("scoreQso: a Canadian operator is told about US states too", async () => {
+  const notices = await scoreQso(
+    { operation: veOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
+    ctxWithLog([]),
+  )
+  assert.ok(notices.notices.includes("newState"))
+})
+
+// The rule is about OUR station, not the one being worked.
+test("scoreQso: a DX operator is never told about states or provinces", async () => {
+  const notices = await scoreQso(
+    { operation: dxOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
+    ctxWithLog([]),
+  )
+  assert.ok(!notices.notices.includes("newState"))
+  assert.ok(!notices.notices.includes("newProvince"))
+})
+
+test("scoreQso: the lookup's guessed state counts when the operator typed none", async () => {
+  const notices = await scoreQso(
+    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", guess: { state: "ct" } } }) },
+    ctxWithLog([]),
+  )
+  assert.ok(notices.notices.includes("newState"))
+})
+
+// Hawaii and Alaska are their own DXCC entities, so their stations carry no
+// state of their own — the entity is the answer.
+test("scoreQso: KL and KH6 stations resolve to AK and HI without a state field", async () => {
+  const ak = await scoreQso({ operation: usOp, qso: qso("KL7RA", "20m", "SSB") }, ctxWithLog([]))
+  assert.ok(ak.notices.includes("newState"))
+  const hi = await scoreQso({ operation: usOp, qso: qso("KH6XYZ", "20m", "SSB") }, ctxWithLog([]))
+  assert.ok(hi.notices.includes("newState"))
+})
+
+// A county, a Mexican state or a country-file artifact must never open a
+// bucket in a tally the operator reads as "states worked".
+test("scoreQso: a value that is not on either list is no state at all", async () => {
+  const notices = await scoreQso(
+    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "Hartford" } }) },
+    ctxWithLog([]),
+  )
+  assert.ok(!notices.notices.includes("newState"))
+})
+
+test("scoreQso: a duplicate carries no newState, like every other notice", async () => {
+  const worked = qso("W1AW", "20m", "SSB", { uuid: "q1", their: { call: "W1AW", state: "CT" } })
+  const notices = await scoreQso(
+    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
+    ctxWithLog([worked]),
+  )
+  assert.deepEqual(notices.alerts, ["duplicate"])
+  assert.deepEqual(notices.notices, [])
+})
+
+test("scoreQsos: states and provinces are tallied, and absent for a DX operator", async () => {
+  const log = [
+    qso("W1AW", "20m", "SSB", { uuid: "q1", their: { call: "W1AW", state: "CT" } }),
+    qso("K5XYZ", "20m", "SSB", { uuid: "q2", their: { call: "K5XYZ", state: "TX" } }),
+    qso("VE3ABC", "20m", "SSB", { uuid: "q3", their: { call: "VE3ABC", state: "ON" } }),
+  ]
+  const mine = await scoreQsos({ operation: usOp, qsos: log }, ctxWithLog([]))
+  const sheet = mine.scoresheet as { states: Record<string, number>; provinces: Record<string, number> }
+  assert.deepEqual(Object.keys(sheet.states).sort(), ["CT", "TX"])
+  assert.deepEqual(Object.keys(sheet.provinces), ["ON"])
+  assert.equal(mine.operationSummary.statesAndProvinces.total, 3)
+
+  // Nothing tracked, so no badge with an empty label.
+  const theirs = await scoreQsos({ operation: dxOp, qsos: log }, ctxWithLog([]))
+  assert.equal(theirs.operationSummary.statesAndProvinces, undefined)
+})
+
+// A scoresheet cached before rule 4 landed has no `states`/`provinces` maps and
+// no `ourEntity`. Scoring runs on every keystroke against exactly this cached
+// checkpoint, so reading those unguarded takes the logging panel down.
+test("scoreQso: a checkpoint from before states existed is filled in, not fatal", async () => {
+  const legacy = {
+    workedByCall: {}, entities: {}, bands: {}, modes: {},
+    qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
+    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+  }
+  const notices = await scoreQso(
+    {
+      operation: usOp,
+      qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }),
+      resumeFrom: legacy,
+    },
+    ctxWithLog([]),
+  )
+  // Not merely "didn't throw": the rules the checkpoint predates are live.
+  assert.ok(notices.notices.includes("newState"))
+  assert.ok(!notices.notices.includes("newDXCC"))
+})
+
+// A checkpoint outlives the operation setup it was built from: correcting the
+// station call has to move the own-entity suppression with it, or scoring stays
+// pointed at the entity the operation started with.
+test("scoreQso: correcting the station call re-derives our own entity", async () => {
+  const fromUsOperation = {
+    workedByCall: {}, entities: {}, bands: {}, modes: {}, states: {}, provinces: {},
+    qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
+    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+    ourCall: "W1XYZ", ourEntity: "K",
+  }
+  const notices = await scoreQso(
+    {
+      operation: { uuid: "op-1", stationCall: "DL1XYZ" },
+      qso: qso("W1AW", "20m", "SSB"),
+      resumeFrom: fromUsOperation,
+    },
+    ctxWithLog([]),
+  )
+  // Now a DX operator: W1AW is no longer our own entity, so it notifies again.
+  assert.ok(notices.notices.includes("newDXCC"))
 })

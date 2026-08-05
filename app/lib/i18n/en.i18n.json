@@ -301,6 +301,8 @@
       "noticeNewBand": "New Band",
       "noticeNewMode": "New Mode",
       "noticeNewDXCC": "New DXCC",
+      "noticeNewState": "New State",
+      "noticeNewProvince": "New Province",
       "noticeNewDay": "New Day",
       "noticeNewRef": "New Ref",
       "noticeNewMult": "New Mult",
@@ -363,6 +365,8 @@
     "stats": "Operation Stats",
     "scoring": "Scoring",
     "dxccEntities": "DXCC entities",
+    "statesWorked": "States",
+    "provincesWorked": "Provinces",
     "duplicates": "Duplicates"
   },
   "callInfo": {

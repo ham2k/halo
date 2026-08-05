@@ -4,5 +4,9 @@
   "oneDxccEntity": "1 DXCC Entity",
   "manyDxccEntities": "{{formatted}} DXCC Entities",
   "bands": "{{n}} Bands",
-  "modes": "{{n}} Modes"
+  "modes": "{{n}} Modes",
+  "oneState": "1 State",
+  "manyStates": "{{n}} States",
+  "oneProvince": "1 Province",
+  "manyProvinces": "{{n}} Provinces"
 }

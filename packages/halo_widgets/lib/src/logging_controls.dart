@@ -482,7 +482,8 @@ class LoggingControls extends StatefulWidget {
   final ScoreQso? scoreQso;
 
   /// Maps a scoring notice/alert key (`duplicate`, `newBand`, `newMode`,
-  /// `newDXCC`) to its localized pill text; falls back to the raw key.
+  /// `newDXCC`, `newState`, `newProvince`, and any a contest scorer adds) to
+  /// its localized pill text; falls back to the raw key.
   final String Function(String noticeKey)? scoreNoticeLabel;
 
   /// Notifies the host of the current call-info (for the detail panel — the
@@ -4648,7 +4649,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // faint placeholder while the field is empty — never pre-filled
               // as a real value.
               hintText: _currentGuess?['state'] as String?,
-              onChanged: (_) => _stateTouched = true,
+              onChanged: (_) {
+                _stateTouched = true;
+                // Scored on (New State / New Province), so a typed state has
+                // to reach the scorer like a band or mode change does.
+                _scheduleScore();
+              },
             ),
           ),
         if (widget.showGridField)
@@ -5589,12 +5595,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// (Re)schedules a debounced live-scoring pass for the call-info notices
-  /// line — call/band/mode all feed New Band / New Mode / New DXCC / Dupe, so
-  /// this is fired whenever any of them changes (and when an existing QSO is
-  /// selected for editing). Debounced on the same 300ms as the offline lookup,
-  /// so the scoring pills land alongside the offline lookup's data rather than
-  /// lagging it. No-op (and clears) below the call-info threshold or with no
-  /// `scoreQso` wired.
+  /// line — call/band/mode all feed New Band / New Mode / New DXCC / Dupe, and
+  /// the worked station's state feeds New State / New Province, so this is
+  /// fired whenever any of them changes (and when an existing QSO is selected
+  /// for editing). Debounced on the same 300ms as the offline lookup, so the
+  /// scoring pills land alongside the offline lookup's data rather than
+  /// lagging it.
+  ///
+  /// A lookup RESOLVING must re-fire it too: the state a US station is scored
+  /// on almost always arrives as `guess.state` from the lookup, which lands
+  /// after this debounce has already run against a QSO that had no guess at
+  /// all. Without that, New State only ever appeared for a call already in
+  /// `_lookupCache`. No-op (and clears) below the call-info threshold or with
+  /// no `scoreQso` wired.
   void _scheduleScore() {
     final scoreFn = widget.scoreQso;
     if (scoreFn == null) return;
@@ -5721,6 +5734,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupFor = activeCall;
         _lookupResult = cached;
       });
+      _scheduleScore();
       // Refs are re-applied off the cached result too, not just off a fresh
       // one. Typing back to a call whose guessed refs were just cleared —
       // KI2D, corrected to KI2E, corrected back — reaches the lookup only
@@ -5751,6 +5765,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupFor = activeCall;
         _lookupResult = offlineResult;
       });
+      _scheduleScore();
       _logLookup('offline', activeCall, offlineResult);
       // Spot-derived refs land here, off the OFFLINE pass, deliberately
       // without a `_relookupForRefsChanged`: the online pass below rebuilds
@@ -5788,6 +5803,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupFor = activeCall;
         _lookupResult = onlineResult;
       });
+      _scheduleScore();
       _logLookup('online', activeCall, onlineResult);
       // Anything the online pass proposes that the offline one didn't (a spot
       // fetched in between) has had no chance to reach the activity hooks, so

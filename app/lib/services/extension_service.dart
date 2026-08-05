@@ -1752,7 +1752,9 @@ class ExtensionService {
   /// Scores the single in-progress QSO — the callsign being typed, before
   /// Enter — for the logging panel's live call-info line. Returns
   /// `{notices, alerts}` of scoring keys (`duplicate`, `newBand`, `newMode`,
-  /// `newDXCC`), merged across every scorer relevant to the operation, or null
+  /// `newDXCC`, `newState`, `newProvince`, plus whatever a contest scorer emits
+  /// — the vocabulary is open), merged across every scorer relevant to the
+  /// operation, or null
   /// when the runtime isn't up. Debounced on the caller's side.
   /// [excludeUuid] drops the record being edited so it can't flag itself as
   /// its own duplicate. [operation] must carry `uuid` (the hook reads the log

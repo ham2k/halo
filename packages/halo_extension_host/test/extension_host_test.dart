@@ -641,17 +641,20 @@ __polo.defineExtension({
     expect(qsoScores['q3']['value'], 1);
 
     // Each of these is the operation's first contact with that entity.
-    expect(qsoScores['q1']['notices'], contains('newDXCC'));
     expect(qsoScores['q3']['notices'], contains('newDXCC'));
     expect(qsoScores['q4']['notices'], contains('newDXCC'));
+    // q1 is W1AW — KI2D's OWN entity, which never notifies however new it is
+    // to the log. It is still counted, which the dxcc tallies below prove.
+    expect(qsoScores['q1']['notices'] ?? const [], isNot(contains('newDXCC')));
     // A duplicate contributes nothing at all — no new band, mode or entity.
     expect(qsoScores['q2']['notices'], anyOf(isNull, isEmpty));
 
-    // q5 is a new band (15m) even though its mode (SSB) was already worked
-    // on q1/q4 — scoring must credit a QSO as new if EITHER the band or the
-    // mode is new, not require BOTH to already be known.
+    // q5 brings a band the operation hadn't worked (15m), which COUNTS but no
+    // longer notifies: G4ABC is not a station in this log, and operation-level
+    // newness said nothing an operator could act on. The credit still lands —
+    // `bandsAndModes` below is 3, not 2.
     expect(qsoScores['q5']['value'], 1);
-    expect(qsoScores['q5']['notices'], contains('newBand'));
+    expect(qsoScores['q5']['notices'] ?? const [], isNot(contains('newBand')));
 
     final daySections = result['daySections'] as List;
     expect(daySections.length, 2);

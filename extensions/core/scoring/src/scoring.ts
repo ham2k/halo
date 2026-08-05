@@ -9,13 +9,15 @@
 // come from the shared harness, which still makes one coarse bridge call
 // (DESIGN.md §4: "score 500 QSOs in one call, not 500 calls").
 //
-// Its three rules are deliberately PRIVATE to the scoresheet. Contests don't
+// Its four rules are deliberately PRIVATE to the scoresheet. Contests don't
 // share a rule vocabulary, so what leaves this module is only a merged per-QSO
 // verdict (notices/alerts/points) plus summary tallies whose keys are this
-// scorer's own — `qsoCount`, `dxcc`, `bandsAndModes`.
+// scorer's own — `qsoCount`, `dxcc`, `bandsAndModes`, `statesAndProvinces`.
 //
-// US States and Canadian Provinces rules (web-lofi's USStatesScoringHandler /
-// CanadianProvincesScoringHandler) are still deferred — see DESIGN.md §11.
+// Which rules NOTIFY and which only tally is a deliberate split: a notice has
+// to tell the operator something they can act on. Operation-level band/mode
+// newness told them the log was empty, so it tallies silently; a state or an
+// entity they haven't worked is worth a pill.
 //
 // `entityPrefixForCall`, the translator and the scoring harness all come in by
 // relative path, not the `@ham2k/halo-extension-sdk` alias, so this module's
@@ -59,6 +61,19 @@ export type CoreScoresheet = {
   /// Counted rather than derived from `bands`/`modes` above, because a QSO that
   /// is new on BOTH axes still credits once.
   bandModeQsos: number
+  /// US states and Canadian provinces worked → contacts. Only accumulated when
+  /// our own station is North American (see [tracksStatesAndProvinces]).
+  states: Record<string, number>
+  provinces: Record<string, number>
+  /// Our own DXCC entity prefix and the station call it came from, resolved
+  /// once and kept here so the fold doesn't re-annotate it per QSO. The call is
+  /// stored WITH it because a checkpoint outlives the operation setup it was
+  /// built from: correcting a station call (or a segment overriding it) has to
+  /// re-derive the entity, or the own-entity rules stay pointed at the old one.
+  /// `''` means "resolved to nothing"; `undefined` means "not resolved yet",
+  /// which is also what a checkpoint predating these fields reads as.
+  ourEntity?: string
+  ourCall?: string
   /// Reset on each new UTC day — `qsoCount` is a per-day tally, while the
   /// entity and band/mode tallies deliberately carry across the operation.
   dayQsos: number
@@ -66,14 +81,65 @@ export type CoreScoresheet = {
   dayDuplicates: number
 }
 
+/// US states and Canadian provinces, ported from web-lofi's
+/// `USStatesScoringHandler` / `CanadianProvincesScoringHandler`. DC is included
+/// here where web-lofi's scorer omits it (its summarizer reads a `DC` bucket
+/// its scorer could never fill) — a contact in the District is a place worked,
+/// and the operator is the one who decides what it counts toward.
+const US_STATES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA',
+  'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR',
+  'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+])
+
+const CANADIAN_PROVINCES = new Set([
+  'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT',
+])
+
+/// COUNTRY-FILE entity prefixes whose stations have a state or province, not
+/// what a ham would write: Alaska is `KL`, not `KL7` (the same correction
+/// `extensions/contests/naqp/src/exchange.ts` documents). Hawaii and Alaska are
+/// their own DXCC entities, so a station there carries no `state` of its own —
+/// the entity IS the answer, which is why they get defaults below.
+const US_ENTITIES = new Set(['K', 'KL', 'KH6'])
+const STATE_DEFAULT_BY_ENTITY: Record<string, string> = { KH6: 'HI', KL: 'AK' }
+
+/// Whether states and provinces are worth tracking for THIS operator: a rule
+/// about our own station, not the one being worked. Both lists then apply to
+/// either — a US operator working VE3 is told it's a new province.
+function tracksStatesAndProvinces(ourEntity: string | undefined): boolean {
+  return ourEntity === 'VE' || US_ENTITIES.has(ourEntity ?? '')
+}
+
 function str(value: JSONValue | undefined): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+/// The state or province of the station being worked, or undefined when it has
+/// none, isn't North American, or hasn't been resolved yet.
+///
+/// A station's own `state` wins over the lookup's `guess.state` (the operator
+/// typed or received it), matching NAQP's `guessedLocation`. Anything not on
+/// the two lists comes back EMPTY rather than as itself: a county, a Mexican
+/// state or a country-file artifact must never open a bucket in a tally the
+/// operator reads as "states worked".
+function stateOrProvinceOf(
+  their: Record<string, JSONValue>,
+  entityPrefix: string | undefined,
+): { kind: 'state' | 'province'; code: string } | undefined {
+  if (!entityPrefix) return undefined
+  const guess = (their.guess as Record<string, JSONValue>) ?? {}
+  const code = (str(their.state) ?? str(guess.state) ?? STATE_DEFAULT_BY_ENTITY[entityPrefix] ?? '').toUpperCase()
+  if (!code) return undefined
+  if (US_ENTITIES.has(entityPrefix) && US_STATES.has(code)) return { kind: 'state', code }
+  if (entityPrefix === 'VE' && CANADIAN_PROVINCES.has(code)) return { kind: 'province', code }
+  return undefined
 }
 
 export const CoreScorer: ContestScorer<CoreScoresheet> = {
   startScoresheet(): CoreScoresheet {
     return {
-      workedByCall: {}, entities: {}, bands: {}, modes: {},
+      workedByCall: {}, entities: {}, bands: {}, modes: {}, states: {}, provinces: {},
       qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
       dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
     }
@@ -83,13 +149,25 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
   // explicitly allows: spreading the worked-call map per QSO made a full pass
   // quadratic (289ms for 5,000 QSOs against 18ms for 1,000). The harness copies
   // any resume checkpoint at its boundary, so nothing cached is ever aliased.
-  scoreQso({ scoresheet, qso, isNewDay }) {
+  scoreQso({ scoresheet, qso, operation, isNewDay }) {
     const base = scoresheet
     if (isNewDay) {
       base.dayQsos = 0
       base.dayPoints = 0
       base.dayDuplicates = 0
     }
+
+    // A cached checkpoint predating rule 4 carries neither our entity nor the
+    // place maps. Filled in here rather than in `startScoresheet`, which a
+    // resumed fold never calls: reading `base.states` unguarded throws, and
+    // scoring runs on every keystroke.
+    const stationCall = str(operation?.stationCall) ?? ''
+    if (base.ourEntity === undefined || base.ourCall !== stationCall) {
+      base.ourCall = stationCall
+      base.ourEntity = entityPrefixForCall(stationCall) ?? ''
+    }
+    base.states ??= {}
+    base.provinces ??= {}
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -114,20 +192,34 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     }
 
     // --- Rule 2: DXCC entities worked --------------------------------------
+    // Our own entity still counts toward the tally — it is a worked entity like
+    // any other — but never notifies: "new DXCC" for the country you are
+    // sitting in is noise on the first local contact of every operation.
     const entityPrefix = entityPrefixForCall(call)
-    if (entityPrefix && base.entities[entityPrefix] === undefined) notices.add('newDXCC')
+    const isNewEntity = Boolean(entityPrefix) && base.entities[entityPrefix!] === undefined
+    if (isNewEntity && entityPrefix !== base.ourEntity) notices.add('newDXCC')
 
     // --- Rule 3: bands and modes worked ------------------------------------
-    // Operation-level, unlike rule 1's per-call check: the operation's first
-    // 40m contact is a new band even when that station is new too. Read BEFORE
-    // recording below, or the QSO would mask itself.
+    // A TALLY ONLY. Operation-level newness deliberately does not notify: the
+    // first QSO of an operation is new on every axis, so it lit up "new band ·
+    // new mode" for a station nobody had worked yet, which told the operator
+    // nothing. `newBand`/`newMode` come from rule 1 alone — a station already
+    // in this log, now on a band or mode we hadn't worked THEM on.
+    // Read BEFORE recording below, or the QSO would mask itself.
     const isNewBand = Boolean(band) && base.bands[band] === undefined
     const isNewMode = Boolean(mode) && base.modes[mode] === undefined
-    if (isNewBand) notices.add('newBand')
-    if (isNewMode) notices.add('newMode')
     // Credits once for a QSO that is new on either axis — a first 15m contact
     // counts even when its mode was already worked.
     const broughtBandOrMode = isNewBand || isNewMode
+
+    // --- Rule 4: states and provinces worked -------------------------------
+    // Scoped to North American operators (rule 3's tally-only treatment does
+    // not apply here: a state IS the kind of newness worth a pill). Our own
+    // state notifies like any other — it is a WAS credit, where our own DXCC
+    // entity is never a DX one.
+    const stateWorked = tracksStatesAndProvinces(base.ourEntity) ? stateOrProvinceOf(their, entityPrefix) : undefined
+    if (stateWorked?.kind === 'state' && base.states[stateWorked.code] === undefined) notices.add('newState')
+    if (stateWorked?.kind === 'province' && base.provinces[stateWorked.code] === undefined) notices.add('newProvince')
 
     // A dupe is by definition neither a new band, a new mode, nor a new
     // entity — it contributes nothing, so it carries only its alert.
@@ -146,6 +238,10 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     if (entityPrefix) base.entities[entityPrefix] = (base.entities[entityPrefix] ?? 0) + 1
     if (band) base.bands[band] = (base.bands[band] ?? 0) + 1
     if (mode) base.modes[mode] = (base.modes[mode] ?? 0) + 1
+    if (stateWorked?.kind === 'state') base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
+    if (stateWorked?.kind === 'province') {
+      base.provinces[stateWorked.code] = (base.provinces[stateWorked.code] ?? 0) + 1
+    }
     base.qsos += 1
     base.points += points
     base.duplicates += isDupe ? 1 : 0
@@ -159,10 +255,14 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
 
   summarizeScore({ scoresheet, scope }, ctx): Record<string, ScoreTally> {
     const t = tFor(ctx)
+    const places = summarizeStatesAndProvinces(scoresheet, t)
     return {
       qsoCount: summarizeQsoCount(scoresheet, scope === 'day', t),
       dxcc: summarizeDxcc(scoresheet, t),
       bandsAndModes: summarizeBandsAndModes(scoresheet, t),
+      // Omitted entirely rather than shown empty: an operator outside North
+      // America never tracks these, and a badge with no label is a puzzle.
+      ...(places ? { statesAndProvinces: places } : {}),
     }
   },
 }
@@ -213,6 +313,37 @@ function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator): ScoreTall
     bands: sheet.bands,
     modes: sheet.modes,
     label: parts.join(', '),
+  }
+}
+
+/// Undefined until something has actually been worked, which for a DX operator
+/// is never — [tracksStatesAndProvinces] gates the accumulation, so the empty
+/// case and the not-applicable case are the same thing here.
+function summarizeStatesAndProvinces(sheet: CoreScoresheet, t: Translator): ScoreTally | undefined {
+  const stateCount = Object.keys(sheet.states ?? {}).length
+  const provinceCount = Object.keys(sheet.provinces ?? {}).length
+  if (stateCount === 0 && provinceCount === 0) return undefined
+
+  const parts: string[] = []
+  if (stateCount > 0) parts.push(stateCount === 1 ? t('oneState') : t('manyStates', { n: stateCount }))
+  if (provinceCount > 0) {
+    parts.push(provinceCount === 1 ? t('oneProvince') : t('manyProvinces', { n: provinceCount }))
+  }
+  return {
+    key: 'statesAndProvinces',
+    for: 'operation',
+    icon: 'map-marker',
+    // Places worked, not contacts: unlike `bandsAndModes` there is no
+    // "credits once" subtlety, since a QSO has one state at most.
+    total: stateCount + provinceCount,
+    states: sheet.states,
+    provinces: sheet.provinces,
+    label: parts.join(', '),
+    // A day header renders a tally only when it has BOTH an icon and a
+    // non-empty summary, so the threshold is what decides whether this shows
+    // there at all. Below five places the number is noise next to the QSO
+    // count, same judgement `dxcc` makes.
+    summary: stateCount + provinceCount >= 5 ? fmtInteger(stateCount + provinceCount) : '',
   }
 }
 

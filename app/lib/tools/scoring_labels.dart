@@ -19,6 +19,10 @@ String scoreNoticeLabel(BuildContext context, String key) {
     'newBand' => t.noticeNewBand,
     'newMode' => t.noticeNewMode,
     'newDXCC' => t.noticeNewDXCC,
+    // States and provinces are tracked only for North American operators, so
+    // these two never reach a DX operator's pill row at all.
+    'newState' => t.noticeNewState,
+    'newProvince' => t.noticeNewProvince,
     // Activity scorers: a repeat contact that counts again because the award's
     // `uniquePer` axes make it fresh (docs/design/activities.md §4).
     'newDay' => t.noticeNewDay,

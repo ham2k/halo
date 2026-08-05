@@ -737,6 +737,12 @@ class Translations$loggingPanel$en {
 	/// en: 'DXCC entities'
 	String get dxccEntities => 'DXCC entities';
 
+	/// en: 'States'
+	String get statesWorked => 'States';
+
+	/// en: 'Provinces'
+	String get provincesWorked => 'Provinces';
+
 	/// en: 'Duplicates'
 	String get duplicates => 'Duplicates';
 }
@@ -1569,6 +1575,12 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'New DXCC'
 	String get noticeNewDXCC => 'New DXCC';
+
+	/// en: 'New State'
+	String get noticeNewState => 'New State';
+
+	/// en: 'New Province'
+	String get noticeNewProvince => 'New Province';
 
 	/// en: 'New Day'
 	String get noticeNewDay => 'New Day';
@@ -3192,6 +3204,8 @@ extension on Translations {
 			'loggingControls.info.noticeNewBand' => 'New Band',
 			'loggingControls.info.noticeNewMode' => 'New Mode',
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
+			'loggingControls.info.noticeNewState' => 'New State',
+			'loggingControls.info.noticeNewProvince' => 'New Province',
 			'loggingControls.info.noticeNewDay' => 'New Day',
 			'loggingControls.info.noticeNewRef' => 'New Ref',
 			'loggingControls.info.noticeNewMult' => 'New Mult',
@@ -3245,6 +3259,8 @@ extension on Translations {
 			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
+			'loggingPanel.statesWorked' => 'States',
+			'loggingPanel.provincesWorked' => 'Provinces',
 			'loggingPanel.duplicates' => 'Duplicates',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Show Image',
@@ -3469,12 +3485,12 @@ extension on Translations {
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver has never been run against a Kenwood — it is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.noTransceiver' => 'None',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',

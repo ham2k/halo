@@ -301,6 +301,8 @@
       "noticeNewBand": "Nueva Banda",
       "noticeNewMode": "Nuevo Modo",
       "noticeNewDXCC": "Nuevo DXCC",
+      "noticeNewState": "Nuevo Estado",
+      "noticeNewProvince": "Nueva Provincia",
       "noticeNewDay": "Nuevo Día",
       "noticeNewRef": "Nueva Ref",
       "noticeNewMult": "Nuevo Mult",
@@ -363,6 +365,8 @@
     "stats": "Estadísticas de la Operación",
     "scoring": "Puntuación",
     "dxccEntities": "Entidades DXCC",
+    "statesWorked": "Estados",
+    "provincesWorked": "Provincias",
     "duplicates": "Duplicados"
   },
   "callInfo": {

@@ -383,6 +383,8 @@ class _Translations$loggingPanel$es extends Translations$loggingPanel$en {
 	@override String get stats => 'Estadísticas de la Operación';
 	@override String get scoring => 'Puntuación';
 	@override String get dxccEntities => 'Entidades DXCC';
+	@override String get statesWorked => 'Estados';
+	@override String get provincesWorked => 'Provincias';
 	@override String get duplicates => 'Duplicados';
 }
 
@@ -816,6 +818,8 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeNewBand => 'Nueva Banda';
 	@override String get noticeNewMode => 'Nuevo Modo';
 	@override String get noticeNewDXCC => 'Nuevo DXCC';
+	@override String get noticeNewState => 'Nuevo Estado';
+	@override String get noticeNewProvince => 'Nueva Provincia';
 	@override String get noticeNewDay => 'Nuevo Día';
 	@override String get noticeNewRef => 'Nueva Ref';
 	@override String get noticeNewMult => 'Nuevo Mult';
@@ -1795,6 +1799,8 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
 			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
 			'loggingControls.info.noticeNewDXCC' => 'Nuevo DXCC',
+			'loggingControls.info.noticeNewState' => 'Nuevo Estado',
+			'loggingControls.info.noticeNewProvince' => 'Nueva Provincia',
 			'loggingControls.info.noticeNewDay' => 'Nuevo Día',
 			'loggingControls.info.noticeNewRef' => 'Nueva Ref',
 			'loggingControls.info.noticeNewMult' => 'Nuevo Mult',
@@ -1848,6 +1854,8 @@ extension on TranslationsEs {
 			'loggingPanel.stats' => 'Estadísticas de la Operación',
 			'loggingPanel.scoring' => 'Puntuación',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
+			'loggingPanel.statesWorked' => 'Estados',
+			'loggingPanel.provincesWorked' => 'Provincias',
 			'loggingPanel.duplicates' => 'Duplicados',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Mostrar imagen',
@@ -2072,12 +2080,12 @@ extension on TranslationsEs {
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador nunca se ha probado con una Kenwood: está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',

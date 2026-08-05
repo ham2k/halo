@@ -123,9 +123,16 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
   toggles; PoLo's is a picker over the activity extensions.
 
 ### Scoring
-- US-states and Canadian-provinces handlers still deferred
-  (`extensions/core/scoring/src/scoring.ts`); NAQP/ARRL-DX carry local
-  tables as a workaround. 🟡
+- US states and Canadian provinces are scored by the core scorer, which
+  carries the two lists inline (`extensions/core/scoring/src/scoring.ts`);
+  NAQP/ARRL-DX still carry their own local tables. What is not ported is
+  web-lofi's per-handler summary presentation — its struck-through grid of
+  worked/unworked states — only the rules and a count. 🟡
+- What NOTIFIES now matches PoLo on band/mode: its `DefaultScoringHandler`
+  emits `newBand`/`newMode` only for a station already in the log, and has no
+  operation-level rule. HaLo's operation-level newness is a tally with no
+  pill. `newDXCC` is HaLo's own (PoLo's default handler emits no DXCC notice
+  at all), and it stays silent for the operator's own entity.
 
 ## 3. Platform & polish
 

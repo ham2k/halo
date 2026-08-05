@@ -69,11 +69,14 @@ plain Combine/Replace banner with no narrative around it.
 
 The `scoring` hook ([extensions/hooks.md](extensions/hooks.md)) is
 implemented as a single coarse-batched extension (`extensions/core/scoring`)
-rather than web-lofi's per-ref-type bridge hooks, and covers three rules so
-far: duplicate-contact detection, DXCC entities worked (resolved locally via
-`@ham2k/lib-country-files`' `useBuiltinCountryFile`), and bands/modes
-worked. `USStatesScoringHandler` and `CanadianProvincesScoringHandler` are
-still deferred — no state/province reference data lib has been wired in yet.
+rather than web-lofi's per-ref-type bridge hooks. It covers duplicate-contact
+detection, DXCC entities worked (resolved locally via
+`@ham2k/lib-country-files`' `useBuiltinCountryFile`), bands and modes worked,
+and US states / Canadian provinces — the last carrying web-lofi's
+`USStatesScoringHandler` / `CanadianProvincesScoringHandler` lists inline,
+since no state/province reference data lib is wired in. What remains from
+web-lofi is its per-handler summary presentation (the struck-through
+worked/unworked grid), not the rules.
 
 ## Contest support: exchange controls and an archetype extension
 
