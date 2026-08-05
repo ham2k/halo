@@ -453,6 +453,62 @@ returning several is describing individual records. Declaring both methods is
 fine and expected — a hook that does is asked only for its combinations, so
 its plain fields aren't written twice. Implemented by: `pota`.
 
+## ✅ `adifImport` — per-QSO reference recovery on import
+
+The inverse of `adifFields`. The core's ADIF parser
+(`packages/halo_core/lib/src/adif/`) maps **universal ADIF only** and produces
+**no references at all** — `SIG`/`SIG_INFO`, `SOTA`, `IOTA`, `CONTEST_ID` and
+every `*_REF` field mean nothing to it. This hook is the entire ref vocabulary
+on import, not a refinement of a core guess. An import with no `adifImport`
+hook registered yields ref-less QSOs.
+
+```ts
+interface AdifImportHook {
+  refsForRecords(
+    args: { records: { fields: Record<string, string> }[] },
+    ctx: HookContext,
+  ): Promise<({ refs?: Ref[] } | null)[]>
+}
+```
+
+`fields` is the record's raw ADIF, names lowercased and values entity-decoded.
+
+**Batched, unlike every other per-QSO hook.** `adifFields` is called by the
+`adif` extension *inside the runtime*, so a call per QSO costs nothing there.
+This one is driven from Dart (`app/lib/services/adif_import_service.dart`), so
+each call is a bridge crossing — a ten-thousand-contact import is twenty
+crossings, not ten thousand. Batch size is 500.
+
+Return **one entry per record, positionally**; `null` for a record the hook has
+nothing to say about. Never filter the empties out: the core matches results
+back to records by index, and a shortened array would land one QSO's references
+on another. A reply whose length doesn't match the batch is discarded whole for
+that reason. Refs from different hooks accumulate (a park-to-park contact made
+during a summit activation legitimately carries both), deduped by `type`+`ref`.
+
+Returning an object rather than a bare `Ref[]` leaves room for the other things
+an importer may eventually owe a QSO — a contest serial out of `STX`/`SRX`,
+an exchange — as an additive change.
+
+Most reference programs write the same `SIG`/`SIG_INFO`/`MY_SIG`/`MY_SIG_INFO`
+pair plus their own comma-separated `*_REF` list, so the SDK's
+`activityAdifImport({sig, huntingType, activationType, refField, normalize})`
+builds the whole hook.
+
+It reads **both** sources and merges them, deduped on the normalized value.
+Neither subsumes the other: `*_REF` lists every reference but not every program
+writes it (SOTA's own exports carry `SOTA_REF` and no `SIG` at all), while
+other software writes the same reference only as `SIG`/`SIG_INFO`. The union is
+safe *because* it dedupes — taking `SIG_INFO` in preference to the list would
+import an n-fer as a one-fer, since `SIG_INFO` names only the primary
+reference; taking both cannot, because the primary is already in the list. The
+`SIG` value is still checked before `SIG_INFO` is claimed, or every program
+would import every other program's references.
+
+`referenceActivity()` returns a ready-built `adifImportHook` from the config it
+already has, so an activity using that factory opts in with one `registerHook`
+line. Implemented by: `pota`, `sota`, `wwff`.
+
 ## ✅ `command` — call-field text shortcuts
 
 Space in the logging panel's call field tries the typed text as a command

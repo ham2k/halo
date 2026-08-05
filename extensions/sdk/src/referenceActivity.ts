@@ -23,8 +23,10 @@
 
 import { distanceOnEarth } from "@ham2k/lib-geo-tools"
 
+import { activityAdifImport } from "./activityAdifImport.ts"
 import type {
   ActivitySuggestion,
+  AdifImportHook,
   HookContext,
   JSONValue,
   LookupRow,
@@ -123,6 +125,7 @@ export interface ReferenceActivityHooks {
   refHandler: Record<string, unknown>
   activityHook: Record<string, unknown>
   adifFieldsHook: Record<string, unknown>
+  adifImportHook: AdifImportHook
 }
 
 export function referenceActivity(config: ReferenceActivityConfig): ReferenceActivityHooks {
@@ -351,5 +354,25 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     }
   }
 
-  return { refHandler, activityHook, adifFieldsHook }
+  /// The inverse of `adifFieldsHook`, from the same config — every program
+  /// built on this factory writes SIG/SIG_INFO the same way, so it can read
+  /// them back the same way. Registering it is one line in the extension;
+  /// nothing happens until it does.
+  ///
+  /// `referenceRegex` doubles as the import filter: every reference program
+  /// writes SIG_INFO, so a record naming another program's reference reaches
+  /// this hook too, and only the pattern distinguishes "a reference of ours"
+  /// from "a reference".
+  const adifImportHook = activityAdifImport({
+    sig: program,
+    huntingType: config.huntingType,
+    activationType: config.activationType,
+    refField: config.adifRefField ? `${config.adifRefField.toLowerCase()}_ref` : undefined,
+    normalize: (ref) => {
+      const normalized = normalize(ref)
+      return config.referenceRegex.test(normalized) ? normalized : ''
+    },
+  })
+
+  return { refHandler, activityHook, adifFieldsHook, adifImportHook }
 }

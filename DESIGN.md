@@ -3,11 +3,11 @@
 *Ham2K Portable Logger, next generation: a Flutter core with TypeScript extensions.*
 
 Status: **living document.** Steps 1–2 of the plan in §10 are complete
-**except ADIF import, which does not exist** (the largest remaining parity
-gap — [docs/parity.md](docs/parity.md) §1); steps 3–5 are largely built;
-steps 6–7 remain. Open work is tracked in
+**except ADIF import, which has a parser but no user-facing path** (the
+largest remaining parity gap — [docs/parity.md](docs/parity.md) §1); steps
+3–5 are largely built; steps 6–7 remain. Open work is tracked in
 [docs/backlog.md](docs/backlog.md) and [CaBo](https://cabo.ham2k.com/halo).
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ---
 

@@ -43,7 +43,7 @@ const REFERENCE_REGEX = /^[A-Z0-9]+FF-[0-9]{4,5}$/i
 const SPOTS_URL = 'https://spots.wwff.co/static/spots.json'
 const SPOT_POST_URL = 'https://spots.wwff.co/api/spots/add'
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'wwff',
   label: 'WWFF',
   activationType: ACTIVATION_TYPE,
@@ -291,6 +291,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'wwff' })
     registerHook('activity', { hook: activityHook, key: 'wwff' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'wwff' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'wwff' })
     registerHook('spots', { hook: SpotsHook, key: 'wwff' })
     registerHook('dataFile', { hook: wwffDataFile, key: 'wwff-all-parks' })
     registerHook('scoring', {

@@ -5,6 +5,7 @@
 //   ref:pota / ref:potaActivation  — validation + park decoration via API
 //   activity                       — declarative logging + operation controls
 //   adifFields                     — SIG/POTA_REF contributions for exports
+//   adifImport                     — the same fields read back on import
 //   spots                          — POTA.app spots source
 //   dataFile                       — CSV database download and offline caching
 // Ref types follow app-polo's QSON convention: 'pota' for hunting,
@@ -13,7 +14,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -581,6 +582,21 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: 'pota' })
     registerHook('activity', { hook: ActivityHook, key: 'pota' })
     registerHook('adifFields', { hook: AdifFieldsHook, key: 'pota' })
+    // The inverse of the hook above: POTA_REF/MY_POTA_REF and the SIG pair
+    // back into hunted and activated refs. `normalizeReference` REPAIRS a
+    // dashless reference as well as rejecting a malformed one, so under
+    // `SIG: POTA` a bare `12345` imports as `1-2345`; the SIG check is what
+    // keeps that narrow.
+    registerHook('adifImport', {
+      hook: activityAdifImport({
+        sig: 'POTA',
+        huntingType: HUNTING_TYPE,
+        activationType: ACTIVATION_TYPE,
+        refField: 'pota_ref',
+        normalize: (ref) => normalizeReference(ref) ?? '',
+      }),
+      key: 'pota',
+    })
     registerHook('spots', { hook: SpotsHook, key: 'pota' })
     // Priority 100 — higher than QRZ (99) / HamDB (50), so the POTA park's
     // grid is resolved BEFORE a home-QTH lookup can set callInfo.grid; the

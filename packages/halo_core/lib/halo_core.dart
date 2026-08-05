@@ -3,6 +3,8 @@
 
 library;
 
+export 'src/adif/adif_parser.dart';
+export 'src/adif/adif_to_qson.dart';
 export 'src/data_file_parsing.dart';
 export 'src/db/database.dart';
 export 'src/dev_log.dart';

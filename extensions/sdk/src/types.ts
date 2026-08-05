@@ -559,6 +559,39 @@ export interface AdifFieldsHook {
   ): Promise<{ name: string; value: string }[]>
 }
 
+/// One imported ADIF record's contribution from one hook.
+///
+/// An object rather than a bare `Ref[]` so that the other things an importer
+/// might eventually owe a QSO — a contest serial out of `STX`/`SRX`, an
+/// exchange — are an additive change here rather than a breaking one.
+export interface AdifImportResult {
+  refs?: Ref[]
+}
+
+/// Turns imported ADIF fields back into QSON references (registered under
+/// 'adifImport'). The mirror of `adifFields`: an extension that knows how to
+/// WRITE its program's fields is the only thing that knows how to read them.
+///
+/// The core maps universal ADIF only and produces NO refs at all, so an
+/// import with no `adifImport` hook registered yields ref-less QSOs — this is
+/// the whole ref vocabulary on import, not a refinement of a core guess.
+///
+/// **Batched, unlike every other per-QSO hook.** `adifFields` runs inside the
+/// runtime where a per-QSO call is free; this one is driven from Dart, and a
+/// bridge crossing per QSO would make a ten-thousand-contact import
+/// unusable. One call carries a slice of the file.
+///
+/// Return one entry per record, positionally — `null` for a record this hook
+/// has nothing to say about. A returned array of the wrong length is
+/// discarded whole, since there is no safe way to guess which records its
+/// entries meant.
+export interface AdifImportHook {
+  refsForRecords(
+    args: { records: { fields: Record<string, string> }[] },
+    ctx: HookContext,
+  ): Promise<(AdifImportResult | null)[]>
+}
+
 export interface ExportRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
@@ -1321,6 +1354,7 @@ export type Hook =
   | RefHandlerHook
   | ActivityHook
   | AdifFieldsHook
+  | AdifImportHook
   | CommandHook
   | SyncTransportHook
   | AccountHook

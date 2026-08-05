@@ -5,6 +5,7 @@
 //   ref:sota / ref:sotaActivation  — validation + summit decoration via api2.sota.org.uk API
 //   activity                       — SOTA hunting + activation controls
 //   adifFields                     — SOTA_REF/MY_SOTA_REF contributions for exports
+//   adifImport                     — the same fields, plus SIG_INFO, read back
 //   spots                          — SOTAWatch spots source + authenticated spot posting
 //   account                        — SOTA SSO (OAuth2) login for SOTAwatch spotting
 //   dataFile                       — CSV database download and offline caching
@@ -13,7 +14,7 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -365,6 +366,23 @@ const AdifFieldsHook = {
     return fields
   },
 }
+
+/// The inverse of the hook above. SOTA's own exports carry only
+/// SOTA_REF/MY_SOTA_REF — no SIG at all — but plenty of other logging software
+/// writes the summit as SIG/SIG_INFO, so both spellings are read back.
+///
+/// `REFERENCE_REGEX` is what keeps another program's SIG_INFO from importing
+/// as a summit that doesn't exist: every reference program writes that field.
+const AdifImportHook = activityAdifImport({
+  sig: 'SOTA',
+  huntingType: HUNTING_TYPE,
+  activationType: ACTIVATION_TYPE,
+  refField: 'sota_ref',
+  normalize: (ref) => {
+    const normalized = ref.toUpperCase().trim()
+    return REFERENCE_REGEX.test(normalized) ? normalized : ''
+  },
+})
 
 // --- SOTA SSO (OAuth2 via Keycloak) -----------------------------------------
 //
@@ -810,6 +828,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: 'sota' })
     registerHook('activity', { hook: ActivityHook, key: 'sota' })
     registerHook('adifFields', { hook: AdifFieldsHook, key: 'sota' })
+    registerHook('adifImport', { hook: AdifImportHook, key: 'sota' })
     registerHook('spots', { hook: SpotsHook, key: 'sota' })
     registerHook('account', { hook: AccountHook, key: 'sota' })
     // Priority 100 — see POTA's identical comment: must run before QRZ (99)

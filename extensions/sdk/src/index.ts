@@ -33,6 +33,7 @@ export * from "./location"
 export * from "./scoring"
 export * from "./activityScoring"
 export * from "./activityExports"
+export * from "./activityAdifImport"
 export * from "./exportNames"
 export * from "./referenceActivity"
 

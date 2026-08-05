@@ -1,0 +1,1582 @@
+QRZLogbook download for ki2d
+    Date: Fri May 21 15:51:23 2021
+    Bookid: 298224
+    Records: 1024
+    <ADIF_VER:5>3.1.1
+    <PROGRAMID:10>QRZLogbook
+    <PROGRAMVERSION:3>2.0
+    <eoh>
+<app_qrzlog_logid:9>629022378
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:6>YV5KAJ
+<cnty:14>FL, Miami-Dade
+<cont:2>SA
+<country:9>Venezuela
+<cqz:1>9
+<distance:4>3549
+<dxcc:3>148
+<email:16>yv5kaj@yahoo.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK60NL
+<ituz:2>12
+<lat:11>N010 29.466
+<lon:11>W066 52.509
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:18>PASQUALE CASALE V.
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:56>LOTW - E.QSL - QRZ - ClubLog - HRDLOG - Direct - Bureau
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:17>CARACAS, 1050 DTF
+<rst_rcvd:3>-12
+<rst_sent:3>-06
+<station_callsign:4>KI2D
+<time_off:4>1046
+<time_on:4>1043
+<eor>
+
+<app_qrzlog_logid:9>629033095
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:5>VK2LX
+<cont:2>OC
+<country:9>Australia
+<cqz:2>30
+<distance:5>16163
+<dxcc:3>150
+<email:15>vk2lx@yahoo.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>QF44RS
+<ituz:2>59
+<lat:11>S035 14.574
+<lon:11>E149 26.803
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:16>Grant J Rawstorn
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:4>LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:15>Bungendore, NSW
+<rst_rcvd:3>-16
+<rst_sent:3>-13
+<station_callsign:4>KI2D
+<time_off:4>1049
+<time_on:4>1048
+<eor>
+
+<app_qrzlog_logid:9>629033345
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:4>KP3G
+<cnty:10>PR, Juncos
+<cont:2>NA
+<country:11>Puerto Rico
+<cqz:1>8
+<distance:4>2737
+<dxcc:3>202
+<email:21>chegui.kp3g@gmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK78AE
+<iota:6>NA-099
+<ituz:2>11
+<lat:11>N018 11.669
+<lon:11>W065 55.268
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>JOSE L TORRES
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:12>LOTW OR BURO
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:6>JUNCOS
+<rst_rcvd:3>-02
+<rst_sent:3>-10
+<station_callsign:4>KI2D
+<time_off:4>1052
+<time_on:4>1051
+<eor>
+
+<app_qrzlog_logid:9>629033592
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:4>P41E
+<cont:2>SA
+<country:5>Aruba
+<cqz:1>9
+<distance:4>3274
+<dxcc:2>91
+<email:24>etiennechat007@gmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK52AM
+<iota:6>SA-036
+<ituz:2>11
+<lat:11>N012 30.600
+<lon:11>W070 00.000
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:16>Etienne Chatlein
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:4>P41E
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:8>Sta.Cruz
+<rst_rcvd:3>-10
+<rst_sent:3>-17
+<station_callsign:4>KI2D
+<time_off:4>1054
+<time_on:4>1053
+<eor>
+
+<app_qrzlog_logid:9>629033754
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:5>FG4NO
+<cont:2>NA
+<country:10>Guadeloupe
+<cqz:1>8
+<distance:4>3098
+<dxcc:2>79
+<email:13>fg4no@free.fr
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK96JD
+<iota:6>NA-102
+<ituz:2>11
+<lat:11>N016 13.700
+<lon:11>W061 22.600
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>Nicolas Queru
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:9>LoTw only
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:10>Guadeloupe
+<rst_rcvd:3>-02
+<rst_sent:3>-17
+<station_callsign:4>KI2D
+<time_off:4>1056
+<time_on:4>1056
+<eor>
+
+<app_qrzlog_logid:9>629033963
+<app_qrzlog_qsldate:8>20210509
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:5>PJ4EL
+<cont:2>SA
+<country:7>Bonaire
+<cqz:1>9
+<distance:4>3341
+<dxcc:3>520
+<email:14>erwin@pj4el.nl
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK52UE
+<ituz:1>6
+<lat:11>N012 08.805
+<lon:11>W068 14.495
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>Erwin Lemmers
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>Y
+<qsl_sent:1>Y
+<qslrdate:8>20210522
+<qslsdate:8>20210525
+<qsl_via:13>ALL VIA M0URX
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:37>Kralendijk, Bonaire, Dutch Caribbean
+<rst_rcvd:3>-20
+<rst_sent:3>-21
+<station_callsign:4>KI2D
+<time_off:4>1100
+<time_on:4>1059
+<eor>
+
+<app_qrzlog_logid:9>629034050
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:6>KA9VRX
+<cnty:9>IN, Posey
+<cont:2>NA
+<country:13>United States
+<cqz:1>5
+<distance:4>1219
+<dxcc:3>291
+<email:16>ka9vrx@yahoo.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>EM67AV
+<ituz:1>8
+<lat:11>N037 54.420
+<lon:11>W087 57.409
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:16>Melvin D Ziegler
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:21>DIRECT, EQSL AND LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:12>Mount Vernon
+<rst_rcvd:3>-08
+<rst_sent:3>-08
+<state:2>IN
+<station_callsign:4>KI2D
+<time_off:4>1101
+<time_on:4>1100
+<eor>
+
+<app_qrzlog_logid:9>629034196
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:5>VK2WJ
+<cont:2>OC
+<country:9>Australia
+<cqz:2>30
+<distance:5>15893
+<dxcc:3>150
+<email:17>vk2wj@hotmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>QF56SS
+<iota:6>OC-001
+<ituz:2>59
+<lat:11>S033 13.800
+<lon:11>E151 32.400
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:11>John Harris
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:41>LOTW, EQSL.CC, Clublog,HRDLog - No Bureau
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:5>N.S.W
+<rst_rcvd:3>-14
+<rst_sent:3>-15
+<station_callsign:4>KI2D
+<time_off:4>1102
+<time_on:4>1102
+<eor>
+
+<app_qrzlog_logid:9>629034945
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:5>K4WPC
+<cnty:11>VA, Roanoke
+<cont:2>NA
+<country:13>United States
+<cqz:1>5
+<distance:3>676
+<dxcc:3>291
+<email:19>rodburn@verizon.net
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>EM97WI
+<ituz:1>8
+<lat:11>N037 22.031
+<lon:11>W080 06.076
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:17>Rodney W Burnette
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:13>DIRECT / LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:5>Salem
+<rst_rcvd:3>-23
+<rst_sent:3>-23
+<state:2>VA
+<station_callsign:4>KI2D
+<time_off:4>1111
+<time_on:4>1108
+<eor>
+
+<app_qrzlog_logid:9>629035873
+<app_qrzlog_status:1>N
+<band:3>40m
+<band_rx:3>40m
+<call:6>KD4YDD
+<cnty:12>GA, Gwinnett
+<cont:2>NA
+<country:13>United States
+<cqz:1>5
+<distance:4>1180
+<dxcc:3>291
+<email:18>KD4YDD@hotmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:4>EM84
+<ituz:1>8
+<lat:11>N034 03.761
+<lon:11>W083 55.455
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>SCOTT D BROWN
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:18>DIRECT, EQSL, LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:6>DACULA
+<rst_rcvd:3>-07
+<rst_sent:3>-04
+<state:2>GA
+<station_callsign:4>KI2D
+<time_off:4>1112
+<time_on:4>1111
+<eor>
+
+<app_qrzlog_logid:9>629036463
+<app_qrzlog_status:1>N
+<band:3>40m
+<band_rx:3>40m
+<call:5>9Y4DG
+<cont:2>SA
+<country:19>Trinidad and Tobago
+<cqz:1>9
+<distance:4>3714
+<dxcc:2>90
+<email:17>dgosine@gmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK90GF
+<ituz:2>11
+<lat:11>N010 22.786
+<lon:11>W061 18.223
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:10>DEV GOSINE
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:12>San Fernando
+<rst_rcvd:3>-12
+<rst_sent:3>-22
+<station_callsign:4>KI2D
+<time_off:4>1117
+<time_on:4>1116
+<eor>
+
+<app_qrzlog_logid:9>629036810
+<app_qrzlog_qsldate:8>20210518
+<app_qrzlog_status:1>C
+<band:3>40m
+<band_rx:3>40m
+<call:5>YV5NR
+<cont:2>SA
+<country:9>Venezuela
+<cqz:1>9
+<distance:4>3553
+<dxcc:3>148
+<email:22>yv5nr.nelson@gmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>FK60MK
+<ituz:2>12
+<lat:11>N010 26.137
+<lon:11>W066 58.437
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210518
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>Nelson Rivero
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:40>P.O Box 3636 ZP 1010-A Caracas Venezuela
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:7>Caracas
+<rst_rcvd:3>-14
+<rst_sent:3>-15
+<station_callsign:4>KI2D
+<time_off:4>1119
+<time_on:4>1118
+<eor>
+
+<app_qrzlog_logid:9>629037247
+<app_qrzlog_status:1>N
+<band:3>40m
+<band_rx:3>40m
+<call:5>3D2ZK
+<cont:2>OC
+<country:4>Fiji
+<distance:5>12786
+<dxcc:3>176
+<email:17>3d2zk88@gmail.com
+<freq:7>7.07582
+<freq_rx:7>7.07582
+<gridsquare:6>RH82RG
+<lat:11>S017 43.800
+<lon:11>E177 27.400
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:14>Joanna Korczak
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:25>requests via clublog only
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:13>Naisoso, Nadi
+<rst_rcvd:3>-16
+<rst_sent:3>-22
+<station_callsign:4>KI2D
+<time_off:4>1124
+<time_on:4>1123
+<eor>
+
+<app_qrzlog_logid:9>629037784
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>30m
+<band_rx:3>30m
+<call:5>VK3FS
+<cont:2>OC
+<country:9>Australia
+<cqz:2>30
+<distance:5>16652
+<dxcc:3>150
+<email:17>andrew@3fs.net.au
+<freq:7>10.1378
+<freq_rx:7>10.1378
+<gridsquare:6>QF21MR
+<ituz:2>59
+<lat:11>S038 16.300
+<lon:11>E145 02.400
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>Andrew McColm
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:12>eqsl.cc LoTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:12>Mount Martha
+<rst_rcvd:3>-19
+<rst_sent:3>-10
+<station_callsign:4>KI2D
+<time_off:4>1132
+<time_on:4>1131
+<eor>
+
+<app_qrzlog_logid:9>629038596
+<app_qrzlog_qsldate:8>20210521
+<app_qrzlog_status:1>C
+<band:3>30m
+<band_rx:3>30m
+<call:5>N4PGW
+<cnty:12>NC, Caldwell
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:3>879
+<dxcc:3>291
+<email:13>qrz@n4pgw.org
+<freq:7>10.1378
+<freq_rx:7>10.1378
+<gridsquare:6>EM95FW
+<ituz:1>8
+<lat:11>N035 55.912
+<lon:11>W081 30.510
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:23>Francis M McDaniel, III
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:39>DIRECT, email, eqsl, qrzcc.com, qrz.com
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:6>Lenoir
+<rst_rcvd:3>-06
+<rst_sent:3>-16
+<state:2>NC
+<station_callsign:4>KI2D
+<time_off:4>1142
+<time_on:4>1141
+<eor>
+
+<app_qrzlog_logid:9>629039075
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:5>AK5DA
+<cnty:9>TX, Smith
+<cont:2>NA
+<country:13>United States
+<distance:4>2109
+<dxcc:3>291
+<email:14>ak5da@arrl.net
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>EM22IH
+<lat:11>N032 19.461
+<lon:11>W095 18.531
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:13>DAVID R ALLEN
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:5>TYLER
+<rst_rcvd:3>+06
+<rst_sent:3>-11
+<state:2>TX
+<station_callsign:4>KI2D
+<time_off:4>1151
+<time_on:4>1150
+<eor>
+
+<app_qrzlog_logid:9>629039552
+<app_qrzlog_status:1>N
+<band:3>30m
+<band_rx:3>30m
+<call:5>CO8LY
+<cont:2>NA
+<country:4>Cuba
+<cqz:1>8
+<distance:4>2412
+<dxcc:2>70
+<email:15>co8ly@frcuba.cu
+<freq:7>10.1378
+<freq_rx:7>10.1378
+<gridsquare:6>FL20CA
+<iota:6>NA-015
+<ituz:2>11
+<lat:11>N020 01.200
+<lon:11>W075 47.600
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:23>Eduardo Somoano Cremati
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:20>EA7ADH (ONLY DIRECT)
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:16>Santiago de Cuba
+<rst_rcvd:3>-10
+<rst_sent:3>+02
+<station_callsign:4>KI2D
+<time_off:4>1155
+<time_on:4>1154
+<eor>
+
+<app_qrzlog_logid:9>629040373
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>30m
+<band_rx:3>30m
+<call:4>W0VC
+<cnty:12>MN, Hennepin
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:4>1558
+<dxcc:3>291
+<email:15>ed_vanc@msn.com
+<freq:7>10.1378
+<freq_rx:7>10.1378
+<gridsquare:6>EN34HU
+<ituz:1>7
+<lat:11>N044 50.046
+<lon:11>W093 20.453
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:23>Edward F Van Cleave, Jr
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:21>LOTW, SASE, W0 Bureau
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:11>Bloomington
+<rst_rcvd:3>+00
+<rst_sent:3>-03
+<state:2>MN
+<station_callsign:4>KI2D
+<time_off:4>1203
+<time_on:4>1202
+<eor>
+
+<app_qrzlog_logid:9>629041922
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>30m
+<band_rx:3>30m
+<call:5>K7CTV
+<cnty:8>AZ, Pima
+<cont:2>NA
+<country:13>United States
+<cqz:1>3
+<distance:4>3356
+<dxcc:3>291
+<freq:7>10.1378
+<freq_rx:7>10.1378
+<gridsquare:6>DM42NL
+<ituz:1>6
+<lat:11>N032 28.825
+<lon:11>W110 54.519
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:14>Igor Dorovskoy
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:6>Tucson
+<rst_rcvd:3>-02
+<rst_sent:3>-04
+<state:2>AZ
+<station_callsign:4>KI2D
+<time_off:4>1213
+<time_on:4>1212
+<eor>
+
+<app_qrzlog_logid:9>629046713
+<app_qrzlog_qsldate:8>20210513
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:5>9Y4DG
+<cont:2>SA
+<country:19>Trinidad and Tobago
+<cqz:1>9
+<distance:4>3714
+<dxcc:2>90
+<email:17>dgosine@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>FK90GF
+<ituz:2>11
+<lat:11>N010 22.786
+<lon:11>W061 18.223
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:10>DEV GOSINE
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:12>San Fernando
+<rst_rcvd:3>-16
+<rst_sent:3>-11
+<station_callsign:4>KI2D
+<time_off:4>1239
+<time_on:4>1238
+<eor>
+
+<app_qrzlog_logid:9>629046839
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:5>VO1IV
+<cont:2>NA
+<country:6>Canada
+<cqz:1>5
+<distance:4>1833
+<dxcc:1>1
+<email:24>aaronabbott709@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>GN37ON
+<iota:6>NA-027
+<ituz:1>9
+<lat:11>N047 33.700
+<lon:11>W052 47.600
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210519
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:14>Aaron k Abbott
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:8>St Johns
+<rst_rcvd:3>-19
+<rst_sent:3>-05
+<station_callsign:4>KI2D
+<time_off:4>1241
+<time_on:4>1240
+<eor>
+
+<app_qrzlog_logid:9>629047003
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:6>KO4DUL
+<cnty:10>TN, Gibson
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:4>1396
+<dxcc:3>291
+<email:19>ckarnes53@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>EM56MD
+<ituz:1>2
+<lat:11>N036 02.967
+<lon:11>W088 58.874
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:15>Thomas C Karnes
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:4>Dyer
+<rst_rcvd:3>-10
+<rst_sent:3>-09
+<state:2>TN
+<station_callsign:4>KI2D
+<time_off:4>1244
+<time_on:4>1242
+<eor>
+
+<app_qrzlog_logid:9>629049876
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:5>K4ILA
+<cnty:11>CO, El Paso
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:4>2567
+<dxcc:3>291
+<email:19>ars.k4ila@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>DM79OC
+<ituz:1>2
+<lat:11>N039 05.929
+<lon:11>W104 49.418
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:23>FREDERICK N PESSARO, JR
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:8>MONUMENT
+<rst_rcvd:3>-22
+<rst_sent:3>-07
+<state:2>CO
+<station_callsign:4>KI2D
+<time_off:4>1256
+<time_on:4>1255
+<eor>
+
+<app_qrzlog_logid:9>629050540
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:6>TG9AWS
+<cont:2>NA
+<country:9>Guatemala
+<cqz:1>7
+<distance:4>3383
+<dxcc:2>76
+<email:16>TG9AWS@ymail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>EK44SN
+<ituz:2>11
+<lat:11>N014 34.061
+<lon:11>W090 28.091
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:16>STEPHEN WHEELOCK
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:10>W3HNK LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:13>Puerta Parada
+<rst_rcvd:3>-17
+<rst_sent:3>-10
+<station_callsign:4>KI2D
+<time_off:4>1259
+<time_on:4>1258
+<eor>
+
+<app_qrzlog_logid:9>629051886
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:5>N0DOW
+<cnty:13>MN, Crow Wing
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:4>1650
+<dxcc:3>291
+<email:16>n0dow@icloud.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>EN26VH
+<ituz:1>7
+<lat:11>N046 19.854
+<lon:11>W094 12.714
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:15>Richard W Shell
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:8>Brainerd
+<rst_rcvd:3>-18
+<rst_sent:3>-07
+<state:2>MN
+<station_callsign:4>KI2D
+<time_off:4>1315
+<time_on:4>1315
+<eor>
+
+<app_qrzlog_logid:9>629053699
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:5>N9AMI
+<cnty:11>FL, Broward
+<cont:2>NA
+<country:13>United States
+<cqz:1>3
+<distance:4>3638
+<dxcc:3>291
+<email:22>solutions884@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:4>DM19
+<ituz:1>7
+<lat:11>N039 28.072
+<lon:11>W117 59.123
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:15>JOHN C MC GRATH
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:13>eqsl qrz hrd
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:6>Wonder
+<rst_rcvd:3>-08
+<rst_sent:3>-14
+<state:2>NV
+<station_callsign:4>KI2D
+<time_off:4>1330
+<time_on:4>1329
+<eor>
+
+<app_qrzlog_logid:9>629053988
+<app_qrzlog_status:1>N
+<band:3>20m
+<band_rx:3>20m
+<call:5>K9MDW
+<cnty:8>IL, Will
+<cont:2>NA
+<country:13>United States
+<distance:4>1103
+<dxcc:3>291
+<email:20>Pilotcop@comcast.net
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:4>EN61
+<lat:11>N041 31.994
+<lon:11>W087 49.536
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:17>ALFRED SZOLDATITS
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:11>TINLEY PARK
+<rst_rcvd:3>-06
+<rst_sent:3>+00
+<state:2>IL
+<station_callsign:4>KI2D
+<time_off:4>1332
+<time_on:4>1331
+<eor>
+
+<app_qrzlog_logid:9>629054151
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:6>KG5WTU
+<cnty:8>AR, Pope
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:4>1767
+<dxcc:3>291
+<email:18>kg5wtudf@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>EM35JG
+<ituz:1>7
+<lat:11>N035 16.016
+<lon:11>W093 10.730
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:17>Dennis W Fleniken
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:12>Russellville
+<rst_rcvd:3>+09
+<rst_sent:3>+00
+<state:2>AR
+<station_callsign:4>KI2D
+<time_off:4>1334
+<time_on:4>1333
+<eor>
+
+<app_qrzlog_logid:9>629054285
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:4>K5EK
+<cnty:13>NC, Brunswick
+<cont:2>NA
+<country:13>United States
+<cqz:1>5
+<distance:3>918
+<dxcc:3>291
+<email:13>k5ek@arrl.net
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>FM03WW
+<ituz:1>8
+<lat:11>N033 55.554
+<lon:11>W078 06.827
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:16>EDWARD J KUEBERT
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:24>DIRECT, BUREAU, AND LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:9>Southport
+<rst_rcvd:3>+03
+<rst_sent:3>+01
+<state:2>NC
+<station_callsign:4>KI2D
+<time_off:4>1336
+<time_on:4>1335
+<eor>
+
+<app_qrzlog_logid:9>629054808
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:6>KG4BLR
+<cnty:13>AL, Covington
+<cont:2>NA
+<country:13>United States
+<cqz:1>4
+<distance:4>1557
+<dxcc:3>291
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>EM61UG
+<ituz:1>8
+<lat:11>N031 17.106
+<lon:11>W086 15.494
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:15>Glenn R Brazier
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:3>Opp
+<rst_rcvd:3>-21
+<rst_sent:3>-19
+<state:2>AL
+<station_callsign:4>KI2D
+<time_off:4>1345
+<time_on:4>1342
+<eor>
+
+<app_qrzlog_logid:9>629054945
+<app_qrzlog_qsldate:8>20210510
+<app_qrzlog_status:1>C
+<band:3>20m
+<band_rx:3>20m
+<call:4>KP2B
+<cnty:15>VI, Saint Croix
+<cont:2>NA
+<country:17>US Virgin Islands
+<cqz:1>8
+<distance:4>2818
+<dxcc:3>285
+<email:20>monvaz2008@gmail.com
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>FK77PS
+<iota:6>NA-106
+<ituz:2>11
+<lat:11>N017 46.078
+<lon:11>W064 44.307
+<lotw_qsl_rcvd:1>Y
+<lotw_qsl_sent:1>Y
+<lotw_qslrdate:8>20210510
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:26>ST Croix VI Contest Groups
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qsl_via:32>VIA DIRECT ( EB7DX ) OR VIA LOTW
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:13>Christiansted
+<rst_rcvd:3>-05
+<rst_sent:3>-08
+<station_callsign:4>KI2D
+<time_off:4>1346
+<time_on:4>1345
+<eor>
+
+<app_qrzlog_logid:9>629055964
+<app_qrzlog_status:1>N
+<band:3>20m
+<band_rx:3>20m
+<call:6>WA2MCR
+<cnty:15>NY, Westchester
+<cont:2>NA
+<country:13>United States
+<distance:2>70
+<dxcc:3>291
+<freq:7>14.0758
+<freq_rx:7>14.0758
+<gridsquare:6>FN31BG
+<lat:11>N041 17.484
+<lon:11>W073 53.186
+<lotw_qsl_rcvd:1>N
+<lotw_qsl_sent:1>Y
+<lotw_qslsdate:8>20210510
+<mode:3>FT8
+<my_city:9>Woodridge
+<my_cnty:12>NY, Sullivan
+<my_country:13>United States
+<my_cq_zone:1>5
+<my_gridsquare:6>FN21rq
+<my_itu_zone:2>11
+<my_lat:11>N041 41.250
+<my_lon:11>W074 32.520
+<my_name:17>Sebastian Delmont
+<my_state:2>NY
+<name:22>Joseph R Calabrese, Jr
+<qrzcom_qso_upload_date:8>20210504
+<qrzcom_qso_upload_status:1>Y
+<qsl_rcvd:1>N
+<qsl_sent:1>N
+<qso_date:8>20210504
+<qso_date_off:8>20210504
+<qth:15>Cortlandt Manor
+<rst_rcvd:3>-14
+<rst_sent:3>-08
+<state:2>NY
+<station_callsign:4>KI2D
+<time_off:4>1350
+<time_on:4>1349
+<eor>

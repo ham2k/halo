@@ -17,6 +17,7 @@
     "account",
     "activity",
     "adifFields",
+    "adifImport",
     "dataFile",
     "export",
     "lookup",
