@@ -17,6 +17,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'halo_dialog.dart';
+import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'platform_chrome.dart';
@@ -573,7 +574,14 @@ class _TopModalPaneScaffold extends StatelessWidget {
                       padding: EdgeInsets.only(left: leftInset ?? 0),
                       child: GestureDetector(
                         onTap: () {},
-                        child: ConstrainedBox(
+                        child: LayoutDensityScope.forHeight(
+                          // A pane-sized card is bounded well below the window
+                          // (theme.dart's haloDialogConstraints), so a form
+                          // inside one has far less height than the window
+                          // suggests. Tightens only — never roomier than what
+                          // the window itself allows.
+                          height: sheetMaxHeight,
+                          child: ConstrainedBox(
                           constraints: BoxConstraints(
                             maxWidth: sheetWidth,
                             maxHeight: sheetMaxHeight,
@@ -637,6 +645,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                 ],
                               ),
                           ),
+                        ),
                         ),
                       ),
                     ),

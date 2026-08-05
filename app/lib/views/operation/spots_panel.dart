@@ -826,9 +826,10 @@ class _SpotsSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      // As tall as a QSO row (qso_list's compact row/day-header height), with
-      // the label vertically centered.
-      constraints: const BoxConstraints(minHeight: _sectionHeaderHeight),
+      // As tall as a QSO list day header, read from the shared metric rather
+      // than copied: the two read as one list, and a private constant here
+      // went stale the moment either side moved.
+      constraints: BoxConstraints(minHeight: LayoutDensity.metricsOf(context).sectionHeaderHeight),
       alignment: Alignment.centerLeft,
       color: theme.colorScheme.surfaceContainerHighest,
       foregroundDecoration: BoxDecoration(
@@ -839,7 +840,11 @@ class _SpotsSectionHeader extends StatelessWidget {
       // Background stays edge-to-edge; the label insets by the split's
       // grab-strip clearance and the real device inset, like the spot rows
       // below it.
-      padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
+      padding: PaneSafeArea.symmetricOf(
+        context,
+        horizontal: Space.lg,
+        vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+      ),
       child: Text(
         label,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -851,11 +856,6 @@ class _SpotsSectionHeader extends StatelessWidget {
     );
   }
 }
-
-/// The section header's minimum height, matching a QSO row (qso_list.dart's
-/// compact row/day-header height of 28) so the group separators read as a
-/// tidy band break, not a full spot-row-tall block.
-const double _sectionHeaderHeight = 28;
 
 /// The narrowest left-column width that fits every currently-visible spot's
 /// frequency and mode without clipping — measured with the same text styles
@@ -1132,7 +1132,7 @@ class _SpotsFilterPill extends StatelessWidget {
               children: [
                 // Extra breathing room above and below the pill row.
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                  padding: EdgeInsets.symmetric(vertical: LayoutDensity.metricsOf(context).spotTilePaddingV),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

@@ -231,7 +231,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text(target.theirCall), findsOneWidget, reason: 'jumped to ${target.theirCall}');
         final row = tester.getRect(find.text(target.theirCall));
-        expect(row.top, greaterThanOrEqualTo(viewport.top + DayHeaderRow.pinnedHeight));
+        expect(row.top, greaterThanOrEqualTo(viewport.top + LayoutMetrics.normal.sectionHeaderHeight));
         expect(row.bottom, lessThanOrEqualTo(viewport.bottom));
       }
     });
@@ -272,7 +272,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text(target.theirCall), findsOneWidget, reason: 'jumped to ${target.theirCall}');
         final row = tester.getRect(find.text(target.theirCall));
-        expect(row.top, greaterThanOrEqualTo(viewport.top + DayHeaderRow.pinnedHeight));
+        expect(row.top, greaterThanOrEqualTo(viewport.top + LayoutMetrics.normal.sectionHeaderHeight));
         expect(row.bottom, lessThanOrEqualTo(viewport.bottom));
       }
     });
@@ -315,7 +315,7 @@ void main() {
         final row = tester.getRect(find.text(target.theirCall));
         expect(
           row.top,
-          greaterThanOrEqualTo(viewport.top + DayHeaderRow.pinnedHeight),
+          greaterThanOrEqualTo(viewport.top + LayoutMetrics.normal.sectionHeaderHeight),
           reason: 'step $step put the row behind a pinned header',
         );
         expect(row.bottom, lessThanOrEqualTo(viewport.bottom));
@@ -1938,5 +1938,70 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
+  });
+
+  group('a declared height must equal what paints, at every density', () {
+    // The contract the whole list rests on. `_estimatedTopOf` walks the log
+    // adding `qsoRowHeight` per row and `sectionHeaderHeight` per day
+    // boundary WITHOUT measuring anything — an off-screen row is either not
+    // built or carries a stale paint transform, so measuring is not available
+    // to it. And `_DayHeaderDelegate` declares its extent to Flutter, which
+    // asserts "layoutExtent exceeds paintExtent" the instant the header
+    // paints taller than it claimed.
+    //
+    // So a density that changes the row padding without changing the declared
+    // height (or vice versa) breaks scrolling silently in one direction and
+    // loudly in the other. This measures what actually paints and holds it to
+    // the metric.
+    for (final density in LayoutDensity.values) {
+      testWidgets('$density: a QSO row and a day header paint their declared heights', (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final list = <Qso>[];
+        for (var i = 1; i <= 3; i++) {
+          list.add(await qsos.add(operation.uuid, {
+            'their': {'call': 'K${i}HAM'},
+            'band': '20m',
+            'mode': 'SSB',
+            'startAtMillis': 1000 + i * 60000,
+          }));
+        }
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LayoutDensityScope(
+              density: density,
+              child: Scaffold(
+                body: SizedBox(height: 400, child: QsoList(qsos: list, onSelect: (_) {})),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // No pinned-sliver assertion fired.
+        expect(tester.takeException(), isNull);
+
+        final metrics = density.metrics;
+        final header = tester.getSize(find.byType(DayHeaderRow).first);
+        expect(
+          header.height,
+          metrics.sectionHeaderHeight,
+          reason: 'the pinned header paints what _DayHeaderDelegate declared',
+        );
+
+        // A row's own painted height, divider included, is what the scroll
+        // arithmetic adds up. Measured between two adjacent rows' tops rather
+        // than from one row's box, since the divider sits between them.
+        final rows = find.byType(InkWell);
+        expect(rows, findsAtLeast(2));
+        final firstTop = tester.getTopLeft(rows.at(0)).dy;
+        final secondTop = tester.getTopLeft(rows.at(1)).dy;
+        expect(
+          secondTop - firstTop,
+          metrics.qsoRowHeight,
+          reason: 'row pitch must equal QsoList.rowHeightOf, which _estimatedTopOf and _pageRows both trust',
+        );
+      });
+    }
   });
 }

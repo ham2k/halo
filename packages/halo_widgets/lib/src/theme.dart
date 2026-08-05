@@ -28,6 +28,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 
@@ -396,6 +397,7 @@ InputDecoration poloFieldDecoration(
   final theme = Theme.of(context);
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
   final double scale = MediaQuery.textScalerOf(context).scale(1.0);
+  final metrics = LayoutDensity.metricsOf(context);
   return InputDecoration(
     // Exactly one of these two: InputDecoration asserts on both being set.
     // The style comes from the decorator's own AnimatedDefaultTextStyle either
@@ -413,7 +415,22 @@ InputDecoration poloFieldDecoration(
     isDense: true,
     floatingLabelBehavior: FloatingLabelBehavior.always,
     floatingLabelStyle: TextStyle(fontSize: 14 * scale, color: color),
-    contentPadding: EdgeInsets.fromLTRB(4 * scale, 6 * scale, 4 * scale, 8 * scale),
+    // Vertical padding is density-resolved; horizontal is not. This pair sets
+    // the field's height, and through the fields row's IntrinsicHeight it also
+    // sets the submit button's diameter and the information area's minimum
+    // height — the single largest term in the logging panel's own height. The
+    // horizontal side belongs to the width-concession ladder instead
+    // (docs/design/logging-fields.md), which must not gain a second, competing
+    // squeeze. The `* scale` is the OS accessibility text scaler, not the app
+    // font scale (UiScale already handles that one): padding around text the
+    // OS enlarged legitimately grows with it, so density scales the base and
+    // the OS scales the result.
+    contentPadding: EdgeInsets.fromLTRB(
+      4 * scale,
+      metrics.fieldPaddingTop * scale,
+      4 * scale,
+      metrics.fieldPaddingBottom * scale,
+    ),
     // A focused field's underline reads as black regardless of theme/light
     // vs dark, rather than the default focus-color underline — a plain,
     // high-contrast "you are here" cue that doesn't compete with the

@@ -170,6 +170,21 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _metrics = LayoutDensity.metricsOf(context);
+  }
+
+  /// The resolved dimensions, refreshed by [didChangeDependencies].
+  ///
+  /// Cached for the same reason `QsoList` caches its own: [_pageRows] runs
+  /// from key handlers, outside build, where depending on an inherited widget
+  /// is not allowed. The two caches resolve from contexts one widget apart,
+  /// which is what keeps a page jump stepping by the height the rows really
+  /// have — see [_pageRows].
+  late LayoutMetrics _metrics;
+
+  @override
   void initState() {
     super.initState();
     widget.services.settings.addListener(_onSettingsChanged);
@@ -315,7 +330,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
   int get _pageRows {
     final box = _listFocus.context?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return 10;
-    final rows = (box.size.height / QsoList.rowHeight).floor() - 1;
+    // The cached metrics, not a fresh lookup: this runs from a key handler,
+    // and `LayoutDensity.of` depends on an inherited widget, which outside
+    // build registers a permanent dependency and asserts once the element is
+    // deactivated. Reading the same rung QsoList paints with is what keeps a
+    // page jump stepping by the height the rows really have.
+    final rows = (box.size.height / _metrics.qsoRowHeight).floor() - 1;
     return rows < 1 ? 1 : rows;
   }
 

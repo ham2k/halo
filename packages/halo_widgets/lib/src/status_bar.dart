@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'density.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'layout.dart';
@@ -75,9 +76,6 @@ class StatusBarNoticeData {
 /// numbers row and the keyboard — see the `maxHeight` parameters.
 const _windowFraction = 0.4;
 
-const _collapsedHeight = 28.0;
-const _expandedRowHeight = 36.0;
-
 /// The band `NoticeStack` paints around the card. Vertical chrome the stack
 /// costs on top of the card — so when the whole stack is held to a budget
 /// smaller than this, the band is what has to give (see `_bandFor`).
@@ -97,9 +95,9 @@ const _progressTitleFlex = 1;
 class StatusBarFooter extends StatefulWidget {
   /// The footer's height with its list collapsed — what it takes whenever
   /// there is anything to show at all. Public for the same reason as
-  /// [NumberKeys.height]: it is fixed chrome, so whatever divides up the
+  /// [NumberKeys.heightOf]: it is fixed chrome, so whatever divides up the
   /// bottom of the window has to spend it before splitting the remainder.
-  static const double collapsedHeight = _collapsedHeight;
+  static double collapsedHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).statusBarCollapsed;
 
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
@@ -215,7 +213,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       // color, and its height is what places that boundary (the bar itself is
       // pinned to the window's bottom edge, which is always on-grid). See
       // PixelGrid — 28 × 0.85 × 2.0 is 47.6 device px, a hairline seam.
-      height: PixelGrid.of(context).snap(_collapsedHeight),
+      height: PixelGrid.of(context).snap(StatusBarFooter.collapsedHeightOf(context)),
       child: last == null
           ? const SizedBox.shrink()
           : AnimatedSwitcher(
@@ -299,12 +297,13 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     // footer taller than it allowed — the alternative is an expanded list with
     // nothing legible in it.
     final maxHeight = widget.maxExpandedHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
-    final contentHeight = _expandedRowHeight * list.length;
-    final cap = maxHeight < _expandedRowHeight ? _expandedRowHeight : maxHeight;
+    final rowHeight = LayoutDensity.metricsOf(context).statusBarRow;
+    final contentHeight = rowHeight * list.length;
+    final cap = maxHeight < rowHeight ? rowHeight : maxHeight;
     return SizedBox(
       // Snapped for the same reason as the collapsed bar: this height is what
       // positions the expanded panel's top edge against the content above it.
-      height: PixelGrid.of(context).snap(contentHeight.clamp(_expandedRowHeight, cap).toDouble()),
+      height: PixelGrid.of(context).snap(contentHeight.clamp(rowHeight, cap).toDouble()),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: Space.xs),
         itemCount: list.length,
@@ -425,7 +424,7 @@ class _StatusBarItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SizedBox(
-      height: _expandedRowHeight,
+      height: LayoutDensity.metricsOf(context).statusBarRow,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.lg),
         // Same ideal-width, centered treatment as the collapsed row.

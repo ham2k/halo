@@ -16,6 +16,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -42,6 +43,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _developerModeKey = 'developerMode';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
+  static const _layoutDensityKey = 'layoutDensity';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
   static const _showRSTFieldsKey = 'showRSTFields';
@@ -836,6 +838,17 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   }
 
   Future<void> setDistanceUnits(DistanceUnits units) => setSettingValue(generalGroup, _distanceUnitsKey, units.name);
+
+  /// The operator's Layout Density choice. [DensityPreference.auto] by
+  /// default, which is what makes the height ladder the normal behaviour and
+  /// an explicit pick the exception.
+  DensityPreference get densityPreference {
+    final value = settingValue(generalGroup, _layoutDensityKey);
+    return DensityPreference.values.firstWhere((e) => e.name == value, orElse: () => DensityPreference.auto);
+  }
+
+  Future<void> setDensityPreference(DensityPreference preference) =>
+      setSettingValue(generalGroup, _layoutDensityKey, preference.name);
 }
 
 /// One callsign profile from [SettingsService.activeProfile] — an id plus a

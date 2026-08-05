@@ -17,6 +17,7 @@ import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:halo_core/halo_core.dart';
 
 import 'activity_controls.dart';
+import 'density.dart';
 import 'flags.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
@@ -225,7 +226,7 @@ class QsoList extends StatefulWidget {
   /// is this tall at every scale. Day headers and annotation rows are taller,
   /// which makes this an approximation for a mixed list — fine for a jump
   /// nobody counts the rows of, and never used for layout.
-  static const double rowHeight = 29;
+  static double rowHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).qsoRowHeight;
 
   final List<Qso> qsos;
   final String? noQsosLabel;
@@ -345,6 +346,21 @@ class _QsoListState extends State<QsoList> {
   String? _correctedRevealFor;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _metrics = LayoutDensity.metricsOf(context);
+  }
+
+  /// The resolved dimensions, refreshed by [didChangeDependencies].
+  ///
+  /// Cached rather than read where it is used because [_estimatedTopOf] and
+  /// [_scrollTo] run from key handlers and post-frame callbacks — outside
+  /// build, where depending on an inherited widget is not allowed. The cache
+  /// is also what keeps the row height the scroll math uses identical to the
+  /// one the rows actually paint with, which is the whole contract.
+  late LayoutMetrics _metrics;
+
+  @override
   void initState() {
     super.initState();
     _lastQsoCount = widget.qsos.length;
@@ -393,7 +409,7 @@ class _QsoListState extends State<QsoList> {
     if (index < 0) return;
 
     final top = _estimatedTopOf(index);
-    final scroll = _scrollTo(top, top + QsoList.rowHeight);
+    final scroll = _scrollTo(top, top + _metrics.qsoRowHeight);
     if (scroll != null && _correctedRevealFor != selectedUuid) {
       // Landing is not arriving: annotation rows are taller than the nominal
       // height, so a long log can drift. One measured pass straightens it out
@@ -418,10 +434,10 @@ class _QsoListState extends State<QsoList> {
       final millis = widget.qsos[i].startAtMillis ?? 0;
       final day = millis - (millis % _dayInMillis);
       if (day != lastDay) {
-        offset += DayHeaderRow.pinnedHeight;
+        offset += _metrics.sectionHeaderHeight;
         lastDay = day;
       }
-      if (i < index) offset += QsoList.rowHeight;
+      if (i < index) offset += _metrics.qsoRowHeight;
     }
     return offset;
   }
@@ -436,8 +452,8 @@ class _QsoListState extends State<QsoList> {
   Future<void>? _scrollTo(double top, double bottom) {
     final position = _scrollController.position;
     final double target;
-    if (top - DayHeaderRow.pinnedHeight < position.pixels) {
-      target = top - DayHeaderRow.pinnedHeight;
+    if (top - _metrics.sectionHeaderHeight < position.pixels) {
+      target = top - _metrics.sectionHeaderHeight;
     } else if (bottom > position.pixels + position.viewportDimension) {
       target = bottom - position.viewportDimension;
     } else {
@@ -861,7 +877,11 @@ class _QsoListState extends State<QsoList> {
             onTap: () => onSelect(qso),
             mouseCursor: SystemMouseCursors.click,
             child: Padding(
-              padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
+              padding: PaneSafeArea.symmetricOf(
+                context,
+                horizontal: Space.lg,
+                vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+              ),
               child: Row(
                 children: [
                   if (plan.showNumbers) ...[
@@ -1100,6 +1120,7 @@ class _QsoListState extends State<QsoList> {
                           SliverPersistentHeader(
                             pinned: true,
                             delegate: _DayHeaderDelegate(
+                              extent: _metrics.sectionHeaderHeight,
                               child: DayHeaderRow(
                                 dayMillis: dayKeys[g],
                                 count: dayGroups[g]
@@ -1145,13 +1166,18 @@ class _QsoListState extends State<QsoList> {
 class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
-  const _DayHeaderDelegate({required this.child});
+  /// Resolved by the caller, not read from context here: `build` below is not
+  /// the only place the extent is needed — `minExtent`/`maxExtent` are asked
+  /// for outside it, with no context to read.
+  final double extent;
+
+  const _DayHeaderDelegate({required this.child, required this.extent});
 
   @override
-  double get minExtent => DayHeaderRow.pinnedHeight;
+  double get minExtent => extent;
 
   @override
-  double get maxExtent => DayHeaderRow.pinnedHeight;
+  double get maxExtent => extent;
 
   @override
   Widget build(
@@ -1159,17 +1185,17 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    // Forces the child to exactly [DayHeaderRow.pinnedHeight] regardless of its own intrinsic
+    // Forces the child to exactly [extent] regardless of its own intrinsic
     // size — a pinned sliver header's declared extent must match what it
     // actually paints, or Flutter throws a "layoutExtent exceeds
     // paintExtent" assertion the instant [child]'s content (font size,
     // padding, border width) doesn't add up to precisely that.
-    return SizedBox(height: DayHeaderRow.pinnedHeight, child: child);
+    return SizedBox(height: extent, child: child);
   }
 
   @override
   bool shouldRebuild(covariant _DayHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child;
+      oldDelegate.child != child || oldDelegate.extent != extent;
 }
 
 /// One UTC-day divider in [QsoList]: the day's date, its real-contact count,
@@ -1183,7 +1209,7 @@ class DayHeaderRow extends StatelessWidget {
   ///
   /// Public so tests can assert that a row revealed by
   /// `_QsoListState._revealSelected` clears the header pinned above it.
-  static const double pinnedHeight = 28;
+  static double pinnedHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).sectionHeaderHeight;
 
   final int dayMillis;
   final int count;
@@ -1301,7 +1327,11 @@ class DayHeaderRow extends StatelessWidget {
       child: Padding(
         // Same vertical padding as a QSO row (see `buildRow`'s own
         // `Padding` above) so the header comes out exactly row-height.
-        padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
+        padding: PaneSafeArea.symmetricOf(
+          context,
+          horizontal: Space.lg,
+          vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+        ),
         child: Row(
           children: [
             // The header lives inside the same minimum width the QSO rows do,

@@ -14,7 +14,8 @@ a side-by-side split, or a dialog-like surface.**
 ## The one idea
 
 **There is one width vocabulary for the whole app: four shirt sizes and one
-ideal pane width.** No view invents its own numbers.
+ideal pane width.** No view invents its own numbers. Height has its own,
+separate vocabulary — five density rungs, below.
 
 | Size | Logical width | Typical device |
 |---|---|---|
@@ -142,6 +143,108 @@ The split clamps the preference to what fits **at layout time only** — a
 temporarily small window never overwrites the stored value. The persistence
 callback fires on drag end, not on every drag frame.
 
+## Layout density: the height vocabulary
+
+`ShirtSize` classifies a window's **width** to choose a pane arrangement.
+`LayoutDensity` ([`density.dart`](../../packages/halo_widgets/lib/src/density.dart))
+classifies its **height** to choose how much room the app's fixed furniture
+spends. They share the idiom and nothing else — the rungs don't correspond,
+and neither derives from the other.
+
+Five rungs, and `normal` is what the app looked like before densities existed:
+
+| Rung | Auto picks it below | QSO row | Chrome row | Field padding |
+|---|---|---|---|---|
+| `densest` | 450 | 23 | 42 | 3 / 4 |
+| `dense` | 650 | 25 | 44 | 4 / 5 |
+| **`normal`** | 1000 | **29** | **48** | **6 / 8** |
+| `sparse` | 1400 | 35 | 54 | 9 / 11 |
+| `sparsest` | — | 41 | 60 | 12 / 14 |
+
+Heights are read from `LayoutMetrics`, which holds the **named dimensions a
+height budget is actually made of** — row heights, section headers, chip strip
+gaps, status bar rows, field padding. The `Space` rungs
+([user-interface.md § Spacing](user-interface.md#spacing)) are compile-time
+constants and deliberately do **not** vary: 92% of their uses sit inside
+`const` expressions, and they account for about an eighth of the logging
+panel's height. The named dimensions are the rest.
+
+The ladder reads the **UiScale-divided** height ([ui-scaling.md](ui-scaling.md)
+rule 4), so a larger font scale genuinely fits less and reaches a tighter
+layout sooner — the same bargain `ShirtSize` makes on width.
+
+### The operator's setting
+
+`DensityPreference` is `Auto / Densest / Dense / Normal / Sparse / Sparsest`,
+`auto` by default, stored by `SettingsService.densityPreference` and offered in
+Settings → User Interface. `⌘⇧-` / `⌘⇧=` step it and `⌘⇧0` returns to Auto —
+Font Scale's own keys, one modifier up, because the two answer the same
+question. Stepping starts from the density **in effect**, not the stored value,
+so the first press off Auto always moves exactly one visible rung.
+
+An explicit pick is honoured, with one exception: **on a window short enough
+to sit below the `normal` band, the layout has to fit and that wins.** A denser
+pick is always honoured, since it can only help. The band thresholds decide
+what *Auto* picks; they are not a gate on an explicit one — conflating those
+two once made every roomier rung a silent no-op below 1000pt.
+
+### Rules
+
+**1. A declared height must equal what the widget paints.** The QSO list's
+pinned day header trips Flutter's `layoutExtent exceeds paintExtent` assertion
+on the difference, and `_estimatedTopOf` walks the log summing row heights
+**without measuring** — a row outside the viewport isn't built, or carries a
+stale paint transform. A row that paints taller than it declares scrolls to
+the wrong place with nothing to catch it. `qso_list_test` measures the painted
+pitch at every rung.
+
+**2. A measurement that mirrors a gap names the metric, never the number.**
+Same rule the `Space` rungs carry, and it bites harder here because these
+values move at runtime.
+
+**3. Values stay whole logical pixels, and every metric increases strictly
+across all five rungs.** A tie makes one rung indistinguishable on screen —
+the shortcut moves and nothing visibly happens. Both are enforced in
+`density_test.dart`, as is the requirement that every metric has a reader:
+a metric nothing honours reads as wired when it is not.
+
+**4. Chrome rows share ONE metric and never shrink below a finger.** The app
+header, every tab strip, the wide split's pane title bar and a dock group's
+header stack and abut, so they move together or read as a mistake. Read them
+through `LayoutDensity.chromeHeightOf`, which holds the value to
+`kMinInteractiveDimension` on the mobile **platforms** — a landscape phone
+lands in `densest`, which is exactly when the tab strip is the primary
+navigation and a thumb still has to hit it.
+
+The floor is gated on `isMobilePlatform` (iOS or Android, not web), not on
+whether the pointer is actually coarse: a touch device running the web build
+is deliberately outside it, because widening the gate to every coarse pointer
+also catches touchscreen laptops, which are overwhelmingly trackpad-driven.
+
+A control INSIDE a chrome row gets that whole height only if nothing insets
+it. A `BoxDecoration` border does — which is why a tab's selection indicator
+is a `foregroundDecoration`, painted over an already-laid-out child. Sizing a
+strip to a tap target means nothing if its own button renders shorter than the
+strip.
+
+**5. A pane may tighten the density, never loosen it.** The root scope reads
+the window; a vertical dock split and a Modal Pane are genuinely shorter than
+the window and publish their own via `LayoutDensityScope.forHeight`. A pane
+cannot buy back room the window does not have.
+
+**6. Anything that is a colour boundary still goes through `PixelGrid` — and
+the density-resolved value is what gets snapped.** Snapping a base constant
+and substituting a shorter one downstream puts the hairline seam straight back
+at every non-1.0 font scale.
+
+### What density deliberately does not touch
+
+Text sizes (HALO-76 names font-size changes a last resort, and nothing has
+needed one), the `Space` rungs, the logging row's **horizontal** concession
+ladder ([logging-fields.md](logging-fields.md) — it must not gain a second
+competing squeeze), and the numbers row's key height, which is already at
+Apple's 44pt tap-target minimum.
+
 ## Dialogs and Modal Panes
 
 Two distinct surfaces; pick deliberately:
@@ -207,6 +310,8 @@ not add it.
 | Piece | File |
 |---|---|
 | Shirt sizes, ideal pane width, animation constants | `packages/halo_widgets/lib/src/layout.dart` |
+| Layout density, its metrics and the operator's preference | `packages/halo_widgets/lib/src/density.dart` |
+| The root density scope, and the header's snap | `app/lib/main.dart` (`_LayoutDensityFromWindow`) |
 | Resizable split with draggable divider | `packages/halo_widgets/lib/src/resizable_split_view.dart` |
 | Modal Panes (`showModalPane`) | `packages/halo_widgets/lib/src/modal_pane.dart` |
 | Persisted pane widths (`layoutDimension`) | `app/lib/services/settings_service.dart` |

@@ -23,6 +23,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'pane_divider.dart';
@@ -161,14 +162,15 @@ class DockLayoutViewState extends State<DockLayoutView> {
   // Dock splits use the shared solid divider (pane_divider.dart) — same
   // header-colored bar as ResizableSplitView's default style.
   static const double _dividerExtent = paneDividerWidth;
-  // kMinInteractiveDimension (48), not an arbitrary compact height: a
-  // shorter header squeezes any IconButton placed in it (e.g. a module's
-  // tabActions trailing widget) below Material's own minimum tap target,
-  // silently shrinking it — matches kTextTabBarHeight, which the narrow
-  // tab bar and the fixed split's title bar both already use for the same
-  // reason.
-  static const double _headerHeight = kMinInteractiveDimension;
   static const double _minPaneExtent = 120.0;
+
+  /// Publishes a pane's own density when it is genuinely shorter than what it
+  /// inherited — a vertical split halves the height without the window
+  /// changing at all, and a pane spending the window's room it does not have
+  /// is the case `LayoutDensityScope.forHeight` exists for. It only ever
+  /// tightens: a tall pane cannot buy back room the window lacks.
+  static Widget _densityForPane({required double? height, required Widget child}) =>
+      height == null ? child : LayoutDensityScope.forHeight(height: height, child: child);
 
   /// Same trick as ResizableSplitView._platformViewHitWashAlpha: a painted
   /// (near-invisible) surface is what routes pointer events over a native
@@ -412,12 +414,19 @@ class DockLayoutViewState extends State<DockLayoutView> {
             SizedBox(
               width: horizontal ? flat[2 * i] : null,
               height: horizontal ? null : flat[2 * i],
-              child: PaneSafeArea(
-                left: horizontal ? (isFirst ? ambientLeft : 0) : ambientLeft,
-                top: horizontal ? ambientTop : (isFirst ? ambientTop : 0),
-                right: horizontal ? (isLast ? ambientRight : 0) : ambientRight,
-                bottom: horizontal ? ambientBottom : (isLast ? ambientBottom : 0),
-                child: _buildNode(split.children[i]),
+              child: _densityForPane(
+                // Only a VERTICAL split shortens its children — a horizontal
+                // one divides width, and the panes keep the full height they
+                // inherited. Re-deriving there would resolve the same rung
+                // and only cost a rebuild.
+                height: horizontal ? null : flat[2 * i],
+                child: PaneSafeArea(
+                  left: horizontal ? (isFirst ? ambientLeft : 0) : ambientLeft,
+                  top: horizontal ? ambientTop : (isFirst ? ambientTop : 0),
+                  right: horizontal ? (isLast ? ambientRight : 0) : ambientRight,
+                  bottom: horizontal ? ambientBottom : (isLast ? ambientBottom : 0),
+                  child: _buildNode(split.children[i]),
+                ),
               ),
             ),
           );
@@ -438,10 +447,16 @@ class DockLayoutViewState extends State<DockLayoutView> {
         Material(
           color: headerColor,
           child: SizedBox(
-            // Snapped: the header's color meets the pane body at this edge,
-            // and _headerHeight × the grid is fractional at some scale/DPR
-            // combinations (40 × 0.85 × 2.75), which seams the two.
-            height: PixelGrid.of(context).snap(_headerHeight),
+            // The same chrome height as every other tab strip — this IS the
+            // dock's tab strip, and it sits beside and below the ones in the
+            // fixed layouts. `chromeHeightOf` holds it to Material's minimum
+            // tap target on touch, which a shorter header would otherwise
+            // squeeze a module's `tabActions` IconButton below, silently.
+            //
+            // Snapped because the header's color meets the pane body at this
+            // edge, and the height × the grid is fractional at some scale/DPR
+            // combinations (48 × 0.85 × 2.75), which seams the two.
+            height: PixelGrid.of(context).snap(LayoutDensity.chromeHeightOf(context)),
             // A Builder, not this method's own `context`: `_buildGroup` is a
             // plain Dart call from `_buildSplit`/`_buildNode`, not a fresh
             // Element — reusing `State.context` here would always resolve

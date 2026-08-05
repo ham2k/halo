@@ -20,6 +20,12 @@ class TabChrome extends StatelessWidget {
   final String semanticLabel;
   final VoidCallback onTap;
   final Widget Function(BuildContext context, Color labelColor) builder;
+  /// The selection indicator's thickness, shared by every tab strip in the
+  /// app — the two hand-rolled ones through [TabChrome] and the wide split's
+  /// stock `TabBar` through its `indicatorWeight`. One value, because the
+  /// strips abut and are all one [LayoutDensity] chrome height.
+  static const double defaultIndicatorWidth = 3;
+
   final double indicatorWidth;
   final EdgeInsetsGeometry padding;
 
@@ -29,7 +35,7 @@ class TabChrome extends StatelessWidget {
     required this.semanticLabel,
     required this.onTap,
     required this.builder,
-    this.indicatorWidth = 3,
+    this.indicatorWidth = defaultIndicatorWidth,
     this.padding = const EdgeInsets.symmetric(horizontal: Space.lg),
   });
 
@@ -40,7 +46,7 @@ class TabChrome extends StatelessWidget {
     required bool selected,
     required Color labelColor,
     required TabBarThemeData tabTheme,
-    double indicatorWidth = 3,
+    double indicatorWidth = defaultIndicatorWidth,
   }) {
     return BoxDecoration(
       border: Border(
@@ -66,7 +72,14 @@ class TabChrome extends StatelessWidget {
         overlayColor: tabTheme.overlayColor,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          decoration: indicatorDecoration(
+          // foregroundDecoration, not decoration: a BoxDecoration BORDER
+          // insets the child, so on `decoration` the indicator took its width
+          // off whatever the tab holds — and a tab's trailing IconButton then
+          // renders that much under the strip's own height, below the tap
+          // target the strip was sized to guarantee. Painted in front, over
+          // an already-laid-out child, it costs no height at all. Same idiom
+          // and same reason as `qso_list.dart`'s day-header rule.
+          foregroundDecoration: indicatorDecoration(
             selected: selected,
             labelColor: labelColor,
             tabTheme: tabTheme,

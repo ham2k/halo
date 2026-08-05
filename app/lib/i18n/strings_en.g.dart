@@ -820,6 +820,18 @@ class Translations$settings$en {
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 
+	/// en: 'Layout Density'
+	String get layoutDensity => 'Layout Density';
+
+	late final Translations$settings$layoutDensityOpts$en layoutDensityOpts = Translations$settings$layoutDensityOpts$en.internal(_root);
+	late final Translations$settings$layoutDensityDescription$en layoutDensityDescription = Translations$settings$layoutDensityDescription$en.internal(_root);
+
+	/// en: 'the window is too short, using ${effective}'
+	String layoutDensityClamped({required Object effective}) => 'the window is too short, using ${effective}';
+
+	/// en: 'as far as it goes'
+	String get layoutDensityAtLimit => 'as far as it goes';
+
 	/// en: 'Distance Units'
 	String get distanceUnits => 'Distance Units';
 
@@ -1701,6 +1713,60 @@ class Translations$settings$fontScaleOpts$en {
 
 	/// en: 'Largest++'
 	String get largestPlusPlus => 'Largest++';
+}
+
+// Path: settings.layoutDensityOpts
+class Translations$settings$layoutDensityOpts$en {
+	Translations$settings$layoutDensityOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: 'Densest'
+	String get densest => 'Densest';
+
+	/// en: 'Dense'
+	String get dense => 'Dense';
+
+	/// en: 'Normal'
+	String get normal => 'Normal';
+
+	/// en: 'Sparse'
+	String get sparse => 'Sparse';
+
+	/// en: 'Sparsest'
+	String get sparsest => 'Sparsest';
+}
+
+// Path: settings.layoutDensityDescription
+class Translations$settings$layoutDensityDescription$en {
+	Translations$settings$layoutDensityDescription$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Chosen from the height of the window'
+	String get auto => 'Chosen from the height of the window';
+
+	/// en: 'As much on screen as possible'
+	String get densest => 'As much on screen as possible';
+
+	/// en: 'Fits more on screen'
+	String get dense => 'Fits more on screen';
+
+	/// en: 'The standard layout'
+	String get normal => 'The standard layout';
+
+	/// en: 'More room around everything'
+	String get sparse => 'More room around everything';
+
+	/// en: 'The most room around everything'
+	String get sparsest => 'The most room around everything';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -3336,6 +3402,21 @@ extension on Translations {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
+			'settings.layoutDensity' => 'Layout Density',
+			'settings.layoutDensityOpts.auto' => 'Auto',
+			'settings.layoutDensityOpts.densest' => 'Densest',
+			'settings.layoutDensityOpts.dense' => 'Dense',
+			'settings.layoutDensityOpts.normal' => 'Normal',
+			'settings.layoutDensityOpts.sparse' => 'Sparse',
+			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
+			'settings.layoutDensityDescription.auto' => 'Chosen from the height of the window',
+			'settings.layoutDensityDescription.densest' => 'As much on screen as possible',
+			'settings.layoutDensityDescription.dense' => 'Fits more on screen',
+			'settings.layoutDensityDescription.normal' => 'The standard layout',
+			'settings.layoutDensityDescription.sparse' => 'More room around everything',
+			'settings.layoutDensityDescription.sparsest' => 'The most room around everything',
+			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
+			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
@@ -3511,6 +3592,8 @@ extension on Translations {
 			'settings.station.civAddress' => 'Radio CI-V address',
 			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
@@ -3526,8 +3609,6 @@ extension on Translations {
 			'settings.station.transports.network' => 'Network',
 			'settings.station.transports.usbSerial' => 'USB serial',
 			'settings.station.transports.wifi' => 'WiFi',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',

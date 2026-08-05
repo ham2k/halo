@@ -943,6 +943,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// Spots/Map are ever asked to give up any of their own share).
   static const double _kNarrowTabMinPadding = 4;
 
+  /// The selection indicator's thickness, taken from the hand-rolled strips
+  /// so all three agree. Named here because the wide `TabBar` reports its
+  /// height as tab + indicator, so the tabs have to be sized against it for
+  /// the strip to land on the chrome height.
+  static const double _tabIndicatorWeight = TabChrome.defaultIndicatorWidth;
+
   /// The narrow layout's tab strip. Hand-built rather than a stock [TabBar]
   /// (which always splits its width equally across tabs): the QSOs tab
   /// carries both its label and the settings button
@@ -970,11 +976,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     final qsosLabelWidth = textWidth(context, qsosLabel, (labelStyle ?? const TextStyle()).copyWith(fontWeight: FontWeight.bold));
     // The button's own width, reserved on both sides of the centered label
     // (see the doc comment above).
-    final qsosContentWidth = qsosLabelWidth + kMinInteractiveDimension * 2;
+    final qsosContentWidth = qsosLabelWidth + LayoutDensity.chromeHeightOf(context) * 2;
 
     return PreferredSize(
       key: const Key('narrowTabBar'),
-      preferredSize: const Size.fromHeight(kTextTabBarHeight),
+      preferredSize: Size.fromHeight(LayoutDensity.chromeHeightOf(context)),
       child: AnimatedBuilder(
         animation: _tabController!,
         builder: (context, child) {
@@ -1009,7 +1015,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                       // bar's full height regardless, so every indicator
                       // lands flush at the same bottom edge, same as a
                       // stock TabBar.
-                      height: kTextTabBarHeight,
+                      height: LayoutDensity.chromeHeightOf(context),
                       child: _narrowTab(
                         0,
                         qsosLabel,
@@ -1020,13 +1026,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     ),
                     Expanded(
                       child: SizedBox(
-                        height: kTextTabBarHeight,
+                        height: LayoutDensity.chromeHeightOf(context),
                         child: _narrowTab(1, context.t.operation.tabs.spots, labelStyle),
                       ),
                     ),
                     Expanded(
                       child: SizedBox(
-                        height: kTextTabBarHeight,
+                        height: LayoutDensity.chromeHeightOf(context),
                         child: _narrowTab(2, context.t.operation.tabs.map, labelStyle),
                       ),
                     ),
@@ -1051,7 +1057,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     return TabChrome(
       selected: selected,
       semanticLabel: label,
-      indicatorWidth: 4,
       padding: padding,
       onTap: () => _tabController!.animateTo(index),
       builder: (context, labelColor) {
@@ -1294,11 +1299,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // Wide: Info, Spots, Map — logging has its own pane in the split.
         // Narrow: QSOs, Spots, Map — logging is what the view is for, and
         // Info is one tap away via the callsign area.
+        // `TabBar` has no height of its own: it reports its tallest Tab plus
+        // `indicatorWeight`. So the height goes on the Tabs, less the
+        // indicator, and the strip lands on exactly the chrome height — which
+        // is what makes it line up with the title bar across the divider.
+        // Left to Flutter's defaults this bar was 50 against the title bar's
+        // 48, and the comment at the split claimed they matched.
+        final tabHeight = LayoutDensity.chromeHeightOf(context) - _tabIndicatorWeight;
         final List<Widget> tabs = [
-          if (!isTwoPane) Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
-          if (isTwoPane) Tab(text: context.t.operation.tabs.info),
-          Tab(text: context.t.operation.tabs.spots),
-          Tab(text: context.t.operation.tabs.map),
+          if (!isTwoPane)
+            Tab(height: tabHeight, text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
+          if (isTwoPane) Tab(height: tabHeight, text: context.t.operation.tabs.info),
+          Tab(height: tabHeight, text: context.t.operation.tabs.spots),
+          Tab(height: tabHeight, text: context.t.operation.tabs.map),
         ];
         final List<Widget> tabChildren = [
           // The logging panel is kept alive behind the other tabs, so tabbing
@@ -1325,7 +1338,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         final tabBar = TabBar(
           controller: _tabController!,
           indicatorSize: TabBarIndicatorSize.tab,
-          indicatorWeight: 4,
+          indicatorWeight: _tabIndicatorWeight,
           tabs: tabs,
         );
         final tabView = TabBarView(
@@ -1482,15 +1495,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     // module header and the narrow view's QSOs tab: the
                     // logging pane has no title of its own otherwise, and
                     // that's where its settings button lives.
-                    // `kTextTabBarHeight` matches the secondary's TabBar so
-                    // both sides of the split line up at the divider.
+                    // One chrome height for both sides of the split, so the
+                    // title bar and the secondary's TabBar line up at the
+                    // divider — see `tabHeight` above for why the TabBar has
+                    // to be told, rather than left to its own default.
                     primary: Column(
                       children: [
                         Material(
                           color:
                               Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
                           child: SizedBox(
-                            height: kTextTabBarHeight,
+                            height: LayoutDensity.chromeHeightOf(context),
                             // A Builder, not this method's own `context`: that
                             // context is an ANCESTOR of the `PaneSafeArea.root`
                             // wrapping the whole body below, so `leftOf` would

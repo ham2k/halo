@@ -415,6 +415,8 @@ void main() {
         keyboardInset: 200 / 1.4,
         hasNumbersRow: true,
         hasStatusItems: true,
+        numbersRowHeight: NumberKeys.heightFor(LayoutMetrics.normal),
+        footerHeight: LayoutMetrics.normal.statusBarCollapsed,
       );
       // Epsilon covers PixelGrid snapping, which rounds the rendered height
       // to the device pixel grid — the budget deals in raw logical pixels and
@@ -446,13 +448,33 @@ void main() {
             for (final hasItems in [true, false]) {
               final window = device / scale;
               final inset = keyboard / scale;
+              // The density axis. Both the numbers row and the footer are
+              // density-resolved now, so the invariants have to hold at every
+              // density the operator can actually BE in here — which is what
+              // resolving each preference against this window gives, rather
+              // than all five rungs independently.
+              //
+              // That distinction is load-bearing, not pedantry: every
+              // geometry in this matrix is short enough to sit below the
+              // `normal` band, so the ceiling in `DensityPreference.resolve`
+              // clamps every pick to what the height allows. Iterating the
+              // rungs directly instead asks whether `sparsest`'s 96pt of
+              // fixed chrome fits a 197pt window — it does not, and it is
+              // also unreachable. The ceiling is what keeps the budget
+              // solvable at these sizes.
+              for (final preference in DensityPreference.values) {
+              final density = preference.resolve(window);
+              final numbersRowHeight = NumberKeys.heightFor(density.metrics);
+              final footerHeight = density.metrics.statusBarCollapsed;
               final budget = BottomChromeBudget.of(
                 windowHeight: window,
                 keyboardInset: inset,
                 hasNumbersRow: hasRow,
                 hasStatusItems: hasItems,
+                numbersRowHeight: numbersRowHeight,
+                footerHeight: footerHeight,
               );
-              final where = '$device/$keyboard @$scale row=$hasRow items=$hasItems';
+              final where = '$device/$keyboard @$scale row=$hasRow items=$hasItems pref=$preference d=$density';
 
               expect(budget.noticeMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
               expect(budget.footerMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
@@ -460,7 +482,7 @@ void main() {
               // Both caps are TOTALS for their widget, so everything at its
               // limit at once is the worst case the Column can be asked to
               // lay out. It has to fit what is left of the window.
-              final worstCase = budget.noticeMax + budget.footerMax + (hasRow ? NumberKeys.height : 0.0) + inset;
+              final worstCase = budget.noticeMax + budget.footerMax + (hasRow ? numbersRowHeight : 0.0) + inset;
               expect(
                 worstCase,
                 lessThanOrEqualTo(window + 0.01),
@@ -477,6 +499,8 @@ void main() {
                   keyboardInset: inset,
                   hasNumbersRow: hasRow,
                   hasStatusItems: false,
+                  numbersRowHeight: numbersRowHeight,
+                  footerHeight: footerHeight,
                 );
                 if (budget.noticeMax > 0) {
                   expect(
@@ -485,6 +509,7 @@ void main() {
                     reason: 'an absent footer must free up room at $where',
                   );
                 }
+              }
               }
             }
           }

@@ -411,6 +411,25 @@
       "largestPlus": "Más grande+",
       "largestPlusPlus": "Más grande++"
     },
+    "layoutDensity": "Densidad del Diseño",
+    "layoutDensityOpts": {
+      "auto": "Automática",
+      "densest": "Muy compacta",
+      "dense": "Compacta",
+      "normal": "Normal",
+      "sparse": "Amplia",
+      "sparsest": "Muy amplia"
+    },
+    "layoutDensityDescription": {
+      "auto": "Según la altura de la ventana",
+      "densest": "Muestra todo lo que sea posible",
+      "dense": "Muestra más en pantalla",
+      "normal": "El diseño estándar",
+      "sparse": "Más espacio alrededor de todo",
+      "sparsest": "El máximo espacio alrededor de todo"
+    },
+    "layoutDensityClamped": "la ventana es muy baja, usando ${effective}",
+    "layoutDensityAtLimit": "es lo máximo",
     "distanceUnits": "Unidades de distancia",
     "distanceUnitsOpts": {
       "kilometers": "Kilómetros",

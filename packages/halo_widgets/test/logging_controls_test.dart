@@ -6491,17 +6491,46 @@ void main() {
     expect(find.widgetWithText(MenuItemButton, '630m'), findsNothing);
   });
 
-  testWidgets('Radio dropdowns render at the same height as the sibling text fields', (tester) async {
-    await tester.pumpWidget(host());
-    await openControl(tester, MdiIcons.radio);
+  // At EVERY density, not just the default. The dropdowns cannot use
+  // poloFieldDecoration — DropdownMenu takes an inputDecorationTheme, not an
+  // InputDecoration — so they restate its padding, and a const there froze
+  // them at one height while the field beside them moved with the ladder.
+  // Running this at `normal` alone is exactly what missed that.
+  for (final density in LayoutDensity.values) {
+    testWidgets('$density: Radio dropdowns render at the same height as the sibling text fields', (tester) async {
+      await tester.pumpWidget(LayoutDensityScope(density: density, child: host()));
+      await openControl(tester, MdiIcons.radio);
 
-    // The trailing arrow's default 48px min tap target used to make the
-    // dropdowns a few pixels taller than the Frequency field beside them.
-    final freqHeight = tester.getSize(find.widgetWithText(TextField, 'Frequency')).height;
-    final dropdowns = find.byType(DropdownMenu<String>);
-    expect(dropdowns, findsNWidgets(2));
-    expect(tester.getSize(dropdowns.at(0)).height, freqHeight);
-    expect(tester.getSize(dropdowns.at(1)).height, freqHeight);
+      // `suffixIconConstraints` in the decoration is what holds these level:
+      // without it the trailing arrow's 48px minimum tap target makes the
+      // dropdown taller than the Frequency field beside it.
+      final freqHeight = tester.getSize(find.widgetWithText(TextField, 'Frequency')).height;
+      final dropdowns = find.byType(DropdownMenu<String>);
+      expect(dropdowns, findsNWidgets(2));
+      expect(tester.getSize(dropdowns.at(0)).height, freqHeight);
+      expect(tester.getSize(dropdowns.at(1)).height, freqHeight);
+    });
+  }
+
+  testWidgets('the radio row actually changes height across the density ladder', (tester) async {
+    // The sibling check above passes trivially if NOTHING moves. This is the
+    // other half: the row has to be genuinely shorter when dense.
+    double heightAt(WidgetTester t) => t.getSize(find.widgetWithText(TextField, 'Frequency')).height;
+
+    Future<double> measure(LayoutDensity density) async {
+      // A full unmount between the two: re-pumping a different scope over the
+      // same tree keeps the panel's State, and with it the closed radio
+      // control, so the second measurement would find no Frequency field.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(LayoutDensityScope(density: density, child: host()));
+      await openControl(tester, MdiIcons.radio);
+      return heightAt(tester);
+    }
+
+    final densest = await measure(LayoutDensity.densest);
+    final sparsest = await measure(LayoutDensity.sparsest);
+
+    expect(sparsest - densest, greaterThanOrEqualTo(15.0));
   });
 
   testWidgets('typing in the Band dropdown filters the menu; focus-away selects the first match', (tester) async {

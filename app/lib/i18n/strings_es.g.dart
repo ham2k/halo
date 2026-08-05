@@ -424,6 +424,11 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
+	@override String get layoutDensity => 'Densidad del Diseño';
+	@override late final _Translations$settings$layoutDensityOpts$es layoutDensityOpts = _Translations$settings$layoutDensityOpts$es._(_root);
+	@override late final _Translations$settings$layoutDensityDescription$es layoutDensityDescription = _Translations$settings$layoutDensityDescription$es._(_root);
+	@override String layoutDensityClamped({required Object effective}) => 'la ventana es muy baja, usando ${effective}';
+	@override String get layoutDensityAtLimit => 'es lo máximo';
 	@override String get distanceUnits => 'Unidades de distancia';
 	@override late final _Translations$settings$distanceUnitsOpts$es distanceUnitsOpts = _Translations$settings$distanceUnitsOpts$es._(_root);
 	@override String get userInterface => 'Interfaz de Usuario';
@@ -878,6 +883,36 @@ class _Translations$settings$fontScaleOpts$es extends Translations$settings$font
 	@override String get largest => 'Más grande';
 	@override String get largestPlus => 'Más grande+';
 	@override String get largestPlusPlus => 'Más grande++';
+}
+
+// Path: settings.layoutDensityOpts
+class _Translations$settings$layoutDensityOpts$es extends Translations$settings$layoutDensityOpts$en {
+	_Translations$settings$layoutDensityOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Automática';
+	@override String get densest => 'Muy compacta';
+	@override String get dense => 'Compacta';
+	@override String get normal => 'Normal';
+	@override String get sparse => 'Amplia';
+	@override String get sparsest => 'Muy amplia';
+}
+
+// Path: settings.layoutDensityDescription
+class _Translations$settings$layoutDensityDescription$es extends Translations$settings$layoutDensityDescription$en {
+	_Translations$settings$layoutDensityDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Según la altura de la ventana';
+	@override String get densest => 'Muestra todo lo que sea posible';
+	@override String get dense => 'Muestra más en pantalla';
+	@override String get normal => 'El diseño estándar';
+	@override String get sparse => 'Más espacio alrededor de todo';
+	@override String get sparsest => 'El máximo espacio alrededor de todo';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -1917,6 +1952,21 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
+			'settings.layoutDensity' => 'Densidad del Diseño',
+			'settings.layoutDensityOpts.auto' => 'Automática',
+			'settings.layoutDensityOpts.densest' => 'Muy compacta',
+			'settings.layoutDensityOpts.dense' => 'Compacta',
+			'settings.layoutDensityOpts.normal' => 'Normal',
+			'settings.layoutDensityOpts.sparse' => 'Amplia',
+			'settings.layoutDensityOpts.sparsest' => 'Muy amplia',
+			'settings.layoutDensityDescription.auto' => 'Según la altura de la ventana',
+			'settings.layoutDensityDescription.densest' => 'Muestra todo lo que sea posible',
+			'settings.layoutDensityDescription.dense' => 'Muestra más en pantalla',
+			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
+			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
+			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
+			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
+			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',
@@ -2092,6 +2142,8 @@ extension on TranslationsEs {
 			'settings.station.civAddress' => 'Dirección CI-V de la radio',
 			'settings.station.civAddressDescription' => 'Hexadecimal, como aparece en el menú CI-V de la radio. El IC-705 viene con A4.',
 			'settings.station.civAddressInvalid' => 'Una dirección CI-V son dos dígitos hexadecimales, de 01 a FF',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioUser' => 'Usuario de la radio',
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
@@ -2107,8 +2159,6 @@ extension on TranslationsEs {
 			'settings.station.transports.network' => 'Red',
 			'settings.station.transports.usbSerial' => 'USB serie',
 			'settings.station.transports.wifi' => 'WiFi',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',

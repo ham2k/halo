@@ -268,7 +268,10 @@ void main() {
 
       expect(settings.fontScale, FontScale.smaller);
 
-      // Decrease with Cmd + _ (Shift+minus reports LogicalKeyboardKey.underscore)
+      // Cmd + _ with no shift actually held. Layouts that put `_` on an
+      // unshifted key still zoom; the SHIFTED forms belong to Layout Density
+      // now (density_shortcuts_test.dart), and this asserts the modifier gate
+      // is what separates them rather than the logical key alone.
       await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
       HardwareKeyboard.instance.handleKeyEvent(
         const KeyDownEvent(
@@ -281,6 +284,7 @@ void main() {
       await tester.pump();
 
       expect(settings.fontScale, FontScale.smallest);
+      expect(settings.densityPreference, DensityPreference.auto, reason: 'no shift held, so density is untouched');
 
       // Without the modifier nothing changes.
       await tester.sendKeyEvent(LogicalKeyboardKey.equal);

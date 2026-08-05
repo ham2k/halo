@@ -38,6 +38,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'density.dart';
 import 'flags.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
@@ -3959,6 +3960,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         icon: MdiIcons.radio,
         summary: _radioSummary,
         expandedBuilder: (context) {
+          // Resolved once for both dropdowns below. `dropdownTextScale` is the
+          // OS accessibility scaler, not the app font scale (UiScale already
+          // handles that one) — the same treatment poloFieldDecoration gives
+          // its own padding, so the two stay the same height under OS text
+          // scaling as well as under density.
+          final dropdownMetrics = LayoutDensity.metricsOf(context);
+          final dropdownTextScale = MediaQuery.textScalerOf(context).scale(1.0);
           final band = _band;
           _bandMenuEntries = _memoEntries(_bandMenuKey, _bandMenuEntries,
               _filteredOptions(_bandDropdownOptions(), _bandFilter), (k) => _bandMenuKey = k);
@@ -4008,7 +4016,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     fontSize: 14,
                     color: theme.colorScheme.onTertiaryContainer,
                   ),
-                  contentPadding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.xs, Space.md),
+                  // The same density-resolved pair poloFieldDecoration gives
+                  // the sibling Frequency field. A `DropdownMenu` takes an
+                  // inputDecorationTheme rather than an InputDecoration, so it
+                  // cannot share that helper and has to restate the values —
+                  // held together by the "same height as its siblings" test.
+                  // A const here froze both dropdowns at one height while the
+                  // field beside them ran 46 to 65 across the ladder.
+                  contentPadding: EdgeInsets.fromLTRB(
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingTop * dropdownTextScale,
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
+                  ),
                   // Without this the trailing arrow's 48px min tap target
                   // makes the field taller (56px) than the sibling
                   // poloFieldDecoration TextFields (53px); the whole field
@@ -4090,7 +4110,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     fontSize: 14,
                     color: theme.colorScheme.onTertiaryContainer,
                   ),
-                  contentPadding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.xs, Space.md),
+                  // The same density-resolved pair poloFieldDecoration gives
+                  // the sibling Frequency field. A `DropdownMenu` takes an
+                  // inputDecorationTheme rather than an InputDecoration, so it
+                  // cannot share that helper and has to restate the values —
+                  // held together by the "same height as its siblings" test.
+                  // A const here froze both dropdowns at one height while the
+                  // field beside them ran 46 to 65 across the ladder.
+                  contentPadding: EdgeInsets.fromLTRB(
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingTop * dropdownTextScale,
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
+                  ),
                   // Same height trim as the Band dropdown above.
                   suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),

@@ -14,7 +14,11 @@
 
 import 'package:flutter/widgets.dart';
 
-/// The width most panes are designed for. It sits between the S and L
+/// The width most panes are designed for.
+///
+/// Width only. The height counterpart is `LayoutDensity` (density.dart), which
+/// classifies how much vertical room the app's furniture spends — see
+/// docs/design/layouts.md § Layout density. It sits between the S and L
 /// boundaries, and that gap is deliberate: a window around this width just
 /// shows one pane at its best size — there is no "M" shirt size. Two-pane
 /// layouts default their primary pane to this width.

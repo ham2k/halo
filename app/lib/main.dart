@@ -1293,6 +1293,7 @@ class _HaLoAppState extends State<HaLoApp> {
 
   @override
   void dispose() {
+    _densityMessageTimer?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     if (identical(_keyCommandHandlerOwner, this)) {
       _keyCommandChannel.setMethodCallHandler(null);
@@ -1324,6 +1325,68 @@ class _HaLoAppState extends State<HaLoApp> {
       case 'zoomReset':
         widget.services.settings.setFontScale(FontScale.normal);
     }
+  }
+
+  /// The window height the density ladder actually sees: the real height
+  /// divided by the UI scale.
+  ///
+  /// `LayoutDensityScope` sits INSIDE `UiScale` and so reads an already-
+  /// divided `MediaQuery` (docs/design/ui-scaling.md rule 4). This handler's
+  /// context is above that wrapper, where the height is still the raw window,
+  /// so the division has to be redone here — without it a zoomed-in operator
+  /// would step from a density they aren't actually looking at.
+  double get _densityLadderHeight =>
+      MediaQuery.sizeOf(context).height / widget.services.settings.fontScale.scaleFactor;
+
+  void _stepDensity({required bool denser}) {
+    final settings = widget.services.settings;
+    final next = settings.densityPreference.stepped(height: _densityLadderHeight, denser: denser);
+    if (next == null) {
+      _announceDensity(settings.densityPreference, atLimit: true);
+      return;
+    }
+    settings.setDensityPreference(next);
+    _announceDensity(next);
+  }
+
+  Timer? _densityMessageTimer;
+  static const _densityMessageKey = 'layoutDensity';
+
+  /// Names the density the operator just landed on, in the status bar.
+  ///
+  /// Not decoration: the shortcut can legitimately change the stored
+  /// preference without changing the layout — a roomier pick on a window too
+  /// short for it is stored but clamped by [DensityPreference.resolve]'s
+  /// ceiling — and a key that appears to do nothing reads as broken. The
+  /// message is the only place that difference is visible.
+  void _announceDensity(DensityPreference preference, {bool atLimit = false}) {
+    final effective = preference.resolve(_densityLadderHeight);
+    final settingLabel = context.t['settings.layoutDensityOpts.${preference.name}'] as String;
+    final effectiveLabel = context.t['settings.layoutDensityOpts.${effective.name}'] as String;
+
+    // The SETTING leads, always: the shortcut's job is to move the setting,
+    // and on Auto — or when the ceiling clamps a pick — the density in force
+    // is not the same thing. Naming only one of the two leaves the operator
+    // unable to tell which they just changed.
+    final detail = switch (preference) {
+      _ when preference != DensityPreference.auto && preference.name != effective.name =>
+        context.t.settings.layoutDensityClamped(effective: effectiveLabel),
+      _ when atLimit => context.t.settings.layoutDensityAtLimit,
+      DensityPreference.auto => effectiveLabel,
+      _ => null,
+    };
+    final text = detail == null ? settingLabel : '$settingLabel — $detail';
+
+    widget.services.statusBar.setMessage(
+      key: _densityMessageKey,
+      icon: 'arrow-collapse-vertical',
+      title: context.t.settings.layoutDensity,
+      text: text,
+    );
+    _densityMessageTimer?.cancel();
+    _densityMessageTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) widget.services.statusBar.clear(_densityMessageKey);
+    });
   }
 
   /// Opens the ⌘K dialog, unless it's already up. Shared by the shortcut and
@@ -1405,6 +1468,36 @@ class _HaLoAppState extends State<HaLoApp> {
       return true;
     }
 
+    // ⌘⇧-/⌘⇧=/⌘⇧0 (⌃⇧ on non-Mac): step the Layout Density, on the same keys
+    // as Font Scale one modifier up. The two are the same question — how much
+    // fits on screen — so an operator reaching for one is already thinking
+    // about the other.
+    //
+    // This block MUST precede the Font Scale one: the shifted forms of those
+    // keys are exactly what it matches (`+` IS shift-equal, `_` IS
+    // shift-minus), so ⌘⇧= would otherwise have zoomed rather than loosened.
+    // Claiming them costs ⌘+ and ⌘_ as aliases for ⌘= and ⌘-, which is the
+    // deliberate trade.
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      final denser = key == LogicalKeyboardKey.minus ||
+          key == LogicalKeyboardKey.underscore ||
+          key == LogicalKeyboardKey.numpadSubtract;
+      final sparser = key == LogicalKeyboardKey.equal ||
+          key == LogicalKeyboardKey.add ||
+          key == LogicalKeyboardKey.numpadAdd;
+      if (denser || sparser) {
+        _stepDensity(denser: denser);
+        return true;
+      }
+      if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) {
+        // Back to Auto, not to Normal: Auto is the default, and "reset" here
+        // means "stop overriding" rather than "pick the middle rung".
+        settings.setDensityPreference(DensityPreference.auto);
+        _announceDensity(DensityPreference.auto);
+        return true;
+      }
+    }
+
     if (key == LogicalKeyboardKey.equal ||
         key == LogicalKeyboardKey.add ||
         key == LogicalKeyboardKey.numpadAdd) {
@@ -1460,18 +1553,10 @@ class _HaLoAppState extends State<HaLoApp> {
           // fixed system size, so they center in the on-screen header
           // height = the base AppBar height scaled by UiScale below (see
           // WindowChromeService; deduped, so calling it every build is fine).
-          final baseToolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? 48.0;
-          // The header's bottom edge is a color boundary against the body, so
-          // it has to land on the device pixel grid: inside UiScale one
-          // logical pixel is `scale × devicePixelRatio` device pixels, and
-          // 48 × 0.85 × 2.0 = 81.6 is not a whole one — the leftover
-          // antialiases into the content below as a hairline seam. Snapped
-          // ONCE here and pushed into the theme below, so every AppBar in the
-          // app inherits it and the seam can't come back view by view.
-          final toolbarHeight = PixelGrid(scale * MediaQuery.devicePixelRatioOf(context)).snap(baseToolbarHeight);
-          // The same (snapped) height the headers render at, so the native
-          // traffic lights stay centered in it.
-          WindowChromeService.reportTitleBarHeight(toolbarHeight * scale);
+          // The header height is density-resolved, so both the snap and the
+          // native traffic-light report happen in `_LayoutDensityFromWindow`
+          // below — the first place the rung is known.
+          //
           // The window's resize floor is the S-size layout width plus room for
           // the native window controls that float over the header (traffic
           // lights / caption buttons), so neither the S content nor the
@@ -1512,23 +1597,26 @@ class _HaLoAppState extends State<HaLoApp> {
           // names live on `Icon(semanticLabel:)`, which this does not touch.
           return TooltipVisibility(
             visible: false,
-            child: Theme(
-              // Outside UiScale so the Flutter-drawn Windows caption buttons
-              // (which size themselves off the same theme value) match the
-              // headers they float over.
-              data: Theme.of(context).copyWith(
-                appBarTheme: Theme.of(context).appBarTheme.copyWith(toolbarHeight: toolbarHeight),
-              ),
-              child: ValueListenableBuilder<bool>(
+            child: ValueListenableBuilder<bool>(
                 valueListenable: macOSWindowIsFullScreen,
                 builder: (context, isFullScreen, _) => MacOSFullScreenScope(
                   isFullScreen: isFullScreen,
                   child: UiScale(
                     scale: scale,
-                    // Outermost so it covers every field in the app — the gates'
-                    // own overlays and anything pushed on the Navigator (which is
-                    // `content`, i.e. dialogs and panes) included.
-                    child: TapToDismissEmptyField(
+                    // INSIDE UiScale, deliberately: the density ladder reads
+                    // the divided height, so a large font scale genuinely
+                    // fits less and reaches for a tighter layout sooner —
+                    // the same bargain ShirtSize makes on width
+                    // (docs/design/ui-scaling.md rule 4). Reading the real
+                    // window height here would leave the operator who zoomed
+                    // in with a sparse layout that no longer fits.
+                    child: _LayoutDensityFromWindow(
+                      settings: widget.services.settings,
+                      scale: scale,
+                      // Outermost so it covers every field in the app — the gates'
+                      // own overlays and anything pushed on the Navigator (which is
+                      // `content`, i.e. dialogs and panes) included.
+                      child: TapToDismissEmptyField(
                       // Outermost of the startup gates: the tester overlay
                       // paints above even the onboarding flow — a tester's
                       // fresh install gets the caution warning before
@@ -1543,17 +1631,131 @@ class _HaLoAppState extends State<HaLoApp> {
                           ),
                         ),
                       ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           );
         },
       ),
     );
   }
 }
+
+/// Publishes the app-wide [LayoutDensity], resolved from the window's height
+/// and the operator's [DensityPreference].
+///
+/// A separate widget rather than an expression inline in the builder so it
+/// rebuilds on a window resize without dragging the whole `MaterialApp`
+/// builder with it: `MediaQuery.sizeOf` is read HERE, so only this subtree is
+/// marked dirty when the height changes.
+///
+/// Reads `MediaQuery.sizeOf(context).height`, which below `UiScale` is the
+/// divided height — and which does NOT shrink when the on-screen keyboard
+/// opens (`StatusBarOverlay` consumes that inset on the way down; see
+/// home_view.dart's note). That is the intended behaviour: the whole UI
+/// reflowing every time the keyboard appears would be worse than the tight
+/// fit it would relieve, and it is the same call `onboarding_overlay.dart`
+/// makes for its own compact threshold.
+class _LayoutDensityFromWindow extends StatefulWidget {
+  final SettingsService settings;
+  final double scale;
+  final Widget child;
+
+  const _LayoutDensityFromWindow({required this.settings, required this.scale, required this.child});
+
+  @override
+  State<_LayoutDensityFromWindow> createState() => _LayoutDensityFromWindowState();
+}
+
+class _LayoutDensityFromWindowState extends State<_LayoutDensityFromWindow> {
+  LayoutDensity _density = LayoutDensity.normal;
+
+  /// Seeded from the ladder's own `normal` rung rather than Flutter's
+  /// `kToolbarHeight` (56): the two disagree, and stating the default twice is
+  /// how they drift. Never painted — `didChangeDependencies` resolves before
+  /// the first build — but it is what any earlier read would get.
+  double _toolbarHeight = LayoutMetrics.normal.chromeHeight;
+
+  /// The derived theme, rebuilt only when the height it derives from moves.
+  ///
+  /// `ThemeData.copyWith` copies around a hundred fields, and this widget
+  /// depends on `MediaQuery.sizeOf` — so without the cache a window drag
+  /// pays for a full copy, and a full `ThemeData ==` in the inherited theme's
+  /// updateShouldNotify, on every frame. The height only changes at a band
+  /// boundary, so almost every one of those frames is answered from here.
+  ThemeData? _derivedTheme;
+  ThemeData? _derivedFrom;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LayoutDensityFromWindow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The preference lives in a service, not in the widget, so a settings
+    // change arrives as a rebuild from the AnimatedBuilder above rather than
+    // as a dependency change.
+    _resolve();
+  }
+
+  /// Resolves the density and the header height, and tells the native window
+  /// chrome about the latter.
+  ///
+  /// Deliberately NOT in `build`: `reportTitleBarHeight` crosses a platform
+  /// channel, and `build` has to stay free of side effects — the framework
+  /// may call it speculatively or more than once per frame, and this widget
+  /// depends on `MediaQuery.sizeOf`, so it rebuilds on every resize frame.
+  void _resolve() {
+    final density = widget.settings.densityPreference.resolve(MediaQuery.sizeOf(context).height);
+
+    // The header's bottom edge is a color boundary against the body, so it has
+    // to land on the device pixel grid: inside UiScale one logical pixel is
+    // `scale × devicePixelRatio` device pixels, and 48 × 0.85 × 2.0 = 81.6 is
+    // not a whole one — the leftover antialiases into the content below as a
+    // hairline seam. Snapped ONCE here and pushed into the theme, so every
+    // AppBar in the app inherits it and the seam can't come back view by view.
+    //
+    // The DENSITY-RESOLVED value is what gets snapped, not the base constant:
+    // snapping 48 and swapping in a shorter header downstream would put the
+    // seam straight back at every non-1.0 font scale.
+    final toolbarHeight = PixelGrid.of(context).snap(density.metrics.chromeHeight);
+
+    // Plain assignment, no setState: both callers are immediately followed
+    // by a build, and marking dirty from didChangeDependencies would only
+    // schedule a second one.
+    if (toolbarHeight != _toolbarHeight) _derivedTheme = null;
+    _density = density;
+    _toolbarHeight = toolbarHeight;
+
+    // The same snapped height the headers actually render at, scaled back to
+    // real pixels, so the fixed-size native traffic lights stay centered in
+    // it. Reported from here rather than above UiScale because the density is
+    // not known up there and the value would be stale the moment the operator
+    // changed it. Deduped inside the service.
+    WindowChromeService.reportTitleBarHeight(toolbarHeight * widget.scale);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    if (_derivedTheme == null || !identical(base, _derivedFrom)) {
+      _derivedFrom = base;
+      _derivedTheme = base.copyWith(
+        appBarTheme: base.appBarTheme.copyWith(toolbarHeight: _toolbarHeight),
+      );
+    }
+    return LayoutDensityScope(
+      density: _density,
+      child: Theme(data: _derivedTheme!, child: widget.child),
+    );
+  }
+}
+
 
 /// Debug-only shortcut for skipping the onboarding flow: set
 /// `ONBOARD_AS=CALL,activity,...` — e.g. `ONBOARD_AS=KI2D,pota,sota` — as a
@@ -2029,16 +2231,23 @@ class BottomChromeBudget {
   /// something is not a budget.
   static const double _noticeShare = 0.7;
 
+  /// [numbersRowHeight] and [footerHeight] are passed in rather than read
+  /// from the widgets: both are density-resolved now, and this is a plain
+  /// factory with no context. Passing them also keeps the arithmetic
+  /// testable against any pair of values, which is what the device matrix in
+  /// status_bar_keyboard_test does.
   factory BottomChromeBudget.of({
     required double windowHeight,
     required double keyboardInset,
     required bool hasNumbersRow,
     required bool hasStatusItems,
+    required double numbersRowHeight,
+    required double footerHeight,
   }) {
     // Only what is actually on screen is charged: the footer collapses to
     // nothing without items, exactly as the row is absent without a spec.
-    final collapsedFooter = hasStatusItems ? StatusBarFooter.collapsedHeight : 0.0;
-    final fixed = (hasNumbersRow ? NumberKeys.height : 0.0) + collapsedFooter;
+    final collapsedFooter = hasStatusItems ? footerHeight : 0.0;
+    final fixed = (hasNumbersRow ? numbersRowHeight : 0.0) + collapsedFooter;
     final negotiable = math.max(0.0, windowHeight - keyboardInset - fixed);
     final chrome = negotiable * _chromeShare;
     return BottomChromeBudget(
@@ -2141,6 +2350,8 @@ class StatusBarOverlay extends StatelessWidget {
           keyboardInset: keyboardInset,
           hasNumbersRow: accessory != null,
           hasStatusItems: items.isNotEmpty,
+          numbersRowHeight: NumberKeys.heightOf(context),
+          footerHeight: StatusBarFooter.collapsedHeightOf(context),
         );
 
         return MediaQuery.removeViewInsets(

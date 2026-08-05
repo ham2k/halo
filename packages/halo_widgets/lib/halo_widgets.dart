@@ -4,6 +4,7 @@
 library;
 
 export 'src/activity_controls.dart';
+export 'src/density.dart';
 export 'src/dock_layout.dart';
 export 'src/flags.dart';
 export 'src/icon_resolver.dart';

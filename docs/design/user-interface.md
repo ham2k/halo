@@ -102,7 +102,9 @@ layout-, or macOS-window-related.
 
 How views arrange their panes at each window size — the shirt-size
 breakpoints, the ideal pane width, resizable splits, and Modal Panes — is
-specified in [layouts.md](layouts.md).
+specified in [layouts.md](layouts.md), which also covers **Layout Density**:
+the height vocabulary that decides how much room rows, headers and tab strips
+spend, chosen from the window's height and overridable by the operator.
 
 ### Spacing
 

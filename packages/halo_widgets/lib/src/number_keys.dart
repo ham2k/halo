@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'density.dart';
+
 import 'spacing.dart';
 
 /// A row of digit keys the logging panel floats above the on-screen keyboard
@@ -21,14 +23,20 @@ import 'spacing.dart';
 /// by `UiScale` (docs/design/ui-scaling.md), so nothing here multiplies by
 /// the font scale.
 class NumberKeys extends StatelessWidget {
+  /// Fixed at every density: these are tap targets on a phone, already at
+  /// Apple's 44pt minimum. Only the padding around them gives.
   static const double _keyHeight = 44;
-  static const double _verticalPadding = 4;
 
   /// The row's laid-out height. Public because whatever draws the bottom of the
   /// window has to budget the space this will take BEFORE building it — see
   /// `StatusBarOverlay`, which divides what is left between the notice stack
   /// and the status footer.
-  static const double height = _keyHeight + _verticalPadding * 2;
+  static double heightOf(BuildContext context) => heightFor(LayoutDensity.metricsOf(context));
+
+  /// [heightOf] without a context — for the arithmetic that budgets the
+  /// bottom of the window, which is checked across a matrix of densities,
+  /// devices and keyboard insets rather than by pumping a widget.
+  static double heightFor(LayoutMetrics metrics) => _keyHeight + metrics.numbersRowPaddingV * 2;
 
   /// Fired with the tapped character: '0'–'9', or [extraKey].
   final ValueChanged<String> onKey;
@@ -70,7 +78,10 @@ class NumberKeys extends StatelessWidget {
     return Material(
       color: backgroundColor,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: _verticalPadding),
+        padding: EdgeInsets.symmetric(
+          horizontal: Space.xs,
+          vertical: LayoutDensity.metricsOf(context).numbersRowPaddingV,
+        ),
         child: Row(
           children: [
             for (final key in keys)

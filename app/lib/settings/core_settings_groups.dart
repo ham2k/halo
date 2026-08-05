@@ -12,6 +12,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../services/extension_service.dart';
@@ -151,6 +152,7 @@ class GeneralSettingsGroup extends SettingsGroup {
         common: true,
       ),
       _fontScaleSelect(),
+      _layoutDensitySelect(),
       _select(
         key: 'distanceUnits',
         label: t.settings.distanceUnits,
@@ -198,6 +200,35 @@ class GeneralSettingsGroup extends SettingsGroup {
     );
   }
 
+  /// The Layout Density picker.
+  ///
+  /// Unlike Font Scale every level is listed, including [DensityPreference.auto],
+  /// which is the default and where most operators should stay.
+  ///
+  /// The description names the stored PREFERENCE, not the density in force.
+  /// Those differ on Auto, and on a window too short for the pick, where
+  /// `DensityPreference.resolve`'s ceiling overrides it — but a settings
+  /// group builds its elements without a `BuildContext`, so the window height
+  /// the effective density needs is not reachable from here. The ⌘⇧-/⌘⇧=
+  /// shortcuts name both (`_announceDensity` in main.dart), which is where an
+  /// operator finds out that a pick was stored but clamped.
+  Map<String, dynamic> _layoutDensitySelect() {
+    final current = settings.densityPreference;
+
+    return _select(
+      key: 'layoutDensity',
+      label: t.settings.layoutDensity,
+      icon: 'arrow-collapse-vertical',
+      description: t['settings.layoutDensityDescription.${current.name}'] as String,
+      value: current.name,
+      options: [
+        for (final preference in DensityPreference.selectableValues)
+          (label: t['settings.layoutDensityOpts.${preference.name}'] as String, value: preference.name),
+      ],
+      common: true,
+    );
+  }
+
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
     if (value is! String) return;
@@ -211,6 +242,9 @@ class GeneralSettingsGroup extends SettingsGroup {
       case 'fontScale':
         final scale = _enumByNameOrNull(FontScale.values, value);
         if (scale != null) await settings.setFontScale(scale);
+      case 'layoutDensity':
+        final density = _enumByNameOrNull(DensityPreference.values, value);
+        if (density != null) await settings.setDensityPreference(density);
       case 'distanceUnits':
         final units = _enumByNameOrNull(DistanceUnits.values, value);
         if (units != null) await settings.setDistanceUnits(units);

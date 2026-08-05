@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'mdi_icons.g.dart';
+import 'density.dart';
 import 'spacing.dart';
 import 'theme.dart';
 import 'wall_clock.dart';
@@ -414,13 +415,17 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   /// tallest built-in panel — Radio's field row — sets the bar), so the
   /// area doesn't jump between sizes when switching controls and shorter
   /// panels (Time) don't open a skinnier strip than the design intends.
-  static const double _panelMinContentHeight = 56;
+  /// Read from the density rather than fixed: this is the floor an open
+  /// control's panel occupies inside the logging panel, and the logging panel
+  /// is the app's one rigid block.
+  static double _panelMinContentHeightOf(BuildContext context) =>
+      LayoutDensity.metricsOf(context).controlPanelMinHeight;
 
   /// Border→pills spacing when the panel is closed, and panel→pills
   /// spacing once it's fully out — the panel "absorbs" most of the closed
   /// gap as it slides up, ending closer to the pills than the border was.
-  static const double _closedGap = 14;
-  static const double _openGap = 4;
+  static double _closedGapOf(BuildContext context) => LayoutDensity.metricsOf(context).chipStripClosedGap;
+  static double _openGapOf(BuildContext context) => LayoutDensity.metricsOf(context).chipStripOpenGap;
 
   /// Width of the gradient mask over the one-line strip's trailing edge.
   /// The scroll content ends with a spacer of the same width, so at
@@ -511,7 +516,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                       // otherwise bleeds past).
                       padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: Space.md),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: _panelMinContentHeight),
+                        constraints: BoxConstraints(minHeight: _panelMinContentHeightOf(context)),
                         // A closing panel's fields stay mounted for the
                         // 200ms slide, but must not keep keyboard focus —
                         // keystrokes right after deselecting would land in
@@ -551,7 +556,11 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
         // the panel's bottom edge.
         AnimatedBuilder(
           animation: _panelReveal,
-          builder: (context, _) => SizedBox(height: _closedGap - (_closedGap - _openGap) * _panelReveal.value),
+          builder: (context, _) {
+            final closed = _closedGapOf(context);
+            final open = _openGapOf(context);
+            return SizedBox(height: closed - (closed - open) * _panelReveal.value);
+          },
         ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -809,7 +818,7 @@ class _ControlChip extends StatelessWidget {
           : Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,
-      visualDensity: VisualDensity.compact,
+      visualDensity: LayoutDensity.of(context).chipVisualDensity,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       backgroundColor: poloColors.tertiaryLight,
       selectedColor: theme.colorScheme.tertiary,

@@ -590,6 +590,101 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('the wide split tab bar and pane title bar are the same height', (tester) async {
+    // They meet across the divider, so a mismatch reads as a misaligned seam
+    // down the whole window. `TabBar` has no height property — it reports its
+    // tallest Tab plus indicatorWeight — so left to its defaults it came out
+    // 50 against the title bar's 48, while the comment at the split claimed
+    // the two matched. Sizing the Tabs against the shared chrome height is
+    // what makes that claim true; this is what keeps it true.
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final tabBar = find.byType(TabBar);
+    expect(tabBar, findsOneWidget, reason: 'this width is the two-pane arrangement');
+    final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(tabBar));
+    expect(
+      tester.getSize(tabBar).height,
+      chromeHeight,
+      reason: 'the TabBar must land on the chrome height, not on Flutter default',
+    );
+
+    // The logging pane's title bar is the SizedBox holding the QSO count.
+    final titleBars = tester.widgetList<SizedBox>(
+      find.ancestor(of: find.textContaining('QSO'), matching: find.byType(SizedBox)),
+    );
+    expect(
+      titleBars.map((b) => b.height),
+      contains(chromeHeight),
+      reason: 'both sides of the divider share one height',
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('the tab strip gives its trailing button the full strip height', (tester) async {
+    // The selection indicator is a border. On `decoration` a border INSETS the
+    // child, so the QSOs tab's settings button rendered the indicator's width
+    // shorter than the strip — 44 of 48, and 38 once the density ladder
+    // reached `densest`. `foregroundDecoration` paints over an already
+    // laid-out child and costs no height, which is the only reason the strip
+    // being sized to a tap target means anything for the control inside it.
+    //
+    // Constraining the button instead does NOT work and was tried: the
+    // bordered parent hands down a max below the minimum, and BoxConstraints
+    // clamps min to max.
+    tester.view.physicalSize = const Size(600, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final strip = find.byKey(const Key('narrowTabBar'));
+    expect(strip, findsOneWidget, reason: 'this width is the narrow arrangement');
+    final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(strip));
+
+    final button = find.descendant(of: strip, matching: find.byType(IconButton));
+    expect(button, findsOneWidget);
+    expect(
+      tester.getSize(button).height,
+      chromeHeight,
+      reason: 'the indicator must not take its width out of the tab\'s own control',
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
 
 class MockExtensionHost implements ExtensionHost {
