@@ -35,6 +35,7 @@ upcoming:
     - "The scoring pills next to a call you're typing got quieter and smarter. **New Band** and **New Mode** now only appear for a station already in this log, worked this time on a band or mode you hadn't worked *them* on — the first QSO of an operation no longer lights up as new on every axis. **New DXCC** no longer fires for your own entity. Please tell us whether the pills that remain are the ones you actually want mid-pileup"
     - "US and Canadian operators get two new pills: **New State** and **New Province**, the first time you work each one in an operation — including your own state, which is a credit you can claim. The state comes from the callsign lookup or from what you type in the State field. The Info tab counts them beside your DXCC entities. Please check the state it picks up matches who you actually worked"
     - "The **Info** tab now breaks your operation down by band: one row per band you've worked, with its contact count and how those split across modes. Please check the numbers match what you'd count by hand"
+    - "**Web only:** the search box in **Settings → All Settings** dropped the caret after a character or two, swallowing the rest of what you typed. Fixed. Please type a few settings names in there and check every character lands"
 
 "126":
   changes:

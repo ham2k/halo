@@ -349,6 +349,20 @@ you focus to *append* to. The logging panel's own controls
 (`logging_controls.dart`, `ref_text_input.dart`) manage selection
 themselves; every other field opts out.
 
+**A live filter hides what it excludes; it never unmounts it.** Anything that
+re-filters a list of forms while the operator is still typing the query — All
+Settings' search is the one that exists today — must keep the excluded
+sections in the tree (`Visibility(maintainState: true)` plus `ExcludeFocus`,
+so a hidden field stays out of the Tab order). Dropping a section instead
+disposes every `FocusNode` and `TextEditingController` its `FormRenderer`
+owns, and **on web that teardown takes the browser's text-input element with
+it**: focus falls back to the route's scope and the next keystrokes are
+swallowed, so the query loses characters as it is typed. There is no symptom
+on macOS, which has no DOM — and none in a widget test either, because
+`flutter test --platform chrome` drives text input through the test binding
+rather than a DOM element, so no browser focus event ever fires. Test the
+invariant (the sections are still mounted) rather than the symptom.
+
 ## Number Formatting
 
 All numbers displayed in the user interface (including QSO counts, QSO row index numbers, scoring summaries, statistics tallies, and general quantities) must be formatted with thousands separators to enhance readability.

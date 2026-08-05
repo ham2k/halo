@@ -246,4 +246,50 @@ void main() {
     expect(find.text('Theme Mode'), findsOneWidget);
     expect(find.text('Leftie Mode'), findsOneWidget);
   });
+
+  testWidgets('HALO-146: filtering hides sections, it never unmounts them', (tester) async {
+    // The rule the search depends on, and the one thing a widget test can
+    // actually see of this bug. Dropping a filtered-out section from the tree
+    // disposes every FocusNode and TextEditingController its FormRenderer
+    // owns, and on web that teardown takes the browser's text-input element
+    // with it — focus falls back to the route's scope and the operator's next
+    // keystrokes are swallowed while they are still typing the query.
+    //
+    // Counted with skipOffstage: false, because a hidden section is exactly
+    // what we want to still find. `find.text` above keeps its default (offstage
+    // skipped), which is why the visible filtering assertions still hold.
+    //
+    // Not reproducible in a widget test, on any platform: `flutter test
+    // --platform chrome` drives text input through the test binding rather
+    // than a DOM element, so no browser focus event ever fires there. This
+    // pins the invariant instead — the mechanism, not the symptom.
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final services = await makeServices();
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Settings'));
+    await tester.pumpAndSettle();
+
+    final mounted = find.byType(FormRenderer, skipOffstage: false);
+    final before = tester.widgetList(mounted).length;
+    expect(before, greaterThan(1), reason: 'test setup: several sections are on screen');
+
+    // A query matching one core setting and no extension panel: the screen
+    // empties down to a single row, and without the rule above the tree would
+    // empty with it.
+    await tester.enterText(find.byKey(const ValueKey('all-settings-search')), 'leftie');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Leftie Mode'), findsOneWidget, reason: 'test setup: the query still matches something');
+    expect(find.text('Theme Mode'), findsNothing, reason: 'test setup: and hides the rest');
+    expect(
+      tester.widgetList(mounted).length,
+      before,
+      reason: 'a filtered-out section must stay in the tree — unmounting it disposes the focus '
+          'nodes that the operator is typing against',
+    );
+  });
 }

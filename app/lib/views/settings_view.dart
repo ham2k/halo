@@ -697,29 +697,49 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       ];
       if (elements.isEmpty) return const SizedBox.shrink();
     }
+    // A group the search excludes is HIDDEN, not unmounted. Unmounting it
+    // disposes every FocusNode and TextEditingController its FormRenderer
+    // owns, and on web that teardown takes the browser's text-input element
+    // with it: focus falls back to the route's scope and the next keystrokes
+    // are swallowed, so the query loses characters as it is typed. macOS has
+    // no DOM and shows no symptom.
+    //
+    // `maintainState` is what keeps the State (and its nodes) alive; the
+    // ExcludeFocus is what keeps hidden fields out of the Tab order, which
+    // Offstage alone does not do. Nothing is spent that an empty query
+    // doesn't already spend — with no search every group is mounted anyway.
+    var hidden = false;
     if (widget.searchQuery.isNotEmpty) {
-      elements = [
+      final matching = [
         for (final el in elements)
           if (_elementMatchesQuery(el, widget.searchQuery)) el,
       ];
-      if (elements.isEmpty) return const SizedBox.shrink();
+      hidden = matching.isEmpty;
+      if (!hidden) elements = matching;
     }
-    return FormRenderer(
-      formDefinition: {
-        'elements': [
-          {'type': 'header', 'title': widget.group.title, 'style': 'section'},
-          ...elements,
-        ],
-      },
-      initialState: const {},
-      showActions: false,
-      showTitle: false,
-      developerMode: widget.services.settings.developerMode,
-      labels: formRendererLabelsFor(context.t),
-      onChange: _autosave,
-      onOpenLink: openExternalUrl,
-      onSubmit: (_) {},
-      onCancel: () {},
+    return Visibility(
+      visible: !hidden,
+      maintainState: true,
+      child: ExcludeFocus(
+        excluding: hidden,
+        child: FormRenderer(
+          formDefinition: {
+            'elements': [
+              {'type': 'header', 'title': widget.group.title, 'style': 'section'},
+              ...elements,
+            ],
+          },
+          initialState: const {},
+          showActions: false,
+          showTitle: false,
+          developerMode: widget.services.settings.developerMode,
+          labels: formRendererLabelsFor(context.t),
+          onChange: _autosave,
+          onOpenLink: openExternalUrl,
+          onSubmit: (_) {},
+          onCancel: () {},
+        ),
+      ),
     );
   }
 }
@@ -1805,13 +1825,20 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       if (common.isEmpty) return const SizedBox.shrink();
       definition = {...definition, 'elements': common};
     }
+    // Hidden, not unmounted — same rule as the core groups above, and for the
+    // same reason. There is one of these per extension, so a query that stops
+    // matching takes dozens of panels out of the tree at once; each disposes
+    // the FocusNodes its FormRenderer owns, and on web that teardown drops the
+    // focus of whatever the operator is typing in. Focus falls back to the
+    // route's scope and the next keystroke is lost.
+    var searchHidden = false;
     if (widget.searchQuery.isNotEmpty) {
       final filtered = [
         for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
           if (_elementMatchesQuery(el, widget.searchQuery)) el,
       ];
-      if (filtered.isEmpty) return const SizedBox.shrink();
-      definition = {...definition, 'elements': filtered};
+      searchHidden = filtered.isEmpty;
+      if (!searchHidden) definition = {...definition, 'elements': filtered};
     }
 
     final form = FormRenderer(
@@ -1839,13 +1866,20 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       onSubmit: (_) {},
       onCancel: () {},
     );
+    // Wrap once, here, so both the embedded and standalone shapes below are
+    // covered by the same hide-don't-unmount rule.
+    Widget hideIfFiltered(Widget child) => Visibility(
+          visible: !searchHidden,
+          maintainState: true,
+          child: ExcludeFocus(excluding: searchHidden, child: child),
+        );
     if (widget.embedded) {
       final title = widget.sectionTitle;
-      if (title == null) return form;
+      if (title == null) return hideIfFiltered(form);
       // Same content inset as form's own rows below (the ambient
       // ListTileTheme), so the section title lines up with them.
       final contentPadding = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
-      return Column(
+      return hideIfFiltered(Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
@@ -1854,15 +1888,15 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
           ),
           form,
         ],
-      );
+      ));
     }
 
-    return SingleChildScrollView(
+    return hideIfFiltered(SingleChildScrollView(
       // form's own rows pick up the content inset from the ambient
       // ListTileTheme; this is just the row-background margin.
       padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
       child: form,
-    );
+    ));
   }
 }
 
