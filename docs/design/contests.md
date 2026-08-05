@@ -1,12 +1,14 @@
 # Contest Extensions — Porting Design (RFC)
 
-**Status:** Draft for review · **Scope:** port app-polo's 12 contest extensions to HaLo
+**Status:** In progress — **M0–M6 and M11 are shipped** (9 of the 15
+contest-shaped extensions); M7–M10 and M12 remain, see §7. · **Scope:** port
+app-polo's 12 contest extensions, plus `fd`, `wfd` and `colonies`, to HaLo
 · **Issue:** #149
 
 This RFC specifies the core infrastructure needed to run contest extensions in
-HaLo, and a sequence for porting them from app-polo. No code has been written
-yet. **All decisions that gate a milestone are settled** (§8), so M0 is ready to
-start; the questions that remain surface during the milestone that hits them.
+HaLo, and a sequence for porting them from app-polo. **All decisions that gate a
+milestone are settled** (§8); the questions that remain surface during the
+milestone that hits them.
 Findings below were verified against `dist` at **0e0ff57** (file:line references
 throughout — re-check them if this doc has aged); the per-contest inventory in
 the appendix comes from a full read of `app-polo/src/extensions/contests/`.
@@ -1566,19 +1568,26 @@ log** to settle checkpoint granularity (§5.2).
 
 | Milestone | Delivers | Contests |
 |---|---|---|
-| **M0** | The four capabilities, proven end-to-end; "Contests" extension category | `simple-contest` |
-| **M1** | Harden: finalize input union, settle checkpoint granularity from M0's timings, lock the current-QSO score display | — |
-| **M2** | Band-mult conventions + numeric exchange + suggested values (§5.3) | `cqww` (zone), `arrl-dx` (state/power) |
-| **M3** | Core-owned labeled sequence service (§5.8) | `cqwpx` |
-| **M4** | Form-schema conditional fields (`visibleWhen`, §5.4); `operation-data` deferred for want of a consumer (§5.3) | `iaru-hf`, `naqp` |
-| **M5** | Searchable-options input (`kind: 'options'`) + dated `suggest` ranking (§5.6) | `stateparks` |
-| **M6** | **Segments** — `event.operation` override, segment-effective operation, scorer selection across segments (§5.1) | — |
+| **M0** ✅ | The four capabilities, proven end-to-end; "Contests" extension category | `simple-contest` |
+| **M1** ✅ | Harden: finalize input union, settle checkpoint granularity from M0's timings, lock the current-QSO score display | — |
+| **M2** ✅ | Band-mult conventions + numeric exchange + suggested values (§5.3) | `cqww` (zone), `arrl-dx` (state/power) |
+| **M3** ✅ | Core-owned labeled sequence service (§5.8) | `cqwpx` |
+| **M4** ✅ | Form-schema conditional fields (`visibleWhen`, §5.4); `operation-data` deferred for want of a consumer (§5.3) | `iaru-hf`, `naqp` |
+| **M5** ✅ | Searchable-options input (`kind: 'options'`) + dated `suggest` ranking (§5.6) | `stateparks` |
+| **M6** ✅ | **Segments** — `event.operation` override, segment-effective operation, scorer selection across segments (§5.1) | — |
 | **M7** | Great-circle distance scoring + `grid` input + rover our-grid from segments | `arrl-vhf-tests` |
 | **M8** | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
 | **M9** | Cross-extension POTA ref synthesis | `georgia-pota` |
 | **M10** | Stateful rolling-location scoring, county-line N×M, bonuses | full `qp` rules |
-| **M11** | ARRL/RAC section table duplicated into each extension; power multiplier + bonus in setup (§5.9) | `fd`, `wfd` |
+| **M11** ✅ | ARRL/RAC section table duplicated into each extension; power multiplier + bonus in setup (§5.9) | `fd`, `wfd` |
 | **M12** | Cross-operation callsign search, if §5.9's option B is chosen | `colonies` |
+
+✅ means shipped and verifiable in the tree, not merely started. M1 carries no
+contest of its own, so its evidence is worth naming: the `pattern`/`uppercase`
+union rules (§5.3), the checkpoint-granularity measurement (§8), and the
+current-QSO score display with its staleness gate and notice rows
+(`halo_widgets/lib/src/logging_controls.dart`). The live count of ported
+extensions is [parity.md](../parity.md) §1, not this table.
 
 Per §5.6, `qp` and `stateparks` each stay a **single extension** whose individual
 events are offered through the activity `suggest` search, so #149's discovery
