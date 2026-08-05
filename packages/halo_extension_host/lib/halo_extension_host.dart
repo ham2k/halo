@@ -828,6 +828,7 @@ class _HostCore {
         'www.cqgma.org',
         'ontheair.nz',
         'www.rozhledny.eu',
+        'www.parksnpeaks.org',
       };
       if (allowedDomains.contains(uri.host)) {
         return Uri.parse('https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}');

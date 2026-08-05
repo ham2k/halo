@@ -2302,6 +2302,7 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
     final categoryTitles = {
       'activity': context.t.extensionsPanel.categoryActivity,
       'lookup': context.t.extensionsPanel.categoryLookup,
+      'spots': context.t.extensionsPanel.categorySpots,
       'core': context.t.settings.developer.categoryCore,
     };
     final grouped = <String, List<Map<String, dynamic>>>{};

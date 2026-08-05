@@ -256,6 +256,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Callsign Lookups'
 	String get categoryLookup => 'Callsign Lookups';
 
+	/// en: 'Spot Sources'
+	String get categorySpots => 'Spot Sources';
+
 	/// en: 'Other Extensions'
 	String get categoryOther => 'Other Extensions';
 
@@ -3020,6 +3023,7 @@ extension on Translations {
 			'extensionsPanel.categoryActivity' => 'Activities',
 			'extensionsPanel.categoryContest' => 'Contests',
 			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
+			'extensionsPanel.categorySpots' => 'Spot Sources',
 			'extensionsPanel.categoryOther' => 'Other Extensions',
 			'extensionsPanel.searchHint' => 'Search extensions',
 			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
@@ -3484,9 +3488,9 @@ extension on Translations {
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver has never been run against a Kenwood — it is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
-			'settings.station.statusConnected' => 'Connected',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',

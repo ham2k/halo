@@ -90,11 +90,11 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
 
 ### Spots
 - **Global Spots screen** reachable from Home (outside any operation). ⛔
-- ParksnPeaks spot source; Discord spot posting. ⛔
+- Discord spot posting. ⛔
 - POTA **"Confirm Spots"** QSO-confirmation flow. ⛔
 - (Spot filters — band/mode/age/sort/per-source — are done, plus a
-  continent filter PoLo lacks. Sources beyond POTA/SOTA are done: 10
-  extensions feed spots. Deliberate divergence on bands: PoLo offers only
+  continent filter PoLo lacks. Sources beyond POTA/SOTA are done: 15
+  extensions feed spots, ParksnPeaks among them. Deliberate divergence on bands: PoLo offers only
   the bands that currently have spots, HaLo offers the operator's enabled
   bands as well and narrows the list itself to them when no single band is
   chosen.)

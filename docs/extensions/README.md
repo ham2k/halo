@@ -22,7 +22,10 @@ that imports it and calls `defineExtension`:
   "shortName": "POTA",
   "version": "0.0.1",
   "description": "Park references, spots, and activation logging",
-  "category": "activity",      // panel grouping; omit for core (always-on)
+  "category": "activity",      // panel grouping: activity | contest | lookup |
+                               // spots; omit for core (always-on). A value the
+                               // panel doesn't know falls under "Other"
+                               // (app/lib/views/extensions_panel.dart).
   "enabledByDefault": true,
   "icon": "pine-tree",         // MDI icon name
   "accentColor": "#068541",    // brand accent, #RRGGBB

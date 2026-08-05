@@ -1,0 +1,10 @@
+{
+  "accountDescription": "Spotting to WWFF and SiOTA in VK and ZL",
+  "userIdLabel": "Username",
+  "userIdPostface": "Your ParksnPeaks account username, not your callsign",
+  "apiKeyLabel": "API Key",
+  "apiKeyPostface": "From your ParksnPeaks profile page — not your password",
+  "missingCredentials": "Enter your ParksnPeaks username and API key",
+  "credentialsUnverified": "Saved for **{{userId}}**. ParksnPeaks has no way to check a login, so this is confirmed the first time you spot.",
+  "postFailed": "ParksnPeaks rejected the spot for {{refs}}"
+}

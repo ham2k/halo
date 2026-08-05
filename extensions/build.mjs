@@ -140,6 +140,7 @@ const bundles = [
   { key: 'stateparks', entry: 'contests/stateparks/src/index.ts', kind: 'extension' },
   { key: 'fd', entry: 'contests/fd/src/index.ts', kind: 'extension' },
   { key: 'wfd', entry: 'contests/wfd/src/index.ts', kind: 'extension' },
+  { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

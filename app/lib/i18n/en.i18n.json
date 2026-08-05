@@ -55,6 +55,7 @@
     "categoryActivity": "Activities",
     "categoryContest": "Contests",
     "categoryLookup": "Callsign Lookups",
+    "categorySpots": "Spot Sources",
     "categoryOther": "Other Extensions",
     "searchHint": "Search extensions",
     "applying": "Activating extension changes, this may take a moment…",
