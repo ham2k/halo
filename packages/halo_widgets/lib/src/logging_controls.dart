@@ -811,6 +811,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// reason, as `_lastTimeDateText`.
   String _lastFreqText = '';
 
+  /// The frequency text as the field gained focus — the baseline for
+  /// "did the operator change this?", which is a different question from
+  /// [_lastFreqText]'s "did this change since the last notification?" and
+  /// has to survive across the keystrokes of one editing session.
+  /// [_commitBandTypedIntoFreqField] is its only reader.
+  String _freqTextOnFocus = '';
+
   /// Which secondary control (if any) currently has its input expanded.
   String? _selectedControlKey;
 
@@ -1701,7 +1708,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           controller.selection = TextSelection.collapsed(
             offset: _takePendingCaretOffset(focus, controller) ?? controller.text.length,
           );
+          if (identical(focus, _freqFocus)) _freqTextOnFocus = _freqController.text;
         } else if (identical(focus, _freqFocus)) {
+          // Ahead of the flush below: a band empties the field, and a push
+          // carrying the band the operator just named beats one carrying the
+          // digits they named it with.
+          _commitBandTypedIntoFreqField();
           // Flush a pending debounced push immediately on blur, rather than
           // making the user wait out the rest of the 5s window. Never fires
           // while editing an existing QSO — see _onFreqChanged.
@@ -3931,6 +3943,35 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
   }
 
+  /// HALO-158: the frequency field also takes a band — "20", "20m", "70cm".
+  /// Resolved when the operator is done with the field (blur, which Space and
+  /// Enter both reach) rather than per keystroke, so a frequency typed digit
+  /// by digit never flickers through a band on its way: "20" en route to
+  /// "20450" is a prefix, not a request for 20m.
+  ///
+  /// A frequency wins whenever the text names one, so this can only claim
+  /// numbers no band covers — see [parseBandInput] for why that leaves the
+  /// bare-number form unambiguous.
+  ///
+  /// Only text the operator changed while the field held focus is eligible.
+  /// The band numbers are all outside the amateur bands, but a general-
+  /// coverage rig reports whatever it is tuned to: parked on WWVB at 60 kHz,
+  /// the field reads "60", and merely opening the Radio control (which focuses
+  /// this field) and leaving it would otherwise swallow the reading and push
+  /// 60m back at the rig. `_freqTouched` can't serve as the gate — it is never
+  /// set while editing an existing QSO, which is a case this must still work
+  /// in.
+  void _commitBandTypedIntoFreqField() {
+    final text = _freqController.text;
+    if (text == _freqTextOnFocus) return;
+    final freq = parseFreq(text);
+    if (freq != null && bandForFrequency(freq) != null) return;
+    final band = parseBandInput(text);
+    // Unconditional even when the band is already selected: the field still
+    // holds the text that named it, and clearing that is half of the point.
+    if (band != null) _applyBandPick(band);
+  }
+
   void _stepBandSelection(int delta) {
     final next = _steppedOption(_filteredOptions(_bandDropdownOptions(), _bandFilter), _band, delta);
     if (next == null) return;
@@ -4073,7 +4114,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   smartQuotesType: SmartQuotesType.disabled,
                   inputFormatters: [
                     _virtualSpace,
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    // `m`/`c` are here for the band forms the field also takes
+                    // ("20m", "70cm" — see _commitBandTypedIntoFreqField), not
+                    // for frequencies. A letter left in a frequency makes
+                    // `parseFreq` return null, and the field says nothing about
+                    // it: the value simply doesn't reach the QSO or the VFO,
+                    // the same as any other text this field can't read.
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,mMcC]')),
                   ],
                   // Enter closes the control rather than logging (APP-19) —
                   // the same thing `_onExpandedKeyEvent` does with the raw

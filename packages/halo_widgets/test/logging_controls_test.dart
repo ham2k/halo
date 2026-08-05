@@ -4356,6 +4356,116 @@ void main() {
     expect(logged.single.mode, 'CW');
   });
 
+  group('HALO-158: the frequency field also takes a band', () {
+    TextField field(WidgetTester tester, String label) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    /// Types [text] into the Frequency field and leaves it with Space —
+    /// which, from this field, hands focus back to the call field
+    /// (`_handleSpace`) and so is the gesture that commits it.
+    Future<void> typeFreqAndLeave(WidgetTester tester, String text) async {
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), text);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+    }
+
+    // `host()` seeds a radio tuned to 14285 / 20m, so every band asserted here
+    // is deliberately NOT 20m — otherwise the seed alone would satisfy it.
+
+    testWidgets('a band with its unit lands in the Band dropdown and empties the field', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      await typeFreqAndLeave(tester, '40m');
+
+      expect(field(tester, 'Band').controller!.text, '40m');
+      expect(field(tester, 'Frequency').controller!.text, isEmpty,
+          reason: 'the text that named the band is not a frequency, and must not read as one');
+    });
+
+    testWidgets('a bare number names a band too, since the iOS keyboard here has no letters', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      await typeFreqAndLeave(tester, '15');
+
+      expect(field(tester, 'Band').controller!.text, '15m');
+      expect(field(tester, 'Frequency').controller!.text, isEmpty);
+    });
+
+    testWidgets('a real frequency is left exactly as typed', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      await typeFreqAndLeave(tester, '7123');
+
+      expect(field(tester, 'Frequency').controller!.text, '7123',
+          reason: 'a frequency inside a band is never re-read as a band');
+      expect(field(tester, 'Band').controller!.text, '40m');
+    });
+
+    testWidgets('nothing resolves until the operator leaves the field', (tester) async {
+      // The reason resolution is on commit rather than per keystroke: "40" is
+      // a prefix of "40 something" as often as it is a request for 40m. Moving
+      // this into `_band` or `_onFreqChanged` makes every frequency typed by
+      // hand flicker through a band on its way, and breaks here.
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '40');
+      await tester.pump();
+
+      expect(field(tester, 'Band').controller!.text, isNot('40m'));
+      expect(field(tester, 'Frequency').controller!.text, '40');
+    });
+
+    testWidgets('text that names no band is left alone', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      // 14m is not a band; rounding it to the nearest one would log a contact
+      // on a band the operator never named.
+      await typeFreqAndLeave(tester, '14m');
+
+      expect(field(tester, 'Frequency').controller!.text, '14m');
+    });
+
+    testWidgets('a frequency the operator never typed is left alone, band number or not', (tester) async {
+      // A general-coverage rig parked on WWVB reports 60 kHz, which is in no
+      // band and reads exactly like the bare form of 60m. Opening the Radio
+      // control focuses this field, so without a "did they change it?" gate,
+      // opening the control and leaving it would swallow the reading and push
+      // 60m back at the rig — no keystroke involved.
+      final seeded = _FakeVfoStore()..setVfo('vfoA', freq: 60, mode: 'SSB');
+      await tester.pumpWidget(host(radioService: seeded));
+      await openControl(tester, MdiIcons.radio);
+
+      expect(field(tester, 'Frequency').controller!.text, '60', reason: 'the seed must reach the field');
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+
+      expect(field(tester, 'Frequency').controller!.text, '60');
+      expect(seeded.vfoA.freq, 60);
+      expect(seeded.vfoA.band, isNot('60m'));
+    });
+
+    testWidgets('a band typed into the field logs a band-only QSO', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      await typeFreqAndLeave(tester, '40m');
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.band, '40m');
+      expect(logged.single.freq, isNull,
+          reason: 'the operator named a band, not a frequency — HALO-24 is satisfied by the band alone');
+    });
+  });
+
   testWidgets('HALO-32: a frequency command with no mode of its own guesses one from the band plan',
       (tester) async {
     await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));

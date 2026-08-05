@@ -167,6 +167,66 @@ void main() {
     });
   });
 
+  group('parseBandInput', () {
+    test('reads a band with its unit, however it was typed', () {
+      expect(parseBandInput('20m'), '20m');
+      expect(parseBandInput('20M'), '20m');
+      expect(parseBandInput(' 20 m '), '20m');
+      expect(parseBandInput('70cm'), '70cm');
+      expect(parseBandInput('70CM'), '70cm');
+      expect(parseBandInput('1.25m'), '1.25m');
+      expect(parseBandInput('2190m'), '2190m');
+    });
+
+    test('reads a bare number as the band of that wavelength', () {
+      // The iOS keyboard for this field carries no letters, so a suffix-only
+      // syntax would make band entry desktop-only.
+      expect(parseBandInput('20'), '20m');
+      expect(parseBandInput('1.25'), '1.25m');
+      expect(parseBandInput('2190'), '2190m');
+    });
+
+    test('a bare number with no meters band falls through to centimeters', () {
+      // 70/33/23 name only cm bands; nothing should have to type the unit
+      // just because the band happens to be a short one.
+      expect(parseBandInput('70'), '70cm');
+      expect(parseBandInput('33'), '33cm');
+      expect(parseBandInput('23'), '23cm');
+    });
+
+    test('a stated unit is not second-guessed', () {
+      // "20cm" is a typo for 20m, not a request for it — silently correcting
+      // it would log a contact on a band the operator never named.
+      expect(parseBandInput('20cm'), isNull);
+      expect(parseBandInput('70m'), isNull);
+    });
+
+    test('rejects anything that is not a band name', () {
+      expect(parseBandInput(''), isNull);
+      expect(parseBandInput('m'), isNull);
+      expect(parseBandInput('abc'), isNull);
+      expect(parseBandInput('14285'), isNull);
+      expect(parseBandInput('-20'), isNull);
+      // A band is named by an exact string, not by its numeric value: these
+      // spellings appear in no dropdown and mean nothing to the extensions,
+      // which compare band strings for equality.
+      expect(parseBandInput('20.0m'), isNull);
+      expect(parseBandInput('1.250m'), isNull);
+    });
+
+    test('no band number is also a frequency inside a band', () {
+      // The property that makes the bare-number form safe. If `bands` ever
+      // grows an entry that breaks it — a band whose wavelength number lands
+      // inside another band's edges — the frequency field would start
+      // swallowing real frequencies, and this is the only thing watching.
+      for (final band in bands) {
+        final asFrequency = parseFreq(band.name.replaceAll(RegExp(r'(c?m)$'), ''));
+        expect(bandForFrequency(asFrequency!), isNull,
+            reason: '${band.name} typed bare parses as $asFrequency kHz, a real frequency');
+      }
+    });
+  });
+
   group('fmtFreq', () {
     test('groups thousands and trims whole numbers', () {
       expect(fmtFreq(14285), '14,285');

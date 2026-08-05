@@ -398,6 +398,43 @@ double? parseFreq(String input) {
   return value;
 }
 
+/// Reads user input naming a band — "20m", "20 M", "70cm", or the bare
+/// number "20" — as a name from [bands], or null for anything else.
+///
+/// The bare-number form is safe because no band's wavelength in meters is
+/// also a frequency inside a band: everything below 160 is under the 135.7 kHz
+/// floor of the lowest band, and the three above it (160, 630, 2190 kHz) all
+/// land in gaps between bands. That property is what callers rely on, so try
+/// [parseFreq] first and fall back to this only when the number names no band
+/// — resolving a band first would shadow real frequencies if [bands] ever
+/// grew an entry that broke it.
+///
+/// It has to exist because the field is numeric on iOS — the
+/// numbers-and-punctuation keyboard carries no letters, so a suffixed form
+/// alone would make this a desktop-only feature.
+String? parseBandInput(String input) {
+  var cleaned = input.trim().toLowerCase().replaceAll(',', '').replaceAll(' ', '');
+  if (cleaned.isEmpty) return null;
+  // A unit the operator typed pins which of the two candidates to try; with
+  // none, "70" means 70cm because there is no 70m band to prefer.
+  final units = cleaned.endsWith('cm')
+      ? const ['cm']
+      : cleaned.endsWith('m')
+          ? const ['m']
+          : const ['m', 'cm'];
+  cleaned = cleaned.replaceAll(RegExp(r'(c?m)$'), '');
+  // Reject "20.0" and "1.250": a band is named by an exact string, and
+  // matching on the parsed number instead would accept spellings the Band
+  // dropdown never shows.
+  for (final unit in units) {
+    final name = '$cleaned$unit';
+    for (final band in bands) {
+      if (band.name == name) return band.name;
+    }
+  }
+  return null;
+}
+
 /// Formats kHz for display: "14,285.5".
 String fmtFreq(double khz) {
   // Round to one decimal FIRST, then split into whole/fraction — splitting

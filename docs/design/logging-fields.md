@@ -262,6 +262,17 @@ one of the two is set.
 Either value satisfies it. A band picked by hand — or by a `40M` command,
 which deliberately clears the frequency — is a complete answer.
 
+**The frequency field itself takes a band**, which matters because it is the
+field this refusal opens on: `40`, `40m` and `70cm` all set the band and clear
+the field, exactly as the dropdown beside it does. It resolves when the
+operator leaves the field, not per keystroke, so a frequency typed digit by
+digit never passes through a band on its way; a number that names a real
+frequency is never re-read as one. The bare form exists because this field's
+iOS keyboard carries no letters, and it is unambiguous only because no band's
+wavelength in meters is also a frequency inside a band — `parseBandInput` in
+`halo_core` holds that reasoning, and a test pins the property against future
+edits to the band table.
+
 This exists because on a fresh install nothing has ever set either one: the
 stored VFO is empty, and every other gate looks only at the callsign. The
 resulting record is not merely incomplete — the ADIF exporter emits `BAND`
