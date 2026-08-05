@@ -85,6 +85,8 @@ class _AddFlowExtensions extends ExtensionServiceWithMockHost {
     String? searchTerm,
     GridLocation? fallbackLocation,
     String? activityKey,
+    String? preferredKey,
+    String? preferredSearchTerm,
   }) async =>
       suggestions;
 

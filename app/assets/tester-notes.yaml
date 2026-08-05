@@ -54,6 +54,7 @@ upcoming:
     - "New **Connection Requests** row approves another device joining your account"
     - "A contest with no exchange set now says **Not configured!** on its row"
     - "Configurable activities get a settings button beside the delete button"
+    - "Activity search: a leading `sota` puts SOTA's hits first, `sota:` shows only those"
 
 "126":
   changes:

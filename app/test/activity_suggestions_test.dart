@@ -107,4 +107,96 @@ void main() {
     expect(_names(ranked), ['a', 'b']);
     expect(identical(ranked.first, original[1]), isTrue, reason: 'the maps are shared, not copied');
   });
+
+  group('merging hook entries', () {
+    Map<String, dynamic> entry(String key, List<String> names) => {
+          'key': key,
+          'ok': true,
+          'value': [
+            for (final name in names) {'name': name, 'distance': 100, 'relevance': 1.0},
+          ],
+        };
+
+    test('the preferred extension leads, however near the others are', () {
+      // The point of naming an extension: a 1km park must not outrank the
+      // summits from the extension the operator actually asked for.
+      final merged = mergeActivitySuggestions([
+        {
+          'key': 'pota',
+          'ok': true,
+          'value': [
+            {'name': 'park', 'distance': 1, 'relevance': 1.0}
+          ]
+        },
+        {
+          'key': 'sota',
+          'ok': true,
+          'value': [
+            {'name': 'summit-far', 'distance': 90, 'relevance': 1.0},
+            {'name': 'summit-near', 'distance': 40, 'relevance': 1.0},
+          ]
+        },
+      ], preferredKey: 'sota');
+      expect(_names(merged), ['summit-near', 'summit-far', 'park']);
+    });
+
+    test('each band is ranked among itself', () {
+      final merged = mergeActivitySuggestions([
+        {
+          'key': 'sota',
+          'ok': true,
+          'value': [
+            {'name': 'summit-far', 'distance': 90, 'relevance': 1.0},
+            {'name': 'summit-near', 'distance': 9, 'relevance': 1.0},
+          ]
+        },
+        {
+          'key': 'pota',
+          'ok': true,
+          'value': [
+            {'name': 'park-far', 'distance': 80, 'relevance': 1.0},
+            {'name': 'park-near', 'distance': 8, 'relevance': 1.0},
+          ]
+        },
+      ], preferredKey: 'sota');
+      expect(_names(merged), ['summit-near', 'summit-far', 'park-near', 'park-far']);
+    });
+
+    test('without a preferred key everything ranks together', () {
+      final merged = mergeActivitySuggestions([
+        {
+          'key': 'sota',
+          'ok': true,
+          'value': [
+            {'name': 'summit', 'distance': 90, 'relevance': 1.0}
+          ]
+        },
+        {
+          'key': 'pota',
+          'ok': true,
+          'value': [
+            {'name': 'park', 'distance': 8, 'relevance': 1.0}
+          ]
+        },
+      ]);
+      expect(_names(merged), ['park', 'summit']);
+    });
+
+    test('a failed or malformed entry costs only itself', () {
+      final merged = mergeActivitySuggestions([
+        {'key': 'wwff', 'ok': false, 'error': 'boom'},
+        {'key': 'iota', 'ok': true, 'value': 'not a list'},
+        entry('pota', ['park']),
+      ], preferredKey: 'sota');
+      expect(_names(merged), ['park']);
+    });
+
+    test('a preferred extension that answered nothing does not blank the list', () {
+      final merged = mergeActivitySuggestions([
+        {'key': 'sota', 'ok': false, 'error': 'boom'},
+        entry('pota', ['park']),
+      ], preferredKey: 'sota');
+      expect(_names(merged), ['park']);
+    });
+  });
 }

@@ -401,7 +401,8 @@ Two details worth knowing before adding the seventh program:
   vocabulary — `invalidReference`, `unknownReference`, `activationControl`. A
   program that omits one gets the raw key in its UI.
 - Control keys are `<extensionKey>/activation`, which is what makes `wca:`
-  scoping work in the activity search. The core derives the scope from the part
+  scoping — and the softer `wca <ref>`, which merely puts that extension's hits
+  first — work in the activity search. The core derives both from the part
   before the slash, so a control keyed anything else silently never gets scoped.
 
 `huntingType` became optional on `activityScorer` for these: several of the

@@ -2235,11 +2235,17 @@ class ExtensionService {
   /// field's `pota:` prefix) — that hook alone is asked, rather than every
   /// hook's results being merged and then filtered, so an unrelated
   /// extension's slow search can't hold up a scoped one.
+  /// [preferredKey] is the softer form (a `pota ` prefix, no colon): everyone
+  /// is still asked, but that hook's results lead the list and it searches for
+  /// [preferredSearchTerm] — the box's text with its own key stripped — while
+  /// the others get [searchTerm] verbatim.
   Future<List<Map<String, dynamic>>> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
     String? activityKey,
+    String? preferredKey,
+    String? preferredSearchTerm,
   }) async {
     final host = _host;
     if (host == null) return const [];
@@ -2250,43 +2256,77 @@ class ExtensionService {
         ? operationData['stationCall'] as String
         : settings?.activeProfile.operatorCall;
 
-    final args = {
-      'operation': operationData,
-      if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
-      if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
-      if (searchTerm != null && searchTerm.isNotEmpty) 'searchTerm': searchTerm,
-    };
+    Map<String, dynamic> argsSearchingFor(String? term) => {
+          'operation': operationData,
+          if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
+          if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
+          if (term != null && term.isNotEmpty) 'searchTerm': term,
+        };
 
     try {
-      final entries = activityKey == null
-          ? await host.invokeHookAll(
-              'activity',
-              method: 'suggest',
-              args: args,
-              timeout: const Duration(seconds: 5),
-            )
-          // Wrapped in invokeHookAll's own {ok, value} entry shape so the
-          // merge below doesn't need a second code path.
-          : [
-              {
-                'ok': true,
-                'value': await host.invokeHook(
-                  'activity',
-                  key: activityKey,
-                  method: 'suggest',
-                  args: args,
-                  timeout: const Duration(seconds: 5),
-                ),
-              },
-            ];
-
-      final suggestions = <Map<String, dynamic>>[];
-      for (final entry in entries) {
-        if (entry['ok'] != true || entry['value'] is! List) continue;
-        suggestions.addAll((entry['value'] as List).cast<Map>().map((s) => s.cast<String, dynamic>()));
+      if (activityKey != null) {
+        // Wrapped in invokeHookAll's own {ok, value} entry shape so the merge
+        // doesn't need a second code path.
+        final value = await host.invokeHook(
+          'activity',
+          key: activityKey,
+          method: 'suggest',
+          args: argsSearchingFor(searchTerm),
+          timeout: const Duration(seconds: 5),
+        );
+        return mergeActivitySuggestions([
+          {'ok': true, 'value': value}
+        ]);
       }
 
-      return rankActivitySuggestions(suggestions);
+      // The preferred hook is asked SEPARATELY because it searches for
+      // something else — its own key stripped off the front — so its answer to
+      // the everyone-else question is discarded below rather than merged.
+      final preferred = preferredKey == null
+          ? Future.value(const <Map<String, dynamic>>[])
+          : host
+              .invokeHook(
+                'activity',
+                key: preferredKey,
+                method: 'suggest',
+                args: argsSearchingFor(preferredSearchTerm),
+                timeout: const Duration(seconds: 5),
+              )
+              .then((value) => [
+                    <String, dynamic>{'key': preferredKey, 'ok': true, 'value': value}
+                  ])
+              // Precedence is only an ordering: when the preferred hook fails,
+              // what the other extensions found is still the right answer.
+              .onError<ExtensionHostException>((e, _) {
+                debugPrint('[extensions] preferred activity hook $preferredKey failed: $e');
+                return const [];
+              });
+
+      // The fan-out is ONE message under ONE timeout, so its failure takes
+      // every hook with it — but not the preferred one, asked separately and
+      // quite possibly already answered. Each side therefore degrades on its
+      // own, and only a search where both failed comes back empty.
+      final everyone = host
+          .invokeHookAll(
+            'activity',
+            method: 'suggest',
+            args: argsSearchingFor(searchTerm),
+            timeout: const Duration(seconds: 5),
+          )
+          .onError<ExtensionHostException>((e, _) {
+        debugPrint('[extensions] activity suggestion fan-out failed: $e');
+        return const [];
+      });
+
+      final results = await Future.wait([preferred, everyone]);
+      return mergeActivitySuggestions(
+        [
+          ...results[0],
+          for (final entry in results[1])
+            if (preferredKey == null || entry['key'] != preferredKey) entry,
+        ],
+        preferredKey: preferredKey,
+      );
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] suggestActivities failed: $e');
       return const [];

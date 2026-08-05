@@ -8,6 +8,31 @@
 // a hook can return without standing up the JS runtime. Same reasoning as
 // `qso_patch.dart`.
 
+/// The suggestions carried by [entries] — one `{key, ok, value}` per activity
+/// hook, the shape `invokeHookAll` returns — in the order the picker should
+/// show them.
+///
+/// [preferredKey]'s own suggestions form a band ahead of everyone else's, each
+/// band ranked among itself by [rankActivitySuggestions]. Naming an extension
+/// in the search box says WHICH extension holds the answer, so a nearer hit
+/// from another one must not push the named extension's results down the list.
+///
+/// An entry that failed, or answered with anything but a list, contributes
+/// nothing: one broken hook never costs the others their results.
+List<Map<String, dynamic>> mergeActivitySuggestions(
+  List<Map<String, dynamic>> entries, {
+  String? preferredKey,
+}) {
+  final preferred = <Map<String, dynamic>>[];
+  final others = <Map<String, dynamic>>[];
+  for (final entry in entries) {
+    if (entry['ok'] != true || entry['value'] is! List) continue;
+    final band = preferredKey != null && entry['key'] == preferredKey ? preferred : others;
+    band.addAll((entry['value'] as List).cast<Map>().map((s) => s.cast<String, dynamic>()));
+  }
+  return [...rankActivitySuggestions(preferred), ...rankActivitySuggestions(others)];
+}
+
 /// [suggestions] in the order the activity picker should show them.
 ///
 /// TWO BANDS. Anything carrying a `distance` sorts first, by

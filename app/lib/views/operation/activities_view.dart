@@ -199,35 +199,103 @@ List<Map<String, dynamic>> refsKeptWhenAdding({
 
 /// A search box entry split into an optional extension scope and the text
 /// after it: `pota:` scopes to POTA's own suggestions, `pota: bear mtn`
-/// scopes AND searches, plain `bear mtn` searches everything. The scope is
-/// what the "Activity Types" rows insert when tapped.
+/// scopes AND searches, `pota bear mtn` merely gives POTA precedence, and
+/// plain `bear mtn` searches everything evenly. The scope is what the
+/// "Activity Types" rows insert when tapped.
 class ActivitySearchQuery {
   /// The extension key to ask, or null for "every activity hook".
   final String? activityKey;
 
-  /// What's left to search for — empty means "just show me this scope's
-  /// nearby suggestions".
+  /// The extension whose suggestions rank ahead of every other one's, or null
+  /// when no leading key was typed. Never set together with [activityKey] —
+  /// preferring is the soft form of scoping, for when the key came without a
+  /// colon and the rest of the box may still be meant for someone else.
+  final String? preferredKey;
+
+  /// What [activityKey] / [preferredKey] searches for — empty means "just show
+  /// me this scope's nearby suggestions".
   final String term;
 
-  const ActivitySearchQuery({this.activityKey, required this.term});
+  /// What every OTHER hook searches for: the raw input, leading key word and
+  /// all. Only the named extension gets its own key stripped — handing the
+  /// leftover text to the rest would bury `sota bear` under every park named
+  /// Bear, and precedence is supposed to narrow the list, not widen it.
+  /// Equals [term] whenever [preferredKey] is null.
+  final String otherTerm;
+
+  const ActivitySearchQuery({
+    this.activityKey,
+    this.preferredKey,
+    required this.term,
+    required this.otherTerm,
+  });
 
   static final _scopePattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*):(.*)$', dotAll: true);
+  static final _leadingWordPattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*)(?:\s+(.*))?$', dotAll: true);
 
-  /// A leading `key:` only scopes when [knownKeys] actually has that key —
-  /// references and park names carry colons too (`US-0001: Something`), and
-  /// treating one as a scope would quietly search the wrong extension, or
-  /// none, while looking like it worked.
+  /// A leading `key`, with or without its colon, only counts when [knownKeys]
+  /// actually has that key — references and park names carry colons and lead
+  /// with words too (`US-0001: Something`, `bear mountain`), and treating one
+  /// as a scope would quietly search the wrong extension, or none, while
+  /// looking like it worked.
   factory ActivitySearchQuery.parse(String input, Set<String> knownKeys) {
     final trimmed = input.trim();
-    final match = _scopePattern.firstMatch(trimmed);
-    final key = match?.group(1)?.toLowerCase();
-    if (key == null || !knownKeys.contains(key)) return ActivitySearchQuery(term: trimmed);
-    return ActivitySearchQuery(activityKey: key, term: (match!.group(2) ?? '').trim());
+
+    final scope = _scopePattern.firstMatch(trimmed);
+    final scopeKey = scope?.group(1)?.toLowerCase();
+    if (scopeKey != null && knownKeys.contains(scopeKey)) {
+      final term = (scope!.group(2) ?? '').trim();
+      return ActivitySearchQuery(activityKey: scopeKey, term: term, otherTerm: term);
+    }
+
+    final word = _leadingWordPattern.firstMatch(trimmed);
+    final wordKey = word?.group(1)?.toLowerCase();
+    if (wordKey != null && knownKeys.contains(wordKey)) {
+      final rest = (word!.group(2) ?? '').trim();
+      // A key on its own scopes exactly like `key:` does: there is nothing
+      // else in the box that the other extensions could be answering.
+      if (rest.isEmpty) return ActivitySearchQuery(activityKey: wordKey, term: '', otherTerm: '');
+      return ActivitySearchQuery(preferredKey: wordKey, term: rest, otherTerm: trimmed);
+    }
+
+    return ActivitySearchQuery(term: trimmed, otherTerm: trimmed);
   }
 
   /// The text the search field holds for a bare scope — what tapping an
   /// "Activity Types" row types for the user.
   static String scopePrefixFor(String activityKey) => '$activityKey: ';
+}
+
+/// How [input] should be matched against an extension the operator has NOT
+/// switched on: [search] is the whole box, matched loosely against names,
+/// descriptions and keywords; [key] is its first word, which must equal an
+/// extension's key exactly. A lone trailing colon is dropped from both.
+///
+/// The first word is the part that matters here. An extension that is off
+/// contributes no controls, so [ActivitySearchQuery.parse] can't recognize its
+/// key and hands the whole string on as plain search text — and `sota
+/// w7a/mn-001` matches no extension as a whole, leaving the operator with an
+/// empty list and no hint that SOTA is a switch away.
+///
+/// Exactly, though, and not through the loose match: keys turn up inside
+/// unrelated extensions' keywords, so `pota bear mtn` would otherwise offer to
+/// enable State Parks Events above the parks the operator was looking for.
+///
+/// Both are empty for an empty box: "show everything" is not a match.
+({String search, String key}) extensionSearchCandidates(String input) {
+  final trimmed = input.trim().replaceFirst(RegExp(r':$'), '').trim();
+  final firstWord = input.trim().split(RegExp(r'\s')).first;
+  return (search: trimmed, key: firstWord.replaceFirst(RegExp(r':$'), '').toLowerCase());
+}
+
+/// What's in [typed] past a leading [key], or empty when it doesn't lead with
+/// that key at all — an extension matched by its name or a keyword leaves
+/// nothing worth carrying into its scope.
+String searchTextAfterKey(String typed, String key) {
+  final trimmed = typed.trim();
+  final firstWord = trimmed.split(RegExp(r'\s')).first;
+  if (firstWord.replaceFirst(RegExp(r':$'), '').toLowerCase() != key.toLowerCase()) return '';
+  return trimmed.substring(firstWord.length).trim();
 }
 
 /// The operation sheet's body: the activities list and search, plus the
@@ -570,8 +638,10 @@ class OperationSheetState extends State<OperationSheet> {
     final fallbackPosition = location.position;
     final results = await widget.services.extensions.suggestActivities(
       _operation.data,
-      searchTerm: trimmed.isEmpty ? null : trimmed,
+      searchTerm: query.otherTerm.isEmpty ? null : query.otherTerm,
       activityKey: query.activityKey,
+      preferredKey: query.preferredKey,
+      preferredSearchTerm: trimmed.isEmpty ? null : trimmed,
       fallbackLocation:
           fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
     );
@@ -741,27 +811,29 @@ class OperationSheetState extends State<OperationSheet> {
     _saveRefs([...refs]..[index] = decorated);
   }
 
-  /// Non-core extensions that match [input] but are switched off. A lone
-  /// trailing colon is dropped first, so a half-typed scope (`sota:` for an
-  /// extension that isn't on, and so has no controls to validate against)
-  /// still finds it.
+  /// Non-core extensions that match [input] but are switched off.
   List<ExtensionInfo> _disabledExtensionsMatching(String input) {
-    final query = input.trim().replaceFirst(RegExp(r':$'), '').trim();
-    if (query.isEmpty) return const [];
+    final candidates = extensionSearchCandidates(input);
+    if (candidates.search.isEmpty) return const [];
     final locale = LocaleSettings.currentLocale.languageCode;
     final extensions = widget.services.extensions;
     return [
       for (final info in extensions.availableExtensions)
-        if (!info.core && !extensions.isExtensionEnabled(info) && info.matchesSearch(query, locale: locale)) info,
+        if (!info.core &&
+            !extensions.isExtensionEnabled(info) &&
+            (info.key.toLowerCase() == candidates.key || info.matchesSearch(candidates.search, locale: locale)))
+          info,
     ];
   }
 
-  /// Turns an extension on from the search results, then scopes the search
-  /// to it — the user went looking for this activity, so its own suggestions
-  /// are what they want next, not the text that merely named it. Enabling
-  /// restarts the extension runtime, so the controls are reloaded too: the
-  /// new type has to appear under "Activity Types" as well, and the scope
-  /// prefix only parses once its key is among the loaded ones.
+  /// Turns an extension on from the search results, then scopes the search to
+  /// it. Text that merely NAMED the extension is dropped — its own suggestions
+  /// are what the operator wants next — but a reference typed after its key
+  /// (`sota w7a/mn-001`) is carried across into the scope, since that half of
+  /// the box was never about naming the extension. Enabling restarts the
+  /// extension runtime, so the controls are reloaded too: the new type has to
+  /// appear under "Activity Types" as well, and the scope prefix only parses
+  /// once its key is among the loaded ones.
   Future<void> _enableExtension(ExtensionInfo info) async {
     // Enabling restarts the runtime, which takes a moment — a second tap
     // would queue a second restart on top of the first.
@@ -782,13 +854,14 @@ class OperationSheetState extends State<OperationSheet> {
     if (!mounted) return;
     await _loadControls();
     if (!mounted) return;
-    final prefix = ActivitySearchQuery.scopePrefixFor(info.key);
+    final scoped =
+        ActivitySearchQuery.scopePrefixFor(info.key) + searchTextAfterKey(_searchController.text, info.key);
     _searchController.value = TextEditingValue(
-      text: prefix,
-      selection: TextSelection.collapsed(offset: prefix.length),
+      text: scoped,
+      selection: TextSelection.collapsed(offset: scoped.length),
     );
     _debounce?.cancel();
-    await _search(prefix);
+    await _search(scoped);
   }
 
   /// Tapping an activity type scopes the search to it (`pota: `) rather than
