@@ -439,14 +439,17 @@ the guard every other write site uses.
 Everyone who taps the same CW spot otherwise transmits on exactly the same frequency, and a pileup
 stacked on one note is one the activator cannot pick a callsign out of. **Avoid Zero-Beating on
 Spots** (`app/lib/services/cat/zero_beat.dart`) moves a CW suggestion a few Hz off the spotted
-frequency. It is **on** by default, unlike Smart VFO Snap: it does not move the radio uninvited, it
-only changes where a retune the operator just asked for lands.
+frequency. It is **off** by default, for the same reason Smart VFO Snap is: the frequency an operator
+transmits on and logs is theirs to choose, so anything that moves it is opted into rather than out
+of. That this one only redirects a retune the operator just asked for, rather than moving the radio
+uninvited, makes it the milder of the two — not an automatic one. Its range knob is offered
+alongside it, without developer mode: whoever switched the feature on is exactly who might want to
+tune the spread.
 
 **Only with `radio1` connected.** With no rig under CAT the app changes no frequency at all — the
 operator reads the number off the screen and dials it in, so an offset would hand them digits to
 hand-tune for no benefit and leave the log claiming a frequency they never transmitted on. A rig
 connected in the shack but not driving the logging panel doesn't count either; nothing would retune.
-This is also why the feature can be on by default without an operator ever meeting it unexpectedly.
 
 The offset is applied in **`OperationView._suggestQso`** — the one place every suggestion passes
 through that can also read the settings, `halo_widgets` being a package below the app. Applying it

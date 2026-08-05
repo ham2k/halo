@@ -127,15 +127,23 @@ void main() {
       expect(await keysFor(await settingsWith(cat: false)), isEmpty);
     });
 
-    test('the tuning knobs are emitted, not merely flagged, only in developer mode', () async {
+    test("Smart VFO Snap's knobs are emitted, not merely flagged, only in developer mode", () async {
       // The distinction is load-bearing: `devMode: true` alone hides the
       // fields inside FormRenderer, but showSettingsForTarget offers "show
       // more settings" whenever the extended bucket is NON-EMPTY — so
       // flagging without gating leaves every other operator a disclosure that
       // expands to nothing.
-      expect(await keysFor(await settingsWith(developer: false)), toggles);
+      expect(await keysFor(await settingsWith(developer: false)), isNot(contains('smartVfoSnapDebounceMs')));
       expect(await keysFor(await settingsWith()), contains('smartVfoSnapDebounceMs'));
-      expect(await keysFor(await settingsWith()), contains('zeroBeatRangeHz'));
+    });
+
+    test('the zero-beat range follows its own feature, not developer mode', () async {
+      // Unlike the snap knobs, this one only exists once the operator has
+      // deliberately switched the feature on — and that operator is exactly
+      // who would want to tune the spread, developer or not.
+      expect(await keysFor(await settingsWith(developer: false)), contains('zeroBeatRangeHz'));
+      expect(await keysFor(await settingsWith(developer: false, zeroBeat: false)),
+          isNot(contains('zeroBeatRangeHz')));
     });
 
     test('the knobs mean nothing with the feature off, and are not offered', () async {
@@ -145,19 +153,19 @@ void main() {
       expect(await keysFor(await settingsWith(zeroBeat: false)), isNot(contains('zeroBeatRangeHz')));
     });
 
-    test('Avoid Zero-Beating is on out of the box, unlike Smart VFO Snap', () async {
-      // The two differ deliberately: snap moves the radio uninvited, so it is
-      // opted into; this only changes where a retune the operator just asked
-      // for lands, and a CW pileup stacked on one note is the default it
-      // exists to prevent.
+    test('both radio features are off out of the box', () async {
+      // The frequency an operator transmits on and logs is theirs to choose,
+      // so anything that moves it is opted into. Zero-beat being the milder
+      // of the two — it redirects a retune already asked for, rather than
+      // moving the radio uninvited — does not make it automatic.
       SharedPreferences.setMockInitialValues({});
       final fresh = SettingsService(await SharedPreferences.getInstance());
-      expect(fresh.avoidZeroBeat, isTrue);
+      expect(fresh.avoidZeroBeat, isFalse);
       expect(fresh.smartVfoSnap, isFalse);
       expect(fresh.zeroBeatRangeHz, 25);
     });
 
-    test('every knob is dev-flagged, extended-targeted, and lands in settings when committed', () async {
+    test('every knob is extended-targeted, dev-flagged where it should be, and commits', () async {
       final settings = await settingsWith();
       final group = RadioSettingsGroup(settings);
       final knobs = [
@@ -166,9 +174,14 @@ void main() {
       ];
       expect(knobs, hasLength(5));
       for (final el in knobs) {
-        expect(el['devMode'], isTrue, reason: '${el['key']} would show without developer mode in All Settings');
+        // Every knob stays out of the tune dialog's always-visible set...
         expect(elementMatchesTarget(el, 'current-radio-extended'), isTrue,
             reason: '${el['key']} would crowd the tune dialog\'s always-visible set');
+        // ...but only the snap knobs also hide behind developer mode. Compared
+        // as `== true`, which is how FormRenderer reads the flag — an absent
+        // key and an explicit false both mean "show it".
+        expect(el['devMode'] == true, el['key'] != 'zeroBeatRangeHz',
+            reason: '${el['key']} is flagged for the wrong audience in All Settings');
       }
 
       // The select fields emit strings; a commit path that only handled bools

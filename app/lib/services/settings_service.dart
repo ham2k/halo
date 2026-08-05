@@ -720,14 +720,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// Whether tuning to a CW spot lands a little off the spotted frequency
   /// rather than exactly on it (app/lib/services/cat/zero_beat.dart).
   ///
-  /// On by default, unlike [smartVfoSnap]: this moves the VFO only as part of
-  /// a retune the operator just asked for by picking the spot, so it changes
-  /// where an invited move lands rather than moving the radio uninvited.
+  /// Off by default, for the same reason as [smartVfoSnap]: the frequency an
+  /// operator transmits on and logs is theirs to choose, so anything that
+  /// moves it is opted into rather than out of. That this one only redirects a
+  /// retune the operator just asked for, rather than moving the radio
+  /// uninvited, makes it milder — not automatic.
   ///
   /// Everyone who clicks the same spot otherwise transmits on exactly the same
   /// frequency, and a CW pileup stacked on one note is one the activator
   /// cannot pick a callsign out of.
-  bool get avoidZeroBeat => (settingValue(radioGroup, 'avoidZeroBeat') as bool?) ?? true;
+  bool get avoidZeroBeat => (settingValue(radioGroup, 'avoidZeroBeat') as bool?) ?? false;
 
   Future<void> setAvoidZeroBeat(bool value) => setSettingValue(radioGroup, 'avoidZeroBeat', value);
 

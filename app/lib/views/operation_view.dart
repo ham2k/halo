@@ -1712,13 +1712,13 @@ Map<String, dynamic> zeroBeatSuggestionFor(
   required ZeroBeatOffsetter offsetter,
 }) {
   final settings = services.settings;
-  // The experiment is checked FIRST, and it is what keeps `services.cat`
+  // Both gates are checked before `services.cat`, which is what keeps it
   // untouched: that getter is a `late final`, so reading it builds a
   // CatService — registry, stored equipment, a RadioService listener held for
-  // the process — and this runs on every spot tap. Without the experiment
-  // there is no Station Configuration to connect a radio from, so the answer
-  // would be "not connected" anyway. Checking `avoidZeroBeat` alone would not
-  // do: it defaults to on, so that path is the common one.
+  // the process — and this runs on every spot tap. The experiment is the
+  // structural one and stays first: without Station Configuration there is no
+  // way to connect a radio at all, so the answer would be "not connected"
+  // however the setting is left.
   if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return qso;
   if (!settings.avoidZeroBeat) return qso;
   final cat = services.cat;

@@ -587,10 +587,14 @@ class RadioSettingsGroup extends SettingsGroup {
         value: settings.avoidZeroBeat,
         target: 'current-radio',
       ),
-      // Gated AND flagged, for the same reason the snap knobs above are.
-      if (settings.avoidZeroBeat && settings.developerMode)
+      // Emitted with the feature, not with developer mode: whoever switched
+      // it on is who would want to tune the spread. Still gated rather than
+      // merely flagged, so it doesn't offer "show more settings" to someone
+      // who has the feature off and would find nothing there.
+      if (settings.avoidZeroBeat)
         _tuningSelect(
           key: 'zeroBeatRangeHz',
+          devMode: false,
           label: s.zeroBeatRange.title,
           description: s.zeroBeatRange.description,
           icon: 'arrow-left-right',
@@ -601,9 +605,15 @@ class RadioSettingsGroup extends SettingsGroup {
     ];
   }
 
-  /// One of Smart VFO Snap's tuning knobs: a `select` over preset values
-  /// rather than a `number` field, so trying one is a single tap and no
-  /// half-typed value is ever committed and acted on.
+  /// A radio tuning knob: a `select` over preset values rather than a `number`
+  /// field, so trying one is a single tap and no half-typed value is ever
+  /// committed and acted on.
+  ///
+  /// [devMode] is what separates Smart VFO Snap's four knobs — which nobody
+  /// should have to meet, since that feature works without them — from the
+  /// zero-beat range, which only exists once an operator has deliberately
+  /// switched that feature on and is exactly who might want to tune it. Both
+  /// stay in the `-extended` bucket, behind "show more settings".
   Map<String, dynamic> _tuningSelect({
     required String key,
     required String label,
@@ -612,6 +622,7 @@ class RadioSettingsGroup extends SettingsGroup {
     required String value,
     required List<String> options,
     required String unit,
+    bool devMode = true,
   }) {
     String labelFor(String option) => '$option $unit';
     // No fallback here: [value] comes from a getter that already resolved
@@ -633,7 +644,7 @@ class RadioSettingsGroup extends SettingsGroup {
       value: value,
       options: [for (final option in options) (label: labelFor(option), value: option)],
       target: 'current-radio-extended',
-      devMode: true,
+      devMode: devMode,
     );
   }
 
