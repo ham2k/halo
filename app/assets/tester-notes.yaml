@@ -4,6 +4,13 @@
 # entry newer than the last build they dismissed. Each entry under `changes`
 # is rendered as markdown.
 #
+# Keep an entry to about a dozen words on one line: what changed and where to
+# find it. A short ask ("tell us what works") fits; setup steps, caveats and
+# rationale do not. One entry per change, never one per detail — and most
+# changes get none at all, since only a new feature or a new control a tester
+# can go and exercise earns one. Length is set by this rule, not by whatever
+# the surrounding entries happen to look like — don't pattern-match off them.
+#
 # Notes are written as work merges, not at release time: add them under an
 # `upcoming` key at the left margin, creating it when the last cut took it —
 #
