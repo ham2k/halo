@@ -684,7 +684,21 @@ class _LoggingPanelState extends State<LoggingPanel> {
             onControlsSettingsChanged: _handleControlsSettingsChanged,
             operationStatsLines: (qsos) => operationStatsLines(context, qsos),
             callLocationLine: (guess) => _callLocationLine(context, guess),
-            scoreQso: widget.services.extensions.scoreQso,
+            // Wrapped rather than torn off, to inject the activities this
+            // operation has hunted — an operation that activates nothing names
+            // no activity on its own refs, so without this the pills fall back
+            // to the core dupe rule and call a station worked at another park a
+            // plain duplicate (docs/design/activities.md §4).
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) =>
+                widget.services.extensions.scoreQso(
+                  operation: operation,
+                  qso: qso,
+                  excludeUuid: excludeUuid,
+                  segments: segments,
+                  huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const [])
+                      .whereType<String>()
+                      .toSet(),
+                ),
             scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
             onCallInfoChanged: widget.onCallInfoChanged,
             onCallInfoTap: widget.onCallInfoTap,

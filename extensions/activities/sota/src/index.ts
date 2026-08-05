@@ -821,7 +821,7 @@ defineExtension({
     // what a hunting-only operation loses by it.
     registerHook('scoring', {
       hook: contestScorer(activityScorer(SOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'sota',
     })

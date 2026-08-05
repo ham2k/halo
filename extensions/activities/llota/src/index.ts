@@ -279,7 +279,7 @@ defineExtension({
     registerHook('dataFile', { hook: llotaDataFile, key: 'llota-all-references' })
     registerHook('scoring', {
       hook: contestScorer(activityScorer(LLOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'llota',
     })

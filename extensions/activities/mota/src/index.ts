@@ -167,7 +167,7 @@ defineExtension({
     registerHook('dataFile', { hook: motaDataFile, key: 'mota-all-mills' })
     registerHook('scoring', {
       hook: contestScorer(activityScorer(MOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'mota',
     })

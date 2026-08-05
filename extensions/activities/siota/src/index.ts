@@ -114,7 +114,7 @@ defineExtension({
     // No `spots`: SiOTA has neither a feed nor a spot endpoint in app-polo.
     registerHook('scoring', {
       hook: contestScorer(activityScorer(SIOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'siota',
     })

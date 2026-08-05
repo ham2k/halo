@@ -354,14 +354,27 @@ whose `type` equals the scorer key — true of a contest, false of an activity,
 whose ref type is the key plus a suffix — so it now falls back to a prefix
 match and an activation is headed "POTA US-0001" rather than "pota".
 
-Still open: **`ExtensionService` selects scorers from the OPERATION's refs**
-(`extension_service.dart:1398`), so an operation that only HUNTS references
-never selects the activity's scorer and gets no hunted-reference tally.
-app-polo covers this with `generalHuntingType`, which adds the handler to every
-operation regardless. The obvious HaLo equivalent — `scope: 'always'` — costs a
-full-log payload serialization per activity per operation, which is what `scope`
-exists to avoid, and it does not scale to nineteen activities. Deferred rather
-than papered over.
+**Hunting selects a scorer too.** `scorersFor` reads the OPERATION's refs,
+which name what it ACTIVATES — a chaser activates nothing, so an operation that
+only hunts once selected no activity scorer at all. That left the core
+call/band/mode dupe rule as the only one applying to the most common way HaLo is
+used: a station worked at one park read as a duplicate when spotted at another,
+in the spot list and in the call-info pills alike.
+
+`scorersFor` now also takes the ref types found in the LOG and in whatever is
+being scored, and selects a matching scorer with a **null ref** — an activity
+reads the references it is activating off the operation rather than off that ref
+(`activationRefsOf`), so a hunt-only selection needs no synthetic ref and
+correctly earns no activation credit.
+
+Not app-polo's `generalHuntingType`, which adds every activity's handler to
+every operation. That is free in-process and is not here — each scorer is a
+bridge crossing carrying the log, and it does not scale to nineteen activities.
+Matching on types actually present adds at most one scorer per program hunted.
+`ScoringService` caches the log's types in `local_data.huntedRefTypes` so the
+live paths select from a short list instead of rescanning the log per keystroke;
+they add the refs of the work in hand as well, so the first contact with a new
+program selects its scorer before any rescore has recorded it.
 
 ---
 

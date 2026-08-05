@@ -43,6 +43,10 @@
     - "Worked spots are struck through and dimmed; your own call goes orange"
     - "Spots colour what's new: band green, mode, reference, multiplier in orange"
 
+upcoming:
+  changes:
+    - "Chasers get **New Reference** and **New Day** now — POTA/SOTA rules apply without activating"
+
 "126":
   changes:
     - "The Operation Setup sheet got a cleaner layout. Please test this and give feedback"

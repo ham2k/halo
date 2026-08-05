@@ -809,7 +809,19 @@ export interface ScoringHook {
 /// (DXCC, states, bands-and-modes); a `refTypes` list scores only operations
 /// carrying one of those refs, so the core can skip a contest entirely rather
 /// than invoke it to be told "not mine". Declared at `registerHook` time.
-export type ScoringScope = 'always' | { refTypes: string[] }
+///
+/// `huntingRefTypes` additionally selects the scorer for an operation that
+/// never names it, when a ref of one of those types appears in the LOG or in
+/// the work being scored — the ordinary chaser, whose operation activates
+/// nothing (docs/design/activities.md §4).
+///
+/// It is a SEPARATE list from `refTypes` on purpose, and a contest declares
+/// none. A contest's ref type rides its QSOs as exchange data (`{type: 'cqww',
+/// theirZone}`), so a rule reading "any ref type in the log" would resurrect a
+/// contest that a `break` has already ended, or one removed from the operation
+/// outright — the opposite of what segments exist for. Only a program that is
+/// genuinely HUNTED contact by contact belongs here.
+export type ScoringScope = 'always' | { refTypes: string[]; huntingRefTypes?: string[] }
 
 /// A scorer's running record while it works through a log: worked calls, mult
 /// sets, running points. Opaque to the core and owned by the scorer, so it must

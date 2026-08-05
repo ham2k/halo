@@ -311,7 +311,7 @@ defineExtension({
     registerHook('dataFile', { hook: wwbotaDataFile, key: 'wwbota-all-bunkers' })
     registerHook('scoring', {
       hook: contestScorer(activityScorer(WWBOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'wwbota',
     })

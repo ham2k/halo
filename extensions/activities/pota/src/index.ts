@@ -588,16 +588,14 @@ defineExtension({
     // hook once a lower-priority qth-scope grid was already merged in.
     registerHook('lookup', { hook: { lookupCall }, key: 'pota', priority: 100 })
     registerHook('dataFile', { hook: potaDataFile, key: 'pota-all-parks' })
-    // Scoped to the ref types rather than 'always': the core reads the
-    // OPERATION's refs to decide which scorers run, and paying a full-log
-    // bridge crossing per activity on every operation is what `scope` exists to
-    // avoid. The consequence is that an operation which only HUNTS parks (no
-    // activation ref) doesn't select this scorer, so its hunted-reference tally
-    // is missing — app-polo covers that case with `generalHuntingType`, which
-    // has no HaLo equivalent yet (docs/design/activities.md §4).
+    // Scoped to the ref types rather than 'always': paying a full-log bridge
+    // crossing per activity on every operation is what `scope` exists to avoid.
+    // An operation that only HUNTS parks carries neither type on its own refs,
+    // and still selects this scorer — the host matches the types found in the
+    // log and in the work being scored as well (docs/design/activities.md §4).
     registerHook('scoring', {
       hook: contestScorer(activityScorer(POTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'pota',
     })

@@ -33,6 +33,24 @@ class ScoringService {
 
     final all = await qsos.watchForOperation(operation.uuid).first;
     final qsoList = all.where((q) => !q.isEvent).toList();
+
+    // The activities this log HUNTS, which the operation's own refs never name
+    // — a chaser activates nothing (docs/design/activities.md §4). Written
+    // before any of the early returns below, and from an empty log as an empty
+    // list: the live paths select their scorers from this, so a stale entry
+    // makes them invoke a scorer for a program the log no longer contains,
+    // paying a whole-log fold per pass to be told nothing.
+    //
+    // ONLY when it actually changes. Every `local_data` write pushes an event
+    // down the operation stream and rebuilds the Operation View; an
+    // unconditional one per rescore is a rebuild per rescore that tells the UI
+    // nothing, and the value moves perhaps once in an operation's life.
+    final huntedRefTypes = ExtensionService.huntedRefTypesOf(qsoList);
+    final cached = ((operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
+    if (!setEquals(cached, huntedRefTypes)) {
+      await operations.updateLocalData(operation.uuid, {'huntedRefTypes': huntedRefTypes.toList()..sort()});
+    }
+
     if (qsoList.isEmpty) return;
 
     // Resolved from the FULL list — the event rows carrying the segment
@@ -46,7 +64,12 @@ class ScoringService {
       // operation. A user with dozens of extensions enabled never pays for the
       // ones this operation doesn't reference (docs/design/contests.md §5.1).
       final scopes = await extensions.getScoringScopes();
-      final scorers = ExtensionService.scorersFor(operation.data, scopes, segments: segmented);
+      final scorers = ExtensionService.scorersFor(
+        operation.data,
+        scopes,
+        segments: segmented,
+        alsoRefTypes: huntedRefTypes,
+      );
       if (scorers.isEmpty) return;
 
       final payload = {

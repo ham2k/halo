@@ -294,7 +294,7 @@ defineExtension({
     registerHook('dataFile', { hook: totaDataFile, key: 'tota-all-towers' })
     registerHook('scoring', {
       hook: contestScorer(activityScorer(TOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'tota',
     })

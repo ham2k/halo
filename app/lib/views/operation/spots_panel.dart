@@ -658,6 +658,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
           candidates: candidates,
           segments: segmented.isSegmented ? segmented.payload : null,
           scoresheets: logMoved ? null : _cachedScoresheets,
+          huntedRefTypes: _huntedRefTypes,
         );
         if (!mounted) return;
         // A null result means no scorer ran at all (runtime not up yet, or none
@@ -691,6 +692,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
     };
     return sheets.isEmpty ? null : sheets;
   }
+
+  /// The activity types this operation has hunted, cached by `ScoringService`.
+  /// What makes POTA's rules apply to a chaser's spots at all — an operation
+  /// that activates nothing names no activity on its own refs.
+  Set<String> get _huntedRefTypes =>
+      ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
 
   /// This operation's own station callsign, uppercased — the spot to tint
   /// rather than offer as a contact.

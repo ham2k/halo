@@ -295,7 +295,7 @@ defineExtension({
     registerHook('dataFile', { hook: wwffDataFile, key: 'wwff-all-parks' })
     registerHook('scoring', {
       hook: contestScorer(activityScorer(WWFF_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'wwff',
     })

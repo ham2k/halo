@@ -195,7 +195,7 @@ defineExtension({
     registerHook('dataFile', { hook: zlotaDataFile, key: 'zlota-all-references' })
     registerHook('scoring', {
       hook: contestScorer(activityScorer(ZLOTA_SCORING), {
-        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
       key: 'zlota',
     })

@@ -1707,10 +1707,37 @@ class ExtensionService {
   /// (docs/design/contests.md §5.1.3). The ref handed back is the first
   /// occurrence — the harness re-resolves it per QSO from the segment-effective
   /// operation, so a segment that restates its setup still wins.
+  ///
+  /// [alsoRefTypes] selects a ref-gated scorer the operation itself doesn't
+  /// name — the ref types found in the LOG and in whatever is being scored.
+  /// Without it an operation that only HUNTS references (the ordinary POTA
+  /// chaser, no activation ref) selects no activity scorer at all, so nothing
+  /// but the core call/band/mode dupe rule applies to it: a station worked at
+  /// one park reads as a duplicate when spotted at another
+  /// (docs/design/activities.md §4).
+  ///
+  /// Matched against the scope's `huntingRefTypes` ONLY, never its `refTypes`.
+  /// A contest's ref type also rides its QSOs — as exchange data (`{type:
+  /// 'cqww', theirZone}`) — so matching `refTypes` here would re-select a
+  /// contest that a `break` has already ended, or one removed from the
+  /// operation outright, which is precisely what segments exist to prevent.
+  ///
+  /// Such a scorer is paired with a null ref, like an `'always'` one. There is
+  /// no operation ref to hand it and none is invented: an activity reads the
+  /// references it is ACTIVATING off the operation, not off this ref
+  /// (`activityScoring.ts`'s `activationRefsOf`), so a hunt-only operation
+  /// correctly earns no activation credit.
+  ///
+  /// app-polo instead gives every activity a `generalHuntingType` and runs all
+  /// of them on every operation. That is affordable in-process and is not here:
+  /// each scorer is a bridge crossing carrying the log. Matching on ref types
+  /// actually present adds at most one scorer per type hunted, rather than one
+  /// per installed activity.
   static List<({String key, Map<String, dynamic>? ref})> scorersFor(
     Map<String, dynamic> operation,
     Map<String, dynamic> scopes, {
     SegmentedOperation? segments,
+    Set<String> alsoRefTypes = const {},
   }) {
     final refs = [
       for (final segment in segments?.segments ?? const [])
@@ -1737,9 +1764,38 @@ class ExtensionService {
         // One selection per type, however many segments carry it.
         if (seen.add(type)) selected.add((key: entry.key, ref: ref));
       }
+      // A scorer the operation names is already selected, with the ref that
+      // named it — this only reaches the ones it doesn't, so a hunt-only
+      // selection can never displace an activation's own ref.
+      final huntingTypes =
+          ((scope is Map ? scope['huntingRefTypes'] : null) as List?)?.whereType<String>() ?? const <String>[];
+      if (seen.isEmpty && huntingTypes.any(alsoRefTypes.contains)) {
+        selected.add((key: entry.key, ref: null));
+      }
     }
     return selected;
   }
+
+  /// The activity reference types appearing on [qsos] — what an operation is
+  /// HUNTING, as opposed to the refs on the operation itself, which is what it
+  /// is activating. Feeds [scorersFor]'s `alsoRefTypes`.
+  ///
+  /// `Qso.data` is already decoded, so this is a map read per QSO rather than a
+  /// parse; callers that hold the log (a rescore, the logging panel) pay
+  /// nothing extra for it.
+  static Set<String> huntedRefTypesOf(Iterable<Qso> qsos) => {
+        for (final qso in qsos)
+          for (final ref in qso.refs)
+            if (ref['type'] case final String type) type,
+      };
+
+  /// The reference types on one QSO-shaped map — a candidate being scored,
+  /// which is not a [Qso] yet (the callsign being typed, a spot).
+  static Set<String> refTypesOf(Map<String, dynamic> qso) => {
+        for (final ref in (qso['refs'] as List?) ?? const [])
+          if (ref is Map)
+            if (ref['type'] case final String type) type,
+      };
 
   /// One scorer's batched pass over an operation's QSOs. [resumeFrom] hands back
   /// that scorer's cached end-of-log scoresheet so only [qsos] — a tail — needs
@@ -1784,16 +1840,29 @@ class ExtensionService {
   /// [segments] (`SegmentedOperation.payload`, omitted when unsegmented) is
   /// what lets the hook fold the history under each QSO's own segment
   /// (docs/design/contests.md §5.1.3).
+  ///
+  /// [huntedRefTypes] are the activity types this operation has hunted —
+  /// `Operation.localData['huntedRefTypes']`, cached by `ScoringService`. The
+  /// candidate's OWN references are added to them here, so the first contact
+  /// with a program still selects its scorer before any rescore has recorded
+  /// it. Without either, an operation that activates nothing selects no
+  /// activity scorer and the pills fall back to the core dupe rule alone (see
+  /// [scorersFor]).
   Future<Map<String, dynamic>?> scoreQso({
     required Map<String, dynamic> operation,
     required Map<String, dynamic> qso,
     String? excludeUuid,
     List<Map<String, dynamic>>? segments,
+    Set<String> huntedRefTypes = const {},
   }) async {
     final host = _host;
     if (host == null) return null;
 
-    final scorers = scorersFor(operation, await getScoringScopes());
+    final scorers = scorersFor(
+      operation,
+      await getScoringScopes(),
+      alsoRefTypes: {...huntedRefTypes, ...refTypesOf(qso)},
+    );
     if (scorers.isEmpty) return null;
 
     // Sorted by scorer key so the merged notice/alert order is stable —
@@ -1865,6 +1934,7 @@ class ExtensionService {
     required Map<String, Map<String, dynamic>> candidates,
     List<Map<String, dynamic>>? segments,
     Map<String, dynamic>? scoresheets,
+    Set<String> huntedRefTypes = const {},
   }) async {
     // The public accessor rather than `_host` directly: what this method sends
     // over the bridge is the thing worth a test, and a private field can't be
@@ -1873,7 +1943,17 @@ class ExtensionService {
     if (host == null || candidates.isEmpty) return null;
 
     final withUuid = {...operation, 'uuid': operationUuid};
-    final scorers = scorersFor(withUuid, await getScoringScopes());
+    // The candidates' own references count as well as the log's: a station
+    // worked bare who is now spotted at a park is a NEW reference, and a
+    // log-only rule would leave that spot struck as a plain duplicate.
+    final scorers = scorersFor(
+      withUuid,
+      await getScoringScopes(),
+      alsoRefTypes: {
+        ...huntedRefTypes,
+        for (final candidate in candidates.values) ...refTypesOf(candidate),
+      },
+    );
     if (scorers.isEmpty) return null;
 
     final payload = [
