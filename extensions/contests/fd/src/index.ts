@@ -254,7 +254,10 @@ const ActivityHook = {
         // is for the exchange once the operator configures one.
         program: 'Contest',
         label: `${t('activityLabel')} ${year}`,
-        shortLabel: 'FD',
+        // Must match what `decorateRef` composes: the same running added by
+        // tapping this suggestion and by the setup form has to read the same
+        // on every surface.
+        shortLabel: `FD ${year}`,
         relevance: relevanceFor(now),
       },
     ]
@@ -344,14 +347,24 @@ const RefHandler = {
     const own = [str((ref as Record<string, JSONValue>).ourClass), str((ref as Record<string, JSONValue>).ourSection)]
       .filter((part) => part)
       .join(' ')
-    // The event (with its year) leads; the exchange is detail. `name` is
-    // the operation row's second line, so it carries the exchange rather
-    // than repeating the event.
+    const year = str((ref as Record<string, JSONValue>).ref)
+    // Display keys split the event from the exchange (contests.md §5.4):
+    // `label` names the event in full, `shortLabel` names the SAME event
+    // abbreviated, for the cramped surfaces that show only it —
+    // the information panel's heading and the location screen's tile — and
+    // `name` for the row's second line, which is where the exchange belongs.
+    // A `shortLabel` of "3A ENY" leaves those surfaces with no clue which
+    // contest they are showing.
     return {
       ...ref,
+      // Every other contest sets this here, and the QSO list needs it: it is
+      // the signal that survives the extension being switched off, when there
+      // is no control left to infer a contest from. A ref built by the setup
+      // form never passes through `suggest`, so without this it has none.
+      program: 'Contest',
       name: own || undefined,
-      label: [t('activityLabel'), str((ref as Record<string, JSONValue>).ref)].filter((part) => part).join(' '),
-      shortLabel: own || 'FD',
+      label: [t('activityLabel'), year].filter((part) => part).join(' '),
+      shortLabel: ['FD', year].filter((part) => part).join(' '),
     }
   },
 

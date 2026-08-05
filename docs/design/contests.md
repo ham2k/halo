@@ -1096,6 +1096,36 @@ it could collide with `label`, `shortLabel`, `program`, `name`, `type` or
 > core key you don't own** — display keys always belong to `decorateRef`, and
 > `ref` belongs to a form only when the form is what chooses it.
 
+**What each display key means.** `decorateRef` owns four, and which one a
+surface reads is not something an extension gets to choose — so an extension
+that mixes up their jobs has no way to fix the result later:
+
+| key | says | shown by |
+| --- | --- | --- |
+| `label` | the event in full, with its variation and, where there is one, the running's year — "CQ WW CW", "ARRL Field Day 2027" | the Activities row's first line, for a form-configured ref |
+| `shortLabel` | the same event, abbreviated to fit — "CQ WW CW", "FD 2027", "OH SP" | the operation header's refs line, the information panel's heading, the location screen's tile, and the Activities row for a ref that is *not* form-configured |
+| `name` | what this reference IS beyond its identity — a contest's sent exchange, a park's name | the Activities row's second line |
+| `program` | the family the reference belongs to — `Contest`, `POTA` | grouping and filtering |
+
+**`shortLabel` names the EVENT, never the operator's own exchange.** It is the
+only thing three surfaces show, so an exchange there — "3A ENY" — leaves them
+naming no contest at all, and reads identically for two different contests in
+the same season. The exchange has a field of its own: `name`. Where the full
+`label` is genuinely too long for those surfaces, the answer is a shorter form
+of the *event* ("FD 2027", not "ARRL Field Day 2027"); most contests have no
+such problem and simply set `shortLabel: label`.
+
+The Activities row leads with `label` for a form-configured ref and with
+`shortLabel` otherwise (`activityRowTitle` in `activities_view.dart`): a
+contest's identity is a name, and a plain reference activity's is a code
+("POTA US-1234") that its own `label` would only pad. Both `label` and
+`shortLabel` must therefore be present and both must name the event.
+
+A **suggestion is persisted verbatim and never runs through `decorateRef`**
+(§5.6), so it has to carry all four itself, composed to say exactly what the
+hook would compose for the same reference. Any disagreement makes one
+operation read two different ways depending on how it was added.
+
 #### 5.4.1 Conditional fields (M4)
 
 IARU HF is what forces this. Its setup shows **one of three** sent-exchange

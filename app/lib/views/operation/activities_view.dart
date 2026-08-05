@@ -116,6 +116,11 @@ bool allowsMultipleRefsOfType(
 /// carries the event name with its variation baked in ("CQ WW CW",
 /// "ARRL Field Day 2027"), so lists lead with it — a plain reference
 /// activity leads with its code-like `shortLabel` ("POTA US-1234") instead.
+///
+/// This is the one place an *editor* property decides display. Every other
+/// surface reads `shortLabel`, which names the same event abbreviated
+/// ("FD 2027"); see the display-key table in docs/design/contests.md §5.4,
+/// which extension authors are held to.
 bool refTypeIsForm(Map<String, dynamic>? control) => (control?['input'] as Map?)?['kind'] == 'form';
 
 /// Whether a ref of [type] has anything to edit once it's on the operation.
