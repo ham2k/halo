@@ -27,7 +27,8 @@ import type {
 } from "@ham2k/halo-extension-sdk"
 
 import { tFor } from "./i18n.ts"
-import { buildReportPayload } from "./report.ts"
+import { attachReportContext, buildReportPayload } from "./report.ts"
+import type { ReportContext, ReportPayload } from "./report.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -40,7 +41,15 @@ defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook('syncTransport', {
-      hook: { sync, getAccountData, linkClient, linkClientWithEmail, ensureClientRegistered, fetchWebhookEvents },
+      hook: {
+        sync,
+        getAccountData,
+        linkClient,
+        linkClientWithEmail,
+        ensureClientRegistered,
+        fetchWebhookEvents,
+        submitReport,
+      },
     })
     registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand, catalog: syncAllCatalog } })
     registerHook('command', { key: 'ham2k-lofi-report', hook: { interpret: reportCommand, catalog: reportCatalog } })
@@ -98,11 +107,32 @@ async function reportCommand(
   // shows what was typed, verbatim.
   if (!execute) return { mixedCase: true, describe: t('reportDescribe') }
 
+  const filed = await fileReport(
+    (context) => buildReportPayload(text, context),
+    { operation, needsSyncMessage: t('reportNeedsSync') },
+  )
+  if (filed.error != null) return { mixedCase: true, error: filed.error }
+  const ref = filed.ref
+  return { mixedCase: true, confirm: ref ? t('reportConfirmWithRef', { ref }) : t('reportConfirm') }
+}
+
+/// The one path to `POST v1/reports`: the sync gate, the context block, and
+/// the request. Both surfaces that can file a report go through it, so the
+/// refusal and the footer can't drift apart between them.
+///
+/// [compose] rather than a ready payload, because the context a payload needs
+/// is exactly what this function fetches. Never throws — every caller here
+/// wants the failure as operator-facing text, and the command surface in
+/// particular must not throw (see [reportCommand]'s catch).
+async function fileReport(
+  compose: (context: ReportContext) => ReportPayload,
+  { operation, needsSyncMessage }: { operation?: Record<string, JSONValue>; needsSyncMessage: string },
+): Promise<{ ref?: string | null; error?: string }> {
   try {
     // Only the version is required; the callsign merely decorates the card. A
     // bare Promise.all would let its failure destroy a report the operator has
     // already written — at the exact moment things are already going wrong,
-    // which is when REPORT gets used.
+    // which is when a report gets filed.
     const [version, settings] = await Promise.all([
       host.getVersionInfo(),
       host.getSettings().catch(() => null),
@@ -118,22 +148,48 @@ async function reportCommand(
     // (main.dart's handleCommandAction). It says sync is configured, not that a
     // link succeeded, so a linked-then-revoked account still reaches the 404 —
     // that error is at least about the account rather than a silent side effect.
-    if (settings?.syncEnabled !== true) return { mixedCase: true, error: t('reportNeedsSync') }
+    if (settings?.syncEnabled !== true) return { error: needsSyncMessage }
     const operatorCall = (typeof settings.operatorCall === 'string' && settings.operatorCall) || null
-    const payload = buildReportPayload(text, { version, operatorCall, operation })
+    const payload = compose({ version, operatorCall, operation })
     const response = await request('POST', 'v1/reports', payload)
     const card = response.card as { ref?: JSONValue } | undefined
-    const ref = typeof card?.ref === 'string' ? card.ref : null
-    return { mixedCase: true, confirm: ref ? t('reportConfirmWithRef', { ref }) : t('reportConfirm') }
+    return { ref: typeof card?.ref === 'string' ? card.ref : null }
   } catch (e) {
     // Always an `error` result, never a throw. A command hook that throws is
     // wrapped by the kernel as a not-ok entry, and the host's interpret
     // fan-out keeps only the ok ones — so throwing here would leave the
     // operator staring at an unchanged field with no message at all, which is
     // the worst outcome for the one command whose job is reporting failure.
-    return { mixedCase: true, error: e instanceof Error ? e.message : String(e) }
+    return { error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+/// Files a report the host composed itself — the equipment editor's radio
+/// report, whose title, body and kind are built from what the operator typed
+/// and from what only Dart knows about the radio.
+///
+/// The host owns the wording of the card; this owns the account, the context
+/// block and the POST — including the sync refusal, which stays here so both
+/// surfaces refuse for the same reason in the same words. Errors come back as
+/// `{error}` rather than as a throw, for the same reason [reportCommand]'s do:
+/// the caller shows this to an operator who has just written something they
+/// want sent.
+async function submitReport(
+  { title, body, kind }: { title: string; body: string; kind: ReportPayload['kind'] },
+  ctx: HookContext,
+): Promise<{ ref?: string | null; error?: string }> {
+  const t = tFor(ctx)
+  // Checked at runtime because the type is erased crossing the bridge — these
+  // args arrive from JSON.parse. The server silently downgrades an unknown
+  // kind to `bug`, so a typo or a renamed enum on the Dart side would file
+  // every report, forever, as a bug that nobody could tell from a real one.
+  if (!VALID_REPORT_KINDS.includes(kind)) return { error: `unsupported report kind: ${kind}` }
+  return fileReport((context) => attachReportContext({ title, body, kind }, context), {
+    needsSyncMessage: t('reportNeedsSync'),
+  })
+}
+
+const VALID_REPORT_KINDS: ReportPayload['kind'][] = ['idea', 'task', 'bug']
 
 async function reportCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
   const t = tFor(ctx)

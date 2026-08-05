@@ -1128,6 +1128,9 @@ class Translations$extensionService$en {
 
 	/// en: 'The command failed to run'
 	String get commandFailed => 'The command failed to run';
+
+	/// en: 'Reports can't be sent right now'
+	String get reportUnavailable => 'Reports can\'t be sent right now';
 }
 
 // Path: operationLocationScreen
@@ -2167,6 +2170,75 @@ class Translations$settings$station$en {
 
 	/// en: 'Unrecognized equipment type "${typeKey}"'
 	String unknownType({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"';
+
+	/// en: 'Report'
+	String get report => 'Report';
+
+	/// en: 'Report this radio'
+	String get reportTitle => 'Report this radio';
+
+	/// en: 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.'
+	String get reportIntro => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.';
+
+	/// en: 'Manufacturer'
+	String get reportManufacturer => 'Manufacturer';
+
+	/// en: 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…'
+	String get reportManufacturerDescription => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…';
+
+	/// en: 'A manufacturer is required'
+	String get reportManufacturerRequired => 'A manufacturer is required';
+
+	/// en: 'Model'
+	String get reportModel => 'Model';
+
+	/// en: 'The model, as the radio itself calls it — "IC-7300", "FT-991A".'
+	String get reportModelDescription => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".';
+
+	/// en: 'A model is required'
+	String get reportModelRequired => 'A model is required';
+
+	/// en: 'How did it go?'
+	String get reportOutcome => 'How did it go?';
+
+	/// en: 'Worked well'
+	String get reportOutcomeWorks => 'Worked well';
+
+	/// en: 'Worked, with issues'
+	String get reportOutcomeIssues => 'Worked, with issues';
+
+	/// en: 'Didn't work at all'
+	String get reportOutcomeFails => 'Didn\'t work at all';
+
+	/// en: 'Please tell us how it went'
+	String get reportOutcomeRequired => 'Please tell us how it went';
+
+	/// en: 'Comments'
+	String get reportComments => 'Comments';
+
+	/// en: 'What worked, what didn't, anything that surprised you.'
+	String get reportCommentsPlaceholder => 'What worked, what didn\'t, anything that surprised you.';
+
+	/// en: 'Troubleshooting hints'
+	String get reportHints => 'Troubleshooting hints';
+
+	/// en: 'Want to suggest some troubleshooting hints for other users?'
+	String get reportHintsPlaceholder => 'Want to suggest some troubleshooting hints for other users?';
+
+	/// en: 'Send report'
+	String get reportSend => 'Send report';
+
+	/// en: 'Sending your report…'
+	String get reportSending => 'Sending your report…';
+
+	/// en: 'Thanks — your report was filed as ${ref}.'
+	String reportSent({required Object ref}) => 'Thanks — your report was filed as ${ref}.';
+
+	/// en: 'Thanks — your report was sent.'
+	String get reportSentNoRef => 'Thanks — your report was sent.';
+
+	/// en: 'The report wasn't sent: ${error}'
+	String reportFailed({required Object error}) => 'The report wasn\'t sent: ${error}';
 
 	/// en: 'Not tested against this hardware'
 	String get unverified => 'Not tested against this hardware';
@@ -3577,6 +3649,31 @@ extension on Translations {
 			'settings.station.removeTitle' => ({required Object name}) => 'Remove ${name}?',
 			'settings.station.removeMessage' => 'This only removes it from the app. Nothing on the equipment changes.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
+			'settings.station.report' => 'Report',
+			'settings.station.reportTitle' => 'Report this radio',
+			'settings.station.reportIntro' => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
+			'settings.station.reportManufacturer' => 'Manufacturer',
+			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
+			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
+			'settings.station.reportModel' => 'Model',
+			'settings.station.reportModelDescription' => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".',
+			'settings.station.reportModelRequired' => 'A model is required',
+			'settings.station.reportOutcome' => 'How did it go?',
+			'settings.station.reportOutcomeWorks' => 'Worked well',
+			'settings.station.reportOutcomeIssues' => 'Worked, with issues',
+			'settings.station.reportOutcomeFails' => 'Didn\'t work at all',
+			'settings.station.reportOutcomeRequired' => 'Please tell us how it went',
+			'settings.station.reportComments' => 'Comments',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.reportCommentsPlaceholder' => 'What worked, what didn\'t, anything that surprised you.',
+			'settings.station.reportHints' => 'Troubleshooting hints',
+			'settings.station.reportHintsPlaceholder' => 'Want to suggest some troubleshooting hints for other users?',
+			'settings.station.reportSend' => 'Send report',
+			'settings.station.reportSending' => 'Sending your report…',
+			'settings.station.reportSent' => ({required Object ref}) => 'Thanks — your report was filed as ${ref}.',
+			'settings.station.reportSentNoRef' => 'Thanks — your report was sent.',
+			'settings.station.reportFailed' => ({required Object error}) => 'The report wasn\'t sent: ${error}',
 			'settings.station.unverified' => 'Not tested against this hardware',
 			'settings.station.unverifiedShort' => 'untested',
 			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
@@ -3592,8 +3689,6 @@ extension on Translations {
 			'settings.station.civAddress' => 'Radio CI-V address',
 			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
@@ -3760,6 +3855,7 @@ extension on Translations {
 			'extensionService.validationError' => ({required Object error}) => 'Validation error: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Action failed: ${error}',
 			'extensionService.commandFailed' => 'The command failed to run',
+			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',

@@ -24,6 +24,7 @@ import '../services/cat/equipment.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
 import '../tools/form_chrome_labels.dart';
+import 'equipment_report.dart';
 
 /// Shown as the HINT of a secret field whose value is already in the keychain,
 /// never as its value: a hint cannot be submitted, cannot be revealed by the
@@ -282,6 +283,25 @@ class StationPanel extends StatelessWidget {
               // showFormPane closes the pane before calling this, so all
               // that is left here is the confirmation.
               onPressed: () => unawaited(_removeEquipment(context, node)),
+            ),
+      // Same condition as Remove, for the same reason: a radio being added
+      // for the first time has never been talked to, so there is nothing yet
+      // to say about whether it worked.
+      //
+      // Unlike Remove this does NOT close the editor — the report opens over
+      // it (see showFormPane's secondaryAction), so an operator who reports a
+      // radio finds their unsaved edits where they left them.
+      secondaryAction: node == null
+          ? null
+          : (
+              label: st.report,
+              onPressed: () => unawaited(showEquipmentReportDialog(
+                context,
+                services: services,
+                node: node,
+                type: type,
+                state: _cat.stateFor(node.uuid),
+              )),
             ),
       // Cancel/Save/Close and the rest of the pane's chrome. Without this
       // the form's own fields are translated and the buttons around them

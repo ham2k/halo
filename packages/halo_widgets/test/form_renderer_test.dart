@@ -1163,6 +1163,111 @@ void main() {
       expect(submitted?['port'], 'usb-new');
     });
 
+    testWidgets('a secondary action runs OVER the pane, while a destructive one closes it first', (tester) async {
+      // The two footer slots differ in exactly one way, and it is the whole
+      // reason `secondaryAction` is not just another `destructiveAction`:
+      // Remove is a way out of the form and Report is not, so a Report that
+      // popped the pane would silently discard the edits sitting in it.
+      var secondaryRan = 0;
+      var destructiveRan = 0;
+      var completed = false;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                await showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+                    ],
+                  },
+                  initialState: const {'name': 'Left Radio'},
+                  destructiveAction: (
+                    label: 'Remove',
+                    color: const Color(0xFFB3261E),
+                    onPressed: () => destructiveRan++,
+                  ),
+                  secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
+                );
+                completed = true;
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Report'));
+      await tester.pumpAndSettle();
+      expect(secondaryRan, 1);
+      // Still standing, and still holding what was in it — the field is the
+      // proof, since a pane that had popped and reopened would have lost it.
+      expect(completed, isFalse);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+      expect(find.text('Left Radio'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Remove'));
+      await tester.pumpAndSettle();
+      expect(destructiveRan, 1);
+      expect(completed, isTrue);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsNothing);
+    });
+
+    for (final width in [320.0, 360.0, 390.0]) {
+      testWidgets('the footer survives a ${width.toInt()}px pane carrying every action at once', (tester) async {
+        // Four verbs is the most this footer can ever hold, and only the
+        // equipment editor does it. A Row overflows rather than shrinking, so
+        // adding Report beside Save is exactly the change that turns a narrow
+        // footer into red stripes across the Save button — measured at 76px
+        // over on a 430px pane before the OverflowBar went in, and these three
+        // widths are ordinary phones. Spanish labels, because they are the
+        // longest the app ships and the English ones fit where these do not.
+        tester.view.physicalSize = Size(width, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Nombre'},
+                    ],
+                  },
+                  initialState: const {'name': 'Left Radio'},
+                  labels: const FormRendererLabels(cancel: 'Cancelar', save: 'Guardar'),
+                  destructiveAction: (label: 'Eliminar', color: const Color(0xFFB3261E), onPressed: () {}),
+                  secondaryAction: (label: 'Informar', onPressed: () {}),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ));
+
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+
+        // Every verb still present and hit-testable — a stacked footer is
+        // fine, a clipped one is not.
+        for (final verb in ['Cancelar', 'Eliminar', 'Informar', 'Guardar']) {
+          expect(find.text(verb), findsOneWidget, reason: '$verb missing at ${width}px');
+        }
+        expect(tester.takeException(), isNull, reason: 'footer overflowed at ${width}px');
+      });
+    }
+
     testWidgets('account field shows Not Connected / Connect when no status is set', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(

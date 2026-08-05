@@ -2196,6 +2196,59 @@ class ExtensionService {
     }
   }
 
+  /// Files a report the app composed itself — the equipment editor's radio
+  /// report — as a real CaBo card, through whichever sync transport is
+  /// registered. [kind] must be one of `idea`/`task`/`bug`; anything else is
+  /// silently downgraded to `bug` server-side.
+  ///
+  /// Returns the card's ref on success (null when the server filed it but
+  /// named no ref), or the failure as operator-facing text — including the
+  /// refusal when no account is configured, which the transport owns so both
+  /// this and the REPORT command refuse in the same words.
+  ///
+  /// A transport that predates `submitReport` (or no transport at all) is
+  /// reported as an error rather than as a silent no-op: the operator has just
+  /// written a report and pressed Send.
+  Future<({String? ref, String? error})> submitReport({
+    required String title,
+    required String body,
+    required String kind,
+  }) async {
+    final host = _host;
+    if (host == null) {
+      debugPrint('[extensions] submitReport: no runtime');
+      return (ref: null, error: t.extensionService.reportUnavailable);
+    }
+    try {
+      final result = await host.invokeHook(
+        'syncTransport',
+        method: 'submitReport',
+        args: {'title': title, 'body': body, 'kind': kind},
+        // The same room `interpretCommand` gives an executing command: this is
+        // two round trips (device registration, then the report itself)
+        // against a server that may be reached over a slow link.
+        timeout: const Duration(seconds: 30),
+      );
+      if (result is! Map) {
+        // A transport with no `submitReport` lands exactly here: the kernel's
+        // callHookMethod returns a missing member as-is, so the hook resolves
+        // ok with null rather than throwing. The operator's message cannot say
+        // that, so the console has to — otherwise a hook renamed in a refactor
+        // is an app that quietly stops accepting reports, in the field,
+        // forever, with nothing anywhere to say why.
+        debugPrint('[extensions] submitReport: transport answered ${result.runtimeType}, not a Map');
+        return (ref: null, error: t.extensionService.reportUnavailable);
+      }
+      final error = result['error'];
+      if (error is String && error.isNotEmpty) return (ref: null, error: error);
+      final ref = result['ref'];
+      return (ref: ref is String && ref.isNotEmpty ? ref : null, error: null);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] submitReport failed: $e');
+      return (ref: null, error: t.extensionService.reportUnavailable);
+    }
+  }
+
   /// Decorates a ref (park name, location…) via its `ref:<type>` handler.
   /// Returns the input unchanged if no handler answers.
   Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {

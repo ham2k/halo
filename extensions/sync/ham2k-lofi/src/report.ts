@@ -10,13 +10,19 @@ import type { JSONValue, VersionInfo } from "@ham2k/halo-extension-sdk"
 
 const TITLE_MAX = 120
 
+/// The kinds `POST v1/reports` accepts (api-lofi's
+/// `ReportsController::VALID_KINDS`). It travels as a field, not as a word in
+/// the title: CaBo's `createCard` writes `cmd.kind` verbatim and parses
+/// nothing out of the title.
+export type ReportKind = 'idea' | 'task' | 'bug'
+
 // A type alias, not an interface: only an alias gets an implicit index
 // signature, which is what makes the payload assignable to JSONValue without
 // casting it through `unknown` at the call site.
 export type ReportPayload = {
   title: string
   body: string
-  kind: 'bug'
+  kind: ReportKind
 }
 
 export interface ReportContext {
@@ -57,18 +63,19 @@ function formatRefs(operation: Record<string, JSONValue> | undefined): string | 
   return formatted.length > 0 ? formatted.join(', ') : null
 }
 
-export function buildReportPayload(text: string, context: ReportContext): ReportPayload {
+/// Who filed this, from where, on what — the block every report carries
+/// whatever surface raised it, under its own rule.
+///
+/// Operator and station are usually the same call and deliberately both
+/// reported anyway: they diverge exactly when a report is hardest to read
+/// without them (club and multi-op stations).
+function contextLines(context: ReportContext): string[] {
   const { version, operatorCall, operation } = context
 
   const stationCall = operation?.stationCall
   const refs = formatRefs(operation)
 
-  // Operator and station are usually the same call and deliberately both
-  // reported anyway: they diverge exactly when a report is hardest to read
-  // without them (club and multi-op stations).
-  const bodyLines = [
-    text,
-    '',
+  return [
     '---',
     ...(operatorCall ? [`Operator: ${operatorCall}`] : []),
     ...(typeof stationCall === 'string' && stationCall ? [`Station: ${stationCall}`] : []),
@@ -82,6 +89,24 @@ export function buildReportPayload(text: string, context: ReportContext): Report
     ...(version.buildNumber == null ? [] : [`Build: ${version.buildNumber}`]),
     `SHA: ${version.gitSha || '(none)'}`,
   ]
+}
 
-  return { title: titleFor(text), body: bodyLines.join('\n'), kind: 'bug' }
+export function buildReportPayload(text: string, context: ReportContext): ReportPayload {
+  return { title: titleFor(text), body: [text, '', ...contextLines(context)].join('\n'), kind: 'bug' }
+}
+
+/// A report whose title, body and kind were composed by the caller — the
+/// equipment editor's radio report, which knows things about the radio this
+/// extension has no way to ask for. Only the context block is added here, so
+/// every report carries the same one however it was raised.
+///
+/// The title still goes through [titleFor]: a caller composing it out of
+/// operator-typed fields can produce a title of any length, and the same
+/// codepoint-safe truncation has to apply.
+export function attachReportContext(report: ReportPayload, context: ReportContext): ReportPayload {
+  return {
+    title: titleFor(report.title),
+    body: [report.body, '', ...contextLines(context)].join('\n'),
+    kind: report.kind,
+  }
 }

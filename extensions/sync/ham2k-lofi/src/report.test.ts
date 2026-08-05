@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildReportPayload } from './report.ts'
+import { attachReportContext, buildReportPayload } from './report.ts'
 
 // Shaped as the host actually sends it (extension_service's getVersionInfo):
 // `version` is the bare public version and `versionName` the display name
@@ -137,5 +137,49 @@ describe('buildReportPayload', () => {
   it('omits the operator line when the callsign is not set yet', () => {
     const payload = buildReportPayload('it crashed', { ...CONTEXT, operatorCall: '' })
     assert.doesNotMatch(payload.body, /Operator:/)
+  })
+})
+
+describe('attachReportContext', () => {
+  const RADIO_REPORT = {
+    title: 'Icom IC-7300 works with issues',
+    body: 'Mode lags behind the radio.',
+    kind: 'bug' as const,
+  }
+
+  it('keeps the caller title, body and kind', () => {
+    // The whole point of this entry point: a surface that knows what the card
+    // should say writes it, and only the context block is added.
+    const payload = attachReportContext(RADIO_REPORT, { ...CONTEXT, operatorCall: 'KI2D' })
+    assert.equal(payload.title, RADIO_REPORT.title)
+    assert.match(payload.body, /^Mode lags behind the radio\./)
+    assert.equal(payload.kind, 'bug')
+  })
+
+  it('files a working radio as a task, not a bug', () => {
+    // A confirmation that a pairing works is real work (marking the driver
+    // verified, adding the model), not a defect. Downgrading every report to
+    // `bug` would bury it in the bug queue.
+    const payload = attachReportContext({ ...RADIO_REPORT, kind: 'task' }, CONTEXT)
+    assert.equal(payload.kind, 'task')
+  })
+
+  it('adds the same context block the command gets', () => {
+    const payload = attachReportContext(RADIO_REPORT, { ...CONTEXT, operatorCall: 'KI2D' })
+    assert.match(payload.body, /Operator: KI2D/)
+    assert.match(payload.body, /Platform: macos/)
+    assert.match(payload.body, /SHA: abc1234/)
+  })
+
+  it('truncates a caller-composed title on a codepoint boundary too', () => {
+    // The title is built from fields the operator typed, so it has no length
+    // bound of its own — and a lone surrogate reaching JSON.stringify loses
+    // the whole report to the server's parser.
+    const payload = attachReportContext(
+      { ...RADIO_REPORT, title: `${'a'.repeat(118)}😀${'b'.repeat(20)}` },
+      CONTEXT,
+    )
+    assert.equal([...payload.title].length, 120)
+    assert.doesNotMatch(payload.title, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
   })
 })

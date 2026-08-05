@@ -711,7 +711,10 @@ single object with `sync`/`getAccountData`/`linkClient`/
 `linkClientWithEmail` methods — `linkClient` (optional) requests a link
 permission (pending challenge code for an email, immediately-active for an
 already-permitted account, or a blank permission for QR-code linking) and
-returns server rejections as `{ error, error_status }` data.
+returns server rejections as `{ error, error_status }` data. `submitReport`
+(optional) files a report the host composed — the equipment editor's radio
+report — as a real CaBo card; the host writes the title, body and kind, the
+transport adds who/where/what-build and owns the account gate.
 Implemented by: `ham2k-lofi`.
 
 ## ✅ `settingsPanel` — extension settings forms

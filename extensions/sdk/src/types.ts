@@ -1078,6 +1078,18 @@ export interface SyncTransportHook {
   /// `webhook_event` ping (which intentionally carries only an id, never the
   /// sensitive payload — see HALO-65's design note).
   fetchWebhookEvents?(args: Record<string, never>, ctx: HookContext): Promise<{ webhook_events: Record<string, JSONValue>[] }>
+  /// Files a report the HOST composed — title, body and kind already written,
+  /// because the surface raising it (the equipment editor's radio report)
+  /// knows things about the subject the extension cannot ask for. The
+  /// transport adds who/where/what-build and owns the account gate, so a
+  /// report refused for want of an account is refused in one place.
+  /// Failures arrive as `{ error }` rather than as a throw: the caller is
+  /// showing this to an operator who has just written something they want
+  /// sent. Optional so transports predating this contract keep compiling.
+  submitReport?(
+    args: { title: string, body: string, kind: 'idea' | 'task' | 'bug' },
+    ctx: HookContext,
+  ): Promise<{ ref?: string | null, error?: string }>
 }
 
 export interface AccountField {

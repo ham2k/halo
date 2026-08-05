@@ -582,6 +582,7 @@ class _Translations$extensionService$es extends Translations$extensionService$en
 	@override String validationError({required Object error}) => 'Error de validación: ${error}';
 	@override String actionFailed({required Object error}) => 'Acción fallida: ${error}';
 	@override String get commandFailed => 'El comando no se pudo ejecutar';
+	@override String get reportUnavailable => 'Ahora mismo no se pueden enviar informes';
 }
 
 // Path: operationLocationScreen
@@ -1112,6 +1113,29 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String removeTitle({required Object name}) => '¿Eliminar ${name}?';
 	@override String get removeMessage => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.';
 	@override String unknownType({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»';
+	@override String get report => 'Informar';
+	@override String get reportTitle => 'Informar sobre esta radio';
+	@override String get reportIntro => 'Cuéntanos qué radio es realmente y qué tal fue. Tu informe se convierte en una ficha que lee el equipo de Ham2K, y lo que escribas sobre cómo hacerla funcionar puede acabar ayudando al siguiente operador con la misma radio.';
+	@override String get reportManufacturer => 'Fabricante';
+	@override String get reportManufacturerDescription => 'Quién la fabrica — Icom, Yaesu, Kenwood, Elecraft…';
+	@override String get reportManufacturerRequired => 'Hace falta un fabricante';
+	@override String get reportModel => 'Modelo';
+	@override String get reportModelDescription => 'El modelo, tal como lo llama la propia radio: «IC-7300», «FT-991A».';
+	@override String get reportModelRequired => 'Hace falta un modelo';
+	@override String get reportOutcome => '¿Qué tal fue?';
+	@override String get reportOutcomeWorks => 'Funcionó bien';
+	@override String get reportOutcomeIssues => 'Funcionó, con problemas';
+	@override String get reportOutcomeFails => 'No funcionó en absoluto';
+	@override String get reportOutcomeRequired => 'Cuéntanos qué tal fue';
+	@override String get reportComments => 'Comentarios';
+	@override String get reportCommentsPlaceholder => 'Qué funcionó, qué no, y cualquier cosa que te sorprendiera.';
+	@override String get reportHints => 'Consejos para solucionar problemas';
+	@override String get reportHintsPlaceholder => '¿Quieres sugerir consejos para que otros usuarios solucionen problemas?';
+	@override String get reportSend => 'Enviar informe';
+	@override String get reportSending => 'Enviando tu informe…';
+	@override String reportSent({required Object ref}) => 'Gracias — tu informe se archivó como ${ref}.';
+	@override String get reportSentNoRef => 'Gracias — tu informe se envió.';
+	@override String reportFailed({required Object error}) => 'El informe no se envió: ${error}';
 	@override String get unverified => 'No probado con este hardware';
 	@override String get unverifiedShort => 'sin probar';
 	@override String get troubleshootingNotes => 'Notas de resolución de problemas';
@@ -2127,6 +2151,31 @@ extension on TranslationsEs {
 			'settings.station.removeTitle' => ({required Object name}) => '¿Eliminar ${name}?',
 			'settings.station.removeMessage' => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»',
+			'settings.station.report' => 'Informar',
+			'settings.station.reportTitle' => 'Informar sobre esta radio',
+			'settings.station.reportIntro' => 'Cuéntanos qué radio es realmente y qué tal fue. Tu informe se convierte en una ficha que lee el equipo de Ham2K, y lo que escribas sobre cómo hacerla funcionar puede acabar ayudando al siguiente operador con la misma radio.',
+			'settings.station.reportManufacturer' => 'Fabricante',
+			'settings.station.reportManufacturerDescription' => 'Quién la fabrica — Icom, Yaesu, Kenwood, Elecraft…',
+			'settings.station.reportManufacturerRequired' => 'Hace falta un fabricante',
+			'settings.station.reportModel' => 'Modelo',
+			'settings.station.reportModelDescription' => 'El modelo, tal como lo llama la propia radio: «IC-7300», «FT-991A».',
+			'settings.station.reportModelRequired' => 'Hace falta un modelo',
+			'settings.station.reportOutcome' => '¿Qué tal fue?',
+			'settings.station.reportOutcomeWorks' => 'Funcionó bien',
+			'settings.station.reportOutcomeIssues' => 'Funcionó, con problemas',
+			'settings.station.reportOutcomeFails' => 'No funcionó en absoluto',
+			'settings.station.reportOutcomeRequired' => 'Cuéntanos qué tal fue',
+			'settings.station.reportComments' => 'Comentarios',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.reportCommentsPlaceholder' => 'Qué funcionó, qué no, y cualquier cosa que te sorprendiera.',
+			'settings.station.reportHints' => 'Consejos para solucionar problemas',
+			'settings.station.reportHintsPlaceholder' => '¿Quieres sugerir consejos para que otros usuarios solucionen problemas?',
+			'settings.station.reportSend' => 'Enviar informe',
+			'settings.station.reportSending' => 'Enviando tu informe…',
+			'settings.station.reportSent' => ({required Object ref}) => 'Gracias — tu informe se archivó como ${ref}.',
+			'settings.station.reportSentNoRef' => 'Gracias — tu informe se envió.',
+			'settings.station.reportFailed' => ({required Object error}) => 'El informe no se envió: ${error}',
 			'settings.station.unverified' => 'No probado con este hardware',
 			'settings.station.unverifiedShort' => 'sin probar',
 			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
@@ -2142,8 +2191,6 @@ extension on TranslationsEs {
 			'settings.station.civAddress' => 'Dirección CI-V de la radio',
 			'settings.station.civAddressDescription' => 'Hexadecimal, como aparece en el menú CI-V de la radio. El IC-705 viene con A4.',
 			'settings.station.civAddressInvalid' => 'Una dirección CI-V son dos dígitos hexadecimales, de 01 a FF',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioUser' => 'Usuario de la radio',
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
@@ -2310,6 +2357,7 @@ extension on TranslationsEs {
 			'extensionService.validationError' => ({required Object error}) => 'Error de validación: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Acción fallida: ${error}',
 			'extensionService.commandFailed' => 'El comando no se pudo ejecutar',
+			'extensionService.reportUnavailable' => 'Ahora mismo no se pueden enviar informes',
 			'operationLocationScreen.title' => 'Ubicación de la operación',
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',

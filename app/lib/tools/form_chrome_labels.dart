@@ -9,9 +9,15 @@ import '../i18n/strings.g.dart';
 /// FormRendererLabels) from the app's translations. Takes a [Translations]
 /// rather than a BuildContext so callers without one (extension_service's
 /// `showForm` command) can pass the global `t`.
-FormRendererLabels formRendererLabelsFor(Translations t) => FormRendererLabels(
+///
+/// [saveLabel] renames the submit button for a form that does not save
+/// anything — the radio report sends one. An override rather than a
+/// `copyWith` on FormRendererLabels: this is the only word any caller has
+/// wanted to change, and a copyWith over twenty fields to say so is more
+/// surface than the need.
+FormRendererLabels formRendererLabelsFor(Translations t, {String? saveLabel}) => FormRendererLabels(
       cancel: t.common.cancel,
-      save: t.common.save,
+      save: saveLabel ?? t.common.save,
       done: t.common.done,
       closeLabel: t.common.close,
       untitledItem: t.formChrome.untitled,
