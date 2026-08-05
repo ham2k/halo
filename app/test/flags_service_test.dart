@@ -70,10 +70,15 @@ void main() {
 
   /// Builds a service whose fetcher serves [files] (keyed by location) and
   /// records the request order, annotating any call to [guess].
+  ///
+  /// [isReleaseBuild] defaults to true — a test binary is always a debug
+  /// build, so without it every update-available assertion would be checking
+  /// the dev-build gate rather than the behavior it was written for.
   ({FlagsService service, List<String> requested}) build(
     Map<String, Map<String, dynamic>> files, {
     Map<String, dynamic>? guess = const {'baseCall': 'KI2D', 'entityPrefix': 'K', 'continent': 'NA'},
     Set<String> timeoutAt = const {},
+    bool isReleaseBuild = true,
   }) {
     final requested = <String>[];
     final service = FlagsService(
@@ -81,6 +86,7 @@ void main() {
       baseUrl: 'https://example.test/flags',
       annotate: guess == null ? null : (_) async => guess,
       environmentProvider: () async => env,
+      isReleaseBuild: isReleaseBuild,
       fetcher: (location) async {
         requested.add(location);
         if (timeoutAt.contains(location)) throw TimeoutException('slow');
@@ -376,6 +382,7 @@ void main() {
         baseUrl: 'https://example.test/flags',
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
+        isReleaseBuild: true,
         onNoticeAction: (key, action) {
           actedKey = key;
           actedAction = action;
@@ -428,6 +435,67 @@ void main() {
       expect(notice.actions.single.label, 'Get it');
     });
 
+    test('never prompts on a dev build, however far ahead the release is', () async {
+      // A working copy updates by pulling, not by downloading a binary, and
+      // its version is whatever the branch says — so a released latestRelease
+      // routinely outranks it and would nag on every local run. The hosted
+      // dev web app is a RELEASE build, which is why the gate is build mode
+      // and not the Dev edition.
+      final b = build({
+        'defaults.json': {'latestRelease': '99.9'},
+        'entities/k.json': {},
+        'ki/ki2d.json': {},
+      }, isReleaseBuild: false);
+      await b.service.refreshForCall('KI2D');
+      expect(statusBar.activeNotices, isEmpty);
+    });
+
+    test('a dev build clears a notice an earlier build left in the footer', () async {
+      // Notices persist, so gating the push alone would leave one already on
+      // file sitting there for every launch from now on. Cleared at
+      // construction, not on refresh — an offline launch never refreshes.
+      statusBar.showNotice(
+        key: 'update:version',
+        title: 'Update available',
+        text: 'A new version (26.9) is available.',
+      );
+      build({'defaults.json': {}}, isReleaseBuild: false);
+      expect(statusBar.activeNotices, isEmpty);
+    });
+
+    test("a dev build's cleanup is not read as the operator dismissing it", () async {
+      // A debug and a shipped build share one prefs domain on desktop, so the
+      // clear above lands in the very store the shipped build reads back. Left
+      // holding `update:shownVersion`, that store says "a notice for 26.9 was
+      // showing, and it is now dismissed" — which the promotion path takes for
+      // the operator's own dismissal and writes into the durable high-water
+      // mark, silencing the real notice for good.
+      final prefs = await SharedPreferences.getInstance();
+      FlagsService shipped() => FlagsService(
+            statusBar: statusBar,
+            baseUrl: 'https://example.test/flags',
+            annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+            environmentProvider: () async => env,
+            isReleaseBuild: true,
+            prefs: prefs,
+            fetcher: (location) async =>
+                location == 'defaults.json' ? {'latestRelease': '26.9'} : {},
+          );
+
+      await shipped().refreshForCall('KI2D');
+      expect(statusBar.activeNotices.single.key, 'update:version');
+
+      // A local `flutter run` against that same prefs clears the footer.
+      FlagsService(statusBar: statusBar, prefs: prefs, isReleaseBuild: false);
+      expect(statusBar.activeNotices, isEmpty);
+
+      // Back on the shipped build: same release, still never dismissed by
+      // anyone, so it is still worth telling the operator about.
+      await shipped().refreshForCall('KI2D');
+      expect(statusBar.activeNotices.single.text, contains('26.9'));
+      expect(prefs.getString('update:dismissedVersion'), isNull);
+    });
+
     test('stays quiet when latestRelease is the same line or older', () async {
       // 26.8 is the line 26.8.0 is already on — not a newer binary.
       final b = build({
@@ -447,6 +515,7 @@ void main() {
         baseUrl: 'https://example.test/flags',
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
+        isReleaseBuild: true,
         onNoticeAction: (key, action) {
           actedKey = key;
           actedAction = action;
@@ -472,6 +541,7 @@ void main() {
         baseUrl: 'https://example.test/flags',
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
+        isReleaseBuild: true,
         onNoticeAction: (_, action) => actedAction = action,
         fetcher: (location) async =>
             location == 'defaults.json' ? {'latestRelease': '26.9'} : {},
@@ -489,6 +559,7 @@ void main() {
         baseUrl: 'https://example.test/flags',
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
+        isReleaseBuild: true,
         fetcher: (location) async =>
             location == 'defaults.json' ? {'latestRelease': latest} : {},
       );
@@ -513,6 +584,7 @@ void main() {
         baseUrl: 'https://example.test/flags',
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
+        isReleaseBuild: true,
         prefs: prefs,
         fetcher: (location) async =>
             location == 'defaults.json' ? {'latestRelease': latest} : {},

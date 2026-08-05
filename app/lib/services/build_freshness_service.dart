@@ -13,7 +13,7 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
@@ -54,10 +54,15 @@ class BuildFreshnessService with WidgetsBindingObserver {
         _currentSha = currentSha ?? kGitSha;
 
   /// No-op off the web (every other platform updates through its own
-  /// channel) and for a local/dev build (kGitSha empty — nothing to compare
-  /// against, and it would otherwise nag on every single check).
+  /// channel) and for a local/dev build: no update prompt belongs in one, and
+  /// there is usually nothing to compare against either (kGitSha is empty
+  /// unless a build passes HALO_GIT_SHA, as only CI normally does). The
+  /// build-mode guard is what still holds when a local build does pass one —
+  /// its SHA differs from whatever is deployed, so the check would nag every
+  /// ten minutes forever. Only the automatic polling is gated: the About
+  /// panel's user-initiated check calls [check] directly and still answers.
   void start() {
-    if (!kIsWeb || _currentSha.isEmpty) return;
+    if (!kIsWeb || !kReleaseMode || _currentSha.isEmpty) return;
     WidgetsBinding.instance.addObserver(this);
     _timer = Timer.periodic(_checkInterval, (_) => unawaited(check()));
   }

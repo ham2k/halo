@@ -111,6 +111,16 @@ class FlagsService extends ChangeNotifier {
   /// notice_dismissed — optional so tests and standalone use stay silent.
   final void Function(String event, [Map<String, Object?> properties])? _onTrack;
 
+  /// Whether this is a shipped build, and so one the "a newer binary is out"
+  /// notice makes sense on at all (see [_maybePushNewVersionNotice]).
+  ///
+  /// Injectable because `kReleaseMode` is false in every test binary, which
+  /// would otherwise make the notice untestable — the same seam, for the same
+  /// reason, as `currentSha` in BuildFreshnessService. Only this notice reads
+  /// it; server-driven notices still evaluate normally on a dev build, which
+  /// is how a rule gets tried before it ships.
+  final bool isReleaseBuild;
+
   FlagsService({
     required this.statusBar,
     this.annotate,
@@ -121,12 +131,24 @@ class FlagsService extends ChangeNotifier {
     NoticeActionHandler? onNoticeAction,
     SharedPreferences? prefs,
     void Function(String event, [Map<String, Object?> properties])? onTrack,
+    this.isReleaseBuild = kReleaseMode,
   })  : _fetcher = fetcher,
         _client = client ?? http.Client(),
         _environmentProvider = environmentProvider ?? defaultNoticeEnvironment,
         _onNoticeAction = onNoticeAction,
         _prefs = prefs,
-        _onTrack = onTrack;
+        _onTrack = onTrack {
+    // Gating the push alone isn't enough: notices persist, so one an earlier
+    // build left on file sits in the footer of every later launch until
+    // somebody dismisses it. Clear it here rather than in the push path,
+    // which an offline launch never reaches. `_shownUpdateKey` goes with it —
+    // left behind, it would let the promotion below read this dismissal as
+    // the operator's own and raise the high-water mark.
+    if (!isReleaseBuild) {
+      statusBar.dismissNotice(_updateNoticeKey);
+      _prefs?.remove(_shownUpdateKey);
+    }
+  }
 
   Map<String, dynamic> _flags = const {};
 
@@ -374,7 +396,14 @@ class FlagsService extends ChangeNotifier {
   /// record): the version showing when the user dismisses becomes a high-water
   /// mark, and only a release newer than that ever notifies again. "Get it"
   /// opens `latestReleaseUrl` (or the Ham2K site) via the shared link action.
+  ///
+  /// Never fires on a non-release build: you update a working copy by pulling,
+  /// not by downloading a binary, so the notice is pure noise on every local
+  /// `flutter run` — and `kPublicVersion` there is whatever the branch says,
+  /// which a released `latestRelease` routinely outranks. The hosted dev web
+  /// app is a RELEASE build, so it keeps notifying.
   void _maybePushNewVersionNotice(NoticeEnvironment env, Set<String> active) {
+    if (!isReleaseBuild) return;
     final latest = _flags['latestRelease'];
     if (latest is! String || latest.isEmpty) return;
     if (!isNewerRelease(current: env.appVersion, available: latest)) return;
