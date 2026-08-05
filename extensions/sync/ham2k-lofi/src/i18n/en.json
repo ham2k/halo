@@ -1,6 +1,12 @@
 {
   "syncAllDescribe": "Force full resync from server?",
   "syncAllConfirm": "Starting full resync...",
+  "reportDescribe": "Might send account, app and operation info",
+  "reportNeedsSync": "A report needs your LoFi account — enable sync in Settings first",
+  "reportConfirm": "Report submitted",
+  "reportConfirmWithRef": "Report submitted — {{ref}}",
   "catalogCategory": "Sync",
-  "catalogSyncAll": "Sync all operations now"
+  "catalogSyncAll": "Sync all operations now",
+  "catalogReport": "Send a bug report",
+  "catalogReportParams": "<description>"
 }

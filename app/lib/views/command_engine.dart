@@ -169,13 +169,54 @@ class CommandEngine extends ChangeNotifier {
   /// allowed. Two ways in, both requiring a retained command: it's still
   /// awaiting its parameters (`expectsParams`), or the text already holds a
   /// space the formatter would otherwise delete on the next keystroke.
-  bool get commandExpectsParams =>
-      _retainedInterpretation != null &&
-      (_retainedInterpretation!['expectsParams'] == true || !_noSpaceSafeText.hasMatch(_text));
+  bool get commandExpectsParams {
+    final retained = _retainedInterpretation;
+    if (retained == null) return false;
+    // Tied to the command word, for the reason spelled out on
+    // [commandMixedCase]: the retained map outlives the command it came from
+    // whenever someone types steadily. Without this, selecting all after a
+    // RELOAD and typing a callsign keeps `expectsParams` true for every
+    // character, and a space lands in the middle of the call.
+    if (retained['expectsParams'] == true && _commandWord(_text) == _retainedCommandWord) return true;
+    // Not command-identity-dependent: a space already in the field is a fact
+    // about the text, and the formatter would eat it on the next keystroke.
+    return !_noSpaceSafeText.hasMatch(_text);
+  }
+
+  /// True while an execute-time interpret is in flight. A command's execute
+  /// call may be a non-idempotent network write (REPORT files a CaBo card), so
+  /// a second Enter during the round trip would file it twice.
+  bool _submitting = false;
 
   /// Whether the retained command declared `mixedCase: true` (e.g. NOTE,
   /// whose parameter is free prose) — also keeps spaces allowed.
-  bool get commandMixedCase => _retainedInterpretation?['mixedCase'] == true;
+  ///
+  /// Tied to the command word it was retained for. The retained interpretation
+  /// is only revised inside the describe debounce, which restarts on every
+  /// keystroke and so never fires while someone types steadily — so after a
+  /// NOTE, selecting all and typing a callsign straight through would keep the
+  /// stale flag for every character and leave the call in lower case, with no
+  /// uppercase pass left to correct it.
+  bool get commandMixedCase =>
+      _retainedInterpretation?['mixedCase'] == true && _commandWord(_text) == _retainedCommandWord;
+
+  /// The leading word, which is what identifies a command ("NOTE hello" ->
+  /// "NOTE"). Case-insensitive: the field may or may not have uppercased it
+  /// yet, depending on the very flag this feeds.
+  ///
+  /// Any whitespace ends the word, not just a space: a command taking free
+  /// text matches on `\s+` (REPORT's pattern does, and it exists to accept
+  /// pasted multi-line descriptions), so splitting on a literal space alone
+  /// would read a newline-led description as part of the command word and
+  /// revoke the very flag that keeps the paste unshouted.
+  static String _commandWord(String text) {
+    final trimmed = text.trimLeft();
+    final end = trimmed.indexOf(RegExp(r'\s'));
+    return (end < 0 ? trimmed : trimmed.substring(0, end)).toUpperCase();
+  }
+
+  /// The command word [_retainedInterpretation] was retained for.
+  String? _retainedCommandWord;
 
   String get _text => _controller?.text ?? '';
 
@@ -189,8 +230,17 @@ class CommandEngine extends ChangeNotifier {
     controller.addListener(_onTextChanged);
   }
 
+  /// Set before anything else in [dispose] so an in-flight [_submit] can tell
+  /// that its field and listeners are gone. An execute-time interpret gets a
+  /// 30-second timeout, and the ⌘K dialog can be closed at any point inside it
+  /// (Esc, or a barrier tap — neither gated on the submit); resuming into
+  /// `_controller.clear()` or `notifyListeners()` afterwards trips
+  /// ChangeNotifier's use-after-dispose assert.
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     _controller?.removeListener(_onTextChanged);
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
@@ -206,8 +256,10 @@ class CommandEngine extends ChangeNotifier {
   void _retainInterpretation(Map<String, dynamic>? result) {
     if (result != null) {
       _retainedInterpretation = result;
+      _retainedCommandWord = _commandWord(_text);
     } else if (_noSpaceSafeText.hasMatch(_text)) {
       _retainedInterpretation = null;
+      _retainedCommandWord = null;
     }
   }
 
@@ -352,12 +404,33 @@ class CommandEngine extends ChangeNotifier {
   Future<bool> submit() async {
     final text = trimmedText;
     if (text.isEmpty) return false;
+    if (_submitting) return false;
+    _submitting = true;
+    try {
+      return await _submit(text);
+    } finally {
+      _submitting = false;
+    }
+  }
 
+  /// The command's own confirmation on the field's message line, self-clearing
+  /// after five seconds the same way a describe does. Callers notify.
+  void _showConfirmationMessage(String confirm) {
+    _executeMessageTimer?.cancel();
+    _setMessage(confirm, CommandMessageKind.confirmation);
+    _executeMessageTimer = Timer(const Duration(seconds: 5), () {
+      _setMessage(null, CommandMessageKind.describe);
+      notifyListeners();
+    });
+  }
+
+  Future<bool> _submit(String text) async {
     final operation = operationContext();
 
     var interpretation = _currentInterpretation;
     if (interpretation == null) {
       interpretation = await services.extensions.interpretCommand(text, operation);
+      if (_disposed) return false; // the surface is gone; nothing ran yet either
       if (trimmedText != text) return false; // stale — the field changed while awaiting
     }
 
@@ -380,8 +453,24 @@ class CommandEngine extends ChangeNotifier {
       // execute:true now that we're actually about to run it, so those
       // hooks generate the real commands instead of a stale preview's.
       final executable = await services.extensions.interpretCommand(text, operation, null, true);
-      if (trimmedText != text) return false; // stale — the field changed while awaiting
       if (executable == null) return false;
+      if (_disposed) return false; // the surface is gone; everything below is field state
+      final confirmValue = executable['confirm'];
+      final confirm = confirmValue is String && confirmValue.isNotEmpty ? confirmValue : null;
+      // Before the staleness bail: by this point the command has already RUN,
+      // and an execute call can be a non-idempotent network write. A
+      // confirmation dropped because the operator touched the field mid-flight
+      // reads as "nothing happened" and invites them to run it again — REPORT
+      // would file a second card, since the POST carries no idempotency key.
+      // The field is not ours to clear once it has moved on, so the message
+      // line is all we get, and it has to carry the outcome.
+      if (trimmedText != text) {
+        if (confirm != null) {
+          _showConfirmationMessage(confirm);
+          notifyListeners();
+        }
+        return false; // stale — the field changed while awaiting
+      }
 
       // A command can also fail at execute time (mirrors _log() in
       // logging_controls.dart) — show the message and keep the typed input
@@ -399,13 +488,9 @@ class CommandEngine extends ChangeNotifier {
 
       _currentInterpretation = null;
       _retainedInterpretation = null;
-      final confirm = executable['confirm'];
-      if (confirm is String) {
-        _setMessage(confirm, CommandMessageKind.confirmation);
-        _executeMessageTimer = Timer(const Duration(seconds: 5), () {
-          _setMessage(null, CommandMessageKind.describe);
-          notifyListeners();
-        });
+      _retainedCommandWord = null;
+      if (confirm != null) {
+        _showConfirmationMessage(confirm);
       } else {
         _setMessage(null, CommandMessageKind.describe);
       }

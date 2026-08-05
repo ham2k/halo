@@ -1046,7 +1046,11 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
               controller: _controller,
               focusNode: _focusNode,
               style: haloMonoStyle(context, fontSize: 15),
-              textCapitalization: TextCapitalization.characters,
+              // The formatter below owns casing, not the keyboard: a soft keyboard's
+              // capitalization is fixed when the input connection opens and is not
+              // re-sent on rebuild, so a mode chosen here could never follow a command
+              // becoming mixedCase mid-typing.
+              textCapitalization: TextCapitalization.none,
               inputFormatters: [
                 if (isMobilePlatform) MobileDotToSlashFormatter(),
                 // Spaces are only meaningful mid-command (a command's free-
@@ -1054,9 +1058,10 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                 // just corrupt a callsign/command being typed.
                 if (!_engine.commandExpectsParams && !_engine.commandMixedCase)
                   FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                TextInputFormatter.withFunction(
-                  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
-                ),
+                if (!_engine.commandMixedCase)
+                  TextInputFormatter.withFunction(
+                    (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
+                  ),
               ],
               decoration: InputDecoration(
                 filled: true,

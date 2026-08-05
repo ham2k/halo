@@ -17,9 +17,17 @@
 // matching app-polo's memory-only `GLOBAL.syncLoFiToken`.
 
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
-import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/halo-extension-sdk"
+import type {
+  CommandCatalogEntry,
+  CommandInterpretation,
+  HookContext,
+  JSONValue,
+  SyncPayload,
+  SyncResponse,
+} from "@ham2k/halo-extension-sdk"
 
 import { tFor } from "./i18n.ts"
+import { buildReportPayload } from "./report.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -35,6 +43,7 @@ defineExtension({
       hook: { sync, getAccountData, linkClient, linkClientWithEmail, ensureClientRegistered, fetchWebhookEvents },
     })
     registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand, catalog: syncAllCatalog } })
+    registerHook('command', { key: 'ham2k-lofi-report', hook: { interpret: reportCommand, catalog: reportCatalog } })
   },
 })
 
@@ -58,6 +67,82 @@ async function syncAllCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> 
     command: 'SYNCALL',
     describe: t('catalogSyncAll'),
     category: t('catalogCategory'),
+  }]
+}
+
+/// `[^]` rather than `.`, which excludes newlines: a description pasted from
+/// an error message can carry a CR (Windows clipboard) or a line separator,
+/// and the field's whitespace filter is off while a command takes free text.
+/// Without this the whole paste stops matching and the Home bar clears it.
+const REPORT_PATTERN = /^REPORT(?:\s+([^]*))?$/i
+
+/// Files a bug report as a real CaBo card — works anywhere, no operation
+/// needed. Only hits the network on the `execute: true` call (see
+/// CommandHook.interpret's doc); a describe-preview call is free, the same
+/// discipline SEED uses for its expensive work.
+async function reportCommand(
+  { input, operation, execute }: { input: string; operation?: Record<string, JSONValue>; execute?: boolean },
+  ctx: HookContext,
+): Promise<CommandInterpretation | null> {
+  const match = REPORT_PATTERN.exec(input.trim())
+  if (!match) return null
+
+  const t = tFor(ctx)
+  const text = match[1]?.trim()
+  if (!text) return { expectsParams: true, mixedCase: true }
+
+  // The describe states what a report may carry and does NOT quote the typed
+  // text back: the dialog renders `describe` as one ellipsized line of
+  // markdown (hooks.md), so interpolating the description both truncates this
+  // warning away and reformats the user's own prose. The row's title already
+  // shows what was typed, verbatim.
+  if (!execute) return { mixedCase: true, describe: t('reportDescribe') }
+
+  try {
+    // Only the version is required; the callsign merely decorates the card. A
+    // bare Promise.all would let its failure destroy a report the operator has
+    // already written — at the exact moment things are already going wrong,
+    // which is when REPORT gets used.
+    const [version, settings] = await Promise.all([
+      host.getVersionInfo(),
+      host.getSettings().catch(() => null),
+    ])
+    // Checked before request(), which registers this device with the server as
+    // a side effect when no token is cached — persisting credentials for an
+    // operator who never asked for sync, and then failing anyway, because a
+    // client with no account behind it gets a 404 from v1/reports. Refusing on
+    // an unreadable settings map is the fail-safe direction: the cost is a
+    // report the operator can retry, against a write they never asked for.
+    //
+    // `syncEnabled` is the same gate the SYNCALL action uses host-side
+    // (main.dart's handleCommandAction). It says sync is configured, not that a
+    // link succeeded, so a linked-then-revoked account still reaches the 404 —
+    // that error is at least about the account rather than a silent side effect.
+    if (settings?.syncEnabled !== true) return { mixedCase: true, error: t('reportNeedsSync') }
+    const operatorCall = (typeof settings.operatorCall === 'string' && settings.operatorCall) || null
+    const payload = buildReportPayload(text, { version, operatorCall, operation })
+    const response = await request('POST', 'v1/reports', payload)
+    const card = response.card as { ref?: JSONValue } | undefined
+    const ref = typeof card?.ref === 'string' ? card.ref : null
+    return { mixedCase: true, confirm: ref ? t('reportConfirmWithRef', { ref }) : t('reportConfirm') }
+  } catch (e) {
+    // Always an `error` result, never a throw. A command hook that throws is
+    // wrapped by the kernel as a not-ok entry, and the host's interpret
+    // fan-out keeps only the ok ones — so throwing here would leave the
+    // operator staring at an unchanged field with no message at all, which is
+    // the worst outcome for the one command whose job is reporting failure.
+    return { mixedCase: true, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function reportCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+  const t = tFor(ctx)
+  return [{
+    command: 'REPORT',
+    params: t('catalogReportParams'),
+    describe: t('catalogReport'),
+    category: t('catalogCategory'),
+    expectsParams: true,
   }]
 }
 

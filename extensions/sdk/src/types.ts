@@ -1243,6 +1243,27 @@ export interface DeviceLocation {
   longitude: number
 }
 
+/// Build identity, as returned by `host.getVersionInfo()` — for commands
+/// (REPORT) that need to say exactly what build they ran on.
+export interface VersionInfo {
+  /// `web`/`macos`/`ios`/`android`/`windows`/`linux`/`fuchsia`.
+  platform: string
+  /// `dev`/`next`/`prod` — see `config/version.dart`'s `Edition`.
+  edition: string
+  /// The public version on its own, e.g. `26.8.1`.
+  version: string
+  /// The display name, e.g. `August '26 ALPHA patch 1 (Dev Edition)` — built
+  /// from the stage label and the edition qualifier, NOT from [version].
+  versionName: string
+  /// Null on Dev, where the compiled-in build number is the last release's
+  /// rather than the running build's. Report [gitSha] instead of inventing
+  /// one: a build number that names a build nobody is running misdirects
+  /// whoever reads it.
+  buildNumber: number | null
+  /// Short git SHA the build was cut from. Empty for local/dev builds.
+  gitSha: string
+}
+
 export interface LookupRow {
   category: string
   subCategory?: string

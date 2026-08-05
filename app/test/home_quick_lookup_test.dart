@@ -8,6 +8,8 @@
 // input in place instead of executing or clearing. Ordinary executable
 // commands (DEVMODE) still clear the field and show their confirm text.
 
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter/material.dart';
@@ -20,6 +22,7 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 
 /// Canned command interpretations — the real runtime's contract, without
@@ -33,6 +36,12 @@ class _CannedCommandExtensions extends ExtensionService {
 
   int interpretCalls = 0;
 
+  /// Execute-time calls only — what a non-idempotent command actually runs.
+  int executeCalls = 0;
+
+  /// Held open by a test that needs to press Enter again mid-flight.
+  Completer<void>? executeGate;
+
   @override
   Future<Map<String, dynamic>?> interpretCommand(
     String input, [
@@ -41,6 +50,10 @@ class _CannedCommandExtensions extends ExtensionService {
     bool execute = false,
   ]) async {
     interpretCalls++;
+    if (execute) {
+      executeCalls++;
+      if (executeGate != null) await executeGate!.future;
+    }
     final trimmed = input.trim().toUpperCase();
     // What the real SEED hook returns when interpret gets no operation.
     if (trimmed.startsWith('SEED')) return {'error': 'SEED needs an open operation'};
@@ -188,6 +201,212 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200)); // drain the next describe debounce
     });
 
+    test('a second Enter during an execute in flight does not run it twice', () async {
+      // A command's execute call can be a non-idempotent network write (REPORT
+      // files a CaBo card), and nothing visible happens while it is in flight,
+      // so an impatient second Enter is the expected human behaviour. Driven
+      // against the engine directly: holding the first submit un-awaited is
+      // the whole point, and a widget test forbids that.
+      final services = await makeServices();
+      final extensions = services.extensions as _CannedCommandExtensions;
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController(text: 'DEVMODE');
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      extensions.executeGate = Completer<void>();
+      final first = engine.submit();
+      final second = await engine.submit(); // impatient retry, while the first is in flight
+      expect(second, isFalse);
+      expect(extensions.executeCalls, 1);
+
+      extensions.executeGate!.complete();
+      expect(await first, isTrue);
+      expect(extensions.executeCalls, 1);
+    });
+
+    testWidgets("a command's confirmation shows on the field, and only there", (tester) async {
+      // A confirmation is a transient message on the field's own line and
+      // nothing more — it self-clears after five seconds and leaves no notice
+      // behind. Commands run from here are routine (band, mode, DEVMODE); a
+      // durable post-it per command would stack over the footer and push real
+      // notices out of the capped history.
+      final services = await makeServices();
+      await pumpLookup(tester, services);
+
+      await tester.enterText(find.byType(TextField), 'DEVMODE');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(find.text('Developer mode activated'), findsOneWidget);
+      expect(services.statusBar.activeNotices, isEmpty);
+
+      await tester.pump(const Duration(seconds: 6));
+      expect(find.text('Developer mode activated'), findsNothing);
+      expect(services.statusBar.activeNotices, isEmpty);
+    });
+
+    test('a command that ran while the field moved on still says so', () async {
+      // The staleness bail protects text the operator typed during the await —
+      // it must not also swallow the outcome of a command that already RAN. For
+      // REPORT the POST carries no idempotency key, so an operator who sees no
+      // trace of the first submission presses Enter again and files a second
+      // card, and the message line is the ONLY place they can learn otherwise.
+      // Driven against the engine directly for the same reason as the
+      // double-submit case above.
+      final services = await makeServices();
+      final extensions = services.extensions as _CannedCommandExtensions;
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController(text: 'DEVMODE');
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      extensions.executeGate = Completer<void>();
+      final submitted = engine.submit();
+      // Park on the GATED call, not the describe-time interpret before it —
+      // editing the field earlier trips the first staleness bail instead, and
+      // the command never runs, which is not the case under test.
+      await pumpEventQueue();
+      expect(extensions.executeCalls, 1);
+
+      controller.text = 'DEVMODE!'; // the operator keeps typing while it flies
+      extensions.executeGate!.complete();
+
+      expect(await submitted, isFalse); // stale: the field is the operator's now
+      expect(controller.text, 'DEVMODE!'); // ...so it is left exactly as typed
+      expect(engine.message, 'Developer mode activated');
+      expect(engine.isConfirmation, isTrue);
+    });
+
+    test('a description pasted onto a new line is still the same command', () async {
+      // REPORT matches on `\s+` and exists to take pasted multi-line text, so
+      // the command word cannot end at a literal space alone: reading
+      // "NOTE\nhello" as the word "NOTE\nHELLO" makes it a DIFFERENT command
+      // from the one retained, revokes mixedCase, and puts the uppercase
+      // formatter back over prose the operator pasted verbatim.
+      final services = await makeServices();
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      controller.text = 'NOTE';
+      await Future.delayed(const Duration(milliseconds: 200)); // let the describe debounce retain it
+      expect(engine.commandMixedCase, isTrue);
+
+      controller.text = 'NOTE\nhello there';
+      expect(engine.commandMixedCase, isTrue);
+      controller.text = 'NOTE\thello there';
+      expect(engine.commandMixedCase, isTrue);
+    });
+
+    test('a callsign replacing a command awaiting parameters loses its spaces', () async {
+      // The other half of the same staleness trap, on the other flag reading
+      // the same retained map: RELOAD's `expectsParams` keeps the space filter
+      // off, and the debounce that would revise it never fires while someone
+      // types steadily — so a call typed straight over it would keep a space.
+      final services = await makeServices();
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      controller.text = 'RELOAD';
+      await Future.delayed(const Duration(milliseconds: 200));
+      expect(engine.commandExpectsParams, isTrue);
+
+      controller.text = 'W1'; // selected all, typing a callsign over it
+      expect(engine.commandExpectsParams, isFalse);
+    });
+
+    test('a dialog closed mid-flight resumes without touching the disposed field', () async {
+      // The ⌘K route pops on Esc or a barrier tap, neither gated on a submit in
+      // flight, and an execute-time interpret has 30 seconds to run. The engine
+      // and the controller are both disposed on the way out, so resuming into
+      // the field trips ChangeNotifier's use-after-dispose assert — which in a
+      // test is a thrown error, and in a debug build a red screen over a
+      // command that actually succeeded.
+      final services = await makeServices();
+      final extensions = services.extensions as _CannedCommandExtensions;
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      final controller = TextEditingController(text: 'DEVMODE');
+      engine.attach(controller);
+
+      extensions.executeGate = Completer<void>();
+      final submitted = engine.submit();
+      await pumpEventQueue();
+      expect(extensions.executeCalls, 1);
+
+      engine.dispose(); // the operator hits Esc while the write is in flight
+      controller.dispose();
+      extensions.executeGate!.complete();
+
+      // Resolving at all is the assertion: without the guard this throws
+      // "A TextEditingController was used after being disposed" out of the
+      // resumed _submit, and `false` says nothing was written to the field.
+      expect(await submitted, isFalse);
+      expect(extensions.executeCalls, 1); // ...and the command still ran exactly once
+    });
+
+    testWidgets('a callsign typed in lower case is still uppercased', (tester) async {
+      // The other direction of the mixedCase guard. Without a case that types
+      // LOWER case, deleting the uppercase formatter outright leaves this file
+      // green — every other callsign case here is already typed in capitals.
+      await pumpLookup(tester, await makeServices());
+
+      await tester.enterText(find.byType(TextField), 'w1aw');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
+
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    testWidgets('a callsign typed straight after a mixedCase command is still uppercased', (tester) async {
+      // The retained interpretation is only revised inside the describe
+      // debounce, which restarts on every keystroke — so typing through
+      // without a pause leaves `mixedCase` stale from the previous command.
+      await pumpLookup(tester, await makeServices());
+
+      await tester.enterText(find.byType(TextField), 'NOTE hello');
+      await tester.pump(const Duration(milliseconds: 200)); // retains mixedCase
+
+      // Keystroke by keystroke, with no pause long enough to re-interpret —
+      // the formatter sees the PREVIOUS text, so the guard has to notice the
+      // command word changing rather than waiting for a fresh interpretation.
+      for (final typed in ['w', 'w1', 'w1a', 'w1aw']) {
+        await tester.enterText(find.byType(TextField), typed);
+        await tester.pump();
+      }
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
+
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
     testWidgets('a mixedCase command keeps every space in its free-text parameter', (tester) async {
       await pumpLookup(tester, await makeServices());
 
@@ -196,7 +415,10 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'NOTE hello there');
       await tester.pump();
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'NOTE HELLO THERE');
+      // Case as typed, not just the spaces: a mixedCase command's parameter is
+      // the operator's own prose, and this bar files bug reports (REPORT) as
+      // well as notes. Uppercasing it here reaches the filed card verbatim.
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'NOTE hello there');
 
       await tester.pump(const Duration(milliseconds: 200)); // drain the next describe debounce
     });

@@ -15,7 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:halo_build_tools/halo_build_tools.dart' show kEdition;
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'error_reporting_service.dart';
@@ -29,6 +28,7 @@ import '../config/secrets.dart';
 import '../config/dev_flags.dart';
 import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
+import '../config/version.dart';
 import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 
 import '../i18n/strings.g.dart';
@@ -1385,6 +1385,23 @@ class ExtensionService {
         }
         final position = await location?.getCurrentPosition();
         return position == null ? null : {'latitude': position.latitude, 'longitude': position.longitude};
+      case 'getVersionInfo':
+        // Read-only build identity — no capability gate, unlike getLocation:
+        // none of this is sensitive, same reasoning as getSettings.
+        //
+        // buildNumber is null on Dev, where kBuildNumber is the LAST RELEASE's
+        // number rather than the running build's — the same suppression
+        // views/version_label.dart and services/flags_service.dart apply, for
+        // the same reason. Naming a build that isn't running is worse than
+        // naming none: on Dev the SHA is the only true identity.
+        return {
+          'platform': platformName(),
+          'edition': kEdition.name,
+          'version': kPublicVersion,
+          'versionName': kEditionVersionName,
+          'buildNumber': kEdition == Edition.dev ? null : kBuildNumber,
+          'gitSha': kGitSha,
+        };
       case 'showForm':
         final formId = params['formId'] as String;
         final formDef = (params['form'] as Map).cast<String, dynamic>();

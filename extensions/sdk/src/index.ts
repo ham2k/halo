@@ -21,6 +21,7 @@ import type {
   StatusBarMessageParams,
   StatusBarProgressParams,
   StatusBarNoticeParams,
+  VersionInfo,
 } from "./types"
 
 export * from "./types"
@@ -144,6 +145,13 @@ export const host = {
   /// user for location permission the first time it's called.
   async getLocation(): Promise<DeviceLocation | null> {
     return (await hostCallFn()('getLocation', {})) as DeviceLocation | null
+  },
+
+  /// Read-only build identity — platform, edition, version, build number,
+  /// git sha — for a command (REPORT) that needs to say exactly what build it
+  /// ran on. `buildNumber` is null on Dev; see VersionInfo.
+  async getVersionInfo(): Promise<VersionInfo> {
+    return (await hostCallFn()('getVersionInfo', {})) as VersionInfo
   },
 
   /// The app's settings, read-only: resolved core values (theme, locale,

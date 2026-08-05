@@ -11,7 +11,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'version.dart';
 
-String _platformName() {
+/// The platform name as used in the UA string and `host.getVersionInfo`
+/// (HALO-140) — `web`/`macos`/`ios`/`android`/`windows`/`linux`/`fuchsia`.
+String platformName() {
   if (kIsWeb) return 'web';
   switch (defaultTargetPlatform) {
     case TargetPlatform.macOS:
@@ -86,6 +88,6 @@ Future<String> ham2kUserAgentOrFallback() async {
 }
 
 String _format(String? build) {
-  final parts = [_platformName(), kAppFlavor, if (build != null && build.isNotEmpty) build];
+  final parts = [platformName(), kAppFlavor, if (build != null && build.isNotEmpty) build];
   return 'Ham2K Logger/$kPublicVersion (${parts.join(' ')})';
 }

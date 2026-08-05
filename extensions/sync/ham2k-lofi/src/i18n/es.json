@@ -1,6 +1,12 @@
 {
   "syncAllDescribe": "¿Forzar una resincronización completa desde el servidor?",
   "syncAllConfirm": "Iniciando resincronización completa...",
+  "reportDescribe": "Puede enviar info de cuenta, app y operación",
+  "reportNeedsSync": "Un informe necesita tu cuenta LoFi — primero habilita la sincronización en la Configuración",
+  "reportConfirm": "Informe enviado",
+  "reportConfirmWithRef": "Informe enviado — {{ref}}",
   "catalogCategory": "Sincronización",
-  "catalogSyncAll": "Sincronizar todas las operaciones ahora"
+  "catalogSyncAll": "Sincronizar todas las operaciones ahora",
+  "catalogReport": "Enviar un informe de error",
+  "catalogReportParams": "<descripción>"
 }

@@ -168,6 +168,7 @@ Available via `import { host } from "@ham2k/halo-extension-sdk"`:
 | `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
 | `host.statusBar.clear(key)` | Removes a message/progress item you posted. |
 | `host.statusBar.showNotice(params)` / `.dismissNotice(key)` | A richer, dismissible notice (markdown body, optional `link`/`dialog` action buttons) shown as a "post-it" over the footer and kept in the user's Settings → About → Recent Notices history. |
+| `host.getVersionInfo()` | Read-only build identity: platform, edition, version, versionName, buildNumber, gitSha. `buildNumber` is null on Dev, where the compiled-in number is the last release's rather than the running build's. |
 | `host.log(message)` | Log line, prefixed with your extension key, visible in the app console. |
 
 Cross-extension composition (calling other extensions' hooks *inside* the
