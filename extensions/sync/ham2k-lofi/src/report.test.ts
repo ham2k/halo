@@ -39,13 +39,39 @@ describe('buildReportPayload', () => {
     assert.match(payload.body, new RegExp(longText))
   })
 
-  it('includes platform/edition/version/build/sha in the body', () => {
+  it('includes platform/version/build/sha in the body', () => {
     const payload = buildReportPayload('it crashed', CONTEXT)
     assert.match(payload.body, /Platform: macos/)
-    assert.match(payload.body, /Edition: next/)
     assert.match(payload.body, /Version: August '26 ALPHA patch 1 \(Next Edition\) \(26\.8\.1\)/)
     assert.match(payload.body, /Build: 126/)
     assert.match(payload.body, /SHA: abc1234/)
+  })
+
+  it('runs the context facts together on ONE bullet-separated line', () => {
+    // Markdown collapses consecutive lines into one paragraph, so a fact per
+    // line arrived on the card as an unpunctuated run-on. The separators have
+    // to be in the text; a test asserting only that each fact is PRESENT
+    // passes either way, which is how the run-on shipped in the first place.
+    const payload = buildReportPayload('it crashed', {
+      ...CONTEXT,
+      operatorCall: 'KI2D',
+      operation: { stationCall: 'W1AW' },
+    })
+    const [, ...context] = payload.body.split('---')
+    const line = context.join('---').trim()
+    assert.equal(line.includes('\n'), false)
+    assert.equal(
+      line,
+      "Operator: KI2D • Station: W1AW • Platform: macos • Version: August '26 ALPHA patch 1 (Next Edition) (26.8.1) • Build: 126 • SHA: abc1234",
+    )
+  })
+
+  it('does not name the edition separately from the version', () => {
+    // `versionName` IS the edition-qualified name, and a Regular build has no
+    // qualifier precisely because it is the plain one. A second field said
+    // nothing the version did not.
+    const payload = buildReportPayload('it crashed', CONTEXT)
+    assert.doesNotMatch(payload.body, /Edition:/)
   })
 
   it('omits the build number when the host reports none', () => {

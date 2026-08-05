@@ -66,22 +66,30 @@ function formatRefs(operation: Record<string, JSONValue> | undefined): string | 
 /// Who filed this, from where, on what — the block every report carries
 /// whatever surface raised it, under its own rule.
 ///
+/// ONE line, bullet-separated. Markdown collapses consecutive lines into a
+/// single paragraph, so a fact per line rendered as an unpunctuated run-on
+/// ("Platform: macos Version: … SHA: …") on the card anyway. Writing the
+/// separators in makes the rendering deliberate instead of accidental, and
+/// keeps the block to one line in the raw text too.
+///
 /// Operator and station are usually the same call and deliberately both
 /// reported anyway: they diverge exactly when a report is hardest to read
 /// without them (club and multi-op stations).
+///
+/// The edition is NOT its own field: `versionName` is the edition-qualified
+/// name ("August '26 (Next Edition)"), and a Regular build has no qualifier
+/// precisely because it is the plain one. Naming it twice said nothing extra.
 function contextLines(context: ReportContext): string[] {
   const { version, operatorCall, operation } = context
 
   const stationCall = operation?.stationCall
   const refs = formatRefs(operation)
 
-  return [
-    '---',
+  const facts = [
     ...(operatorCall ? [`Operator: ${operatorCall}`] : []),
     ...(typeof stationCall === 'string' && stationCall ? [`Station: ${stationCall}`] : []),
     ...(refs ? [`References: ${refs}`] : []),
     `Platform: ${version.platform}`,
-    `Edition: ${version.edition}`,
     `Version: ${version.versionName} (${version.version})`,
     // Null on Dev, where the compiled-in build number is the last release's
     // rather than the running build's — the SHA is the only true identity
@@ -89,6 +97,8 @@ function contextLines(context: ReportContext): string[] {
     ...(version.buildNumber == null ? [] : [`Build: ${version.buildNumber}`]),
     `SHA: ${version.gitSha || '(none)'}`,
   ]
+
+  return ['---', facts.join(' • ')]
 }
 
 export function buildReportPayload(text: string, context: ReportContext): ReportPayload {
