@@ -16,6 +16,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/dev_bridge.dart';
 import '../main.dart';
+import '../services/cat/equipment.dart';
+import '../services/cat/zero_beat.dart';
 import '../services/settings_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'operation_dialogs.dart';
@@ -283,7 +285,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   bool? _wasTwoPane;
 
   void _suggestQso(Map<String, dynamic> qso) {
-    setState(() => _suggestedQso = qso);
+    setState(() => _suggestedQso = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat));
     // On two-pane layouts the logging pane is already visible on the left —
     // and tab 0 is Info there, so switching would be wrong twice over. In
     // dock mode the user may have tabbed the logging pane behind others, so
@@ -294,6 +296,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       _dockKey.currentState?.revealModule('logging');
     }
   }
+
+  /// This view's zero-beat draw cache — per view, because it is keyed by spot
+  /// and only meaningful for the spots this operation is working. The rule it
+  /// feeds is [zeroBeatSuggestionFor].
+  final _zeroBeat = ZeroBeatOffsetter();
 
   @override
   void didChangeDependencies() {
@@ -1665,3 +1672,49 @@ class _FallingDotsPainter extends CustomPainter {
 }
 
 
+
+/// [qso] with a CW frequency moved a few Hz off the spotted one, so that
+/// everyone answering the same spot isn't transmitting on the same note
+/// (services/cat/zero_beat.dart).
+///
+/// Resolved from [services] here, at the one place every suggestion passes
+/// through that can see both the settings and the CAT state — halo_widgets is
+/// a package below the app and reaches neither. Offsetting once, at the
+/// source, is also what keeps the frequency field, the logged QSO and the VFO
+/// showing the same number: everything downstream reads this one value.
+///
+/// A top-level function rather than a method so a test can pin the joints
+/// that fail silently — that `enabled` reads `settings.avoidZeroBeat`, that
+/// the range reaches the draw, and that "connected" means radio1 rather than
+/// any node in the shack.
+///
+/// Returns the caller's own map untouched when nothing should move, and a
+/// copy when something does — the map it is handed belongs to the spot list
+/// either way, so neither is safe to mutate.
+Map<String, dynamic> zeroBeatSuggestionFor(
+  Map<String, dynamic> qso, {
+  required HaLoServices services,
+  required ZeroBeatOffsetter offsetter,
+}) {
+  final settings = services.settings;
+  // The experiment is checked FIRST, and it is what keeps `services.cat`
+  // untouched: that getter is a `late final`, so reading it builds a
+  // CatService — registry, stored equipment, a RadioService listener held for
+  // the process — and this runs on every spot tap. Without the experiment
+  // there is no Station Configuration to connect a radio from, so the answer
+  // would be "not connected" anyway. Checking `avoidZeroBeat` alone would not
+  // do: it defaults to on, so that path is the common one.
+  if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return qso;
+  if (!settings.avoidZeroBeat) return qso;
+  final cat = services.cat;
+  // radio1 specifically — the one node the logging panel drives. A rig
+  // connected in the shack but not driving the panel is not going to be
+  // retuned by this suggestion either.
+  final radio1 = cat.radio1;
+  return offsetter.apply(
+    qso,
+    enabled: true,
+    radioConnected: radio1 != null && cat.stateFor(radio1).status == EquipmentStatus.connected,
+    rangeHz: settings.zeroBeatRangeHz,
+  );
+}

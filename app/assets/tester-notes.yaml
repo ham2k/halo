@@ -36,6 +36,7 @@ upcoming:
     - "US and Canadian operators get two new pills: **New State** and **New Province**, the first time you work each one in an operation — including your own state, which is a credit you can claim. The state comes from the callsign lookup or from what you type in the State field. The Info tab counts them beside your DXCC entities. Please check the state it picks up matches who you actually worked"
     - "The **Info** tab now breaks your operation down by band: one row per band you've worked, with its contact count and how those split across modes. Please check the numbers match what you'd count by hand"
     - "**Web only:** the search box in **Settings → All Settings** dropped the caret after a character or two, swallowing the rest of what you typed. Fixed. Please type a few settings names in there and check every character lands"
+    - "**With a radio connected**, tapping a **CW** spot now lands you 10-25 Hz off the spotted frequency instead of exactly on it, so a pileup isn't everyone calling on one note. On by default, in **Settings → Radio → Avoid Zero-Beating on Spots** (that whole section needs the *Station Configuration* experiment turned on). Please check the frequency you end up on looks right in the log, and tell us whether the spread feels too small or too large (developer mode adds a range setting to try 10/25/50/75 Hz). Nothing changes without CAT, on phone and data spots, or on 630m/2190m"
 
 "126":
   changes:

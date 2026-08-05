@@ -545,6 +545,25 @@ class RadioSettingsGroup extends SettingsGroup {
           unit: s.units.kHzPerSecond,
         ),
       ],
+      _toggle(
+        key: 'avoidZeroBeat',
+        label: s.avoidZeroBeat.title,
+        icon: 'tune-vertical',
+        description: settings.avoidZeroBeat ? s.avoidZeroBeat.descriptionOn : s.avoidZeroBeat.descriptionOff,
+        value: settings.avoidZeroBeat,
+        target: 'current-radio',
+      ),
+      // Gated AND flagged, for the same reason the snap knobs above are.
+      if (settings.avoidZeroBeat && settings.developerMode)
+        _tuningSelect(
+          key: 'zeroBeatRangeHz',
+          label: s.zeroBeatRange.title,
+          description: s.zeroBeatRange.description,
+          icon: 'arrow-left-right',
+          value: _numText(settings.zeroBeatRangeHz),
+          options: SettingsService.zeroBeatRangeOptions,
+          unit: s.units.hz,
+        ),
     ];
   }
 

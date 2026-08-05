@@ -482,7 +482,8 @@
       "units": {
         "ms": "ms",
         "kHz": "kHz",
-        "kHzPerSecond": "kHz/s"
+        "kHzPerSecond": "kHz/s",
+        "hz": "Hz"
       },
       "smartVfoSnap": {
         "title": "Ajuste inteligente del VFO",
@@ -504,6 +505,15 @@
       "snapMinSpeed": {
         "title": "Ajuste inteligente: velocidad mínima",
         "description": "Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo."
+      },
+      "avoidZeroBeat": {
+        "title": "Evitar batido cero en los spots",
+        "descriptionOn": "Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.",
+        "descriptionOff": "Sintoniza exactamente la frecuencia del spot."
+      },
+      "zeroBeatRange": {
+        "title": "Batido cero: margen de separación",
+        "description": "A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez."
       }
     },
     "privacy": {

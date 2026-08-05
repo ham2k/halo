@@ -98,17 +98,25 @@ void main() {
     Future<SettingsService> settingsWith({
       bool cat = true,
       bool snap = true,
+      bool zeroBeat = true,
       bool developer = true,
     }) async {
       SharedPreferences.setMockInitialValues({
         if (cat) 'experiments': jsonEncode({
             'gato': {'enabled': true},
           }),
-        if (snap) 'settings.radio': jsonEncode({'smartVfoSnap': true}),
+        // Both features written explicitly, never left to their defaults: a
+        // test isolating one of them would otherwise also be asserting the
+        // other one's default, and would change meaning when that default did.
+        'settings.radio': jsonEncode({'smartVfoSnap': snap, 'avoidZeroBeat': zeroBeat}),
         if (developer) 'developerMode': true,
       });
       return SettingsService(await SharedPreferences.getInstance());
     }
+
+    /// Everything except the two feature toggles — i.e. the values that must
+    /// stay out of the way until someone goes looking for them.
+    const toggles = {'smartVfoSnap', 'avoidZeroBeat'};
 
     Future<Set<String>> keysFor(SettingsService settings) async =>
         {for (final el in await RadioSettingsGroup(settings).buildElements()) el['key'] as String};
@@ -125,12 +133,28 @@ void main() {
       // more settings" whenever the extended bucket is NON-EMPTY — so
       // flagging without gating leaves every other operator a disclosure that
       // expands to nothing.
-      expect(await keysFor(await settingsWith(developer: false)), {'smartVfoSnap'});
+      expect(await keysFor(await settingsWith(developer: false)), toggles);
       expect(await keysFor(await settingsWith()), contains('smartVfoSnapDebounceMs'));
+      expect(await keysFor(await settingsWith()), contains('zeroBeatRangeHz'));
     });
 
     test('the knobs mean nothing with the feature off, and are not offered', () async {
-      expect(await keysFor(await settingsWith(snap: false)), {'smartVfoSnap'});
+      expect(await keysFor(await settingsWith(snap: false, zeroBeat: false)), toggles);
+      // Each feature hides only its own knobs.
+      expect(await keysFor(await settingsWith(snap: false)), {...toggles, 'zeroBeatRangeHz'});
+      expect(await keysFor(await settingsWith(zeroBeat: false)), isNot(contains('zeroBeatRangeHz')));
+    });
+
+    test('Avoid Zero-Beating is on out of the box, unlike Smart VFO Snap', () async {
+      // The two differ deliberately: snap moves the radio uninvited, so it is
+      // opted into; this only changes where a retune the operator just asked
+      // for lands, and a CW pileup stacked on one note is the default it
+      // exists to prevent.
+      SharedPreferences.setMockInitialValues({});
+      final fresh = SettingsService(await SharedPreferences.getInstance());
+      expect(fresh.avoidZeroBeat, isTrue);
+      expect(fresh.smartVfoSnap, isFalse);
+      expect(fresh.zeroBeatRangeHz, 25);
     });
 
     test('every knob is dev-flagged, extended-targeted, and lands in settings when committed', () async {
@@ -138,9 +162,9 @@ void main() {
       final group = RadioSettingsGroup(settings);
       final knobs = [
         for (final el in await group.buildElements())
-          if (el['key'] != 'smartVfoSnap') el,
+          if (!toggles.contains(el['key'])) el,
       ];
-      expect(knobs, hasLength(4));
+      expect(knobs, hasLength(5));
       for (final el in knobs) {
         expect(el['devMode'], isTrue, reason: '${el['key']} would show without developer mode in All Settings');
         expect(elementMatchesTarget(el, 'current-radio-extended'), isTrue,

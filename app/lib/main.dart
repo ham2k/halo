@@ -697,7 +697,11 @@ class HaLoServices {
   // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
   // from Settings → Station Configuration, so this costs nothing while the
   // experiment is off.
-  late final CatService cat = CatService(settings, radio: radio, onTrack: track);
+  /// Injectable like [_exportsOverride], so a test can hand in a CatService
+  /// built over a fake transport — the real one can only reach `connected`
+  /// through hardware.
+  final CatService? _catOverride;
+  late final CatService cat = _catOverride ?? CatService(settings, radio: radio, onTrack: track);
   final LocationService location = LocationService();
   final DeepLinkService deepLinks = DeepLinkService();
 
@@ -972,7 +976,9 @@ class HaLoServices {
     DataFileManager? dataFiles,
     LookupQueueService? lookupQueue,
     ExportService? exports,
-  })  : extensions = extensions ?? ExtensionService(),
+    CatService? cat,
+  })  : _catOverride = cat,
+        extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),
         // Defaults to no-op so tests (which construct HaLoServices directly)

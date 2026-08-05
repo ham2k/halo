@@ -434,6 +434,88 @@ Two limits. It fires only when the suggestion actually carried radio state, so a
 deeplink, say) never retunes anything; and never while an existing QSO is open for editing, matching
 the guard every other write site uses.
 
+### Avoiding zero beat
+
+Everyone who taps the same CW spot otherwise transmits on exactly the same frequency, and a pileup
+stacked on one note is one the activator cannot pick a callsign out of. **Avoid Zero-Beating on
+Spots** (`app/lib/services/cat/zero_beat.dart`) moves a CW suggestion a few Hz off the spotted
+frequency. It is **on** by default, unlike Smart VFO Snap: it does not move the radio uninvited, it
+only changes where a retune the operator just asked for lands.
+
+**Only with `radio1` connected.** With no rig under CAT the app changes no frequency at all — the
+operator reads the number off the screen and dials it in, so an offset would hand them digits to
+hand-tune for no benefit and leave the log claiming a frequency they never transmitted on. A rig
+connected in the shack but not driving the logging panel doesn't count either; nothing would retune.
+This is also why the feature can be on by default without an operator ever meeting it unexpectedly.
+
+The offset is applied in **`OperationView._suggestQso`** — the one place every suggestion passes
+through that can also read the settings, `halo_widgets` being a package below the app. Applying it
+there, once, is also what keeps the frequency field, the logged QSO and the VFO on the same number:
+everything downstream reads that one value. Two rejected placements say why:
+
+- **In `CatService`, offsetting only what goes to the radio.** The app would then display a
+  frequency the rig is not on, and a CAT read-back could pull the field to the offset value anyway.
+  Worse, the de-dupe guard there compares against the value actually sent, so a redraw on each push
+  would retune the rig on every rebuild.
+- **In `suggestedQsoFromSpot`.** It reaches exactly the same taps, so it buys nothing — and it sits
+  in `spots_panel.dart`, which would then need the settings and the CAT state threaded into a
+  function whose job is mapping a spot's fields.
+
+**The draw excludes a dead zone.** Offsets land between 40% and 100% of the range either side, and
+never closer than an absolute 8 Hz whichever is larger — so the 10 Hz setting spans 8–10 Hz, not
+4–10 Hz. A uniform draw across ±25 Hz puts some operators within a couple of Hz of the spot, which
+is a zero beat, so for them the feature did nothing; and 4 Hz against a ~600 Hz sidetone is no
+better. A range narrower than the floor collapses to a fixed offset at its own edge rather than
+inverting into an empty span. The side is taken from which half of the draw it fell in, not from its
+low bit: the low bit ties side to distance, making every offset above the spot a near one and every
+offset below a far one.
+
+**CW only**, via `superModeForMode` — a few Hz is separable by ear on CW, inaudible on phone, and
+wrong for a data decoder expecting the tone where the spot said it would be. Note that only literal
+`CW` maps to `'CW'` there, so a `CWR` spot is classed Digital and left alone.
+
+**An offset that would leave the band flips to the other side**, and is dropped entirely if that
+side fails too — `staysInBand` is shared with Smart VFO Snap, which needs the same answer for its
+own reason. Without it a spot near a band edge would retune the rig outside the band, log the
+contact there, and clear the VFO's band — which the Spots panel's `auto` filter reads, so the
+filter would quietly stop filtering.
+
+**Below 1000 kHz nothing moves**, so 630 m and 2190 m are left exactly on the spot. The cutoff is
+re-applied to the MOVED value as well as the spot's, since it is the frequency the field will be
+asked to round-trip that matters. The offsetted
+value round-trips through the frequency field (`fmtFreqInput` out, `parseFreq` back), and
+`parseFreq` reads a sub-1000 value carrying a decimal point as MHz — a 630 m spot at a whole `474`
+kHz works today and would come back as `474.021` → `474021` kHz, logged and sent to the rig. The
+weakness is `parseFreq`'s, and fixing it there would change how hand-typed input is read; the guard
+keeps this feature from turning a working case into a broken one meanwhile.
+
+**The draw is remembered per spot — the draw, and nothing else.** Two requirements pull against each
+other here, and `ZeroBeatOffsetter` exists to hold both:
+
+- *The same spot must land on the same frequency.* Each tap builds a fresh suggestion, which
+  `LoggingControls` pushes to the VFO, so re-drawing would physically retune the rig tens of Hz — an
+  operator tapping a spot again to re-read its reference info would hear the radio move mid-exchange.
+- *Every call must return a new map.* `didUpdateWidget` re-applies a suggestion only when the map is
+  a different instance. Caching the **result** therefore breaks far more than this feature: the panel
+  stops refilling, the callsign stops restoring, the spot sources stop reloading and the VFO push
+  stops firing — on every spot, phone included, and with the feature switched off.
+
+So the draw is cached and everything else is re-evaluated per call, which is also why switching the
+setting off takes effect on the very next tap of the same spot rather than after tapping some other
+one. The cache holds 32 spots, evicting by last use — insertion order would drop the spot being
+worked all session in favour of one glanced at once — and a spot that is never offset spends no
+slot, so browsing a phone-heavy list cannot evict the CW spot in progress.
+
+`services.cat` is only read once the CAT experiment is on. That getter is a `late final`, so reading
+it builds a CatService — registry, stored equipment, a RadioService listener held for the process —
+and this runs on every spot tap; without the experiment there is no Station Configuration to connect
+a radio from, so the answer would be "not connected" regardless. Checking `avoidZeroBeat` alone
+would not do, since it defaults to on.
+
+Smart VFO Snap does not undo it: the snapper only reacts to readings from the radio, app writes
+arrive as `VfoOrigin.user` and rebase it, and its smallest-move rule leaves anything under 200 Hz
+where it is regardless.
+
 ## Smart VFO Snap
 
 Off by default, and it is the only thing in the app that moves the operator's radio without being

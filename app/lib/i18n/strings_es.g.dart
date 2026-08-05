@@ -929,6 +929,8 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$snapLongMove$es snapLongMove = _Translations$settings$radio$snapLongMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinMove$es snapMinMove = _Translations$settings$radio$snapMinMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinSpeed$es snapMinSpeed = _Translations$settings$radio$snapMinSpeed$es._(_root);
+	@override late final _Translations$settings$radio$avoidZeroBeat$es avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$es._(_root);
+	@override late final _Translations$settings$radio$zeroBeatRange$es zeroBeatRange = _Translations$settings$radio$zeroBeatRange$es._(_root);
 }
 
 // Path: settings.privacy
@@ -1450,6 +1452,7 @@ class _Translations$settings$radio$units$es extends Translations$settings$radio$
 	@override String get ms => 'ms';
 	@override String get kHz => 'kHz';
 	@override String get kHzPerSecond => 'kHz/s';
+	@override String get hz => 'Hz';
 }
 
 // Path: settings.radio.smartVfoSnap
@@ -1506,6 +1509,29 @@ class _Translations$settings$radio$snapMinSpeed$es extends Translations$settings
 	// Translations
 	@override String get title => 'Ajuste inteligente: velocidad mínima';
 	@override String get description => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.';
+}
+
+// Path: settings.radio.avoidZeroBeat
+class _Translations$settings$radio$avoidZeroBeat$es extends Translations$settings$radio$avoidZeroBeat$en {
+	_Translations$settings$radio$avoidZeroBeat$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Evitar batido cero en los spots';
+	@override String get descriptionOn => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.';
+	@override String get descriptionOff => 'Sintoniza exactamente la frecuencia del spot.';
+}
+
+// Path: settings.radio.zeroBeatRange
+class _Translations$settings$radio$zeroBeatRange$es extends Translations$settings$radio$zeroBeatRange$en {
+	_Translations$settings$radio$zeroBeatRange$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Batido cero: margen de separación';
+	@override String get description => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.';
 }
 
 // Path: settings.privacy.shareAppData
@@ -1933,6 +1959,7 @@ extension on TranslationsEs {
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
+			'settings.radio.units.hz' => 'Hz',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondea la frecuencia a un paso razonable. Solo en modos de voz.',
 			'settings.radio.smartVfoSnap.descriptionOff' => 'La radio se queda exactamente donde la sintonizaste.',
@@ -1944,6 +1971,11 @@ extension on TranslationsEs {
 			'settings.radio.snapMinMove.description' => 'Si te mueves menos que esto no se redondea nada — el ajuste fino se respeta.',
 			'settings.radio.snapMinSpeed.title' => 'Ajuste inteligente: velocidad mínima',
 			'settings.radio.snapMinSpeed.description' => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.',
+			'settings.radio.avoidZeroBeat.title' => 'Evitar batido cero en los spots',
+			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
+			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',
+			'settings.radio.zeroBeatRange.title' => 'Batido cero: margen de separación',
+			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
 			'settings.privacy.title' => 'Privacidad',
 			'settings.privacy.shareAppData.title' => 'Compartir datos de uso',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ayúdanos a mejorar la app compartiendo datos de uso, fallos y rendimiento',
@@ -2075,14 +2107,14 @@ extension on TranslationsEs {
 			'settings.station.transports.network' => 'Red',
 			'settings.station.transports.usbSerial' => 'USB serie',
 			'settings.station.transports.wifi' => 'WiFi',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador nunca se ha probado con una Kenwood: está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',

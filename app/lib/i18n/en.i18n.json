@@ -482,7 +482,8 @@
       "units": {
         "ms": "ms",
         "kHz": "kHz",
-        "kHzPerSecond": "kHz/s"
+        "kHzPerSecond": "kHz/s",
+        "hz": "Hz"
       },
       "smartVfoSnap": {
         "title": "Smart VFO Snap",
@@ -504,6 +505,15 @@
       "snapMinSpeed": {
         "title": "Smart Snap: Slowest move",
         "description": "Turn the dial slower than this and nothing is rounded, unless it was a long move."
+      },
+      "avoidZeroBeat": {
+        "title": "Avoid Zero-Beating on Spots",
+        "descriptionOn": "With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.",
+        "descriptionOff": "Tune exactly to the spotted frequency."
+      },
+      "zeroBeatRange": {
+        "title": "Zero-Beat: Avoidance range",
+        "description": "How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again."
       }
     },
     "privacy": {

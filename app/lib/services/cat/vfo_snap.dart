@@ -138,7 +138,7 @@ class VfoSnapper {
 
     final snapped = snapToGrid(current, grid);
     if (snapped == current) return null;
-    if (!_staysInBand(snapped, current)) return null;
+    if (!staysInBand(snapped, current)) return null;
 
     _restingKHz = snapped;
     return snapped;
@@ -181,8 +181,9 @@ double? _gridFor({
   return distanceKHz >= tuning.longMoveKHz / 2 ? _gridKHz250 : _gridKHz100;
 }
 
-/// Whether [snapped] is still somewhere the operator can transmit, given
-/// they were at [current].
+/// Whether [moved] is still somewhere the operator can transmit, given they
+/// were at [current]. Shared with zero_beat.dart, which moves the VFO for a
+/// different reason and needs the same answer.
 ///
 /// Rounding to nearest moves the VFO at most half a grid step, and half a
 /// step is enough to reach a band edge from just inside it — 7299.7 rounds
@@ -193,10 +194,10 @@ double? _gridFor({
 /// A frequency in no band at all is left to snap: the operator is on a
 /// transverter IF, or a band this table doesn't carry, and refusing there
 /// would be guessing on no evidence.
-bool _staysInBand(double snapped, double current) {
+bool staysInBand(double moved, double current) {
   for (final band in bands) {
     if (current >= band.minKHz && current <= band.maxKHz) {
-      return snapped > band.minKHz && snapped < band.maxKHz;
+      return moved > band.minKHz && moved < band.maxKHz;
     }
   }
   return true;
