@@ -5292,6 +5292,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else if (map['toggleExperiment'] is Map) {
         await widget.onCommandAction?.call('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
+      } else if (map['updateSetting'] is Map) {
+        await widget.onCommandAction?.call('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
+      } else if (map['openSettings'] is Map) {
+        await widget.onCommandAction?.call('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)

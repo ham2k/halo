@@ -906,6 +906,39 @@ class Translations$commands$en {
 
 	/// en: 'Sentry is disabled in this build — test error logged locally only'
 	String get sentryTestLocalOnly => 'Sentry is disabled in this build — test error logged locally only';
+
+	/// en: 'On'
+	String get settingOn => 'On';
+
+	/// en: 'Off'
+	String get settingOff => 'Off';
+
+	/// en: '(empty)'
+	String get settingEmpty => '(empty)';
+
+	/// en: '(set)'
+	String get settingSecretSet => '(set)';
+
+	/// en: '(not set)'
+	String get settingSecretUnset => '(not set)';
+
+	/// en: '${count} selected'
+	String settingSelectedCount({required Object count}) => '${count} selected';
+
+	/// en: 'on or off'
+	String get settingExpectsOnOff => 'on or off';
+
+	/// en: 'one of: ${choices}'
+	String settingExpectsOneOf({required Object choices}) => 'one of: ${choices}';
+
+	/// en: 'a number'
+	String get settingExpectsNumber => 'a number';
+
+	/// en: '“${label}” is no longer available'
+	String settingVanished({required Object label}) => '“${label}” is no longer available';
+
+	/// en: '“${label}” did not accept that value'
+	String settingNotStored({required Object label}) => '“${label}” did not accept that value';
 }
 
 // Path: commandDialog
@@ -3801,6 +3834,17 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
+			'commands.settingOn' => 'On',
+			'commands.settingOff' => 'Off',
+			'commands.settingEmpty' => '(empty)',
+			'commands.settingSecretSet' => '(set)',
+			'commands.settingSecretUnset' => '(not set)',
+			'commands.settingSelectedCount' => ({required Object count}) => '${count} selected',
+			'commands.settingExpectsOnOff' => 'on or off',
+			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
+			'commands.settingExpectsNumber' => 'a number',
+			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
+			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',

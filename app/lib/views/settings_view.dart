@@ -37,6 +37,7 @@ import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/sync_account_identity.dart';
 import 'header_profile_label.dart';
+import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
 import 'experiments_pane.dart';
 import 'extensions_panel.dart';
@@ -740,12 +741,26 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     // doesn't already spend — with no search every group is mounted anyway.
     var hidden = false;
     if (widget.searchQuery.isNotEmpty) {
-      final matching = [
-        for (final el in elements)
-          if (_elementMatchesQuery(el, widget.searchQuery)) el,
-      ];
-      hidden = matching.isEmpty;
-      if (!hidden) elements = matching;
+      // Sorted by score, not left in declaration order. Subsequence matching
+      // is permissive by design — `st` legitimately matches a fair few
+      // settings — so the ranking is what makes it usable: without it a good
+      // match sits wherever its group happened to declare it, among weaker
+      // ones, and the search reads as barely filtering. Sections themselves
+      // stay in their usual order; only the rows within one move.
+      final scored = <({Map<String, dynamic> element, int score, int index})>[];
+      for (var i = 0; i < elements.length; i++) {
+        final score = elementSearchScore(elements[i], widget.searchQuery);
+        if (score != null) scored.add((element: elements[i], score: score, index: i));
+      }
+      // Declaration order breaks ties explicitly: Dart's `List.sort` is not
+      // stable above 32 elements, so equal-scoring rows would otherwise
+      // reshuffle on every keystroke while the operator is reading them.
+      scored.sort((a, b) {
+        final byScore = b.score.compareTo(a.score);
+        return byScore != 0 ? byScore : a.index.compareTo(b.index);
+      });
+      hidden = scored.isEmpty;
+      if (!hidden) elements = [for (final s in scored) s.element];
     }
     return Visibility(
       visible: !hidden,
@@ -772,18 +787,6 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       ),
     );
   }
-}
-
-/// The All Settings search predicate: does this element's key, label
-/// (title), or description mention [query]? Chrome elements (headers,
-/// dividers, markdown) never match — while filtering, only the settings
-/// themselves show.
-bool _elementMatchesQuery(Map<String, dynamic> el, String query) {
-  if (query.isEmpty) return true;
-  final type = el['type'];
-  if (type != 'field' && type != 'link' && type != 'action') return false;
-  bool has(dynamic v) => v is String && v.toLowerCase().contains(query);
-  return has(el['key']) || has(el['label']) || has(el['description']);
 }
 
 /// The `common: true` subset of every declared group — core (via
@@ -1863,12 +1866,26 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     // route's scope and the next keystroke is lost.
     var searchHidden = false;
     if (widget.searchQuery.isNotEmpty) {
-      final filtered = [
-        for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
-          if (_elementMatchesQuery(el, widget.searchQuery)) el,
-      ];
-      searchHidden = filtered.isEmpty;
-      if (!searchHidden) definition = {...definition, 'elements': filtered};
+      // Scored and sorted, exactly as [_SettingsGroupForm] does for core
+      // groups. Subsequence matching is permissive enough that filtering
+      // alone barely narrows anything, so an extension's rows left in
+      // declaration order would be the same loose match with none of the
+      // ranking that makes it usable — a difference the operator would read
+      // as the search working on some sections and not others.
+      final panelElements = (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>();
+      final scored = <({Map<String, dynamic> element, int score, int index})>[];
+      for (var i = 0; i < panelElements.length; i++) {
+        final score = elementSearchScore(panelElements[i], widget.searchQuery);
+        if (score != null) scored.add((element: panelElements[i], score: score, index: i));
+      }
+      // See _SettingsGroupForm: Dart's sort is not stable, so ties need an
+      // explicit fallback or the rows move about as the query is typed.
+      scored.sort((a, b) {
+        final byScore = b.score.compareTo(a.score);
+        return byScore != 0 ? byScore : a.index.compareTo(b.index);
+      });
+      searchHidden = scored.isEmpty;
+      if (!searchHidden) definition = {...definition, 'elements': [for (final s in scored) s.element]};
     }
 
     final form = FormRenderer(

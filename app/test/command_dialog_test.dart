@@ -62,6 +62,12 @@ class _CannedExtensions extends ExtensionService {
           'expectsParams': true,
         },
         {'command': 'SYNCALL', 'describe': 'Sync all operations now', 'category': 'Sync'},
+        // Advertised in the catalog AND currently unrunnable, so a query for it
+        // puts an error and a result row on screen together. Deliberately NOT
+        // `needsOperation` — the palette drops those entirely with no operation
+        // open, which would empty the list and hide the very collision this
+        // models (the real shape is SYNCALL erroring while sync is disabled).
+        {'command': 'WIPEDB', 'describe': 'Erase the local database', 'category': 'Developer'},
         // The ranking pair: "SET" is in SETUP's NAME and in 20M's
         // DESCRIPTION, and the name match has to win. Also the only two
         // `suggest` entries, so the empty-field samples are deterministic:
@@ -118,6 +124,31 @@ class _CannedExtensions extends ExtensionService {
       };
     }
     if (trimmed == 'NOTE') return {'expectsParams': true, 'mixedCase': true};
+    // Recognized but not runnable right now — the shape a hook returns when
+    // the app isn't in a state to accept it. WIPEDB is also in the catalog, so
+    // this is the case where an error and a result row are on screen together.
+    if (trimmed == 'WIPEDB') return {'error': 'WIPEDB needs an open operation'};
+    // Carries a confirm AND an action that fails — the case where the
+    // optimistic confirm must not paint over the action's bad news.
+    if (trimmed == 'FAILWRITE') {
+      return {
+        'describe': 'Change Thing to On?',
+        'confirm': 'Thing set to On',
+        'commands': [
+          {'updateSetting': {'key': 'noSuchThing', 'value': true}},
+        ],
+      };
+    }
+    // The shape a settings command returns when the words name no setting:
+    // recognized (so Enter can't log it as a callsign), not runnable, and
+    // carrying the only explanation the operator will get.
+    //
+    // Bare 'SET' answers too: a prefix still being typed is recognized but not
+    // runnable, which is the state the tests below drive through.
+    if (trimmed == 'SET') return {'expectsParams': true, 'mixedCase': true};
+    if (trimmed.startsWith('SET ')) {
+      return {'expectsParams': true, 'mixedCase': true, 'describe': 'No setting matches that'};
+    }
     return null;
   }
 
@@ -871,6 +902,116 @@ void main() {
     expect(a.dispatch, isNotNull);
   });
 
+  testWidgets('HALO-151: a describe with expectsParams is shown, not swallowed', (tester) async {
+    // `expectsParams` keeps the typed text out of the results list — it isn't
+    // runnable yet — and a query like "SET ltfm" matches no catalog entry
+    // either, so the describe is the ONLY thing left to tell the operator
+    // anything. Counting just errors and confirmations as "a message" left
+    // the card empty of all three: no result, no message, and no empty state
+    // (which suppresses itself whenever a message exists). The card blinked
+    // and went blank while the operator was still typing.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SET');
+    await _settle(tester);
+    await tester.enterText(find.byType(TextField), 'SET ltfm');
+    await _settle(tester);
+
+    expect(find.text('No setting matches that'), findsOneWidget);
+    // And ONLY that: the card's own generic fallback must not double up on it.
+    expect(find.textContaining('Nothing matches'), findsNothing);
+    await _unmount(tester);
+  });
+
+  testWidgets('HALO-151: the generic fallback never flashes while a hook is still answering', (tester) async {
+    // `message` is cleared synchronously on each keystroke and refilled when
+    // the debounced interpret answers. Painting "Nothing matches …" in that
+    // gap is what made two messages appear to fight over the same line as the
+    // operator typed.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SET');
+    await _settle(tester);
+
+    // The card, mid-gap, with its first describe already on screen.
+    await tester.enterText(find.byType(TextField), 'SET l');
+    await _settle(tester);
+    expect(find.text('No setting matches that'), findsOneWidget);
+    final cardBefore = tester.widgetList(find.byType(Material)).length;
+
+    // One frame after the next keystroke — the describe debounce has not
+    // fired. Asserting only that "Nothing matches" is absent is NOT enough:
+    // it is also absent when the whole card has been torn out of the tree,
+    // which is the other way to fail here and looks far worse — the sheet
+    // pops out and back in on every character.
+    await tester.enterText(find.byType(TextField), 'SET lt');
+    await tester.pump();
+    expect(find.textContaining('Nothing matches'), findsNothing,
+        reason: 'the hook has not answered yet; the card must wait rather than guess');
+    expect(find.text('No setting matches that'), findsOneWidget,
+        reason: 'the previous line holds the card open until this keystroke answers');
+    expect(tester.widgetList(find.byType(Material)).length, cardBefore,
+        reason: 'the card must not unmount and remount between keystrokes');
+
+    // Once it lands, the hook's own wording is what shows.
+    await _settle(tester);
+    expect(find.text('No setting matches that'), findsOneWidget);
+    await _unmount(tester);
+  });
+
+  testWidgets('HALO-151: an error still shows when the command also matches a catalog row', (tester) async {
+    // The trap in "results win over the message": an ERROR is not repeated by
+    // any row, so hiding it behind a result list loses it outright. WIPEDB
+    // matches its own catalog entry, so the list is NOT empty exactly when the
+    // error most needs saying.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'WIPEDB');
+    await _settle(tester);
+
+    expect(find.text('WIPEDB needs an open operation'), findsOneWidget,
+        reason: 'the catalog row for WIPEDB is on screen, and the error must not hide behind it');
+    await _unmount(tester);
+  });
+
+  testWidgets('HALO-151: an action\'s failure is not painted over by the optimistic confirm', (tester) async {
+    // The engine sets `confirm` BEFORE dispatching, so by the time the action
+    // reports it could not write, the palette is holding a message that says
+    // it did. Both go to the same status-bar slot, and the confirm is posted
+    // last — so without the guard the operator is told "Thing set to On" for a
+    // write that failed, which is the failure this whole feature keeps
+    // circling back to.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'FAILWRITE');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    final posted = services.statusBar.items.map((i) => i.text).toList();
+    expect(posted, isNot(contains('Thing set to On')),
+        reason: 'the write failed; the confirm must not be the last word');
+    await _unmount(tester);
+  });
+
+  testWidgets('HALO-151: a describe is not repeated below the row that already shows it', (tester) async {
+    // 20M interprets to a runnable command, so it appears as the "run what's
+    // typed" row WITH its describe as the subtitle. Repeating that describe on
+    // the message line below reads as a second, competing answer.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), '20M');
+    await _settle(tester);
+
+    expect(find.textContaining('Change band to'), findsOneWidget,
+        reason: 'shown once, as the typed row\'s subtitle — not twice');
+    await _unmount(tester);
+  });
 }
 
 /// ⌘K on macOS, ⌃K elsewhere — the handler accepts either modifier, so the

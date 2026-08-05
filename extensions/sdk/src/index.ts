@@ -18,6 +18,8 @@ import type {
   FormDefinition,
   FormField,
   ResultMessage,
+  SearchSettingsParams,
+  SettingsSearchResult,
   StatusBarMessageParams,
   StatusBarProgressParams,
   StatusBarNoticeParams,
@@ -170,6 +172,23 @@ export const host = {
   /// writable.
   async setSettings(values: Record<string, JSONValue>): Promise<void> {
     await hostCallFn()('setSettings', { ns: currentExtensionKey, values })
+  },
+
+  /// Resolves what a SET/SHOW/HIDE command names against the app's settings.
+  ///
+  /// The catalog it searches is built from the app's declarative settings
+  /// registry, so it reaches every setting the settings screen would show and
+  /// respects the same `devMode`, `environment` and `visibleWhen` visibility
+  /// rules. None of that data — option lists, current values, commit routing
+  /// — exists on this side of the bridge, which is why the settings commands
+  /// ask rather than carrying their own list.
+  ///
+  /// `kind` narrows the search: `'show'`/`'hide'` reach only visibility
+  /// toggles and derive their own value from the verb, so `value` is for
+  /// `'set'` only. Never rejects: an unmatched query answers `{found: false}`,
+  /// which is the normal state of a half-typed command.
+  async searchSettings(params: SearchSettingsParams): Promise<SettingsSearchResult> {
+    return (await hostCallFn()('searchSettings', { ...params })) as SettingsSearchResult
   },
 
   async kvSet(key: string, value: JSONValue): Promise<void> {

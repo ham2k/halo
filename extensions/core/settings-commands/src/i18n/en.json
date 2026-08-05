@@ -1,0 +1,19 @@
+{
+  "catalogCategory": "Settings",
+  "catalogSet": "Find or change a setting",
+  "catalogSetParams": "<setting> [value]",
+  "catalogShow": "Turn a setting on",
+  "catalogShowParams": "<setting>",
+  "catalogHide": "Turn a setting off",
+  "catalogHideParams": "<setting>",
+
+  "noMatch": "No setting matches “{{query}}”",
+  "current": "{{label}}: {{value}}",
+  "currentIn": "{{label}} ({{section}}): {{value}}",
+  "currentAndMore": "{{label}}: {{value}} — and {{count}} more",
+  "matchingSettings": "Settings matching “{{query}}”",
+  "change": "Change {{label}} to {{value}}?",
+  "alreadySet": "{{label}} is already {{value}}",
+  "expects": "{{label}} takes {{expects}}",
+  "confirmChanged": "{{label}} set to {{value}}"
+}

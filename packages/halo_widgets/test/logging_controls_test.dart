@@ -5286,6 +5286,75 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('the settings-command actions (updateSetting/openSettings) forward to onCommandAction', (tester) async {
+    // Same silent-no-op trap as the reloadDataFiles test above. SET/SHOW/HIDE
+    // are especially prone to it: the describe preview is produced entirely by
+    // the hook, so a missing branch here shows the operator "Change Zero Beat
+    // to Off?", clears the field, prints the confirmation — and changes
+    // nothing at all.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeSettingsCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      switch (input.trim().toUpperCase()) {
+        case 'SETONE':
+          return {
+            'describe': 'Change Zero Beat to Off?',
+            'confirm': 'Zero Beat set to Off',
+            'commands': [
+              {
+                'updateSetting': {'key': 'avoidZeroBeat', 'value': false},
+              },
+            ],
+          };
+        case 'SETTWO':
+          return {
+            'describe': 'Open Bands…',
+            'commands': [
+              {
+                'openSettings': {
+                  'keys': ['bands'],
+                  'title': 'Bands',
+                },
+              },
+            ],
+          };
+        default:
+          return null;
+      }
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeSettingsCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    final field = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(field, 'SETONE');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.enterText(field, 'SETTWO');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(2));
+    expect(dispatched[0].key, 'updateSetting');
+    expect(dispatched[0].value, {'key': 'avoidZeroBeat', 'value': false});
+    expect(dispatched[1].key, 'openSettings');
+    expect(dispatched[1].value, {
+      'keys': ['bands'],
+      'title': 'Bands',
+    });
+  });
+
   testWidgets('a paramless overlay action (devTester) forwards to onCommandAction', (tester) async {
     // Same silent-no-op trap as the reloadDataFiles test above, for the
     // paramless `{devTester: {}}` shape: without its _dispatchActions

@@ -1,0 +1,19 @@
+{
+  "catalogCategory": "Configuración",
+  "catalogSet": "Buscar o cambiar una configuración",
+  "catalogSetParams": "<configuración> [valor]",
+  "catalogShow": "Activar una configuración",
+  "catalogShowParams": "<configuración>",
+  "catalogHide": "Desactivar una configuración",
+  "catalogHideParams": "<configuración>",
+
+  "noMatch": "Ninguna configuración coincide con «{{query}}»",
+  "current": "{{label}}: {{value}}",
+  "currentIn": "{{label}} ({{section}}): {{value}}",
+  "currentAndMore": "{{label}}: {{value}} — y {{count}} más",
+  "matchingSettings": "Configuraciones que coinciden con «{{query}}»",
+  "change": "¿Cambiar {{label}} a {{value}}?",
+  "alreadySet": "{{label}} ya está en {{value}}",
+  "expects": "{{label}} acepta {{expects}}",
+  "confirmChanged": "{{label}} cambiado a {{value}}"
+}

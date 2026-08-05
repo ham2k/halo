@@ -454,8 +454,9 @@ interface CommandHook {
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
-//   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
-//   devStatus?, devProgress?, toggleExperiment?}
+//   syncAll?, updateSettings?, updateSetting?, openSettings?, setCallField?,
+//   reloadDataFiles?, devNotice?, devStatus?, devProgress?, devSplash?,
+//   devOnboard?, devTester?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"
@@ -503,6 +504,36 @@ describe-preview result. This is how `annotation-commands`' SOLAR/WEATHER
 (below) show their fetched reading in the UI before the user ever presses
 Enter, without either blocking every keystroke-debounce call on a live
 fetch or requiring a second command invocation.
+
+Note that only the logging panel consumes those pushes today — the ⌘K palette
+and the Home search bar do not — so a hook that needs its describe on every
+surface must resolve it inside `interpret` instead. `settings-commands` awaits
+its host call for that reason.
+
+A command that needs to reach the app's SETTINGS asks rather than carrying its
+own list of them:
+
+```ts
+host.searchSettings({ args: string, kind?: 'set' | 'show' | 'hide' }): Promise<SettingsSearchResult>
+```
+
+`args` is everything the operator typed after the command word, whole: where
+the setting's name ends and its value begins is decided app-side, because only
+the settings catalog can tell `SET AVOID ZERO BEAT N` (a four-word name plus a
+value) from `SET THEME DARK` (a one-word name plus a value). Matching is by
+subsequence over each setting's key, aliases and label, and the catalog is
+derived from the app's declarative settings registry — so it reaches every
+setting the settings screen would currently show, and only those (`devMode`,
+`environment` and `visibleWhen` all apply). The result carries the setting's
+label, section, current value and the coerced new value, each already
+localized; a `secret` field's value is never included. Write the result back
+with the `updateSetting` action, or open the settings form with `openSettings`.
+
+This call re-enters the extension runtime while the calling hook is still
+awaiting it (reading every `settingsPanel` is part of building the catalog).
+That is safe by construction — hook calls are keyed by id with independent
+completers and no lock — but it is the only host call that does so, and any
+new one that re-enters should say so here.
 
 Implemented by `radio-commands` (band/frequency/mode shortcuts — "20m ",
 "14285 ", "14.285 ", "cw "), ported from app-polo's `RadioCommands`

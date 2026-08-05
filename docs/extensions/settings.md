@@ -156,6 +156,13 @@ export interface DynamicSettingsPanel {
 }
 ```
 
+`state` is always that panel's own values, bare-keyed (never the app's
+`<panelKey>.`-namespaced form), and it holds the value being written — the
+edited field already reads as `value`, not as what it was before. That is true
+whether the edit came from the settings screen or from a `SET` command, so a
+hook may validate across fields without caring which surface it was reached
+from.
+
 Core discriminates between the two tiers by the required `kind` tag
 (`'simple' | 'dynamic'`), not by shape — a panel can't accidentally match
 both, and a typo in `kind` is a compile error rather than silent
@@ -335,6 +342,32 @@ override) without it cluttering the panel for regular users:
 ```ts
 { type: "field", fieldType: "text", key: "apiEndpointOverride", label: "API Endpoint Override", devMode: true }
 ```
+
+## `aliases`: short names for the SET command
+
+The `SET`, `SHOW` and `HIDE` commands search every declared setting by key,
+label and description (see `app/lib/settings/settings_catalog.dart`). Matching is by
+subsequence and the ranking is usually enough on its own, but not for a
+setting whose real name buries the word people reach for: `REPORT` matches
+`defaultReport`, `defaultReportCW` and `defaultReportFT8` alike, and none of
+them is obviously the one meant.
+
+`aliases` fixes that by giving a field extra names, matched at the same top
+tier as its key:
+
+```ts
+{ type: "field", fieldType: "text", key: "defaultReport", label: "Default Report",
+  aliases: ["report", "rst"] }
+```
+
+A single string is accepted as well as a list. Aliases are matched
+case-insensitively and ignoring punctuation, like every other term (`zeroBeat`,
+`Zero Beat` and `ZEROBEAT` are the same term), so there is no point declaring
+case or spacing variants of a name that already matches.
+
+Aliases are for names an operator would plausibly *reach for* — not a thesaurus.
+Every alias is one more thing that can collide with another setting's real name,
+and a collision costs a disambiguation prompt on a query that used to be exact.
 
 ## Common Preferences and environment gating
 

@@ -66,7 +66,9 @@ import 'services/settings_service.dart';
 import 'services/spots_service.dart';
 import 'services/status_bar_service.dart';
 import 'settings/core_settings_groups.dart';
+import 'settings/settings_command.dart';
 import 'settings/settings_registry.dart';
+import 'settings/settings_target_dialog.dart';
 import 'settings/system_lists.dart';
 import 'services/hardware_keyboard_service.dart';
 import 'services/window_chrome_service.dart';
@@ -1004,6 +1006,7 @@ class HaLoServices {
     this.extensions.spots = spots;
     this.extensions.onOpenAccount =
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
+    this.extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);
   }
 
   /// The ONE gate for analytics: forwards to
@@ -1170,6 +1173,32 @@ class HaLoServices {
         return enabled
             ? t.commands.experimentEnabled(name: experiment.name)
             : t.commands.experimentDisabled(name: experiment.name);
+      case 'updateSetting':
+        // SET/SHOW/HIDE: the hook already resolved the key and coerced the
+        // value through `searchSettings`, so this only writes. Returns null on
+        // success — the hook's own `confirm` is the user's feedback; a message
+        // here would be a second one saying the same thing. A non-null return
+        // is therefore always a failure the hook couldn't have known about
+        // (an extension field's validator rejecting the value).
+        final settingKey = params?['key'] as String?;
+        if (settingKey == null || settingKey.isEmpty) return null;
+        return applySettingCommand(this, key: settingKey, value: params?['value']);
+      case 'openSettings':
+        // The setting can't be typed on one line (multiselect, account,
+        // secret), the operator named it without a value, or the query
+        // matched several equally well — all three want the settings form
+        // rather than a guess.
+        final context = navigatorKey.currentContext;
+        if (context == null) return null;
+        final keys = (params?['keys'] as List?)?.whereType<String>().toList() ?? const <String>[];
+        if (keys.isEmpty) return null;
+        unawaited(showSettingsForKeys(
+          context,
+          services: this,
+          keys: keys,
+          title: params?['title'] as String? ?? t.settings.title,
+        ));
+        return null;
       default:
         return null;
     }
@@ -1231,12 +1260,16 @@ class HaLoServices {
 /// unmounted while the action ran) — so feedback that's only known app-side
 /// (a toggled experiment's outcome, syncAll's status) isn't silently
 /// dropped. Shared by home_view's and operation_view's command dispatch.
-Future<void> runCommandAction(HaLoServices services, State state, String action,
+/// Returns true when the action had something to SAY — a failure, or an
+/// outcome only the app knows. A caller that also has a message for the same
+/// status-bar slot must not post it over this one: the action's word is the
+/// later and more specific news, and it is usually the bad news.
+Future<bool> runCommandAction(HaLoServices services, State state, String action,
     [Map<String, dynamic>? params]) async {
   final message = await services.handleCommandAction(action, params);
-  if (message != null && state.mounted) {
-    services.statusBar.setMessage(key: 'commandAction', text: message);
-  }
+  if (message == null || !state.mounted) return false;
+  services.statusBar.setMessage(key: 'commandAction', text: message);
+  return true;
 }
 
 

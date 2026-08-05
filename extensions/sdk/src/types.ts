@@ -896,6 +896,17 @@ export interface CommandAction {
   updateSettings?: {
     developerMode?: boolean
   }
+  /// Writes one setting, named by the `key` a `host.searchSettings` match
+  /// reported and carrying the `newValue` it coerced. The app re-resolves the
+  /// key before writing — a setting can stop existing between the preview and
+  /// Enter (a dev-mode toggle, an extension restart) — and reports nothing on
+  /// success, so the command's own `confirm` is the user's only feedback.
+  updateSetting?: { key: string; value: JSONValue }
+  /// Opens the settings dialog around exactly [keys]. What SET/SHOW/HIDE do
+  /// when a value can't be typed on one line (multiselect, account, secret),
+  /// when no value was given, or when the query matched several settings
+  /// equally well — in which case every tied candidate is listed.
+  openSettings?: { keys: string[]; title?: string }
   /// Replaces the call field's entire text, cursor at the end — the
   /// call-notes extension's `//KEY` note expansion. The new text runs
   /// through the same change path as typing, so lookups, dupe checks and
@@ -982,6 +993,74 @@ export interface CommandInterpretation {
   /// NOT be handed to the background online lookup queue after being added.
   /// Ignored when `commands` has no `addQso` entries.
   skipOnlineLookup?: boolean
+}
+
+/// What to look up with `host.searchSettings`.
+export interface SearchSettingsParams {
+  /// Everything the operator typed after the command word, whole. Where the
+  /// setting's name ends and its value begins is decided app-side, because
+  /// only the catalog can tell `SET AVOID ZERO BEAT N` (a four-word name and a
+  /// value) from `SET THEME DARK` (a one-word name and a value) — they have
+  /// the same shape. The name is matched against each setting's key, aliases,
+  /// label and description, and the value is coerced against that setting's
+  /// own type: booleans take Y/YES/ON/TRUE and their opposites, selects match
+  /// an option by value or by label.
+  args: string
+  /// Which command is asking. `'show'`/`'hide'` search only settings that
+  /// name a visibility toggle (`showGridField`, `hideFoo`), take no value at
+  /// all (every word is part of the name), and answer with the value the verb
+  /// implies, inverted for a `hide…` setting.
+  kind?: 'set' | 'show' | 'hide'
+}
+
+/// One setting a search could have meant.
+export interface SettingsSearchCandidate {
+  key: string
+  label: string
+  /// The settings section it lives under, so a match can say where it is.
+  section: string
+}
+
+/// What `host.searchSettings` answers.
+///
+/// Everything user-facing here is already localized by the app: `label`,
+/// `section`, and the two value strings, which are formatted for READING
+/// (`"On"`, a select option's own label) rather than for storage. A `secret`
+/// setting's value is never echoed at all — `valueLabel` says only whether one
+/// is set.
+export interface SettingsSearchResult {
+  /// False when nothing matched. Every other field but [query] is then absent
+  /// — this is the normal state of a half-typed command, not an error.
+  found: boolean
+  /// The part of `args` the app read as the setting's NAME. Quote this back to
+  /// the user rather than `args`, which would include the value too.
+  query?: string
+  key?: string
+  label?: string
+  section?: string
+  fieldType?: string
+  /// The setting's CURRENT value, formatted for display.
+  valueLabel?: string
+  /// Whether a value can be typed on one line at all. False for multiselect,
+  /// account and secret settings, which have to be edited in the dialog.
+  simple?: boolean
+  /// True when another setting matched just as well, so the query doesn't
+  /// actually name one thing. Preview the best match by all means, but running
+  /// the command should open a picker instead of guessing.
+  ambiguous?: boolean
+  /// The ranked matches, best first — what a picker lists.
+  candidates?: SettingsSearchCandidate[]
+  /// The coerced value to write, present only when one was asked for and it
+  /// parsed. Pass it straight to the `updateSetting` action.
+  newValue?: JSONValue
+  /// [newValue], formatted for display.
+  newValueLabel?: string
+  /// True when [newValue] is what the setting already holds — worth saying so
+  /// rather than reporting a change that didn't happen.
+  unchanged?: boolean
+  /// Present when a value was typed but doesn't fit the setting: a localized
+  /// description of what would (`"on or off"`, `"one of: Light, Dark"`).
+  expects?: string
 }
 
 /// One command a hook advertises to the command dialog (⌘K), so the palette
@@ -1698,6 +1777,14 @@ export interface SettingsField extends Omit<FormField, 'validate' | 'transform' 
   pattern?: string
   patternError?: string
   itemFields?: SettingsField[]
+  /// Extra names this setting answers to in the All Settings search box and in
+  /// the SET/SHOW/HIDE commands, alongside its key, label and description —
+  /// for a setting whose real name is a poor thing to type. See
+  /// docs/extensions/settings.md. Matched case- and punctuation-insensitively,
+  /// so declaring spacing or case variants of a name that already matches buys
+  /// nothing.
+  /// A single string is accepted as well as a list.
+  aliases?: string | string[]
 }
 
 /// Tier 1: declarative settings, registered once at activation. The engine

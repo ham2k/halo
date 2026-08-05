@@ -144,6 +144,10 @@ class _CommandDialogState extends State<CommandDialog> {
 
   late final CommandEngine _engine;
 
+  /// Set when a dispatched action posted its own status-bar message, so
+  /// [_close] doesn't paint the engine's optimistic confirm over it.
+  bool _actionSpoke = false;
+
   /// The `catalog` entries every command hook advertises, read once when the
   /// dialog opens ([ExtensionService.getCommandCatalog] caches them across
   /// opens, so this is a bridge call only the first time).
@@ -230,7 +234,9 @@ class _CommandDialogState extends State<CommandDialog> {
     _engine = CommandEngine(
       services: widget.services,
       operationContext: () => widget.services.currentOperationContext,
-      runAction: (action, params) => runCommandAction(widget.services, this, action, params),
+      runAction: (action, params) async {
+        if (await runCommandAction(widget.services, this, action, params)) _actionSpoke = true;
+      },
       onExecuted: _close,
       // Enter on a callsign must not wipe it: the lookup below the field IS
       // the result, and clearing would drop the palette back to suggestions.
@@ -414,8 +420,37 @@ class _CommandDialogState extends State<CommandDialog> {
 
   bool _rebuildScheduled = false;
 
+  /// Dismisses THIS dialog — specifically this one, not whatever happens to be
+  /// on top of the navigator.
+  ///
+  /// A command's actions are dispatched before this runs, and one of them can
+  /// push a route of its own (SET/SHOW/HIDE open a settings form). A bare
+  /// `pop()` would then dismiss that form instead and leave the palette
+  /// standing, which reads to the operator as Enter doing nothing at all.
   void _close() {
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    // A command that just ran set its `confirm` on the engine — and this
+    // dialog is about to dispose that engine, so nothing would ever paint it.
+    // Hand it to the status bar, which outlives the route, the same place
+    // `runCommandAction` already puts a command action's own message.
+    // Otherwise every confirmation run from the palette is lost: "Developer
+    // mode activated", "Band set to 20m", and the SET commands' "already Off"
+    // — the last of which exists precisely so Enter doesn't read as a no-op.
+    // …unless one of the actions already said something. The engine's confirm
+    // is set BEFORE the actions run, so it is the optimistic version: a
+    // `updateSetting` that could not store the value has since posted the
+    // failure to this very slot, and overwriting it with "X set to Y" is
+    // precisely the "told about a write that never happened" this feature
+    // keeps trying not to do.
+    if (_engine.isConfirmation && !_actionSpoke) {
+      widget.services.statusBar.setMessage(key: 'commandAction', text: _engine.message!);
+    }
+    final route = ModalRoute.of(context);
+    if (route == null || route.isCurrent) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).removeRoute(route);
+    }
   }
 
   bool get _hasOperation => widget.services.currentOperationContext != null;
@@ -630,8 +665,32 @@ class _CommandDialogState extends State<CommandDialog> {
   Widget _panel(ThemeData theme, Translations t, List<_Result> results, List<_Result> selectable) {
     final searching = _engine.lookupStage == CallLookupStage.searching;
     final hasCallInfo = _engine.lookupStage != CallLookupStage.none && _engine.lookupGuess != null;
-    final hasEmptyState = results.isEmpty && _controller.text.trim().isNotEmpty && _engine.message == null && !searching && !hasCallInfo;
-    final hasMessage = _engine.isError || _engine.isConfirmation;
+    // This generic fallback is the LAST thing to fall back to, so it must not
+    // pre-empt a hook that is mid-sentence. `message` is cleared on every
+    // keystroke and refilled ~150ms later, so without the pending check this
+    // paints "Nothing matches …" in the gap after each character and is
+    // replaced by the hook's own wording a moment later — two messages
+    // flickering against each other on the same line.
+    final hasEmptyState = results.isEmpty &&
+        _controller.text.trim().isNotEmpty &&
+        _engine.message == null &&
+        !_engine.interpretationPending &&
+        !searching &&
+        !hasCallInfo;
+    // An error or a confirmation ALWAYS shows. Both are things that have
+    // happened — a command that can't run here, or one that just ran — and
+    // neither is repeated by any row, so suppressing them behind a result
+    // list loses them outright: `SEED` with no operation still matches the
+    // SEED catalog row, and its "needs an open operation" would vanish
+    // behind it.
+    //
+    // A `describe` is different. It has to reach the screen for a command
+    // that recognizes the text but can't run it yet (`expectsParams`, which
+    // is exactly what keeps it out of the results list), but only when there
+    // is nothing else to show: with results on screen it is already the "run
+    // what's typed" row's own subtitle, and repeating it below reads as a
+    // second, competing answer.
+    final hasMessage = _engine.isError || _engine.isConfirmation || (_engine.message != null && results.isEmpty);
     final hasCard = results.isNotEmpty || searching || hasCallInfo || hasEmptyState || hasMessage;
 
     return Material(
@@ -733,9 +792,6 @@ class _CommandDialogState extends State<CommandDialog> {
           if (searching) _lookingUpLine(theme, t),
           if (hasCallInfo) Flexible(child: _callInfo(theme)),
           if (hasEmptyState) _emptyState(theme, t),
-          // Only errors and confirmations: a plain `describe` preview is
-          // already the "run what's typed" row's own subtitle, and showing it
-          // twice reads as two different results.
           if (hasMessage) _messageLine(theme),
         ],
       ),

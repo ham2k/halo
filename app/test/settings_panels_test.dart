@@ -292,4 +292,32 @@ void main() {
           'nodes that the operator is typing against',
     );
   });
+
+  testWidgets('HALO-151: the search box matches by subsequence, like the SET command', (tester) async {
+    // The box and the commands share one matcher (settings_catalog.dart), but
+    // sharing it is not the same as the SCREEN being wired to it — this drives
+    // the real search field to prove the wiring, not just the predicate.
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final services = await makeServices();
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Settings'));
+    await tester.pumpAndSettle();
+
+    // Initials, not a substring of anything: l-f-t-m appears in order in
+    // "Leftie Mode" and the old substring filter found nothing for it.
+    // Initials of a three-word label — no substring of anything.
+    await tester.enterText(find.byKey(const ValueKey('all-settings-search')), 'sgf');
+    await tester.pumpAndSettle();
+    expect(find.text('Show Grid field'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const ValueKey('all-settings-search')), 'lftm');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Leftie Mode'), findsOneWidget);
+    expect(find.text('Theme Mode'), findsNothing, reason: 'still a filter — unrelated settings stay hidden');
+  });
 }

@@ -1282,6 +1282,20 @@ class ExtensionService {
         }
         await settings?.updateSettingsGroup('extension_$ns', values.cast<String, dynamic>());
         return null;
+      case 'searchSettings':
+        // SET/SHOW/HIDE, resolved app-side: the settings catalog, the current
+        // values, the option lists and the commit routing all live here, so
+        // the command hook asks rather than carrying its own copy (which is
+        // exactly what goes stale in app-polo's hand-listed version).
+        //
+        // This re-enters the extension runtime to read every settingsPanel
+        // while the calling command hook is still awaiting us. Safe: hook
+        // calls are keyed by id with independent completers and no lock (see
+        // halo_extension_host.dart's `_send`), so the nested call settles
+        // while the outer one waits.
+        final search = onSearchSettings;
+        if (search == null) return {'found': false};
+        return search(params['args'] as String? ?? '', params['kind'] as String?);
       case 'translate':
         final key = params['key'] as String;
         final value = t[key];
@@ -1531,6 +1545,14 @@ class ExtensionService {
   /// Accounts) from anywhere — the handler behind declarative `account`
   /// actions (an extension's "reconnect your account" button).
   void Function(String accountKey, {String? subkey})? onOpenAccount;
+
+  /// Set by the app shell: backs the `searchSettings` host call, resolving a
+  /// SET/SHOW/HIDE query against the settings catalog
+  /// (settings_command.dart). Lives here as a callback rather than a service
+  /// reference because answering it needs the whole [HaLoServices] graph —
+  /// the settings registry, the system lists, and this service itself.
+  /// Unset in harnesses, which then report no match rather than failing.
+  Future<Map<String, dynamic>> Function(String args, String? kind)? onSearchSettings;
 
   /// Notice actions from extensions are declarative JSON, not callbacks back
   /// into the extension (matches the `activity` hook's "describe UI as data"

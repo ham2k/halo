@@ -37,6 +37,7 @@ Map<String, dynamic> _select({
   required String label,
   required String icon,
   String? description,
+  List<String>? aliases,
   required String value,
   required List<({String label, String value})> options,
   bool common = false,
@@ -50,6 +51,7 @@ Map<String, dynamic> _select({
   'label': label,
   'icon': icon,
   if (description != null) 'description': description,
+  if (aliases != null) 'aliases': aliases,
   'value': value,
   'options': [
     for (final o in options) {'label': o.label, 'value': o.value},
@@ -65,6 +67,7 @@ Map<String, dynamic> _text({
   required String label,
   required String icon,
   String? description,
+  List<String>? aliases,
   required String value,
   String? placeholder,
   String? target,
@@ -75,6 +78,7 @@ Map<String, dynamic> _text({
   'label': label,
   'icon': icon,
   if (description != null) 'description': description,
+  if (aliases != null) 'aliases': aliases,
   'value': value,
   if (placeholder != null) 'placeholder': placeholder,
   if (target != null) 'target': target,
@@ -85,6 +89,7 @@ Map<String, dynamic> _toggle({
   required String label,
   required String icon,
   String? description,
+  List<String>? aliases,
   required bool value,
   bool common = false,
   String? environment,
@@ -96,6 +101,7 @@ Map<String, dynamic> _toggle({
   'label': label,
   'icon': icon,
   if (description != null) 'description': description,
+  if (aliases != null) 'aliases': aliases,
   'value': value,
   if (common) 'common': true,
   if (environment != null) 'environment': environment,
@@ -127,6 +133,7 @@ class GeneralSettingsGroup extends SettingsGroup {
     return [
       _select(
         key: 'themeMode',
+        aliases: const ['theme'],
         label: t.settings.theme.title,
         icon: _themeIcons[themeMode] ?? _themeIcons['system']!,
         description: (t['settings.themeDescription.$themeMode'] as String?) ?? t.settings.themeDescription.system,
@@ -140,6 +147,7 @@ class GeneralSettingsGroup extends SettingsGroup {
       ),
       _select(
         key: 'locale',
+        aliases: const ['language', 'lang'],
         label: t.settings.language,
         icon: 'translate',
         // Just the current language's own name (its option label).
@@ -155,6 +163,7 @@ class GeneralSettingsGroup extends SettingsGroup {
       _layoutDensitySelect(),
       _select(
         key: 'distanceUnits',
+        aliases: const ['units'],
         label: t.settings.distanceUnits,
         icon: 'map-marker-distance',
         // Just the current unit's name (its option label).
@@ -188,6 +197,7 @@ class GeneralSettingsGroup extends SettingsGroup {
 
     return _select(
       key: 'fontScale',
+      aliases: const ['fontSize'],
       label: t.settings.fontScale,
       icon: 'format-size',
       // Just the current scale's name (its option label).
@@ -284,6 +294,7 @@ class LoggingSettingsGroup extends SettingsGroup {
     return [
       _toggle(
         key: 'leftieMode',
+        aliases: const ['leftie'],
         label: s.leftieMode.title,
         icon: 'hand-front-left',
         description: settings.leftieMode ? s.leftieMode.descriptionOn : s.leftieMode.descriptionOff,
@@ -341,6 +352,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       // default instead of storing a blank report.
       _text(
         key: 'defaultReport',
+        aliases: const ['report', 'rst'],
         label: s.defaultReport.title,
         icon: 'signal',
         description: s.defaultReport.description,
@@ -350,6 +362,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       ),
       _text(
         key: 'defaultReportCW',
+        aliases: const ['reportCW', 'rstCW'],
         label: s.defaultReportCW.title,
         icon: 'signal',
         description: s.defaultReportCW.description,
@@ -359,6 +372,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       ),
       _text(
         key: 'defaultReportFT8',
+        aliases: const ['reportFT8', 'reportFT4'],
         label: s.defaultReportFT8.title,
         icon: 'signal',
         description: s.defaultReportFT8.description,
@@ -376,6 +390,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       // the master toggle flips.
       _toggle(
         key: 'showNumbersRow',
+        aliases: const ['numbersRow'],
         label: s.numbersRow.title,
         icon: 'dialpad',
         description: s.numbersRow.description,
@@ -451,6 +466,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       ),
       _toggle(
         key: 'showDeletedQSOs',
+        aliases: const ['deletedQSOs'],
         label: t.operation.menu.showDeletedQsos,
         icon: 'delete',
         value: settings.showDeletedQSOs,
@@ -581,6 +597,7 @@ class RadioSettingsGroup extends SettingsGroup {
       ],
       _toggle(
         key: 'avoidZeroBeat',
+        aliases: const ['zeroBeat'],
         label: s.avoidZeroBeat.title,
         icon: 'tune-vertical',
         description: settings.avoidZeroBeat ? s.avoidZeroBeat.descriptionOn : s.avoidZeroBeat.descriptionOff,

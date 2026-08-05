@@ -468,6 +468,17 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String experimentDisabled({required Object name}) => '${name} deshabilitado';
 	@override String get sentryTestSent => 'Reporte de error de prueba enviado a Sentry';
 	@override String get sentryTestLocalOnly => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente';
+	@override String get settingOn => 'Sí';
+	@override String get settingOff => 'No';
+	@override String get settingEmpty => '(vacío)';
+	@override String get settingSecretSet => '(definido)';
+	@override String get settingSecretUnset => '(sin definir)';
+	@override String settingSelectedCount({required Object count}) => '${count} seleccionados';
+	@override String get settingExpectsOnOff => 'sí o no';
+	@override String settingExpectsOneOf({required Object choices}) => 'uno de: ${choices}';
+	@override String get settingExpectsNumber => 'un número';
+	@override String settingVanished({required Object label}) => '«${label}» ya no está disponible';
+	@override String settingNotStored({required Object label}) => '«${label}» no aceptó ese valor';
 }
 
 // Path: commandDialog
@@ -2303,6 +2314,17 @@ extension on TranslationsEs {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
+			'commands.settingOn' => 'Sí',
+			'commands.settingOff' => 'No',
+			'commands.settingEmpty' => '(vacío)',
+			'commands.settingSecretSet' => '(definido)',
+			'commands.settingSecretUnset' => '(sin definir)',
+			'commands.settingSelectedCount' => ({required Object count}) => '${count} seleccionados',
+			'commands.settingExpectsOnOff' => 'sí o no',
+			'commands.settingExpectsOneOf' => ({required Object choices}) => 'uno de: ${choices}',
+			'commands.settingExpectsNumber' => 'un número',
+			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
+			'commands.settingNotStored' => ({required Object label}) => '«${label}» no aceptó ese valor',
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',

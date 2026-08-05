@@ -826,7 +826,18 @@
     "experimentEnabled": "${name} habilitado",
     "experimentDisabled": "${name} deshabilitado",
     "sentryTestSent": "Reporte de error de prueba enviado a Sentry",
-    "sentryTestLocalOnly": "Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente"
+    "sentryTestLocalOnly": "Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente",
+    "settingOn": "Sí",
+    "settingOff": "No",
+    "settingEmpty": "(vacío)",
+    "settingSecretSet": "(definido)",
+    "settingSecretUnset": "(sin definir)",
+    "settingSelectedCount": "${count} seleccionados",
+    "settingExpectsOnOff": "sí o no",
+    "settingExpectsOneOf": "uno de: ${choices}",
+    "settingExpectsNumber": "un número",
+    "settingVanished": "«${label}» ya no está disponible",
+    "settingNotStored": "«${label}» no aceptó ese valor"
   },
   "commandDialog": {
     "hint": "Busca indicativos o escribe un comando",

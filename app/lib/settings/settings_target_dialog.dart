@@ -1,24 +1,21 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A settings modal built from a `target` (settings_registry.dart) rather
+// A settings modal built from a subset of the app's declared settings rather
 // than a whole group — the logging panel's tune icon, for one, doesn't want
 // All Settings or even the whole `LoggingSettingsGroup`, just the handful
 // of elements that opted into `target: 'logging'`, plus a "show more
 // settings" disclosure for the `'logging-extended'` bucket. Any part of the
 // app can call [showSettingsForTarget] with its own target string; nothing
 // here is logging-specific — the title and any Actions-section items are
-// entirely the caller's to decide.
+// entirely the caller's to decide. [showSettingsForKeys] picks by key
+// instead, for the SET/SHOW/HIDE commands.
 //
-// Scans every group in [SettingsRegistry] AND every extension settingsPanel
-// (a separate registry, reached through [ExtensionService]), so a target can
-// span core groups and extensions alike. Extension-sourced `field` and
-// `action` elements get their rendered `key` namespaced `<panelKey>.<key>`
-// (mirroring the `<panelKey>.<fieldKey>` persistence convention
-// docs/extensions/settings.md already documents) so two panels sharing a
-// key — or an extension element colliding with a core one — can never
-// misroute a commit or an action dispatch; core-group elements stay
-// bare-keyed.
+// The elements themselves come from [scanSettings] (settings_scan.dart),
+// which walks every group in [SettingsRegistry] AND every extension
+// settingsPanel, so a dialog can span core groups and extensions alike, and
+// so the commands' catalog can't drift from what this dialog would show. All
+// this file decides is which scanned elements to keep.
 // `type: 'action'` elements and `fieldType: 'account'` fields are both
 // wired up (onAction dispatches through [ExtensionService.runSettingsAction];
 // onManageAccount reuses [showAccountDialogByKey], reloading once its pane
@@ -42,6 +39,7 @@ import '../services/link_opener.dart';
 import '../tools/form_chrome_labels.dart';
 import '../views/settings_view.dart' show showAccountDialogByKey;
 import 'settings_registry.dart';
+import 'settings_scan.dart';
 
 /// One row in the dialog's "Actions" section — caller-supplied, never a
 /// declared setting. [onTap] is responsible for closing the dialog itself
@@ -62,6 +60,67 @@ Future<void> showSettingsForTarget(
   required String target,
   required String title,
   List<TargetDialogAction> actions = const [],
+}) =>
+    _showSettingsDialog(
+      context,
+      services: services,
+      title: title,
+      actions: actions,
+      inBase: (scanned) => elementMatchesTarget(scanned.element, target),
+      inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
+    );
+
+/// Opens the same dialog around a specific set of settings, named by the
+/// `key`s [scanSettings] reports — how SET/SHOW/HIDE show every setting a
+/// query matched (settings_command.dart).
+///
+/// Selecting by key rather than by `target` is the whole reason this file's
+/// element collection is predicate-driven: a command can name any setting at
+/// all, including ones no target-scoped modal was ever meant to show, and it
+/// still gets that setting's real commit, validation and account routing
+/// rather than a second, thinner editor.
+///
+/// [keys] order is preserved. Callers pass them best-match-first, and the
+/// command's preview line names that first one — listing them in
+/// settings-screen order instead would put the setting the operator was just
+/// told about somewhere down the list.
+Future<void> showSettingsForKeys(
+  BuildContext context, {
+  required HaLoServices services,
+  required List<String> keys,
+  required String title,
+}) {
+  final rank = {for (var i = 0; i < keys.length; i++) keys[i]: i};
+  return _showSettingsDialog(
+    context,
+    services: services,
+    title: title,
+    inBase: (scanned) => rank.containsKey(scanned.key),
+    // Nothing is held back: the caller named exactly what it wants shown, so
+    // a "show more settings" disclosure would have nothing behind it.
+    inExtended: (_) => false,
+    order: (a, b) => (rank[a.key] ?? 0).compareTo(rank[b.key] ?? 0),
+    // `visibleWhen` is dropped, not evaluated. It names a SIBLING field, and a
+    // dialog built from a handful of keys usually doesn't contain that
+    // sibling — FormRenderer would read it as null and hide the very setting
+    // the caller asked for, leaving an empty dialog after a preview that said
+    // "Grid Field: On". Whoever picked these keys has already decided they are
+    // reachable (settings_catalog.dart evaluates `visibleWhen` against the
+    // group's full values before a command can name one), so re-deciding it
+    // here against a subset can only be wrong.
+    stripVisibleWhen: true,
+  );
+}
+
+Future<void> _showSettingsDialog(
+  BuildContext context, {
+  required HaLoServices services,
+  required String title,
+  required ScannedSettingPredicate inBase,
+  required ScannedSettingPredicate inExtended,
+  ScannedSettingOrder? order,
+  bool stripVisibleWhen = false,
+  List<TargetDialogAction> actions = const [],
 }) {
   final t = context.t;
   return showHaloDialog<void>(
@@ -75,7 +134,14 @@ Future<void> showSettingsForTarget(
         // ListTileTheme set up in _TargetSettingsFormState.build, so it
         // isn't stacked on top of a second, outer padding.
         contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
-        content: _TargetSettingsForm(services: services, target: target, actions: actions),
+        content: _TargetSettingsForm(
+          services: services,
+          inBase: inBase,
+          inExtended: inExtended,
+          order: order,
+          stripVisibleWhen: stripVisibleWhen,
+          actions: actions,
+        ),
         actions: [
           FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.done)),
         ],
@@ -113,34 +179,46 @@ class _AnimatedDialogEntranceState extends State<_AnimatedDialogEntrance> with S
   );
 }
 
+/// Which scanned elements a dialog shows, and which it holds back behind its
+/// "show more settings" disclosure.
+typedef ScannedSettingPredicate = bool Function(ScannedSetting scanned);
+
+/// How to sort the kept elements. Null keeps [scanSettings]' own order, which
+/// is the order the settings screen itself shows them in.
+typedef ScannedSettingOrder = int Function(ScannedSetting a, ScannedSetting b);
+
 class _TargetSettingsForm extends StatefulWidget {
   final HaLoServices services;
-  final String target;
+  final ScannedSettingPredicate inBase;
+  final ScannedSettingPredicate inExtended;
+  final ScannedSettingOrder? order;
+
+  /// Drops each kept element's `visibleWhen` instead of letting FormRenderer
+  /// evaluate it — see [showSettingsForKeys], which is the only caller that
+  /// shows a subset small enough for the named sibling to be missing.
+  final bool stripVisibleWhen;
+
   final List<TargetDialogAction> actions;
 
-  const _TargetSettingsForm({required this.services, required this.target, required this.actions});
+  const _TargetSettingsForm({
+    required this.services,
+    required this.inBase,
+    required this.inExtended,
+    required this.order,
+    required this.stripVisibleWhen,
+    required this.actions,
+  });
 
   @override
   State<_TargetSettingsForm> createState() => _TargetSettingsFormState();
 }
 
-/// Where an extension-sourced field routes on validate/commit — [field] is
-/// the ORIGINAL (bare-keyed) element map, as declared by the extension,
-/// distinct from the namespaced copy actually handed to FormRenderer (see
-/// this file's header comment).
-typedef _ExtensionFieldRoute = ({String hookKey, String panelKey, String kind, String fieldKey, Map<String, dynamic> field});
-
-/// Where an extension-sourced `type: 'action'` element dispatches — no
-/// `kind` needed, unlike [_ExtensionFieldRoute]: [ExtensionService.runSettingsAction]
-/// always goes through the extension host regardless of panel tier.
-typedef _ExtensionActionRoute = ({String hookKey, String panelKey});
-
 class _TargetSettingsFormState extends State<_TargetSettingsForm> {
   List<Map<String, dynamic>>? _baseElements;
   List<Map<String, dynamic>>? _extendedElements;
   final _groupForKey = <String, SettingsGroup>{};
-  final _extensionFieldForKey = <String, _ExtensionFieldRoute>{};
-  final _extensionActionForKey = <String, _ExtensionActionRoute>{};
+  final _extensionFieldForKey = <String, ExtensionFieldRoute>{};
+  final _extensionActionForKey = <String, ExtensionActionRoute>{};
   bool _showExtended = false;
   bool _reloading = false;
   bool _reloadPending = false;
@@ -195,57 +273,34 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     try {
       do {
         _reloadPending = false;
-        final base = <Map<String, dynamic>>[];
-        final extended = <Map<String, dynamic>>[];
+        final baseScanned = <ScannedSetting>[];
+        final extendedScanned = <ScannedSetting>[];
         final groupForKey = <String, SettingsGroup>{};
-        final extensionFieldForKey = <String, _ExtensionFieldRoute>{};
-        final extensionActionForKey = <String, _ExtensionActionRoute>{};
-        for (final group in _groups) {
-          final resolved = await widget.services.systemLists.resolveInElements(await group.buildElements());
-          for (final el in filterElementsForEnvironment(resolved)) {
-            final key = el['key'];
-            if (elementMatchesTarget(el, widget.target)) {
-              base.add(el);
-              if (key is String) groupForKey[key] = group;
-            } else if (elementMatchesTarget(el, '${widget.target}-extended')) {
-              extended.add(el);
-              if (key is String) groupForKey[key] = group;
-            }
-          }
+        final extensionFieldForKey = <String, ExtensionFieldRoute>{};
+        final extensionActionForKey = <String, ExtensionActionRoute>{};
+        for (final scanned in await scanSettings(widget.services)) {
+          final inBase = widget.inBase(scanned);
+          if (!inBase && !widget.inExtended(scanned)) continue;
+          (inBase ? baseScanned : extendedScanned).add(scanned);
+          if (scanned.key.isEmpty) continue;
+          if (scanned.group != null) groupForKey[scanned.key] = scanned.group!;
+          if (scanned.fieldRoute != null) extensionFieldForKey[scanned.key] = scanned.fieldRoute!;
+          if (scanned.actionRoute != null) extensionActionForKey[scanned.key] = scanned.actionRoute!;
         }
-        for (final panel in await widget.services.extensions.getSettingsPanels()) {
-          final hookKey = panel['hookKey'] as String?;
-          final panelKey = panel['panelKey'] as String?;
-          final kind = panel['kind'] as String?;
-          if (hookKey == null || panelKey == null || kind == null) continue;
-          final definition = await widget.services.extensions.getSettingsPanelDefinition(
-            hookKey: hookKey,
-            panelKey: panelKey,
-            kind: kind,
-          );
-          final rawElements = (definition?['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-          final resolved = await widget.services.systemLists.resolveInElements(rawElements);
-          for (final el in filterElementsForEnvironment(resolved)) {
-            final type = el['type'];
-            if (type != 'field' && type != 'action') continue;
-            final elementKey = el['key'];
-            if (elementKey is! String) continue;
-            final inBase = elementMatchesTarget(el, widget.target);
-            final inExtended = !inBase && elementMatchesTarget(el, '${widget.target}-extended');
-            if (!inBase && !inExtended) continue;
-            // Namespaced so it can never collide with a core group's bare
-            // key or another panel's same-named field/action — see header
-            // comment. (An `account`-typed field is still `type: 'field'`;
-            // it's namespaced and routed the same as any other field.)
-            final namespacedKey = '$panelKey.$elementKey';
-            (inBase ? base : extended).add({...el, 'key': namespacedKey});
-            if (type == 'field') {
-              extensionFieldForKey[namespacedKey] = (hookKey: hookKey, panelKey: panelKey, kind: kind, fieldKey: elementKey, field: el);
-            } else {
-              extensionActionForKey[namespacedKey] = (hookKey: hookKey, panelKey: panelKey);
-            }
-          }
+        // Sorted AFTER collection, not during: the caller's order (e.g. a
+        // command's ranking) has nothing to do with the order the groups
+        // declare their elements in, which is what the scan yields.
+        final order = widget.order;
+        if (order != null) {
+          baseScanned.sort(order);
+          extendedScanned.sort(order);
         }
+        Map<String, dynamic> render(ScannedSetting scanned) =>
+            widget.stripVisibleWhen && scanned.element.containsKey('visibleWhen')
+                ? {for (final e in scanned.element.entries) if (e.key != 'visibleWhen') e.key: e.value}
+                : scanned.element;
+        final base = [for (final scanned in baseScanned) render(scanned)];
+        final extended = [for (final scanned in extendedScanned) render(scanned)];
         if (mounted) {
           setState(() {
             _baseElements = base;

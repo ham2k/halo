@@ -109,6 +109,7 @@ const bundles = [
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
   { key: 'annotation-commands', entry: 'core/annotation-commands/src/index.ts', kind: 'extension' },
   { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
+  { key: 'settings-commands', entry: 'core/settings-commands/src/index.ts', kind: 'extension' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
   { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },

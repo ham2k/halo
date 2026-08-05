@@ -372,6 +372,89 @@ void main() {
 
     expect(services.settings.defaultReportCW, '5NN');
   });
+
+  group('HALO-151: showSettingsForKeys', () {
+    Future<void> openByKeys(WidgetTester tester, HaLoServices services, List<String> keys) async {
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showSettingsForKeys(context, services: services, keys: keys, title: 'Pick one'),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows exactly the named settings, whatever target they carry', (tester) async {
+      // The whole point of selecting by key: SET can name any setting at all,
+      // including ones no target-scoped modal was built to show. Picking a
+      // setting whose target is 'logging-extended' proves the dialog isn't
+      // quietly still filtering by target.
+      final services = await _services(const {});
+      await openByKeys(tester, services, ['showGridField']);
+
+      expect(find.text(t.operation.menu.showGridField), findsOneWidget);
+      expect(find.text(t.operation.menu.showRstFields), findsNothing,
+          reason: 'a sibling in the same group must not come along — the command named one setting');
+    });
+
+    testWidgets('the named setting commits through its real path', (tester) async {
+      // A dialog that displays the setting but writes nowhere looks identical
+      // on screen, so this drives the toggle rather than asserting the row.
+      final services = await _services(const {});
+      expect(services.settings.showGridField, isFalse);
+
+      await openByKeys(tester, services, ['showGridField']);
+      final toggle = find.descendant(
+        of: find.widgetWithText(ListTile, t.operation.menu.showGridField),
+        matching: find.byType(Switch),
+      );
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+
+      expect(services.settings.showGridField, isTrue);
+    });
+
+    testWidgets('several keys list together, for a query that named more than one', (tester) async {
+      final services = await _services(const {});
+      await openByKeys(tester, services, ['showGridField', 'showStateField']);
+
+      expect(find.text(t.operation.menu.showGridField), findsOneWidget);
+      expect(find.text(t.operation.menu.showStateField), findsOneWidget);
+    });
+
+    testWidgets('rows follow the order the keys were given, not the settings screen order', (tester) async {
+      // Commands pass their matches best-first, and the preview line names
+      // that first one. Falling back to the scan's own order would put the
+      // setting the operator was just told about somewhere down the list.
+      //
+      // These two are declared showStateField-then-showGridField by
+      // LoggingSettingsGroup, so asking for the reverse proves the order came
+      // from the caller rather than from the scan.
+      final services = await _services(const {});
+      await openByKeys(tester, services, ['showGridField', 'showStateField']);
+
+      final gridY = tester.getTopLeft(find.text(t.operation.menu.showGridField)).dy;
+      final stateY = tester.getTopLeft(find.text(t.operation.menu.showStateField)).dy;
+      expect(gridY, lessThan(stateY));
+    });
+
+    testWidgets('nothing is held back behind a "show more settings" disclosure', (tester) async {
+      // The caller named exactly what it wants shown, so the extended bucket
+      // must stay empty — a disclosure that expands to nothing is a dead end.
+      final services = await _services(const {});
+      await openByKeys(tester, services, ['showGridField']);
+
+      expect(find.text(t.settings.showMoreSettings), findsNothing);
+    });
+  });
 }
 
 class _AccountRoundTripExtensionService extends ExtensionServiceWithMockHost {

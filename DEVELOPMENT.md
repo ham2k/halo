@@ -211,6 +211,26 @@ Other core extensions add their own call-field commands:
   ([`annotation-commands`](extensions/core/annotation-commands/src/index.ts)):
   `NOTE <text>`, `TODO <text>`, `SOLAR` (current solar conditions), `WEATHER`
   (current weather).
+- **Settings**
+  ([`settings-commands`](extensions/core/settings-commands/src/index.ts)):
+  `SET <setting>` reports a setting and its current value, `SET <setting>
+  <value>` changes it (`SET ZEROBEAT N`, `SET THEME DARK`, `SET AVOID ZERO BEAT
+  N` — a multi-word name works, since the app splits name from value against
+  the catalog); `SHOW <setting>` / `HIDE <setting>` flip a `show…`/`hide…`
+  toggle. Settings are matched by SUBSEQUENCE (VS Code
+  Ctrl+P style) against key, label and any declared `aliases`, so `SET ZRBT`
+  finds Avoid Zero Beat and `SET DFRCW` finds `defaultReportCW`; descriptions
+  are matched as plain substrings, since a subsequence of a whole sentence
+  matches almost anything. Ranking rewards consecutive characters, word
+  boundaries (camelCase humps included) and short names. The All Settings
+  search box uses the same matcher, so both answer a given word with the same
+  set. A bare name, a value that can't be
+  typed on one line (multiselect, account, secret), or a query naming several
+  settings opens a dialog listing **every** match, best first, rather than
+  guessing at the top one. The searchable set is derived from the
+  declarative settings registry and honours `devMode`, `environment` and
+  `visibleWhen`, so a command only ever reaches a setting the settings screen
+  would currently show.
 
 ### Developer mode
 

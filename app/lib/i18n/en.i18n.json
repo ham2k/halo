@@ -826,7 +826,18 @@
     "experimentEnabled": "${name} enabled",
     "experimentDisabled": "${name} disabled",
     "sentryTestSent": "Test error report sent to Sentry",
-    "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only"
+    "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only",
+    "settingOn": "On",
+    "settingOff": "Off",
+    "settingEmpty": "(empty)",
+    "settingSecretSet": "(set)",
+    "settingSecretUnset": "(not set)",
+    "settingSelectedCount": "${count} selected",
+    "settingExpectsOnOff": "on or off",
+    "settingExpectsOneOf": "one of: ${choices}",
+    "settingExpectsNumber": "a number",
+    "settingVanished": "“${label}” is no longer available",
+    "settingNotStored": "“${label}” did not accept that value"
   },
   "commandDialog": {
     "hint": "Search callsigns or type a command",

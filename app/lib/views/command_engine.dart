@@ -262,6 +262,30 @@ class CommandEngine extends ChangeNotifier {
   /// Whether [message] is a just-executed command's confirmation.
   bool get isConfirmation => _message != null && _messageKind == CommandMessageKind.confirmation;
 
+  /// Whether an interpretation of the CURRENT text is still on its way —
+  /// true from the keystroke until its debounced `interpret` answers.
+  ///
+  /// [message] is cleared synchronously on every keystroke and only refilled
+  /// when that answer arrives, so for ~150ms plus a bridge round trip the
+  /// engine truthfully has nothing to say about text that a hook is about to
+  /// explain. A caller that shows its own "nothing matches" fallback needs to
+  /// know the difference, or it paints that fallback in the gap between every
+  /// keystroke and the describe that replaces it — which reads as two
+  /// messages fighting over the same line.
+  bool get interpretationPending => _interpreting;
+
+  bool _interpreting = false;
+
+  /// Bumped on every keystroke that starts an interpretation, so a call can
+  /// tell whether it is still the current one.
+  ///
+  /// Comparing the field's TEXT instead is not enough: type "SET", backspace
+  /// to "SE", and the older in-flight "SE" call sees its own text back in the
+  /// field and clears the flag, even though the newer "SE" debounce has not
+  /// fired. The card then reads "not pending, no message" and paints its
+  /// generic fallback — the exact flicker the flag exists to stop.
+  int _interpretGeneration = 0;
+
   /// The live interpretation of what's typed, or null when nothing matched.
   Map<String, dynamic>? get currentInterpretation => _currentInterpretation;
 
@@ -354,17 +378,44 @@ class CommandEngine extends ChangeNotifier {
     if (text.isEmpty) {
       _resetLookup();
       _setMessage(null, CommandMessageKind.describe);
+      _interpreting = false;
       notifyListeners();
       return;
     }
 
-    _setMessage(null, CommandMessageKind.describe);
+    // The previous message deliberately STAYS until this keystroke's own
+    // interpretation answers, ~150ms later. Clearing it here leaves the ⌘K
+    // card with no result, no message and no fallback for that gap, so the
+    // whole card unmounts and remounts on every character — a worse flicker
+    // than the stale line it was meant to avoid. One keystroke of lag is what
+    // a debounced preview is.
+    _interpreting = services.extensions.ready;
+    if (!_interpreting) _setMessage(null, CommandMessageKind.describe);
+    final generation = ++_interpretGeneration;
     notifyListeners();
 
     if (services.extensions.ready) {
       _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
-        final result = await services.extensions.interpretCommand(text, operationContext());
-        if (trimmedText != text) return; // stale — the field changed while awaiting
+        // `whenComplete`, not a catch: an exception `interpretCommand` didn't
+        // expect is a real defect and belongs to ErrorPolicy, which decides
+        // what escaped exceptions deserve in ONE place (.agents/AGENTS.md).
+        // Swallowing it here would make it invisible in the field. All this
+        // needs is that [_interpreting] not stay true if one escapes — and
+        // only when this call is still the current one, since a newer
+        // keystroke has already claimed the flag.
+        final result = await services.extensions
+            .interpretCommand(text, operationContext())
+            .whenComplete(() {
+          if (generation != _interpretGeneration) return;
+          _interpreting = false;
+          // Notified here as well as below, because an exception on the way
+          // out skips everything below and would otherwise drop the flag
+          // without a rebuild.
+          notifyListeners();
+        });
+        // Stale — a newer keystroke started while this was awaiting, and owns
+        // everything below.
+        if (generation != _interpretGeneration) return;
         _currentInterpretation = result;
         if (result != null && result['error'] is String) {
           _setMessage(result['error'] as String, CommandMessageKind.error);
@@ -608,6 +659,10 @@ class CommandEngine extends ChangeNotifier {
         await runAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else if (map['toggleExperiment'] is Map) {
         await runAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
+      } else if (map['updateSetting'] is Map) {
+        await runAction('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
+      } else if (map['openSettings'] is Map) {
+        await runAction('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a
         // command that's scoped to the logging panel (addQso, updateQso,
