@@ -11,6 +11,11 @@
 // ETag/304 caching (a CLI sync is always an explicit "get it now"), the
 // status bar, and error notices.
 //
+// What DOES change what a row contains — charset resolution, CSV field
+// splitting, the rootPath walk, log redaction — is not reimplemented here.
+// It lives in halo_core's data_file_parsing.dart, which both hosts call, so
+// the CLI cannot report behavior the app does not have.
+//
 // The chunking protocol is NOT a simplification and must not become one.
 // Rows cross the bridge POSITIONALLY with the header row sent once per chunk,
 // and the kernel zips them back into the `Record<string,string>` that
@@ -124,10 +129,10 @@ class DataFileSync {
   }
 
   Future<String> _download(String url, {String? encoding}) async {
-    if (verbose) stderr.writeln('[data-file] GET ${_redact(url)}');
+    if (verbose) stderr.writeln('[data-file] GET ${redactUrlForLog(url)}');
     final response = await http.get(Uri.parse(url), headers: {'User-Agent': userAgent});
     if (response.statusCode != 200) {
-      throw StateError('HTTP ${response.statusCode} from ${_redact(url)}');
+      throw StateError('HTTP ${response.statusCode} from ${redactUrlForLog(url)}');
     }
     return decodeDataFileBody(response.bodyBytes,
         encoding: resolveDataFileEncoding(encoding, response.headers['content-type']));
@@ -297,90 +302,4 @@ class DataFileSync {
     await store.repository.deleteCategoryStale(def.category, updatedFlag);
     return DataFileResult(key: def.key, category: def.category, rows: imported);
   }
-
-  /// Some programs take their API key as a query parameter, so a logged URL
-  /// keeps only its path — the same rule DataFileManager.redactUrlForLog
-  /// follows.
-  static String _redact(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return '(unparseable url)';
-    return uri.hasQuery ? '${uri.replace(query: '')}?…' : url;
-  }
-}
-
-/// Which encoding to decode a downloaded body with: the definition's own
-/// override first (it exists to correct a wrong or missing server header),
-/// then the response's `charset`, else null for the UTF-8 default.
-String? resolveDataFileEncoding(String? defEncoding, String? contentTypeHeader) {
-  if (defEncoding != null && defEncoding.isNotEmpty) return defEncoding;
-  if (contentTypeHeader == null) return null;
-  try {
-    return ContentType.parse(contentTypeHeader).charset;
-  } catch (_) {
-    return null;
-  }
-}
-
-/// Decodes a downloaded body. Malformed bytes are replaced, never thrown: one
-/// bad byte must not fail a 181k-row file. `package:http`'s own `.body` is
-/// deliberately not used — it defaults a charset-less response to latin1 and
-/// garbles UTF-8 park names.
-String decodeDataFileBody(List<int> bytes, {String? encoding}) {
-  switch ((encoding ?? 'utf-8').toLowerCase().replaceAll('_', '-')) {
-    case 'latin1':
-    case 'latin-1':
-    case 'iso-8859-1':
-      return latin1.decode(bytes, allowInvalid: true);
-    case 'ascii':
-    case 'us-ascii':
-      return ascii.decode(bytes, allowInvalid: true);
-    default:
-      return utf8.decode(bytes, allowMalformed: true);
-  }
-}
-
-/// One CSV line into fields, honoring `""` escapes inside quoted fields.
-List<String> parseCsvRow(String line, String delimiter) {
-  final fields = <String>[];
-  final field = StringBuffer();
-  var inQuotes = false;
-  for (var i = 0; i < line.length; i++) {
-    final char = line[i];
-    if (char == '"') {
-      if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-        field.write('"');
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char == delimiter && !inQuotes) {
-      fields.add(field.toString());
-      field.clear();
-    } else {
-      field.write(char);
-    }
-  }
-  fields.add(field.toString());
-  return fields;
-}
-
-/// Walks a dotted `rootPath` into a decoded payload. A numeric segment
-/// indexes a list, so a payload wrapping its rows in a positional envelope is
-/// reachable (ECA/ELA publish `[meta, meta, {data: […]}]`, i.e. `2.data`). A
-/// miss returns null rather than throwing.
-Object? resolveRootPath(Object? value, String? path) {
-  if (path == null || path.isEmpty) return value;
-  Object? current = value;
-  for (final part in path.split('.')) {
-    if (current is Map) {
-      current = current[part];
-    } else if (current is List) {
-      final index = int.tryParse(part);
-      if (index == null || index < 0 || index >= current.length) return null;
-      current = current[index];
-    } else {
-      return null;
-    }
-  }
-  return current;
 }

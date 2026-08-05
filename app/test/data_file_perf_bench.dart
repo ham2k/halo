@@ -20,18 +20,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-
-class _CannedDataFileManager extends DataFileManager {
-  final Map<String, String> bodiesByKey;
-  _CannedDataFileManager(
-      {required this.bodiesByKey, required super.lookups, required super.extensions, required super.prefs});
-
-  @override
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async =>
-      bodiesByKey[key];
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -52,10 +41,6 @@ void main() {
     final defs = await host.invokeHookAll('dataFile', method: 'getDefinition');
     expect(defs.any((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits'), isTrue);
 
-    final prefs = await SharedPreferences.getInstance();
-    final manager = _CannedDataFileManager(
-        lookups: lookups, extensions: extensions, prefs: prefs, bodiesByKey: {'sota-all-summits': body});
-
     // ---- Stage A: Dart-side CSV parse (what _processCsv does) ----
     final swA = Stopwatch()..start();
     final lines = const LineSplitter().convert(body);
@@ -65,7 +50,7 @@ void main() {
       if (i < 1) continue; // skipRows: 1
       final line = lines[i].trim();
       if (line.isEmpty) continue;
-      final parsed = manager.parseCsvRow(line, ',');
+      final parsed = parseCsvRow(line, ',');
       if (headers == null) {
         headers = parsed;
         continue;

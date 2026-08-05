@@ -8,7 +8,7 @@
 // towers at all.
 //
 // Because the key rides in a URL, nothing here may log one — see
-// `DataFileManager.redactUrlForLog` for the same rule on the core side.
+// halo_core's `redactUrlForLog` for the same rule on the host side.
 
 import {
   activityExportHook,
@@ -234,8 +234,8 @@ async function postSpotsToTOTA(
 /// key. Without one the request goes out bare and the award refuses it — the
 /// honest failure, since there is no anonymous tower list to fall back to.
 ///
-/// The resolved URL carries a secret, which is why the core redacts query
-/// strings before logging a fetch (`DataFileManager.redactUrlForLog`).
+/// The resolved URL carries a secret, which is why the host redacts query
+/// strings before logging a fetch (halo_core's `redactUrlForLog`).
 const totaDataFile: DataFileDefinition = {
   key: 'tota-all-towers',
   name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),

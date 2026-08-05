@@ -73,7 +73,8 @@ fresh checkout can still log in to SOTAWatch.
 **Don't log a URL that carries one.** Some programs take their key as a query
 parameter, and `debugPrint` is not stripped from release builds — the data-file
 downloader redacts query strings for exactly this reason
-(`DataFileManager.redactUrlForLog`). An extension that logs its own fetch URLs
+(`redactUrlForLog`, in halo_core's `data_file_parsing.dart`). An extension that
+logs its own fetch URLs
 has to do the same.
 
 ### Testing anything that fetches

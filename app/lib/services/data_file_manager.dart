@@ -18,45 +18,6 @@ import 'error_reporting_service.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
-/// The encoding to decode a data file with, resolved by precedence:
-/// the definition's [defEncoding] wins (it overrides a wrong/missing server
-/// header), else the `charset` from the response's Content-Type
-/// [contentTypeHeader], else null — [decodeDataFileBody] then defaults to
-/// UTF-8. This replaces Dart's `http.Response.body`, which silently defaults a
-/// charset-less response to latin1 and so garbled UTF-8 park names.
-String? resolveDataFileEncoding(String? defEncoding, String? contentTypeHeader) {
-  if (defEncoding != null && defEncoding.isNotEmpty) return defEncoding;
-  if (contentTypeHeader == null) return null;
-  try {
-    return ContentType.parse(contentTypeHeader).charset; // dart:io lowercases it
-  } catch (_) {
-    return null; // unparseable header — fall back to the UTF-8 default
-  }
-}
-
-/// Decodes a downloaded data-file body from raw bytes into a Dart string
-/// (internally Unicode). [encoding] comes from [resolveDataFileEncoding]
-/// (definition override → server charset → UTF-8 default). Malformed bytes are
-/// replaced (U+FFFD), never thrown, so one bad byte can't fail the whole file.
-/// Unknown/unsupported encodings fall back to UTF-8.
-String decodeDataFileBody(List<int> bytes, {String? encoding}) {
-  switch ((encoding ?? 'utf-8').toLowerCase().replaceAll('_', '-')) {
-    case 'latin1':
-    case 'latin-1':
-    case 'iso-8859-1':
-      return latin1.decode(bytes, allowInvalid: true);
-    case 'ascii':
-    case 'us-ascii':
-      return ascii.decode(bytes, allowInvalid: true);
-    case 'utf-8':
-    case 'utf8':
-      return utf8.decode(bytes, allowMalformed: true);
-    default:
-      debugPrint('[data-file] unknown encoding "$encoding" — decoding as UTF-8');
-      return utf8.decode(bytes, allowMalformed: true);
-  }
-}
-
 /// The message shown in a download-failure notice. `package:http`'s
 /// BrowserClient wraps every browser-level fetch failure (a cross-origin
 /// download the browser refuses — one that would work from a native build
@@ -389,25 +350,6 @@ class DataFileManager {
       }
     }
     return urlString;
-  }
-
-  /// A fetch URL safe to write to a log: everything up to the path, with any
-  /// query string replaced by `?…`.
-  ///
-  /// Some award programs carry their API key as a query parameter — TOTA's
-  /// list is `tower.php?key=<secret>` — and the key is a real secret, not a
-  /// public token. Logging the URL whole would put it in the device log on
-  /// every refresh, and `debugPrint` is not stripped from release builds.
-  /// Nothing downstream needs the query to identify which file was fetched:
-  /// the key and the host already say that.
-  @visibleForTesting
-  static String redactUrlForLog(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasScheme) return '(unparseable url)';
-    // Cut the string rather than rebuilding through Uri: `replace(query: '')`
-    // leaves the empty `?` and `#` markers behind.
-    final cut = url.indexOf(RegExp(r'[?#]'));
-    return cut < 0 ? url : '${url.substring(0, cut)}?…';
   }
 
   /// Downloads the file at [url] and returns the decoded body string, or null
@@ -1099,49 +1041,4 @@ class DataFileManager {
         key: statusKey, title: label, text: t.dataFiles.importedRecords(count: imported, label: label), value: 1.0);
   }
 
-  List<String> parseCsvRow(String line, String delimiter) {
-    final result = <String>[];
-    final sb = StringBuffer();
-    bool inQuotes = false;
-    for (int i = 0; i < line.length; i++) {
-      final char = line[i];
-      if (char == '"') {
-        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-          sb.write('"');
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char == delimiter && !inQuotes) {
-        result.add(sb.toString());
-        sb.clear();
-      } else {
-        sb.write(char);
-      }
-    }
-    result.add(sb.toString());
-    return result;
-  }
-
-  dynamic resolveRootPath(dynamic obj, String? path) {
-    if (path == null || path.isEmpty) return obj;
-    final parts = path.split('.');
-    dynamic current = obj;
-    for (final part in parts) {
-      if (current is Map) {
-        current = current[part];
-      } else if (current is List) {
-        // A numeric segment indexes a list, so a payload that wraps its rows in
-        // a positional envelope is reachable — ECA and ELA publish
-        // `[meta, meta, {data: [...]}]`, i.e. rootPath `2.data`. A non-numeric
-        // or out-of-range segment is a miss, not a crash.
-        final index = int.tryParse(part);
-        if (index == null || index < 0 || index >= current.length) return null;
-        current = current[index];
-      } else {
-        return null;
-      }
-    }
-    return current;
-  }
 }

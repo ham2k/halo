@@ -3,6 +3,7 @@
 
 library;
 
+export 'src/data_file_parsing.dart';
 export 'src/db/database.dart';
 export 'src/dev_log.dart';
 export 'src/format.dart';
