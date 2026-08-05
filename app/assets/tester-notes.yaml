@@ -29,7 +29,7 @@
 # for the next cut. Notes belong to their own task's commit, not the
 # release's.
 
-upcoming:
+"127":
   changes:
     - "Spots sorted **By Spot Time** are now truly time-ordered, not band-grouped"
     - "New **Group by Band** toggle in the Spots panel, independent of sort"
