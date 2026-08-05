@@ -60,7 +60,7 @@ if [[ ! -f "$ROOT_DIR/app/lib/config/secrets.dart" ]]; then
   cp "$ROOT_DIR/app/lib/config/secrets.dart.example" "$ROOT_DIR/app/lib/config/secrets.dart"
 fi
 
-PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets app)
+PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets packages/halo_cli app)
 # The private distribution layer, present only in the halo-dist checkout — a
 # public checkout has no app_dist/ and must still pass everything above.
 if [[ -d "$ROOT_DIR/app_dist" ]]; then

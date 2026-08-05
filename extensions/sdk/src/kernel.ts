@@ -800,6 +800,21 @@ kernel.defineExtension({
           Object.values(extensions)
             .filter((def) => activated.has(def.key))
             .map((def) => ({ key: def.key, name: def.name, version: def.version, description: def.description ?? null })),
+        // What actually registered, as opposed to what a manifest's `hooks`
+        // array claims. The two disagree exactly when something is wrong —
+        // an activation that threw halfway, a hook whose key the namespacing
+        // rule refused — which is what a caller asking this wants to see.
+        // Methods are the hook object's own function-valued keys, in
+        // registration order; anything else on it is configuration
+        // (`sourceName`, `kvKey`, `scope`) and is not callable.
+        listHooks: async () =>
+          hooks.map((record) => ({
+            category: record.category,
+            key: record.key,
+            extensionKey: record.extensionKey,
+            priority: record.priority,
+            methods: Object.keys(record.hook).filter((name) => typeof record.hook[name] === 'function'),
+          })),
       },
     })
   },

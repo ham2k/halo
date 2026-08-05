@@ -7,6 +7,7 @@ core knows nothing about any of them — it invokes **hooks** and renders
 **declarative UI contributions** (see [DESIGN.md](../../DESIGN.md) §2–§5).
 
 - **[hooks.md](hooks.md)** — reference for every hook category.
+- **[cli.md](cli.md)** — `halo-ext`, which runs these hooks outside the app.
 
 ## Anatomy of an extension
 
@@ -256,6 +257,13 @@ Integration testing without Flutter: see
 real JS engine against the built kernel plus inline extension source. For
 pure hook logic, plain vitest against fixture QSOs works — hooks have no
 dependencies beyond the SDK.
+
+To exercise a hook by hand — against the real API, with the real bundles, and
+without launching the app — use `halo-ext` ([cli.md](cli.md)):
+
+```sh
+mise run ext -- --only pota ref pota US-1234
+```
 
 ## Lifecycle and the bridge, briefly
 

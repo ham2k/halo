@@ -24,6 +24,9 @@ import 'package:web/web.dart' as web;
 
 import 'engine_runtime.dart';
 
+/// See the counterpart in engine_runtime_io.dart.
+const bool runningOnWeb = true;
+
 const _bootstrapJs = r'''
 let ready = false;
 // Captured before any bundle evaluates: raw postMessage is the web

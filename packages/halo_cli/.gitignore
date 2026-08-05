@@ -1,0 +1,9 @@
+# https://dart.dev/tools/private-files
+# Created by `dart pub`
+.dart_tool/
+
+# Not committed even though this package ships an executable, unlike the usual
+# advice: it resolves through the Flutter SDK (halo_quickjs is an FFI plugin),
+# so the lock would carry whichever Flutter a given machine has pinned and
+# churn on every bump. The app's own lock is the one that decides what ships.
+pubspec.lock

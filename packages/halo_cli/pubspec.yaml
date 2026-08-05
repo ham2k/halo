@@ -1,0 +1,34 @@
+name: halo_cli
+description: "Command-line hosts for HaLo. halo-ext boots the real extension runtime outside the app and drives its hooks with JSON in and JSON out."
+version: 0.0.1
+publish_to: 'none'
+homepage: https://ham2k.com
+
+environment:
+  sdk: ^3.12.2
+
+# `dart run halo_cli:halo-ext …` (or `mise run ext -- …`).
+#
+# Resolve this package with `flutter pub get`, not `dart pub get`:
+# halo_extension_host depends on halo_quickjs, which is a Flutter FFI plugin
+# and so declares the Flutter SDK. Nothing here IMPORTS Flutter — the Dart VM
+# runs the result fine — but pub still has to know where that SDK is.
+executables:
+  halo-ext: halo_ext
+
+dependencies:
+  args: ^2.6.0
+  drift: ^2.28.0
+  halo_build_tools:
+    path: ../halo_build_tools
+  halo_core:
+    path: ../halo_core
+  halo_extension_host:
+    path: ../halo_extension_host
+  http: ^1.2.0
+  path: ^1.9.0
+  sqlite3: ^2.4.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

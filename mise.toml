@@ -19,6 +19,10 @@ ops = {
   run = "cd app_dist/halo_dist_tools && dart run bin/halo_ops.dart",
   description = "halo-ops CLI: `mise run ops -- status` / `mise run ops -- release [--dry-run]`"
 }
+ext = {
+  run = "cd packages/halo_cli && dart run bin/halo_ext.dart",
+  description = "halo-ext CLI: run extension hooks outside the app — `mise run ext -- lookup KI2D`"
+}
 run-ios = { run = "open -a Simulator && cd app && flutter run -d iphone", description = "Boot iOS Simulator and run the app" }
 bundle = {
   run = "cd extensions && npm run build",

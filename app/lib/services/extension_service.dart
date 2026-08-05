@@ -23,7 +23,8 @@ import 'settings_service.dart';
 import 'spots_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import '../config/secret_policy.dart';
+import 'package:halo_build_tools/halo_build_tools.dart' show extensionMaySeeSecret;
+
 import '../config/secrets.dart';
 import '../config/dev_flags.dart';
 import '../config/dev_fixture.dart';

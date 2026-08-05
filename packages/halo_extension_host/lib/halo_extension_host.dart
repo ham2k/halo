@@ -22,8 +22,8 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart' show visibleForTesting;
 
 import 'src/js_engine.dart';
 
@@ -178,7 +178,7 @@ class ExtensionHost {
     // A client is not sendable across an isolate boundary, so supplying one
     // means in-process — tests that stub the network want that anyway, and
     // silently ignoring it would leave them hitting the real one.
-    if (useIsolate && !kIsWeb && httpClient == null) {
+    if (useIsolate && !runningOnWeb && httpClient == null) {
       try {
         return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets);
       } catch (e) {
@@ -798,7 +798,7 @@ class _HostCore {
 
   Uri _resolveFetchUri(String urlString) {
     final uri = Uri.parse(urlString);
-    if (kIsWeb) {
+    if (runningOnWeb) {
       // OAuth/SSO hosts are never proxied, even on web builds where that
       // means the call is CORS-blocked instead: refresh grants and the
       // tokens they return must only ever transit the identity provider

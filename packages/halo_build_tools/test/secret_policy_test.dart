@@ -11,8 +11,8 @@
 // Scoping is also enforced a second time, at the kernel boundary — see
 // secrets_test.dart in halo_extension_host. This is the half that decides.
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/config/secret_policy.dart';
+import 'package:halo_build_tools/halo_build_tools.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('an extension reads its own prefix', () {

@@ -8,6 +8,13 @@ import 'package:halo_quickjs/halo_quickjs.dart';
 
 import 'engine_runtime.dart';
 
+/// Flutter's `kIsWeb` under another name, resolved by the same conditional
+/// export that picks the engine backend (js_engine.dart). This package must
+/// stay importable from a plain Dart VM — the halo-ext CLI boots the very
+/// same host — and `package:flutter/foundation.dart` pulls in `dart:ui`,
+/// which does not exist there.
+const bool runningOnWeb = false;
+
 class _IoEngineRuntime implements EngineRuntime {
   // Deliberately nullable rather than `late final`: if construction fails
   // (e.g. the library search cannot find the host build), the host's error

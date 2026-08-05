@@ -9,6 +9,7 @@ export 'src/main_version.dart';
 export 'src/platform_versions.dart';
 export 'src/public_version.dart';
 export 'src/release_tags.dart';
+export 'src/secret_policy.dart';
 export 'src/tester_notes_file.dart';
 export 'src/version_file.dart';
 export 'src/version_ordering.dart';
