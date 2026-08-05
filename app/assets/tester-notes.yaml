@@ -48,6 +48,7 @@ upcoming:
     - "Chasers get **New Reference** and **New Day** now — POTA/SOTA rules apply without activating"
     - "New **SET**, **SHOW** and **HIDE** commands — change a setting by name from the command bar"
     - "**All Settings** search now matches letters in order, like VS Code's file search"
+    - "Adding a contest from the Operation Setup search now opens its setup form"
 
 "126":
   changes:

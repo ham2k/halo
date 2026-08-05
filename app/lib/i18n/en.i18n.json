@@ -254,7 +254,8 @@
     "deleteOperation": "Delete Operation",
     "alreadySelected": "Already selected",
     "enableExtension": "Enable ${name}",
-    "enableExtensionHint": "This extension matches your search, but it is not currently enabled"
+    "enableExtensionHint": "This extension matches your search, but it is not currently enabled",
+    "onlyDisabledMatches": "Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below."
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",

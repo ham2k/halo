@@ -488,6 +488,9 @@ class Translations$activitiesView$en {
 
 	/// en: 'This extension matches your search, but it is not currently enabled'
 	String get enableExtensionHint => 'This extension matches your search, but it is not currently enabled';
+
+	/// en: 'Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below.'
+	String get onlyDisabledMatches => 'Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below.';
 }
 
 // Path: loggingControls
@@ -3373,6 +3376,7 @@ extension on Translations {
 			'activitiesView.alreadySelected' => 'Already selected',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
+			'activitiesView.onlyDisabledMatches' => 'Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below.',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -3696,9 +3700,9 @@ extension on Translations {
 			'settings.station.reportOutcomeIssues' => 'Worked, with issues',
 			'settings.station.reportOutcomeFails' => 'Didn\'t work at all',
 			'settings.station.reportOutcomeRequired' => 'Please tell us how it went',
-			'settings.station.reportComments' => 'Comments',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.reportComments' => 'Comments',
 			'settings.station.reportCommentsPlaceholder' => 'What worked, what didn\'t, anything that surprised you.',
 			'settings.station.reportHints' => 'Troubleshooting hints',
 			'settings.station.reportHintsPlaceholder' => 'Want to suggest some troubleshooting hints for other users?',

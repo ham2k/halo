@@ -254,7 +254,8 @@
     "deleteOperation": "Borrar operación",
     "alreadySelected": "Ya seleccionada",
     "enableExtension": "Activar ${name}",
-    "enableExtensionHint": "Esta extensión coincide con tu búsqueda, pero no está activada"
+    "enableExtensionHint": "Esta extensión coincide con tu búsqueda, pero no está activada",
+    "onlyDisabledMatches": "Nada que añadir todavía — lo que buscaste está desactivado. Actívalo en Tipos de actividad, más abajo."
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",

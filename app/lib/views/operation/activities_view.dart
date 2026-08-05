@@ -20,6 +20,7 @@
 
 import 'dart:async';
 import 'dart:io' as io;
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -66,6 +67,32 @@ const _searchProgressHeight = 4.0;
 /// rule 3) and grows the field inside it, so callers scale this — see
 /// [_PinnedSearchBand].
 const _searchBandHeight = 60.0;
+
+/// Material's single-line ListTile: a plain Activity Types row.
+const _optionRowHeight = 56.0;
+
+/// A two-line ListTile — an enable-extension row (title + hint), and the
+/// result rows, which carry a detail line.
+const _twoLineRowHeight = 72.0;
+
+/// A row and a half, the height a peeking list is cut to. Half a row is the
+/// point: a list cut mid-row reads as scrollable, where a whole number of
+/// rows reads as the whole list.
+const _peekRows = 1.5;
+
+/// The collapsed Activity Types section's default height.
+const _optionsPeekHeight = _optionRowHeight * _peekRows;
+
+/// What the results list keeps for itself no matter how far Activity Types
+/// grows — see [OperationSheetState._optionsPeekHeightFor].
+const _resultsMinPeekHeight = _twoLineRowHeight * _peekRows;
+
+/// The accordion header's own height: an IconButton (48, Material's minimum
+/// tap target) inside [_AccordionSection]'s `Space.sm` vertical padding.
+/// Deliberately a fixed allowance rather than a measurement — it is only
+/// ever subtracted, so erring high costs the peek a few pixels and erring
+/// low would eat the results area it is there to protect.
+const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 
 /// Decides which grid (if any) an operation should adopt right after a new
 /// activity ref is added, given it doesn't already have one:
@@ -549,6 +576,21 @@ class OperationSheetState extends State<OperationSheet> {
         _suggestions = results;
         _suggestionsAreSearchResults = trimmed.isNotEmpty;
         _disabledMatches = _disabledExtensionsMatching(term);
+        // The enable row lives in the Activity Types section, which the
+        // operator may have collapsed — so a search that finds only a
+        // switched-off extension would otherwise answer with nothing at all.
+        //
+        // Deliberately NOT written to `activitiesAllOptionsHidden`: the
+        // preference is the operator's, and a search must not rewrite it. The
+        // section then stays open for the rest of this sheet — it is not
+        // re-collapsed when the next search stops matching, because a section
+        // closing itself under the hand reaching for it is worse than one left
+        // open. Reopening the sheet restores the preference.
+        //
+        // No fight with `_scopeSearchTo`, which collapses the section and then
+        // searches: it can only scope to a type whose control is loaded, and a
+        // loaded control means an enabled extension, which never matches here.
+        if (_disabledMatches.isNotEmpty) _allOptionsExpanded = true;
         _loadingSuggestions = false;
       });
     }
@@ -637,6 +679,54 @@ class OperationSheetState extends State<OperationSheet> {
     _saveRefs([..._refsKeeping(type, suggestion: suggestion), suggestion]);
     widget.services.track('activity_added', {'activity': type});
     _maybeAdoptGridFromNewRef(distanceKm: suggestion['distance'] as num?);
+
+    // SAVE FIRST, then configure — the opposite order from [_addFormActivity],
+    // and deliberately so. That path runs the form as the act of adding, with
+    // nothing on the operation until it is submitted; here the tap on a
+    // suggestion IS the add, so backing out of the form leaves the activity in
+    // place, unconfigured. A tap that can end with nothing added reads as a tap
+    // that didn't work.
+    await _configureNewRef(suggestion);
+  }
+
+  /// Opens a freshly-added ref's setup form, for a type that has one.
+  ///
+  /// A contest added from the search is unusable until its exchange is set, and
+  /// nothing on the row says so — the operator has to know it is tappable. Only
+  /// form-configured types prompt: a reference type's suggestion already
+  /// carries the code that identifies it, so the only thing an editor could ask
+  /// is that they retype what they just picked.
+  Future<void> _configureNewRef(Map<String, dynamic> ref) async {
+    // Descriptors FIRST, and freshly: a form is allowed to depend on the refs
+    // the operation carries (see [_reloadControlsIfRefsChanged]), and the ref
+    // this is about to configure was saved a moment ago. State Parks asks Ohio
+    // for its park, power class and entry category only once its own ref is on
+    // the operation — read before the reload lands, its descriptor offers the
+    // event select alone and the operator saves a setup missing everything the
+    // scorer and the Cabrillo export need.
+    //
+    // This also settles the cold-boot case: `_controls` starts empty while
+    // suggestion rows are already tappable, and an absent control is
+    // indistinguishable from a type that has no form.
+    await _loadControls();
+    if (!mounted) return;
+
+    final control = controlForRefType(_controls, ref['type'] as String?);
+    if (!refTypeIsForm(control)) return;
+
+    final updated = await _runSetupForm(control!, existing: ref);
+    if (updated == null || !mounted) return;
+    final decorated = await widget.services.extensions.decorateRef(updated);
+    if (!mounted) return;
+    // Read the refs AFTER every await, never across one. The dialog is gone by
+    // now and the sheet is live, while `decorateRef` can run to its 10s hook
+    // timeout — a list captured earlier and written here silently undoes an
+    // activity the operator added or deleted in between. Identity, not a
+    // remembered index, for the same reason.
+    final refs = _operation.refs;
+    final index = refs.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
+    if (index < 0) return;
+    _saveRefs([...refs]..[index] = decorated);
   }
 
   /// Non-core extensions that match [input] but are switched off. A lone
@@ -739,6 +829,50 @@ class OperationSheetState extends State<OperationSheet> {
     _saveRefs([..._operation.refs, decorated]);
     widget.services.track('activity_added', {'activity': refType});  }
 
+  /// How tall the collapsed Activity Types section stands, given the height
+  /// [available] to the results list and this section together.
+  ///
+  /// The default peek is a row and a half of the types already loaded — enough
+  /// to read as a scrollable list. When the section is also carrying enable
+  /// rows, that default can cut the first one in half, and those rows are the
+  /// answer to the search the operator just typed. So it grows to hold them
+  /// ALL, plus one ordinary row beneath: the extra row is what still says
+  /// "there is more below" once the enable rows fill the window.
+  ///
+  /// Bounded, because the space comes out of the results list directly above —
+  /// which keeps its own row and a half whatever this returns. On a window too
+  /// short to honor both, the results win and this falls back to the default:
+  /// the section can be opened by hand, while a results list squeezed to
+  /// nothing has no such escape.
+  double _optionsPeekHeightFor(BuildContext context, double available) {
+    final scale = MediaQuery.textScalerOf(context);
+    final floor = scale.scale(_optionsPeekHeight);
+    if (_disabledMatches.isEmpty) return floor;
+
+    final wanted = scale.scale(_disabledMatches.length * _twoLineRowHeight + _optionRowHeight);
+    return clampDouble(wanted, floor, _optionsMaxHeightFor(context, available));
+  }
+
+  /// The tallest the Activity Types section may stand, peeking or opened, out
+  /// of the [available] box it shares with the results list — which keeps its
+  /// own row and a half plus the search band whatever this returns.
+  ///
+  /// Never below the default peek: on a window too short to honor both, the
+  /// results win and the section falls back to peeking, because a section cut
+  /// short can be opened by hand while a results list squeezed to nothing has
+  /// no such escape.
+  double _optionsMaxHeightFor(BuildContext context, double available) {
+    final scale = MediaQuery.textScalerOf(context);
+    return math.max(
+      scale.scale(_optionsPeekHeight),
+      available -
+          scale.scale(_accordionHeaderHeight) -
+          scale.scale(_searchBandHeight) -
+          _searchProgressHeight -
+          scale.scale(_resultsMinPeekHeight),
+    );
+  }
+
   /// The message shown in the Suggestions & Search section when there are
   /// no results: while there's a search term, a plain "no matches" message
   /// always applies; with an empty term (nearby suggestions) and no
@@ -747,6 +881,9 @@ class OperationSheetState extends State<OperationSheet> {
   /// unavailable.
   String get _suggestionsEmptyMessage {
     final t = context.t.activitiesView;
+    // A bare "no suggestions" here would contradict the enable row now sitting
+    // in the expanded section below: the activity they searched for does exist.
+    if (_disabledMatches.isNotEmpty) return t.onlyDisabledMatches;
     if (_searchController.text.trim().isNotEmpty || _operation.grid != null) return t.noSuggestions;
     return switch (widget.services.location.status) {
       LocationStatus.unknown || LocationStatus.determining => t.determiningLocation,
@@ -1115,6 +1252,16 @@ class OperationSheetState extends State<OperationSheet> {
               ),
             ),
           ),
+          // The results list and Activity Types share what the header leaves,
+          // and this LayoutBuilder is what measures it: the peek height below
+          // is carved out of exactly this box, so the two cannot both claim
+          // the same pixels. Measuring the results list itself instead would
+          // be circular — its height is what the peek decides.
+          Expanded(
+            child: LayoutBuilder(builder: (context, sheetBody) {
+              final optionsPeekHeight = _optionsPeekHeightFor(context, sheetBody.maxHeight);
+              final optionsMaxHeight = _optionsMaxHeightFor(context, sheetBody.maxHeight);
+              return Column(children: [
           // Selected activities, the search field and its results live in
           // ONE clipped scroll area — only Activity Types below keeps the
           // accordion behavior.
@@ -1254,21 +1401,10 @@ class OperationSheetState extends State<OperationSheet> {
                 );
 
                 final resultRows = <Widget>[
-                  // Above the hits: an activity the user asked for by name
-                  // that's simply switched off would otherwise look like it
-                  // doesn't exist.
-                  for (final info in _disabledMatches)
-                    ListTile(
-                      tileColor: theme.colorScheme.secondaryContainer,
-                      leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
-                      title: Text(
-                        t.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(t.enableExtensionHint),
-                      trailing: const Icon(MdiIcons.plus),
-                      onTap: () => _enableExtension(info),
-                    ),
+                  // Switched-off extensions that match are NOT here: they
+                  // answer "which activities exist", not "which reference do I
+                  // add", so they live in the Activity Types section below and
+                  // this list stays what the operator searched for.
                   for (final suggestion in _suggestions)
                     Builder(builder: (context) {
                       final alreadySelected =
@@ -1461,6 +1597,24 @@ class OperationSheetState extends State<OperationSheet> {
               final allOptionsContent = Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // FIRST in the section, because this is the one row that
+                  // answers the search the operator just typed. The section
+                  // grows to hold these ([_optionsPeekHeightFor]) but is
+                  // bounded by the results list's own claim, so on a short
+                  // window they are the rows that have to fit; below the
+                  // loaded types they would be the rows that get cut.
+                  for (final info in _disabledMatches)
+                    ListTile(
+                      tileColor: theme.colorScheme.secondaryContainer,
+                      leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
+                      title: Text(
+                        t.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(t.enableExtensionHint),
+                      trailing: const Icon(MdiIcons.plus),
+                      onTap: () => _enableExtension(info),
+                    ),
                   for (final control in _controls)
                     if ((control['input'] as Map?)?['kind'] == 'refList' ||
                         (control['input'] as Map?)?['kind'] == 'form')
@@ -1473,9 +1627,23 @@ class OperationSheetState extends State<OperationSheet> {
                 ],
               );
               return _allOptionsFullyOpened
-                  ? allOptionsContent
+                  // Bounded and scrollable even when opened: this list holds
+                  // every loaded type AND every enable row a search turns up,
+                  // and as an unbounded Column beside the results list it
+                  // squeezes them out from under the operator as they type.
+                  // That failure is a RenderFlex overflow, which ErrorPolicy
+                  // treats as `logOnly` — release builds clip it silently, so
+                  // nothing would ever report it.
+                  ? ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: optionsMaxHeight),
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        // Same ink-clipping reason as the peeking branch below.
+                        child: Material(type: MaterialType.transparency, child: allOptionsContent),
+                      ),
+                    )
                   : SizedBox(
-                      height: 84.0,
+                      height: optionsPeekHeight,
                       child: SingleChildScrollView(
                         physics: const ClampingScrollPhysics(),
                         // Its own ink layer, INSIDE the scroll view, so the
@@ -1485,7 +1653,7 @@ class OperationSheetState extends State<OperationSheet> {
                         // sheet's root, above this scroll view, and ink is
                         // clipped to that Material's bounds rather than to
                         // the viewport in between, so
-                        // rows scrolled out of this 84px window would still
+                        // rows scrolled out of this peeking window would still
                         // paint their backgrounds over the sections above.
                         // MaterialType.transparency: an ink layer, no
                         // surface of its own.
@@ -1496,6 +1664,9 @@ class OperationSheetState extends State<OperationSheet> {
                       ),
                     );
             }(),
+          ),
+              ]);
+            }),
           ),
         ],
       ),

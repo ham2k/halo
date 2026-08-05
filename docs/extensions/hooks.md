@@ -394,6 +394,23 @@ Current Activities row stays inert — the user removes it and picks again
 rather than retyping a code no lookup would re-check. `pota` and `sota` leave
 it off. Set it true for a type whose references carry more than the code.
 
+A **`kind: 'form'` control prompts on add.** Tapping one of its suggestions
+saves the reference and then opens the setup form over it, because a contest
+that has not been set up cannot score and nothing on its row says so. The
+save comes first, so cancelling the form leaves the activity added and
+unconfigured rather than undoing the tap. Two consequences for the hook:
+
+- The suggestion still has to carry its own `label`/`shortLabel`/`program`
+  (§5.4 of contests.md) — the cancel path never reaches `decorateRef`, so a
+  suggestion that relies on being decorated reads as a blank row.
+- `decorateRef` runs on whatever the form submits, immediately after. It is
+  handed the suggestion's own fields merged with the form's, so it must
+  tolerate being called with a reference it has already decorated once.
+
+A `refList` control does **not** prompt: its suggestion already carries the
+code that identifies it, so a form could only ask the user to retype what
+they just picked.
+
 `allowsMultiple` declares whether an operation may carry more than one
 reference of that type at a time. It defaults to **false**: picking one of
 the type's references **replaces** the operation's existing reference of

@@ -270,6 +270,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get alreadySelected => 'Ya seleccionada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
+	@override String get onlyDisabledMatches => 'Nada que añadir todavía — lo que buscaste está desactivado. Actívalo en Tipos de actividad, más abajo.';
 }
 
 // Path: loggingControls
@@ -1853,6 +1854,7 @@ extension on TranslationsEs {
 			'activitiesView.alreadySelected' => 'Ya seleccionada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
+			'activitiesView.onlyDisabledMatches' => 'Nada que añadir todavía — lo que buscaste está desactivado. Actívalo en Tipos de actividad, más abajo.',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
@@ -2176,9 +2178,9 @@ extension on TranslationsEs {
 			'settings.station.reportOutcomeIssues' => 'Funcionó, con problemas',
 			'settings.station.reportOutcomeFails' => 'No funcionó en absoluto',
 			'settings.station.reportOutcomeRequired' => 'Cuéntanos qué tal fue',
-			'settings.station.reportComments' => 'Comentarios',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.reportComments' => 'Comentarios',
 			'settings.station.reportCommentsPlaceholder' => 'Qué funcionó, qué no, y cualquier cosa que te sorprendiera.',
 			'settings.station.reportHints' => 'Consejos para solucionar problemas',
 			'settings.station.reportHintsPlaceholder' => '¿Quieres sugerir consejos para que otros usuarios solucionen problemas?',
