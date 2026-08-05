@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/metrics_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/panel_use_tracker.dart';
 
 import 'fake_secure_storage.dart';
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
@@ -61,5 +62,42 @@ void main() {
     await services.settings.setSettingValue(SettingsService.privacyGroup, 'consentAppData', false);
     services.track('qso_added');
     expect(metrics.events, hasLength(1));
+  });
+
+  group('PanelUseTracker', () {
+    test('reports each panel once, however often it is used', () {
+      // The trap: the hooks are pointer-down listeners, so without the
+      // de-dup a scroll or a run of taps in one panel would emit a signal
+      // per touch — turning "which panels get used" into "who fidgets most".
+      final seen = <(String, Map<String, Object?>)>[];
+      final tracker = PanelUseTracker(
+        track: (event, [properties = const {}]) => seen.add((event, properties)),
+        screen: 'operation',
+      );
+
+      tracker.used('logging');
+      tracker.used('logging');
+      tracker.used('spots');
+      tracker.used('logging');
+
+      expect(seen.map((e) => e.$2['panel']), ['logging', 'spots']);
+      expect(seen.every((e) => e.$1 == 'panel_used'), isTrue);
+      expect(seen.first.$2['screen'], 'operation',
+          reason: 'panel names are only unique within a screen');
+    });
+
+    test('a new instance reports again — the count is per screen VISIT', () {
+      // Each screen's State owns a tracker, so leaving and coming back is a
+      // fresh instance. Were this de-duplicated globally, the event could
+      // never answer how often a panel is reached for.
+      final seen = <String>[];
+      void track(String event, [Map<String, Object?> properties = const {}]) =>
+          seen.add(properties['panel'] as String);
+
+      PanelUseTracker(track: track, screen: 'operation').used('map');
+      PanelUseTracker(track: track, screen: 'operation').used('map');
+
+      expect(seen, ['map', 'map']);
+    });
   });
 }

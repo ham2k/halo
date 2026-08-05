@@ -19,6 +19,7 @@ import '../main.dart';
 import '../services/settings_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'operation_dialogs.dart';
+import 'panel_use_tracker.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/information_panel.dart';
@@ -341,6 +342,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       });
     }
   }
+
+  /// One per screen instance — see [PanelUseTracker].
+  late final _panels = PanelUseTracker(track: widget.services.track, screen: 'operation');
 
   @override
   void initState() {
@@ -1193,9 +1197,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
         // The pane subtrees, built once and placed by whichever arrangement
         // is active (their GlobalKeys carry the State across a flip).
+        // The Listeners below sit INSIDE each KeyedSubtree so the keys still
+        // wrap the same subtree they always did — the reparenting between
+        // layouts depends on that. They only observe: pointer-down does not
+        // compete for the gesture or change hit testing.
         final loggingPanel = KeyedSubtree(
           key: _loggingKey,
-          child: LoggingPanel(
+          child: Listener(
+            onPointerDown: (_) => _panels.used('logging'),
+            child: LoggingPanel(
             operation: operation,
             services: widget.services,
             qsos: qsos,
@@ -1214,39 +1224,59 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             ourItuRegion: _ourItuRegion,
             ourCountryCode: _ourCountryCode,
             suggestedQso: _suggestedQso,
-            onCallInfoChanged: (info) => setState(() => _callInfo = info),
+            onCallInfoChanged: (info) {
+              // Entering a call is logging-panel use, and it is the one
+              // interaction the pointer listener below cannot see: the call
+              // field is autofocused, so an operator who just types never
+              // puts a pointer down inside the panel. Hooking this existing
+              // callback keeps key handling out of it — the focus ladder is
+              // a contract (docs/design/logging-fields.md), and a
+              // panel-wide key listener is exactly what it forbids.
+              _panels.used('logging');
+              setState(() => _callInfo = info);
+            },
             onCallInfoTap: () => _handleCallInfoTap(operation),
+            ),
           ),
         );
         final spotsPanel = KeyedSubtree(
           key: _spotsKey,
-          child: _LazyTab(
-            child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
+          child: Listener(
+            onPointerDown: (_) => _panels.used('spots'),
+            child: _LazyTab(
+              child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
+            ),
           ),
         );
         final mapPanel = KeyedSubtree(
           key: _mapKey,
-          child: _LazyTab(
-            // Stretches to the split's very edge: the divider overlay's
-            // near-invisible wash (see resizable_split_view.dart) is what
-            // keeps the native map view from stealing drags on the strip.
-            child: MapPanel(
-              operation: operation,
-              qsos: qsos,
-              settings: widget.services.settings,
-              callInfo: _callInfo,
+          child: Listener(
+            onPointerDown: (_) => _panels.used('map'),
+            child: _LazyTab(
+              // Stretches to the split's very edge: the divider overlay's
+              // near-invisible wash (see resizable_split_view.dart) is what
+              // keeps the native map view from stealing drags on the strip.
+              child: MapPanel(
+                operation: operation,
+                qsos: qsos,
+                settings: widget.services.settings,
+                callInfo: _callInfo,
+              ),
             ),
           ),
         );
         // ONE construction serving both wide arrangements (fixed tab slot 0
         // and the dock's 'info' module) so their props can't drift apart.
-        final infoPanel = InformationPanel(
-          operation: operation,
-          qsos: qsos,
-          services: widget.services,
-          callInfo: _callInfo,
-          ourEntityPrefix: _ourEntityPrefix,
-          activityControls: _loggingControls,
+        final infoPanel = Listener(
+          onPointerDown: (_) => _panels.used('info'),
+          child: InformationPanel(
+            operation: operation,
+            qsos: qsos,
+            services: widget.services,
+            callInfo: _callInfo,
+            ourEntityPrefix: _ourEntityPrefix,
+            activityControls: _loggingControls,
+          ),
         );
         // Built before `tabBar`/`tabView`/`_narrowTabBar` below, all of
         // which read `_tabController!` directly — the controller must

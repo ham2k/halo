@@ -21,6 +21,7 @@ import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/discovery.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -224,7 +225,9 @@ void main() {
   late CatService cat;
   late RadioService radio;
 
-  Future<CatService> makeService() async {
+  Future<CatService> makeService({
+    void Function(String event, [Map<String, Object?> properties])? onTrack,
+  }) async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
     transport = _FakeTransport();
@@ -234,6 +237,7 @@ void main() {
     return CatService(
       settings,
       radio: radio,
+      onTrack: onTrack,
       registry: EquipmentRegistry(
         models: [_fakeModel(driver, transport)],
         transports: {'fake': transport},
@@ -263,6 +267,70 @@ void main() {
     await connecting;
     return connection;
   }
+
+  group('radio telemetry', () {
+    late List<(String, Map<String, Object?>)> tracked;
+
+    Future<void> withTracking() async {
+      tracked = [];
+      cat = await makeService(onTrack: (event, [props = const {}]) => tracked.add((event, props)));
+    }
+
+    Iterable<Map<String, Object?>> only(String event) =>
+        tracked.where((e) => e.$1 == event).map((e) => e.$2);
+
+    test('radio_connected reports once per radio, however often it reconnects', () async {
+      // The trap: the idle retry pokes a radio every 30s rising to every 8
+      // minutes for the whole session (see _scheduleIdleRetry). Reporting per
+      // ATTEMPT would make this the loudest event in the app and skew every
+      // per-user figure toward whoever left a rig switched off.
+      await withTracking();
+      final node = await addRadio();
+      await connectAndLand(node);
+      await connectAndLand(node);
+
+      expect(only('radio_connected'), hasLength(1));
+      final props = only('radio_connected').single;
+      expect(props['radio'], 'fake-type');
+      expect(props['transport'], 'fake');
+    });
+
+    test('radio_connect_failed classifies the error and never carries its text', () async {
+      // The trap: `'$e'` is what the operator reads, and it routinely holds
+      // the host or port that failed — on macOS a serial path embeds the
+      // adapter's DEVICE SERIAL NUMBER. Only a bounded class may leave.
+      await withTracking();
+      final node = await addRadio(host: 'secret-host.invalid');
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.last.completer.completeError(
+        TimeoutException('no reply from secret-host.invalid'),
+      );
+      await connecting;
+
+      final props = only('radio_connect_failed').single;
+      expect(props['reason'], 'timeout');
+      expect(props.values.join(' '), isNot(contains('secret-host')),
+          reason: 'no config value or error text may reach the payload');
+    });
+
+    test('radio_added records whether discovery or the form found it', () async {
+      // The gap between added and connected is what says a pairing is
+      // configurable but not usable — worthless if both paths look alike.
+      await withTracking();
+      await addRadio();
+      expect(only('radio_added').single['via'], 'manual');
+
+      tracked.clear();
+      await cat.addDiscovered(const DiscoveredEquipment(
+        typeKey: 'fake-type',
+        id: 'disco-1',
+        name: 'Found Radio',
+        config: {'host': 'found.local'},
+      ));
+      expect(only('radio_added').single['via'], 'discovery');
+    });
+  });
 
   // ------------------------------------------------------------ storage
 

@@ -27,6 +27,7 @@ import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import 'panel_use_tracker.dart';
 import '../services/app_storage.dart';
 import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
@@ -163,11 +164,15 @@ class _SettingsViewState extends State<SettingsView> {
   // flag.
   bool _extensionPanelsLoaded = false;
 
+  /// One per screen instance — see [PanelUseTracker].
+  late final PanelUseTracker _panels;
+
   @override
   void initState() {
     super.initState();
     _selectedPanel = widget.initialPanel ?? 'settings';
     widget.services.track('screen_viewed', {'screen': 'settings'});
+    _panels = PanelUseTracker(track: widget.services.track, screen: 'settings');
     _loadExtensionPanels();
     // A runtime restart (extension enabled/disabled) changes which panels
     // exist — re-fetch so a disabled extension's panel disappears (the
@@ -380,7 +385,7 @@ class _SettingsViewState extends State<SettingsView> {
             // edge, right up to the grab-strip clearance this cancels.
             body: ListTileTheme.merge(
               contentPadding: EdgeInsets.only(left: Space.xl + safeLeft, right: Space.xl),
-              child: _buildPanelContent(effectivePanel, widget.services),
+              child: _buildPanelContent(effectivePanel, widget.services, _panels),
             ),
           ),
           );
@@ -466,14 +471,27 @@ class _SettingsViewState extends State<SettingsView> {
   }
 }
 
-class _SettingsPanelScreen extends StatelessWidget {
+/// Stateful only to own a [PanelUseTracker]: the narrow layout pushes each
+/// settings panel as its own route, and without per-instance de-duplication
+/// here `panel_used` would be reported for wide windows only — a bias by
+/// layout rather than by what operators actually do.
+class _SettingsPanelScreen extends StatefulWidget {
   final _SettingsPanelEntry panel;
   final HaLoServices services;
 
   const _SettingsPanelScreen({required this.panel, required this.services});
 
   @override
+  State<_SettingsPanelScreen> createState() => _SettingsPanelScreenState();
+}
+
+class _SettingsPanelScreenState extends State<_SettingsPanelScreen> {
+  late final _panels = PanelUseTracker(track: widget.services.track, screen: 'settings');
+
+  @override
   Widget build(BuildContext context) {
+    final panel = widget.panel;
+    final services = widget.services;
     if (ShirtSize.of(context).isTwoPane) {
       // Remove THIS screen's route specifically — Navigator.pop() takes the
       // top-most route, which may be a Modal Pane stacked above (an account
@@ -503,12 +521,19 @@ class _SettingsPanelScreen extends StatelessWidget {
           windowsCaptionSpacer(context),
         ],
       ),
-      body: _buildPanelContent(panel, services),
+      body: _buildPanelContent(panel, services, _panels),
     );
   }
 }
 
-Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
+/// Extension panels all report as a single `extension` rather than by their
+/// own key: those ids come from whatever the operator has installed, so
+/// reporting them by name would be unbounded cardinality AND would leak
+/// extension usage, which docs/design/telemetry.md excludes on purpose.
+String _panelUseName(_SettingsPanelEntry panel) =>
+    panel.descriptor != null ? 'extension' : panel.key;
+
+Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, PanelUseTracker panels) {
   final Widget content;
   switch (panel.key) {
     case 'profiles':
@@ -537,12 +562,17 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
           ? const SizedBox.shrink()
           : _ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
+  // Observes only, and wraps the body once so BOTH returns below are covered.
+  final body = Listener(
+    onPointerDown: (_) => panels.used(_panelUseName(panel)),
+    child: content,
+  );
   // About manages its own width (see _AboutPanel): the header photo spans
   // the pane's full true width edge-to-edge, while its rows below cap at
   // idealPaneWidth and center, same as every other panel below — so it
   // must not also get the blanket cap-and-center wrapper below.
   if (panel.key == 'about') {
-    return SafeArea(top: false, left: false, right: false, child: content);
+    return SafeArea(top: false, left: false, right: false, child: body);
   }
   // Cap settings content at the ideal reading width, centered in the pane
   // rather than stretching across (or pinning to one edge of) a wide one.
@@ -552,7 +582,7 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
   return Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-      child: SafeArea(top: false, left: false, right: false, child: content),
+      child: SafeArea(top: false, left: false, right: false, child: body),
     ),
   );
 }

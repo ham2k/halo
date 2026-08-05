@@ -11,9 +11,10 @@
 # seam a distribution build needs: --config-only is what bakes the dart-defines
 # and the Dart entry point into generated_config.cmake, and `flutter assemble`
 # reads them back from there. The x64 release passes --target
-# (app_dist/lib/main_dist.dart), the Sentry DSN, the MetricsBackend keys and
-# --build-name/--build-number; without forwarding them an arm64 release would
-# quietly ship the wrong entry point and no telemetry, and look fine doing it.
+# (app_dist/lib/main_dist.dart), the crash-reporting and analytics credentials
+# and --build-name/--build-number; without forwarding them an arm64 release
+# would quietly ship the wrong entry point and no telemetry, and look fine
+# doing it.
 #
 # With no arguments it produces a plain unbranded build, which is what the
 # manual workflow wants.

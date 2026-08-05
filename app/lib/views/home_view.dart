@@ -20,6 +20,7 @@ import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
 import 'ham2k_logo.dart';
+import 'panel_use_tracker.dart';
 import 'version_label.dart';
 import '../i18n/strings.g.dart';
 
@@ -194,7 +195,7 @@ const _newOperationNudgeDelay = Duration(seconds: 5);
 const _fabTransitionDuration = Duration(milliseconds: 300);
 const _fabSettleSlack = Duration(milliseconds: 100);
 
-class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
+class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteAware {
   bool _isFabExtended = true;
 
   /// Bumped once a transition's deadline passes, and used as the animated
@@ -276,14 +277,37 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _startHomeVisit();
     WidgetsBinding.instance.addObserver(this);
     _nudgeTimer = Timer(_newOperationNudgeDelay, () {
       if (mounted) setState(() => _nudgeArmed = true);
     });
   }
 
+  /// Replaced per visit, not per State — see [_startHomeVisit].
+  late PanelUseTracker _panels;
+
+  /// This State is never disposed (HomeView is `MaterialApp.home`), so a
+  /// visit is marked here rather than in [initState] alone: on first build
+  /// and again each time a pushed screen pops back to it.
+  void _startHomeVisit() {
+    widget.services.track('screen_viewed', {'screen': 'home'});
+    _panels = PanelUseTracker(track: widget.services.track, screen: 'home');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) homeRouteObserver.subscribe(this, route);
+  }
+
+  @override
+  void didPopNext() => _startHomeVisit();
+
   @override
   void dispose() {
+    homeRouteObserver.unsubscribe(this);
     _fabSettleTimer?.cancel();
     _nudgeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -471,16 +495,22 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                             if (snapshot.hasData && DevBridge.instance.installed) {
                               DevBridge.instance.signalReady();
                             }
-                            return OperationListPanel(
-                              services: widget.services,
-                              // `snapshot.hasData` distinguishes "the stream
-                              // hasn't emitted its first snapshot yet" from "it
-                              // emitted an empty list" — collapsing both into
-                              // `snapshot.data ?? []` would leave
-                              // OperationListPanel guessing (via a fixed
-                              // delay) how long "still loading" might last.
-                              loading: !snapshot.hasData,
-                              operations: snapshot.data ?? const <Operation>[],
+                            // Pointer-down rather than a gesture: this only
+                            // OBSERVES, so it neither competes with the rows'
+                            // own taps nor changes hit testing.
+                            return Listener(
+                              onPointerDown: (_) => _panels.used('operations'),
+                              child: OperationListPanel(
+                                services: widget.services,
+                                // `snapshot.hasData` distinguishes "the stream
+                                // hasn't emitted its first snapshot yet" from "it
+                                // emitted an empty list" — collapsing both into
+                                // `snapshot.data ?? []` would leave
+                                // OperationListPanel guessing (via a fixed
+                                // delay) how long "still loading" might last.
+                                loading: !snapshot.hasData,
+                                operations: snapshot.data ?? const <Operation>[],
+                              ),
                             );
                           },
                         ),
@@ -581,7 +611,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-              HomeQuickLookup(services: widget.services),
+              Listener(
+                onPointerDown: (_) => _panels.used('quick_lookup'),
+                child: HomeQuickLookup(services: widget.services),
+              ),
             ],
           ),
         ),

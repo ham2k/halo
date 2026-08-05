@@ -162,7 +162,17 @@ void _mainBody({
     // matching event carries (consent-gated inside track, like everything).
     services.track('app_started', {
       'language': services.settings.locale,
-      'colorScheme': services.settings.themeMode,
+      // The EFFECTIVE scheme, not the ThemeMode: the enum interpolates to
+      // "ThemeMode.dark", and `system` describes the setting rather than what
+      // the user is actually looking at. app-polo reports the same way.
+      'colorScheme': switch (services.settings.themeMode) {
+        ThemeMode.dark => 'dark',
+        ThemeMode.light => 'light',
+        ThemeMode.system =>
+          WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark
+              ? 'dark'
+              : 'light',
+      },
       'fontScale': services.settings.fontScale.name,
     });
     ErrorReportingService.attachStatusBar(services.statusBar);
@@ -687,7 +697,7 @@ class HaLoServices {
   // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
   // from Settings → Station Configuration, so this costs nothing while the
   // experiment is off.
-  late final CatService cat = CatService(settings, radio: radio);
+  late final CatService cat = CatService(settings, radio: radio, onTrack: track);
   final LocationService location = LocationService();
   final DeepLinkService deepLinks = DeepLinkService();
 
@@ -1234,6 +1244,13 @@ class HaLoApp extends StatefulWidget {
   State<HaLoApp> createState() => _HaLoAppState();
 }
 
+/// Lets HomeView notice when it is on top again. It is `MaterialApp.home`, so
+/// its State is created once and never disposed — `initState` alone would
+/// report one home visit per LAUNCH while the operation and settings screens,
+/// which are pushed, report per visit. The three counts have to be comparable
+/// or `screen_viewed` cannot be read as navigation at all.
+final homeRouteObserver = RouteObserver<PageRoute<dynamic>>();
+
 class _HaLoAppState extends State<HaLoApp> {
   // Held as a field (not rebuilt per frame) so its route count survives
   // MaterialApp rebuilds; drives `modalBarrierIsVisible` for the window-chrome
@@ -1414,7 +1431,7 @@ class _HaLoAppState extends State<HaLoApp> {
         // android's AndroidManifest.xml label "HaLo").
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
-        navigatorObservers: [_modalBarrierObserver],
+        navigatorObservers: [_modalBarrierObserver, homeRouteObserver],
         locale: TranslationProvider.of(context).locale.flutterLocale,
         supportedLocales: AppLocaleUtils.supportedLocales,
         localizationsDelegates: GlobalMaterialLocalizations.delegates,

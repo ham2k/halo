@@ -176,17 +176,73 @@ class CatService extends ChangeNotifier {
   /// instantaneous.
   final DateTime Function() now;
 
+  /// Consent-gated analytics hook (HaLoServices.track) for the radio_* events
+  /// — optional so tests and standalone use stay silent, same as FlagsService.
+  final void Function(String event, [Map<String, Object?> properties])? _onTrack;
+
+  /// Nodes already reported this session, per event. The retry loop below
+  /// pokes an unreachable radio every 30s rising to every 8 minutes, for the
+  /// whole session — reporting per ATTEMPT would bury every other event and
+  /// skew the data toward whoever left a rig switched off.
+  final Set<String> _trackedConnected = {};
+  final Set<String> _trackedFailed = {};
+
   CatService(this._settings,
       {EquipmentRegistry? registry,
       RadioService? radio,
+      void Function(String event, [Map<String, Object?> properties])? onTrack,
       this.reconnectDelay = _defaultReconnectDelay,
       this.now = DateTime.now,
       this.idleRetryFirst = _idleRetryFirst})
       : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
         registry = registry ?? EquipmentRegistry(),
+        _onTrack = onTrack,
         _radio = radio {
     _load();
     _radio?.addListener(_onVfoChanged);
+  }
+
+  /// Describes a radio by its CATALOGUE identity only — the variant key (a
+  /// stable id we ship), its transport and its driver. Never anything from
+  /// the node's config: a serial `port` embeds the adapter's device serial
+  /// number on macOS, and the network transports hold addresses and
+  /// passwords. See docs/design/telemetry.md.
+  void _trackRadio(String event, String typeKey, {Map<String, Object?> extra = const {}}) {
+    final track = _onTrack;
+    if (track == null) return;
+    final type = registry.typeFor(typeKey);
+    track(event, {
+      'radio': typeKey,
+      'transport': type?.transportKey,
+      'driver': type?.driver.key,
+      ...extra,
+    });
+  }
+
+  /// A bounded classification, never the exception's text: `'$e'` routinely
+  /// carries the port path or host that failed. Matched on the type NAME for
+  /// SocketException because dart:io does not exist on web, where this same
+  /// service runs over Web Serial.
+  static String _failureReason(Object error) {
+    if (error is TimeoutException) return 'timeout';
+    if (error.runtimeType.toString() == 'SocketException') return 'network';
+    return 'other';
+  }
+
+  /// The baud rate a failed serial attempt was using — deliberately the ONE
+  /// config value that goes out. A mismatch is the classic cause of a silent
+  /// port, the set of rates is small and fixed, and it identifies nobody.
+  Map<String, Object?> _baudExtra(Map<String, dynamic> config) =>
+      config['baudRate'] == null ? const {} : {'baud': config['baudRate']};
+
+  /// First failure per node per session only — see [_trackedFailed]. Not
+  /// re-armed by a later success on purpose: a flapping rig would otherwise
+  /// report on every cycle, which is the volume this de-dup exists to stop.
+  /// The question being answered is "does this pairing ever fail for people",
+  /// not "how often".
+  void _trackFailure(String uuid, String typeKey, String reason, {Map<String, Object?> extra = const {}}) {
+    if (!_trackedFailed.add(uuid)) return;
+    _trackRadio('radio_connect_failed', typeKey, extra: {'reason': reason, ...extra});
   }
 
   List<EquipmentNode> get nodes => List.unmodifiable(_nodes.values);
@@ -295,6 +351,11 @@ class CatService extends ChangeNotifier {
     required String typeKey,
     String name = '',
     Map<String, dynamic> config = const {},
+    /// How the operator got here: `discovery` when the Add dialog found the
+    /// radio itself, `manual` when they filled the form. The gap between
+    /// these and radio_connected is what says a pairing is configurable but
+    /// not usable.
+    String via = 'manual',
   }) async {
     final node = EquipmentNode(
       uuid: _uuidGenerator.v4(),
@@ -313,6 +374,7 @@ class CatService extends ChangeNotifier {
     // relay board added later cannot take it.
     if (registry.typeFor(stored.typeKey)?.category == kCategoryTransceiver) _radio1 = stored.uuid;
     await _save();
+    _trackRadio('radio_added', stored.typeKey, extra: {'via': via});
     notifyListeners();
     return stored;
   }
@@ -512,7 +574,7 @@ class CatService extends ChangeNotifier {
 
   /// Adds a discovered device as configured equipment, with no typing.
   Future<EquipmentNode> addDiscovered(DiscoveredEquipment found) =>
-      addNode(typeKey: found.typeKey, name: found.name, config: found.config);
+      addNode(typeKey: found.typeKey, name: found.name, config: found.config, via: 'discovery');
 
   // -------------------------------------------------------------- runtime
 
@@ -549,6 +611,7 @@ class CatService extends ChangeNotifier {
     final transport = registry.transportFor(type?.transportKey);
     if (type == null || transport == null) {
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: 'Unknown equipment type "${node.typeKey}"'));
+      _trackFailure(uuid, node.typeKey, 'unknown_type');
       return _ConnectOutcome.failed;
     }
 
@@ -557,6 +620,7 @@ class CatService extends ChangeNotifier {
     final invalid = type.validate(config);
     if (invalid != null) {
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: invalid));
+      _trackFailure(uuid, node.typeKey, 'invalid_config', extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
 
@@ -588,6 +652,7 @@ class CatService extends ChangeNotifier {
       // underlying error's own words, which is what the operator reads.
       ErrorReportingService.report(CatConnectFailure(node.typeKey, e), st, context: 'cat:connect');
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: '$e'));
+      _trackFailure(uuid, node.typeKey, _failureReason(e), extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
 
@@ -663,6 +728,7 @@ class CatService extends ChangeNotifier {
     }));
 
     _setState(uuid, const EquipmentState(status: EquipmentStatus.connected));
+    if (_trackedConnected.add(uuid)) _trackRadio('radio_connected', node.typeKey);
     _armStaleWatch(uuid, runtime);
 
     // Start updates on connect rather than when a UI subscriber shows up:
