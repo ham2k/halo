@@ -19,7 +19,7 @@ import 'package:app_links/app_links.dart';
 ///
 /// Paths PoLo handles that HaLo doesn't yet (future work, documented so the
 /// schemes stay reserved): `/qso` (present a QSO for logging from query
-/// params) and `/link_client` (sync client linking).
+/// params).
 class DeepLinkService {
   final AppLinks _appLinks = AppLinks();
 
@@ -29,4 +29,25 @@ class DeepLinkService {
   /// Whether [uri] is an OAuth redirect callback (`com.ham2k.*.auth://…`).
   static bool isAuthCallback(Uri uri) =>
       uri.scheme.startsWith('com.ham2k') && uri.scheme.endsWith('.auth');
+
+  /// The sync link request [uri] carries, or null when it isn't one:
+  /// `com.ham2k:///link_client?id=<client uuid>&token=<challenge>`, the
+  /// payload a Ham2K app puts in the QR code its "link with a QR code" flow
+  /// displays (`linkClientQrUrl`). Whichever app SCANS it is the one
+  /// approving, so this is the entry point to the confirming side.
+  ///
+  /// Both authority forms are accepted. `:///link_client` — what Ham2K apps
+  /// generate — parses as an empty host and a `/link_client` path, while a
+  /// hand-typed or relayed `://link_client` puts the same word in the host,
+  /// and a link that doesn't open at all is indistinguishable from a broken
+  /// QR code to the person holding the phone.
+  static ({String clientUuid, String challengeToken})? linkClientRequest(Uri uri) {
+    if (!uri.scheme.startsWith('com.ham2k')) return null;
+    if (uri.path != '/link_client' && uri.host != 'link_client') return null;
+    final clientUuid = uri.queryParameters['id'];
+    final challengeToken = uri.queryParameters['token'];
+    if (clientUuid == null || clientUuid.isEmpty) return null;
+    if (challengeToken == null || challengeToken.isEmpty) return null;
+    return (clientUuid: clientUuid, challengeToken: challengeToken);
+  }
 }

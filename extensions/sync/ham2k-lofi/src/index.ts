@@ -26,6 +26,7 @@ import type {
   SyncResponse,
 } from "@ham2k/halo-extension-sdk"
 
+import { loFiErrorMessage, normalizedEmail } from "./errors.ts"
 import { tFor } from "./i18n.ts"
 import { attachReportContext, buildReportPayload } from "./report.ts"
 import type { ReportContext, ReportPayload } from "./report.ts"
@@ -46,6 +47,11 @@ defineExtension({
         getAccountData,
         linkClient,
         linkClientWithEmail,
+        setAccountEmail,
+        resendAccountEmail,
+        findLinkRequest,
+        findLinkRequestByClient,
+        approveLinkRequest,
         ensureClientRegistered,
         fetchWebhookEvents,
         submitReport,
@@ -286,7 +292,11 @@ class LoFiRequestError extends Error {
 /// Authenticated request with the same retry-once-on-401 shape as the RN
 /// extension: an expired/invalid token drops just the token (key/secret
 /// still identify this device), never the caller's request.
-async function request(method: 'GET' | 'POST', path: string, body?: JSONValue): Promise<Record<string, JSONValue>> {
+async function request(
+  method: 'GET' | 'POST' | 'PATCH',
+  path: string,
+  body?: JSONValue,
+): Promise<Record<string, JSONValue>> {
   const server = await serverUrl()
   if (cachedToken == null) {
     const stored = await host.kvGet('token')
@@ -314,7 +324,10 @@ async function request(method: 'GET' | 'POST', path: string, body?: JSONValue): 
     }
     const json = parseJson(response.body)
     if (response.status < 200 || response.status >= 300) {
-      throw new LoFiRequestError(`LoFi request failed: ${(json.error as string) ?? `HTTP ${response.status}`}`, response.status)
+      throw new LoFiRequestError(
+        `LoFi request failed: ${loFiErrorMessage(json) ?? `HTTP ${response.status}`}`,
+        response.status,
+      )
     }
     return json
   }
@@ -374,6 +387,116 @@ async function linkClientWithEmail(
   _ctx: HookContext,
 ): Promise<Record<string, JSONValue>> {
   return request('POST', 'v1/client/permissions', { email, send_email: true })
+}
+
+/// The uuid of the account this device belongs to. Every account-scoped
+/// endpoint below puts it in the path and the server only publishes it
+/// through `v1/accounts`, so each of those calls pays one extra GET rather
+/// than caching an id that a mid-session account switch would invalidate —
+/// they are all one-off user actions, never loops.
+async function currentAccountUuid(): Promise<string> {
+  const data = await request('GET', 'v1/accounts')
+  const account = data.current_account as Record<string, JSONValue> | null
+  const uuid = account?.uuid
+  if (typeof uuid !== 'string') throw new LoFiRequestError('This device is not linked to an account', 404)
+  return uuid
+}
+
+/// Wraps a call whose server rejections belong to the UI flow rather than to
+/// error reporting — a taken email address, an expired challenge, a code
+/// that matches nothing. Same `{ error, error_status }` shape `linkClient`
+/// established; only genuine transport failures still throw.
+async function asData(call: () => Promise<Record<string, JSONValue>>): Promise<Record<string, JSONValue>> {
+  try {
+    return await call()
+  } catch (e) {
+    if (e instanceof LoFiRequestError) return { error: e.message, error_status: e.status }
+    throw e
+  }
+}
+
+/// Sets the account's email — a change of address, or the first claim on an
+/// anonymous account. The server stores it as `pending_email` and mails a
+/// confirmation link; it becomes the account's real `email` only once that
+/// link is followed, so a typo can never hand the account to a stranger.
+async function setAccountEmail({ email }: { email: string }, _ctx: HookContext): Promise<Record<string, JSONValue>> {
+  return asData(async () => {
+    const response = await request('PATCH', `v1/accounts/${await currentAccountUuid()}`, {
+      account: { pending_email: email },
+    })
+    // A 2xx is not proof the address was taken. A captive portal or proxy
+    // answering 200 with HTML parses to `{}`, and strong params drop a
+    // field the server declined to accept — both would otherwise reach the
+    // operator as "Confirmation sent", for a change that will never arrive.
+    // Either landing spot counts: normally the address becomes
+    // `pending_email`, but re-entering the CONFIRMED address cancels a
+    // pending change, and the server clears `pending_email` rather than
+    // echoing it back (`Account#send_confirmation_for_pending_email`).
+    const account = response.account as Record<string, JSONValue> | undefined
+    const sent = normalizedEmail(email)
+    if (normalizedEmail(account?.pending_email) !== sent && normalizedEmail(account?.email) !== sent) {
+      throw new LoFiRequestError('The sync server did not accept that address', response.status as number ?? 502)
+    }
+    return response
+  })
+}
+
+/// Mails the confirmation link again for an address change already in
+/// flight. A 422 here means there is no pending address (the change landed,
+/// or was never made) — data, not a failure.
+async function resendAccountEmail(
+  _args: Record<string, never>,
+  _ctx: HookContext,
+): Promise<Record<string, JSONValue>> {
+  return asData(async () => request('POST', `v1/accounts/${await currentAccountUuid()}/resend_email`))
+}
+
+/// The confirming side of linking: finds the pending request matching a
+/// challenge code the operator read off the other device. The server scopes
+/// the search to this account and to unexpired pending permissions, so a
+/// stale or wrong code simply matches nothing.
+async function findLinkRequest(
+  { challenge_token }: { challenge_token: string },
+  _ctx: HookContext,
+): Promise<Record<string, JSONValue>> {
+  return asData(async () => {
+    const account = await currentAccountUuid()
+    return request('GET', `v1/accounts/${account}/permissions?challenge_token=${encodeURIComponent(challenge_token)}`)
+  })
+}
+
+/// The same lookup for a request that arrived as a `link_client` deep link:
+/// the other device's uuid plus the token from the QR payload, which
+/// identify an "orphaned" permission — one created with no account behind
+/// it, precisely so that whoever scans it decides which account it joins.
+async function findLinkRequestByClient(
+  { client, challenge_token }: { client: string; challenge_token: string },
+  _ctx: HookContext,
+): Promise<Record<string, JSONValue>> {
+  return asData(async () => {
+    const account = await currentAccountUuid()
+    return request(
+      'GET',
+      `v1/accounts/${account}/permissions/${encodeURIComponent(client)}?challenge_token=${encodeURIComponent(challenge_token)}`,
+    )
+  })
+}
+
+/// Grants the request: the other device joins this account. [challenge_token]
+/// is required for an orphaned (QR) permission — it is what attaches the
+/// permission to this account — and ignored for one already raised against
+/// it by email.
+async function approveLinkRequest(
+  { client, challenge_token }: { client: string; challenge_token?: string },
+  _ctx: HookContext,
+): Promise<Record<string, JSONValue>> {
+  return asData(async () => {
+    const account = await currentAccountUuid()
+    return request('PATCH', `v1/accounts/${account}/permissions/${encodeURIComponent(client)}`, {
+      permission: { status: 'active' },
+      ...(challenge_token ? { challenge_token } : {}),
+    })
+  })
 }
 
 /// Registers this device with the sync server if it hasn't been already —

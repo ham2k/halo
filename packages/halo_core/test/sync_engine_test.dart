@@ -17,10 +17,18 @@ class _FakeSyncSettings extends SyncSettings {
   @override
   String operatorCall = 'KI2D';
 
+  /// Fires after every write, so a test can act at the exact moment a
+  /// particular key lands — the only way to hit a race whose window is one
+  /// await wide.
+  void Function(Map<String, dynamic> state)? onStateSet;
+
   _FakeSyncSettings({Map<String, dynamic>? state}) : state = state ?? const {};
 
   @override
-  Future<void> setState(Map<String, dynamic> newState) async => state = newState;
+  Future<void> setState(Map<String, dynamic> newState) async {
+    state = newState;
+    onStateSet?.call(newState);
+  }
 }
 
 typedef _TransportResponder = Map<String, dynamic> Function(String method, Map<String, dynamic> args);
@@ -139,16 +147,61 @@ void main() {
 
     transport.responder = (method, args) => throw StateError('server unreachable');
 
-    await reportingEngine.runOneRound();
-
     // Every failure mode (HTTP error, auth rejection, a dead extension
-    // runtime) funnels into this one catch — onError must fire alongside
-    // the plain-text log, not instead of it, so "not syncing" reports are
-    // actually diagnosable (issue: LoFi sync silent failures).
+    // runtime) funnels into this one catch, and it must never be silent —
+    // "not syncing" has to stay diagnosable. The log takes every failure
+    // from the first.
+    await reportingEngine.runOneRound();
     expect(loggedLines, hasLength(1));
+    // ...but the loop retries forever, so crash-reporting the first failure
+    // files an event every few minutes for as long as a device is offline.
+    expect(reported, isEmpty);
+
+    for (var i = 1; i < SyncEngine.errorReportThreshold; i++) {
+      await reportingEngine.runOneRound();
+    }
+    expect(loggedLines, hasLength(SyncEngine.errorReportThreshold));
     expect(reported, hasLength(1));
     expect(reported.single.$1, isA<StateError>());
     expect(reported.single.$3, contains('sync:round'));
+
+    // And exactly once: past the threshold a permanently offline device
+    // would otherwise just trade a flood of first failures for a flood of
+    // streak reports.
+    await reportingEngine.runOneRound();
+    await reportingEngine.runOneRound();
+    expect(reported, hasLength(1));
+  });
+
+  test('a round that succeeds resets the streak, so the next failure is a blip again', () async {
+    final reported = <(Object, StackTrace?, String?)>[];
+    final resettingEngine = SyncEngine(
+      operations: operations,
+      qsos: qsos,
+      transport: transport.call,
+      settings: settings,
+      onError: (error, stackTrace, {context}) => reported.add((error, stackTrace, context)),
+    );
+    addTearDown(resettingEngine.dispose);
+
+    var failing = true;
+    transport.responder = (method, args) {
+      if (failing) throw StateError('server unreachable');
+      return const {};
+    };
+
+    // Two failures, a success, then two more: four failures, never three in
+    // a row. Without the reset, a flaky connection reports for what is
+    // really an intermittent one.
+    await resettingEngine.runOneRound();
+    await resettingEngine.runOneRound();
+    failing = false;
+    await resettingEngine.runOneRound();
+    failing = true;
+    await resettingEngine.runOneRound();
+    await resettingEngine.runOneRound();
+
+    expect(reported, isEmpty);
   });
 
   test('runOneRound does nothing when sync is disabled', () async {
@@ -329,16 +382,133 @@ void main() {
     });
 
     test('a never-linked device only calls getAccountData, never pushes or pulls real data', () async {
+      // Both sides hold a log, so the change is one only the user can
+      // settle — see the silent-adoption tests below for the other case.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
       transport.responder = (method, args) {
         expect(method, 'getAccountData');
         return {
           'current_account': {'uuid': 'acct-new'},
+          'operations': {'total': 3},
+          'qsos': {'total': 42},
         };
       };
 
       await engine.runOneRound();
 
       expect(transport.calls, hasLength(1));
+      expect(settings.state['pendingAccountUUID'], 'acct-new');
+      expect(settings.state['lastSyncAccountUUID'], isNull);
+    });
+
+    test('a device with nothing logged adopts a new account without asking', () async {
+      transport.responder = (method, args) => method == 'getAccountData'
+          ? {
+              'current_account': {'uuid': 'acct-new'},
+              'operations': {'total': 3},
+              'qsos': {'total': 42},
+            }
+          : const {};
+
+      await engine.runOneRound();
+
+      // Resolved as combine on the user's behalf: nothing local to lose, so
+      // the banner would be a question with one answer.
+      expect(settings.state['pendingAccountUUID'], isNull);
+      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+    });
+
+    test('an operation with no QSOs in it is not data worth asking about', () async {
+      // A container, not a log — combining merges it in rather than losing
+      // it, which is why the test is on the QSO count alone.
+      await operations.create(stationCall: 'KI2D');
+      transport.responder = (method, args) => method == 'getAccountData'
+          ? {
+              'current_account': {'uuid': 'acct-new'},
+              'qsos': {'total': 42},
+              'operations': {'total': 3},
+            }
+          : const {};
+
+      await engine.runOneRound();
+
+      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+      expect(settings.state['pendingAccountUUID'], isNull);
+    });
+
+    test('an empty account is adopted without asking even when this device has a log', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      transport.responder = (method, args) => method == 'getAccountData'
+          ? {
+              'current_account': {'uuid': 'acct-new'},
+              'operations': {'total': 0},
+              'qsos': {'total': 0},
+            }
+          : const {};
+
+      await engine.runOneRound();
+
+      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+      expect(settings.state['pendingAccountUUID'], isNull);
+      // Combine, not replace: the local log is still here and re-dirtied so
+      // it uploads into the account.
+      expect(await operations.byUuids([op.uuid]), isNotEmpty);
+      expect(await qsos.hasUnsynced(), isTrue);
+    });
+
+    test('the user answering the banner mid-check wins over the silent adoption', () async {
+      // The banner goes live the instant pendingAccountUUID is written, so
+      // it can be answered while the emptiness check is still awaiting. If
+      // that check then adopts anyway it overwrites a real decision with a
+      // guess — and since Replace empties the local log, the check would
+      // find nothing and adopt every time.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      transport.responder = (method, args) => {
+            'current_account': {'uuid': 'acct-new'},
+            'operations': {'total': 0},
+            'qsos': {'total': 0},
+          };
+      // Every account this device is told it belongs to, in order. The end
+      // state alone proves nothing here: a de-link leaves `lastSyncAccountUUID`
+      // null, the next round re-enters the never-linked branch, and — over
+      // the log Replace just emptied — silently adopts the same account
+      // again. The damage is real and the final value looks correct, so the
+      // assertion has to be on the history.
+      final linkedTo = <Object?>[];
+      settings.onStateSet = (state) {
+        if (state.containsKey('lastSyncAccountUUID')) linkedTo.add(state['lastSyncAccountUUID']);
+        // Answer the banner the instant it goes live, the way a tap would —
+        // which is the instant pendingAccountUUID is written, mid-round.
+        if (state['pendingAccountUUID'] == null) return;
+        unawaited(engine.resolveAccountChange(SyncAccountChoice.replace));
+      };
+
+      await engine.runOneRound();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(linkedTo, isNot(contains(null)), reason: 'a null lastSyncAccountUUID is a device that forgot its account');
+      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+      expect(settings.state['pendingAccountUUID'], isNull);
+      // Replace's answer stands — the local log really was backed up and
+      // cleared, not merged.
+      expect(await operations.byUuids([op.uuid]), isEmpty);
+    });
+
+    test('an account reporting no counts at all is still asked about', () async {
+      // Silence is not "empty". Reading a payload that predates these
+      // fields as an empty account would merge this device's log into a
+      // stranger's history without ever asking.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      transport.responder = (method, args) => {
+            'current_account': {'uuid': 'acct-new'},
+          };
+
+      await engine.runOneRound();
+
       expect(settings.state['pendingAccountUUID'], 'acct-new');
       expect(settings.state['lastSyncAccountUUID'], isNull);
     });
@@ -663,22 +833,71 @@ void main() {
 
     test('an account change mid-stream pauses sync without merging that response', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
-      transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-2'}, // a different account than expected
-            'qsos': [
-              {
-                'uuid': 'suspect-qso',
-                'operation': 'op1',
-                'their': {'call': 'SHOULDNOTMERGE'},
-              },
-            ],
-          };
+      // Local data, so the change is the user's to settle; without it the
+      // engine would adopt acct-2 silently and this would prove nothing.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      transport.responder = (method, args) => method == 'getAccountData'
+          ? {
+              'operations': {'total': 3},
+              'qsos': {'total': 42},
+            }
+          : {
+              'account': {'uuid': 'acct-2'}, // a different account than expected
+              'qsos': [
+                {
+                  'uuid': 'suspect-qso',
+                  'operation': 'op1',
+                  'their': {'call': 'SHOULDNOTMERGE'},
+                },
+              ],
+            };
 
       await engine.runOneRound();
 
       expect(settings.state['pendingAccountUUID'], 'acct-2');
       expect(settings.state['lastSyncAccountUUID'], 'acct-1'); // unchanged until resolved
       expect(await qsos.watchForOperation('op1').first, isEmpty); // not merged
+    });
+
+    test('a mid-stream change into an EMPTY account is adopted silently, fetching to find out', () async {
+      // The only path that makes _canAdoptAccountSilently spend its own
+      // network call: local log present, so the cheap check says nothing,
+      // and the `sync` response carries no totals to judge the account by.
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final methods = <String>[];
+      transport.responder = (method, args) {
+        methods.add(method);
+        return method == 'getAccountData'
+            ? {'operations': {'total': 0}, 'qsos': {'total': 0}}
+            : {'account': {'uuid': 'acct-2'}};
+      };
+
+      await engine.runOneRound();
+
+      expect(methods, contains('getAccountData'));
+      expect(settings.state['lastSyncAccountUUID'], 'acct-2');
+      expect(settings.state['pendingAccountUUID'], isNull);
+      // Combine, not replace — the local log is kept and re-dirtied so it
+      // uploads into the account it just joined.
+      expect(await operations.byUuids([op.uuid]), isNotEmpty);
+      expect(await qsos.hasUnsynced(), isTrue);
+    });
+
+    test('an account change mid-stream is adopted silently when this device has nothing logged', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      transport.responder = (method, args) => method == 'getAccountData'
+          ? const {}
+          : {
+              'account': {'uuid': 'acct-2'},
+            };
+
+      await engine.runOneRound();
+
+      expect(settings.state['pendingAccountUUID'], isNull);
+      expect(settings.state['lastSyncAccountUUID'], 'acct-2');
     });
 
     test('forceFullResync (SYNCALL) backs up and clears data without touching account state', () async {
@@ -725,9 +944,14 @@ void main() {
       expect(errorRounds, 0, reason: 'and must not be logged as a failed round');
     });
 
-    test('a real transport failure IS still counted and reported', () async {
+    test('a real transport failure IS still counted, and reported once it persists', () async {
       // The point of the new exception type is to distinguish the two; if this
       // stopped reporting, the fix would have silenced genuine outages.
+      // Reporting waits for a streak (errorReportThreshold) so an offline
+      // device doesn't file an event every few minutes — but a genuine
+      // outage must still arrive, and must still be COUNTED from the very
+      // first round, which is what keeps it distinguishable from a
+      // transport that simply hasn't loaded.
       Object? reported;
       var errorRounds = 0;
       final broken = _FakeTransport((method, args) => throw StateError('network exploded'));
@@ -744,9 +968,15 @@ void main() {
       addTearDown(e.dispose);
 
       await e.runOneRound();
+      expect(errorRounds, 1, reason: 'counted from the first, unlike a not-ready transport');
+      expect(reported, isNull, reason: 'one failure is the network, not a defect');
+
+      for (var i = 1; i < SyncEngine.errorReportThreshold; i++) {
+        await e.runOneRound();
+      }
 
       expect(reported, isA<StateError>());
-      expect(errorRounds, 1);
+      expect(errorRounds, SyncEngine.errorReportThreshold);
     });
   });
 

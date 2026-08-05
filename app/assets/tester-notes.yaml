@@ -49,6 +49,9 @@ upcoming:
     - "New **SET**, **SHOW** and **HIDE** commands — change a setting by name from the command bar"
     - "**All Settings** search now matches letters in order, like VS Code's file search"
     - "Adding a contest from the Operation Setup search now opens its setup form"
+    - "Sync now starts on for new installs only — check yours didn't change"
+    - "Change your account email from the **Account** row in LoFi Cloud Sync"
+    - "New **Connection Requests** row approves another device joining your account"
 
 "126":
   changes:

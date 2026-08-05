@@ -568,6 +568,17 @@
       "refresh": "Refresh",
       "switchAccounts": "Switch Accounts",
       "switchAccountsDescription": "Link this device to another account with a QR code or email",
+      "connectionRequests": "Connection Requests",
+      "connectionRequestsDescription": {
+        "one": "A device is waiting to join this account",
+        "other": "${n} devices are waiting to join this account"
+      },
+      "accountEmailTitle": "Account email",
+      "accountEmailSent": "Confirmation sent to ${email}. Open the link there to finish the change.",
+      "resendConfirmation": "Resend Confirmation Email",
+      "resendConfirmationDescription": "Waiting on ${email}",
+      "accountEmailResent": "Sent again to ${email}.",
+      "deviceLinked": "That device is now linked to this account.",
       "checking": "Checking…",
       "notLinked": "Not linked yet",
       "linkedAccount": "${account} (#${id})",
@@ -937,6 +948,21 @@
     "anonymous": "Anonymous Account (#${id})",
     "pendingConfirmation": "${email} (pending confirmation)",
     "pendingConfirmationWithId": "${email} (pending confirmation - #${id})"
+  },
+  "confirmDevice": {
+    "title": "Confirm a Device",
+    "codePrompt": "Enter the code shown on the device that wants to join this account.",
+    "code": "Code",
+    "lookUp": "Look Up",
+    "codeNotFound": "No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.",
+    "linkExpired": "That link has expired. Ask the other device to show a new QR code.",
+    "areYouSure": "Link ${device} to this account?",
+    "unnamedDevice": "an unnamed device",
+    "grantWarning": "It will be able to read and change every operation and QSO in this account.",
+    "needsSyncTitle": "This device does not sync yet",
+    "needsSyncText": "Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.",
+    "malformedRequest": "The sync server sent a request this app could not read. Ask the other device to try again.",
+    "linkIt": "Yes, Link It"
   },
   "switchAccounts": {
     "noAccountDetails": "No account details yet",

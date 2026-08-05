@@ -773,7 +773,23 @@ single object with `sync`/`getAccountData`/`linkClient`/
 `linkClientWithEmail` methods — `linkClient` (optional) requests a link
 permission (pending challenge code for an email, immediately-active for an
 already-permitted account, or a blank permission for QR-code linking) and
-returns server rejections as `{ error, error_status }` data. `submitReport`
+returns server rejections as `{ error, error_status }` data.
+
+The account-management methods are all optional and all follow that same
+"a rejection is data, not a throw" convention, because every one of them
+reports to an operator in the middle of an action: `setAccountEmail` /
+`resendAccountEmail` change the address that identifies the account (it
+stays pending until the operator opens a mailed confirmation link, so a
+typo can never hand the account to a stranger), and `findLinkRequest` /
+`findLinkRequestByClient` / `approveLinkRequest` are the CONFIRMING side of
+linking — where `linkClient` asks to join some other account, these let
+this device admit another one into its own, from a typed challenge code or
+from the `com.ham2k:///link_client?id=…&token=…` deep link a requesting
+device's QR code carries. `approveLinkRequest` must be given the
+`challenge_token` for a blank/QR permission: that token is what binds a
+permission created with no account behind it to this one.
+
+`submitReport`
 (optional) files a report the host composed — the equipment editor's radio
 report — as a real CaBo card; the host writes the title, body and kind, the
 transport adds who/where/what-build and owns the account gate.

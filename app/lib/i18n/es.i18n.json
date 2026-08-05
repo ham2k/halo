@@ -568,6 +568,17 @@
       "refresh": "Actualizar",
       "switchAccounts": "Cambiar de cuenta",
       "switchAccountsDescription": "Vincula este dispositivo a otra cuenta con un código QR o por email",
+      "connectionRequests": "Solicitudes de conexión",
+      "connectionRequestsDescription": {
+        "one": "Un dispositivo espera unirse a esta cuenta",
+        "other": "${n} dispositivos esperan unirse a esta cuenta"
+      },
+      "accountEmailTitle": "Email de la cuenta",
+      "accountEmailSent": "Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.",
+      "resendConfirmation": "Reenviar email de confirmación",
+      "resendConfirmationDescription": "Esperando a ${email}",
+      "accountEmailResent": "Enviado de nuevo a ${email}.",
+      "deviceLinked": "Ese dispositivo ya está vinculado a esta cuenta.",
       "checking": "Comprobando…",
       "notLinked": "Aún no vinculado",
       "linkedAccount": "${account} (#${id})",
@@ -937,6 +948,21 @@
     "anonymous": "Cuenta anónima (#${id})",
     "pendingConfirmation": "${email} (pendiente de confirmación)",
     "pendingConfirmationWithId": "${email} (pendiente de confirmación - #${id})"
+  },
+  "confirmDevice": {
+    "title": "Confirmar un dispositivo",
+    "codePrompt": "Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.",
+    "code": "Código",
+    "lookUp": "Buscar",
+    "codeNotFound": "Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.",
+    "linkExpired": "Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.",
+    "areYouSure": "¿Vincular ${device} a esta cuenta?",
+    "unnamedDevice": "un dispositivo sin nombre",
+    "grantWarning": "Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.",
+    "needsSyncTitle": "Este dispositivo aún no sincroniza",
+    "needsSyncText": "Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.",
+    "malformedRequest": "El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.",
+    "linkIt": "Sí, vincularlo"
   },
   "switchAccounts": {
     "noAccountDetails": "Aún sin detalles de la cuenta",

@@ -271,12 +271,30 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
-  /// Sync is opt-in — off until the user turns it on in Settings.
+  /// Whether this device syncs its log. [seedSyncEnabledDefault] writes the
+  /// key at first boot, so the bare fallback here is only ever reached
+  /// before that has run.
   bool get syncEnabled => _prefs.getBool(_syncEnabledKey) ?? false;
 
   Future<void> setSyncEnabled(bool enabled) async {
     await _prefs.setBool(_syncEnabledKey, enabled);
     notifyListeners();
+  }
+
+  /// Decides, once per install, whether sync starts on: yes for a new
+  /// install, no for one that predates this default.
+  ///
+  /// The distinction has to be recorded rather than defaulted. Flipping the
+  /// getter's fallback to true would turn sync on for every existing device
+  /// whose owner deliberately left the toggle alone, and the first they'd
+  /// know of it is their log appearing in the cloud after an app update.
+  /// [defaultProfileCallsignDefined] is the same "has this device ever been
+  /// through onboarding" signal [seedFirstUseOnboardingForExistingUsers]
+  /// uses, and this runs beside it at boot — before onboarding can set a
+  /// callsign, so a genuinely new install still reads as new.
+  Future<void> seedSyncEnabledDefault() async {
+    if (_prefs.containsKey(_syncEnabledKey)) return;
+    await setSyncEnabled(!defaultProfileCallsignDefined);
   }
 
   /// A stable opaque per-install identifier for the LoFi sync server (the

@@ -68,6 +68,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
 	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
 	late final Translations$syncAccount$en syncAccount = Translations$syncAccount$en.internal(_root);
+	late final Translations$confirmDevice$en confirmDevice = Translations$confirmDevice$en.internal(_root);
 	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
 }
 
@@ -1256,6 +1257,54 @@ class Translations$syncAccount$en {
 	String pendingConfirmationWithId({required Object email, required Object id}) => '${email} (pending confirmation - #${id})';
 }
 
+// Path: confirmDevice
+class Translations$confirmDevice$en {
+	Translations$confirmDevice$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Confirm a Device'
+	String get title => 'Confirm a Device';
+
+	/// en: 'Enter the code shown on the device that wants to join this account.'
+	String get codePrompt => 'Enter the code shown on the device that wants to join this account.';
+
+	/// en: 'Code'
+	String get code => 'Code';
+
+	/// en: 'Look Up'
+	String get lookUp => 'Look Up';
+
+	/// en: 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.'
+	String get codeNotFound => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.';
+
+	/// en: 'That link has expired. Ask the other device to show a new QR code.'
+	String get linkExpired => 'That link has expired. Ask the other device to show a new QR code.';
+
+	/// en: 'Link ${device} to this account?'
+	String areYouSure({required Object device}) => 'Link ${device} to this account?';
+
+	/// en: 'an unnamed device'
+	String get unnamedDevice => 'an unnamed device';
+
+	/// en: 'It will be able to read and change every operation and QSO in this account.'
+	String get grantWarning => 'It will be able to read and change every operation and QSO in this account.';
+
+	/// en: 'This device does not sync yet'
+	String get needsSyncTitle => 'This device does not sync yet';
+
+	/// en: 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.'
+	String get needsSyncText => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.';
+
+	/// en: 'The sync server sent a request this app could not read. Ask the other device to try again.'
+	String get malformedRequest => 'The sync server sent a request this app could not read. Ask the other device to try again.';
+
+	/// en: 'Yes, Link It'
+	String get linkIt => 'Yes, Link It';
+}
+
 // Path: switchAccounts
 class Translations$switchAccounts$en {
 	Translations$switchAccounts$en.internal(this._root);
@@ -1948,6 +1997,33 @@ class Translations$settings$syncPanel$en {
 
 	/// en: 'Link this device to another account with a QR code or email'
 	String get switchAccountsDescription => 'Link this device to another account with a QR code or email';
+
+	/// en: 'Connection Requests'
+	String get connectionRequests => 'Connection Requests';
+
+	/// en: '(one) {A device is waiting to join this account} (other) {${n} devices are waiting to join this account}'
+	String connectionRequestsDescription({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'A device is waiting to join this account',
+		other: '${n} devices are waiting to join this account',
+	);
+
+	/// en: 'Account email'
+	String get accountEmailTitle => 'Account email';
+
+	/// en: 'Confirmation sent to ${email}. Open the link there to finish the change.'
+	String accountEmailSent({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.';
+
+	/// en: 'Resend Confirmation Email'
+	String get resendConfirmation => 'Resend Confirmation Email';
+
+	/// en: 'Waiting on ${email}'
+	String resendConfirmationDescription({required Object email}) => 'Waiting on ${email}';
+
+	/// en: 'Sent again to ${email}.'
+	String accountEmailResent({required Object email}) => 'Sent again to ${email}.';
+
+	/// en: 'That device is now linked to this account.'
+	String get deviceLinked => 'That device is now linked to this account.';
 
 	/// en: 'Checking…'
 	String get checking => 'Checking…';
@@ -3608,6 +3684,14 @@ extension on Translations {
 			'settings.syncPanel.refresh' => 'Refresh',
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
+			'settings.syncPanel.connectionRequests' => 'Connection Requests',
+			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
+			'settings.syncPanel.accountEmailTitle' => 'Account email',
+			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
+			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
+			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
+			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Sent again to ${email}.',
+			'settings.syncPanel.deviceLinked' => 'That device is now linked to this account.',
 			'settings.syncPanel.checking' => 'Checking…',
 			'settings.syncPanel.notLinked' => 'Not linked yet',
 			'settings.syncPanel.linkedAccount' => ({required Object account, required Object id}) => '${account} (#${id})',
@@ -3692,6 +3776,8 @@ extension on Translations {
 			'settings.station.reportManufacturer' => 'Manufacturer',
 			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportModel' => 'Model',
 			'settings.station.reportModelDescription' => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".',
 			'settings.station.reportModelRequired' => 'A model is required',
@@ -3700,8 +3786,6 @@ extension on Translations {
 			'settings.station.reportOutcomeIssues' => 'Worked, with issues',
 			'settings.station.reportOutcomeFails' => 'Didn\'t work at all',
 			'settings.station.reportOutcomeRequired' => 'Please tell us how it went',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportComments' => 'Comments',
 			'settings.station.reportCommentsPlaceholder' => 'What worked, what didn\'t, anything that surprised you.',
 			'settings.station.reportHints' => 'Troubleshooting hints',
@@ -3921,6 +4005,19 @@ extension on Translations {
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
+			'confirmDevice.title' => 'Confirm a Device',
+			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
+			'confirmDevice.code' => 'Code',
+			'confirmDevice.lookUp' => 'Look Up',
+			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
+			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
+			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',
+			'confirmDevice.unnamedDevice' => 'an unnamed device',
+			'confirmDevice.grantWarning' => 'It will be able to read and change every operation and QSO in this account.',
+			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
+			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
+			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
+			'confirmDevice.linkIt' => 'Yes, Link It',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',

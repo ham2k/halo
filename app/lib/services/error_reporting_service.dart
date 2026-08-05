@@ -106,6 +106,54 @@ class ErrorReportingService {
     _backend.captureException(error, stackTrace, context: context);
   }
 
+  /// Consecutive failures per [reportIfRepeated] key. Process-wide and
+  /// never persisted: "stuck" is a claim about this session.
+  static final Map<String, int> _failureStreaks = {};
+
+  /// How many consecutive failures make a call worth reporting.
+  static const repeatedFailureThreshold = 3;
+
+  /// Reports [error] only once the same [key] has failed
+  /// [repeatedFailureThreshold] times in a row, and only on the attempt that
+  /// reaches that count.
+  ///
+  /// For a recoverable call the operator triggers by hand, a single failure
+  /// is almost always the world being unreliable — a tunnel, a captive
+  /// portal, a server restarting — and uploading it tells nobody anything
+  /// they can act on. The same call failing every single time is a defect,
+  /// and without this its only trace is a support message describing a
+  /// button that did nothing.
+  ///
+  /// Firing exactly AT the threshold rather than at-or-above it is the
+  /// point: a permanently broken call would otherwise just trade a flood of
+  /// single failures for a flood of streak reports. [recordSuccess] is what
+  /// makes the count mean "stuck right now" instead of "unlucky a few times
+  /// over a long session" — pair the two on every call site, or the streak
+  /// only ever grows.
+  ///
+  /// Still policy-gated, like [report]: a streak of known noise stays noise.
+  static void reportIfRepeated(
+    String key,
+    Object error,
+    StackTrace? stackTrace, {
+    String? context,
+    int threshold = repeatedFailureThreshold,
+  }) {
+    final streak = (_failureStreaks[key] ?? 0) + 1;
+    _failureStreaks[key] = streak;
+    if (streak != threshold) return;
+    report(error, stackTrace, context: '${context ?? key} (failed $streak times in a row)');
+  }
+
+  /// Clears [key]'s streak — call on every success of a call that reports
+  /// through [reportIfRepeated].
+  static void recordSuccess(String key) {
+    _failureStreaks.remove(key);
+  }
+
+  @visibleForTesting
+  static void resetFailureStreaks() => _failureStreaks.clear();
+
   /// Called once bootstrap() has services; from then on the first runtime
   /// error of the session also posts a dismissible StatusBar notice.
   static void attachStatusBar(StatusBarService statusBar) {

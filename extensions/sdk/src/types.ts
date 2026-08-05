@@ -1188,6 +1188,31 @@ export interface SyncTransportHook {
   /// gracefully when it's missing.
   linkClient?(args: { email?: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   linkClientWithEmail(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// Sets the account's email address — a change, or the first claim on an
+  /// anonymous account. The address starts out pending and is confirmed by
+  /// following a link the server mails; [resendAccountEmail] sends that
+  /// again. Both return `{ error, error_status }` data for a rejection the
+  /// operator caused (address taken, nothing pending) rather than throwing.
+  /// Optional, so transports predating this contract keep compiling.
+  setAccountEmail?(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  resendAccountEmail?(args: Record<string, never>, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// The confirming side of linking, where [linkClient] is the requesting
+  /// side: find the pending request a challenge code or a `link_client` deep
+  /// link refers to, then grant it. `challenge_token` is required to approve
+  /// an orphaned (QR) permission — it is what binds that permission to this
+  /// account — and ignored for one already raised against it by email.
+  /// Rejections arrive as `{ error, error_status }` data: an expired or
+  /// mistyped code is an ordinary outcome of the flow, not a fault.
+  /// Optional, so transports predating this contract keep compiling.
+  findLinkRequest?(args: { challenge_token: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  findLinkRequestByClient?(
+    args: { client: string, challenge_token: string },
+    ctx: HookContext,
+  ): Promise<Record<string, JSONValue>>
+  approveLinkRequest?(
+    args: { client: string, challenge_token?: string },
+    ctx: HookContext,
+  ): Promise<Record<string, JSONValue>>
   /// Ensures this device is registered with the sync server, independent of
   /// whether the operator has QSO sync enabled — registration establishes
   /// device identity and the realtime push channel, it does not push any log
@@ -1368,7 +1393,7 @@ export interface ExtensionDefinition extends ExtensionManifest {
 }
 
 export interface FetchOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   /**
    * Extra request headers. Note: the host stamps HaLo's canonical
    * `User-Agent` on every request and it overrides any you set here, so

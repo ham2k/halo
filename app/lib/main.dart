@@ -26,6 +26,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/command_dialog.dart';
+import 'views/confirm_device_dialog.dart';
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
 import 'views/settings_view.dart';
@@ -201,6 +202,8 @@ void _mainBody({
     // Fire-and-forget; no-op off desktop / in debug / for the Dev edition.
     unawaited(const AutoUpdateService().start());
 
+    _listenForLinkClientDeepLinks(services);
+
     // Wire window.__halo.resetFixture() to a real reset now that services
     // exist — only in dev/web where the bridge is installed.
     if (DevBridge.instance.installed) {
@@ -230,6 +233,84 @@ void _mainBody({
     // unrelated unhandled-rejection for the openFirstOp dev nicety above.
     debugPrint('[boot] bootstrap() failed: $error');
   });
+}
+
+/// Opens the "Confirm a device" pane for an incoming `link_client` deep
+/// link — the QR code a device asking to join this account displays (see
+/// [DeepLinkService.linkClientRequest]).
+///
+/// App-wide rather than owned by the Sync settings panel: the operator scans
+/// that QR with a phone camera and the OS hands the link to whatever the app
+/// happens to be showing, which is rarely Settings. A link arriving before
+/// the first frame has no navigator to open onto and is dropped; the code
+/// entry in the same pane is the way back from that.
+void _listenForLinkClientDeepLinks(HaLoServices services) {
+  services.deepLinks.links.listen((uri) {
+    final request = DeepLinkService.linkClientRequest(uri);
+    if (request == null) return;
+    // A device with no account of its own has nothing to admit anybody to,
+    // and the pane would open only to report that. Says so where the
+    // operator is looking instead — they just scanned a code and are owed
+    // an answer either way.
+    if (!services.settings.syncEnabled) {
+      services.statusBar.showNotice(
+        key: 'sync:link-request-needs-sync',
+        icon: 'cloud-off',
+        title: t.confirmDevice.needsSyncTitle,
+        text: t.confirmDevice.needsSyncText,
+        actions: [
+          StatusBarAction(
+            label: t.settings.syncPanel.openSettings,
+            onTap: () => navigatorKey.currentState?.push(
+              MaterialPageRoute(builder: (_) => SettingsView(services: services, initialPanel: 'sync')),
+            ),
+          ),
+        ],
+      );
+      return;
+    }
+    _openConfirmDevicePane(services, request);
+  });
+}
+
+/// Opens the pane once there is a navigator to open it onto.
+///
+/// A deep link that cold-launches the app arrives while the first frame is
+/// still being built, and dropping it there is invisible to the operator:
+/// for a QR request there is no code to fall back to typing, and no
+/// Connection Requests row either, since a blank permission has no account
+/// behind it for `pending_challenges` to count. Retries on the same cadence
+/// [maybeShowExpiredBuildDialog] uses for the same reason.
+void _openConfirmDevicePane(
+  HaLoServices services,
+  ({String clientUuid, String challengeToken}) request, {
+  int attemptsLeft = 20,
+}) {
+  final context = navigatorKey.currentContext;
+  if (context == null) {
+    if (attemptsLeft <= 0) {
+      debugPrint('[deep-link] link_client dropped: no navigator after 5s');
+      return;
+    }
+    Timer(const Duration(milliseconds: 250),
+        () => _openConfirmDevicePane(services, request, attemptsLeft: attemptsLeft - 1));
+    return;
+  }
+  unawaited(showConfirmDeviceDialog(
+      context,
+      findByCode: services.extensions.syncFindLinkRequest,
+      findByClient: services.extensions.syncFindLinkRequestByClient,
+      approve: services.extensions.syncApproveLinkRequest,
+      clientUuid: request.clientUuid,
+      challengeToken: request.challengeToken,
+    ).then((linked) {
+      // Re-read rather than reusing the context above: the pane was open
+      // across an arbitrary stretch of the operator's attention.
+      final messengerContext = navigatorKey.currentContext;
+      if (linked != true || messengerContext == null) return;
+      ScaffoldMessenger.of(messengerContext)
+          .showSnackBar(SnackBar(content: Text(t.settings.syncPanel.deviceLinked)));
+    }));
 }
 
 /// Forces the bundled color-emoji font's glyph data to load now, instead of
@@ -489,6 +570,9 @@ Future<HaLoServices> bootstrap({
   // exist yet — but they've already onboarded (see the method doc); a no-op
   // once seeded, so this is safe on every boot.
   await settings.seedFirstUseOnboardingForExistingUsers();
+  // Reads the same "already onboarded" signal, so it must run before
+  // onboarding gets a chance to write a callsign.
+  await settings.seedSyncEnabledDefault();
   LocaleSettings.setLocaleRaw(settings.locale);
   Intl.defaultLocale = settings.locale;
   final services = HaLoServices(
@@ -714,9 +798,14 @@ class HaLoServices {
   /// deployment this build talks to. Empty in a checkout that hasn't filled
   /// them in: [pusher] is then null and every realtime feature falls back
   /// to its polling path rather than crashing.
-  late final PusherService? pusher = (secrets['PUSHER_KEY']?.isEmpty ?? true) || (secrets['PUSHER_CLUSTER']?.isEmpty ?? true)
-      ? null
-      : PusherService(appKey: secrets['PUSHER_KEY']!, cluster: secrets['PUSHER_CLUSTER']!);
+  /// Injectable so a test can drive the realtime path over a fake socket —
+  /// the real one only ever exists in a build whose secrets name a Pusher
+  /// deployment, which no test has.
+  final PusherService? _pusherOverride;
+  late final PusherService? pusher = _pusherOverride ??
+      ((secrets['PUSHER_KEY']?.isEmpty ?? true) || (secrets['PUSHER_CLUSTER']?.isEmpty ?? true)
+          ? null
+          : PusherService(appKey: secrets['PUSHER_KEY']!, cluster: secrets['PUSHER_CLUSTER']!));
 
   /// Registers this device with the sync server — independent of QSO sync
   /// being enabled, deliberately — and, once that succeeds,
@@ -979,7 +1068,9 @@ class HaLoServices {
     LookupQueueService? lookupQueue,
     ExportService? exports,
     CatService? cat,
+    PusherService? pusher,
   })  : _catOverride = cat,
+        _pusherOverride = pusher,
         extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),

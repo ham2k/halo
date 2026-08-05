@@ -13,7 +13,9 @@
 // second state machine layered on top: before ever pushing or pulling real
 // data, the engine confirms which account it's talking to and — the first
 // time that account is new or different from last time — pauses
-// (`pendingAccountUUID`) until the app layer calls [resolveAccountChange].
+// (`pendingAccountUUID`) until the app layer calls [resolveAccountChange],
+// unless [_canAdoptAccountSilently] finds nothing to reconcile and answers
+// on the user's behalf.
 // Only then does it run a backfill (paginating backward through the
 // account's full history) before settling into ordinary forward sync.
 
@@ -123,6 +125,10 @@ class SyncEngine {
   /// report`) rather than wrapping it. Null when the app layer doesn't want
   /// round failures reported (this package stays free of a Sentry/Flutter
   /// dependency itself — file header).
+  ///
+  /// Fires on the round that reaches [errorReportThreshold] consecutive
+  /// failures, and on no other — see the catch in [runOneRound]. [log] still
+  /// takes every one.
   final void Function(Object error, StackTrace? stackTrace, {String? context})? onError;
 
   /// Called once a `sync` round comes back rejected (the transport's
@@ -147,6 +153,16 @@ class SyncEngine {
   static const defaultLoopDelay = Duration(seconds: 20);
   static const maxErrorBackoffShift = 8; // caps the exponential backoff at 2^8s; the loop itself never gives up
   static const authErrorNotifyThreshold = 3; // ~a minute of retries before bothering the user
+
+  /// Consecutive failed rounds before one is worth crash-reporting.
+  ///
+  /// The loop retries forever by design, so reporting every failure files an
+  /// event every few minutes for as long as a device is offline — thousands
+  /// of them, all describing a tunnel, none actionable. Waiting for a streak
+  /// costs nothing real: a deterministic fault repeats every round (a failed
+  /// round marks nothing synced, so the very same batch comes back) and
+  /// still arrives, about a minute late, while a blip never arrives at all.
+  static const errorReportThreshold = 3;
 
   /// Cap for [_backfillLimitBoost] — see `_processResponseMeta`'s
   /// stuck-cursor handling.
@@ -230,6 +246,14 @@ class SyncEngine {
   /// Reconciles local data per [choice], clears the pending state, resets
   /// backfill bookkeeping, and kicks off a round immediately.
   Future<void> resolveAccountChange(SyncAccountChoice choice) async {
+    // Adopting "no account" is not a reconciliation, it's a de-link: the
+    // device forgets which account it belongs to and the next round starts
+    // the whole pending-account dance over, discarding whatever the user
+    // just answered. Only a caller racing another resolution can get here
+    // with nothing pending, and the right move is to let the resolution
+    // that already ran stand.
+    if (settings.state['pendingAccountUUID'] == null) return;
+
     _generation++; // invalidate any round whose transport call is in flight
     if (choice == SyncAccountChoice.replace) {
       await _backupAndClearAll();
@@ -250,6 +274,45 @@ class SyncEngine {
       'latestQSOSyncedAtMillis': null,
     });
     _scheduleLoop(Duration.zero);
+  }
+
+  /// Whether a new or changed account can be adopted without asking the
+  /// user, because one of the two logs about to meet is empty: this device
+  /// has no QSOs, or the account has neither operations nor QSOs. Combine
+  /// and replace then have the same outcome, so the Settings banner would
+  /// be a question with only one answer — and it would greet every new
+  /// install, which starts with sync on and an empty log.
+  ///
+  /// Operations alone don't count as local data worth asking about: an
+  /// operation with no QSOs in it is a container, not a log, and combining
+  /// merges it in rather than losing it.
+  ///
+  /// app-polo's `askAboutMergingAccounts` tests the same two sides but
+  /// additionally requires an operation to exist before it will skip on an
+  /// empty local log. We deliberately don't: there, the rule only runs on a
+  /// *changed* account, where a device with nothing at all is a strange
+  /// state; here the same gate also covers a first link, which is exactly
+  /// the moment a device legitimately has neither operations nor QSOs.
+  ///
+  /// [accountData] is a `getAccountData` payload when the caller already has
+  /// one; null makes this fetch its own — only reached when the local side
+  /// didn't already answer yes. Both totals must be present and zero: a
+  /// payload that reports neither says nothing about the account, and
+  /// reading that silence as "empty" would adopt an account whose history
+  /// this device is about to be merged into unasked.
+  Future<bool> _canAdoptAccountSilently(Map<String, dynamic>? accountData) async {
+    if ((await qsos.syncCounts()).total == 0) return true;
+    final data = accountData ?? await transport('getAccountData', const {});
+    return _accountTotal(data, 'operations') == 0 && _accountTotal(data, 'qsos') == 0;
+  }
+
+  /// One side's record count out of a `getAccountData` payload, or null when
+  /// the payload doesn't carry it. Deliberately shape-tolerant: `qsos` is a
+  /// counts map there but a LIST of records in a `sync` response, and the
+  /// two payloads meet in [_canAdoptAccountSilently].
+  static int? _accountTotal(Map<String, dynamic> data, String side) {
+    final counts = data[side];
+    return counts is Map ? (counts['total'] as num?)?.toInt() : null;
   }
 
   /// The `SYNCALL` debug command: back up and wipe local data, then run a
@@ -344,6 +407,14 @@ class SyncEngine {
         final accountUuid = (response['current_account'] as Map?)?['uuid'] as String?;
         if (accountUuid != null) {
           await settings.setState({...settings.state, 'pendingAccountUUID': accountUuid});
+          // The banner went live the moment that state was written, so the
+          // user may have answered it while this check was awaiting —
+          // adopting now would overwrite their answer with a guess.
+          if (await _canAdoptAccountSilently(response)) {
+            if (generation != _generation) return _abandonRound();
+            await resolveAccountChange(SyncAccountChoice.combine);
+            return;
+          }
         }
         if (!smallBatch) _scheduleLoop(_loopDelay);
         return;
@@ -401,6 +472,15 @@ class SyncEngine {
         // treatment as a fresh link. (Fresh state read: the snapshot above
         // predates the network call.)
         await settings.setState({...settings.state, 'pendingAccountUUID': responseAccountUuid});
+        // A `sync` response carries the bare account, no totals, so the
+        // server side of this test costs its own fetch — which is why it
+        // only happens when the local side didn't already settle it.
+        if (await _canAdoptAccountSilently(null)) {
+          // Same race as the never-linked branch above, and a wider window:
+          // this check makes its own network call.
+          if (generation != _generation) return _abandonRound();
+          await resolveAccountChange(SyncAccountChoice.combine);
+        }
         return;
       }
 
@@ -445,7 +525,13 @@ class SyncEngine {
     } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
-      onError?.call(e, st, context: 'sync:round #$_errorCount${smallBatch ? ' (small batch)' : ''}');
+      // Exactly at the threshold, never past it: a device that stays
+      // offline for a day would otherwise just swap a flood of first
+      // failures for a flood of streak reports. A success resets the count
+      // below, which is what makes it mean "still broken".
+      if (_errorCount == errorReportThreshold) {
+        onError?.call(e, st, context: 'sync:round #$_errorCount${smallBatch ? ' (small batch)' : ''}');
+      }
       // Keep retrying no matter how many failures pile up (an extended
       // outage shouldn't permanently stop the periodic loop) — just cap
       // how far the backoff grows. A failed small-batch round pulls the

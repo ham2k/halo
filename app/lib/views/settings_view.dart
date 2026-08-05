@@ -33,12 +33,14 @@ import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
 import '../services/extension_service.dart';
 import '../services/link_opener.dart';
+import '../services/pusher_service.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/sync_account_identity.dart';
 import 'header_profile_label.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
+import 'confirm_device_dialog.dart';
 import 'experiments_pane.dart';
 import 'extensions_panel.dart';
 import 'station_panel.dart';
@@ -981,18 +983,107 @@ class _SyncPanel extends StatefulWidget {
   State<_SyncPanel> createState() => _SyncPanelState();
 }
 
+/// How often the Sync panel re-asks the server while it's on screen, with
+/// and without a realtime connection to lean on.
+///
+/// api-lofi pushes a `permission` event on the ACCOUNT's channel the moment
+/// another device asks to join (`Permission#notify_listeners`) and an
+/// `account` event when its email settles, so where Pusher is configured
+/// this poll is only a backstop for a socket that dropped — and one that
+/// reconnects on its own inside 30s. Where it isn't (a checkout with no
+/// `PUSHER_KEY`, so `services.pusher` is null), the poll is the *only* way
+/// the Connection Requests row ever appears, which is why the two intervals
+/// are so far apart.
+const syncAccountPollWithRealtime = Duration(seconds: 60);
+const syncAccountPollWithoutRealtime = Duration(seconds: 10);
+
 class _SyncPanelState extends State<_SyncPanel> {
   Map<String, dynamic>? _syncAccount;
   bool _loadingSyncAccount = false;
   int? _localOperationCount;
   int? _localQsoCount;
 
+  Timer? _accountPollTimer;
+  StreamSubscription<PusherEvent>? _accountEvents;
+
+  /// The account's Pusher channel, known only once account data has landed
+  /// (`current_account.push_channel`) — so subscribing happens after a
+  /// fetch, not in [initState].
+  String? _accountChannel;
+
   @override
   void initState() {
     super.initState();
     if (widget.services.settings.syncEnabled) {
       _refreshSyncAccount();
+      _startWatchingAccount();
     }
+  }
+
+  @override
+  void dispose() {
+    _stopWatchingAccount();
+    super.dispose();
+  }
+
+  void _startWatchingAccount() {
+    _accountPollTimer?.cancel();
+    // Keyed on whether a subscription is actually LIVE, not merely on
+    // whether this build has Pusher configured: before the first fetch the
+    // channel is unknown, and a payload that carries none never yields one,
+    // so deciding by `pusher != null` alone would drop those cases to a
+    // 60-second wait with nothing anywhere saying why.
+    final live = widget.services.pusher != null && _accountChannel != null;
+    _accountPollTimer = Timer.periodic(
+      live ? syncAccountPollWithRealtime : syncAccountPollWithoutRealtime,
+      // A poll runs unattended, so anything escaping it escapes into the
+      // zone handler — on a fixed short timer, which would turn one broken
+      // extension call into a notice every ten seconds for as long as this
+      // panel stays open.
+      (_) => unawaited(_refreshSyncAccount(quiet: true).catchError(
+        (Object error) => debugPrint('[sync-panel] background refresh failed: $error'),
+      )),
+    );
+    _accountEvents ??= widget.services.pusher?.events.listen((event) {
+      // Anything the server says about THIS account: a device asking to
+      // join, or the account itself changing (an email confirmed from the
+      // link, possibly on another device entirely).
+      if (event.channel != _accountChannel) return;
+      if (event.event != 'permission' && event.event != 'account') return;
+      unawaited(_refreshSyncAccount(quiet: true));
+    });
+  }
+
+  void _stopWatchingAccount() {
+    _accountPollTimer?.cancel();
+    _accountPollTimer = null;
+    _accountEvents?.cancel();
+    _accountEvents = null;
+    final channel = _accountChannel;
+    if (channel != null) widget.services.pusher?.unsubscribe(channel);
+    _accountChannel = null;
+  }
+
+  /// Keeps the realtime subscription pointed at whatever account the last
+  /// fetch reported — a switch mid-session moves it.
+  void _subscribeToAccountChannel(Map<String, dynamic>? account) {
+    final channel = ((account?['current_account'] as Map?)?['push_channel']) as String?;
+    if (channel == null) {
+      // Not fatal — the poll covers it — but it silently costs realtime, so
+      // it must not be invisible to whoever is wondering why.
+      if (widget.services.pusher != null && _accountChannel == null) {
+        debugPrint('[sync-panel] account payload carries no push_channel — polling only');
+      }
+      return;
+    }
+    if (channel == _accountChannel) return;
+    final previous = _accountChannel;
+    if (previous != null) widget.services.pusher?.unsubscribe(previous);
+    _accountChannel = channel;
+    widget.services.pusher?.subscribe(channel);
+    // Now that a push can wake this panel, back the poll off to its
+    // fallback cadence.
+    if (_accountPollTimer != null) _startWatchingAccount();
   }
 
   /// The local counts are two fast database queries and must not wait on the
@@ -1002,9 +1093,14 @@ class _SyncPanelState extends State<_SyncPanel> {
   /// `syncAccountData` only swallows `ExtensionHostException`, so anything
   /// else (a dead host, a timeout) would otherwise leave the panel stuck on
   /// "Checking…" with no way back — the Refresh button just re-enters here.
-  Future<void> _refreshSyncAccount() async {
+  ///
+  /// [quiet] is for the poll and the push: they must not put the Account row
+  /// back to "Checking…" behind the operator's back, and "not available"
+  /// must not flicker onto the counts row every minute either. Nothing the
+  /// operator asked for is quiet.
+  Future<void> _refreshSyncAccount({bool quiet = false}) async {
     if (!mounted) return;
-    setState(() => _loadingSyncAccount = true);
+    if (!quiet) setState(() => _loadingSyncAccount = true);
     final operations = await widget.services.operations.syncCounts();
     final qsos = await widget.services.qsos.syncCounts();
     if (!mounted) return;
@@ -1015,18 +1111,38 @@ class _SyncPanelState extends State<_SyncPanel> {
     try {
       final account = await widget.services.extensions.syncAccountData();
       if (!mounted) return;
+      // A fetch that couldn't reach the server leaves the panel saying what
+      // it last knew. `syncAccountData` returns null only when the host
+      // call itself failed — a genuinely unlinked device still answers with
+      // a map — so writing that null through would state, falsely and
+      // without explanation, that the account is gone, taking the pending
+      // email, the resend row and the connection-request row with it. The
+      // poll must do it silently; a refresh the operator asked for owes
+      // them the reason.
+      if (account == null) {
+        if (!quiet) _notify(t.switchAccounts.serverUnreachable);
+        return;
+      }
       setState(() => _syncAccount = account);
+      _subscribeToAccountChannel(account);
     } finally {
-      if (mounted) setState(() => _loadingSyncAccount = false);
+      if (mounted && !quiet) setState(() => _loadingSyncAccount = false);
     }
   }
 
   Future<void> _toggleSync(bool enabled) async {
     await widget.services.setSyncEnabled(enabled);
     widget.services.track(enabled ? 'sync_enabled' : 'sync_disabled');
+    // That await reaches secure storage, which can sit on a keyring prompt.
+    // Closing Settings meanwhile already ran dispose(), so starting the
+    // watch now would install a timer and a stream subscription on a dead
+    // State with nothing left to cancel them.
+    if (!mounted) return;
     if (enabled) {
       unawaited(_refreshSyncAccount());
-    } else if (mounted) {
+      _startWatchingAccount();
+    } else {
+      _stopWatchingAccount();
       setState(() {});
     }
   }
@@ -1045,6 +1161,100 @@ class _SyncPanelState extends State<_SyncPanel> {
       unawaited(widget.services.syncEngine.runOneRound());
       unawaited(_refreshSyncAccount());
     }
+  }
+
+  /// The current account map from the last fetch — `null` until one lands.
+  Map<String, dynamic>? get _currentAccount => (_syncAccount?['current_account'] as Map?)?.cast<String, dynamic>();
+
+  /// The address a confirmation is outstanding for, or null when the
+  /// account's email is settled. A `pending_email` equal to the confirmed
+  /// one is not a change in flight — same rule syncAccountIdentity applies.
+  String? get _pendingEmail {
+    final pending = _currentAccount?['pending_email'] as String?;
+    if (pending == null || pending.isEmpty) return null;
+    return pending == _currentAccount?['email'] ? null : pending;
+  }
+
+  /// How many other devices are waiting for this account to let them in —
+  /// `getAccountData`'s `pending_challenges`, which counts only permissions
+  /// raised AGAINST this account. A blank QR permission has no account
+  /// behind it and so never shows up here; that flow arrives as a deep link
+  /// instead and opens the same pane directly.
+  int get _pendingChallenges => (_syncAccount?['pending_challenges'] as num?)?.toInt() ?? 0;
+
+  void _notify(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Surfaces whatever the server said about a rejected account call. Null
+  /// from the transport means it was never reached at all.
+  void _notifyResult(Map<String, dynamic>? result, String success) {
+    if (result == null) {
+      _notify(t.switchAccounts.serverUnreachable);
+    } else if (result['error'] != null) {
+      _notify('${result['error']}');
+    } else {
+      _notify(success);
+    }
+  }
+
+  /// Sets or changes the account's email — the same action claims an
+  /// anonymous account, which is why the row is live even with no address
+  /// yet. The new address only becomes the account's once its confirmation
+  /// link is opened, so this reports "sent", never "changed".
+  Future<void> _editAccountEmail() async {
+    final current = _pendingEmail ?? _currentAccount?['email'] as String? ?? '';
+    final entered = await editOneFieldDialog(
+      context,
+      title: t.settings.syncPanel.accountEmailTitle,
+      fieldLabel: t.switchAccounts.emailAddress,
+      fieldInitial: current,
+      saveLabel: t.common.save,
+    );
+    if (entered == null) return;
+    final email = entered.trim();
+    if (email.isEmpty) return;
+    // Re-typing the address already awaiting confirmation is the gesture of
+    // someone who never got the mail, not a no-op.
+    if (email == current) {
+      if (_pendingEmail != null) await _resendAccountEmail();
+      return;
+    }
+
+    final result = await widget.services.extensions.syncSetAccountEmail(email);
+    if (!mounted) return;
+    _notifyResult(result, t.settings.syncPanel.accountEmailSent(email: email));
+    unawaited(_refreshSyncAccount());
+  }
+
+  bool _resendingEmail = false;
+
+  Future<void> _resendAccountEmail() async {
+    final email = _pendingEmail;
+    if (email == null || _resendingEmail) return;
+    _resendingEmail = true;
+    try {
+      final result = await widget.services.extensions.syncResendAccountEmail();
+      if (!mounted) return;
+      _notifyResult(result, t.settings.syncPanel.accountEmailResent(email: email));
+    } finally {
+      _resendingEmail = false;
+    }
+  }
+
+  /// The approving side of linking: another device asks to join THIS
+  /// account. The requesting side is [_switchAccounts].
+  Future<void> _confirmDevice() async {
+    final linked = await showConfirmDeviceDialog(
+      context,
+      findByCode: widget.services.extensions.syncFindLinkRequest,
+      findByClient: widget.services.extensions.syncFindLinkRequestByClient,
+      approve: widget.services.extensions.syncApproveLinkRequest,
+    );
+    if (linked != true || !mounted) return;
+    _notify(t.settings.syncPanel.deviceLinked);
+    unawaited(_refreshSyncAccount());
   }
 
   Future<void> _combineAccount() async {
@@ -1184,16 +1394,28 @@ class _SyncPanelState extends State<_SyncPanel> {
               },
             ),
             if (settings.syncEnabled) ...[
+              // Tapping edits the account's email, which IS its identity —
+              // the subtitle this row already shows.
               ListTile(
                 leading: Icon(MdiIcons.accountCheck),
                 title: Text(context.t.settings.syncPanel.account),
                 subtitle: Text(_syncAccountSubtitle),
+                onTap: _editAccountEmail,
+                mouseCursor: SystemMouseCursors.click,
                 trailing: IconButton(
                   icon: Icon(MdiIcons.refresh, semanticLabel: context.t.settings.syncPanel.refresh),
                   onPressed: _refreshSyncAccount,
                   mouseCursor: SystemMouseCursors.click,
                 ),
               ),
+              if (_pendingEmail != null)
+                ListTile(
+                  leading: Icon(MdiIcons.emailSync),
+                  title: Text(context.t.settings.syncPanel.resendConfirmation),
+                  subtitle: Text(context.t.settings.syncPanel.resendConfirmationDescription(email: _pendingEmail!)),
+                  onTap: _resendAccountEmail,
+                  mouseCursor: SystemMouseCursors.click,
+                ),
               ListTile(
                 leading: const Icon(MdiIcons.database),
                 title: Text(context.t.settings.syncPanel.counts),
@@ -1212,6 +1434,30 @@ class _SyncPanelState extends State<_SyncPanel> {
                 onTap: _switchAccounts,
                 mouseCursor: SystemMouseCursors.click,
               ),
+              // Only present when the server says somebody is actually
+              // waiting, and coloured `important` when it is — app-polo's
+              // treatment. A permanent row would be an invitation to type a
+              // code nobody has issued; this one is a notification.
+              if (_pendingChallenges > 0)
+                Builder(builder: (context) {
+                  final important = HaLoColors.of(context).important;
+                  return ListTile(
+                    leading: Icon(MdiIcons.accountMultiplePlus, color: important),
+                    title: Text(
+                      context.t.settings.syncPanel.connectionRequests,
+                      style: TextStyle(color: important),
+                    ),
+                    subtitle: Text(
+                      context.t.settings.syncPanel.connectionRequestsDescription(
+                        count: _pendingChallenges,
+                        n: formatNumber(_pendingChallenges),
+                      ),
+                      style: TextStyle(color: important),
+                    ),
+                    onTap: _confirmDevice,
+                    mouseCursor: SystemMouseCursors.click,
+                  );
+                }),
             ],
           ],
         );

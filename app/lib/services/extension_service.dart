@@ -2360,6 +2360,72 @@ class ExtensionService {
     }
   }
 
+  /// Sets the sync account's email address — a change, or the first claim
+  /// on an anonymous account. The server records it as `pending_email` and
+  /// mails a confirmation link; only following that link makes it the
+  /// account's real address. [syncResendAccountEmail] mails it again.
+  ///
+  /// Both return `{'error': ..., 'error_status': ...}` for a rejection the
+  /// operator can act on (the address is taken, nothing is pending), and
+  /// null when the server couldn't be reached at all.
+  Future<Map<String, dynamic>?> syncSetAccountEmail(String email) =>
+      _syncTransportCall('setAccountEmail', {'email': email});
+
+  Future<Map<String, dynamic>?> syncResendAccountEmail() => _syncTransportCall('resendAccountEmail', const {});
+
+  /// Finds the pending link request a challenge code refers to — the
+  /// confirming side of the flow [syncLinkClient] starts on the other
+  /// device. Returns the server's `{'permissions': [...]}`; an expired or
+  /// mistyped code simply yields an empty list.
+  Future<Map<String, dynamic>?> syncFindLinkRequest(String challengeToken) =>
+      _syncTransportCall('findLinkRequest', {'challenge_token': challengeToken});
+
+  /// The same lookup for a request that arrived as a `link_client` deep
+  /// link, which names the requesting device outright. Returns the server's
+  /// `{'permission': ...}`, whose value is null when the link has expired.
+  Future<Map<String, dynamic>?> syncFindLinkRequestByClient({
+    required String clientUuid,
+    required String challengeToken,
+  }) =>
+      _syncTransportCall('findLinkRequestByClient', {'client': clientUuid, 'challenge_token': challengeToken});
+
+  /// Grants a link request: the other device joins this account.
+  /// [challengeToken] is what binds an orphaned (QR/deep-link) permission to
+  /// this account, so it must be passed back for those; a request raised by
+  /// email is already attached and ignores it.
+  Future<Map<String, dynamic>?> syncApproveLinkRequest({
+    required String clientUuid,
+    String? challengeToken,
+  }) =>
+      _syncTransportCall('approveLinkRequest', {
+        'client': clientUuid,
+        if (challengeToken != null) 'challenge_token': challengeToken,
+      });
+
+  /// Shared shape of the account/linking calls above: null when the runtime
+  /// isn't up or the host call failed, the server's map otherwise —
+  /// including the `error`/`error_status` maps those endpoints return for
+  /// rejections that belong to the UI flow rather than to error reporting.
+  Future<Map<String, dynamic>?> _syncTransportCall(String method, Map<String, dynamic> args) async {
+    final host = _host;
+    if (host == null) return null;
+    final streakKey = 'syncTransport:$method';
+    try {
+      final result = await host.invokeHook('syncTransport', method: method, args: args);
+      ErrorReportingService.recordSuccess(streakKey);
+      return result is Map ? result.cast<String, dynamic>() : null;
+    } on ExtensionHostException catch (e, stackTrace) {
+      // Every one of these is an operator waiting on a button they just
+      // pressed. One failure is the network; the same one failing every
+      // time is a defect whose only other trace would be somebody writing
+      // in to say nothing happened. Keyed per method so a broken
+      // approveLinkRequest isn't hidden by a healthy getAccountData.
+      debugPrint('[extensions] $method failed: $e');
+      ErrorReportingService.reportIfRepeated(streakKey, e, stackTrace, context: streakKey);
+      return null;
+    }
+  }
+
   /// Ensures this device is registered with the sync server — independent
   /// of whether the operator has QSO sync enabled; registration
   /// establishes device identity and the realtime push channel, it never

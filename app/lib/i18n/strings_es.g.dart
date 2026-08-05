@@ -67,6 +67,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$versionLabel$es versionLabel = _Translations$versionLabel$es._(_root);
 	@override late final _Translations$notices$es notices = _Translations$notices$es._(_root);
 	@override late final _Translations$syncAccount$es syncAccount = _Translations$syncAccount$es._(_root);
+	@override late final _Translations$confirmDevice$es confirmDevice = _Translations$confirmDevice$es._(_root);
 	@override late final _Translations$switchAccounts$es switchAccounts = _Translations$switchAccounts$es._(_root);
 }
 
@@ -650,6 +651,28 @@ class _Translations$syncAccount$es extends Translations$syncAccount$en {
 	@override String pendingConfirmationWithId({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})';
 }
 
+// Path: confirmDevice
+class _Translations$confirmDevice$es extends Translations$confirmDevice$en {
+	_Translations$confirmDevice$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Confirmar un dispositivo';
+	@override String get codePrompt => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.';
+	@override String get code => 'Código';
+	@override String get lookUp => 'Buscar';
+	@override String get codeNotFound => 'Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.';
+	@override String get linkExpired => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.';
+	@override String areYouSure({required Object device}) => '¿Vincular ${device} a esta cuenta?';
+	@override String get unnamedDevice => 'un dispositivo sin nombre';
+	@override String get grantWarning => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.';
+	@override String get needsSyncTitle => 'Este dispositivo aún no sincroniza';
+	@override String get needsSyncText => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.';
+	@override String get malformedRequest => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.';
+	@override String get linkIt => 'Sí, vincularlo';
+}
+
 // Path: switchAccounts
 class _Translations$switchAccounts$es extends Translations$switchAccounts$en {
 	_Translations$switchAccounts$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1023,6 +1046,17 @@ class _Translations$settings$syncPanel$es extends Translations$settings$syncPane
 	@override String get refresh => 'Actualizar';
 	@override String get switchAccounts => 'Cambiar de cuenta';
 	@override String get switchAccountsDescription => 'Vincula este dispositivo a otra cuenta con un código QR o por email';
+	@override String get connectionRequests => 'Solicitudes de conexión';
+	@override String connectionRequestsDescription({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Un dispositivo espera unirse a esta cuenta',
+		other: '${n} dispositivos esperan unirse a esta cuenta',
+	);
+	@override String get accountEmailTitle => 'Email de la cuenta';
+	@override String accountEmailSent({required Object email}) => 'Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.';
+	@override String get resendConfirmation => 'Reenviar email de confirmación';
+	@override String resendConfirmationDescription({required Object email}) => 'Esperando a ${email}';
+	@override String accountEmailResent({required Object email}) => 'Enviado de nuevo a ${email}.';
+	@override String get deviceLinked => 'Ese dispositivo ya está vinculado a esta cuenta.';
 	@override String get checking => 'Comprobando…';
 	@override String get notLinked => 'Aún no vinculado';
 	@override String linkedAccount({required Object account, required Object id}) => '${account} (#${id})';
@@ -2086,6 +2120,14 @@ extension on TranslationsEs {
 			'settings.syncPanel.refresh' => 'Actualizar',
 			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
+			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',
+			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Un dispositivo espera unirse a esta cuenta', other: '${n} dispositivos esperan unirse a esta cuenta', ), 
+			'settings.syncPanel.accountEmailTitle' => 'Email de la cuenta',
+			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.',
+			'settings.syncPanel.resendConfirmation' => 'Reenviar email de confirmación',
+			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Esperando a ${email}',
+			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Enviado de nuevo a ${email}.',
+			'settings.syncPanel.deviceLinked' => 'Ese dispositivo ya está vinculado a esta cuenta.',
 			'settings.syncPanel.checking' => 'Comprobando…',
 			'settings.syncPanel.notLinked' => 'Aún no vinculado',
 			'settings.syncPanel.linkedAccount' => ({required Object account, required Object id}) => '${account} (#${id})',
@@ -2170,6 +2212,8 @@ extension on TranslationsEs {
 			'settings.station.reportManufacturer' => 'Fabricante',
 			'settings.station.reportManufacturerDescription' => 'Quién la fabrica — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'Hace falta un fabricante',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportModel' => 'Modelo',
 			'settings.station.reportModelDescription' => 'El modelo, tal como lo llama la propia radio: «IC-7300», «FT-991A».',
 			'settings.station.reportModelRequired' => 'Hace falta un modelo',
@@ -2178,8 +2222,6 @@ extension on TranslationsEs {
 			'settings.station.reportOutcomeIssues' => 'Funcionó, con problemas',
 			'settings.station.reportOutcomeFails' => 'No funcionó en absoluto',
 			'settings.station.reportOutcomeRequired' => 'Cuéntanos qué tal fue',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportComments' => 'Comentarios',
 			'settings.station.reportCommentsPlaceholder' => 'Qué funcionó, qué no, y cualquier cosa que te sorprendiera.',
 			'settings.station.reportHints' => 'Consejos para solucionar problemas',
@@ -2399,6 +2441,19 @@ extension on TranslationsEs {
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})',
+			'confirmDevice.title' => 'Confirmar un dispositivo',
+			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
+			'confirmDevice.code' => 'Código',
+			'confirmDevice.lookUp' => 'Buscar',
+			'confirmDevice.codeNotFound' => 'Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.',
+			'confirmDevice.linkExpired' => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.',
+			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
+			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
+			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
+			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
+			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
+			'confirmDevice.malformedRequest' => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.',
+			'confirmDevice.linkIt' => 'Sí, vincularlo',
 			'switchAccounts.noAccountDetails' => 'Aún sin detalles de la cuenta',
 			'switchAccounts.currentAccount' => 'Cuenta actual',
 			'switchAccounts.otherAccounts' => 'Otras cuentas',
