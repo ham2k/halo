@@ -8,5 +8,6 @@
   "adifExport": "ADIF para {{contest}}",
   "cabrilloExport": "Cabrillo para {{contest}}",
   "activityLabel": "Concursos CQ WW",
-  "ourZoneSubtitle": "Zona {{zone}}"
+  "ourZoneSubtitle": "Zona {{zone}}",
+  "notConfigured": "¡Sin configurar!"
 }

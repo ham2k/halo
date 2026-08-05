@@ -52,6 +52,8 @@ upcoming:
     - "Sync now starts on for new installs only — check yours didn't change"
     - "Change your account email from the **Account** row in LoFi Cloud Sync"
     - "New **Connection Requests** row approves another device joining your account"
+    - "A contest with no exchange set now says **Not configured!** on its row"
+    - "Configurable activities get a settings button beside the delete button"
 
 "126":
   changes:

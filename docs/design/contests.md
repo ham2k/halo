@@ -1104,7 +1104,7 @@ that mixes up their jobs has no way to fix the result later:
 | --- | --- | --- |
 | `label` | the event in full, with its variation and, where there is one, the running's year — "CQ WW CW", "ARRL Field Day 2027" | the Activities row's first line, for a form-configured ref |
 | `shortLabel` | the same event, abbreviated to fit — "CQ WW CW", "FD 2027", "OH SP" | the operation header's refs line, the information panel's heading, the location screen's tile, and the Activities row for a ref that is *not* form-configured |
-| `name` | what this reference IS beyond its identity — a contest's sent exchange, a park's name | the Activities row's second line |
+| `name` | what this reference IS beyond its identity — a contest's sent exchange, a park's name — or, while a required exchange is still empty, that the entry is not set up | the Activities row's second line |
 | `program` | the family the reference belongs to — `Contest`, `POTA` | grouping and filtering |
 
 **`shortLabel` names the EVENT, never the operator's own exchange.** It is the

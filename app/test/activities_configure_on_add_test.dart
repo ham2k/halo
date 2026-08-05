@@ -99,7 +99,14 @@ class _AddFlowExtensions extends ExtensionServiceWithMockHost {
   @override
   Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {
     onDecorate?.call();
-    return {...ref, 'shortLabel': 'FD ${ref['ref']}'};
+    final own = (ref['ourClass'] as String?) ?? '';
+    return {
+      ...ref,
+      'shortLabel': 'FD ${ref['ref']}',
+      // Mirrors the real contest hooks: the second line is the exchange once
+      // there is one, and says the entry is not set up while there isn't.
+      'name': own.isEmpty ? 'Not configured!' : own,
+    };
   }
 }
 
@@ -168,7 +175,13 @@ void main() {
     // The whole point of saving before prompting: backing out of the form is
     // not backing out of the add.
     expect(latest, isNotNull);
-    expect(latest!.refs.where((r) => r['type'] == 'fd' && r['ref'] == '2027'), hasLength(1));
+    final kept = latest!.refs.singleWhere((r) => r['type'] == 'fd' && r['ref'] == '2027');
+
+    // And the cancelled ref is DECORATED, not left as the suggestion wrote it.
+    // A suggestion's `name` describes the event for the search list it belongs
+    // to; keeping that here would leave a contest the operator backed out of
+    // reading like a configured activity. Only the hook can say otherwise.
+    expect(kept['name'], 'Not configured!');
   });
 
   testWidgets('submitting the form writes the exchange back, decorated', (tester) async {

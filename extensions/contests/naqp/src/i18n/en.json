@@ -12,5 +12,6 @@
   "unconfigured": "NAQP (not set up)",
   "adifExport": "ADIF for {{contest}}",
   "cabrilloExport": "Cabrillo for {{contest}}",
-  "ourExchangeSubtitle": "{{name}} in {{location}}"
+  "ourExchangeSubtitle": "{{name}} in {{location}}",
+  "notConfigured": "Not configured!"
 }

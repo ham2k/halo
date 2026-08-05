@@ -486,11 +486,17 @@ class OperationSheetState extends State<OperationSheet> {
     final formControl = controlForRefType(_controls, ref['type'] as String?);
     if ((formControl?['input'] as Map?)?['kind'] == 'form') {
       final updated = await _runSetupForm(formControl!, existing: ref);
-      if (updated == null) return;
+      if (updated == null || !mounted) return;
+      final decorated = await widget.services.extensions.decorateRef(updated);
+      if (!mounted) return;
+      // Read the refs AFTER every await, never across one — see
+      // [_configureNewRef], which reaches the same place by the other path.
+      // The dialog is gone while `decorateRef` runs to its hook timeout, so a
+      // list captured earlier silently undoes whatever the operator did in
+      // between.
       final refs = _operation.refs;
       final index = refs.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
       if (index < 0) return;
-      final decorated = await widget.services.extensions.decorateRef(updated);
       _saveRefs([...refs]..[index] = decorated);
       return;
     }
@@ -715,8 +721,14 @@ class OperationSheetState extends State<OperationSheet> {
     if (!refTypeIsForm(control)) return;
 
     final updated = await _runSetupForm(control!, existing: ref);
-    if (updated == null || !mounted) return;
-    final decorated = await widget.services.extensions.decorateRef(updated);
+    if (!mounted) return;
+    // Decorate even on a CANCEL — that is the whole point of decorating here.
+    // A suggestion is persisted verbatim, and its `name` describes the event
+    // for the search list it was written for ("the ARRL's June operating
+    // event"). Left at that, a contest the operator backed out of reads like a
+    // configured activity. Running the hook over the ref as it stands lets the
+    // extension say what is actually true of it — that it is not set up.
+    final decorated = await widget.services.extensions.decorateRef(updated ?? ref);
     if (!mounted) return;
     // Read the refs AFTER every await, never across one. The dialog is gone by
     // now and the sheet is live, while `decorateRef` can run to its 10s hook
@@ -1483,10 +1495,12 @@ class OperationSheetState extends State<OperationSheet> {
                                       ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                                       : rowColor),
                               // Right padding matches the header rows' own
-                              // horizontal inset, so this trailing icon button
-                              // lines up under the search row's location
-                              // button — same IconButton defaults (no custom
-                              // size/padding) too.
+                              // horizontal inset, so the RIGHTMOST trailing
+                              // button lines up under the search row's
+                              // location button — same IconButton defaults
+                              // (no custom size/padding) too. Any button
+                              // added left of it hangs off that alignment
+                              // rather than moving it.
                               contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
                               leading: _loadingControls
                                   ? const Icon(MdiIcons.puzzle)
@@ -1502,9 +1516,25 @@ class OperationSheetState extends State<OperationSheet> {
                               // offering to retype a code its own search
                               // already resolved.
                               onTap: refTypeIsEditable(control) ? () => _editRef(ref) : null,
-                              trailing: IconButton(
-                                icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
-                                onPressed: () => _deleteRef(ref),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // The row has always opened the editor on
+                                  // tap, with nothing to say so. This is that
+                                  // affordance made visible, not a second way
+                                  // in — same condition as the tap above, so
+                                  // the two can never disagree about whether a
+                                  // row is configurable.
+                                  if (refTypeIsEditable(control))
+                                    IconButton(
+                                      icon: Icon(MdiIcons.tune, semanticLabel: t.editActivity),
+                                      onPressed: () => _editRef(ref),
+                                    ),
+                                  IconButton(
+                                    icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
+                                    onPressed: () => _deleteRef(ref),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

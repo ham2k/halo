@@ -27,5 +27,7 @@
   "scoreQsos": "{{qsos}} QSOs — {{points}} points × {{multiplier}}",
   "scoreSections": "{{sections}} sections",
   "adifExport": "Winter Field Day ADIF",
-  "rulesLink": "[Winter Field Day rules](https://www.winterfieldday.org/)"
+  "rulesLink": "[Winter Field Day rules](https://www.winterfieldday.org/)",
+  "notConfigured": "Not configured!",
+  "activityDescription": "The January field event, run in winter conditions"
 }

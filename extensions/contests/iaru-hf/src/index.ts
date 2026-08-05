@@ -248,7 +248,7 @@ const RefHandler = {
       program: 'Contest',
       label: label || tFor(ctx)('unconfigured'),
       shortLabel: label || tFor(ctx)('unconfigured'),
-      name: sent || undefined,
+      name: sent || tFor(ctx)('notConfigured'),
     }
   },
 

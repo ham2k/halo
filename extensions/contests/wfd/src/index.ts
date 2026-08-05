@@ -199,9 +199,15 @@ const ActivityHook = {
         ref: String(year),
         // A suggestion is persisted VERBATIM and never runs through
         // `decorateRef`, so everything the operation row reads has to be
-        // here. No `name`: the row leads with `label`, and the second line
-        // is for the exchange once the operator configures one.
+        // here — including `name`, the row's second line.
+        //
+        // A DESCRIPTION, not the exchange and not a not-configured warning:
+        // this row is a search result for an event the operator has not
+        // added, so the line has to say what the event IS. A reference
+        // activity puts its reference's real name here (a park's name); an
+        // event has no such name, so it describes itself instead.
         program: 'Contest',
+        name: t('activityDescription'),
         label: `${t('activityLabel')} ${year}`,
         // Must match what `decorateRef` composes: the same running added by
         // tapping this suggestion and by the setup form has to read the same
@@ -310,7 +316,7 @@ const RefHandler = {
       // is no control left to infer a contest from. A ref built by the setup
       // form never passes through `suggest`, so without this it has none.
       program: 'Contest',
-      name: own || undefined,
+      name: own || t('notConfigured'),
       label: [t('activityLabel'), year].filter((part) => part).join(' '),
       shortLabel: ['WFD', year].filter((part) => part).join(' '),
     }

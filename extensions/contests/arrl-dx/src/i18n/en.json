@@ -13,5 +13,6 @@
   "unconfigured": "ARRL DX (not set up)",
   "adifExport": "ADIF for {{contest}}",
   "cabrilloExport": "Cabrillo for {{contest}}",
-  "activityLabel": "ARRL DX Contests"
+  "activityLabel": "ARRL DX Contests",
+  "notConfigured": "Not configured!"
 }

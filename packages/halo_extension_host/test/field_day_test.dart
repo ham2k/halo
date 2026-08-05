@@ -383,11 +383,15 @@ void main() {
         // for this running, or the same operation reads one way when it was
         // added from the search and another once the setup form has touched it.
         expect(suggestion['shortLabel'], '$abbreviation ${suggestion['ref']}');
-        // No exchange yet — `name` is the row's second line and stays empty
-        // until the operator configures a class and section, which is what
-        // makes the fresh row read as "not set up yet" rather than repeating
-        // the event name back.
-        expect(suggestion['name'], anyOf(isNull, isEmpty));
+        // `name` is the row's second line, and on a SEARCH RESULT it says what
+        // the event is — the operator has not added this yet, so a status like
+        // "not configured" would describe something they do not have. A
+        // reference activity puts its reference's real name here; an event has
+        // none, so it describes itself.
+        expect(suggestion['name'], isNotEmpty);
+        // Not the event name over again, which the label above already says.
+        expect(suggestion['name'], isNot(contains('2027')));
+        expect(suggestion['name'], isNot(equals(suggestion['label'])));
         // The ref is the YEAR of the running — the picker's duplicate guard
         // compares type+ref, so without one the same event could be added twice.
         expect(suggestion['ref'], matches(RegExp(r'^20\d\d$')));
@@ -433,6 +437,18 @@ void main() {
         expect(ref['shortLabel'], '$abbreviation 2027');
       }, timeout: const Timeout(Duration(seconds: 60)));
 
+      test('$type: an exchange replaces the not-configured line once it is set', () async {
+        // The two states have to be distinguishable on the row's second line:
+        // configured shows the exchange, unconfigured says it is not set up.
+        // A `name` that kept the warning after configuration, or dropped it
+        // before, would make the row lie in one direction or the other.
+        final bare = await decorate(type, {'ref': '2027'});
+        final configured = await decorate(type, {'ref': '2027', 'ourClass': '3A', 'ourSection': 'ENY'});
+        expect(configured['name'], '3A ENY');
+        expect(bare['name'], isNot(configured['name']));
+        expect(bare['name'], isNotEmpty);
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
       test('$type: decorateRef stamps program, so a QSO stays a contest QSO', () async {
         // `_isContestRef` (qso_list.dart) reads `program` as the signal that
         // survives the extension being switched OFF — with no controls loaded
@@ -450,7 +466,9 @@ void main() {
         expect(ref['label'], contains(nameFragment));
         expect(ref['label'], contains('2027'));
         expect(ref['shortLabel'], '$abbreviation 2027');
-        expect(ref['name'], anyOf(isNull, isEmpty));
+        // Says so rather than going blank — and must not invent an exchange.
+        expect(ref['name'], isNotEmpty);
+        expect(ref['name'], isNot(contains('3A')));
       }, timeout: const Timeout(Duration(seconds: 60)));
     }
   });

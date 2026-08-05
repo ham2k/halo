@@ -45,5 +45,7 @@
   "bonusGotaQsos": "Contactos de la estación GOTA (5 pts c/u)",
   "bonusYouthParticipants": "Jóvenes participantes con contacto (20 pts c/u, máx. 100)",
   "bonusGotaCoach": "Instructor GOTA (100 pts)",
-  "bonusSiteResponsibilities": "Responsabilidades del sitio — clases B–F (50 pts)"
+  "bonusSiteResponsibilities": "Responsabilidades del sitio — clases B–F (50 pts)",
+  "notConfigured": "¡Sin configurar!",
+  "activityDescription": "El evento de junio de la ARRL, al aire libre"
 }

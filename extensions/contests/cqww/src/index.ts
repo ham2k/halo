@@ -190,7 +190,11 @@ const RefHandler = {
     const mode = str((ref as Record<string, JSONValue>).mode)
     const label = mode ? `CQ WW ${mode}` : tFor(ctx)('unconfigured')
     const zone = normalizeZone((ref as Record<string, JSONValue>).zone)
-    return { ...ref, program: 'Contest', label, shortLabel: label, name: zone ? `Zone ${zone}` : undefined }
+    const t = tFor(ctx)
+    // `ourZoneSubtitle`, not a hardcoded `Zone ${zone}`: the two halves of
+    // this line have to speak the same language, and the key already exists
+    // for `suggestOperationTitle`.
+    return { ...ref, program: 'Contest', label, shortLabel: label, name: zone ? t('ourZoneSubtitle', { zone }) : t('notConfigured') }
   },
 
   /// "KI2D for CQWW CW" with "Zone 8" beneath it: the sent exchange is the one

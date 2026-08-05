@@ -45,5 +45,7 @@
   "bonusGotaQsos": "GOTA station contacts (5 pts each)",
   "bonusYouthParticipants": "Youth participants with a contact (20 pts each, max 100)",
   "bonusGotaCoach": "GOTA coach (100 pts)",
-  "bonusSiteResponsibilities": "Site responsibilities — classes B–F (50 pts)"
+  "bonusSiteResponsibilities": "Site responsibilities — classes B–F (50 pts)",
+  "notConfigured": "Not configured!",
+  "activityDescription": "The ARRL's June operating event, out in the field"
 }

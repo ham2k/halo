@@ -178,7 +178,7 @@ const RefHandler = {
     const mode = str(r.mode)
     const label = mode ? `ARRL DX ${mode}` : tFor(ctx)('unconfigured')
     const sent = str(r.exchange)
-    return { ...ref, program: 'Contest', label, shortLabel: label, name: sent || undefined }
+    return { ...ref, program: 'Contest', label, shortLabel: label, name: sent || tFor(ctx)('notConfigured') }
   },
 
   /// Same reasoning as CQ WW: what we send goes in the subtitle. For ARRL DX

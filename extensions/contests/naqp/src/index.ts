@@ -219,7 +219,7 @@ const RefHandler = {
       program: 'Contest',
       label,
       shortLabel: label,
-      name: [name, location].filter((x) => x).join(' ') || undefined,
+      name: [name, location].filter((x) => x).join(' ') || tFor(ctx)('notConfigured'),
     }
   },
 

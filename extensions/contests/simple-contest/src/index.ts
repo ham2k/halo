@@ -178,6 +178,11 @@ const RefHandler = {
     const id = str((ref as Record<string, JSONValue>).contestIdentifier)
     const sent = str((ref as Record<string, JSONValue>).exchange)
     const label = id || tFor(ctx)('unconfigured')
+    // No `notConfigured` here, unlike the named contests: this one's sent
+    // exchange is genuinely optional — a serial-only contest has no static
+    // exchange to type — so an empty one is not evidence of anything. Its
+    // unconfigured state is carried by `label`, which reads `unconfigured`
+    // until the identifier is set.
     return { ...ref, program: 'Contest', label, shortLabel: label, name: sent || undefined }
   },
 
