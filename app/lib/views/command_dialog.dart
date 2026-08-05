@@ -814,26 +814,12 @@ class _CommandDialogState extends State<CommandDialog> {
         controller: _controller,
         focusNode: _focusNode,
         style: haloMonoStyle(context, fontSize: 17),
-        // The formatter below owns casing, not the keyboard: a soft keyboard's
+        // The formatters own casing, not the keyboard: a soft keyboard's
         // capitalization is fixed when the input connection opens and is not
-        // re-sent on rebuild, so a mode chosen here could never follow a command
-        // becoming mixedCase mid-typing.
+        // re-sent on rebuild, so a mode chosen here could never follow the text
+        // turning from a callsign into a command mid-typing.
         textCapitalization: TextCapitalization.none,
-        inputFormatters: [
-          if (isMobilePlatform) MobileDotToSlashFormatter(),
-          // Spaces are only meaningful mid-command (a command's free-text
-          // parameters, e.g. "NOTE hello") — otherwise they'd just corrupt a
-          // callsign/command being typed.
-          if (!_engine.commandExpectsParams && !_engine.commandMixedCase)
-            FilteringTextInputFormatter.deny(RegExp(r'\s')),
-          // Uppercase unless the live command declared `mixedCase` — the rule
-          // as documented for the call field (hooks.md, `command`), so a NOTE
-          // typed here keeps its prose as written.
-          if (!_engine.commandMixedCase)
-            TextInputFormatter.withFunction(
-              (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
-            ),
-        ],
+        inputFormatters: commandFieldFormatters,
         decoration: InputDecoration(
           border: InputBorder.none,
           // isCollapsed: the Row above owns the spacing, so the decoration

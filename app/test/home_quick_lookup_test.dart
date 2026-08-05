@@ -165,7 +165,7 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  group('hardening the field against stray spaces (issue #190)', () {
+  group('spaces and case in the command field (HALO-156)', () {
     Future<HaLoServices> makeServices() async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
@@ -180,25 +180,101 @@ void main() {
           ),
         );
 
-    testWidgets('a plain space (no command in progress) is stripped, not inserted', (tester) async {
+    /// Types [text] the way a fast operator does — one character at a time,
+    /// with only a frame between them. No pump here may reach 150ms: the
+    /// describe debounce restarts on every keystroke, so a test that pauses
+    /// is testing the one case that always worked.
+    Future<void> typeThrough(WidgetTester tester, String text) async {
+      for (var i = 1; i <= text.length; i++) {
+        await tester.enterText(find.byType(TextField), text.substring(0, i));
+        await tester.pump();
+      }
+    }
+
+    testWidgets('a command typed at speed keeps the space before its parameter', (tester) async {
+      // The bug this group is named for. Nothing about a space may wait on
+      // `interpret`: its answer lands 150ms after the keystroke at best, and
+      // while someone types steadily the debounce that would ask restarts
+      // every time and so never fires at all. A pause anywhere in the typing
+      // hides it, which is what makes it read as intermittent — so this case
+      // must never grow one.
       await pumpLookup(tester, await makeServices());
 
-      await tester.enterText(find.byType(TextField), 'W1 AW');
-      await tester.pump();
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
-    });
-
-    testWidgets('a command still awaiting its parameter keeps the separating space', (tester) async {
-      await pumpLookup(tester, await makeServices());
-
-      await tester.enterText(find.byType(TextField), 'RELOAD');
-      await tester.pump(const Duration(milliseconds: 200)); // retains expectsParams
-
-      await tester.enterText(find.byType(TextField), 'RELOAD PARAM');
-      await tester.pump();
+      await typeThrough(tester, 'RELOAD PARAM');
       expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'RELOAD PARAM');
 
-      await tester.pump(const Duration(milliseconds: 200)); // drain the next describe debounce
+      await tester.pump(const Duration(milliseconds: 200)); // drain the describe debounce
+    });
+
+    testWidgets("a command's prose parameter typed at speed is not shouted", (tester) async {
+      // Case rides on the same stale answer as the space, so fixing only the
+      // space would leave REPORT filing "CRASH ON SAVE" as its description —
+      // the text goes to a CaBo card verbatim, where nobody can unshout it.
+      // Only the command word is uppercased, and that happens by position,
+      // with nothing to wait for.
+      await pumpLookup(tester, await makeServices());
+
+      await typeThrough(tester, 'report crash on save');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'REPORT crash on save',
+      );
+
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    testWidgets('a callsign is still uppercased, whole', (tester) async {
+      // What the uppercase rule is FOR. A callsign holds no whitespace, so
+      // "up to the first space" still covers all of it — including the
+      // portable suffix past the slash. Typed in LOWER case deliberately:
+      // every other callsign in this file is typed in capitals, so without
+      // this one, deleting the uppercase formatter outright leaves the file
+      // green.
+      await pumpLookup(tester, await makeServices());
+
+      await typeThrough(tester, 'w1aw/4');
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW/4');
+
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    testWidgets('a space with nothing to separate is dropped, and a run of them collapses', (tester) async {
+      // Not the interpretation talking — these two are true of the text
+      // itself. A leading space separates nothing, and a doubled one is
+      // invisible in a field this size, so it would leave a search failing
+      // for a reason the operator cannot see.
+      await pumpLookup(tester, await makeServices());
+
+      await tester.enterText(find.byType(TextField), ' ');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'NOTE  hello   there');
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'NOTE hello there',
+      );
+
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    test('a trailing space still finds the callsign', () async {
+      // Why no formatter needs to strip a trailing space: the engine reads
+      // the field through `trimmedText`, so one costs nothing — and one gets
+      // typed, because Space advances focus in the logging panel and the
+      // hand does it after a call out of muscle memory. Asserted on the
+      // engine's input rather than the field's text: the trim is the whole
+      // guarantee, and a formatter-level assertion would not see it.
+      final services = await makeServices();
+      final engine = CommandEngine(services: services, operationContext: () => null, runAction: (_, _) async {});
+      addTearDown(engine.dispose);
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      controller.text = 'W1AW ';
+      expect(engine.trimmedText, 'W1AW');
     });
 
     test('a second Enter during an execute in flight does not run it twice', () async {
@@ -289,55 +365,133 @@ void main() {
       expect(engine.isConfirmation, isTrue);
     });
 
-    test('a description pasted onto a new line is still the same command', () async {
-      // REPORT matches on `\s+` and exists to take pasted multi-line text, so
-      // the command word cannot end at a literal space alone: reading
-      // "NOTE\nhello" as the word "NOTE\nHELLO" makes it a DIFFERENT command
-      // from the one retained, revokes mixedCase, and puts the uppercase
-      // formatter back over prose the operator pasted verbatim.
-      final services = await makeServices();
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
-      );
-      addTearDown(engine.dispose);
+    testWidgets('whitespace that is not the space key still reaches the field', (tester) async {
+      // The premise the collapse rule rests on. A single-line TextField
+      // filters `\n` and NOTHING else, so a tab, a CR from a Windows paste
+      // and macOS's Option-Space non-breaking space all arrive — and each
+      // reads as a space to the eye while matching nothing.
+      //
+      // Asserted on a BARE field, deliberately: this is Flutter's behavior,
+      // not ours, and the rule is wrong if it ever changes.
       final controller = TextEditingController();
       addTearDown(controller.dispose);
-      engine.attach(controller);
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: TextField(controller: controller))));
 
-      controller.text = 'NOTE';
-      await Future.delayed(const Duration(milliseconds: 200)); // let the describe debounce retain it
-      expect(engine.commandMixedCase, isTrue);
-
-      controller.text = 'NOTE\nhello there';
-      expect(engine.commandMixedCase, isTrue);
-      controller.text = 'NOTE\thello there';
-      expect(engine.commandMixedCase, isTrue);
+      for (final probe in ['a\tb', 'a\rb', 'a b']) {
+        await tester.enterText(find.byType(TextField), probe);
+        await tester.pump();
+        expect(controller.text, probe, reason: 'the field passes ${probe.codeUnits} through');
+      }
+      await tester.enterText(find.byType(TextField), 'a\nb');
+      await tester.pump();
+      expect(controller.text, 'ab', reason: 'the newline is the one it does filter');
     });
 
-    test('a callsign replacing a command awaiting parameters loses its spaces', () async {
-      // The other half of the same staleness trap, on the other flag reading
-      // the same retained map: RELOAD's `expectsParams` keeps the space filter
-      // off, and the debounce that would revise it never fires while someone
-      // types steadily — so a call typed straight over it would keep a space.
-      final services = await makeServices();
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
+    test('every kind of whitespace collapses to one plain space', () {
+      // Without this, a tab or a non-breaking space survives into the value:
+      // invisible, matching no command pattern, and — sitting at index 0 —
+      // making CommandWordCaseFormatter stop before it uppercases anything,
+      // so a pasted "\tw1aw" stays lower case.
+      String runThrough(String text) {
+        var value = TextEditingValue(text: text);
+        for (final formatter in commandFieldFormatters) {
+          // Chained, as the framework chains them — each output is the next
+          // one's input.
+          value = formatter.formatEditUpdate(const TextEditingValue(text: ''), value);
+        }
+        return value.text;
+      }
+
+      expect(runThrough('\tw1aw'), 'W1AW');
+      expect(runThrough(' report crash'), 'REPORT crash');
+      expect(runThrough('report crashes\r\n\twhen I save'), 'REPORT crashes when I save');
+      expect(runThrough('note\thi'), 'NOTE hi');
+    });
+
+    testWidgets("on mobile, a full stop in a command's parameter stays a full stop", (tester) async {
+      // MobileDotToSlashFormatter rewrites "." to "/" whenever the text STARTS
+      // callsign-shaped, which "REPORT …" and "NOTE …" both do — so on a phone
+      // a filed report read "it crashes/ every time". It is bounded to the
+      // first word now: a callsign holds no whitespace, so past that there is
+      // nothing it could be correcting.
+      //
+      // These two bars are where that bites. The logging panel's call field
+      // drops this formatter entirely once it accepts spaces (see its
+      // `inputFormatters`), so the parameter never reaches it there.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await pumpLookup(tester, await makeServices());
+
+        await tester.enterText(find.byType(TextField), 'report it crashes. every time');
+        await tester.pump();
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'REPORT it crashes. every time',
+        );
+
+        // The correction the formatter exists for still happens, on the call.
+        await tester.enterText(find.byType(TextField), 'K1ABC.P');
+        await tester.pump();
+        expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'K1ABC/P');
+
+        await tester.pump(const Duration(milliseconds: 200));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    test('a leading space does not hide the callsign from the mobile "." rule', () {
+      // Order, not behavior: MobileDotToSlashFormatter tests the START of the
+      // value, so a leading space it has not seen dropped yet makes the text
+      // read as not-a-callsign and the dot survives — after which the space
+      // is stripped anyway and the operator is left holding "K1ABC.P". The
+      // collapse pass has to run first.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        var value = const TextEditingValue(text: ' k1abc.p');
+        for (final formatter in commandFieldFormatters) {
+          value = formatter.formatEditUpdate(const TextEditingValue(text: ''), value);
+        }
+        expect(value.text, 'K1ABC/P');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    test('collapsing a space moves the caret with the text', () {
+      // Dropping a character shifts every offset after it. Typing alone would
+      // never catch this — the caret is at the end there, and the arithmetic
+      // is only visible when the edit lands mid-value, which is what a paste
+      // does. Get it wrong and the next keystroke is inserted in the wrong
+      // place, or the framework asserts on an offset past the end.
+      const formatter = CollapseWhitespaceFormatter();
+      final result = formatter.formatEditUpdate(
+        const TextEditingValue(text: 'NOTE the  end'),
+        // Two runs collapse, one before the caret and one after it.
+        const TextEditingValue(
+          text: 'NOTE  the  end',
+          selection: TextSelection.collapsed(offset: 9), // right after "the"
+        ),
       );
-      addTearDown(engine.dispose);
-      final controller = TextEditingController();
-      addTearDown(controller.dispose);
-      engine.attach(controller);
+      expect(result.text, 'NOTE the end');
+      expect(result.selection.baseOffset, 8);
+    });
 
-      controller.text = 'RELOAD';
-      await Future.delayed(const Duration(milliseconds: 200));
-      expect(engine.commandExpectsParams, isTrue);
+    testWidgets('a callsign typed over a command it does not know about is uppercased', (tester) async {
+      // Select-all and type a call straight over a NOTE. A rule that
+      // remembers the last interpretation keeps `mixedCase` alive past the
+      // command it came from and leaves the call lowercase, with no pass left
+      // to fix it; a positional rule cannot go stale, having nothing to
+      // remember.
+      await pumpLookup(tester, await makeServices());
 
-      controller.text = 'W1'; // selected all, typing a callsign over it
-      expect(engine.commandExpectsParams, isFalse);
+      await tester.enterText(find.byType(TextField), 'NOTE hello');
+      await tester.pump(const Duration(milliseconds: 200)); // long enough for an interpretation to land
+
+      await typeThrough(tester, 'w1aw');
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
+
+      await tester.pump(const Duration(milliseconds: 200));
     });
 
     test('a dialog closed mid-flight resumes without touching the disposed field', () async {
@@ -373,55 +527,6 @@ void main() {
       expect(extensions.executeCalls, 1); // ...and the command still ran exactly once
     });
 
-    testWidgets('a callsign typed in lower case is still uppercased', (tester) async {
-      // The other direction of the mixedCase guard. Without a case that types
-      // LOWER case, deleting the uppercase formatter outright leaves this file
-      // green — every other callsign case here is already typed in capitals.
-      await pumpLookup(tester, await makeServices());
-
-      await tester.enterText(find.byType(TextField), 'w1aw');
-      await tester.pump();
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
-
-      await tester.pump(const Duration(milliseconds: 200));
-    });
-
-    testWidgets('a callsign typed straight after a mixedCase command is still uppercased', (tester) async {
-      // The retained interpretation is only revised inside the describe
-      // debounce, which restarts on every keystroke — so typing through
-      // without a pause leaves `mixedCase` stale from the previous command.
-      await pumpLookup(tester, await makeServices());
-
-      await tester.enterText(find.byType(TextField), 'NOTE hello');
-      await tester.pump(const Duration(milliseconds: 200)); // retains mixedCase
-
-      // Keystroke by keystroke, with no pause long enough to re-interpret —
-      // the formatter sees the PREVIOUS text, so the guard has to notice the
-      // command word changing rather than waiting for a fresh interpretation.
-      for (final typed in ['w', 'w1', 'w1a', 'w1aw']) {
-        await tester.enterText(find.byType(TextField), typed);
-        await tester.pump();
-      }
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
-
-      await tester.pump(const Duration(milliseconds: 200));
-    });
-
-    testWidgets('a mixedCase command keeps every space in its free-text parameter', (tester) async {
-      await pumpLookup(tester, await makeServices());
-
-      await tester.enterText(find.byType(TextField), 'NOTE');
-      await tester.pump(const Duration(milliseconds: 200)); // retains mixedCase
-
-      await tester.enterText(find.byType(TextField), 'NOTE hello there');
-      await tester.pump();
-      // Case as typed, not just the spaces: a mixedCase command's parameter is
-      // the operator's own prose, and this bar files bug reports (REPORT) as
-      // well as notes. Uppercasing it here reaches the filed card verbatim.
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'NOTE hello there');
-
-      await tester.pump(const Duration(milliseconds: 200)); // drain the next describe debounce
-    });
   });
 
   group('mobile numbers row on the quick lookup (issue #27)', () {

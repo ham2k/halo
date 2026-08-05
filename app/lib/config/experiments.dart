@@ -31,8 +31,12 @@ class ExperimentDefinition {
     this.hidden = false,
   });
 
-  /// Whether [token] names this experiment — its key or any alias,
-  /// case-insensitively (command input is uppercased by the call field).
+  /// Whether [token] names this experiment — its key or any alias.
+  ///
+  /// Case-insensitive because the field a token is typed into decides its
+  /// case for its own reasons: the logging panel's call field uppercases all
+  /// of it, the ⌘K and Quick Lookup bars only the command word, so "EXP
+  /// layouts" arrives here either way.
   bool matches(String token) {
     final lower = token.toLowerCase();
     return key.toLowerCase() == lower || aliases.any((a) => a.toLowerCase() == lower);

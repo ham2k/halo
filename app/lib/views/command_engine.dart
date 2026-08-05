@@ -5,22 +5,149 @@
 // callsign or a command outside the logging panel: the Home view's Quick
 // Lookup bar (`HomeQuickLookup`) and the ⌘K command dialog
 // (`CommandDialog`). Both need the same non-obvious behavior — the debounce
-// split (150ms describe preview vs 300ms lookup), the retained
-// interpretation that keeps spaces legal mid-command,
-// `expectsParams`/`mixedCase`, the second `execute: true` interpret call
-// before dispatch (so a hook like SEED builds its real commands instead of a
-// stale cheap preview), and the error-vs-confirm message states. A second
-// copy would drift.
+// split (150ms describe preview vs 300ms lookup), the second `execute: true`
+// interpret call before dispatch (so a hook like SEED builds its real
+// commands instead of a stale cheap preview), the error-vs-confirm message
+// states, and the input rules in [commandFieldFormatters]. A second copy
+// would drift.
 //
-// This owns state and timing only. Both callers render it themselves: the
-// Home bar shows a single message line, the dialog a list of results.
+// Beyond those formatters this owns state and timing only. Both callers
+// render it themselves: the Home bar shows a single message line, the dialog
+// a list of results.
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../main.dart';
+
+/// What the two command fields do to each keystroke.
+///
+/// Positional, never interpreted: nothing here may wait on `interpret`. Its
+/// answer arrives up to 150ms after the keystroke and — because the describe
+/// debounce restarts on every one — never arrives at all while someone types
+/// steadily. A rule gated on an interpretation therefore runs on the PREVIOUS
+/// command's answer, or on none: it eats the space in "NOTE hello" typed in
+/// one motion, and files "REPORT crash on save" shouting. The logging panel's
+/// call field can afford to ask, because there Space is a keystroke it
+/// handles and can await an answer for (`logging_controls.dart`'s
+/// `_handleSpace`); here a space is just text.
+///
+/// Order matters: [CollapseWhitespaceFormatter] runs first so the rest see
+/// normalized text. [MobileDotToSlashFormatter] tests the START of the value,
+/// so a leading space it hasn't dropped yet hides the callsign from it and
+/// " k1abc.p" keeps a dot no operator meant.
+///
+/// Built per call rather than held in a top-level `final`: a cached list
+/// would fix [isMobilePlatform] at whatever the platform was the first time
+/// anything read it, which under test is decided by the order the cases run
+/// in.
+List<TextInputFormatter> get commandFieldFormatters => <TextInputFormatter>[
+      const CollapseWhitespaceFormatter(),
+      if (isMobilePlatform) MobileDotToSlashFormatter(),
+      const CommandWordCaseFormatter(),
+    ];
+
+/// Reduces every run of whitespace to one plain space, and drops one with
+/// nothing yet to separate.
+///
+/// ALL whitespace, not just the space key. A single-line `TextField` filters
+/// out `\n` and nothing else (`EditableText` installs
+/// `FilteringTextInputFormatter.singleLineFormatter`, which denies exactly
+/// that one character), so a tab, a CR from a Windows paste, and the
+/// non-breaking space macOS makes from Option-Space all reach this field.
+/// Left alone they read as a space to the eye and as a different character
+/// to every pattern, and [CommandWordCaseFormatter] — which stops at the
+/// first whitespace — would find one at index 0 and uppercase nothing at all.
+///
+/// Spaces themselves are free here: at the ends because both `interpret` and
+/// the callsign lookup read the field through [CommandEngine.trimmedText],
+/// and in the middle as a deliberate trade — a space cannot be stripped on
+/// the way in without also eating the one in "NOTE hello", so "W1 AW" stays
+/// as typed and simply matches nothing: no lookup, no command, and no
+/// message saying why. That is the price of the parameter space, and a
+/// mis-typed call is the rarer of the two.
+class CollapseWhitespaceFormatter extends TextInputFormatter {
+  const CollapseWhitespaceFormatter();
+
+  static final _whitespace = RegExp(r'\s');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+
+    final kept = StringBuffer();
+    String? previous;
+    final base = newValue.selection.baseOffset;
+    final extent = newValue.selection.extentOffset;
+    var droppedBeforeBase = 0;
+    var droppedBeforeExtent = 0;
+    for (var i = 0; i < text.length; i++) {
+      final char = text[i];
+      if (_whitespace.hasMatch(char)) {
+        if (previous == null || previous == ' ') {
+          // Each drop shifts every caret offset that sat after it — a paste
+          // lands mid-value, so the cursor is not always at the end.
+          if (base > i) droppedBeforeBase++;
+          if (extent > i) droppedBeforeExtent++;
+          continue;
+        }
+        // Same length, so only the drops above move the caret.
+        kept.write(' ');
+        previous = ' ';
+        continue;
+      }
+      kept.write(char);
+      previous = char;
+    }
+
+    final result = kept.toString();
+    // Nothing to normalize — hand the edit straight back rather than
+    // resetting a composing region an IME still has open.
+    if (result == text) return newValue;
+
+    final newBase = base < 0 ? base : base - droppedBeforeBase;
+    final newExtent = extent < 0 ? extent : extent - droppedBeforeExtent;
+    // Not a clamp: a caret past the end is this loop having miscounted, and
+    // silently moving it somewhere plausible is how that stays unnoticed.
+    assert(newBase <= result.length && newExtent <= result.length,
+        'whitespace collapse miscounted: $base/$extent -> $newBase/$newExtent in "$result"');
+    return TextEditingValue(
+      text: result,
+      selection: newValue.selection.copyWith(baseOffset: newBase, extentOffset: newExtent),
+      // The composing region indexes the text just rewritten.
+      composing: TextRange.empty,
+    );
+  }
+}
+
+/// Uppercases the command word — everything up to the first whitespace — and
+/// leaves what follows exactly as typed.
+///
+/// Positional, because the alternative is to ask. Whether a parameter is
+/// prose is only known from `interpret`'s `mixedCase`, and see
+/// [commandFieldFormatters] for why that answer is not available in time.
+///
+/// A callsign holds no whitespace and so is still uppercased whole, which is
+/// the rule these fields exist to keep. Everything past the first space is a
+/// parameter: command patterns match case-insensitively, and a hook that
+/// needs its token uppercase uppercases it itself (radio-commands does).
+class CommandWordCaseFormatter extends TextInputFormatter {
+  const CommandWordCaseFormatter();
+
+  static final _whitespace = RegExp(r'\s');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    final end = text.indexOf(_whitespace);
+    if (end < 0) return newValue.copyWith(text: text.toUpperCase());
+    return newValue.copyWith(text: text.substring(0, end).toUpperCase() + text.substring(end));
+  }
+}
 
 /// How far the callsign lookup has got. The dialog shows each stage: a
 /// "looking up" line the moment the text reads as a callsign, then whatever
@@ -116,19 +243,6 @@ class CommandEngine extends ChangeNotifier {
   Map<String, dynamic>? _lookupGuess;
   List<Map<String, dynamic>> _lookupRecords = const [];
 
-  /// The last interpret() result retained for the field's space-restriction
-  /// — deliberately separate from [_currentInterpretation], which resets
-  /// synchronously on every keystroke (for the describe-message UI): the
-  /// field's formatter must not snap back to denying spaces mid-command.
-  /// Same "retained interpretation" pattern as
-  /// `logging_controls.dart`'s call field, scoped down to just spaces since
-  /// these fields otherwise accept any character.
-  Map<String, dynamic>? _retainedInterpretation;
-
-  /// Matches text the space-denying formatter would leave untouched — see
-  /// [_retainInterpretation].
-  static final _noSpaceSafeText = RegExp(r'^\S*$');
-
   /// The raw field text this engine last reacted to. A
   /// [TextEditingController] notifies its listeners for SELECTION changes as
   /// well as text changes, so without this every caret move — a tap into the
@@ -165,58 +279,10 @@ class CommandEngine extends ChangeNotifier {
   /// guess — notably call-notes' `notes` array. Also for `CallInfoPanel`.
   List<Map<String, dynamic>> get lookupRecords => _lookupRecords;
 
-  /// Whether the field is mid-command free-text entry — spaces stay
-  /// allowed. Two ways in, both requiring a retained command: it's still
-  /// awaiting its parameters (`expectsParams`), or the text already holds a
-  /// space the formatter would otherwise delete on the next keystroke.
-  bool get commandExpectsParams {
-    final retained = _retainedInterpretation;
-    if (retained == null) return false;
-    // Tied to the command word, for the reason spelled out on
-    // [commandMixedCase]: the retained map outlives the command it came from
-    // whenever someone types steadily. Without this, selecting all after a
-    // RELOAD and typing a callsign keeps `expectsParams` true for every
-    // character, and a space lands in the middle of the call.
-    if (retained['expectsParams'] == true && _commandWord(_text) == _retainedCommandWord) return true;
-    // Not command-identity-dependent: a space already in the field is a fact
-    // about the text, and the formatter would eat it on the next keystroke.
-    return !_noSpaceSafeText.hasMatch(_text);
-  }
-
   /// True while an execute-time interpret is in flight. A command's execute
   /// call may be a non-idempotent network write (REPORT files a CaBo card), so
   /// a second Enter during the round trip would file it twice.
   bool _submitting = false;
-
-  /// Whether the retained command declared `mixedCase: true` (e.g. NOTE,
-  /// whose parameter is free prose) — also keeps spaces allowed.
-  ///
-  /// Tied to the command word it was retained for. The retained interpretation
-  /// is only revised inside the describe debounce, which restarts on every
-  /// keystroke and so never fires while someone types steadily — so after a
-  /// NOTE, selecting all and typing a callsign straight through would keep the
-  /// stale flag for every character and leave the call in lower case, with no
-  /// uppercase pass left to correct it.
-  bool get commandMixedCase =>
-      _retainedInterpretation?['mixedCase'] == true && _commandWord(_text) == _retainedCommandWord;
-
-  /// The leading word, which is what identifies a command ("NOTE hello" ->
-  /// "NOTE"). Case-insensitive: the field may or may not have uppercased it
-  /// yet, depending on the very flag this feeds.
-  ///
-  /// Any whitespace ends the word, not just a space: a command taking free
-  /// text matches on `\s+` (REPORT's pattern does, and it exists to accept
-  /// pasted multi-line descriptions), so splitting on a literal space alone
-  /// would read a newline-led description as part of the command word and
-  /// revoke the very flag that keeps the paste unshouted.
-  static String _commandWord(String text) {
-    final trimmed = text.trimLeft();
-    final end = trimmed.indexOf(RegExp(r'\s'));
-    return (end < 0 ? trimmed : trimmed.substring(0, end)).toUpperCase();
-  }
-
-  /// The command word [_retainedInterpretation] was retained for.
-  String? _retainedCommandWord;
 
   String get _text => _controller?.text ?? '';
 
@@ -246,21 +312,6 @@ class CommandEngine extends ChangeNotifier {
     _executeMessageTimer?.cancel();
     _lookupDebounce?.cancel();
     super.dispose();
-  }
-
-  /// Folds a fresh interpret() result into [_retainedInterpretation]. A
-  /// non-null result always replaces the previous one. A null result only
-  /// clears it when the current text has no space the formatter would
-  /// otherwise strip on the next keystroke — mirrors
-  /// `logging_controls.dart`'s `_retainInterpretation`.
-  void _retainInterpretation(Map<String, dynamic>? result) {
-    if (result != null) {
-      _retainedInterpretation = result;
-      _retainedCommandWord = _commandWord(_text);
-    } else if (_noSpaceSafeText.hasMatch(_text)) {
-      _retainedInterpretation = null;
-      _retainedCommandWord = null;
-    }
   }
 
   /// Forgets everything about the current callsign lookup, in one place.
@@ -303,7 +354,6 @@ class CommandEngine extends ChangeNotifier {
     if (text.isEmpty) {
       _resetLookup();
       _setMessage(null, CommandMessageKind.describe);
-      _retainedInterpretation = null;
       notifyListeners();
       return;
     }
@@ -316,7 +366,6 @@ class CommandEngine extends ChangeNotifier {
         final result = await services.extensions.interpretCommand(text, operationContext());
         if (trimmedText != text) return; // stale — the field changed while awaiting
         _currentInterpretation = result;
-        _retainInterpretation(result);
         if (result != null && result['error'] is String) {
           _setMessage(result['error'] as String, CommandMessageKind.error);
         } else if (result != null && result['describe'] is String) {
@@ -487,8 +536,6 @@ class CommandEngine extends ChangeNotifier {
       _executeMessageTimer?.cancel();
 
       _currentInterpretation = null;
-      _retainedInterpretation = null;
-      _retainedCommandWord = null;
       if (confirm != null) {
         _showConfirmationMessage(confirm);
       } else {
@@ -509,7 +556,6 @@ class CommandEngine extends ChangeNotifier {
       // stage stale (an empty field still showing "Looking up callsign…").
       _controller?.clear();
       _setMessage(null, CommandMessageKind.describe);
-      _retainedInterpretation = null;
       notifyListeners();
     }
     return false;

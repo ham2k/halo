@@ -320,11 +320,22 @@ looked at by a script or agent. `openCommandBar()` returns a **promise**:
 the route mounts a frame after the call, and typing before that silently does
 nothing — which looks exactly like the dialog having closed itself.
 
-The typing behavior — debounced interpretation, the space rules for commands
-mid-parameter, execution — is **not** the dialog's own: it lives in
+The typing behavior — debounced interpretation, execution, and the input
+rules in `commandFieldFormatters` — is **not** the dialog's own: it lives in
 `CommandEngine`, shared with the Home view's Quick Lookup bar so the two
-can't drift apart. The dialog runs commands against the front-most Operation
-View's operation via `HaLoServices.currentOperationContext`.
+can't drift apart. Those input rules are **positional, never interpreted**:
+spaces are free (the engine reads the field trimmed), any run of whitespace
+collapses to one plain space — a single-line field filters out `\n` and
+nothing else, so tabs, CRs and non-breaking spaces do arrive — and only the
+text up to the first whitespace is uppercased.
+Nothing about a keystroke may wait on `interpret`, whose answer lands 150ms
+later at the earliest and never lands at all while someone types steadily —
+so `mixedCase` changes nothing in these two bars, and `expectsParams` only
+still withholds execution rather than switching the field's mode. The
+logging panel's call field is the one that asks, because Space is a
+keystroke it owns and can await an answer for. The dialog runs commands
+against the front-most Operation View's operation via
+`HaLoServices.currentOperationContext`.
 
 **Where a command's actions land.** Most `CommandAction`s are QSO-scoped —
 `setVfo`, `addQso`, `updateQso`, `setCallField`, `sendSpots` — and only the

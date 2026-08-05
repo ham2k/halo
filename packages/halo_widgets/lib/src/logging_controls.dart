@@ -7643,16 +7643,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
 /// On mobile, "." often gets typed where "/" was meant — portable/mobile
 /// suffixes like "/P" or "/QRP" sit behind an extra keyboard layer, while
-/// "." is right on the main keys (issue #7). Converts every "." to "/", but
-/// only once the text looks like the start of a callsign (a letter, or a
+/// "." is right on the main keys (issue #7). Converts "." to "/", but only
+/// once the text looks like the start of a callsign (a letter, or a
 /// digit then a letter) rather than digits alone, so typing a plain
 /// frequency ("14.285") keeps its decimal point. See isMobilePlatform.
+///
+/// The FIRST word only. A callsign holds no whitespace, so past the first
+/// one there is nothing left this could be correcting — what is there is a
+/// command's free-text parameter, where a full stop is a full stop: without
+/// this bound, "REPORT it crashes. every time" files its card reading
+/// "crashes/ every time".
 ///
 /// Public (not `_`-prefixed) so other callsign-entry fields — e.g.
 /// HomeQuickLookup in app/lib/views/home_view.dart — can reuse it instead
 /// of leaving the same mobile keyboard quirk unhandled there.
 class MobileDotToSlashFormatter extends TextInputFormatter {
   static final _callsignPrefix = RegExp(r'^([A-Z]|[0-9][A-Z])', caseSensitive: false);
+  static final _whitespace = RegExp(r'\s');
 
   @override
   TextEditingValue formatEditUpdate(
@@ -7663,7 +7670,11 @@ class MobileDotToSlashFormatter extends TextInputFormatter {
     if (!text.contains('.') || !_callsignPrefix.hasMatch(text)) {
       return newValue;
     }
-    return newValue.copyWith(text: text.replaceAll('.', '/'));
+    final end = text.indexOf(_whitespace);
+    if (end < 0) return newValue.copyWith(text: text.replaceAll('.', '/'));
+    final head = text.substring(0, end);
+    if (!head.contains('.')) return newValue;
+    return newValue.copyWith(text: head.replaceAll('.', '/') + text.substring(end));
   }
 }
 

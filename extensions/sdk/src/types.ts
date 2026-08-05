@@ -902,6 +902,13 @@ export interface CommandInterpretation {
   /// (spaces and platform-normal capitalization allowed) so the user can keep
   /// typing parameters; it is never executed even if Enter is pressed while
   /// still set.
+  ///
+  /// Withholding execution is honored everywhere. The free-text switch is the
+  /// logging panel's call field only: the ⌘K and Quick Lookup bars decide
+  /// spaces and case by position instead, because an interpretation cannot
+  /// arrive in time to rule on a keystroke there — a rule that waits for one
+  /// eats the space in "NOTE hello" typed at speed. Those two fields accept
+  /// any character regardless, so there is nothing for them to switch.
   expectsParams?: boolean
   /// Set when the input IS a recognized command but can't run in the
   /// current context — e.g. an operation-scoped command (SEED, NOTE, SPOT)
@@ -917,6 +924,11 @@ export interface CommandInterpretation {
   /// explicitly mixed-case. Return it on BOTH the bare-prefix
   /// (`expectsParams`) result and the complete result, or the field snaps
   /// back to uppercasing while the parameter is still being typed.
+  ///
+  /// The logging panel's call field only — see [expectsParams]. The other two
+  /// fields uppercase the command word and leave everything past it as typed,
+  /// so a prose parameter arrives verbatim from them whether or not this is
+  /// set, and setting it changes nothing there.
   mixedCase?: boolean
   describe?: string
   confirm?: string

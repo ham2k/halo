@@ -37,6 +37,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_dialog.dart';
+import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 
 class _CannedExtensions extends ExtensionService {
@@ -270,6 +271,32 @@ OperationCommandContext _openOperation(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('the field takes the shared input rules, not a copy of them', (tester) async {
+    // What a space and a letter's case MEAN is covered once, against the
+    // engine, in home_quick_lookup_test.dart. What this catches is the two
+    // fields drifting apart: their rules are identical and hand-copying them
+    // gets one of the two fixed and the other left behind.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    // Chained, as the framework chains them: each formatter's output is the
+    // next one's input. Feeding them all the raw edit instead lets the
+    // collapse pass be silently discarded by the one after it.
+    String runThrough(List<TextInputFormatter>? formatters) {
+      var value = const TextEditingValue(text: 'note  Hello There');
+      for (final formatter in formatters!) {
+        value = formatter.formatEditUpdate(const TextEditingValue(text: ''), value);
+      }
+      return value.text;
+    }
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(runThrough(field.inputFormatters), runThrough(commandFieldFormatters));
+    expect(runThrough(field.inputFormatters), 'NOTE Hello There');
+
+    await _unmount(tester);
+  });
 
   testWidgets('an empty field offers two sample commands while the dialog is still new', (tester) async {
     final services = await _services(tester);
