@@ -147,7 +147,7 @@ begin
       DelTree(SecureStorageDir, True, True, True);
       // Remembered window position/size (win32_window.cpp) — cosmetic, but
       // part of "completely uninstalled".
-      RegDeleteKeyIncludeSubkeys(HKCU, 'Software\Ham2K\Halo\{#SecureStorageAppName}');
+      RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Ham2K\Halo\{#SecureStorageAppName}');
     end;
   end;
 end;
