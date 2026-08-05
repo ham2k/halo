@@ -29,6 +29,8 @@ import type {
   OperationSegmentPayload,
   QsoScoreNotices,
   QsoScoreVerdict,
+  ScoreCandidatesRequest,
+  ScoreCandidatesResult,
   ScoreQsoRequest,
   ScoreQsosRequest,
   ScoreQsosResult,
@@ -167,6 +169,48 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     return sheet
   }
 
+  /// The log folded up to now, ready for a not-yet-logged candidate to be
+  /// scored against and thrown away. Shared by both live paths.
+  ///
+  /// The returned sheet is always the harness's own — never the caller's
+  /// cached checkpoint — so a scorer mutating it can't corrupt the cache.
+  async function liveScoresheet(
+    args: {
+      operation: Record<string, JSONValue>
+      ref?: Record<string, JSONValue>
+      segments?: OperationSegmentPayload[]
+      resumeFrom?: JSONValue
+    },
+    ctx: HookContext,
+    excludeUuid?: string,
+  ): Promise<S> {
+    if (args.resumeFrom !== undefined) {
+      // The cached end-of-log scoresheet — no whole-log read, which is the
+      // point: this runs on every debounced keystroke.
+      return copyCheckpoint(args.resumeFrom as S)
+    }
+    // Cold cache: rebuild from the log, skipping the record being edited so
+    // it can't flag itself as its own duplicate.
+    const uuid = typeof args.operation.uuid === 'string' ? args.operation.uuid : undefined
+    const log = uuid ? ((await ctx.getQsos?.(uuid)) ?? []) : []
+    const rest = chronological(log as Record<string, JSONValue>[]).filter(
+      (q) => !excludeUuid || q.uuid !== excludeUuid,
+    )
+    // Segmented exactly as the batch pass folds it, so the candidate is
+    // judged against the same history the score summary counted — without
+    // this a contest that started mid-log would call a pre-contest contact
+    // a duplicate.
+    return fold(
+      scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx),
+      rest,
+      args,
+      ctx,
+      undefined,
+      undefined,
+      args.segments,
+    )
+  }
+
   return {
     scope,
 
@@ -214,41 +258,42 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     /// its notices/alerts. Nothing is recorded — the resulting scoresheet is
     /// discarded, which is exactly why one `scoreQso` can serve both paths.
     async scoreQso(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices> {
-      let sheet: S
-      if (args.resumeFrom !== undefined) {
-        // The cached end-of-log scoresheet — no whole-log read, which is the
-        // point: this runs on every debounced keystroke. Copied because the
-        // candidate is scored against it and then thrown away; the cache must
-        // survive unchanged.
-        sheet = copyCheckpoint(args.resumeFrom as S)
-      } else {
-        // Cold cache: rebuild from the log, skipping the record being edited so
-        // it can't flag itself as its own duplicate.
-        const uuid = typeof args.operation.uuid === 'string' ? args.operation.uuid : undefined
-        const log = uuid ? ((await ctx.getQsos?.(uuid)) ?? []) : []
-        const rest = chronological(log as Record<string, JSONValue>[]).filter(
-          (q) => !args.excludeUuid || q.uuid !== args.excludeUuid,
-        )
-        // Segmented exactly as the batch pass folds it, so the candidate is
-        // judged against the same history the score summary counted — without
-        // this a contest that started mid-log would call a pre-contest contact
-        // a duplicate.
-        sheet = fold(
-          scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx),
-          rest,
-          args,
-          ctx,
-          undefined,
-          undefined,
-          args.segments,
-        )
-      }
-
+      const sheet = await liveScoresheet(args, ctx, args.excludeUuid)
       const { score } = scorer.scoreQso(
         { scoresheet: sheet, qso: args.qso, operation: args.operation, ref: args.ref, isNewDay: false },
         ctx,
       )
       return { notices: score.notices ?? [], alerts: score.alerts ?? [] }
+    },
+
+    /// The same live judgement as `scoreQso`, for many candidates at once —
+    /// the Spots Panel annotating every spot on screen. The log is folded ONCE
+    /// and each candidate scored against its own copy of the result, so a
+    /// candidate can neither see nor become a duplicate of another (both spots
+    /// for the same unworked call read as unworked, which is what an operator
+    /// scanning a band expects).
+    ///
+    /// The copy is per candidate rather than per call because
+    /// `ContestScorer.scoreQso` may mutate the scoresheet it is handed — the
+    /// contract that makes the batch fold linear. Without it the first
+    /// candidate's call would count as worked for every candidate after it.
+    async scoreCandidates(args: ScoreCandidatesRequest, ctx: HookContext): Promise<ScoreCandidatesResult> {
+      const base = await liveScoresheet(args, ctx)
+      const result: ScoreCandidatesResult = {}
+      for (const candidate of args.candidates) {
+        const { score } = scorer.scoreQso(
+          {
+            scoresheet: copyCheckpoint(base),
+            qso: candidate.qso,
+            operation: args.operation,
+            ref: args.ref,
+            isNewDay: false,
+          },
+          ctx,
+        )
+        result[candidate.key] = { notices: score.notices ?? [], alerts: score.alerts ?? [] }
+      }
+      return result
     },
   }
 }

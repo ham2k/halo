@@ -305,12 +305,112 @@ String _timeAgo(int millis) {
   return '${minutes ~/ 60}h${minutes % 60}m ago';
 }
 
+/// A key for a spot's scoring candidate: the fields a scorer actually judges
+/// on. Two spots for the same operator on the same band/mode/references are
+/// the same question, asked once.
+///
+/// Per CALL, not per spot — a merged multi-op spot's `their.call` is a
+/// comma-joined compound (see [mergeSpotsByFreqAndRefs]) that no scorer would
+/// recognize.
+String spotCandidateKey(String call, Map<String, dynamic> spot) {
+  final refs = [for (final ref in _refsOf(spot)) '${ref['type']}:${ref['ref']}']..sort();
+  return '${call.toUpperCase()}|${_bandOf(spot) ?? ''}|${_spotModeFor(spot)}|${refs.join(',')}';
+}
+
+/// A spot's mode as a scorer will compare it. Scorers match a logged QSO's
+/// `band|mode` as raw strings and logged modes are always uppercase, so a
+/// source that passes its API's casing through — POTA hands back `spot.mode`
+/// untouched — would otherwise never match a contact the operator has made.
+String _spotModeFor(Map<String, dynamic> spot) => (_modeOf(spot) ?? '').toUpperCase();
+
+/// The QSO a scorer judges when asked "what would working this spot be?".
+///
+/// `startAtMillis` is [now], not absent: activity scoring buckets a contact by
+/// `floor(startAtMillis / day)`, so a candidate without one lands on the epoch
+/// and every already-worked station reports `newDay` instead of `duplicate`.
+///
+/// The callsign is uppercased for the same reason the mode is
+/// ([_spotModeFor]): scorers key their worked-call tables on the raw string,
+/// and POTA and SOTA both pass their API's callsign through as it arrives, so a
+/// lower-cased spot would never match the log and never strike through.
+/// Public for `spots_panel_scoring_test.dart`.
+Map<String, dynamic> spotCandidateQso(String call, Map<String, dynamic> spot, {required int now}) => {
+      'their': {'call': call.toUpperCase()},
+      if (_freqOf(spot) != null) 'freq': _freqOf(spot),
+      if (_bandOf(spot) != null) 'band': _bandOf(spot),
+      if (_modeOf(spot) != null) 'mode': _spotModeFor(spot),
+      'refs': _refsOf(spot),
+      'startAtMillis': now,
+    };
+
+/// How a spot should read: struck through when worked, tinted when it's our
+/// own station, accented per the scoring notices its operators carry.
+/// [scores] is keyed by [spotCandidateKey]; [ourCall] is the operation's
+/// station callsign, uppercased.
+///
+/// `worked` needs EVERY operator on the spot to be a duplicate. A merged
+/// multi-op spot is one row for several stations, and striking it because one
+/// of them is worked would hide the others — the conservative direction, since
+/// an un-struck worked spot costs a glance and a struck unworked one costs the
+/// contact. Notices, which only ever add an accent, merge across operators
+/// instead.
+///
+/// A notice alongside the alert un-strikes for the same reason. Alerts and
+/// notices are unioned across every scorer, and a scorer only reports a QSO as
+/// new on some axis when it is NOT that scorer's duplicate — so the two
+/// together mean two scorers disagreed. app-polo resolves that the same way
+/// (SpotItem's `type: 'scoring'` wins over `'duplicate'`): a POTA hunter who
+/// worked a station at one park still wants them at their next one, and a row
+/// that is struck through and reference-accented at once hides exactly the
+/// contact worth making. Public for `spots_panel_scoring_test.dart`.
+({bool worked, bool isSelf, Set<String> notices}) spotDisplayFlags(
+  Map<String, dynamic> spot, {
+  required Map<String, ({List<String> notices, List<String> alerts})> scores,
+  String? ourCall,
+}) {
+  final calls = _callsIn(_callOf(spot)).toList();
+  if (calls.isEmpty) return (worked: false, isSelf: false, notices: const {});
+  var worked = true;
+  final notices = <String>{};
+  for (final call in calls) {
+    final score = scores[spotCandidateKey(call, spot)];
+    if (score == null || !score.alerts.contains('duplicate')) worked = false;
+    notices.addAll(score?.notices ?? const []);
+  }
+  return (
+    worked: worked && notices.isEmpty,
+    isSelf: ourCall != null && calls.any((c) => c.toUpperCase() == ourCall),
+    notices: notices,
+  );
+}
+
 class SpotsPanel extends StatefulWidget {
   final Operation operation;
   final HaLoServices services;
   final ValueChanged<Map<String, dynamic>>? onSuggestQso;
 
-  const SpotsPanel({super.key, required this.operation, required this.services, this.onSuggestQso});
+  /// Changes whenever the operation's log does. Spots are scored against that
+  /// log, so working a station has to restrike its spot immediately — a plain
+  /// QSO count would miss the edit that moves a contact to another band, which
+  /// is exactly what flips a spot back from worked to new-band.
+  ///
+  /// Required rather than defaulted: a caller that forgets it gets a panel
+  /// whose spots never restrike, and nothing about that looks broken.
+  final String logRevision;
+
+  /// The operation's log, for resolving its `break`/`start` segments — those
+  /// ride event rows in the log, never [operation]'s own data. Read only when
+  /// a scoring pass runs, not per build.
+  final List<Qso> qsos;
+
+  const SpotsPanel({
+    super.key,
+    required this.operation,
+    required this.services,
+    required this.logRevision,
+    this.onSuggestQso,
+    this.qsos = const [],
+  });
 
   @override
   State<SpotsPanel> createState() => _SpotsPanelState();
@@ -336,6 +436,35 @@ class _SpotsPanelState extends State<SpotsPanel> {
   bool _groupByBand = true;
   bool _groupCallsWithNotes = false;
   final Map<String, ({bool hasNote, String? emoji, String? continent})> _callNotes = {};
+
+  /// Scoring verdicts keyed by [spotCandidateKey] — what makes a spot show as
+  /// worked, or accented for a new band/mode/day/reference/multiplier. Absent
+  /// means "nothing to report" as well as "not scored yet"; the panel renders
+  /// the same either way, so an unscored spot simply looks ordinary rather
+  /// than wrong.
+  Map<String, ({List<String> notices, List<String> alerts})> _spotScores = {};
+
+  /// Guards against a second scoring pass while one is in flight (a spot
+  /// refresh landing on a log edit) — the second would fold the same log again
+  /// for the same answer. The trailing flag re-runs once, so the pass that was
+  /// skipped isn't simply lost.
+  bool _scoringSpots = false;
+  bool _spotScoresStale = false;
+
+  /// Coalesces bursts of triggers into one pass. A run of contacts logged in a
+  /// pileup moves `logRevision` per QSO, and each pass is a whole-log fold per
+  /// scorer on the same runtime that serves the logging panel's own
+  /// call-info scoring — so scoring every intermediate state costs the operator
+  /// the responsiveness of the field they are typing in. Longer than that
+  /// panel's own 300ms: nothing here is per-keystroke.
+  Timer? _scoreDebounce;
+
+  /// The log this panel last kicked off a scoring pass for. A cached scoresheet
+  /// (see `_refreshSpotScores`) is only usable while this still matches, since
+  /// `ScoringService` writes that cache on its own debounce and it lags the log
+  /// by exactly the window in which a just-worked spot must strike.
+  String? _scoredLogRevision;
+
   String? _lastVfoBand;
   String? _lastVfoMode;
   /// Mirrors Settings › Logging › Bands, kept here rather than read per build
@@ -358,7 +487,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // keeps the refresh running if that ever stops being true.
     _unsubscribeSpots = widget.services.spots.subscribe();
     widget.services.spots.addListener(_onSpotsChanged);
-    if (widget.services.spots.loaded) unawaited(_refreshCallInfo());
+    if (widget.services.spots.loaded) {
+      unawaited(_refreshCallInfo());
+      unawaited(_refreshSpotScores());
+    }
     // Fetched once, not on the 2-min spots refresh timer — a hook's
     // `sourceName` is a static field, not something that changes at runtime.
     widget.services.extensions.getSpotSourceNames().then((names) {
@@ -380,6 +512,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onVfoChanged);
     widget.services.spots.removeListener(_onSpotsChanged);
+    _scoreDebounce?.cancel();
     _unsubscribeSpots?.call();
     super.dispose();
   }
@@ -444,7 +577,130 @@ class _SpotsPanelState extends State<SpotsPanel> {
     if (!mounted) return;
     setState(() {});
     unawaited(_refreshCallInfo());
+    _scheduleSpotScores();
   }
+
+  @override
+  void didUpdateWidget(SpotsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.logRevision != oldWidget.logRevision) _scheduleSpotScores();
+  }
+
+  /// Debounced entry point to [_refreshSpotScores] — every trigger goes through
+  /// here, so a burst (a run of QSOs, a spot fetch landing on a log edit) costs
+  /// one pass rather than one per event.
+  void _scheduleSpotScores() {
+    _scoreDebounce?.cancel();
+    _scoreDebounce = Timer(const Duration(milliseconds: 600), () {
+      if (mounted) unawaited(_refreshSpotScores());
+    });
+  }
+
+  /// Scores every spot on the board against the operation's log, so the list
+  /// can strike the ones already worked and accent what is new.
+  ///
+  /// Scored per operator (a merged multi-op spot carries several), deduped by
+  /// [spotCandidateKey], and asked in ONE call per scorer — the runtime folds
+  /// the log once and judges every candidate against it.
+  ///
+  /// Scores the whole merged board rather than the filtered view: filtering is
+  /// a display choice the operator changes constantly, and re-scoring on each
+  /// change would refold the log to learn nothing new.
+  ///
+  /// Scored against the CURRENT segment, like the call-info pills
+  /// (`logging_controls.dart`) and for the same reason: the spots and the entry
+  /// row have to agree about which activities are running. A contest started at
+  /// a `start` event is named by no ref on the base operation, so without this
+  /// its scorer is never selected and no spot ever shows its multipliers; one
+  /// ended at a break would keep accenting them. The timeline goes along too,
+  /// so the log the candidates are judged against is folded per segment —
+  /// otherwise a pre-contest contact makes a fresh station read as a duplicate.
+  ///
+  /// Resumes from `ScoringService`'s cached scoresheets when the log has not
+  /// moved since this panel last scored, which is the case for every pass the
+  /// 2-minute spot refresh drives — the expensive whole-log fold is skipped and
+  /// only the candidates are scored. A pass triggered BY a log change runs cold
+  /// instead: that cache is written on the rescore's own debounce, so at the one
+  /// moment that matters — the second after working a station — it does not yet
+  /// contain the contact, and resuming from it would leave the spot unstruck
+  /// until some later pass.
+  Future<void> _refreshSpotScores() async {
+    if (_scoringSpots) {
+      _spotScoresStale = true;
+      return;
+    }
+    _scoringSpots = true;
+    try {
+      do {
+        _spotScoresStale = false;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final candidates = <String, Map<String, dynamic>>{};
+        for (final spot in _mergedRawSpots) {
+          for (final call in _callsIn(_callOf(spot))) {
+            candidates.putIfAbsent(
+              spotCandidateKey(call, spot),
+              () => spotCandidateQso(call, spot, now: now),
+            );
+          }
+        }
+        if (candidates.isEmpty) {
+          if (mounted && _spotScores.isNotEmpty) setState(() => _spotScores = {});
+          return;
+        }
+
+        final logMoved = _scoredLogRevision != widget.logRevision;
+        _scoredLogRevision = widget.logRevision;
+
+        final segmented = SegmentedOperation.from(operation: widget.operation.data, qsos: widget.qsos);
+        final scored = await widget.services.extensions.scoreCandidates(
+          operation: segmented.current,
+          operationUuid: widget.operation.uuid,
+          candidates: candidates,
+          segments: segmented.isSegmented ? segmented.payload : null,
+          scoresheets: logMoved ? null : _cachedScoresheets,
+        );
+        if (!mounted) return;
+        // A null result means no scorer ran at all (runtime not up yet, or none
+        // applies) — leave the previous verdicts alone rather than un-striking
+        // every worked spot on a transient miss.
+        if (scored != null) {
+          setState(() {
+            _spotScores = {
+              for (final entry in scored.entries)
+                entry.key: (
+                  notices: entry.value['notices'] ?? const [],
+                  alerts: entry.value['alerts'] ?? const [],
+                ),
+            };
+          });
+        }
+      } while (_spotScoresStale && mounted);
+    } finally {
+      _scoringSpots = false;
+    }
+  }
+
+  /// `ScoringService`'s cached end-of-log scoresheets, keyed by scorer, or null
+  /// before the first rescore of this operation has landed. Never synced —
+  /// `local_data` is device-local (DESIGN.md §4).
+  Map<String, dynamic>? get _cachedScoresheets {
+    final scoring = widget.operation.localData['scoring'] as Map<String, dynamic>?;
+    if (scoring == null) return null;
+    final sheets = {
+      for (final entry in scoring.entries) entry.key: ?(entry.value as Map?)?['scoresheet'],
+    };
+    return sheets.isEmpty ? null : sheets;
+  }
+
+  /// This operation's own station callsign, uppercased — the spot to tint
+  /// rather than offer as a contact.
+  String? get _ourCall {
+    final call = widget.operation.stationCall.trim().toUpperCase();
+    return call.isEmpty ? null : call;
+  }
+
+  ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) =>
+      spotDisplayFlags(spot, scores: _spotScores, ourCall: _ourCall);
 
   /// The filter-row refresh button's handler: drives a fetch while showing a
   /// spinner in place of the button's icon. Pull-to-refresh calls the cache
@@ -780,17 +1036,21 @@ class _SpotsPanelState extends State<SpotsPanel> {
                 for (final section in sections) ...[
                   _SpotsSectionHeader(section.label),
                   for (final spot in section.spots)
-                    _SpotTile(
-                      spot: spot,
-                      noteEmoji: _noteEmojiOf(spot),
-                      hzDigits: hzDigits,
-                      leftWidth: leftWidth,
-                      sortByAge: _sortBy == 'time',
-                      activityControls: _activityControls,
-                      onTap: widget.onSuggestQso == null
-                          ? null
-                          : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
-                    ),
+                    if (_flagsFor(spot) case final flags)
+                      _SpotTile(
+                        spot: spot,
+                        noteEmoji: _noteEmojiOf(spot),
+                        hzDigits: hzDigits,
+                        leftWidth: leftWidth,
+                        sortByAge: _sortBy == 'time',
+                        activityControls: _activityControls,
+                        worked: flags.worked,
+                        isSelf: flags.isSelf,
+                        notices: flags.notices,
+                        onTap: widget.onSuggestQso == null
+                            ? null
+                            : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
+                      ),
                 ],
               ],
             ),
@@ -925,6 +1185,23 @@ class _SpotTile extends StatelessWidget {
   final List<Map<String, dynamic>> activityControls;
   final VoidCallback? onTap;
 
+  /// Every operator on this spot has already been worked on this band and mode
+  /// — the `duplicate` alert from [SpotsPanel]'s candidate scoring. Struck
+  /// through and dimmed, per app-polo's SpotItem `type: 'duplicate'`.
+  final bool worked;
+
+  /// This spot is OUR station's own — tinted and dimmed rather than struck,
+  /// since it isn't a contact to make (app-polo's `type: 'self'`).
+  final bool isSelf;
+
+  /// Scoring notices for this spot's operators, merged across every scorer.
+  /// Only `newBand`, `newMode`, `newDay`, `newRef` and `newMult` are drawn —
+  /// each accents the field it speaks about (see `build`). The core scorer's
+  /// `newDXCC`/`newState`/`newProvince` arrive here too and are deliberately
+  /// ignored: they belong to the call you are typing, and on a whole board they
+  /// would accent most rows most of the time.
+  final Set<String> notices;
+
   const _SpotTile({
     required this.spot,
     this.noteEmoji,
@@ -933,17 +1210,59 @@ class _SpotTile extends StatelessWidget {
     this.sortByAge = false,
     this.activityControls = const [],
     this.onTap,
+    this.worked = false,
+    this.isSelf = false,
+    this.notices = const {},
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mono = haloMonoStyle(context, fontSize: 14, color: theme.colorScheme.onSurface);
+    final haloColors = HaLoColors.of(context);
+
+    // The row-wide accents, applied by folding them into the two base styles
+    // every field below derives from. app-polo's SpotItem spreads a
+    // `commonStyle` across each of its Texts for the same effect.
+    // The dim is folded into every colour rather than wrapped around the row in
+    // an `Opacity`: that widget forces a saveLayer per row, and on a board where
+    // most spots are worked that is a compositing layer for every visible row on
+    // every frame of a scroll.
+    final dim = worked ? 0.6 : (isSelf ? 0.7 : 1.0);
+    Color faded(Color color) => dim == 1.0 ? color : color.withValues(alpha: color.a * dim);
+
+    final baseColor = faded(isSelf ? theme.colorScheme.tertiary : theme.colorScheme.onSurface);
+    final decoration = worked ? TextDecoration.lineThrough : null;
+
+    final mono = haloMonoStyle(context, fontSize: 14, color: baseColor)
+        .copyWith(decoration: decoration, decorationColor: baseColor);
     // Band/mode and the reference label are names, not structured data —
     // proportional, like everywhere else names/labels appear (e.g. the DX
     // flag/state field in qso_list.dart), unlike the monospace fields
     // (freq, callsign) they sit next to.
-    final proportional = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
+    final outlineColor = faded(theme.colorScheme.outline);
+    final proportional = theme.textTheme.bodySmall
+        ?.copyWith(color: isSelf ? baseColor : outlineColor)
+        .copyWith(decoration: decoration, decorationColor: baseColor);
+
+    // Per-notice accents, ported from app-polo's SpotItem. Applied in its
+    // order, so `newMult` wins the callsign and reference label from the
+    // others — a fresh multiplier is the one worth breaking a run for.
+    //
+    // `newBand` accents the FREQUENCY rather than a band field: this row shows
+    // the frequency and lets it imply the band, where app-polo's shows both.
+    final important = faded(haloColors.important);
+    final multiplier = faded(haloColors.spotMultiplier);
+    final freqAccent = notices.contains('newBand') ? important : null;
+    final modeAccent = notices.contains('newMode') ? important : null;
+    final callAccent = notices.contains('newMult') ? multiplier : null;
+    final refAccent = notices.contains('newMult')
+        ? multiplier
+        : (notices.contains('newDay') || notices.contains('newRef') ? important : null);
+    // An accented field is bold as well as colored — color alone is not a
+    // signal an operator can rely on (docs/design/user-interface.md), and at
+    // spot-row size the weight is what actually catches the eye.
+    TextStyle? accented(TextStyle? style, Color? accent) =>
+        accent == null ? style : style?.copyWith(color: accent, fontWeight: FontWeight.w700);
 
     final freqKHz = _freqOf(spot);
     final Widget freqField;
@@ -952,17 +1271,18 @@ class _SpotTile extends StatelessWidget {
       freqField = const SizedBox.shrink();
     } else {
       final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
+      final freqStyle = accented(mono, freqAccent) ?? mono;
       freqField = Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Text(parts.mhz, style: mono.copyWith(fontWeight: FontWeight.w700)),
-          Text('.', style: mono),
-          Text(parts.khz, style: mono),
+          Text(parts.mhz, style: freqStyle.copyWith(fontWeight: FontWeight.w700)),
+          Text('.', style: freqStyle),
+          Text(parts.khz, style: freqStyle),
           if (parts.hz != null) ...[
-            Text('.', style: mono),
-            Text(parts.hz!, style: mono.copyWith(fontSize: (mono.fontSize ?? 14) * 0.8)),
+            Text('.', style: freqStyle),
+            Text(parts.hz!, style: freqStyle.copyWith(fontSize: (freqStyle.fontSize ?? 14) * 0.8)),
           ],
         ],
       );
@@ -1010,7 +1330,7 @@ class _SpotTile extends StatelessWidget {
               Flexible(
                 child: Text(
                   _callOf(spot) ?? '?',
-                  style: mono.copyWith(fontWeight: FontWeight.w700),
+                  style: (accented(mono, callAccent) ?? mono).copyWith(fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -1033,12 +1353,16 @@ class _SpotTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Icon(resolveIconName(refIcon), size: mono.fontSize, color: theme.colorScheme.outline),
+              Icon(
+                resolveIconName(refIcon),
+                size: mono.fontSize,
+                color: refAccent ?? (isSelf ? baseColor : theme.colorScheme.outline),
+              ),
               const SizedBox(width: Space.xs),
               Expanded(
                 child: Text(
                   _labelOf(spot)!,
-                  style: proportional?.copyWith(fontSize: mono.fontSize),
+                  style: (accented(proportional, refAccent) ?? proportional)?.copyWith(fontSize: mono.fontSize),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -1057,16 +1381,21 @@ class _SpotTile extends StatelessWidget {
         children: [
           line(freqField, callLine),
           const SizedBox(height: Space.xxs),
-          line(Text(_modeOf(spot) ?? '', style: proportional), labelLine),
+          line(Text(_modeOf(spot) ?? '', style: accented(proportional, modeAccent) ?? proportional), labelLine),
         ],
       ),
     );
 
+    // app-polo's SpotItem dims these two cases through its text styles; here
+    // one layer covers the icon too, which carries the same accent.
+    final dimmed = worked ? 0.6 : (isSelf ? 0.7 : null);
+    final body = dimmed == null ? tile : Opacity(opacity: dimmed, child: tile);
+
     final row = onTap == null
-        ? tile
+        ? body
         : Material(
             color: Colors.transparent,
-            child: InkWell(onTap: onTap, child: tile),
+            child: InkWell(onTap: onTap, child: body),
           );
     // A hairline divider between rows, painted over the row's bottom edge
     // (foreground) so it adds no height — lighter than the section header's

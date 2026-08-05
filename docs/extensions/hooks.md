@@ -667,6 +667,7 @@ copies any checkpoint at its boundary.
 interface ScoringHook {
   scoreQsos(args: ScoreQsosRequest, ctx): Promise<ScoreQsosResult>
   scoreQso?(args: ScoreQsoRequest, ctx): Promise<QsoScoreNotices>
+  scoreCandidates?(args: ScoreCandidatesRequest, ctx): Promise<ScoreCandidatesResult>
 }
 // ScoreQsosRequest: {operation, qsos, ref?, resumeFrom?}
 // ScoreQsosResult:  {
@@ -675,7 +676,20 @@ interface ScoringHook {
 //   operationSummary: Record<tallyKey, ScoreTally>,
 //   scoresheet,                                  // checkpoint to resume from
 // }
+// ScoreCandidatesRequest: {operation, candidates: {key, qso}[], ref?, segments?, resumeFrom?}
+// ScoreCandidatesResult:  Record<candidateKey, QsoScoreNotices>
 ```
+
+All three arrive already implemented by `contestScorer()`; a scorer writes the
+three pure `ContestScorer` functions and gets the loop, the checkpointing and
+both live paths for free.
+
+`scoreQso` answers for ONE not-yet-logged QSO — the callsign being typed.
+`scoreCandidates` answers the same question for many at once, which is what the
+Spots Panel asks to mark the spots already worked: the log is folded once per
+scorer and every candidate scored against a COPY of the result, so no candidate
+can become another's duplicate. Candidates carry no uuid — a spot is not a
+record — so results come back under caller-chosen keys.
 
 `Qsos.watchForOperation` already filters deleted rows and orders by
 `startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no

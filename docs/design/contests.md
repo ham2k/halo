@@ -88,14 +88,16 @@ and is the recommended first increment.
 | Day sections | `local_data.scoring.daySections` | `logging_panel.dart:370-383`, `qso_list.dart:155-163` |
 | Operation info | `local_data.scoring.operationSummary` (`dxcc`, `qsoCount.duplicates`) | `information_panel.dart:75-114` |
 | Live call info | `scoreQso → {notices, alerts}` (the hook, **not** the cache) | `call_info_panel.dart:40` |
+| Spot marking | `scoreCandidates → {key: {notices, alerts}}` (the hook, not the cache) | `spots_panel.dart` |
 | Carry-forward on QSO rebuild | passes `scoreCache` through untouched | `logging_panel.dart:242`, `lookup_queue_service.dart:284` |
 
 > Worth knowing before designing around it: there are currently **zero
 > production readers of the per-QSO cache**. `Qso.scores` is exercised only by
 > `repositories_test.dart:347`, and `QsoList.buildRow` renders no dupe, alert or
-> tint at all — the only live score UI (the call-info pills) comes from the
-> `scoreQso` hook, not from the cache. So any per-QSO scoring UI is net-new, and
-> the per-QSO cache shape can still be chosen freely.
+> tint at all — every live score UI (the call-info pills, the Spots Panel's
+> strikethrough and accents) comes from a hook, not from the cache. So any
+> per-QSO scoring UI is net-new, and the per-QSO cache shape can still be chosen
+> freely.
 
 ### 3.2 Logging controls
 - `LoggingControlDescriptor.input` is exactly `RefListInputDescriptor`
@@ -262,6 +264,24 @@ path replaces one scorer's contribution at a time.
 
 **Live path (`scoreQso`)** fans out the same way; the core unions each scorer's
 `{notices, alerts}` for the call-info pills.
+
+**Batched live path (`scoreCandidates`)** answers the same question for many
+not-yet-logged candidates at once — the Spots Panel, which judges every spot on
+the board against the log to strike the worked ones and accent what is new.
+`scoreQso` would cost a bridge crossing *and* a whole-log fold per spot, so this
+folds once per scorer and scores every candidate against the result. Two rules
+the harness owns:
+
+- **The copy is per candidate.** `ContestScorer.scoreQso` may mutate the
+  scoresheet it is handed (§5.2), so candidates sharing one sheet would see each
+  other: the first would enter the log and every candidate after it would read as
+  a contact that was never made.
+- **Candidates carry no uuid**, since a spot is not a record — results come back
+  under caller-chosen keys. The *operation* still must carry its uuid, which is
+  how the cold path reads the log; without one a candidate is judged against an
+  empty log and nothing is ever a duplicate, silently. `ExtensionService`
+  takes the uuid as its own argument and folds it in rather than trusting the
+  caller's operation map, which for an `Operation.data` does not hold one.
 
 > Migration note: this only changes regenerable cache contents. Old cached blobs
 > are re-derivable (scoring is "never load-bearing",

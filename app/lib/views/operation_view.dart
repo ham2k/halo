@@ -570,6 +570,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   String _fingerprintFor(List<Qso> qsos) => qsos.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
 
+  /// A cheap "has the log changed?" signal for the Spots Panel, which scores
+  /// its spots against the log. Count alone would miss an edit, and
+  /// [_fingerprintFor] is far too heavy to build on every rebuild of a long
+  /// log — `updatedAtMillis` only moves forward, so its maximum plus the count
+  /// catches an insert, a delete and an edit alike.
+  String _logRevisionFor(List<Qso> qsos) {
+    var latest = 0;
+    for (final qso in qsos) {
+      final at = qso.updatedAtMillis ?? 0;
+      if (at > latest) latest = at;
+    }
+    return '${qsos.length}:$latest';
+  }
+
   /// The same Callsign field as Settings → Callsign, offered when a new
   /// operation was started with no profile callsign: the save lands in the
   /// profile (like the settings panel) AND on this operation, which was
@@ -1256,7 +1270,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           child: Listener(
             onPointerDown: (_) => _panels.used('spots'),
             child: _LazyTab(
-              child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
+              child: SpotsPanel(
+                operation: operation,
+                services: widget.services,
+                onSuggestQso: _suggestQso,
+                logRevision: _logRevisionFor(qsos),
+                qsos: qsos,
+              ),
             ),
           ),
         );

@@ -1831,6 +1831,109 @@ class ExtensionService {
     return {'notices': notices.toList(), 'alerts': alerts.toList()};
   }
 
+  /// The same live judgement as [scoreQso], for many not-yet-logged candidates
+  /// at once — the Spots Panel annotating every spot on screen against the
+  /// operation's log. Returns `{candidateKey: {notices, alerts}}` merged across
+  /// every scorer relevant to [operation], or null when the runtime isn't up or
+  /// no scorer applies.
+  ///
+  /// One bridge crossing per scorer, not per candidate: the runtime folds the
+  /// log once and scores every candidate against it (DESIGN.md §4). Calling
+  /// [scoreQso] in a loop instead would cost a round-trip AND a whole-log fold
+  /// per spot, which is why this exists.
+  ///
+  /// [candidates] is keyed by whatever the caller can match up afterwards —
+  /// candidates have no uuid, since a spot is not a record. Keys absent from
+  /// the result had nothing to report.
+  ///
+  /// [operationUuid] is taken separately and folded in here rather than left to
+  /// the caller: it is how the hook reaches the log, and an [operation] map
+  /// without it scores every candidate against an EMPTY log — no errors, no
+  /// warnings, just nothing ever reported as a duplicate.
+  /// [scoresheets] are `ScoringService`'s cached end-of-log scoresheets, keyed
+  /// by scorer — `Operation.localData['scoring'][key]['scoresheet']`. Supplying
+  /// them skips the whole-log fold each scorer would otherwise do, which on a
+  /// long log is the dominant cost of a pass.
+  ///
+  /// Only pass them when the log has not moved since that cache was written: a
+  /// scoresheet is a checkpoint, not a live view, so resuming from a stale one
+  /// judges candidates against a log missing its most recent contacts. The
+  /// caller knows which of the two it has; this cannot tell.
+  Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
+    required Map<String, dynamic> operation,
+    required String operationUuid,
+    required Map<String, Map<String, dynamic>> candidates,
+    List<Map<String, dynamic>>? segments,
+    Map<String, dynamic>? scoresheets,
+  }) async {
+    // The public accessor rather than `_host` directly: what this method sends
+    // over the bridge is the thing worth a test, and a private field can't be
+    // stood in for. Identical in production — the getter returns `_host`.
+    final host = this.host;
+    if (host == null || candidates.isEmpty) return null;
+
+    final withUuid = {...operation, 'uuid': operationUuid};
+    final scorers = scorersFor(withUuid, await getScoringScopes());
+    if (scorers.isEmpty) return null;
+
+    final payload = [
+      for (final entry in candidates.entries) {'key': entry.key, 'qso': entry.value},
+    ];
+
+    // Sorted like scoreQso's, so a candidate's merged notice order is stable
+    // across refreshes and the panel's styling doesn't flicker between two
+    // scorers' orderings.
+    final merged = <String, ({SplayTreeSet<String> notices, SplayTreeSet<String> alerts})>{};
+    var any = false;
+
+    await Future.wait(scorers.map((scorer) async {
+      try {
+        final result = await host.invokeHook(
+          'scoring',
+          key: scorer.key,
+          method: 'scoreCandidates',
+          args: {
+            'operation': withUuid,
+            'candidates': payload,
+            'ref': ?scorer.ref,
+            'segments': ?segments,
+            'resumeFrom': ?scoresheets?[scorer.key],
+          },
+          // Longer than scoreQso's: this folds the whole log once and then
+          // scores every candidate, where that scores one.
+          timeout: const Duration(seconds: 20),
+        );
+        if (result is! Map) return;
+        any = true;
+        for (final entry in result.entries) {
+          final key = entry.key;
+          final value = entry.value;
+          if (key is! String || value is! Map) continue;
+          final into = merged.putIfAbsent(
+            key,
+            () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()),
+          );
+          into.notices.addAll(((value['notices'] as List?) ?? const []).whereType<String>());
+          into.alerts.addAll(((value['alerts'] as List?) ?? const []).whereType<String>());
+        }
+      } catch (e) {
+        // Per-scorer, like scoreQso: a contest scorer that throws must not cost
+        // the spots their core dupe marking.
+        debugPrint('[extensions] scoreCandidates(${scorer.key}) failed: $e');
+      }
+    }));
+
+    if (!any) return null;
+    return {
+      for (final entry in merged.entries)
+        if (entry.value.notices.isNotEmpty || entry.value.alerts.isNotEmpty)
+          entry.key: {
+            'notices': entry.value.notices.toList(),
+            'alerts': entry.value.alerts.toList(),
+          },
+    };
+  }
+
   /// Asks every registered `command` hook (priority order) to interpret the input command.
   /// Returns the first non-null interpretation result: `{describe, confirm, commands}`.
   /// Returns null when nothing matched, the input is empty, or the runtime isn't up.

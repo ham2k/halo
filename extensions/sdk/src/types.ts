@@ -759,6 +759,37 @@ export interface QsoScoreNotices {
   alerts: string[]
 }
 
+/// Scores MANY not-yet-logged candidates in one call — the Spots Panel, which
+/// annotates every spot on screen against the operation's log (worked already?
+/// new band? new multiplier?). Same judgement as `scoreQso`, batched for the
+/// same reason `scoreQsos` exists: a few hundred spots must not mean a few
+/// hundred bridge crossings.
+///
+/// Each candidate is judged against the log ALONE, never against the others —
+/// two spots for the same unworked call are both "not worked", and neither
+/// makes the other a duplicate.
+export interface ScoreCandidatesRequest {
+  /// The operation as it stands NOW, exactly as `ScoreQsoRequest.operation`.
+  operation: Record<string, JSONValue>
+  /// The candidates, each with a caller-chosen `key` the results come back
+  /// under. Candidates have no uuid — a spot is not a record — so the key is
+  /// whatever the caller can match up afterwards.
+  candidates: { key: string; qso: Record<string, JSONValue> }[]
+  ref?: Record<string, JSONValue>
+  segments?: OperationSegmentPayload[]
+  /// The cached end-of-log scoresheet, as `ScoreQsoRequest.resumeFrom`.
+  resumeFrom?: JSONValue
+}
+
+/// Keyed by `ScoreCandidatesRequest.candidates[].key`. Every candidate comes
+/// back, including ones with nothing to report — a scorer answers for what it
+/// was asked about, and dropping the quiet ones would make "this scorer had no
+/// opinion" indistinguishable from "this scorer never ran" at the hook
+/// boundary. Whether a caller keeps the empty entries is its own business:
+/// the host merges across scorers and drops them, since a merged empty verdict
+/// carries nothing either way.
+export type ScoreCandidatesResult = Record<string, QsoScoreNotices>
+
 /// Registered under category `scoring`. One coarse batched call scores an
 /// entire operation's QSOs at once (DESIGN.md §4: "score 500 QSOs in one
 /// call, not 500 calls") — day-sectioning and accumulation both happen here,
@@ -771,6 +802,7 @@ export interface QsoScoreNotices {
 export interface ScoringHook {
   scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult>
   scoreQso?(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices>
+  scoreCandidates?(args: ScoreCandidatesRequest, ctx: HookContext): Promise<ScoreCandidatesResult>
 }
 
 /// Which operations a scorer applies to. `'always'` scores every operation

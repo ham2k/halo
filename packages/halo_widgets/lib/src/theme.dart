@@ -95,6 +95,16 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// (6.18:1, in line with `secondary`'s own dark-mode contrast).
   final Color onSurfaceAccent;
 
+  /// The Spots Panel's "new multiplier" accent — the one flag worth breaking a
+  /// run for, so it reads apart from [important]'s green rather than joining it.
+  ///
+  /// app-polo takes this from `styles.colors.bands['10m']`, which is a coupling
+  /// rather than a decision: retuning a band swatch would silently retint an
+  /// unrelated accent, and [bands] has no dark-mode variant, so 10m's orange
+  /// runs under WCAG AA on the light surface at spot-row size. Same hue as
+  /// app-polo, darkened for contrast in light mode and lightened in dark.
+  final Color spotMultiplier;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -106,6 +116,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.devMode,
     required this.tabIndicator,
     required this.onSurfaceAccent,
+    required this.spotMultiplier,
     required this.bands,
   });
 
@@ -120,6 +131,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     devMode: Color(0xFFDB7204),
     tabIndicator: _tabIndicatorBlue,
     onSurfaceAccent: Color(0xFF006783), // = colorScheme.primary; already reads fine here
+    spotMultiplier: Color(0xFFC2500F), // 10m's hue, darkened to 4.6:1 on the light surface
     bands: _bandColors,
   );
 
@@ -132,6 +144,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     devMode: Color(0xFFF7A145),
     tabIndicator: _tabIndicatorBlue,
     onSurfaceAccent: Color(0xFF00A8D6), // same hue/saturation as primary, lightened
+    spotMultiplier: Color(0xFFFF8A4C), // 10m's hue, lightened to 7.3:1 on the dark surface
     bands: _bandColors,
   );
 
@@ -164,6 +177,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? devMode,
     Color? tabIndicator,
     Color? onSurfaceAccent,
+    Color? spotMultiplier,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -175,6 +189,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       devMode: devMode ?? this.devMode,
       tabIndicator: tabIndicator ?? this.tabIndicator,
       onSurfaceAccent: onSurfaceAccent ?? this.onSurfaceAccent,
+      spotMultiplier: spotMultiplier ?? this.spotMultiplier,
       bands: bands ?? this.bands,
     );
   }
