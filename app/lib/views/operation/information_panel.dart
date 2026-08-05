@@ -77,6 +77,11 @@ class InformationPanel extends StatelessWidget {
     final places = operationSummary?['statesAndProvinces'] as Map<String, dynamic>?;
     final stateCount = (places?['states'] as Map?)?.length ?? 0;
     final provinceCount = (places?['provinces'] as Map?)?.length ?? 0;
+    // Core is rendered by hand here rather than through `_scorerSummary`, so
+    // its per-band breakdown has to be picked out explicitly — a tally the
+    // generic loop would have shown.
+    final bandsAndModes = operationSummary?['bandsAndModes'] as Map<String, dynamic>?;
+    final bandBreakdown = bandsAndModes?['longSummary'] as String?;
     final duplicateCount =
         ((operationSummary?['qsoCount'] as Map?)?['duplicates'] as num?)
             ?.toInt() ??
@@ -108,6 +113,7 @@ class InformationPanel extends StatelessWidget {
           if (stateCount > 0) Text('${context.t.loggingPanel.statesWorked}: ${formatNumber(stateCount)}'),
           if (provinceCount > 0) Text('${context.t.loggingPanel.provincesWorked}: ${formatNumber(provinceCount)}'),
           Text('${context.t.loggingPanel.duplicates}: ${formatNumber(duplicateCount)}'),
+          if (bandBreakdown != null && bandBreakdown.isNotEmpty) _tallyDetail(context, bandBreakdown),
         ],
         // Every non-core scorer's own summary, in full. Core keeps the curated
         // two lines above (its duplicate count lives in a tally field rather
@@ -174,22 +180,26 @@ class InformationPanel extends StatelessWidget {
         ));
       }
 
-      if (detail != null && detail.isNotEmpty) {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(top: Space.xs),
-          child: MarkdownBody(
-            data: detail,
-            // The per-band table separates rows with single newlines, which
-            // Markdown would otherwise fold into one run-on paragraph.
-            softLineBreak: true,
-            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-              p: (theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14))
-                  .copyWith(fontFamily: 'RobotoMono', fontSize: 12),
-            ),
-          ),
-        ));
-      }
+      if (detail != null && detail.isNotEmpty) widgets.add(_tallyDetail(context, detail));
     }
     return widgets;
+  }
+
+  /// A tally's `longSummary` markdown — typically a per-band breakdown, which
+  /// separates its rows with single newlines that Markdown would otherwise fold
+  /// into one run-on paragraph. Monospace so the columns line up.
+  Widget _tallyDetail(BuildContext context, String detail) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.xs),
+      child: MarkdownBody(
+        data: detail,
+        softLineBreak: true,
+        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+          p: (theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14))
+              .copyWith(fontFamily: 'RobotoMono', fontSize: 12),
+        ),
+      ),
+    );
   }
 }

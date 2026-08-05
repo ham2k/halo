@@ -29,6 +29,9 @@ import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
 import { contestScorer } from "../../../sdk/src/scoring.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
+// Frequency-ordered, and the same list the runtime itself uses — the breakdown
+// reads top-down like a band plan rather than in whatever order QSOs arrived.
+import { EXTENDED_BANDS } from "@ham2k/lib-operation-data"
 import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
 
 // User-visible tally labels; the per-locale catalogs live in
@@ -61,6 +64,11 @@ export type CoreScoresheet = {
   /// Counted rather than derived from `bands`/`modes` above, because a QSO that
   /// is new on BOTH axes still credits once.
   bandModeQsos: number
+  /// band → mode → contacts, the per-band breakdown's own data. Kept beside
+  /// the flat `bands`/`modes` counts rather than replacing them: those two
+  /// answer "how many bands" without walking a matrix, and a QSO with a band
+  /// but no mode belongs to its band's total while having no mode column.
+  bandModes: Record<string, Record<string, number>>
   /// US states and Canadian provinces worked → contacts. Only accumulated when
   /// our own station is North American (see [tracksStatesAndProvinces]).
   states: Record<string, number>
@@ -139,7 +147,7 @@ function stateOrProvinceOf(
 export const CoreScorer: ContestScorer<CoreScoresheet> = {
   startScoresheet(): CoreScoresheet {
     return {
-      workedByCall: {}, entities: {}, bands: {}, modes: {}, states: {}, provinces: {},
+      workedByCall: {}, entities: {}, bands: {}, modes: {}, bandModes: {}, states: {}, provinces: {},
       qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
       dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
     }
@@ -168,6 +176,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     }
     base.states ??= {}
     base.provinces ??= {}
+    base.bandModes ??= {}
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -238,6 +247,10 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     if (entityPrefix) base.entities[entityPrefix] = (base.entities[entityPrefix] ?? 0) + 1
     if (band) base.bands[band] = (base.bands[band] ?? 0) + 1
     if (mode) base.modes[mode] = (base.modes[mode] ?? 0) + 1
+    if (band && mode) {
+      const byMode = (base.bandModes[band] ??= {})
+      byMode[mode] = (byMode[mode] ?? 0) + 1
+    }
     if (stateWorked?.kind === 'state') base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
     if (stateWorked?.kind === 'province') {
       base.provinces[stateWorked.code] = (base.provinces[stateWorked.code] ?? 0) + 1
@@ -255,11 +268,12 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
 
   summarizeScore({ scoresheet, scope }, ctx): Record<string, ScoreTally> {
     const t = tFor(ctx)
+    const isDay = scope === 'day'
     const places = summarizeStatesAndProvinces(scoresheet, t)
     return {
       qsoCount: summarizeQsoCount(scoresheet, scope === 'day', t),
       dxcc: summarizeDxcc(scoresheet, t),
-      bandsAndModes: summarizeBandsAndModes(scoresheet, t),
+      bandsAndModes: summarizeBandsAndModes(scoresheet, t, isDay),
       // Omitted entirely rather than shown empty: an operator outside North
       // America never tracks these, and a badge with no label is a puzzle.
       ...(places ? { statesAndProvinces: places } : {}),
@@ -297,7 +311,7 @@ function summarizeDxcc(sheet: CoreScoresheet, t: Translator): ScoreTally {
   }
 }
 
-function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator): ScoreTally {
+function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boolean): ScoreTally {
   const bandCount = Object.keys(sheet.bands).length
   const modeCount = Object.keys(sheet.modes).length
   const parts: string[] = []
@@ -313,7 +327,46 @@ function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator): ScoreTall
     bands: sheet.bands,
     modes: sheet.modes,
     label: parts.join(', '),
+    // Operation scope only. `bands`/`bandModes` carry across the whole
+    // operation (`for: 'operation'` says so), so a breakdown attached to a day
+    // section would read as that day's while holding operation-to-date numbers.
+    ...(isDay ? {} : { longSummary: bandBreakdown(sheet) }),
   }
+}
+
+/// One line per band WORKED, in band-plan order: the band's contacts, then how
+/// they split across modes, busiest first. Deliberately no row for a band that
+/// was never worked — this is a record of an operation, not a checklist.
+///
+/// A band's total is CONTACTS LOGGED on it — duplicates included, matching the
+/// stats block's own QSO count rather than the score, which drops them. It also
+/// counts any contact with no mode at all, which has no mode column to sit in,
+/// so the mode numbers need not add up to the total. Rendered as markdown by
+/// the information panel, which joins these single newlines with
+/// `softLineBreak`.
+function bandBreakdown(sheet: CoreScoresheet): string {
+  const worked = Object.keys(sheet.bands ?? {})
+  // A band the lib doesn't list still gets a row, after the ones it does —
+  // dropping a worked band would silently under-report the operation.
+  // The lib types its list as a union of the band names it knows, which a
+  // log's free-form band string is not — compared as plain strings here.
+  const bandPlanOrder: string[] = [...EXTENDED_BANDS]
+  const ordered = [
+    ...bandPlanOrder.filter((band) => worked.includes(band)),
+    ...worked.filter((band) => !bandPlanOrder.includes(band)).sort(),
+  ]
+
+  return ordered
+    .map((band) => {
+      const total = fmtInteger(sheet.bands[band] ?? 0)
+      const byMode = Object.entries(sheet.bandModes?.[band] ?? {})
+        // Count first, then mode name — so two modes tied at 3 don't swap
+        // places between renders of the same log.
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([mode, count]) => `${mode} ${fmtInteger(count)}`)
+      return byMode.length > 0 ? `**${band}**: ${total} — ${byMode.join(', ')}` : `**${band}**: ${total}`
+    })
+    .join('\n')
 }
 
 /// Undefined until something has actually been worked, which for a DX operator

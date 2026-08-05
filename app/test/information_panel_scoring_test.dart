@@ -35,6 +35,12 @@ Operation _operation() => Operation(
                 'total': 3,
                 'entities': {'K': 5, 'DL': 4, 'JA': 3},
               },
+              'bandsAndModes': {
+                'key': 'bandsAndModes',
+                'total': 4,
+                'label': '2 Bands, 2 Modes',
+                'longSummary': '**80m**: 2 — SSB 2\n**30m**: 10 — CW 6, SSB 4',
+              },
             },
           },
           'cqww': {
@@ -86,10 +92,20 @@ void main() {
     // The per-band breakdown renders as markdown rather than being dropped or
     // shown as literal asterisks.
     final markdown = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody));
-    expect(markdown.any((m) => m.data.contains('**20m**')), isTrue);
+    expect(markdown.any((m) => m.data.contains('**20m**: 4 QSOs, 12 pts, 2 mults')), isTrue);
     // Single newlines must break lines — otherwise the table reads as one
     // run-on paragraph.
     expect(markdown.any((m) => m.softLineBreak == true), isTrue);
+  });
+
+  // Core is rendered by hand, outside the loop that renders every other
+  // scorer's tallies — so its own per-band breakdown reaches the pane only
+  // because that hand-rolled block asks for it.
+  testWidgets('core\'s per-band breakdown reaches the pane', (tester) async {
+    await _pump(tester, _operation());
+
+    final markdown = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody));
+    expect(markdown.any((m) => m.data.contains('**30m**: 10 — CW 6, SSB 4')), isTrue);
   });
 
   testWidgets(

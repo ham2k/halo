@@ -284,3 +284,103 @@ test("scoreQso: correcting the station call re-derives our own entity", async ()
   // Now a DX operator: W1AW is no longer our own entity, so it notifies again.
   assert.ok(notices.notices.includes("newDXCC"))
 })
+
+// --- Per-band breakdown ----------------------------------------------------
+
+test("scoreQsos: the band breakdown is one row per band worked, in band-plan order", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1" }),
+        qso("K5XYZ", "20m", "SSB", { uuid: "q2" }),
+        qso("K6ABC", "20m", "CW", { uuid: "q3" }),
+        qso("DL1ABC", "40m", "SSB", { uuid: "q4" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  // 40m before 20m: band-plan order, not the order QSOs arrived. Modes within a
+  // band are busiest-first, so 20m leads with CW.
+  assert.equal(
+    result.operationSummary.bandsAndModes.longSummary,
+    "**40m**: 1 — SSB 1\n**20m**: 3 — CW 2, SSB 1",
+  )
+})
+
+// A band's total counts every contact on it; a QSO logged with no mode has no
+// column to sit in, so the mode numbers legitimately fall short of the total.
+test("scoreQsos: a mode-less QSO still counts toward its band's total", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1" }),
+        qso("K5XYZ", "20m", "", { uuid: "q2" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — CW 1")
+})
+
+test("scoreQsos: a band the band plan doesn't list still gets a row, after the ones it does", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1" }),
+        qso("K5XYZ", "wormhole", "CW", { uuid: "q2" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  const rows = (result.operationSummary.bandsAndModes.longSummary as string).split("\n")
+  assert.deepEqual(rows, ["**20m**: 1 — CW 1", "**wormhole**: 1 — CW 1"])
+})
+
+test("scoreQsos: no QSOs means no rows, not an empty bullet", async () => {
+  const result = await scoreQsos({ operation: usOp, qsos: [] }, ctxWithLog([]))
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "")
+})
+
+// The bands and bandModes maps carry across the whole operation, so a day
+// section's own tally must not carry a breakdown built from them — it would
+// read as that day's while holding operation-to-date numbers.
+test("scoreQsos: a day section's tally carries no band breakdown", async () => {
+  const day1 = Date.UTC(2026, 0, 1, 12)
+  const day2 = Date.UTC(2026, 0, 2, 12)
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1", startAtMillis: day1 }),
+        qso("K5XYZ", "40m", "SSB", { uuid: "q2", startAtMillis: day2 }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.daySections.length, 2)
+  for (const section of result.daySections) {
+    assert.equal(section.scores.bandsAndModes.longSummary, undefined)
+  }
+  // The operation summary still has it.
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 — SSB 1\n**20m**: 1 — CW 1")
+})
+
+// Duplicates count toward a band's total: the row is contacts logged, which is
+// what the stats block above it counts, not the score, which drops them.
+test("scoreQsos: a duplicate still counts toward its band's row", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1" }),
+        qso("W1AW", "20m", "CW", { uuid: "q2" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.qsoScores.q2.dupe, true)
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — CW 2")
+})
