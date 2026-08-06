@@ -24,6 +24,7 @@ import '../services/settings_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'operation_dialogs.dart';
 import 'panel_use_tracker.dart';
+import 'operation/adif_import_flow.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
@@ -927,6 +928,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               sheetKey.currentState?.updateOperation(_draftOperation!);
             }
           },
+          onImportAdif: () => pickAndImportAdif(
+            context,
+            services: widget.services,
+            // The SAVED operation, not the draft: an import writes QSOs
+            // against a row that exists, and a draft's unsaved edits are a
+            // different thing entirely.
+            operation: operation,
+          ),
           // Close the sheet first: both the confirmation and the pop that
           // follows it belong to this screen, not to the pane stacked over
           // it — and the draft's unsaved edits are moot once it's deleted.
@@ -1989,7 +1998,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           // controller — it is never recreated, so the selected index
           // carries across a flip: index 0 maps QSOs ↔ Info, which is
           // sensible since logging is always visible in the wide split.
-          body: PaneSafeArea.root(
+          body: AdifDropTarget(
+            // Wraps the whole body so a log file can be dropped anywhere on
+            // the operation, not onto some particular panel — the operator is
+            // dropping it "into this operation", and which pane happened to be
+            // under the cursor is not a distinction they are making.
+            onFile: (file) => importAdifFile(
+              context,
+              services: widget.services,
+              operation: operation,
+              file: file,
+            ),
+            child: PaneSafeArea.root(
             context,
             // Real device safe-area insets (notch, home indicator) bubble
             // in from here; PaneSafeArea's own
@@ -2078,6 +2098,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     ),
                   )
                 : tabView,
+          ),
           ),
         );
       },

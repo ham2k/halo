@@ -160,6 +160,174 @@ void main() {
     ]);
   });
 
+  group('writeBatch', () {
+    Map<String, dynamic> qsoData(String call, {String? uuid}) => {
+          if (uuid != null) 'uuid': uuid,
+          'our': {'call': 'KI2D'},
+          'their': {'call': call},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': DateTime.utc(2024, 7, 23, 12).millisecondsSinceEpoch,
+        };
+
+    test('inserts and updates together, refreshing counters once', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      final existing = await qsos.add(op.uuid, qsoData('W1AW'));
+
+      var changes = 0;
+      final counting = QsosRepository(db, onChange: () => changes++);
+
+      final written = await counting.writeBatch(
+        operationUuid: op.uuid,
+        inserts: [qsoData('K1ABC'), qsoData('K2DEF')],
+        updates: [
+          Qso(
+            uuid: existing.uuid,
+            operationUuid: op.uuid,
+            data: {...existing.data, 'notes': 'merged'},
+          ),
+        ],
+      );
+
+      expect(written, 3);
+      // One callback for the whole batch: per-QSO writes would rebuild the
+      // QSO list once per contact while a large import ran.
+      expect(changes, 1);
+
+      final all = await qsos.watchForOperation(op.uuid).first;
+      expect(all, hasLength(3));
+      expect(all.firstWhere((q) => q.uuid == existing.uuid).notes, 'merged');
+
+      // The counters are the reason the batch has to be one transaction.
+      final reloaded = await operations.watchAll().first;
+      expect(reloaded.single.qsoCount, 3);
+    });
+
+    test('a record carrying no uuid gets one, and it matches its QSON', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+
+      await qsos.writeBatch(operationUuid: op.uuid, inserts: [qsoData('W1AW')]);
+
+      final stored = (await qsos.watchForOperation(op.uuid).first).single;
+      expect(stored.uuid, isNotEmpty);
+      // Two identities for one record is what happens if the uuid is
+      // generated separately for the row and for the data it carries.
+      expect(stored.data['uuid'], stored.uuid);
+    });
+
+    test('an update whose row is gone is not counted as written', () async {
+      // An import plan is built against a snapshot. If the target QSO is
+      // deleted before the plan is applied, reporting "N imported" while N-1
+      // landed hides a record that silently didn't make it.
+      final op = await operations.create(stationCall: 'KI2D');
+
+      final written = await qsos.writeBatch(
+        operationUuid: op.uuid,
+        updates: [
+          Qso(uuid: 'not-in-the-table', operationUuid: op.uuid, data: qsoData('W1AW')),
+        ],
+      );
+
+      expect(written, 0);
+    });
+
+    test('an update from another operation is refused, not silently applied', () async {
+      // A row carries its own operationUuid, so writing one from elsewhere
+      // would MOVE it — and only this batch's operation gets its counters
+      // refreshed, leaving the one the row came from permanently wrong.
+      final from = await operations.create(stationCall: 'KI2D', userTitle: 'From');
+      final to = await operations.create(stationCall: 'KI2D', userTitle: 'To');
+      final qso = await qsos.add(from.uuid, qsoData('W1AW'));
+
+      expect(
+        () => qsos.writeBatch(
+          operationUuid: to.uuid,
+          updates: [Qso(uuid: qso.uuid, operationUuid: from.uuid, data: qso.data)],
+        ),
+        throwsArgumentError,
+      );
+
+      expect((await operations.get(from.uuid))!.qsoCount, 1);
+    });
+
+    test('a uuid already in the table rolls the whole batch back', () async {
+      // The method documents this loudly, and it holds only because the
+      // primary key is uuid and inserts use the default mode. A later switch
+      // to insertOrReplace would turn a collision into silent data loss with
+      // the suite still green.
+      final op = await operations.create(stationCall: 'KI2D');
+      final existing = await qsos.add(op.uuid, qsoData('W1AW'));
+
+      await expectLater(
+        qsos.writeBatch(
+          operationUuid: op.uuid,
+          inserts: [qsoData('K1ABC'), qsoData('K2DEF', uuid: existing.uuid)],
+        ),
+        throwsA(anything),
+      );
+
+      // Half an import is worse than none: the good record must not have
+      // landed either.
+      expect(await qsos.watchForOperation(op.uuid).first, hasLength(1));
+    });
+
+    test('the same QSO twice in one batch is refused', () async {
+      // Two updates for one row apply in order — the second discarding the
+      // first's merge — and both would count as written.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, qsoData('W1AW'));
+      Qso copy() => Qso(uuid: qso.uuid, operationUuid: op.uuid, data: qso.data);
+
+      expect(
+        () => qsos.writeBatch(operationUuid: op.uuid, updates: [copy(), copy()]),
+        throwsArgumentError,
+      );
+    });
+
+    test("an update cannot give the row a uuid other than its own", () async {
+      // A merged record takes the newer side's fields, uuid among them, so a
+      // QSON import can hand back a map carrying the incoming file's uuid.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, qsoData('W1AW'));
+
+      await qsos.writeBatch(
+        operationUuid: op.uuid,
+        updates: [
+          Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'uuid': 'from-the-file'}),
+        ],
+      );
+
+      final stored = (await qsos.watchForOperation(op.uuid).first).single;
+      expect(stored.uuid, qso.uuid);
+      expect(stored.data['uuid'], qso.uuid);
+    });
+
+    test('a timestamp that arrived as a string is coerced, not thrown on', () async {
+      // A file can carry "1721736000000". Drift's typed column would throw a
+      // cast error partway through the batch rather than rejecting a record.
+      final op = await operations.create(stationCall: 'KI2D');
+
+      await qsos.writeBatch(
+        operationUuid: op.uuid,
+        inserts: [
+          {...qsoData('W1AW'), 'startAtMillis': '1721736000000'},
+        ],
+      );
+
+      final stored = (await qsos.watchForOperation(op.uuid).first).single;
+      expect(stored.startAtMillis, 1721736000000);
+    });
+
+    test('an empty batch writes nothing and fires no change', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      var changes = 0;
+      final counting = QsosRepository(db, onChange: () => changes++);
+
+      expect(await counting.writeBatch(operationUuid: op.uuid), 0);
+      expect(changes, 0);
+    });
+  });
+
   group('sync revision stamps (updatedAtMillis)', () {
     test('markSynced only flips rows whose revision stamp still matches the sent copy', () async {
       final op = await operations.create(stationCall: 'KI2D');

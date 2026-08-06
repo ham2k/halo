@@ -279,6 +279,7 @@
     "options": "Opciones",
     "optionsTitle": "Opciones de la operación",
     "operationDetails": "Detalles de la Operación",
+    "importAdif": "Importar QSOs desde ADIF",
     "share": "Compartir",
     "archive": "Archivar",
     "deleteOperation": "Borrar operación",
@@ -1024,5 +1025,50 @@
       "one": "${count} operación",
       "other": "${count} operaciones"
     }
+  },
+  "adifImport": {
+    "title": "Importar QSOs desde ADIF",
+    "reading": "Leyendo ${filename}…",
+    "dropHint": "Suelta un archivo ADIF para importarlo",
+    "newContacts": {
+      "one": "${count} contacto nuevo",
+      "other": "${count} contactos nuevos"
+    },
+    "merging": {
+      "one": "${count} se combinará con un contacto existente",
+      "other": "${count} se combinarán con contactos existentes"
+    },
+    "unusable": {
+      "one": "${count} no se puede importar (sin indicativo)",
+      "other": "${count} no se pueden importar (sin indicativo)"
+    },
+    "flagged": {
+      "one": "${count} requiere revisión",
+      "other": "${count} requieren revisión"
+    },
+    "missingRefs": {
+      "one": "No se pudieron recuperar las referencias de ${count} contacto",
+      "other": "No se pudieron recuperar las referencias de ${count} contactos"
+    },
+    "nothingToImport": "No hay nada importable en este archivo",
+    "confirm": "Importar",
+    "importing": "Importando ${filename}…",
+    "imported": {
+      "one": "Se importó ${count} contacto desde ${filename}",
+      "other": "Se importaron ${count} contactos desde ${filename}"
+    },
+    "failed": "No se pudo importar ${filename}: ${error}",
+    "notAdif": "${filename} no parece un archivo ADIF",
+    "stationWarning": "Atención: este ADIF tiene QSOs de ${calls}, pero se importarán como ${station} si continúas.",
+    "stationCallJoin": " y ",
+    "noDate": {
+      "one": "${count} no tiene fecha y no se puede importar",
+      "other": "${count} no tienen fecha y no se pueden importar"
+    },
+    "activationFound": "Este archivo registra una activación de ${refs}.",
+    "addActivation": "Añadirla a esta operación",
+    "shortfall": "Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.",
+    "busy": "Ya hay una importación en curso. Espera a que termine antes de empezar otra.",
+    "oneFileOnly": "Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen."
   }
 }

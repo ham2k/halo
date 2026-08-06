@@ -13,6 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/bundles.dart';
 
+// Activation refs come back tagged `for: 'operation'`: ADIF flattens an
+// activation onto every record, a hook only ever sees one record, so it says
+// where the reference belongs and the importer moves it there.
 void main() {
   requireBundles();
 
@@ -41,7 +44,7 @@ void main() {
 
     expect(results.single['refs'], [
       {'type': 'pota', 'ref': 'K-1467'},
-      {'type': 'potaActivation', 'ref': 'K-0001'},
+      {'type': 'potaActivation', 'ref': 'K-0001', 'for': 'operation'},
     ]);
   });
 
@@ -116,7 +119,7 @@ void main() {
 
       expect(results.single['refs'], [
         {'type': 'sota', 'ref': 'W2/GC-001'},
-        {'type': 'sotaActivation', 'ref': 'G/LD-001'},
+        {'type': 'sotaActivation', 'ref': 'G/LD-001', 'for': 'operation'},
       ]);
     });
 
@@ -160,7 +163,7 @@ void main() {
 
       expect(results.single['refs'], [
         {'type': 'sota', 'ref': 'W2/GC-001'},
-        {'type': 'sotaActivation', 'ref': 'G/LD-001'},
+        {'type': 'sotaActivation', 'ref': 'G/LD-001', 'for': 'operation'},
       ]);
     });
 
@@ -183,7 +186,7 @@ void main() {
 
       expect(results.single['refs'], [
         {'type': 'wwff', 'ref': 'KFF-0001'},
-        {'type': 'wwffActivation', 'ref': 'GFF-0002'},
+        {'type': 'wwffActivation', 'ref': 'GFF-0002', 'for': 'operation'},
       ]);
     });
 

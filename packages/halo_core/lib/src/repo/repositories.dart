@@ -506,6 +506,128 @@ class QsosRepository {
     return row == null ? null : _qsoFromRow(row);
   }
 
+  /// Writes a whole batch — new contacts inserted, existing ones updated — in
+  /// ONE transaction, refreshing the operation's counters once and firing
+  /// [onChange] once. Returns the number of rows written.
+  ///
+  /// [add] and [update] each open their own transaction and each refresh the
+  /// counters, which is right for logging a contact and wrong for importing a
+  /// thousand: the per-QSO cost is small but the per-QSO `onChange` rebuilds
+  /// the QSO list every time, so an import would redraw the log once per
+  /// contact while it ran.
+  ///
+  /// **Allocates no serial numbers.** An import carries whatever numbers the
+  /// file had; issuing new ones would renumber someone's contest log. The
+  /// memoized high-water mark is invalidated instead, so the next contact
+  /// logged by hand re-derives it from a log that now includes these — the
+  /// same reasoning as [update]'s hand-edited serial.
+  ///
+  /// **A uuid already in the table throws and rolls the whole batch back** —
+  /// half an import is worse than none, since the operator can retry a failure
+  /// but cannot easily find what a partial one landed. `uuid` is the primary
+  /// key ACROSS operations, not within one, so this fires both for a plan
+  /// built against a log that has since changed AND for a record that already
+  /// exists in a different operation. The second is a re-import rather than a
+  /// stale plan, and a caller that wants to support it (importing a QSON
+  /// export into a new operation) has to strip or remap the uuids first.
+  ///
+  /// **QSON values must already be well-typed.** `startAtMillis` is coerced
+  /// because it is the one field this method sets itself, but `band`, `mode`
+  /// and the rest reach drift's typed columns as they came, so a file that
+  /// puts a number where a string belongs throws a cast error mid-batch.
+  /// Validating a whole record is the parser's job, not this one's.
+  Future<int> writeBatch({
+    required String operationUuid,
+    List<Map<String, dynamic>> inserts = const [],
+    List<Qso> updates = const [],
+  }) async {
+    if (inserts.isEmpty && updates.isEmpty) return 0;
+
+    final now = _nowMillis();
+    final toInsert = <Qso>[];
+    for (final data in inserts) {
+      // One uuid, used for both the row and the QSON it carries — generating
+      // it twice would give the record two identities. Typed loosely because
+      // this data came out of a file: `as String?` would throw on a numeric
+      // uuid rather than falling back.
+      final supplied = data['uuid'];
+      final uuid = supplied is String && supplied.isNotEmpty ? supplied : _uuidGenerator.v4();
+      toInsert.add(Qso(
+        uuid: uuid,
+        operationUuid: operationUuid,
+        data: {
+          ...data,
+          'uuid': uuid,
+          // Coerced, not passed through: a file can carry "1721736000000" as
+          // a string, and drift's typed column would throw a cast error
+          // partway through the batch rather than rejecting the record.
+          'startAtMillis': _millisOf(data['startAtMillis']) ?? now,
+          'updatedAtMillis': now,
+        },
+      ));
+    }
+
+    // A row's own `operationUuid` is what gets written, so an update carrying a
+    // different one would MOVE that row — and this method refreshes the
+    // counters of the operation it was given, leaving the one the row came
+    // from permanently stale, since nothing recomputes it until the next write
+    // there. Moving a contact between operations is a different job with a
+    // different name; refusing is louder than silently corrupting a count.
+    final targeted = <String>{};
+    for (final qso in updates) {
+      if (qso.operationUuid != operationUuid) {
+        throw ArgumentError.value(
+          qso.operationUuid,
+          'updates',
+          'QSO ${qso.uuid} belongs to a different operation than this batch',
+        );
+      }
+      // Two updates for one row would apply in order, the second discarding
+      // the first's merge, and BOTH would count as written. A plan that
+      // targets a record twice has not finished folding; combining them here
+      // would hide that.
+      if (!targeted.add(qso.uuid)) {
+        throw ArgumentError.value(qso.uuid, 'updates', 'QSO appears twice in one batch');
+      }
+    }
+
+    var written = 0;
+    await db.transaction(() async {
+      for (final qso in toInsert) {
+        await db.into(db.qsos).insert(_companionFor(qso));
+        written++;
+      }
+      for (final qso in updates) {
+        // The row is keyed on `qso.uuid`, so the QSON must agree. A merged
+        // record takes the newer side's fields — `uuid` among them — so a QSON
+        // import can hand back a map carrying the INCOMING file's uuid, and
+        // writing it verbatim would leave the row with two identities.
+        // `deleted` and `scoreCache` are deliberately NOT carried:
+        // `_companionFor` writes neither column, so passing them would suggest
+        // an authority this path does not have. It follows that an update
+        // against a soft-deleted row succeeds into a tombstone and counts as
+        // written while staying invisible — callers build their plan from
+        // `watchForOperation`, which excludes deleted rows, so a plan should
+        // never target one.
+        final stamped = _restamped(Qso(
+          uuid: qso.uuid,
+          operationUuid: qso.operationUuid,
+          data: {...qso.data, 'uuid': qso.uuid},
+        ));
+        // An update whose uuid is no longer in the table affects no rows.
+        // Counting it anyway would report an import as complete while a record
+        // deleted since the plan was built silently didn't land.
+        written += await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid)))
+            .write(_companionFor(stamped));
+      }
+      await _refreshOperationCounters(operationUuid);
+    });
+
+    sequences?.invalidate();
+    onChange?.call();
+    return written;
+  }
+
   Future<void> update(Qso qso) async {
     final stamped = _restamped(qso);
     await db.transaction(() async {
@@ -566,6 +688,16 @@ class QsosRepository {
         deleted: qso.deleted,
         scoreCache: qso.scoreCache,
       );
+
+  /// A timestamp as milliseconds, whatever shape it arrived in. Mirrors
+  /// `qso_merge.dart`'s reader: if the two disagree about a string timestamp,
+  /// a record matches nothing during planning and is then inserted anyway —
+  /// a duplicate of a contact already in the log.
+  static int? _millisOf(Object? value) {
+    if (value is num) return value.isFinite ? value.toInt() : null;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
 
   Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
     final query = (db.select(db.qsos)

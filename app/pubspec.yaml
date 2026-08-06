@@ -25,6 +25,9 @@ dependencies:
   drift: ^2.28.0
   drift_flutter: ^0.2.4
   file_selector: ^1.1.0
+  # Drag a log file onto the operation window. Desktop + web only; mobile has
+  # no file-drag concept and reaches the same import through the Options menu.
+  desktop_drop: ^0.6.0
   shared_preferences: ^2.5.5
   # Direct dependencies because app_storage_prefs_io.dart substitutes the
   # Windows preference store's path provider, to keep the preferences file

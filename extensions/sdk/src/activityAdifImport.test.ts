@@ -28,10 +28,14 @@ test('reads the hunted and activated sides from the SIG pair', async () => {
     my_sig_info: 'K-0001',
   })
 
+  // The activation is tagged for the OPERATION: ADIF flattens it onto every
+  // record, this hook only ever sees one record, so it says where it goes and
+  // the importer places it. The hunted park belongs to this contact and is
+  // left untagged.
   assert.deepEqual(result, {
     refs: [
       { type: 'pota', ref: 'K-1467' },
-      { type: 'potaActivation', ref: 'K-0001' },
+      { type: 'potaActivation', ref: 'K-0001', for: 'operation' },
     ],
   })
 })

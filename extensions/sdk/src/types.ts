@@ -216,6 +216,25 @@ export interface Ref {
   grid?: string
   location?: string
   program?: string
+
+  /// Which record this reference belongs on, for a producer that cannot put it
+  /// there itself.
+  ///
+  /// QSON keeps an activation on the OPERATION and a hunted reference on the
+  /// QSO, but ADIF has no operation — an activation is written onto every
+  /// record, and an `adifImport` hook reading one back has only the QSO in
+  /// hand. Tagging `for: 'operation'` says where it actually goes, and the
+  /// importer moves it.
+  ///
+  /// Consumed on arrival: once the reference is on the operation, its position
+  /// IS the answer, and a marker left behind would be a second source of truth
+  /// free to disagree with it. Absent means the QSO, which is where a
+  /// reference lives unless something says otherwise.
+  ///
+  /// **Mirror any change here into lib-qson's `Ref`** — this is the app's copy
+  /// of a shared vocabulary.
+  for?: 'operation' | 'qso'
+
   [key: string]: JSONValue | undefined
 }
 

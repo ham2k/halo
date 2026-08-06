@@ -318,6 +318,11 @@ class OperationSheet extends StatefulWidget {
   /// [OperationSheetState.updateOperation].
   final VoidCallback? onEditDetails;
 
+  /// Starts an ADIF import into this operation. Owned by the presenting
+  /// screen, which also wires the drag-and-drop route to the same flow so the
+  /// two ways in cannot behave differently.
+  final VoidCallback? onImportAdif;
+
   const OperationSheet({
     super.key,
     required this.services,
@@ -325,6 +330,7 @@ class OperationSheet extends StatefulWidget {
     this.onOperationChanged,
     this.onDelete,
     this.onEditDetails,
+    this.onImportAdif,
   });
 
   @override
@@ -749,6 +755,17 @@ class OperationSheetState extends State<OperationSheet> {
               onTap: () {
                 Navigator.of(dialogContext).pop();
                 widget.onEditDetails?.call();
+              },
+            ),
+            ListTile(
+              leading: const Icon(MdiIcons.fileImportOutline),
+              title: Text(t.importAdif),
+              // The menu closes first: the picker is a platform sheet, and the
+              // import's own summary dialog belongs to the screen underneath
+              // rather than stacked on a menu that is going away.
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                widget.onImportAdif?.call();
               },
             ),
             ListTile(

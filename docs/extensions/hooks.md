@@ -486,6 +486,16 @@ on another. A reply whose length doesn't match the batch is discarded whole for
 that reason. Refs from different hooks accumulate (a park-to-park contact made
 during a summit activation legitimately carries both), deduped by `type`+`ref`.
 
+A returned ref may carry **`for: 'operation'`** to say it belongs on the
+operation rather than the QSO — an activation. ADIF has no operation, so it
+writes the activation onto every record, and a hook only ever sees one record;
+tagging is how it says where the reference actually goes. The importer moves it
+and **consumes the tag**, since once the reference sits on the operation its
+position is the answer. Untagged means the QSO. Without this the only test
+available to the importer is "every record carries it", which cannot tell an
+activation from a short log where everyone hunted the same reference.
+`activityAdifImport` tags the activation side for you.
+
 Returning an object rather than a bare `Ref[]` leaves room for the other things
 an importer may eventually owe a QSO — a contest serial out of `STX`/`SRX`,
 an exchange — as an additive change.

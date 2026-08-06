@@ -101,9 +101,12 @@ export function activityAdifImport(rules: ActivityAdifImportRules): AdifImportHo
   function refsForOneRecord(fields: Record<string, string>): AdifImportResult | null {
     const refs: Ref[] = []
 
-    for (const [type, sigField, sigInfoField, field] of [
-      [rules.huntingType, 'sig', 'sig_info', listField],
-      [rules.activationType, 'my_sig', 'my_sig_info', myListField],
+    // The activation belongs to the OPERATION, the hunted reference to the
+    // contact. ADIF flattens both onto every record and this hook only ever
+    // sees one record, so it tags where each goes and the importer places it.
+    for (const [type, sigField, sigInfoField, field, scope] of [
+      [rules.huntingType, 'sig', 'sig_info', listField, undefined],
+      [rules.activationType, 'my_sig', 'my_sig_info', myListField, 'operation'],
     ] as const) {
       if (!type) continue
       // Deduped AFTER normalizing, not before: the same summit reaches here as
@@ -116,7 +119,7 @@ export function activityAdifImport(rules: ActivityAdifImportRules): AdifImportHo
         // testing its result would dedupe nothing at all.
         if (!ref || seen.has(ref)) continue
         seen.add(ref)
-        refs.push({ type, ref })
+        refs.push(scope ? { type, ref, for: scope } : { type, ref })
       }
     }
 

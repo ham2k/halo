@@ -279,6 +279,7 @@
     "options": "Options",
     "optionsTitle": "Operation Options",
     "operationDetails": "Operation Details",
+    "importAdif": "Import QSOs from ADIF",
     "share": "Share",
     "archive": "Archive",
     "deleteOperation": "Delete Operation",
@@ -1024,5 +1025,50 @@
       "one": "${count} operation",
       "other": "${count} operations"
     }
+  },
+  "adifImport": {
+    "title": "Import QSOs from ADIF",
+    "reading": "Reading ${filename}…",
+    "dropHint": "Drop an ADIF file to import",
+    "newContacts": {
+      "one": "${count} new contact",
+      "other": "${count} new contacts"
+    },
+    "merging": {
+      "one": "${count} will merge with an existing contact",
+      "other": "${count} will merge with existing contacts"
+    },
+    "unusable": {
+      "one": "${count} cannot be imported (no callsign)",
+      "other": "${count} cannot be imported (no callsign)"
+    },
+    "flagged": {
+      "one": "${count} needs a closer look",
+      "other": "${count} need a closer look"
+    },
+    "missingRefs": {
+      "one": "References could not be recovered for ${count} contact",
+      "other": "References could not be recovered for ${count} contacts"
+    },
+    "nothingToImport": "Nothing in this file can be imported",
+    "confirm": "Import",
+    "importing": "Importing ${filename}…",
+    "imported": {
+      "one": "Imported ${count} contact from ${filename}",
+      "other": "Imported ${count} contacts from ${filename}"
+    },
+    "failed": "Could not import ${filename}: ${error}",
+    "notAdif": "${filename} does not look like an ADIF file",
+    "stationWarning": "Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.",
+    "stationCallJoin": " and ",
+    "noDate": {
+      "one": "${count} has no date and cannot be imported",
+      "other": "${count} have no date and cannot be imported"
+    },
+    "activationFound": "This file records an activation of ${refs}.",
+    "addActivation": "Add it to this operation",
+    "shortfall": "Only ${written} of ${planned} could be applied — the log changed while you were deciding.",
+    "busy": "An import is already running. Wait for it to finish before starting another.",
+    "oneFileOnly": "Drop one ADIF file at a time — the order files are imported in decides which data wins."
   }
 }
