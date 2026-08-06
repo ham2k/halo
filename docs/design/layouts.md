@@ -278,9 +278,42 @@ constant in the view. Two sources write into it:
   stores.
 
 A panel's id disappearing from the catalog — an extension disabled or
-uninstalled — is exactly the case a persisted arrangement must survive: the
-spec is rejected as unusable and the view falls back to its default rather
-than rendering a pane-sized hole.
+uninstalled — **never costs the operator their arrangement**. The pane stays
+and renders a placeholder (`MissingPanelPane`: a `toy-brick-remove` glyph and
+*Extension "X" is missing*), Layout Setup keeps a row for it so removal is a
+deliberate act, and a panel that was only briefly missing repairs itself when
+its extension answers. Nothing reconciles, and nothing is set aside.
+
+That rule exists because setting an arrangement aside is as destructive as
+deleting from it — the next thing written replaces it — and an extension can
+be absent for reasons as mundane as a `panel` hook that timed out once. The
+catalog is read during **startup**, before the first view builds, so the
+ordinary case never shows a placeholder at all; the placeholder is for a
+panel that is genuinely gone.
+
+**The dock's definition and its state are stored apart.** The definition
+(`LayoutKeys.operationDock`) is the tree — splits, weights, which modules sit
+where. The state (`LayoutKeys.operationDockState`) is what the operator has
+done *without* changing it: which pane is on top, and later which collapsible
+panes are hidden. `DockNode.toJson` carries no `selected`.
+
+This is not tidiness. While selection lived in the definition, **tapping a tab
+was an edit to the arrangement** — so merely looking at another pane wrote the
+dock back to settings, and whatever stand-in happened to be on screen at that
+moment replaced the real layout permanently.
+
+State is keyed by **module id**: `{"selected": ["logging", "info"]}` names the
+modules on top of whatever group holds them. A group holding none of them
+shows its first, which is also the default for a group nobody has touched.
+Keying this way survives rearrangement — a pane carries its selectedness with
+it — and needs no migration when the tree's shape changes underneath.
+
+The catalog re-reads itself on every runtime (re)start
+(`ExtensionService.runtimeGeneration`), which is the path an enable/disable
+toggle takes. Without that subscription a view mounted across a trip to
+Settings would never see a newly enabled extension's panels, and a catalog
+first asked before the runtime finished booting would stay unresolved for
+the session.
 
 **Rendering is budgeted, not reactive.** An extension panel declares what it
 re-renders on; the host throttles to one render per `panelRenderThrottle`
@@ -288,6 +321,26 @@ and renders nothing while the panel is behind another tab (dock tabs stay
 mounted, so otherwise a four-panel layout pays for the three nobody is
 looking at). The rule this exists to enforce: **nothing an extension
 declares may put a bridge call on the per-keystroke path.**
+
+The `qso` trigger is where that rule bites, since the QSO being composed
+changes on every keystroke. Three gates keep it off that path, and all three
+are load-bearing: the view hands `LoggingControls` a **null** `onQsoChanged`
+unless a panel in the current arrangement declared `qso` **or** `lookup`
+(the resolved guess travels inside the draft and nowhere else, so a
+lookup-only panel would otherwise be woken with no callsign at all), so the
+draft is not even built otherwise; the draft is deep-compared before it is published,
+so a rebuild that changed nothing publishes nothing; and the view debounces
+what it does publish, so typing a callsign is one rebuild rather than one
+per letter. A panel that only wants the resolved callsign declares `lookup`
+instead, which fires when a lookup is answered.
+
+The producer gate is **arrangement-wide, not visibility-aware**, and
+deliberately so: a `qso` panel parked behind another dock tab still turns
+the draft on, even though `ExtensionPanel` renders nothing for it while it
+is hidden. Which pane is on top is the dock's own state and is not published
+upward, and the consumer-side rule is the one that guards the expensive half
+— the bridge call. What a hidden panel still costs is the draft's rebuild
+and one debounced rebuild of the view per typing pause.
 
 ## Dialogs and Modal Panes
 
@@ -357,6 +410,8 @@ not add it.
 | Extension panel rendering and its HTML sandbox | `app/lib/views/operation/panel_content_view.dart` |
 | A panel's render loop and refresh budget | `app/lib/views/operation/extension_panel.dart` |
 | Layout Setup sheet | `app/lib/views/operation/layout_sheet.dart` |
+| The pane a missing extension leaves behind | `app/lib/views/operation/missing_panel_pane.dart` |
+| Dock definition, dock state, and the drop model | `packages/halo_widgets/lib/src/dock_layout.dart` |
 | Shirt sizes, ideal pane width, animation constants | `packages/halo_widgets/lib/src/layout.dart` |
 | Layout density, its metrics and the operator's preference | `packages/halo_widgets/lib/src/density.dart` |
 | The root density scope, and the header's snap | `app/lib/main.dart` (`_LayoutDensityFromWindow`) |

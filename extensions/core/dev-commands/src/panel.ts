@@ -36,9 +36,11 @@ export const PanelContextPanel: PanelHook = {
         description: "What the host passes an extension panel, and when",
         icon: "bug",
         preview: PREVIEW,
-        // Everything the host currently fires, plus a slow tick — enough to
-        // watch `reason` change without a bridge call per keystroke.
-        on: ["operation", "qsoLogged", "spots", "tick:30"],
+        // Everything the host fires, plus a slow tick. `qso` is included
+        // deliberately even though it is the expensive one: this panel
+        // exists to show what arrives and when, and the debounce it lands
+        // behind is the thing a developer most needs to see working.
+        on: ["operation", "qso", "qsoLogged", "lookup", "spots", "tick:30"],
         form: [
           {
             type: "field",
@@ -53,13 +55,20 @@ export const PanelContextPanel: PanelHook = {
   },
 
   async render(args: PanelRenderArgs, ctx: HookContext): Promise<PanelContent> {
-    const { operation, qsoCount, config, reason } = args
+    const { operation, qso, qsoCount, config, reason } = args
+    const their = qso?.their as Record<string, unknown> | undefined
+    const guess = their?.guess as Record<string, unknown> | undefined
     const parts = [
       "## Panel Context",
       "",
       line("Rendered because", reason),
       line("Operation", operation?.uuid),
       line("QSOs", qsoCount),
+      line("Composing", their?.call),
+      // Proves the lookup travels INSIDE the draft, which is why 'lookup'
+      // carries no payload of its own.
+      line("Looked up", guess?.name ?? guess?.call),
+      line("Band / mode", qso ? `${qso.band ?? "—"} / ${qso.mode ?? "—"}` : undefined),
       line("Developer mode", ctx.developerMode),
       line("Online", ctx.online),
       line("Locale", ctx.locale),

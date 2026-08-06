@@ -122,6 +122,9 @@ class _RecordingPanels extends PanelService {
 
 class _NullSource implements PanelExtensionSource {
   @override
+  final runtimeGeneration = ValueNotifier(0);
+
+  @override
   Future<List<Map<String, dynamic>>?> getExtensionPanels() async => const [];
 
   @override

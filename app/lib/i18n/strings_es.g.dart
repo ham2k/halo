@@ -760,6 +760,9 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String panelSettings({required Object panel}) => 'Configuración de ${panel}';
 	@override String removePanel({required Object panel}) => 'Quitar ${panel}';
 	@override String addPanel({required Object panel}) => 'Añadir ${panel}';
+	@override String showPreview({required Object panel}) => 'Vista previa de ${panel}';
+	@override String missingExtension({required Object name}) => 'Falta la extensión "${name}"';
+	@override String get previewUnavailable => 'No se pudo mostrar la imagen de vista previa de este panel.';
 	@override String get optionsTitle => 'Opciones de Disposición';
 	@override String get options => 'Opciones';
 	@override String get resetLayout => 'Restablecer disposición';
@@ -1835,6 +1838,9 @@ extension on TranslationsEs {
 			'operation.layout.panelSettings' => ({required Object panel}) => 'Configuración de ${panel}',
 			'operation.layout.removePanel' => ({required Object panel}) => 'Quitar ${panel}',
 			'operation.layout.addPanel' => ({required Object panel}) => 'Añadir ${panel}',
+			'operation.layout.showPreview' => ({required Object panel}) => 'Vista previa de ${panel}',
+			'operation.layout.missingExtension' => ({required Object name}) => 'Falta la extensión "${name}"',
+			'operation.layout.previewUnavailable' => 'No se pudo mostrar la imagen de vista previa de este panel.',
 			'operation.layout.optionsTitle' => 'Opciones de Disposición',
 			'operation.layout.options' => 'Opciones',
 			'operation.layout.resetLayout' => 'Restablecer disposición',
@@ -2253,11 +2259,11 @@ extension on TranslationsEs {
 			'settings.station.title' => 'Configuración de Estación',
 			'settings.station.none' => 'No hay equipo configurado',
 			'settings.station.add' => 'Agregar equipo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.addTitle' => 'Agregar equipo',
 			'settings.station.searchHint' => 'Buscar equipos',
 			'settings.station.noMatches' => 'Ningún equipo coincide',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.lookingForEquipment' => 'Buscando equipos nuevos…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',

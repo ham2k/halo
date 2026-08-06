@@ -32,6 +32,7 @@ import 'operation/layout_sheet.dart';
 import 'operation/panel_settings.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
+import 'operation/missing_panel_pane.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/spots_panel.dart';
 import '../tools/operation_title.dart';
@@ -393,47 +394,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     unawaited(widget.services.panels.refreshExtensionPanels());
   }
 
+  /// The catalog changed — an extension enabled, disabled, or its runtime
+  /// restarted. Nothing is reconciled against it: a module the catalog
+  /// cannot explain keeps its pane and renders as a placeholder, so a panel
+  /// that is only *temporarily* missing repairs itself here, and one that is
+  /// really gone waits for the operator to remove it from Layout Setup.
+  /// Rebuilding is the whole response.
   void _onPanelCatalogChanged() {
     if (!mounted) return;
-    setState(() {
-      if (!_dockSpecResolved) {
-        final before = _dockSpec;
-        _resolveDockSpec();
-        // DockLayoutView reads initialSpec once, so a spec resolved after it
-        // mounted has to be pushed in. Not reported back out: restoring what
-        // was already saved is not a new arrangement choice.
-        if (!identical(before, _dockSpec)) _dockKey.currentState?.replaceSpec(_dockSpec!, emit: false);
-        return;
-      }
-      _dropPanelsTheCatalogLost();
-    });
-    // Whatever changed, an open Layout Setup is listing it.
+    setState(() {});
+    // An open Layout Setup is listing this.
     _bumpSheet();
-  }
-
-  /// Takes out panes whose panel has left the catalog — an extension
-  /// disabled or uninstalled while this view stayed mounted.
-  ///
-  /// The live dock has to be told, not just this view's copy: left alone it
-  /// keeps rendering a tab whose module nothing can build, labelled with its
-  /// raw id, with no row in Layout Setup to remove it by — and this view's
-  /// own `_dockSpec` would then be reset to the default on the next build,
-  /// permanently disagreeing with what the dock is showing.
-  void _dropPanelsTheCatalogLost() {
-    final dock = _dockKey.currentState;
-    if (dock == null) return;
-    final available = _availablePanelIds.toSet();
-    final lost = dock.modules.where((id) => !available.contains(id)).toList();
-    if (lost.isEmpty) return;
-    debugPrint('[layout] removing panes whose panels left the catalog: $lost');
-    for (final id in lost) {
-      // Refused for the last remaining module, which would leave an empty
-      // dock — the default arrangement is the only way back from there.
-      if (!dock.removeModule(id)) {
-        dock.replaceSpec(_defaultDockSpec());
-        return;
-      }
-    }
   }
 
   /// Releases this view's spot-cache subscription (see initState).
@@ -444,18 +415,89 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// panels that care read the cache themselves.
   int _spotsRevision = 0;
 
+  /// Whether a panel in the CURRENT arrangement declared [trigger]. Every
+  /// signal an extension panel can be woken by costs this view something to
+  /// produce — a rebuild on a timer, or a QSO draft rebuilt per keystroke —
+  /// so each one is gated on somebody actually having asked for it. A layout
+  /// that can't hold an extension panel at all never gets past the first
+  /// line.
+  bool _anyPanelWants(String trigger) {
+    if (!_customLayout) return false;
+    return _dockSpec?.collectModules().any((id) {
+          final panel = widget.services.panels[id];
+          return panel != null && panel.triggers.contains(trigger);
+        }) ??
+        false;
+  }
+
   void _onSpotsChanged() {
-    // Only a layout that can hold an extension panel cares — and only if one
-    // of the panels in it actually asked for spots. Every other operation
-    // view would be rebuilding itself on a two-minute timer for nothing.
-    if (!mounted || !_customLayout) return;
-    final wants = _dockSpec?.collectModules().any((id) {
-      final panel = widget.services.panels[id];
-      return panel != null && panel.triggers.contains('spots');
-    });
-    if (wants != true) return;
+    // Every other operation view would be rebuilding itself on a two-minute
+    // timer for nothing.
+    if (!mounted || !_anyPanelWants('spots')) return;
     setState(() => _spotsRevision++);
   }
+
+  /// The QSO being composed, republished from the logging panel for panels
+  /// declaring `qso`. Null until one of them is in the arrangement — the
+  /// render args then leave `qso` out entirely rather than sending `{}`.
+  /// Once one is, this carries the draft even with an empty call: the band
+  /// and mode come from the radio, and are worth showing before anything is
+  /// typed.
+  Map<String, dynamic>? _draftQso;
+  Timer? _draftQsoDebounce;
+
+  /// Coalesces the keystroke burst of typing a callsign into one rebuild.
+  ///
+  /// The panel's own [panelRenderThrottle] already bounds how often it may
+  /// cross the bridge, but that is downstream of this view's setState — and
+  /// the setState is the expensive half, rebuilding the logging, spots and
+  /// map panes alongside the panel that asked. Debounced on the same window,
+  /// so a panel sees one draft per pause rather than one per letter.
+  void _onQsoDraftChanged(Map<String, dynamic> qso) {
+    _draftQsoDebounce?.cancel();
+    // The FIRST draft, carrying a call that resolved before anyone asked for
+    // it — a `lookup` panel added to the layout while a callsign is already
+    // in the field. Its `lookup` already fired against no draft at all, and
+    // `_lookupAnsweredFor` holds that call, so nothing would fire again
+    // until a DIFFERENT callsign resolved: the panel would sit on call-less
+    // content indefinitely.
+    if (_draftQso == null && (qso['their'] as Map?)?['guess'] != null) _flushDraft = true;
+    if (_flushDraft) {
+      // A lookup just resolved, and the guess it resolved to lives inside
+      // this draft. Both are pushed from one post-frame callback — call-info
+      // first, draft second — so waiting out the debounce here would fire
+      // `lookup` against the draft from BEFORE the answer, and a panel
+      // declaring only `lookup` would never see a later one.
+      _flushDraft = false;
+      setState(() {
+        _draftQso = qso;
+        // So a panel woken by `lookup` is woken for THIS draft. Without it
+        // the first draft arrives as a `qso` change, which a lookup-only
+        // panel does not listen for.
+        _lookupRevision++;
+      });
+      return;
+    }
+    _draftQsoDebounce = Timer(panelRenderThrottle, () {
+      if (!mounted) return;
+      setState(() => _draftQso = qso);
+    });
+  }
+
+  /// Set when a lookup resolves, so the draft carrying its guess skips the
+  /// debounce. Cleared by the next draft either way — a lookup that changes
+  /// nothing about the draft must not leave the next keystroke unbuffered.
+  bool _flushDraft = false;
+
+  /// Bumped when a callsign RESOLVES, so `lookup` is a trigger about lookups
+  /// rather than a second, slower `qso`. Carries no value into the render
+  /// args: the resolved guess already travels inside the draft QSO.
+  int _lookupRevision = 0;
+
+  /// The call the current guess answers for — null while nothing has
+  /// resolved. Cleared that way on every keystroke that drops the guess, so
+  /// retyping the same call resolves afresh.
+  String? _lookupAnsweredFor;
 
   /// This view's entry on the command-context stack.
   late final OperationCommandContext _commandContext;
@@ -488,6 +530,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
+    _draftQsoDebounce?.cancel();
     _tabController?.dispose();
     widget.services.closeOperationContext(_commandContext);
     _unsubscribeSpots?.call();
@@ -1204,59 +1247,47 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     DockGroup(['info', 'spots', 'map']),
   ], [2, 1]);
 
-  /// Every panel this view can hold: its own four, plus whatever the
-  /// extensions contribute through the panels service.
-  List<String> get _availablePanelIds => [
-    ..._dockModuleIds,
-    for (final panel in widget.services.panels.catalog)
-      if (panel.source == PanelSource.extension) panel.id,
-  ];
-
-  /// True once [_dockSpec] has been reconciled against a catalog that could
-  /// actually answer. Until then the view shows its default arrangement but
-  /// does NOT treat it as the operator's choice — the extensions are asked
-  /// for their panels asynchronously, so the first build's catalog holds
-  /// only the native four, and a saved arrangement naming an extension panel
-  /// would otherwise be judged unusable, replaced, and then overwritten by
-  /// the first tab tap.
-  bool _dockSpecResolved = false;
-
-  void _resolveDockSpec() {
-    if (_dockSpecResolved && _dockSpecIsUsable(_dockSpec)) return;
-    final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
-    if (_dockSpecIsUsable(persisted)) {
-      _dockSpec = persisted!;
-    } else {
-      if (persisted != null) {
-        final unknown = persisted.collectModules().where((id) => !_availablePanelIds.contains(id)).toList();
-        // The console is the only place this surfaces; a layout quietly
-        // reverting to the default is exactly the kind of thing nobody can
-        // report usefully (docs/design/error-reporting.md).
-        debugPrint('[layout] saved dock arrangement set aside — this view cannot build $unknown');
-      }
-      _dockSpec = _defaultDockSpec();
-    }
-    // Only final once the catalog could genuinely answer. Until then this is
-    // a provisional arrangement, reconsidered when the panels resolve.
-    _dockSpecResolved = widget.services.panels.resolved;
-  }
-
-  /// Whether an arrangement can be shown as-is. Deliberately NOT
-  /// [DockLayoutView.specMatches]: a spec missing a module is legitimate
-  /// here — the layout sheet removes panes on purpose, and that choice has
-  /// to survive a relaunch. What still disqualifies a spec is naming a
-  /// module this view can't build, naming one twice, or holding nothing at
-  /// all.
+  /// Reads the saved arrangement once, or falls back to the default when
+  /// there is nothing saved or it does not parse.
   ///
-  /// An extension panel's id disappears from the catalog when its extension
-  /// is disabled or uninstalled, which is exactly the "can't build it" case
-  /// — the arrangement falls back rather than rendering a pane-sized hole.
-  bool _dockSpecIsUsable(DockNode? spec) {
-    if (spec == null) return false;
-    final modules = spec.collectModules();
-    final available = _availablePanelIds.toSet();
-    return modules.isNotEmpty && modules.length == modules.toSet().length && modules.every(available.contains);
+  /// Deliberately does NOT check the modules against the catalog. A module
+  /// this view cannot build is shown as a placeholder pane, not treated as a
+  /// broken arrangement — an extension disabled, uninstalled, or merely slow
+  /// to answer must never cost the operator their layout, and setting a
+  /// saved arrangement aside is as destructive as deleting from it, because
+  /// the next thing written replaces it.
+  void _ensureDockSpec() {
+    if (_dockSpec != null) return;
+    final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
+    _dockSpec = persisted != null && _hasNoDuplicates(persisted) ? persisted : _defaultDockSpec();
   }
+
+  /// The one thing a saved arrangement still cannot be. A module listed
+  /// twice hands the same widget instance to two groups, and the logging
+  /// pane carries a GlobalKey — so the view throws on every build, and
+  /// because nothing rewrites the spec it throws again after a relaunch,
+  /// with Layout Setup unreachable to undo it. Unreachable through the UI
+  /// (both `addModule` and the drop handler dedupe), which is exactly why it
+  /// would only ever arrive in a file nobody could then repair.
+  bool _hasNoDuplicates(DockNode spec) {
+    final modules = spec.collectModules();
+    if (modules.length == modules.toSet().length) return true;
+    debugPrint('[layout] saved dock arrangement lists a module twice; falling back to the default');
+    return false;
+  }
+
+  /// The dock's STATE — which pane is on top — kept in its own settings key,
+  /// apart from the arrangement.
+  ///
+  /// Kept CURRENT, not read once: the dock is unmounted and rebuilt whenever
+  /// the layout crosses the two-pane boundary (a window resize, or a font
+  /// scale change that moves the effective width), and its `initState`
+  /// applies this over the live tree. Stale here means reopening on whatever
+  /// tab was on top at launch, undoing the operator's selection every time
+  /// they resize past the boundary and back.
+  late DockState _dockState = DockState.fromJson(
+    widget.services.settings.layoutData(LayoutKeys.operationDockState),
+  );
 
   Map<String, String> _dockTitles(int realQsoCount) => {
     // The logging tab carries a live count; the catalog's own title for it
@@ -1267,6 +1298,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     'map': context.t.operation.tabs.map,
     for (final panel in widget.services.panels.catalog)
       if (panel.source == PanelSource.extension) panel.id: panel.title,
+    // A module the catalog cannot explain still needs a tab label. Its own
+    // key reads better than the full `ext:hook:key` id, and the pane behind
+    // it says what is actually wrong.
+    for (final id in _dockSpec?.collectModules() ?? const <String>[])
+      if (!_dockModuleIds.contains(id) && widget.services.panels[id] == null) id: panelKeyOfPanelId(id),
   };
 
   /// Registers this view's own panels with the service. Called from
@@ -1317,7 +1353,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     required List<Qso> qsos,
     required Operation operation,
   }) {
-    _resolveDockSpec();
+    _ensureDockSpec();
     final inLayout = _dockSpec!.collectModules();
     return DockLayoutView(
       key: _dockKey,
@@ -1340,14 +1376,29 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               panels: widget.services.panels,
               renderContext: PanelRenderContext(
                 operation: _draftOperation ?? operation,
+                qso: _draftQso,
                 qsoCount: realQsoCount,
                 spotsRevision: _spotsRevision,
+                lookupRevision: _lookupRevision,
               ),
-            ),
+            )
+          // A module nothing in the catalog explains — an extension disabled
+          // or uninstalled since this arrangement was saved. It keeps its
+          // pane and says so, rather than costing the operator the layout.
+          else if (!_dockModuleIds.contains(id))
+            id: MissingPanelPane(extensionName: extensionKeyOfPanelId(id) ?? id),
       },
       tabActions: {'logging': (context) => _buildLoggingSettingsButton(qsos, context: context)},
+      initialState: _dockState,
+      onStateChanged: (state) {
+        // No setState: which pane is on top changes nothing this build
+        // depends on, and the dock has already redrawn itself. The field
+        // still has to move, since it is what a remounted dock opens on.
+        _dockState = state;
+        widget.services.settings.setLayoutData(LayoutKeys.operationDockState, state.toJson());
+      },
       onSpecChanged: (node) {
-        // setState, not a bare assignment: `children` below is built from
+        // setState, not a bare assignment: `children` above is built from
         // the modules the arrangement held at the LAST parent build, so a
         // pane added from the layout sheet would otherwise get no widget and
         // render as an empty tab until something unrelated rebuilt the view.
@@ -1462,12 +1513,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           LayoutPanelEntry? entry(String id) {
             final panel = widget.services.panels[id];
             if (panel == null) {
-              // A pane in the layout with no row in the sheet is a pane the
-              // operator cannot remove. _dockSpecIsUsable is supposed to
-              // make this unreachable; if the two ever disagree, say which
-              // id fell through rather than leaving an invisible pane.
-              debugPrint('[layout] no catalog entry for module "$id"; it has no row in Layout Setup');
-              return null;
+              // A module the catalog cannot explain still gets a row. Its
+              // pane says the extension is missing, and this is the only
+              // control that takes it out — without a row here, an operator
+              // whose extension is gone for good has no way to remove the
+              // pane short of resetting the whole arrangement.
+              return LayoutPanelEntry(
+                id: id,
+                title: panelKeyOfPanelId(id),
+                description: t.missingExtension(name: extensionKeyOfPanelId(id) ?? id),
+              );
             }
             return LayoutPanelEntry(
               id: id,
@@ -1657,8 +1712,46 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // a contract (docs/design/logging-fields.md), and a
               // panel-wide key listener is exactly what it forbids.
               _panels.used('logging');
-              setState(() => _callInfo = info);
+              // A callsign being ANSWERED FOR is what `lookup` is about, and
+              // this callback also fires for every letter typed. Keyed on
+              // which call has an answer, so typing K→KI→KI2 fires nothing
+              // and KI2D resolving fires once. Not an identity check on the
+              // guess map: editing a QSO rebuilds it on every call, which
+              // would make this per-keystroke after all.
+              //
+              // A LATER source answering the same call is not seen here: the
+              // callback upstream dedupes on a signature holding the guess's
+              // display fields, so a second lookup that only adds others
+              // never reaches this. Widening it would re-render the Info
+              // pane for the same fields it is already showing.
+              // A NULL info says the call-info area isn't showing — a command
+              // message has the space — which is not news about lookups.
+              // Forgetting here would fire `lookup` a second time for the
+              // same already-resolved call the moment the message clears.
+              var resolved = false;
+              if (info != null) {
+                final answeredFor = info.guess == null ? null : info.call;
+                resolved = answeredFor != null && answeredFor != _lookupAnsweredFor;
+                _lookupAnsweredFor = answeredFor;
+              }
+              if (resolved) _flushDraft = true;
+              setState(() {
+                _callInfo = info;
+                if (resolved) _lookupRevision++;
+              });
             },
+            // Null unless a panel in this arrangement asked for something
+            // that lives in the draft: the draft is rebuilt and deep-compared
+            // on every keystroke to produce, so the only cheap version of it
+            // is the one nobody asked for.
+            //
+            // `lookup` counts. Its payload IS the draft — a resolved guess
+            // travels inside `their.guess` and nowhere else — so a panel
+            // declaring only `lookup` would otherwise be woken with no
+            // callsign at all, forever. What `lookup` buys over `qso` is
+            // renders, not this.
+            onQsoChanged:
+                _anyPanelWants('qso') || _anyPanelWants('lookup') ? _onQsoDraftChanged : null,
             onCallInfoTap: () => _handleCallInfoTap(operation),
             ),
           ),

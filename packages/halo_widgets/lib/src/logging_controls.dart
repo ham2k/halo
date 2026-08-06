@@ -31,6 +31,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -185,6 +186,10 @@ class CallInfoData {
 /// Fires when the current call-info changes (call/lookup/score), or null when
 /// the call-info panel isn't showing. Deduped by the widget.
 typedef CallInfoChanged = void Function(CallInfoData? info);
+
+/// The QSO being composed, in QSON, as it stands right now — the same shape
+/// that would be logged if the operator hit Enter.
+typedef QsoDraftChanged = void Function(Map<String, dynamic> qso);
 
 /// A secondary control's identity for ordering/visibility purposes — the
 /// settings dialog's list and `_effectiveControlOrder` deal in these; the
@@ -491,6 +496,15 @@ class LoggingControls extends StatefulWidget {
   /// Info tab on wide layouts), null when the call-info panel isn't showing.
   final CallInfoChanged? onCallInfoChanged;
 
+  /// Notifies the host that the QSO being composed changed — every field,
+  /// not just the callsign, and no more than once per distinct draft.
+  ///
+  /// Expensive by nature: it fires as fast as the operator types, and the
+  /// draft is rebuilt and compared to decide whether it did. A host that has
+  /// nothing to tell must pass **null**, which is what keeps the whole path
+  /// off the keystroke route rather than merely making it cheap.
+  final QsoDraftChanged? onQsoChanged;
+
   /// Fires when the user taps the compact call-info area — the host opens the
   /// detail panel (a modal on narrow layouts, or focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
@@ -670,6 +684,7 @@ class LoggingControls extends StatefulWidget {
     this.scoreQso,
     this.scoreNoticeLabel,
     this.onCallInfoChanged,
+    this.onQsoChanged,
     this.onCallInfoTap,
     this.timeLabel,
     this.dateLabel,
@@ -6489,11 +6504,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     _scheduleSubmitButtonMeasurement();
-    // Push the current call-info up to the host (Info tab / modal) after this
-    // build settles, so it never setStates a parent mid-build.
-    if (widget.onCallInfoChanged != null) {
+    // Push the current call-info and QSO draft up to the host (Info tab /
+    // modal, extension panels) after this build settles, so neither ever
+    // setStates a parent mid-build.
+    if (widget.onCallInfoChanged != null || widget.onQsoChanged != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _notifyCallInfo();
+        if (!mounted) return;
+        _notifyCallInfo();
+        _notifyQsoDraft();
       });
     }
     final theme = Theme.of(context);
@@ -7428,6 +7446,30 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (sig == _lastCallInfoSig) return;
     _lastCallInfoSig = sig;
     widget.onCallInfoChanged!(data);
+  }
+
+  /// Pushes the QSO being composed up to the host (deduped), for consumers
+  /// that need the whole draft rather than the call-info summary above —
+  /// extension panels declaring the `qso` trigger.
+  ///
+  /// Deep-compared, not signature-compared like call-info: the draft's
+  /// interesting parts are nested (`their`, `our`, `refs`) and a flat
+  /// signature over them would be the same code as an equality check, only
+  /// wrong whenever a field is added. The cost is bounded by the null check
+  /// at the call site — a host with no such consumer never gets here.
+  ///
+  /// A published draft is READ-ONLY to everyone downstream. `_getCurrentQsoData`
+  /// shares nested references with the QSO being edited and with the lookup
+  /// result, and the map handed out below is the same one kept here — so
+  /// mutating a published draft in place moves both sides of the comparison
+  /// together, and the panel watching it silently stops updating.
+  Map<String, dynamic>? _lastPublishedQso;
+  void _notifyQsoDraft() {
+    if (widget.onQsoChanged == null) return;
+    final qso = _getCurrentQsoData();
+    if (const DeepCollectionEquality().equals(qso, _lastPublishedQso)) return;
+    _lastPublishedQso = qso;
+    widget.onQsoChanged!(qso);
   }
 
   /// The scoring notices for the call-info line — from the scoring hook only

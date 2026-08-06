@@ -90,6 +90,12 @@ class LoggingPanel extends StatefulWidget {
   /// detail panel (Info tab / modal). See LoggingControls' `onCallInfoChanged`.
   final CallInfoChanged? onCallInfoChanged;
 
+  /// Forwards the QSO being composed up to the operation view, for extension
+  /// panels declaring the `qso` trigger. Null unless one of them is actually
+  /// in the layout — see LoggingControls' `onQsoChanged`, which is only cheap
+  /// while this is null.
+  final QsoDraftChanged? onQsoChanged;
+
   /// Fires when the compact call-info area is tapped — the operation view opens
   /// the detail (modal on narrow, focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
@@ -116,6 +122,7 @@ class LoggingPanel extends StatefulWidget {
     this.suggestedQso,
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
+    this.onQsoChanged,
     this.onCallInfoTap,
   });
 
@@ -701,6 +708,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 ),
             scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
             onCallInfoChanged: widget.onCallInfoChanged,
+            onQsoChanged: widget.onQsoChanged,
             onCallInfoTap: widget.onCallInfoTap,
             showRSTFields: widget.showRSTFields,
             showStateField: widget.showStateField,

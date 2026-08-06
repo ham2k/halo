@@ -943,6 +943,12 @@ abstract final class LayoutKeys {
   static const homeLeftColumn = 'home.leftColumn';
   static const operationLeftColumn = 'operation.leftColumn';
   static const operationDock = 'operation.dock';
+
+  /// The dock's STATE — which pane is on top, and later which collapsible
+  /// panes are hidden — deliberately apart from the arrangement above.
+  /// Sharing one key would make a tab tap a write to the arrangement, which
+  /// is how looking at a pane came to be able to replace a saved layout.
+  static const operationDockState = 'operation.dockState';
 }
 
 /// Flow ids for [SettingsService.onboardingShownCount] /

@@ -64,6 +64,7 @@ void main() {
     void Function(String? message)? onCommandMessageChanged,
     CommandActionHandler? onCommandAction,
     CallInfoChanged? onCallInfoChanged,
+    QsoDraftChanged? onQsoChanged,
     VfoStore? radioService,
     Qso? editingQso,
     VoidCallback? onEditCanceled,
@@ -103,6 +104,7 @@ void main() {
       onCommandMessageChanged: onCommandMessageChanged,
       onCommandAction: onCommandAction,
       onCallInfoChanged: onCallInfoChanged,
+      onQsoChanged: onQsoChanged,
       // Defaults to a radio already tuned to a band, because that is the
       // ordinary state of a station on the air — and because logging refuses
       // a contact carrying neither band nor frequency (HALO-24), so a test
@@ -1502,6 +1504,63 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     expect(infos, isNotEmpty);
     expect(infos.last.isEditing, isTrue, reason: 'editing an existing QSO');
+  });
+
+  testWidgets('the published QSO draft carries every field, not just the call', (tester) async {
+    // Extension panels declaring the `qso` trigger render against this, and
+    // the whole point of publishing the draft rather than reusing the
+    // call-info summary is that a panel can see what is about to be logged —
+    // band and mode included.
+    final drafts = <Map<String, dynamic>>[];
+    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(drafts, isNotEmpty);
+    final draft = drafts.last;
+    expect((draft['their'] as Map)['call'], 'W1AW');
+    expect(draft['band'], isNotNull, reason: 'the radio is tuned; a panel can see the band');
+    expect(draft['mode'], isNotNull);
+    expect((draft['our'] as Map)['call'], operation.stationCall);
+  });
+
+  testWidgets('a rebuild that changes nothing publishes no draft', (tester) async {
+    // This fires from a post-frame callback on EVERY build, and the panel it
+    // wakes crosses the JS bridge. Without the dedupe, an unrelated rebuild
+    // of the operation view — a spot refresh, a clock tick — would look to
+    // every `qso` panel exactly like the operator typing.
+    final drafts = <Map<String, dynamic>>[];
+    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 200));
+    final settled = drafts.length;
+
+    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    // Past a second, because the draft must not carry a live clock: an
+    // auto-timestamped QSO takes its startAtMillis at save, and a "now" in
+    // here would republish on every heartbeat and wake every `qso` panel
+    // forever, with nobody touching the keyboard.
+    await tester.pump(const Duration(milliseconds: 2500));
+
+    expect(drafts.length, settled, reason: 'nothing about the QSO changed');
+  });
+
+  testWidgets('editing a field other than the call still publishes', (tester) async {
+    // The draft is the whole QSO, not the callsign summary the call-info
+    // callback carries: a dedupe keyed on the call alone would go quiet for
+    // every field beside it, and a panel would show a report the operator
+    // has already changed.
+    final drafts = <Map<String, dynamic>>[];
+    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 200));
+    final before = drafts.length;
+
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '559');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(drafts.length, greaterThan(before));
+    expect((drafts.last['their'] as Map)['sent'], '559');
   });
 
   testWidgets('onCallListLogged fires once after a comma-separated list logs, never for a single call', (tester) async {

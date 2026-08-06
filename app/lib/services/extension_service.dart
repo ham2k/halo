@@ -610,7 +610,9 @@ class ExtensionService implements PanelExtensionSource {
   /// against this would read a failed call as "that panel no longer exists"
   /// and throw the operator's arrangement away.
   Future<List<Map<String, dynamic>>?> getExtensionPanels() async {
-    final host = _host;
+    // The getter, not the field, like every other hook call here — the field
+    // is invisible to a subclass supplying its own host.
+    final host = this.host;
     if (host == null) {
       debugPrint('[extensions] getExtensionPanels: no runtime yet');
       return null;
@@ -1089,6 +1091,14 @@ class ExtensionService implements PanelExtensionSource {
         if (visible.isNotEmpty) extensionSecrets[info.key] = visible;
       }
       _locationAllowlist = locationAllowlist;
+      // Pessimistic from the moment a host exists until its activations have
+      // genuinely settled below, so a consumer reading it the instant `host`
+      // goes non-null is not told the hook set is authoritative while
+      // extensions are still registering into it. The data-file orphan purge
+      // is what reads this; the panel catalog deliberately does NOT, because
+      // a panel missing from an early read costs a placeholder that repairs
+      // itself, while an extension's data purged on a partial one is gone.
+      _activationIncomplete = true;
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
@@ -1119,11 +1129,28 @@ class ExtensionService implements PanelExtensionSource {
       // makes only after its own internal await (call-notes' custom files
       // await host.getSettings() first). Bounded: a hung extension's
       // activation must degrade boot, not stall it forever.
-      _activationIncomplete = false;
-      await _host!.activated.timeout(const Duration(seconds: 5), onTimeout: () {
+      var settled = true;
+      final booting = _host!;
+      await booting.activated.timeout(const Duration(seconds: 5), onTimeout: () {
         debugPrint('[extensions] activation did not complete within 5s — continuing anyway');
-        _activationIncomplete = true;
+        settled = false;
       });
+      _activationIncomplete = !settled;
+      if (!settled) {
+        // The wait is bounded so a hung extension degrades boot instead of
+        // stalling it — but nothing re-checks afterwards, so a slow device
+        // that merely overran the cap would carry "the hook set is
+        // incomplete" for the whole generation, and every consumer that
+        // stands down on it (the data-file purge, the panel catalog) would
+        // stay stood down for the session. Identity-checked: a runtime
+        // replaced meanwhile owns this flag now.
+        unawaited(booting.activated.then((_) {
+          if (!identical(_host, booting)) return;
+          debugPrint('[extensions] activation completed late; the hook set is whole after all');
+          _activationIncomplete = false;
+          runtimeGeneration.value++;
+        }).catchError((_) {}));
+      }
       runtimeGeneration.value++;
       // Resolve each account's synchronizable flag; account access blocks on
       // _accountSyncReady (completed below) until this is done, so every
@@ -1170,6 +1197,7 @@ class ExtensionService implements PanelExtensionSource {
 
   /// Bumped after every successful runtime (re)start — panels listen to
   /// re-fetch extension-contributed content (settings panels, listings).
+  @override
   final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
 
   /// A `command` hook pushed a later CommandInterpretation for an `input` it

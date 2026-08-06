@@ -12,6 +12,8 @@
 // and `PanelContentView` draws. That split is what lets the Layout Setup
 // sheet list panels it has no way to build.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 /// Where a panel comes from, which decides how the view gets its content.
@@ -168,6 +170,13 @@ const minPanelTickSeconds = 5;
 /// descriptor costs — can be tested without booting a JS runtime, which is
 /// the difference between testing them and asserting they were written.
 abstract interface class PanelExtensionSource {
+  /// Ticks after every successful runtime (re)start, which is the path an
+  /// extension enable/disable toggle takes. The panels a runtime offers are
+  /// only knowable by asking it, so without this a catalog read before the
+  /// runtime came up would stay unresolved for the session.
+  Listenable get runtimeGeneration;
+
+  /// Null when the runtime could not be asked at all.
   Future<List<Map<String, dynamic>>?> getExtensionPanels();
 
   Future<Map<String, dynamic>?> renderPanel({
@@ -185,19 +194,42 @@ abstract interface class PanelExtensionSource {
 class PanelService extends ChangeNotifier {
   final PanelExtensionSource extensions;
 
-  PanelService(this.extensions);
+  PanelService(this.extensions) {
+    extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
+  }
+
+  /// A fresh runtime carries a different set of extensions, so the panels it
+  /// offers have to be re-read rather than served from the old set's answer.
+  /// Without this a view that stays mounted across a trip to Settings only
+  /// notices a newly enabled extension's panels when something else happens
+  /// to ask — which, before this, meant opening the Layout Setup sheet.
+  void _onRuntimeReplaced() {
+    unawaited(refreshExtensionPanels());
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    extensions.runtimeGeneration.removeListener(_onRuntimeReplaced);
+    super.dispose();
+  }
+
+  /// A refresh already awaiting the bridge cannot be cancelled, and reaching
+  /// `notifyListeners()` on a disposed ChangeNotifier throws — out of an
+  /// unawaited call, where ErrorPolicy would show the operator a notice for
+  /// an ordinary teardown. A flag, not a try/catch: swallowing at the throw
+  /// site is what error-reporting.md forbids.
+  bool _disposed = false;
 
   final _native = <String, PanelDefinition>{};
   List<PanelDefinition> _extensionPanels = const [];
   final _configRevisions = <String, int>{};
 
-  /// False until the extensions have been asked AND answered. An empty
-  /// catalog is not proof there are no extension panels: the runtime may not
-  /// be up, or the call may have failed — and a caller that treats "we could
-  /// not ask" as "there are none" will throw away an arrangement holding one
-  /// (see OperationView's persisted-spec handling).
-  bool get resolved => _resolved;
-  bool _resolved = false;
+  /// Counts refresh passes so a slower one cannot install its answer over a
+  /// newer one's. Two restarts in quick succession — a toggle landing on a
+  /// crash recovery — otherwise race on a 10-second bridge call, and the
+  /// loser's catalog would stand for the rest of the session.
+  int _refreshSeq = 0;
 
   /// Registered by the app at startup, before any view asks for a catalog.
   /// Re-registering an id replaces it — the app owns these outright, so a
@@ -216,16 +248,21 @@ class PanelService extends ChangeNotifier {
   PanelDefinition? operator [](String id) =>
       _native[id] ?? _extensionPanels.where((p) => p.id == id).firstOrNull;
 
-  /// Re-reads what the extensions offer. Enabling an extension restarts the
-  /// runtime, and nothing here is told about that — so a view that stays
-  /// mounted across a trip to Settings has to ask again itself (the layout
-  /// sheet does, on open). Cheap to repeat: one bridge call.
+  /// Re-reads what the extensions offer — on every runtime (re)start, and
+  /// whenever a caller wants to be certain (the layout sheet asks on open).
+  /// Cheap to repeat: one bridge call.
   Future<void> refreshExtensionPanels() async {
+    final seq = ++_refreshSeq;
     final entries = await extensions.getExtensionPanels();
+    // A newer pass started while this one was on the bridge; its answer
+    // describes a later runtime than this one does.
+    if (seq != _refreshSeq || _disposed) return;
     if (entries == null) {
-      // Could not ask. Leave whatever the catalog already holds and stay
-      // unresolved rather than publishing an empty one as fact.
-      debugPrint('[panels] could not read extension panels; catalog left unresolved');
+      // Could not ask. Leave whatever the catalog already holds rather than
+      // publishing an empty one as fact — a pane whose panel is missing from
+      // the catalog shows a placeholder, and there is no reason to show one
+      // for every extension panel just because a call failed.
+      debugPrint('[panels] could not read extension panels; keeping what the catalog had');
       notifyListeners();
       return;
     }
@@ -249,7 +286,6 @@ class PanelService extends ChangeNotifier {
       panels.add(panel);
     }
     _extensionPanels = panels;
-    _resolved = true;
     notifyListeners();
   }
 

@@ -23,6 +23,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import 'density.dart';
@@ -36,6 +37,12 @@ import 'ui_scale.dart';
 
 /// A node in the dock tree: either a [DockSplit] (row/column of children
 /// with weights) or a [DockGroup] (a tabbed stack of module ids).
+///
+/// This is the dock's **definition** — what panes exist and how they are
+/// arranged — and nothing else. Which tab is on top is [DockState], stored
+/// apart from it. The split is load-bearing rather than tidy: while
+/// selection lived in here, tapping a tab was an edit to the arrangement,
+/// so merely looking at another pane rewrote the operator's saved layout.
 sealed class DockNode {
   Map<String, dynamic> toJson();
 
@@ -45,8 +52,11 @@ sealed class DockNode {
       case 'group':
         final modules = (json['modules'] as List?)?.whereType<String>().toList() ?? [];
         if (modules.isEmpty) return null;
-        final selected = (json['selected'] as num?)?.toInt() ?? 0;
-        return DockGroup(modules, selected: selected.clamp(0, modules.length - 1));
+        // `selected` is deliberately NOT read, though older saved
+        // definitions still carry one: it is state, and state has its own
+        // store now. A definition written before the split simply opens on
+        // its first tab once, and stops carrying the field when next saved.
+        return DockGroup(modules);
       case 'split':
         final children = (json['children'] as List?)?.map(DockNode.fromJson).whereType<DockNode>().toList() ?? [];
         if (children.isEmpty) return null;
@@ -81,7 +91,7 @@ class DockGroup extends DockNode {
   DockGroup(this.modules, {this.selected = 0});
 
   @override
-  Map<String, dynamic> toJson() => {'type': 'group', 'modules': modules, 'selected': selected};
+  Map<String, dynamic> toJson() => {'type': 'group', 'modules': modules};
 }
 
 /// A row (horizontal) or column (vertical) of children sized by [weights]
@@ -100,6 +110,71 @@ class DockSplit extends DockNode {
     'children': [for (final c in children) c.toJson()],
     'weights': weights,
   };
+}
+
+/// What the operator has done to a dock arrangement without changing it:
+/// which pane is on top of each group, and (later) which collapsible panes
+/// are hidden. Kept apart from [DockNode] so that touching state is never a
+/// write to the definition.
+///
+/// Keyed by **module id**, not by a group's position or a generated node id:
+/// `selected` is simply the set of modules that are on top of whatever group
+/// holds them. A group holding none of them shows its first, which is also
+/// the default for a group nobody has touched. That survives rearranging the
+/// dock — moving a pane to another group carries its selectedness with it —
+/// and needs no migration when the tree's shape changes underneath.
+class DockState {
+  final Set<String> selected;
+
+  const DockState({this.selected = const {}});
+
+  static const empty = DockState();
+
+  bool get isEmpty => selected.isEmpty;
+
+  Map<String, dynamic> toJson() => {'selected': selected.toList()};
+
+  static DockState fromJson(Object? json) {
+    if (json is! Map) return empty;
+    return DockState(selected: {...?(json['selected'] as List?)?.whereType<String>()});
+  }
+
+  /// The state a live tree is currently in.
+  factory DockState.of(DockNode node) => DockState(selected: _selectedIn(node).toSet());
+
+  static Iterable<String> _selectedIn(DockNode node) sync* {
+    switch (node) {
+      case DockGroup(:final modules, :final selected):
+        if (modules.isNotEmpty) yield modules[selected.clamp(0, modules.length - 1)];
+      case DockSplit(:final children):
+        for (final child in children) {
+          yield* _selectedIn(child);
+        }
+    }
+  }
+
+  /// Puts each group's remembered module on top, in place. A group this
+  /// state says nothing about is LEFT ALONE rather than reset — a definition
+  /// parsed from JSON already opens on its first tab, and forcing that here
+  /// would also overrule a caller that built a tree with a selection of its
+  /// own.
+  void applyTo(DockNode node) {
+    switch (node) {
+      case DockGroup(:final modules):
+        final index = modules.indexWhere(selected.contains);
+        if (index >= 0) node.selected = index;
+      case DockSplit(:final children):
+        for (final child in children) {
+          applyTo(child);
+        }
+    }
+  }
+
+  @override
+  bool operator ==(Object other) => other is DockState && setEquals(other.selected, selected);
+
+  @override
+  int get hashCode => Object.hashAllUnordered(selected);
 }
 
 /// Whether the pane reading this is the one on top of its tab group. Every
@@ -160,7 +235,17 @@ class DockLayoutView extends StatefulWidget {
   /// reads as belonging to the group, not to the one module it acts on.
   final Map<String, WidgetBuilder>? tabActions;
 
+  /// Fires when the ARRANGEMENT changes — a pane added, removed, moved or
+  /// resized. Never for a tab tap: see [onStateChanged].
   final ValueChanged<DockNode>? onSpecChanged;
+
+  /// The state to open in. Like [initialSpec], read once.
+  final DockState initialState;
+
+  /// Fires when which pane is on top changes, which is emphatically not an
+  /// edit to the arrangement — the operator looking at another tab must not
+  /// rewrite their saved layout.
+  final ValueChanged<DockState>? onStateChanged;
 
   const DockLayoutView({
     super.key,
@@ -169,6 +254,8 @@ class DockLayoutView extends StatefulWidget {
     required this.children,
     this.tabActions,
     this.onSpecChanged,
+    this.initialState = DockState.empty,
+    this.onStateChanged,
   });
 
   /// True when [spec]'s modules are exactly [moduleIds] — the guard a view
@@ -210,6 +297,9 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
+    // The tree arrives as a pure definition — every group on its first tab —
+    // and the remembered state is laid over it here.
+    widget.initialState.applyTo(_spec);
     _growth = AnimationController(vsync: this, duration: layoutAnimationDuration)
       ..addListener(() {
         if (mounted) setState(() {});
@@ -253,7 +343,14 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// map must paint SOMETHING to receive the drop.
   static const double _hitWashAlpha = 0.004;
 
-  void _emit() => widget.onSpecChanged?.call(_spec);
+  void _emit() {
+    widget.onSpecChanged?.call(_spec);
+    // An arrangement change moves panes between groups, so what is on top
+    // can change without anyone tapping a tab.
+    _emitState();
+  }
+
+  void _emitState() => widget.onStateChanged?.call(DockState.of(_spec));
 
   /// Selects the tab of the group containing [id], surfacing that module.
   /// No-op when the module isn't in the layout. Not persisted — a reveal is
@@ -270,6 +367,13 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// lists. Read from the LIVE tree, not the caller's `initialSpec`, which
   /// stopped being the arrangement the moment the user moved anything.
   List<String> get modules => _spec.collectModules();
+
+  /// What the dock is showing on top of each group right now — the same
+  /// value [DockLayoutView.onStateChanged] reports. Exposed so a test can
+  /// assert on the SELECTION: a tab's label is in the tree whether or not it
+  /// is the selected one, so asserting on the label proves nothing.
+  @visibleForTesting
+  DockState get currentState => DockState.of(_spec);
 
   /// Drops [id] out of the layout entirely, pruning whatever it leaves empty.
   /// Refuses to remove the last module — a dock with nothing in it has no
@@ -635,12 +739,13 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         showHandle: active,
         hasAction: action != null,
         action: active ? action?.call(context) : null,
-        // Selection is part of the persisted spec (toJson carries it), so a
-        // tap must emit like a drop does — otherwise the saved arrangement
-        // reopens on a stale tab.
+        // State, not arrangement: this emits through onStateChanged, and
+        // must never reach onSpecChanged. A tab tap that rewrote the saved
+        // definition is how merely looking at another pane could replace an
+        // operator's layout with whatever stand-in was on screen.
         onTap: () {
           setState(() => group.selected = index);
-          _emit();
+          _emitState();
         },
         moduleId: id,
           onDragStarted: (id) => setState(() => _dragging = id),

@@ -10,27 +10,32 @@
 // between "no panels" and "could not ask", and a trigger nobody fires is
 // rejected where it can still be reported.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 
 void main() {
-  group('resolved', () {
-    test('a catalog that could not be read stays unresolved and keeps what it had', () async {
-      final service = PanelService(_FakeExtensions(entries: null));
-      expect(service.resolved, isFalse, reason: 'nothing has been asked yet');
-
+  group('reading the catalog', () {
+    test('a read that could not ask keeps what the catalog had', () async {
+      final extensions = _FakeExtensions(entries: [
+        {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
+      ]);
+      final service = PanelService(extensions);
       await service.refreshExtensionPanels();
+      expect(service['ext:wx:forecast'], isNotNull);
 
-      // The caller reconciling a SAVED LAYOUT against this must not read a
-      // failed call as "that panel no longer exists".
-      expect(service.resolved, isFalse);
+      // The runtime went away. Publishing an empty catalog would turn every
+      // extension pane in every saved arrangement into a "missing extension"
+      // placeholder on the strength of an answer nobody gave.
+      extensions.entries = null;
+      await service.refreshExtensionPanels();
+      expect(service['ext:wx:forecast'], isNotNull);
     });
 
-    test('a catalog that genuinely holds no panels IS resolved', () async {
+    test('a catalog that genuinely holds no panels is published as empty', () async {
       final service = PanelService(_FakeExtensions(entries: const []));
       await service.refreshExtensionPanels();
       // Distinct from the case above, and the distinction is the whole point.
-      expect(service.resolved, isTrue);
       expect(service.catalog, isEmpty);
     });
 
@@ -39,8 +44,83 @@ void main() {
         {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
       ]));
       await service.refreshExtensionPanels();
-      expect(service.resolved, isTrue);
       expect(service['ext:wx:forecast']?.title, 'Forecast');
+    });
+  });
+
+  group('runtime restarts', () {
+    test('a fresh runtime is re-read without anyone asking', () async {
+      final extensions = _FakeExtensions(entries: const []);
+      final service = PanelService(extensions);
+      await service.refreshExtensionPanels();
+      expect(service.catalog, isEmpty);
+
+      // Enabling an extension in Settings restarts the runtime. An Operation
+      // view stays mounted across that trip, so if the catalog only re-reads
+      // when something happens to ask, the newly enabled extension's panels
+      // are missing from Layout Setup until it is closed and reopened.
+      extensions.entries = [
+        {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
+      ];
+      extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
+
+      expect(service['ext:wx:forecast']?.title, 'Forecast');
+    });
+
+    test('a catalog asked before the runtime was up settles when it comes up', () async {
+      final extensions = _FakeExtensions(entries: null);
+      final service = PanelService(extensions);
+      await service.refreshExtensionPanels();
+      expect(service.catalog, isEmpty);
+
+      // Boot order: the app builds its first Operation view well before the
+      // JS runtime finishes starting. Without the restart subscription that
+      // first failed read is the only one of the session, and every saved
+      // arrangement holding an extension panel stays in limbo.
+      extensions.entries = [
+        {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
+      ];
+      extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
+
+      expect(service['ext:wx:forecast'], isNotNull);
+    });
+
+    test('a slower read cannot install its answer over a newer one', () async {
+      // Two restarts in quick succession — a toggle landing on top of a crash
+      // recovery. Both reads are in flight at once on a call that can take ten
+      // seconds, and if the older one wins, generation N-1's panel list stands
+      // for the rest of the session: a disabled extension's panel still
+      // listed, or a newly enabled one's missing, with nothing said anywhere.
+      final extensions = _FakeExtensions(entries: const [], delay: const Duration(milliseconds: 50));
+      final service = PanelService(extensions);
+      final slow = service.refreshExtensionPanels();
+
+      extensions.entries = [
+        {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
+      ];
+      extensions.delay = Duration.zero;
+      await service.refreshExtensionPanels();
+      expect(service['ext:wx:forecast'], isNotNull);
+
+      await slow;
+      expect(service['ext:wx:forecast'], isNotNull, reason: 'the stale read must not have won');
+    });
+
+    test('a disposed catalog stops listening to the runtime', () async {
+      final extensions = _FakeExtensions(entries: const []);
+      final service = PanelService(extensions);
+      service.dispose();
+
+      // notifyListeners() on a disposed ChangeNotifier throws, and this one
+      // would be reached from an unawaited refresh — so a leaked
+      // subscription surfaces as an unhandled error out of the next runtime
+      // restart, not as a wasted bridge call. The app's own PanelService
+      // lives as long as the app and is never disposed, so this pairing
+      // exists for the sake of tests like these, which build their own.
+      extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
     });
   });
 
@@ -102,12 +182,27 @@ void main() {
 /// Answers the one call the catalog makes. `entries: null` is the host
 /// saying "could not ask" — no runtime, or the call failed.
 class _FakeExtensions implements PanelExtensionSource {
-  final List<Map<String, dynamic>>? entries;
+  /// Mutable: a runtime restart is the one thing that can change what the
+  /// extensions offer without the catalog being asked to look.
+  List<Map<String, dynamic>>? entries;
 
-  _FakeExtensions({required this.entries});
+  /// How long this read takes to answer, so two passes can be in flight at
+  /// once — the race a real 10-second bridge call makes ordinary.
+  Duration delay;
+
+  _FakeExtensions({required this.entries, this.delay = Duration.zero});
+
+  /// Bumping this stands in for a runtime restart — an extension being
+  /// enabled or disabled.
+  @override
+  final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
 
   @override
-  Future<List<Map<String, dynamic>>?> getExtensionPanels() async => entries;
+  Future<List<Map<String, dynamic>>?> getExtensionPanels() async {
+    final answer = entries;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    return answer;
+  }
 
   @override
   Future<Map<String, dynamic>?> renderPanel({

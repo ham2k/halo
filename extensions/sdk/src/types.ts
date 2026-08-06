@@ -2001,7 +2001,14 @@ export interface PanelRenderArgs {
   panelKey: string
   operation: Record<string, JSONValue>
   /// The QSO being entered right now, including `their.guess` from the
-  /// callsign lookup — absent when the logging panel isn't in the view.
+  /// callsign lookup. Absent when there is no logging panel in the view, and
+  /// absent unless some panel in the arrangement declared 'qso' OR 'lookup'
+  /// — producing it costs the host work on the typing path, so it is not
+  /// produced for nobody, but a resolved guess lives in here and nowhere
+  /// else, so declaring 'lookup' is enough to be sent it. Do not add 'qso'
+  /// just to receive this: that buys per-pause renders you did not want.
+  /// Present with an empty `their.call` before anything is typed: the band
+  /// and mode are the radio's, and are real either way.
   qso?: Record<string, JSONValue>
   /// How many real QSOs the operation holds (event markers excluded), so a
   /// panel can show a count without reading the log.

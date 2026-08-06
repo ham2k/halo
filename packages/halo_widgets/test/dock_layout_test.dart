@@ -18,6 +18,8 @@ void main() {
   Widget harness({
     required DockNode spec,
     ValueChanged<DockNode>? onChanged,
+    ValueChanged<DockState>? onStateChanged,
+    DockState initialState = DockState.empty,
     Map<String, Widget>? children,
     Map<String, WidgetBuilder>? tabActions,
     // Re-pumping with a different spec but no key changes NOTHING: the view
@@ -31,6 +33,8 @@ void main() {
           body: DockLayoutView(
             key: key,
             initialSpec: spec,
+            initialState: initialState,
+            onStateChanged: onStateChanged,
             titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
             children: children ??
                 const {
@@ -312,16 +316,48 @@ void main() {
     expect(bravoPadding.right, 20, reason: "trailing group's tab strip clears the right device edge");
   });
 
-  testWidgets('tapping a tab selects it and persists the selection', (tester) async {
+  testWidgets('tapping a tab reports STATE, never the arrangement', (tester) async {
     final spec = twoGroups();
-    DockNode? reported;
-    await tester.pumpWidget(harness(spec: spec, onChanged: (s) => reported = s));
+    DockNode? reportedSpec;
+    DockState? reportedState;
+    await tester.pumpWidget(harness(
+      spec: spec,
+      onChanged: (s) => reportedSpec = s,
+      onStateChanged: (s) => reportedState = s,
+    ));
     await tester.tap(find.text('Charlie'));
     await tester.pump();
+
     expect(((spec as DockSplit).children[1] as DockGroup).selected, 1);
-    // Selection is serialized in the spec, so a tap must reach the
-    // persistence callback — otherwise the layout reopens on a stale tab.
-    expect(reported, isNotNull);
+    expect(reportedState?.selected, contains('c'));
+    // The arrangement did not change, so nothing may be written as though it
+    // had: while selection lived in the spec, looking at another pane was an
+    // edit, and a stand-in arrangement shown for a moment could be persisted
+    // over the operator's real one by nothing more than a tab tap.
+    expect(reportedSpec, isNull);
+  });
+
+  testWidgets('a group opens on its remembered module, and on its first without one', (tester) async {
+    final spec = twoGroups();
+    await tester.pumpWidget(harness(spec: spec, initialState: const DockState(selected: {'c'})));
+    await tester.pump();
+    expect(((spec as DockSplit).children[1] as DockGroup).selected, 1);
+
+    // Keyed by module id rather than by index or position, so state survives
+    // the dock being rearranged underneath it: the same module stays on top
+    // wherever it ends up.
+    final moved = DockSplit(Axis.horizontal, [
+      DockGroup(['a', 'c']),
+      DockGroup(['b']),
+    ], [1, 1]);
+    await tester.pumpWidget(harness(spec: moved, initialState: const DockState(selected: {'c'}), key: UniqueKey()));
+    await tester.pump();
+    expect((moved.children[0] as DockGroup).selected, 1, reason: "'c' is on top of whichever group holds it");
+
+    // And a definition carries no selection at all, so an arrangement with
+    // nothing remembered opens on its first tab.
+    expect((DockNode.fromJson(twoGroups().toJson()) as DockSplit).children[1], isA<DockGroup>()
+        .having((g) => g.selected, 'selected', 0));
   });
 
   testWidgets('removeModule drops a pane, prunes what it empties, and reports', (tester) async {

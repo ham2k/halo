@@ -47,15 +47,34 @@ class LayoutPanelEntry {
   });
 }
 
-/// A panel's preview thumbnail. SVG is drawn directly; a `data:` URI is
+/// A panel's preview image. SVG is drawn directly; a `data:` URI is
 /// decoded as an image. Anything else — notably a remote URL — draws
 /// nothing at all rather than reaching for the network.
 class _PanelPreview extends StatelessWidget {
   final String preview;
 
-  const _PanelPreview({required this.preview});
+  /// The row's thumbnail is deliberately small — these rows match the
+  /// operation setup sheet's, and growing them to fit a legible preview
+  /// would make the two read as unrelated surfaces. The thumbnail is a
+  /// control instead: tapping it opens the same image at [_paneSize].
+  final double size;
 
-  static const _size = 40.0;
+  /// Shown in place of the image when it does not draw — an SVG that fails
+  /// to parse, a `data:` payload that is not the image it claims to be.
+  /// Null at thumbnail size, where the row simply shows nothing: a broken
+  /// preview is an extension-author defect, and the operator reading a
+  /// panel list is not the one who can act on it. At pane size it is the
+  /// difference between "this panel looks like nothing" and "this preview
+  /// is broken".
+  final Widget? unavailable;
+
+  const _PanelPreview({required this.preview, this.size = _thumbnailSize, this.unavailable});
+
+  static const _thumbnailSize = 40.0;
+
+  /// Roughly the shape of a real pane, so what the operator is choosing
+  /// between looks like what they will get.
+  static const _paneSize = 320.0;
 
   @override
   Widget build(BuildContext context) {
@@ -86,8 +105,30 @@ class _PanelPreview extends StatelessWidget {
         );
       }
     }
-    if (image == null) return const SizedBox.shrink();
-    return SizedBox(width: _size, height: _size, child: image);
+    // Inside the box either way. The row wraps this in a tap target and
+    // announces it to a screen reader, so a bare `SizedBox.shrink()` here
+    // would leave a control with no hit area and nothing to say — and at
+    // pane size, the `unavailable` message would never be reachable, since
+    // only the two errorBuilders below get there.
+    return SizedBox(
+      width: size,
+      height: size,
+      child: image ?? _dropped('preview payload did not decode'),
+    );
+  }
+
+  /// Whether [preview] is in a form this widget will even attempt — an SVG
+  /// document or a `data:` image. A remote URL is not, and never will be.
+  ///
+  /// Deliberately NOT a promise that the image draws: whether an SVG parses
+  /// or a PNG decodes is only knowable by trying, inside build. The row asks
+  /// this before offering the tap so that a preview nothing could ever draw
+  /// offers no control at all; a preview that is well-formed enough to try
+  /// and then fails is the pane's problem, and [_unavailable] is what it
+  /// shows instead of an empty box.
+  static bool isDrawableForm(String preview) {
+    final trimmed = preview.trimLeft();
+    return trimmed.startsWith('<svg') || trimmed.startsWith('<?xml') || trimmed.startsWith('data:image/');
   }
 
   static Uint8List? _decodeDataUri(String uri) {
@@ -120,9 +161,13 @@ class _PanelPreview extends StatelessWidget {
     }
   }
 
-  static Widget _dropped(String why) {
+  /// One bad preview costs its own image, never the row or the sheet. The
+  /// line goes to the console because it is an extension author's to fix;
+  /// what the operator gets is [unavailable], which is nothing at all in a
+  /// row and a plain sentence at pane size.
+  Widget _dropped(String why) {
     debugPrint('[panels] $why');
-    return const SizedBox.shrink();
+    return unavailable ?? const SizedBox.shrink();
   }
 }
 
@@ -209,15 +254,68 @@ class LayoutSheet extends StatelessWidget {
     );
   }
 
-  Widget _panelRow(BuildContext context, LayoutPanelEntry panel, {required Widget? trailing}) => ListTile(
-    // Opaque, like the operation sheet's rows: the sheet's own background
-    // shows straight through a row that doesn't paint one.
-    tileColor: haloSheetRowColor(context),
-    leading: panel.preview == null ? null : _PanelPreview(preview: panel.preview!),
-    title: Text(panel.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-    subtitle: panel.description == null ? null : Text(panel.description!),
-    trailing: trailing,
-  );
+  Widget _panelRow(BuildContext context, LayoutPanelEntry panel, {required Widget? trailing}) {
+    final t = context.t.operation.layout;
+    final preview = panel.preview;
+    return ListTile(
+      // Opaque, like the operation sheet's rows: the sheet's own background
+      // shows straight through a row that doesn't paint one.
+      tileColor: haloSheetRowColor(context),
+      leading: preview == null || !_PanelPreview.isDrawableForm(preview)
+          ? null
+          : Semantics(
+              button: true,
+              label: t.showPreview(panel: panel.title),
+              child: InkWell(
+                // Inside the tile, so it takes the tap before the row does —
+                // and a Builder is unnecessary here because the pane opens
+                // against the sheet's own route either way.
+                onTap: () => _showPreview(context, panel, preview),
+                child: _PanelPreview(preview: preview),
+              ),
+            ),
+      title: Text(panel.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: panel.description == null ? null : Text(panel.description!),
+      trailing: trailing,
+    );
+  }
+
+  /// The preview at pane scale. A 40pt thumbnail says a panel HAS a preview;
+  /// it does not say what the panel looks like, which is the whole question
+  /// when picking one out of Available Panels.
+  void _showPreview(BuildContext context, LayoutPanelEntry panel, String preview) {
+    showModalPane<void>(
+      context,
+      title: panel.title,
+      closeLabel: context.t.common.close,
+      builder: (paneContext) => Padding(
+        padding: const EdgeInsets.all(Space.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: _PanelPreview(
+                preview: preview,
+                size: _PanelPreview._paneSize,
+                unavailable: Text(
+                  context.t.operation.layout.previewUnavailable,
+                  style: Theme.of(paneContext).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(paneContext).colorScheme.onSurfaceVariant,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            if (panel.description case final description?) ...[
+              const SizedBox(height: Space.lg),
+              Text(description, style: Theme.of(paneContext).textTheme.bodyMedium),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

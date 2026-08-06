@@ -1485,6 +1485,15 @@ class Translations$operation$layout$en {
 	/// en: 'Add ${panel}'
 	String addPanel({required Object panel}) => 'Add ${panel}';
 
+	/// en: 'Preview ${panel}'
+	String showPreview({required Object panel}) => 'Preview ${panel}';
+
+	/// en: 'Extension "${name}" is missing'
+	String missingExtension({required Object name}) => 'Extension "${name}" is missing';
+
+	/// en: 'This panel's preview image could not be shown.'
+	String get previewUnavailable => 'This panel\'s preview image could not be shown.';
+
 	/// en: 'Layout Options'
 	String get optionsTitle => 'Layout Options';
 
@@ -3448,6 +3457,9 @@ extension on Translations {
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} settings',
 			'operation.layout.removePanel' => ({required Object panel}) => 'Remove ${panel}',
 			'operation.layout.addPanel' => ({required Object panel}) => 'Add ${panel}',
+			'operation.layout.showPreview' => ({required Object panel}) => 'Preview ${panel}',
+			'operation.layout.missingExtension' => ({required Object name}) => 'Extension "${name}" is missing',
+			'operation.layout.previewUnavailable' => 'This panel\'s preview image could not be shown.',
 			'operation.layout.optionsTitle' => 'Layout Options',
 			'operation.layout.options' => 'Options',
 			'operation.layout.resetLayout' => 'Reset layout',
@@ -3866,11 +3878,11 @@ extension on Translations {
 			'settings.station.title' => 'Station Configuration',
 			'settings.station.none' => 'No equipment configured',
 			'settings.station.add' => 'Add equipment',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.addTitle' => 'Add equipment',
 			'settings.station.searchHint' => 'Search equipment',
 			'settings.station.noMatches' => 'No equipment matches',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.lookingForEquipment' => 'Looking for new equipment…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',

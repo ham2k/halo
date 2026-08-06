@@ -661,6 +661,28 @@ Future<HaLoServices> bootstrap({
       );
   WindowChromeService.onCheckForUpdates = () => unawaited(const AutoUpdateService().checkForUpdatesInteractively());
 
+  // The panel catalog is read HERE, before bootstrap returns and the first
+  // view builds, rather than by whichever view happens to want it: a saved
+  // dock arrangement names extension panels, and a view built against a
+  // catalog that has not arrived yet shows placeholders for panes that are
+  // perfectly fine.
+  //
+  // ONE short budget for both steps, because this is splash time — `runApp`
+  // shows the splash until this future resolves, and nothing else in
+  // bootstrap waits on the runtime (the logging loop deliberately never
+  // does). Overrunning is not a failure and not fatal: a panel that hasn't
+  // been read yet renders as a placeholder, and the catalog re-reads itself
+  // the moment the runtime comes up (`runtimeGeneration`). The wait buys a
+  // tidier first frame in the ordinary case; it must never buy a slow one.
+  final catalogDeadline = DateTime.now().add(_panelCatalogBootBudget);
+  try {
+    await extensions.start().timeout(_panelCatalogBootBudget);
+    final left = catalogDeadline.difference(DateTime.now());
+    if (left > Duration.zero) await services.panels.refreshExtensionPanels().timeout(left);
+  } catch (e) {
+    debugPrint('[boot] panel catalog not ready before first build ($e); panes will fill in');
+  }
+
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {
     await services.dataFiles.loadRawDataFiles();
@@ -685,6 +707,12 @@ Future<HaLoServices> bootstrap({
 
   return services;
 }
+
+/// How long boot will wait for the extension runtime and its panel catalog
+/// before showing the first view anyway. Deliberately short: this is splash
+/// time, and the only thing it buys is not briefly showing a placeholder for
+/// a panel that turns out to be fine.
+const _panelCatalogBootBudget = Duration(seconds: 3);
 
 /// Key for the notice below, and the pref that keeps it to one showing.
 const noKeyringNoticeKey = 'accounts:no-keyring';

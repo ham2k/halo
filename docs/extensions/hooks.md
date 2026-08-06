@@ -898,10 +898,22 @@ descriptor looking live and never fire. A descriptor with no `on` renders once w
 appears. Omitting it is the right default: a trigger costs a bridge call
 every time it fires.
 
-**Not yet supplied by the host:** `args.qso` and the `'qso'` and `'lookup'`
-triggers. The in-progress QSO lives inside the logging panel's own state
-and is not published to the view yet; a panel declaring those triggers is
-accepted and simply never woken by them.
+`'qso'` is the expensive one. `args.qso` is the whole QSO being composed —
+every field, in QSON, as it would be logged — and it changes as fast as the
+operator types. The host debounces it to one wake per pause and stops
+producing it entirely when no panel in the arrangement asked, but a panel
+that wants only the resolved callsign should declare `'lookup'` instead: it
+fires when a lookup is ANSWERED, not while a call is being typed, and the
+guess is inside `args.qso` either way — declaring `'lookup'` is enough to be
+sent the draft, so what it saves over `'qso'` is renders, not the QSO.
+
+`'lookup'` fires when the panel is shown a callsign that HAS an answer —
+which includes opening a QSO whose stored record already carries one, not
+only a fresh lookup resolving. It does not fire when a lookup starts, fails,
+or times out. A panel keyed to it alone cannot tell "still looking"
+from "no answer coming", and will sit on whatever it last drew. A panel that
+needs to show either state wants `'qso'` too, and should read
+`qso.their.guess` to decide which it is looking at.
 
 **`form`** declares the panel's own configuration in the same field schema
 a Tier 1 `settingsPanel` uses ([settings.md](./settings.md)), rendered by
