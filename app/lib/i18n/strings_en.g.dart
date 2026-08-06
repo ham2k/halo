@@ -2721,6 +2721,30 @@ class Translations$settings$profiles$en {
 
 	/// en: 'Not set'
 	String get notSet => 'Not set';
+
+	/// en: 'Personal Info'
+	String get personalInfo => 'Personal Info';
+
+	/// en: 'This might be included in generated logs when relevant for submissions'
+	String get personalInfoNote => 'This might be included in generated logs when relevant for submissions';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'Email'
+	String get email => 'Email';
+
+	/// en: 'Club'
+	String get club => 'Club';
+
+	/// en: 'ARRL Section'
+	String get arrlSection => 'ARRL Section';
+
+	/// en: 'RAC Section'
+	String get racSection => 'RAC Section';
+
+	/// en: 'Section'
+	String get section => 'Section';
 }
 
 // Path: settings.search
@@ -4092,6 +4116,14 @@ extension on Translations {
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
+			'settings.profiles.personalInfo' => 'Personal Info',
+			'settings.profiles.personalInfoNote' => 'This might be included in generated logs when relevant for submissions',
+			'settings.profiles.name' => 'Name',
+			'settings.profiles.email' => 'Email',
+			'settings.profiles.club' => 'Club',
+			'settings.profiles.arrlSection' => 'ARRL Section',
+			'settings.profiles.racSection' => 'RAC Section',
+			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search settings',
 			'settings.developer.options' => 'Developer Options',

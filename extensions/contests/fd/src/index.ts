@@ -13,6 +13,7 @@
 import {
   contestScorer,
   defineExtension,
+  host,
 } from "@ham2k/halo-extension-sdk"
 import type {
   ActivitySuggestion,
@@ -95,12 +96,45 @@ function preferredSections(call: string, entityPrefix: string): string[] {
   return SECTIONS_BY_CALL_AREA[Number(digit[0])] ?? []
 }
 
+/// The operator's own section, from their profile, for the setup form's
+/// `value`.
+///
+/// STICKY ON FAILURE, and that is the whole point. `value` is a default, but
+/// FormRenderer also re-applies it when a re-fetched definition disagrees with
+/// the previous one on a field the operator has not edited
+/// (`_syncFieldValuesFromDefinition`). So a getSettings that succeeds once and
+/// then rejects — a host disposed by an extension toggle, a runtime restart —
+/// would flip the field from the operator's section to blank in front of them,
+/// mid-setup. Answering with the last section we did read keeps the definition
+/// stable across that, so the only way this field changes is the operator
+/// changing it.
+///
+/// Empty until the first successful read: a section we have never seen is not
+/// something to invent.
+let lastKnownSection = ""
+
+async function ourSectionDefault(): Promise<string> {
+  try {
+    const settings = await host.getSettings()
+    lastKnownSection = String(settings?.operatorSection ?? "").toUpperCase()
+  } catch (e) {
+    // Local recovery, so it picks its own fallback and says so with its own
+    // tag (docs/design/error-reporting.md) rather than reaching ErrorPolicy.
+    // Letting it throw would cost this extension's whole setup control — the
+    // hook fan-out isolates a throwing hook, but it drops it silently — and
+    // losing the Field Day setup form is far worse than a stale default.
+    console.warn(`[fd] profile settings unavailable, keeping the last section read:`, e)
+  }
+  return lastKnownSection
+}
+
 const ActivityHook = {
   async operationControls(
     _args: { operation: Record<string, JSONValue> },
     ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
+    const profileSection = await ourSectionDefault()
     return [
       {
         key: 'fd/setup',
@@ -148,6 +182,7 @@ const ActivityHook = {
                 label: t('ourSectionLabel'),
                 placeholder: t('ourSectionPlaceholder'),
                 uppercase: true,
+                value: profileSection,
               },
               {
                 type: 'field',

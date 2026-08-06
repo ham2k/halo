@@ -271,6 +271,27 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
+  /// Writes free-form profile fields ([Profile.operatorName] and friends) in
+  /// one go: a single store write and a single notification, however many
+  /// fields changed, because they are edited together in one dialog.
+  ///
+  /// Trims only — a field whose value is a code normalizes its own case at the
+  /// call site. [operatorCall] keeps its own setter because changing it also
+  /// re-keys sync and feature flags (HaLoServices.setOperatorCall).
+  Future<void> setProfileFields(String profileId, Map<String, String> fields) async {
+    await _prefs.setString(
+      _profilesKey,
+      jsonEncode({
+        ..._profilesData,
+        profileId: {
+          ..._profile(profileId).data,
+          for (final entry in fields.entries) entry.key: entry.value.trim(),
+        },
+      }),
+    );
+    notifyListeners();
+  }
+
   /// Whether this device syncs its log. [seedSyncEnabledDefault] writes the
   /// key at first boot, so the bare fallback here is only ever reached
   /// before that has run.
@@ -880,6 +901,21 @@ class Profile {
   const Profile(this.id, this.data);
 
   String get operatorCall => (data['operatorCall'] as String?) ?? '';
+
+  /// Personal details about the operator, offered to log generators that need
+  /// them for a submission (Cabrillo headers name a NAME, CLUB and EMAIL; the
+  /// ARRL/RAC section is Field Day's own exchange). All free-form and all
+  /// optional — nothing in the app requires any of them.
+  String get operatorName => (data['operatorName'] as String?) ?? '';
+
+  String get operatorEmail => (data['operatorEmail'] as String?) ?? '';
+
+  String get operatorClub => (data['operatorClub'] as String?) ?? '';
+
+  /// ARRL section, or RAC section for a Canadian call — the same code space
+  /// (`extensions/contests/fd/src/sections.ts` holds the authoritative table).
+  /// Free-form: an out-of-date table must never block a valid entry.
+  String get operatorSection => (data['operatorSection'] as String?) ?? '';
 }
 
 enum DistanceUnits { kilometers, miles }

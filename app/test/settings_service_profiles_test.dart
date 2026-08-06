@@ -56,5 +56,61 @@ void main() {
       await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
       expect(settings.activeProfile.operatorCall, 'KI2D');
     });
+
+    test('personal-info fields trim, notify, persist, and default to empty', () async {
+      final settings = await makeSettings();
+      var notified = 0;
+      settings.addListener(() => notified++);
+
+      expect(settings.activeProfile.operatorName, '');
+      expect(settings.activeProfile.operatorEmail, '');
+      expect(settings.activeProfile.operatorClub, '');
+      expect(settings.activeProfile.operatorSection, '');
+
+      await settings.setProfileFields(SettingsService.defaultProfileId, {
+        'operatorName': '  Sebastian  ',
+        'operatorEmail': 'sd@ham2k.com',
+        'operatorClub': 'Ham2K Radio Club',
+        'operatorSection': 'ENY',
+      });
+      // One notification for the whole dialog, not one per field — the panel
+      // rebuilds once however many values the operator changed.
+      expect(notified, 1);
+
+      final reloaded = SettingsService(await SharedPreferences.getInstance());
+      expect(reloaded.activeProfile.operatorName, 'Sebastian');
+      expect(reloaded.activeProfile.operatorEmail, 'sd@ham2k.com');
+      expect(reloaded.activeProfile.operatorClub, 'Ham2K Radio Club');
+      expect(reloaded.activeProfile.operatorSection, 'ENY');
+    });
+
+    // The callsign and the personal-info fields share one JSON blob, so a
+    // write through either setter must merge rather than replace.
+    test('personal-info writes and the callsign do not clobber each other', () async {
+      final settings = await makeSettings();
+      await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
+      await settings.setProfileFields(SettingsService.defaultProfileId, {'operatorName': 'Sebastian'});
+      await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'W1AW');
+
+      expect(settings.activeProfile.operatorCall, 'W1AW');
+      expect(settings.activeProfile.operatorName, 'Sebastian');
+    });
+
+    // setProfileFields does NOT uppercase: the section's case is normalized at
+    // the call site, alongside the keyboard hint that promises it.
+    test('setProfileFields preserves case', () async {
+      final settings = await makeSettings();
+      await settings.setProfileFields(SettingsService.defaultProfileId, {'operatorName': 'de Kock'});
+      expect(settings.activeProfile.operatorName, 'de Kock');
+    });
+
+    // The dialog omits the section row for a non-US/CA callsign, so its result
+    // has no such key — that must carry the stored value through, not clear it.
+    test('a field the dialog left out keeps its stored value', () async {
+      final settings = await makeSettings();
+      await settings.setProfileFields(SettingsService.defaultProfileId, {'operatorSection': 'ENY'});
+      await settings.setProfileFields(SettingsService.defaultProfileId, {'operatorName': 'Sebastian'});
+      expect(settings.activeProfile.operatorSection, 'ENY');
+    });
   });
 }

@@ -1346,6 +1346,14 @@ class _Translations$settings$profiles$es extends Translations$settings$profiles$
 
 	// Translations
 	@override String get notSet => 'Sin definir';
+	@override String get personalInfo => 'Datos personales';
+	@override String get personalInfoNote => 'Esto puede incluirse en los registros generados cuando sea relevante para envíos';
+	@override String get name => 'Nombre';
+	@override String get email => 'Correo electrónico';
+	@override String get club => 'Club';
+	@override String get arrlSection => 'Sección ARRL';
+	@override String get racSection => 'Sección RAC';
+	@override String get section => 'Sección';
 }
 
 // Path: settings.search
@@ -2427,6 +2435,14 @@ extension on TranslationsEs {
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Actualizado hace ${minutes}m',
 			'settings.offlineData.extensionsSection' => 'Extensiones',
 			'settings.profiles.notSet' => 'Sin definir',
+			'settings.profiles.personalInfo' => 'Datos personales',
+			'settings.profiles.personalInfoNote' => 'Esto puede incluirse en los registros generados cuando sea relevante para envíos',
+			'settings.profiles.name' => 'Nombre',
+			'settings.profiles.email' => 'Correo electrónico',
+			'settings.profiles.club' => 'Club',
+			'settings.profiles.arrlSection' => 'Sección ARRL',
+			'settings.profiles.racSection' => 'Sección RAC',
+			'settings.profiles.section' => 'Sección',
 			'settings.search.clear' => 'Borrar',
 			'settings.search.hint' => 'Buscar en la configuración',
 			'settings.developer.options' => 'Opciones de desarrollador',

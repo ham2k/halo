@@ -245,12 +245,15 @@ Extensions access settings through two host calls:
 
 - `host.getSettings()` — the full read view: resolved core values (theme,
   locale, font scale, distance units, logging toggles, bands/modes,
-  privacy consents, the active profile's `operatorCall`, `syncEnabled`,
+  privacy consents, the active profile's `operatorCall`, `operatorName`,
+  `operatorEmail`, `operatorClub` and `operatorSection`, `syncEnabled`,
   `developerMode`, `appName`) plus every extension's own settings group
   under `extensions` (keyed `extension_<key>`). Reading is unrestricted —
   settings are not secrets. Credentials and accounts are deliberately
   absent: they live in the platform keychain via the account hook system,
-  never in settings.
+  never in settings. The `operator*` profile fields beyond the callsign are
+  all optional and free-form — an extension must cope with `''`, and must
+  not treat `operatorSection` as validated against any section table.
 - `host.setSettings({ key: value, ... })` — writes into the calling
   extension's OWN group only (`extension_<key>`; the namespace is injected
   by the SDK). Core settings and other extensions' groups are read-only.

@@ -1412,6 +1412,13 @@ class ExtensionService implements PanelExtensionSource {
           'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',
           'syncEnabled': settings?.syncEnabled ?? false,
           'operatorCall': settings?.activeProfile.operatorCall ?? '',
+          // The rest of the active profile — personal details a log generator
+          // may need for a submission (Cabrillo headers, Field Day's section).
+          // All optional and all free-form; an extension must cope with ''.
+          'operatorName': settings?.activeProfile.operatorName ?? '',
+          'operatorEmail': settings?.activeProfile.operatorEmail ?? '',
+          'operatorClub': settings?.activeProfile.operatorClub ?? '',
+          'operatorSection': settings?.activeProfile.operatorSection ?? '',
           'leftieMode': settings?.leftieMode ?? false,
           'fieldsOnTop': settings?.fieldsOnTop ?? false,
           'dxFlags': settings?.dxFlags.name ?? 'dx',

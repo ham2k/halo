@@ -13,6 +13,11 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
 
+/// Hoisted to a `final`, not written inline: [sharedHost] keys on handler
+/// identity, so an inline closure would boot a fresh host per call.
+Future<dynamic> _profileSectionHostCall(String method, Map<String, dynamic> params) async =>
+    method == 'getSettings' ? {'operatorSection': 'ENY'} : null;
+
 void main() {
   requireBundles();
 
@@ -314,6 +319,77 @@ void main() {
       }, timeout: const Duration(seconds: 10)) as List;
       expect(controls, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // The setup form's OUR-section field, seeded from the operator profile so
+    // the section is typed once in Settings rather than at every running. It
+    // is a `value` — a default the FormRenderer applies only where the ref has
+    // none — so it must never overwrite a section already configured.
+    for (final type in ['fd', 'wfd']) {
+      test('$type defaults our section from the profile', () async {
+        final host = await sharedHost(['fd', 'wfd'], onHostCall: _profileSectionHostCall);
+        final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
+            args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+        final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
+        final field = elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection');
+        expect(field['value'], 'ENY');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
+      test('$type leaves our section blank when the profile has none', () async {
+        // `nullHostCall` RESOLVES with null (see its doc) — settings present,
+        // no section in them. The rejecting case is the test below.
+        final host = await hostFor(type);
+        final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
+            args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+        final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
+        final field = elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection');
+        expect(field['value'], '');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
+      // Its OWN host, and deliberately not a shared one: leaving `onHostCall`
+      // unset is what makes getSettings REJECT ('no host call handler
+      // configured'), which `nullHostCall` does not do. Without this, deleting
+      // the extension's catch breaks nothing that any test can see.
+      test('$type survives a host that rejects getSettings', () async {
+        final host = await sharedHost([type], cacheKey: 'no-host-call');
+        final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
+            args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+        final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
+        final field = elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection');
+        expect(field['value'], '',
+            reason: 'a rejected getSettings must cost the default, never the setup form');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
+      // The reason the default is sticky. FormRenderer re-applies `value` when
+      // a re-fetched definition disagrees with the previous one on a field the
+      // operator hasn't edited, and operationControls is re-fetched on every
+      // ref change — so a getSettings that works once and then rejects would
+      // blank the operator's section in front of them, mid-setup.
+      test('$type keeps the section it read when getSettings later fails', () async {
+        // A flag flipped between the two reads, not a call counter: the kernel
+        // calls getSettings for its own context too, so counting would spend
+        // the failure on whichever call happened to land second.
+        var hostGone = false;
+        Future<dynamic> flaky(String method, Map<String, dynamic> params) async {
+          if (method != 'getSettings') return null;
+          if (hostGone) throw StateError('the host went away');
+          return {'operatorSection': 'ENY'};
+        }
+
+        // Its own host per type: `lastKnownSection` is module state inside the
+        // bundle, so a shared host would carry another test's read into this one.
+        final host = await sharedHost([type], onHostCall: flaky, cacheKey: 'flaky-settings-$type');
+        Future<Object?> sectionValue() async {
+          final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
+              args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+          final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
+          return elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection')['value'];
+        }
+
+        expect(await sectionValue(), 'ENY');
+        hostGone = true;
+        expect(await sectionValue(), 'ENY', reason: 'a failed re-read must not blank the field');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+    }
   });
 
   group('finding them in the activity search', () {

@@ -58,6 +58,7 @@ upcoming:
     - "Configurable activities get a settings button beside the delete button"
     - "Activity search: a leading `sota` puts SOTA's hits first, `sota:` shows only those"
     - "No GPS now says so in red, and tapping it takes a location you type"
+    - "**Personal Info** in the Callsign settings: name, email, club, ARRL/RAC section"
 
 "126":
   changes:

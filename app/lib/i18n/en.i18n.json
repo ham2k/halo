@@ -796,7 +796,15 @@
       "extensionsSection": "Extensions"
     },
     "profiles": {
-      "notSet": "Not set"
+      "notSet": "Not set",
+      "personalInfo": "Personal Info",
+      "personalInfoNote": "This might be included in generated logs when relevant for submissions",
+      "name": "Name",
+      "email": "Email",
+      "club": "Club",
+      "arrlSection": "ARRL Section",
+      "racSection": "RAC Section",
+      "section": "Section"
     },
     "search": {
       "clear": "Clear",

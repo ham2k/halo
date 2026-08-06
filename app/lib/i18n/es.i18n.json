@@ -796,7 +796,15 @@
       "extensionsSection": "Extensiones"
     },
     "profiles": {
-      "notSet": "Sin definir"
+      "notSet": "Sin definir",
+      "personalInfo": "Datos personales",
+      "personalInfoNote": "Esto puede incluirse en los registros generados cuando sea relevante para envíos",
+      "name": "Nombre",
+      "email": "Correo electrónico",
+      "club": "Club",
+      "arrlSection": "Sección ARRL",
+      "racSection": "Sección RAC",
+      "section": "Sección"
     },
     "search": {
       "clear": "Borrar",
