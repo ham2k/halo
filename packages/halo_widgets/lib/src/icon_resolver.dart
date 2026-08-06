@@ -33,6 +33,12 @@ import 'mdi_icons.g.dart';
 /// table, so an extension typo degrades to a placeholder glyph instead of
 /// crashing. Call sites with a meaningful default pass it as [fallback]
 /// rather than hand-writing a null-check ternary around this function.
+///
+/// The default stays a puzzle piece deliberately: extension chrome draws the
+/// toy-brick family instead (the Extensions panel, the activities "Manage"
+/// button, the placeholder while controls load). Keeping the two apart is
+/// what lets a puzzle piece mean one specific thing — *this name did not
+/// resolve* — rather than just "something to do with extensions".
 IconData resolveIconName(String? name, {IconData fallback = MdiIcons.puzzle}) {
   if (name == null || name.isEmpty) return fallback;
 

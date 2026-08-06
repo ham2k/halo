@@ -1831,7 +1831,7 @@ class OperationSheetState extends State<OperationSheet> {
                                 ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                                 : rowColor),
                         leading: _loadingControls
-                            ? const Icon(MdiIcons.puzzle)
+                            ? const Icon(MdiIcons.toyBrick)
                             : activityRefIcon(_controls, suggestion['type'] as String?),
                         title: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1898,7 +1898,7 @@ class OperationSheetState extends State<OperationSheet> {
                               // rather than moving it.
                               contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
                               leading: _loadingControls
-                                  ? const Icon(MdiIcons.puzzle)
+                                  ? const Icon(MdiIcons.toyBrick)
                                   : activityRefIcon(_controls, ref['type'] as String?),
                               title: Text(
                                 activityRowTitle(control, ref),
@@ -2009,7 +2009,7 @@ class OperationSheetState extends State<OperationSheet> {
                   _search(_searchController.text);
                 }
               },
-              icon: Icon(MdiIcons.puzzle, size: 18, color: onAccordionColor),
+              icon: Icon(MdiIcons.toyBrick, size: 18, color: onAccordionColor),
               label: Text(
                 t.manage,
                 style: TextStyle(color: onAccordionColor),

@@ -80,7 +80,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         'lookup' => MdiIcons.accountSearch,
         'spots' => MdiIcons.radioTower,
         'dashboard' => MdiIcons.viewDashboard,
-        _ => MdiIcons.puzzle,
+        _ => MdiIcons.toyBrick,
       };
 
   @override

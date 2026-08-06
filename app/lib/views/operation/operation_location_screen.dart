@@ -188,7 +188,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                   ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                   : null,
               leading: _loadingControls
-                  ? Icon(MdiIcons.puzzle)
+                  ? Icon(MdiIcons.toyBrick)
                   : activityRefIcon(_controls, ref['type'] as String?),
               title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
               subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),

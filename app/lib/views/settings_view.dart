@@ -130,7 +130,7 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
       _SettingsPanelEntry(
           key: 'extensions',
           title: t.settings.panels.extensions,
-          icon: MdiIcons.puzzle,
+          icon: MdiIcons.toyBrick,
           order: 40,
           description: t.settings.panels.extensionsDescription),
     ];
