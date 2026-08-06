@@ -56,7 +56,7 @@ const kGitSha = String.fromEnvironment('HALO_GIT_SHA');
 /// and Dev is re-stamped to today + 14 days on EVERY cut (dev builds are
 /// made from dist commits, so they inherit the latest stamp) — so a stale
 /// install nags on every launch to go get a newer build (the dialog in
-/// views/expired_build_dialog.dart). Like [kBuildNumber] these live in
+/// views/staleness_dialog.dart). Like [kBuildNumber] these live in
 /// compiled Dart so a Shorebird patch can rewrite them.
 const kDevExpirationDate = '2026-08-19';
 const kNextExpirationDate = '2026-08-19';

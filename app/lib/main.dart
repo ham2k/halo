@@ -32,7 +32,6 @@ import 'views/home_view.dart';
 import 'views/settings_view.dart';
 import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
-import 'views/expired_build_dialog.dart';
 import 'views/release_overlay.dart';
 import 'views/tester_overlay.dart';
 import 'views/splash_view.dart';
@@ -76,6 +75,7 @@ import 'settings/system_lists.dart';
 import 'services/hardware_keyboard_service.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_check_service.dart';
+import 'services/staleness_service.dart';
 import 'services/update_service.dart';
 import 'services/update_notices.dart';
 import 'services/shorebird_update_service.dart';
@@ -211,11 +211,11 @@ void _mainBody({
       },
     );
 
-    // Expired-build nag: if this build's expiration date (halo-ops release
-    // writes it into version.dart; two weeks for Next and Dev, six months
-    // for Regular) has passed, show a dismissible dialog — again on every
-    // launch — pointing at ham2k.com for a newer build.
-    maybeShowExpiredBuildDialog(navigatorKey);
+    // Is this install out of date, and in which of the three ways? One
+    // evaluation, at most one verdict per launch (services/staleness.dart).
+    // Evaluated here so an expired build still nags with no network, and again
+    // after each flags refresh once the server-driven signals have arrived.
+    services.staleness.start();
     // Check for an over-the-air Dart patch on the device's selected track
     // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
     // call the Shorebird package warns can be slow, so it must NOT gate startup
@@ -225,6 +225,16 @@ void _mainBody({
     unawaited(services.updates.checkAndApply().then((updated) {
       if (updated) showPatchReadyNotice(services.statusBar, const RestartService());
     }));
+
+    // Deliberately AFTER the update machinery above, and guarded. This parses
+    // hand-edited server JSON, writes prefs and schedules a dialog — none of
+    // which may cost the operator the code-push download it is about to tell
+    // them to restart for, nor the deep links wired below.
+    try {
+      services.staleness.evaluate();
+    } catch (e, stack) {
+      debugPrint('[staleness] evaluation failed: $e\n$stack');
+    }
 
     // Desktop binary self-update: point Sparkle/WinSparkle at this build's
     // per-edition appcast and run a background check (docs/releases.md §3.2).
@@ -309,7 +319,7 @@ void _listenForLinkClientDeepLinks(HaLoServices services) {
 /// for a QR request there is no code to fall back to typing, and no
 /// Connection Requests row either, since a blank permission has no account
 /// behind it for `pending_challenges` to count. Retries on the same cadence
-/// [maybeShowExpiredBuildDialog] uses for the same reason.
+/// the staleness nag uses for the same reason.
 void _openConfirmDevicePane(
   HaLoServices services,
   ({String clientUuid, String challengeToken}) request, {
@@ -638,16 +648,29 @@ Future<HaLoServices> bootstrap({
   // the patch synchronously on this isolate, and the package's own source
   // warns that can block on the updater's config lock. No timer can fire
   // through that, so the guarantee here covers this read, not that one.
-  final codePushFuture = services.updates.currentPatchNumber().timeout(
-    const Duration(seconds: 2),
-    onTimeout: () {
-      debugPrint('[boot] code-push number timed out — the version label drops the suffix');
-      return null;
-    },
-  ).catchError((Object e) {
-    debugPrint('[boot] code-push number unreadable: $e');
-    return null;
-  });
+  // `.then` before `.timeout`, so "resolved" marks the read having ANSWERED —
+  // a null answer means no push applied, which is a fact. A timeout or a throw
+  // leaves it false, and the code-push floor stays silent rather than nagging
+  // an install it cannot describe (services/staleness.dart).
+  // Both values arrive together, from the layer that knows whether the read
+  // answered. Setting "resolved" here instead would be wrong twice over: a
+  // timeout does not cancel the future underneath it, so a late completion
+  // would flip the flag beside a number nobody assigned; and a read exception
+  // swallowed further down already returns a bare null. Either way the pair
+  // would read as "no code push applied" and nag an operator who is current.
+  final codePushFuture = services.updates
+      .currentPatchNumber()
+      .timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          debugPrint('[boot] code-push number timed out — the version label drops the suffix');
+          return (resolved: false, number: null);
+        },
+      )
+      .catchError((Object e) {
+        debugPrint('[boot] code-push number unreadable: $e');
+        return (resolved: false, number: null);
+      });
   // A locked/absent keyring yields a null device key (ensureSyncDeviceKey no
   // longer throws) — boot must still complete, so skip sync setup and pick it
   // up on a later launch once the keyring is available.
@@ -731,7 +754,9 @@ Future<HaLoServices> bootstrap({
   // `codePushes` rule that evaluated against a not-yet-resolved value would
   // silently target the wrong installs. Everything above has overlapped the
   // wait; by here it has almost always already completed.
-  currentCodePush = await codePushFuture;
+  final codePushRead = await codePushFuture;
+  currentCodePush = codePushRead.number;
+  currentCodePushResolved = codePushRead.resolved;
 
   // Fetch feature flags + notices for the current callsign once the runtime
   // is up (the callsign→DXCC-entity annotation needs it). Fire-and-forget;
@@ -976,6 +1001,18 @@ class HaLoServices {
     onNoticeAction: handleNoticeAction,
     prefs: settings.prefs,
     onTrack: track,
+    staleness: staleness,
+  );
+
+  /// Decides whether this install is out of date and, if so, says it exactly
+  /// once (services/staleness.dart ranks the three signals). Fed by [flags]
+  /// after each refresh and re-checked on resume.
+  late final StalenessService staleness = StalenessService(
+    statusBar: statusBar,
+    navigatorKey: navigatorKey,
+    prefs: settings.prefs,
+    updates: updates,
+    onNoticeAction: handleNoticeAction,
   );
 
   /// Named option vocabularies for `options: "$name"` settings

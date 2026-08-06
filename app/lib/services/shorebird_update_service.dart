@@ -37,13 +37,16 @@ class ShorebirdUpdateService implements UpdateService {
   UpdateTrack get _track => UpdateTrack(_settings.shorebirdTrack);
 
   @override
-  Future<int?> currentPatchNumber() async {
-    if (!_updater.isAvailable) return null;
+  Future<({bool resolved, int? number})> currentPatchNumber() async {
+    // No engine: no code push exists, which is an answer.
+    if (!_updater.isAvailable) return (resolved: true, number: null);
     try {
-      return (await _updater.readCurrentPatch())?.number;
+      return (resolved: true, number: (await _updater.readCurrentPatch())?.number);
     } on ReadPatchException catch (e) {
+      // NOT null-as-none: this is the read failing, and reporting it as "no
+      // push applied" would nag an install that is already current.
       debugPrint('[shorebird] readCurrentPatch failed: $e');
-      return null;
+      return (resolved: false, number: null);
     }
   }
 

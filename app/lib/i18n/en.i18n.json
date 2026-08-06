@@ -920,6 +920,14 @@
     "visit": "Visit ham2k.com",
     "dismiss": "Continue anyway"
   },
+  "staleness": {
+    "codePushFloorTitle": "An important update is waiting",
+    "codePushFloorBody": "This version has a fix you don't have yet.",
+    "restartToApply": "Restart the app to apply it.",
+    "quitAndReopen": "Quit the app and open it again to apply it.",
+    "reopenToApply": "Close the app and open it again to apply it.",
+    "ignoreForNow": "Ignore for now"
+  },
   "spotting": {
     "noQsoYet": "No QSO logged yet to spot.",
     "setFrequencyFirst": "Set a frequency first.",

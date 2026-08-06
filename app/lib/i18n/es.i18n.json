@@ -920,6 +920,14 @@
     "visit": "Visitar ham2k.com",
     "dismiss": "Continuar de todos modos"
   },
+  "staleness": {
+    "codePushFloorTitle": "Hay una actualización importante",
+    "codePushFloorBody": "Esta versión tiene una corrección que todavía no tienes.",
+    "restartToApply": "Reinicia la aplicación para aplicarla.",
+    "quitAndReopen": "Cierra la aplicación y vuelve a abrirla para aplicarla.",
+    "reopenToApply": "Cierra la aplicación y vuelve a abrirla para aplicarla.",
+    "ignoreForNow": "Ignorar por ahora"
+  },
   "spotting": {
     "noQsoYet": "Aún no hay QSO registrado para spotear.",
     "setFrequencyFirst": "Primero define una frecuencia.",

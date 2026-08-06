@@ -2530,10 +2530,10 @@ class _DeveloperPanel extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: Space.md),
-                child: FutureBuilder<int?>(
+                child: FutureBuilder<({bool resolved, int? number})>(
                   future: services.updates.currentPatchNumber(),
                   builder: (context, snapshot) {
-                    final patch = snapshot.data;
+                    final patch = snapshot.data?.number;
                     return Text(
                       patch == null
                           ? context.t.settings.developer.noPatchInstalled

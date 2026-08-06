@@ -15,6 +15,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/services/flags_service.dart';
+import 'package:ham2k_logger/services/staleness_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -111,6 +112,25 @@ void main() {
   /// [isReleaseBuild] defaults to true — a test binary is always a debug
   /// build, so without it every update-available assertion would be checking
   /// the dev-build gate rather than the behavior it was written for.
+  /// The update-available notice is StalenessService's to push now — it is
+  /// reached through FlagsService's refresh, so these tests wire the real one
+  /// rather than asserting against a seam that no longer decides anything.
+  StalenessService stalenessFor({
+    SharedPreferences? prefs,
+    bool isReleaseBuild = true,
+    void Function(String, Map<String, dynamic>)? onNoticeAction,
+  }) =>
+      StalenessService(
+        statusBar: statusBar,
+        prefs: prefs,
+        isReleaseBuild: isReleaseBuild,
+        onNoticeAction: onNoticeAction,
+        // Pinned: these assert the newer-release notice, which an expired
+        // build outranks. Left to the compiled-in date they would all start
+        // failing the day this build's horizon passes.
+        buildExpired: () => false,
+      );
+
   ({FlagsService service, List<String> requested}) build(
     Map<String, Map<String, dynamic>> files, {
     Map<String, dynamic>? guess = const {'baseCall': 'KI2D', 'entityPrefix': 'K', 'continent': 'NA'},
@@ -120,6 +140,7 @@ void main() {
     final requested = <String>[];
     final service = FlagsService(
       statusBar: statusBar,
+      staleness: stalenessFor(isReleaseBuild: isReleaseBuild),
       baseUrl: 'https://example.test/flags',
       annotate: guess == null ? null : (_) async => guess,
       environmentProvider: () async => env,
@@ -510,6 +531,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       FlagsService shipped() => FlagsService(
             statusBar: statusBar,
+            staleness: stalenessFor(prefs: prefs),
             baseUrl: 'https://example.test/flags',
             annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
             environmentProvider: () async => env,
@@ -553,10 +575,10 @@ void main() {
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
         isReleaseBuild: true,
-        onNoticeAction: (key, action) {
+        staleness: stalenessFor(onNoticeAction: (key, action) {
           actedKey = key;
           actedAction = action;
-        },
+        }),
         fetcher: (location) async => location == 'defaults.json'
             ? {'latestRelease': '26.9', 'latestReleaseUrl': 'https://ham2k.com/halo'}
             : {},
@@ -579,7 +601,7 @@ void main() {
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
         isReleaseBuild: true,
-        onNoticeAction: (_, action) => actedAction = action,
+        staleness: stalenessFor(onNoticeAction: (_, action) => actedAction = action),
         fetcher: (location) async =>
             location == 'defaults.json' ? {'latestRelease': '26.9'} : {},
       );
@@ -597,6 +619,7 @@ void main() {
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
         isReleaseBuild: true,
+        staleness: stalenessFor(),
         fetcher: (location) async =>
             location == 'defaults.json' ? {'latestRelease': latest} : {},
       );
@@ -623,6 +646,7 @@ void main() {
         environmentProvider: () async => env,
         isReleaseBuild: true,
         prefs: prefs,
+        staleness: stalenessFor(prefs: prefs),
         fetcher: (location) async =>
             location == 'defaults.json' ? {'latestRelease': latest} : {},
       );

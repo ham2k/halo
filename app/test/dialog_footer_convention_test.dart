@@ -54,9 +54,9 @@ List<File> _uiSources() {
 /// looks for — but they must still be RECOGNISED, because a `'https://…'`
 /// otherwise reads as a line comment and blanks the rest of the line,
 /// brackets included. That silently unbalances the enclosing call and drops
-/// it from the scan: before this walked strings, `expired_build_dialog.dart`
-/// — one of the two dialogs the convention was introduced to fix — was the
-/// one file in the app never checked.
+/// it from the scan: before this walked strings, the expired-build dialog —
+/// one of the two the convention was introduced to fix — was the one file in
+/// the app never checked.
 String _blankComments(String source) {
   final out = source.split('');
   var i = 0;

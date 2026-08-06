@@ -60,6 +60,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$commands$en commands = Translations$commands$en.internal(_root);
 	late final Translations$commandDialog$en commandDialog = Translations$commandDialog$en.internal(_root);
 	late final Translations$expiredBuild$en expiredBuild = Translations$expiredBuild$en.internal(_root);
+	late final Translations$staleness$en staleness = Translations$staleness$en.internal(_root);
 	late final Translations$spotting$en spotting = Translations$spotting$en.internal(_root);
 	late final Translations$dataFiles$en dataFiles = Translations$dataFiles$en.internal(_root);
 	late final Translations$updates$en updates = Translations$updates$en.internal(_root);
@@ -1038,6 +1039,33 @@ class Translations$expiredBuild$en {
 
 	/// en: 'Continue anyway'
 	String get dismiss => 'Continue anyway';
+}
+
+// Path: staleness
+class Translations$staleness$en {
+	Translations$staleness$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'An important update is waiting'
+	String get codePushFloorTitle => 'An important update is waiting';
+
+	/// en: 'This version has a fix you don't have yet.'
+	String get codePushFloorBody => 'This version has a fix you don\'t have yet.';
+
+	/// en: 'Restart the app to apply it.'
+	String get restartToApply => 'Restart the app to apply it.';
+
+	/// en: 'Quit the app and open it again to apply it.'
+	String get quitAndReopen => 'Quit the app and open it again to apply it.';
+
+	/// en: 'Close the app and open it again to apply it.'
+	String get reopenToApply => 'Close the app and open it again to apply it.';
+
+	/// en: 'Ignore for now'
+	String get ignoreForNow => 'Ignore for now';
 }
 
 // Path: spotting
@@ -4256,6 +4284,12 @@ extension on Translations {
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
+			'staleness.codePushFloorTitle' => 'An important update is waiting',
+			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
+			'staleness.restartToApply' => 'Restart the app to apply it.',
+			'staleness.quitAndReopen' => 'Quit the app and open it again to apply it.',
+			'staleness.reopenToApply' => 'Close the app and open it again to apply it.',
+			'staleness.ignoreForNow' => 'Ignore for now',
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',

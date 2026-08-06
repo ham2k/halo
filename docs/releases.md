@@ -628,6 +628,77 @@ follows the same pattern via `HALO_EDITION=prod`; Windows/Linux are not wired ye
 committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,
 `macos_signing`, and `android_signing` groups. Nothing else is secret.
 
+### 4.6 Telling the user their install is stale
+
+Shorebird has **no mandatory-push flag** — its API offers `readCurrentPatch()`,
+`checkForUpdate()` and `update()`, and nothing about required-ness. So a user
+can download `26.9.0` from a store and run it while three code pushes on top fix
+serious bugs. We build the nagging ourselves.
+
+Three signals answer the same question — *is this install out of date, and what
+should the user do?* — and are evaluated as one (`services/staleness.dart`):
+
+| Signal | Means | Remedy | Tier |
+|---|---|---|---|
+| **code-push floor** | below a server-declared minimum for this build | restart — the fix is already here | nag |
+| **expired build** | past its horizon (§2.2: Next 14d, Regular 6mo) | download a new binary | nag |
+| **newer release** | the `latestRelease` flag names a newer binary | download a new binary | notice |
+
+**At most one verdict per launch**, ranked in that order. The floor outranks the
+binary signals because its remedy is the cheapest and most certain; sending
+someone to fetch a binary when a restart would do is worse advice, not more
+urgent advice. A *notice* is a status-bar entry; a *nag* is a dialog. Nothing
+escalates on its own.
+
+**The floor is server-side**, in the flags channel that already fetches at launch
+(§ the `latestRelease` flag), beside it in `defaults.json`:
+
+```json
+"minCodePush": { "131": 3 },
+"minCodePushMessage": "Fixes a bug that can lose QSOs logged while offline."
+```
+
+**Keyed by build**, because Shorebird's counter restarts at 1 for every release —
+after a mid-month rebuild two live binaries carry independent counters, so a bare
+push number names nothing (§2.1's first trap). Build numbers are globally
+monotonic across editions, so Next and Regular keys cannot collide.
+
+**Server-side rather than baked into the push**, because criticality is usually
+discovered *after* publishing — often it is push 1 that turned out broken — so the
+floor must be raisable at any moment. `halo-ops code-push` prints the JSON to
+paste once a push is promoted: nothing else connects "promoted to stable" to
+"made required", and that edit falls due exactly when you are firefighting.
+
+**No hard gate, on any platform.** Every presentation offers *Ignore for now*, and
+a dismissed verdict returns on the next launch or six hours later — a wall-clock
+timestamp, since a field laptop can sit running for days and no timer survives a
+sleeping machine. Expiration gets that too; it was launch-only, so it never
+re-appeared for the operator most likely to be on a stale build.
+
+**What the user is asked to do differs by platform, and only that:**
+
+| Platform | Action |
+|---|---|
+| macOS / Windows / Linux | **Restart now** (`RestartService`) |
+| Android | "restart to apply" — the intent-based relaunch is too fragile to offer as a button |
+| iOS | "quit and reopen" — **no button** |
+
+iOS has no relaunch primitive, and quitting programmatically is both prohibited
+by Apple's HIG (it reads as a crash) and useless here: nothing would bring the
+app back. A button would either lie or vanish the app mid-activation. In practice
+iOS terminates backgrounded apps often enough that a push lands on its own within
+a day; the nag matters for the operator who keeps the app resident.
+
+**An unreadable code-push number is silent, not zero.** "We could not read it" and
+"no push is applied" are different facts, and treating the first as the second
+nags an operator who is already up to date with no action that would make it
+stop. The boot cache records whether the read *answered*, not only what it
+answered.
+
+**Everything fails open.** A failed flags fetch, an unreadable push number, a
+malformed floor, a missing Navigator — each ends in silence. This is a field
+logging app: a user mid-activation with no signal must always reach the log.
+
 ---
 
 ## 5. Linux distribution

@@ -52,6 +52,7 @@ upcoming:
     - "Adding a contest from the Operation Setup search now opens its setup form"
     - "Sync now starts on for new installs only — check yours didn't change"
     - "Version line names the code push as `build 131.2` — quote it whole in reports"
+    - "Out-of-date builds now nag once per launch, with an **Ignore for now**"
     - "Change your account email from the **Account** row in LoFi Cloud Sync"
     - "New **Connection Requests** row approves another device joining your account"
     - "A contest with no exchange set now says **Not configured!** on its row"

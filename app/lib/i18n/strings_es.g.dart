@@ -59,6 +59,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$commands$es commands = _Translations$commands$es._(_root);
 	@override late final _Translations$commandDialog$es commandDialog = _Translations$commandDialog$es._(_root);
 	@override late final _Translations$expiredBuild$es expiredBuild = _Translations$expiredBuild$es._(_root);
+	@override late final _Translations$staleness$es staleness = _Translations$staleness$es._(_root);
 	@override late final _Translations$spotting$es spotting = _Translations$spotting$es._(_root);
 	@override late final _Translations$dataFiles$es dataFiles = _Translations$dataFiles$es._(_root);
 	@override late final _Translations$updates$es updates = _Translations$updates$es._(_root);
@@ -526,6 +527,21 @@ class _Translations$expiredBuild$es extends Translations$expiredBuild$en {
 	@override String get body => 'Por favor visita ham2k.com para obtener una versión más reciente.';
 	@override String get visit => 'Visitar ham2k.com';
 	@override String get dismiss => 'Continuar de todos modos';
+}
+
+// Path: staleness
+class _Translations$staleness$es extends Translations$staleness$en {
+	_Translations$staleness$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get codePushFloorTitle => 'Hay una actualización importante';
+	@override String get codePushFloorBody => 'Esta versión tiene una corrección que todavía no tienes.';
+	@override String get restartToApply => 'Reinicia la aplicación para aplicarla.';
+	@override String get quitAndReopen => 'Cierra la aplicación y vuelve a abrirla para aplicarla.';
+	@override String get reopenToApply => 'Cierra la aplicación y vuelve a abrirla para aplicarla.';
+	@override String get ignoreForNow => 'Ignorar por ahora';
 }
 
 // Path: spotting
@@ -2551,6 +2567,12 @@ extension on TranslationsEs {
 			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',
 			'expiredBuild.dismiss' => 'Continuar de todos modos',
+			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
+			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',
+			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
+			'staleness.quitAndReopen' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
+			'staleness.reopenToApply' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
+			'staleness.ignoreForNow' => 'Ignorar por ahora',
 			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
 			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
 			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',
