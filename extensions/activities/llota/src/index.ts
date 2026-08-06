@@ -54,7 +54,7 @@ const LLOTA_SCORING = {
   activates: 'daily' as const,
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'llota',
   label: 'LLOTA',
   activationType: ACTIVATION_TYPE,
@@ -275,6 +275,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'llota' })
     registerHook('activity', { hook: activityHook, key: 'llota' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'llota' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'llota' })
     registerHook('spots', { hook: SpotsHook, key: 'llota' })
     registerHook('dataFile', { hook: llotaDataFile, key: 'llota-all-references' })
     registerHook('scoring', {

@@ -26,7 +26,7 @@ import manifest from "../manifest.json" with { type: "json" }
 const ACTIVATION_TYPE = 'ecaActivation'
 const REFERENCE_REGEX = /^G-[0-9]{5}$/i
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'eca',
   label: 'ECA',
   activationType: ACTIVATION_TYPE,
@@ -124,6 +124,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'eca' })
     registerHook('activity', { hook: activityHook, key: 'eca' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'eca' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'eca' })
     registerHook('spots', { hook: SpotsHook, key: 'eca' })
     registerHook('dataFile', { hook: ecaDataFile, key: 'eca-all-castles' })
     registerHook('scoring', {

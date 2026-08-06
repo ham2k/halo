@@ -56,7 +56,7 @@ const TOTA_SCORING = {
   activates: 'daily' as const,
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'tota',
   label: 'TOTA',
   activationType: ACTIVATION_TYPE,
@@ -290,6 +290,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'tota' })
     registerHook('activity', { hook: activityHook, key: 'tota' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'tota' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'tota' })
     registerHook('spots', { hook: SpotsHook, key: 'tota' })
     registerHook('dataFile', { hook: totaDataFile, key: 'tota-all-towers' })
     registerHook('scoring', {

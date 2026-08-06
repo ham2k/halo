@@ -239,6 +239,18 @@ defineExtension({
     registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: 'custom-hunting' })
     registerHook('activity', { hook: activityHook, key: 'custom' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'custom' })
+    // No `adifImport`, deliberately. Every other activity keys its import on a
+    // constant SIG value; here SIG is whatever program name the operator typed,
+    // so there is nothing to match — and a hook that claimed every SIG would
+    // add a spurious `custom` ref to every POTA and SOTA record it saw.
+    //
+    // "Claim the SIG values no other program claimed" is the rule that works,
+    // and it is not expressible here: `adifImport` hooks run independently and
+    // additively, so none of them can know what the others took. Only the
+    // importer sees every hook's answer at once, so only the importer could
+    // implement it — it does not today, and a log of custom references
+    // therefore imports with no references at all.
+    //
     // No `scoring` and no `spots`: app-polo's custom activity has neither, and
     // there is no program to spot to.
     registerHook('export', {

@@ -321,10 +321,10 @@ void main() {
       // loses its last letter. Asserting the WHOLE value: a length-only check
       // would pass on the truncated reading too.
       final log = _load('ki2d-pota.adi');
-      final qths = log.qsos.map((q) => _their(q)['qth']).whereType<String>();
+      final cities = log.qsos.map((q) => _their(q)['city']).whereType<String>();
       final names = log.qsos.map((q) => _their(q)['name']).whereType<String>();
 
-      expect(qths, contains('Tía Juana Zulia'));
+      expect(cities, contains('Tía Juana Zulia'));
       expect(names, contains('MARIANO ORDOÑEZ TERRON'));
       expect(names, contains('RICARDO IBAÑEZ BURGUET'));
     });
@@ -393,13 +393,56 @@ void main() {
     });
   });
 
+  group('the city fields', () {
+    // ADIF names the contacted station's city `QTH` and our own `MY_CITY` —
+    // asymmetric in the spec itself. Both sides land in QSON `city`, and the
+    // ORDER of the `_set` calls is what decides a record carrying both
+    // spellings. Nothing else pins that, so a reordering would be silent.
+    AdifRecord _only(String record) {
+      final log = parseAdifLog('<EOH>\n$record<EOR>\n');
+      return log.qsos.single;
+    }
+
+    test('QTH is the contacted station\'s city, not a separate key', () {
+      // The round trip HaLo's own exporter needs: it writes QTH from
+      // `their.city`, so reading it back anywhere else loses the value —
+      // nothing in the app reads a `their.qth`.
+      final r = _only('<CALL:5>W1ABC<QTH:6>Berlin');
+
+      expect(_their(r)['city'], 'Berlin');
+      expect(_their(r).containsKey('qth'), isFalse);
+    });
+
+    test('an explicit CITY wins over QTH', () {
+      // CITY is not an ADIF field, but software invents it. A file that writes
+      // both means the more specific one.
+      final r = _only('<CALL:5>W1ABC<QTH:37>Kralendijk, Bonaire, Dutch Caribbean<CITY:10>Kralendijk');
+
+      expect(_their(r)['city'], 'Kralendijk');
+    });
+
+    test('MY_CITY wins over MY_QTH, the standard field beating the invention', () {
+      // Our side inverts which spelling is the standard one, so the precedence
+      // rule is "ADIF's field wins", not "the second one wins".
+      final r = _only('<CALL:5>W1ABC<MY_QTH:8>Woodland<MY_CITY:9>Woodridge');
+
+      expect(_our(r)['city'], 'Woodridge');
+    });
+
+    test('MY_QTH alone still lands somewhere readable', () {
+      final r = _only('<CALL:5>W1ABC<MY_QTH:9>Woodridge');
+
+      expect(_our(r)['city'], 'Woodridge');
+    });
+  });
+
   group('lengths that over-declare', () {
     test('trailing whitespace dragged in by an over-declared length is stripped', () {
       // ki2d-qrz.adi really writes <qth:37> for a 36-byte value.
       final log = _load('ki2d-qrz.adi');
       final withQth = log.qsos.firstWhere((q) => q.fields['qth'] == 'Kralendijk, Bonaire, Dutch Caribbean');
 
-      expect((_their(withQth)['qth'] as String).endsWith('\n'), isFalse);
+      expect((_their(withQth)['city'] as String).endsWith('\n'), isFalse);
     });
 
     test("a PROGRAMID with a swallowed newline still identifies the logger", () {

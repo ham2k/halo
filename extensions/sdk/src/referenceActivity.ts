@@ -359,19 +359,22 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
   /// them back the same way. Registering it is one line in the extension;
   /// nothing happens until it does.
   ///
-  /// `referenceRegex` doubles as the import filter: every reference program
-  /// writes SIG_INFO, so a record naming another program's reference reaches
-  /// this hook too, and only the pattern distinguishes "a reference of ours"
-  /// from "a reference".
+  /// `referenceRegex` is deliberately NOT the import filter. By the time a
+  /// reference reaches here the file has already said whose it is — the
+  /// `*_REF` list field is program-specific, and the `SIG_INFO` path is gated
+  /// on `SIG`. So a reference that fails the pattern is MALFORMED, not
+  /// foreign, and dropping it would lose data the operator can still fix.
+  ///
+  /// It imports as written instead. `decorateRef` labels anything the pattern
+  /// rejects as an invalid reference, which puts it in front of the operator
+  /// rather than in a silent discard — and the raw text is the only thing a
+  /// later correction, by hand or by a smarter normalizer, could work from.
   const adifImportHook = activityAdifImport({
     sig: program,
     huntingType: config.huntingType,
     activationType: config.activationType,
     refField: config.adifRefField ? `${config.adifRefField.toLowerCase()}_ref` : undefined,
-    normalize: (ref) => {
-      const normalized = normalize(ref)
-      return config.referenceRegex.test(normalized) ? normalized : ''
-    },
+    normalize,
   })
 
   return { refHandler, activityHook, adifFieldsHook, adifImportHook }

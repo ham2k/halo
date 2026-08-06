@@ -17,6 +17,7 @@
   "hooks": [
     "activity",
     "adifFields",
+    "adifImport",
     "command",
     "dataFile",
     "ref:satellite"

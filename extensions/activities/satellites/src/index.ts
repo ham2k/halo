@@ -249,6 +249,92 @@ const adifFieldsHook = {
   },
 }
 
+/// A satellite name with the punctuation taken out, so `SO50` and `SO-50` are
+/// the same bird. The exporter above writes the table's own spelling, but other
+/// software writes what the operator typed.
+function satKey(name: string): string {
+  return name.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+/// The band a record says the station TRANSMITTED on. `FREQ` is the uplink by
+/// ADIF's own definition — `FREQ_RX`/`BAND_RX` are the receive side — which is
+/// what makes it usable for telling one transponder from another.
+///
+/// Undefined means "the record does not say", and `'other'` has to collapse to
+/// that: `bandForFrequency` answers with the literal string for a frequency it
+/// cannot place rather than anything falsy, so passing it through would turn
+/// no information into a CONTRADICTION and eliminate every candidate — costing
+/// a single-transponder bird the transponder its name alone had already
+/// settled.
+function uplinkBandOf(fields: Record<string, string>): string | undefined {
+  const band = textOf(fields.band).toLowerCase()
+  if (band) return band
+  // MHz, as ADIF writes it. `bandForFrequency` reads either MHz or kHz.
+  const freq = Number.parseFloat(fields.freq ?? '')
+  if (Number.isNaN(freq)) return undefined
+  const uplink = bandForFrequency(freq)
+  return uplink === 'other' ? undefined : uplink
+}
+
+/// The inverse of `adifFieldsHook`, and lossy in one direction: the log stores
+/// a TRANSPONDER (`AO-7/145.95/linear`) while ADIF carries only the bird's name
+/// and the downlink band, so the uplink half is reconstructed rather than read.
+///
+/// `SAT_NAME` alone is enough to import. The table is consulted to RECOVER the
+/// transponder when it can — `BAND_RX` matches a downlink, `BAND`/`FREQ`
+/// matches an uplink, and AO-7's two transponders differ on both axes (2m up →
+/// 10m down, 70cm up → 2m down), which is why the reference names a transponder
+/// at all. But nothing here validates: a bird the table has never heard of, a
+/// `BAND_RX` that disagrees with it, and a record that names no band are all
+/// imported as the bare satellite the file wrote.
+///
+/// The reference degrades cleanly, which is what makes that safe. `decorateRef`
+/// splits on `/` and falls back to the whole string, so a bare name labels
+/// itself; the exporter writes `SAT_NAME` from the same first segment and
+/// simply omits `BAND_RX` when it cannot resolve one. What is lost is the
+/// uplink the radio would tune to, not the fact that this was a satellite QSO.
+function satelliteRefFor(fields: Record<string, string>, all: Transponder[]): string | undefined {
+  const name = textOf(fields.sat_name)
+  if (!name) return undefined
+
+  const key = satKey(name)
+  let candidates = all.filter((t) => satKey(t.satName) === key)
+
+  const downlinkBand = textOf(fields.band_rx).toLowerCase()
+  if (downlinkBand) candidates = candidates.filter((t) => t.downlinkBand === downlinkBand)
+
+  const uplinkBand = uplinkBandOf(fields)
+  if (uplinkBand) {
+    candidates = candidates.filter(
+      (t) => t.uplinkKHz != null && bandForFrequency(t.uplinkKHz) === uplinkBand,
+    )
+  }
+
+  // Exactly one, or none of it — two survivors mean the record does not say
+  // which transponder was used, and picking either would name a band the
+  // operator never transmitted on.
+  return candidates.length === 1 ? candidates[0].code : name
+}
+
+const adifImportHook = {
+  async refsForRecords(
+    { records }: { records: { fields: Record<string, string> }[] },
+    _ctx: HookContext,
+  ): Promise<({ refs: Ref[] } | null)[]> {
+    // Refreshed once for the whole batch rather than trusted from the cache: an
+    // import can be the first thing a session does, and `transponders()` would
+    // otherwise memoize the empty table it found before the data file landed.
+    const all = await transponders({ refresh: true })
+    return records.map((record) => {
+      const ref = satelliteRefFor(record.fields ?? {}, all)
+      // No `for: 'operation'` — unlike an award's activation, the bird belongs
+      // to the CONTACT. The operation's own satellite ref is only the default
+      // new QSOs pick up, and hoisting would take it off the QSOs that need it.
+      return ref ? { refs: [{ type: REF_TYPE, ref }] } : null
+    })
+  },
+}
+
 /// `SAT SO-50` — the half a control cannot do.
 ///
 /// A `loggingControls` selection writes its value and nothing else; a command
@@ -350,6 +436,7 @@ defineExtension({
     registerHook(`ref:${REF_TYPE}`, { hook: refHandler, key: 'satellites' })
     registerHook('activity', { hook: activityHook, key: 'satellites' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'satellites' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'satellites' })
     registerHook('dataFile', { hook: satelliteDataFile, key: 'satellite-data' })
     registerHook('command', { hook: SatCommand, key: 'satellites-sat' })
     // No `scoring` and no `export`: nothing is activated and nothing is

@@ -128,6 +128,18 @@ void main() {
       expect(await adifFor(host, null), isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
+    test('a bare satellite name, with no transponder, still exports', () async {
+      // What import leaves behind when a record does not say which transponder
+      // was used. The whole "import the bird and move on" rule rests on this
+      // shape surviving: a reference that split wrong here would export a
+      // mangled SAT_NAME, or none.
+      final host = await hostWithBirds([soFifty]);
+      final fields = flat(await adifFor(host, 'AO-7'));
+      expect(fields['SAT_NAME'], 'AO-7');
+      expect(fields['PROP_MODE'], 'SAT');
+      expect(fields.containsKey('BAND_RX'), isFalse);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
     test('an unknown bird still logs the name, just without a band', () async {
       // A reference from a log recorded before this bird was retired from the
       // feed. PROP_MODE and SAT_NAME are what the reference itself says, so
@@ -136,6 +148,163 @@ void main() {
       final fields = flat(await adifFor(host, 'XW-2A/435.03/linear'));
       expect(fields['SAT_NAME'], 'XW-2A');
       expect(fields.containsKey('BAND_RX'), isFalse);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('reading a satellite log back', () {
+    // The inverse of the group above, and the only activity whose import is
+    // hand-written: satellites write no SIG at all, so `activityAdifImport`
+    // cannot apply. The reconstruction is genuinely lossy — the log stores a
+    // TRANSPONDER and ADIF carries only the bird and its downlink band — so
+    // most of what these assert is when the hook must refuse to guess.
+    Future<List<dynamic>> importFrom(ExtensionHost host, List<Map<String, String>> records) async {
+      return await host.invokeHook(
+        'adifImport',
+        key: 'satellites',
+        method: 'refsForRecords',
+        args: {
+          'records': [
+            for (final fields in records) {'fields': fields},
+          ],
+        },
+        timeout: const Duration(seconds: 20),
+      ) as List;
+    }
+
+    test('a one-transponder bird round-trips what the exporter wrote', () async {
+      final host = await hostWithBirds([soFifty]);
+      final results = await importFrom(host, [
+        {'prop_mode': 'SAT', 'sat_name': 'SO-50', 'band_rx': '70cm'},
+      ]);
+
+      expect(results.single['refs'], [
+        {'type': 'satellite', 'ref': 'SO-50/145.85/fm'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test("BAND_RX tells AO-7's two transponders apart", () async {
+      // The pair the export group proves writes different BAND_RX values. If
+      // import could not read that back, an AO-7 log would round-trip onto the
+      // wrong transponder and export a downlink band the operator never used.
+      final host = await hostWithBirds([aoSeven]);
+      final results = await importFrom(host, [
+        {'sat_name': 'AO-7', 'band_rx': '10m'},
+        {'sat_name': 'AO-7', 'band_rx': '2m'},
+      ]);
+
+      expect(results[0]['refs'], [
+        {'type': 'satellite', 'ref': 'AO-7/145.85/linear'},
+      ]);
+      expect(results[1]['refs'], [
+        {'type': 'satellite', 'ref': 'AO-7/432.125/linear'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('the record\'s own band narrows it too, being the UPLINK', () async {
+      // ADIF's FREQ/BAND is the transmit side. A file with no BAND_RX still
+      // says which transponder was used, in the field every logger fills in.
+      final host = await hostWithBirds([aoSeven]);
+      final results = await importFrom(host, [
+        {'sat_name': 'AO-7', 'band': '70cm'},
+        {'sat_name': 'AO-7', 'freq': '145.850'},
+      ]);
+
+      expect(results[0]['refs'], [
+        {'type': 'satellite', 'ref': 'AO-7/432.125/linear'},
+      ]);
+      expect(results[1]['refs'], [
+        {'type': 'satellite', 'ref': 'AO-7/145.85/linear'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a FREQ that names no band is no information, not a contradiction', () async {
+      // `bandForFrequency` answers `'other'` for a frequency it cannot place,
+      // never anything falsy. Passed through as a band, it matches no
+      // transponder and eliminates every candidate — so a junk FREQ would cost
+      // SO-50 the transponder its name alone had already settled.
+      final host = await hostWithBirds([soFifty]);
+      final results = await importFrom(host, [
+        {'sat_name': 'SO-50', 'freq': '0'},
+      ]);
+
+      expect(results.single['refs'], [
+        {'type': 'satellite', 'ref': 'SO-50/145.85/fm'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('an ambiguous bird imports as the bare bird, not a guessed transponder', () async {
+      // Nothing in the record says which of AO-7's transponders was used.
+      // Naming either would claim a band the operator never transmitted on, so
+      // the reference keeps only what the file actually said.
+      final host = await hostWithBirds([aoSeven]);
+      final results = await importFrom(host, [
+        {'prop_mode': 'SAT', 'sat_name': 'AO-7'},
+      ]);
+
+      expect(results.single['refs'], [
+        {'type': 'satellite', 'ref': 'AO-7'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a BAND_RX the table contradicts still imports the bird', () async {
+      // SO-50 has one transponder and the file says a band it does not answer
+      // on. The disagreement is real — resolving it either way would invent
+      // something — but it is no reason to drop the satellite.
+      final host = await hostWithBirds([soFifty]);
+      final results = await importFrom(host, [
+        {'sat_name': 'SO-50', 'band_rx': '2m'},
+      ]);
+
+      expect(results.single['refs'], [
+        {'type': 'satellite', 'ref': 'SO-50'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a bird the table has never heard of imports anyway', () async {
+      // Nothing here is validated against the table. A retired bird, a new one
+      // the feed has not caught up with, or a build whose data file never
+      // downloaded must not silently cost the operator the satellite.
+      final host = await hostWithBirds([soFifty]);
+      final results = await importFrom(host, [
+        {'prop_mode': 'SAT', 'sat_name': 'XW-2A'},
+      ]);
+
+      expect(results.single['refs'], [
+        {'type': 'satellite', 'ref': 'XW-2A'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a bird named without its dash is the same bird', () async {
+      final host = await hostWithBirds([soFifty]);
+      final results = await importFrom(host, [
+        {'sat_name': 'so50', 'band_rx': '70cm'},
+      ]);
+
+      expect(results.single['refs'], [
+        {'type': 'satellite', 'ref': 'SO-50/145.85/fm'},
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('returns one result per record, nulls included', () async {
+      // The Dart side matches these back by index; a hook that omitted its
+      // empties would put one QSO's satellite on another.
+      final host = await hostWithBirds([soFifty]);
+      final results = await importFrom(host, [
+        {'sat_name': 'SO-50', 'band_rx': '70cm'},
+        {'call': 'W1AW'},
+        {'sat_name': 'XW-2A', 'band_rx': '70cm'},
+      ]);
+
+      expect(results, hasLength(3));
+      expect(results[0]['refs'], [
+        {'type': 'satellite', 'ref': 'SO-50/145.85/fm'},
+      ]);
+      // No SAT_NAME at all — the one record that genuinely has no satellite in
+      // it, and so the only shape that yields a null.
+      expect(results[1], isNull);
+      expect(results[2]['refs'], [
+        {'type': 'satellite', 'ref': 'XW-2A'},
+      ]);
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 

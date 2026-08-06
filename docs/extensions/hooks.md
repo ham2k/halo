@@ -505,6 +505,17 @@ pair plus their own comma-separated `*_REF` list, so the SDK's
 `activityAdifImport({sig, huntingType, activationType, refField, normalize})`
 builds the whole hook.
 
+**A reference the program's own pattern rejects is imported anyway**, as
+written. By the time `normalize` runs, the file has already said whose the
+reference is — the `*_REF` list field is program-specific, and `SIG_INFO` is
+gated on `SIG` — so a pattern failure means *malformed*, not *foreign*.
+`decorateRef` labels it invalid, which puts it in front of the operator to fix;
+discarding it would lose the only text a correction could work from, and lose it
+without a word. `normalize` still repairs what it can (POTA turns a dashless
+`us1234` into `US-1234`); only its failures fall through as raw text. The same
+rule governs `satellites`, which imports a bird it cannot resolve to a
+transponder rather than dropping the QSO's satellite.
+
 It reads **both** sources and merges them, deduped on the normalized value.
 Neither subsumes the other: `*_REF` lists every reference but not every program
 writes it (SOTA's own exports carry `SOTA_REF` and no `SIG` at all), while
@@ -517,7 +528,22 @@ would import every other program's references.
 
 `referenceActivity()` returns a ready-built `adifImportHook` from the config it
 already has, so an activity using that factory opts in with one `registerHook`
-line. Implemented by: `pota`, `sota`, `wwff`.
+line. Implemented by every activity except two:
+
+- **`satellites`** writes `SAT_NAME`/`BAND_RX` and no `SIG` at all, so it
+  hand-writes its own. Its reference is a *transponder* while ADIF names only
+  the bird, so the hook recovers the transponder where it can — narrowing by
+  `BAND_RX` (the downlink) and the record's own `BAND`/`FREQ` (the uplink) —
+  and otherwise imports the bare satellite the file named. It validates
+  nothing: an unknown bird, a contradictory `BAND_RX` and a record with no band
+  all import. The reference degrades cleanly, since `decorateRef` falls back to
+  the whole string and the exporter writes `SAT_NAME` from the same segment.
+- **`custom`** deliberately registers none. Its `SIG` is a program name the
+  *operator* typed, so there is no constant to match, and a hook claiming every
+  `SIG` would add a spurious reference to every other program's records.
+  "Claim the `SIG`s nobody else claimed" is the rule that works and it is not
+  expressible in a hook — these run independently and additively, so none can
+  see what the others took. It belongs to the importer.
 
 ## ✅ `command` — call-field text shortcuts
 

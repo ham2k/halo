@@ -249,7 +249,16 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, their, 'cont', 'continent');
   _set(f, their, 'country', 'entityName');
   _set(f, their, 'country', 'country');
-  _set(f, their, 'qth', 'qth');
+  // ADIF's field for the contacted station's city is `QTH`, not `CITY` — the
+  // spec is asymmetric here, pairing `QTH` with `MY_CITY` for our own side. So
+  // `QTH` lands in `city`, which is the key the app reads and the key the
+  // exporter writes `QTH` back out of; a QSON `their.qth` is read by nothing.
+  //
+  // `CITY` is not an ADIF field at all, but software invents it. Where a record
+  // carries both spellings the LATER `_set` wins, and these are ordered so that
+  // the winner is the one naming a city and nothing else — `QTH` is routinely
+  // filled with a region or a country.
+  _set(f, their, 'qth', 'city');
   _set(f, their, 'city', 'city');
   _set(f, their, 'state', 'state');
   _set(f, their, 'region', 'regionCode');
@@ -271,7 +280,14 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, our, 'my_cont', 'continent');
   _set(f, our, 'my_country', 'entityName');
   _set(f, our, 'my_country', 'country');
-  _set(f, our, 'my_qth', 'qth');
+  // Our side, where ADIF swaps which spelling is the real one: `MY_CITY` is the
+  // field, `MY_QTH` is what software writes by analogy with `QTH`. Same
+  // last-wins mechanic as above, ordered so the ADIF field is the winner.
+  //
+  // Nothing reads `our.city` today and the exporter writes no `MY_*` at all, so
+  // unlike the `their` side this fixes no live loss — it keeps one key for one
+  // concept, rather than a second dead `our.qth` beside a dead `our.city`.
+  _set(f, our, 'my_qth', 'city');
   _set(f, our, 'my_city', 'city');
   _set(f, our, 'my_state', 'state');
   _set(f, our, 'my_region', 'regionCode');

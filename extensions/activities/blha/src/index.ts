@@ -25,7 +25,7 @@ import manifest from "../manifest.json" with { type: "json" }
 const ACTIVATION_TYPE = 'blhaActivation'
 const REFERENCE_REGEX = /^BEL [0-9]{3}$/i
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'blha',
   label: 'BLHA',
   activationType: ACTIVATION_TYPE,
@@ -113,6 +113,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'blha' })
     registerHook('activity', { hook: activityHook, key: 'blha' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'blha' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'blha' })
     registerHook('spots', { hook: SpotsHook, key: 'blha' })
     registerHook('dataFile', { hook: blhaDataFile, key: 'blha-all-lighthouses' })
     registerHook('scoring', {

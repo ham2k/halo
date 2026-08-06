@@ -385,10 +385,12 @@ const AdifImportHook = activityAdifImport({
   huntingType: HUNTING_TYPE,
   activationType: ACTIVATION_TYPE,
   refField: 'sota_ref',
-  normalize: (ref) => {
-    const normalized = ref.toUpperCase().trim()
-    return REFERENCE_REGEX.test(normalized) ? normalized : ''
-  },
+  // Case and whitespace only. A summit that fails REFERENCE_REGEX is imported
+  // as written rather than dropped: both paths into this hook have already
+  // established the reference is SOTA's — `SOTA_REF` by its field name, and
+  // `SIG_INFO` by the SIG check — so a pattern failure means malformed, not
+  // somebody else's, and the operator can still fix what they can still see.
+  normalize: (ref) => ref.toUpperCase().trim(),
 })
 
 // --- SOTA SSO (OAuth2 via Keycloak) -----------------------------------------

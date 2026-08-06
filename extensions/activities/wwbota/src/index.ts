@@ -71,7 +71,7 @@ const WWBOTA_SCORING = {
   activates: 'once' as const,
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'wwbota',
   label: 'WWBOTA',
   activationType: ACTIVATION_TYPE,
@@ -307,6 +307,7 @@ defineExtension({
     }
     registerHook('activity', { hook: activityHook, key: 'wwbota' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'wwbota' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'wwbota' })
     registerHook('spots', { hook: SpotsHook, key: 'wwbota' })
     registerHook('dataFile', { hook: wwbotaDataFile, key: 'wwbota-all-bunkers' })
     registerHook('scoring', {

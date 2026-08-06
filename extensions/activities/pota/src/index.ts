@@ -593,7 +593,13 @@ defineExtension({
         huntingType: HUNTING_TYPE,
         activationType: ACTIVATION_TYPE,
         refField: 'pota_ref',
-        normalize: (ref) => normalizeReference(ref) ?? '',
+        // `normalizeReference` repairs what it can — it inserts the dash a
+        // dashless `us1234` is missing — and answers null for what it cannot.
+        // Null falls back to the raw text rather than dropping the reference:
+        // the record already said this is POTA's, so a park that fails the
+        // pattern is malformed rather than foreign, and it imports flagged as
+        // invalid where the operator can correct it.
+        normalize: (ref) => normalizeReference(ref) ?? ref.toUpperCase().trim(),
       }),
       key: 'pota',
     })

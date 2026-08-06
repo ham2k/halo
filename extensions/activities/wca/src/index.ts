@@ -33,7 +33,7 @@ const OTHER_ACTIVATION_TYPES = ['ecaActivation', 'bcaActivation']
 
 const REFERENCE_REGEX = /^[A-Z0-9]+-[0-9]{5}$/i
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'wca',
   label: 'WCA',
   activationType: ACTIVATION_TYPE,
@@ -140,6 +140,7 @@ defineExtension({
     }
     registerHook('activity', { hook: activityHook, key: 'wca' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'wca' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'wca' })
     registerHook('spots', { hook: SpotsHook, key: 'wca' })
     registerHook('dataFile', { hook: wcaDataFile, key: 'wca-all-castles' })
     registerHook('scoring', {

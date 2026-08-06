@@ -54,7 +54,7 @@ const MOTA_SCORING = {
   freshRefRescuesActivation: false,
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'mota',
   label: 'MOTA',
   activationType: ACTIVATION_TYPE,
@@ -163,6 +163,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'mota' })
     registerHook('activity', { hook: activityHook, key: 'mota' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'mota' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'mota' })
     registerHook('spots', { hook: SpotsHook, key: 'mota' })
     registerHook('dataFile', { hook: motaDataFile, key: 'mota-all-mills' })
     registerHook('scoring', {

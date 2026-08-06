@@ -17,6 +17,7 @@
   "hooks": [
     "activity",
     "adifFields",
+    "adifImport",
     "dataFile",
     "export",
     "ref:llota",

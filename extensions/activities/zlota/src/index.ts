@@ -74,7 +74,7 @@ const ZLOTA_SCORING = {
   activates: 'once' as const,
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'zlota',
   label: 'ZLOTA',
   activationType: ACTIVATION_TYPE,
@@ -190,6 +190,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'zlota' })
     registerHook('activity', { hook: activityHook, key: 'zlota' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'zlota' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'zlota' })
     // Feed only — posting needs an account HaLo doesn't have yet.
     registerHook('spots', { hook: SpotsHook, key: 'zlota' })
     registerHook('dataFile', { hook: zlotaDataFile, key: 'zlota-all-references' })

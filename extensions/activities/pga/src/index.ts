@@ -23,7 +23,7 @@ import manifest from "../manifest.json" with { type: "json" }
 const ACTIVATION_TYPE = 'pgaActivation'
 const REFERENCE_REGEX = /^[A-Z]{2}[0-9]{2}$/i
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'pga',
   label: 'PGA',
   activationType: ACTIVATION_TYPE,
@@ -91,6 +91,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'pga' })
     registerHook('activity', { hook: activityHook, key: 'pga' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'pga' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'pga' })
     registerHook('dataFile', { hook: pgaDataFile, key: 'pga-gminas' })
     // No `scoring` and no `spots`: app-polo's PGA has neither.
     registerHook('export', {

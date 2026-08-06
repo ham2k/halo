@@ -42,7 +42,7 @@ const SIOTA_SCORING = {
   freshRefRescuesActivation: false,
 }
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'siota',
   label: 'SiOTA',
   activationType: ACTIVATION_TYPE,
@@ -110,6 +110,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'siota' })
     registerHook('activity', { hook: activityHook, key: 'siota' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'siota' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'siota' })
     registerHook('dataFile', { hook: siotaDataFile, key: 'siota-all-silos' })
     // No `spots`: SiOTA has neither a feed nor a spot endpoint in app-polo.
     registerHook('scoring', {

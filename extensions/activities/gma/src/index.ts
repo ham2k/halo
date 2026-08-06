@@ -41,7 +41,7 @@ const ACTIVATION_TYPE = 'gmaActivation'
 /// series, which follow no prefix rule at all.
 const REFERENCE_REGEX = /^(?:[A-Z0-9]+\/[A-Z]{2,}-[0-9]{3,}|UNM-(?:SH)?[0-9]{3})$/i
 
-const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
   key: 'gma',
   label: 'GMA',
   activationType: ACTIVATION_TYPE,
@@ -151,6 +151,7 @@ defineExtension({
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'gma' })
     registerHook('activity', { hook: activityHook, key: 'gma' })
     registerHook('adifFields', { hook: adifFieldsHook, key: 'gma' })
+    registerHook('adifImport', { hook: adifImportHook, key: 'gma' })
     registerHook('spots', { hook: SpotsHook, key: 'gma' })
     registerHook('dataFile', { hook: gmaDataFile, key: 'gma-all-summits' })
     // No `scoring`: app-polo's GMA counts nothing.
