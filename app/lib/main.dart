@@ -821,7 +821,11 @@ class HaLoServices {
   /// through hardware.
   final CatService? _catOverride;
   late final CatService cat = _catOverride ?? CatService(settings, radio: radio, onTrack: track);
-  final LocationService location = LocationService();
+  /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
+  /// are reachable only by denying an OS permission or losing a GPS fix, so a
+  /// widget test of what those states put on screen has no other way in.
+  final LocationService? _locationOverride;
+  late final LocationService location = _locationOverride ?? LocationService();
   final DeepLinkService deepLinks = DeepLinkService();
 
   /// Pusher app key + cluster for the realtime client — public,
@@ -1102,7 +1106,9 @@ class HaLoServices {
     ExportService? exports,
     CatService? cat,
     PusherService? pusher,
+    LocationService? location,
   })  : _catOverride = cat,
+        _locationOverride = location,
         _pusherOverride = pusher,
         extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
@@ -1126,7 +1132,9 @@ class HaLoServices {
     this.extensions.statusBar = statusBar;
     this.extensions.operations = operations;
     this.extensions.qsos = qsos;
-    this.extensions.location = location;
+    // `this.` is load-bearing: the constructor's `location` parameter is the
+    // OVERRIDE, null in every production build, and shadows the field here.
+    this.extensions.location = this.location;
     this.extensions.spots = spots;
     this.extensions.onOpenAccount =
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));

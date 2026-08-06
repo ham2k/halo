@@ -260,7 +260,10 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get noSuggestions => 'Sin sugerencias';
 	@override String get allOptions => 'Tipos de actividad';
 	@override String get determiningLocation => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas';
-	@override String get noNearbySuggestions => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas';
+	@override String get locationUnavailableTitle => 'Datos de ubicación no disponibles';
+	@override String get locationDeniedTitle => 'Permiso de ubicación denegado';
+	@override String get noNearbyReason => 'No se pueden determinar referencias cercanas';
+	@override String locationManualHint({required Object icon}) => 'Toca ${icon} para introducir tu ubicación manualmente,\no simplemente busca referencias por nombre';
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
 	@override String get exports => 'Exportar';
 	@override String get options => 'Opciones';
@@ -272,7 +275,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get alreadySelected => 'Ya seleccionada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
-	@override String get onlyDisabledMatches => 'Nada que añadir todavía — lo que buscaste está desactivado. Actívalo en Tipos de actividad, más abajo.';
+	@override String get onlyDisabledMatches => 'Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo.';
 }
 
 // Path: loggingControls
@@ -1937,7 +1940,10 @@ extension on TranslationsEs {
 			'activitiesView.noSuggestions' => 'Sin sugerencias',
 			'activitiesView.allOptions' => 'Tipos de actividad',
 			'activitiesView.determiningLocation' => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas',
-			'activitiesView.noNearbySuggestions' => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas',
+			'activitiesView.locationUnavailableTitle' => 'Datos de ubicación no disponibles',
+			'activitiesView.locationDeniedTitle' => 'Permiso de ubicación denegado',
+			'activitiesView.noNearbyReason' => 'No se pueden determinar referencias cercanas',
+			'activitiesView.locationManualHint' => ({required Object icon}) => 'Toca ${icon} para introducir tu ubicación manualmente,\no simplemente busca referencias por nombre',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.options' => 'Opciones',
@@ -1949,7 +1955,7 @@ extension on TranslationsEs {
 			'activitiesView.alreadySelected' => 'Ya seleccionada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
-			'activitiesView.onlyDisabledMatches' => 'Nada que añadir todavía — lo que buscaste está desactivado. Actívalo en Tipos de actividad, más abajo.',
+			'activitiesView.onlyDisabledMatches' => 'Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo.',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
@@ -2250,11 +2256,11 @@ extension on TranslationsEs {
 			'settings.station.addTitle' => 'Agregar equipo',
 			'settings.station.searchHint' => 'Buscar equipos',
 			'settings.station.noMatches' => 'Ningún equipo coincide',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.lookingForEquipment' => 'Buscando equipos nuevos…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			'settings.station.transport' => 'Conexión',

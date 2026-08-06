@@ -267,7 +267,10 @@
     "noSuggestions": "No suggestions",
     "allOptions": "Activity Types",
     "determiningLocation": "Determining current location…\nWaiting for GPS fix to find nearby references",
-    "noNearbySuggestions": "Location data not available\nSo we cannot determine nearby references",
+    "locationUnavailableTitle": "Location data not available",
+    "locationDeniedTitle": "Location permission denied",
+    "noNearbyReason": "Cannot determine nearby references",
+    "locationManualHint": "Tap ${icon} to manually enter your location,\nor just search for references by name",
     "emptySheet": "Use suggestions & search below to add one",
     "exports": "Exports",
     "options": "Options",
@@ -279,7 +282,7 @@
     "alreadySelected": "Already selected",
     "enableExtension": "Enable ${name}",
     "enableExtensionHint": "This extension matches your search, but it is not currently enabled",
-    "onlyDisabledMatches": "Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below."
+    "onlyDisabledMatches": "Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below."
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",

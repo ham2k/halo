@@ -29,6 +29,19 @@ GridLocation? parseDevLocation(String raw) {
   return location;
 }
 
+/// Parses the raw `DEV_LOCATION_STATUS` value into the status to pin the
+/// service at, or null when unset/invalid. Same reasoning as
+/// [parseDevLocation]: the invalid case is worth exercising from a test.
+@visibleForTesting
+LocationStatus? parseDevLocationStatus(String raw) {
+  if (raw.isEmpty) return null;
+  for (final status in LocationStatus.values) {
+    if (status.name.toLowerCase() == raw.trim().toLowerCase()) return status;
+  }
+  debugPrint('[location] DEV_LOCATION_STATUS "$raw" is not one of ${LocationStatus.values.map((s) => s.name)}');
+  return null;
+}
+
 class LocationService extends ChangeNotifier {
   // `DEV_LOCATION=FN21rq` mocks the device GPS with a fixed grid locator, so
   // dev/testing doesn't need to grant OS location permissions or wait on a
@@ -36,6 +49,15 @@ class LocationService extends ChangeNotifier {
   // changes mid-process.
   static final GridLocation? _devLocation =
       parseDevLocation(debugEnvFlag(const String.fromEnvironment('DEV_LOCATION'), 'DEV_LOCATION'));
+
+  // `DEV_LOCATION_STATUS=permissionDenied` pins the service at one status so
+  // the states behind it can be looked at on demand. Denied permission and a
+  // device that can't produce a fix are otherwise reachable only by revoking
+  // an OS permission or taking the hardware away, which makes reviewing what
+  // they put on screen far harder than reading the code that draws it.
+  // Outranks DEV_LOCATION: a pinned status is the more specific instruction.
+  static final LocationStatus? _devStatus = parseDevLocationStatus(
+      debugEnvFlag(const String.fromEnvironment('DEV_LOCATION_STATUS'), 'DEV_LOCATION_STATUS'));
 
   static Position _mockPosition(GridLocation location) => Position(
         latitude: location.latitude,
@@ -88,6 +110,28 @@ class LocationService extends ChangeNotifier {
   }
 
   Future<void> start() async {
+    if (_devStatus != null) {
+      if (_status == _devStatus) return;
+      debugPrint('[location] pinned to ${_devStatus!.name} by DEV_LOCATION_STATUS');
+      // A pinned `available` needs a position to be available OF: production
+      // only ever sets that status with one in hand, so pinning it without
+      // DEV_LOCATION would manufacture a state the app can't otherwise reach
+      // and show a GPS pin pulsing forever.
+      if (_devStatus == LocationStatus.available) {
+        if (_devLocation == null) {
+          debugPrint('[location] DEV_LOCATION_STATUS=available needs DEV_LOCATION for a position, ignoring');
+          return;
+        }
+        _position = _mockPosition(_devLocation!);
+      }
+      // Any other status leaves _position alone — the real service never
+      // clears it either, and a bad status over a retained fix is exactly the
+      // combination worth being able to look at.
+      _status = _devStatus!;
+      notifyListeners();
+      return;
+    }
+
     if (_devLocation != null) {
       // Mirrors the real path's `if (_sub != null) return;` guard below:
       // skip re-notifying once already mocked, so a second view starting
@@ -169,6 +213,13 @@ class LocationService extends ChangeNotifier {
   /// permission/service-enabled checks below. Returns null on any
   /// denial/failure.
   Future<Position?> getCurrentPosition() async {
+    // A pinned status answers here too, or a build pretending to have no
+    // location would still hand a real fix to whoever asked for one directly.
+    if (_devStatus != null) {
+      // Whatever the pinned status is standing over — a retained fix under a
+      // bad status included, since that is a state the real service reaches.
+      return _position;
+    }
     if (_devLocation != null) return _mockPosition(_devLocation!);
 
     try {

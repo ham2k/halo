@@ -267,7 +267,10 @@
     "noSuggestions": "Sin sugerencias",
     "allOptions": "Tipos de actividad",
     "determiningLocation": "Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas",
-    "noNearbySuggestions": "Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas",
+    "locationUnavailableTitle": "Datos de ubicación no disponibles",
+    "locationDeniedTitle": "Permiso de ubicación denegado",
+    "noNearbyReason": "No se pueden determinar referencias cercanas",
+    "locationManualHint": "Toca ${icon} para introducir tu ubicación manualmente,\no simplemente busca referencias por nombre",
     "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
     "exports": "Exportar",
     "options": "Opciones",
@@ -279,7 +282,7 @@
     "alreadySelected": "Ya seleccionada",
     "enableExtension": "Activar ${name}",
     "enableExtensionHint": "Esta extensión coincide con tu búsqueda, pero no está activada",
-    "onlyDisabledMatches": "Nada que añadir todavía — lo que buscaste está desactivado. Actívalo en Tipos de actividad, más abajo."
+    "onlyDisabledMatches": "Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo."
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",

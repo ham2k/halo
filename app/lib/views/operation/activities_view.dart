@@ -59,6 +59,12 @@ const _nearbyGridAdoptionKm = 15;
 /// LinearProgressIndicator's own default thickness.
 const _searchProgressHeight = 4.0;
 
+/// The map pin drawn inline in the "no location" hint, sized to match the
+/// search band's own pin so the two read as the same object. The band's comes
+/// from M3's button-icon default, which this tracks by hand: a `WidgetSpan`
+/// inside a `Text` has no button style to inherit it from.
+const _locationPinSize = 18.0;
+
 /// Height of the search-field band (excluding the progress slot) at text
 /// scale 1. A constant because the band rides in a pinned
 /// SliverPersistentHeader, which needs an explicit extent it cannot measure:
@@ -333,6 +339,7 @@ class OperationSheetState extends State<OperationSheet> {
       final before = _operation;
       setState(() => _operation = op);
       _reloadControlsIfRefsChanged(before, op);
+      _researchIfLocationChanged(before, op);
     }
   }
   List<Map<String, dynamic>> _controls = const [];
@@ -449,6 +456,33 @@ class OperationSheetState extends State<OperationSheet> {
     if (!_areRefsEqual(before.refs, after.refs)) _loadControls();
   }
 
+  /// Re-runs the search when the operation's LOCATION changes, from wherever
+  /// `_operation` was replaced.
+  ///
+  /// Nearby suggestions are computed from the grid
+  /// ([ExtensionService.suggestActivities]), which outranks the device's own
+  /// position — so a location the operator just typed has to produce results
+  /// now, not on their next keystroke. The device's GPS has
+  /// [_onLocationChanged] to lean on; a hand-typed grid has nothing, and in
+  /// the states where the operator is invited to type one there is no fix
+  /// coming to fire that listener.
+  ///
+  /// State and county count too. They are not part of `suggestActivities`'
+  /// own `location` argument, but the whole operation map goes to the hooks,
+  /// and a program whose references are administrative rather than geographic
+  /// answers off exactly those — and the location editor returns all three
+  /// together, so filling in only State is an ordinary thing to do.
+  ///
+  /// Guarded on a real change: every ref added re-enters here. Unset and blank
+  /// are the same location — the editor returns `''` for a field never filled
+  /// in, so comparing raw would make an unchanged Save pay for a fan-out.
+  void _researchIfLocationChanged(Operation before, Operation after) {
+    const keys = ['grid', 'state', 'county'];
+    if (keys.every((key) => (before.data[key] ?? '') == (after.data[key] ?? ''))) return;
+    _debounce?.cancel();
+    unawaited(_search(_searchController.text));
+  }
+
   bool _matchesPattern(String? pattern, String code) =>
       pattern == null || RegExp('^(?:$pattern)\$', caseSensitive: false).hasMatch(code);
 
@@ -483,6 +517,9 @@ class OperationSheetState extends State<OperationSheet> {
       setState(() => _operation = updated);
       widget.onOperationChanged?.call(updated);
       _reloadControlsIfRefsChanged(before, updated);
+      // The other path that replaces `_operation` — adopting a grid off a
+      // newly added ref comes through here, not through [updateOperation].
+      _researchIfLocationChanged(before, updated);
     }
   }
 
@@ -958,23 +995,191 @@ class OperationSheetState extends State<OperationSheet> {
     );
   }
 
-  /// The message shown in the Suggestions & Search section when there are
-  /// no results: while there's a search term, a plain "no matches" message
-  /// always applies; with an empty term (nearby suggestions) and no
-  /// operation grid, the location-driven states kick in
-  /// instead — determining the device's location, or location known to be
-  /// unavailable.
-  String get _suggestionsEmptyMessage {
+  /// Opens the operation's location editor and folds whatever it returns back
+  /// into the operation. Shared by the search band's location pill and the
+  /// empty state's hint, which point at the same thing.
+  Future<void> _editLocation() async {
+    final patch = await showHaloDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => OperationLocationScreen(
+        services: widget.services,
+        operation: _operation,
+      ),
+    );
+    if (patch == null) return;
+    if (!mounted) {
+      // Not the same as cancelling: the operator entered a location and it is
+      // going nowhere. Takes a route popping out from under the open editor.
+      debugPrint('[activities] location edit discarded: the sheet unmounted while the editor was open');
+      return;
+    }
+    final updated = Operation(
+      uuid: _operation.uuid,
+      data: {..._operation.data, ...patch},
+      qsoCount: _operation.qsoCount,
+      startAtMillisMin: _operation.startAtMillisMin,
+      startAtMillisMax: _operation.startAtMillisMax,
+      localData: _operation.localData,
+    );
+    // A location arriving here re-runs the search — see
+    // [_researchIfLocationChanged].
+    updateOperation(updated);
+    widget.onOperationChanged?.call(updated);
+  }
+
+  /// Whether the operation carries a location of its own, and so needs nothing
+  /// from the device.
+  ///
+  /// Measured by what the SEARCH can do with it, not by the field being filled:
+  /// `suggestActivities` runs the grid through [gridToLocation] and gets
+  /// nothing for `''` (which arrives via sync and import) or for a half-typed
+  /// `FN` (which the location editor saves unvalidated). Either read as a
+  /// location would answer a muted "No suggestions" over a grid the hooks were
+  /// never given — the "there is nothing near you" misreading this whole
+  /// notice exists to prevent, reached by way of taking its advice.
+  bool get _hasOperationGrid => gridToLocation(_operation.grid) != null;
+
+  /// The empty state for the Suggestions & Search section.
+  ///
+  /// ONE decision, deliberately: a second getter answering "is this a location
+  /// problem?" alongside this one drifts the moment a guard is added to only
+  /// one of them, and the result is a red headline over "No suggestions", or a
+  /// bare reason line with no headline — the two failures this notice exists
+  /// to prevent.
+  ///
+  /// An empty-state message whose headline and body are one string, split on
+  /// its own FIRST newline — so which words lead is the translator's call and
+  /// not a second key to keep aligned. A message with no newline is all
+  /// headline, which is right for the one-liners.
+  ///
+  /// Only for the single-key messages. Where the two halves are already
+  /// separate keys, pass them separately: joining them to re-split here would
+  /// give `\n` two meanings at once, and a translator wrapping a long title —
+  /// which this very file's messages already do — would silently demote the
+  /// tail of their headline into the muted body.
+  Widget _emptyStateFromMessage(ThemeData theme, String message) {
+    final split = message.indexOf('\n');
+    return _emptyStateMessage(
+      theme,
+      title: split < 0 ? message : message.substring(0, split),
+      body: split < 0 ? '' : message.substring(split + 1),
+    );
+  }
+
+  /// An empty-state message: [title] bold and in [titleColor], [body] muted
+  /// under it, centred.
+  Widget _emptyStateMessage(ThemeData theme, {required String title, required String body, Color? titleColor}) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: title,
+            style: TextStyle(color: titleColor ?? theme.colorScheme.onSurface, fontWeight: FontWeight.bold),
+          ),
+          if (body.isNotEmpty)
+            TextSpan(text: '\n$body', style: TextStyle(color: theme.colorScheme.outline)),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  /// The padding every empty state stands in, so the loud one and the quiet
+  /// ones sit at the same height under the search band rather than the notice
+  /// looking like a different kind of thing.
+  Widget _emptyStatePadding({required Widget child}) => Padding(
+        padding: const EdgeInsets.only(top: Space.xl, bottom: Space.md),
+        child: child,
+      );
+
+  /// A location problem gets the loud treatment: a red headline, and the way
+  /// out spelled with the very pin that opens the location editor. Muted grey
+  /// saying nothing is nearby reads as "there is nothing nearby" — the
+  /// opposite of what it means, and the operator stops looking. Every other
+  /// empty state is the same shape without the red or the way out.
+  Widget _suggestionsEmptyContent(ThemeData theme) {
     final t = context.t.activitiesView;
-    // A bare "no suggestions" here would contradict the enable row now sitting
-    // in the expanded section below: the activity they searched for does exist.
-    if (_disabledMatches.isNotEmpty) return t.onlyDisabledMatches;
-    if (_searchController.text.trim().isNotEmpty || _operation.grid != null) return t.noSuggestions;
-    return switch (widget.services.location.status) {
-      LocationStatus.unknown || LocationStatus.determining => t.determiningLocation,
-      LocationStatus.available => t.noSuggestions,
-      LocationStatus.permissionDenied || LocationStatus.unavailable => t.noNearbySuggestions,
+
+    // A bare "no suggestions" here would contradict the enable row sitting in
+    // the expanded section below: the activity they searched for does exist.
+    if (_disabledMatches.isNotEmpty) {
+      return _emptyStatePadding(child: _emptyStateFromMessage(theme, t.onlyDisabledMatches));
+    }
+    // A typed search, or a location the search could actually use, was
+    // answerable — it simply found nothing, and location has no part in that.
+    // The device's own last fix counts even under a bad status: it is never
+    // cleared, so `suggestActivities` searched WITH it, and blaming the
+    // location for an empty answer it had nothing to do with sends the
+    // operator to type a grid that will change none of it.
+    if (_searchController.text.trim().isNotEmpty ||
+        _hasOperationGrid ||
+        widget.services.location.position != null) {
+      return _emptyStatePadding(child: _emptyStateFromMessage(theme, t.noSuggestions));
+    }
+
+    // Denied permission and a location the device can't produce are named
+    // apart: only one of them is the operator's to grant.
+    final (String? title, String plain) = switch (widget.services.location.status) {
+      LocationStatus.permissionDenied => (t.locationDeniedTitle, t.noNearbyReason),
+      LocationStatus.unavailable => (t.locationUnavailableTitle, t.noNearbyReason),
+      LocationStatus.unknown || LocationStatus.determining => (null, t.determiningLocation),
+      LocationStatus.available => (null, t.noSuggestions),
     };
+    if (title == null) return _emptyStatePadding(child: _emptyStateFromMessage(theme, plain));
+
+    final muted = TextStyle(color: theme.colorScheme.outline);
+
+    // The hint's pin is a placeholder in the translation rather than a fixed
+    // position, so a language that needs the icon elsewhere in the sentence can
+    // put it there. U+FFFC is the character that exists to stand in for an
+    // embedded object, written as an escape because it renders as nothing in a
+    // source file and cannot be reviewed. Every segment is rendered and every
+    // seam gets a pin: a translation is free to use the placeholder twice, or
+    // not at all, and must not lose the words between them either way.
+    const iconMark = '\u{FFFC}';
+    final hint = t.locationManualHint(icon: iconMark).split(iconMark);
+
+    // The ink layer must be the notice itself. Taken from the sheet's root
+    // Material instead, the highlight paints outside this viewport's clip and
+    // keeps drawing over the pinned search band as the list scrolls under it.
+    return Material(
+      type: MaterialType.transparency,
+      // A paragraph that happens to be tappable announces itself as prose: the
+      // one operator who most needs the way out spelled aloud is told there
+      // isn't one.
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: _editLocation,
+          child: _emptyStatePadding(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _emptyStateMessage(theme, title: title, body: plain, titleColor: theme.colorScheme.error),
+                // What to do about it is its own paragraph, not a third line of
+                // the diagnosis.
+                const SizedBox(height: Space.lg),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      for (var i = 0; i < hint.length; i++) ...[
+                        if (i > 0)
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Icon(MdiIcons.mapMarkerOff, size: _locationPinSize, color: theme.colorScheme.error),
+                          ),
+                        TextSpan(text: hint[i], style: muted),
+                      ],
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _activitiesTitle(int count) {
@@ -1364,7 +1569,11 @@ class OperationSheetState extends State<OperationSheet> {
                 final String label;
                 final Color locationColor;
 
-                if (operationGrid != null && operationGrid.isNotEmpty) {
+                // The SAME question the empty state asks, so the two can't
+                // contradict each other over a grid the search can't place:
+                // a half-typed `FN` saved unvalidated must not label this
+                // button "located" under a notice still saying it isn't.
+                if (_hasOperationGrid) {
                   final gridSource = _operation.data['gridSource'] as String? ?? (
                     (widget.services.location.grid != null && operationGrid == widget.services.location.grid)
                         ? 'gps'
@@ -1373,11 +1582,11 @@ class OperationSheetState extends State<OperationSheet> {
 
                   if (gridSource == 'gps') {
                     locationPin = Icon(MdiIcons.mapMarker, color: onLocationColor);
-                    label = operationGrid;
+                    label = operationGrid!;
                     locationColor = const Color(0xFF1B5E20);
                   } else {
                     locationPin = Icon(MdiIcons.pin, color: onLocationColor);
-                    label = operationGrid;
+                    label = operationGrid!;
                     locationColor = const Color(0xFF455A64);
                   }
                 } else {
@@ -1394,8 +1603,21 @@ class OperationSheetState extends State<OperationSheet> {
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
                   } else {
-                    locationPin = Icon(MdiIcons.mapMarkerOff, color: onLocationColor);
-                    label = '';
+                    // The only variant that can end up with no label, so the
+                    // only one that would otherwise announce nothing — and it
+                    // is on screen exactly while the notice below tells the
+                    // operator to tap it. Named the way this app names an
+                    // icon-only button (see no_hover_tooltips_test).
+                    locationPin = Icon(
+                      MdiIcons.mapMarkerOff,
+                      color: onLocationColor,
+                      semanticLabel: context.t.operationLocationScreen.title,
+                    );
+                    // A grid that got this far is one the search can't place.
+                    // Keeping it on the button, in the red state, says which
+                    // text is the problem; dropping it would leave the operator
+                    // wondering where what they typed went.
+                    label = operationGrid ?? '';
                     locationColor = const Color(0xFFC62828);
                   }
                 }
@@ -1433,41 +1655,36 @@ class OperationSheetState extends State<OperationSheet> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(left: Space.md),
-                          child: TextButton.icon(
-                            icon: locationPin,
-                            label: Text(
-                              label,
-                              style: const TextStyle(
-                                fontFamily: 'RobotoMono',
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              backgroundColor: locationColor,
-                              foregroundColor: onLocationColor,
-                            ),
-                            onPressed: () async {
-                              final patch = await showHaloDialog<Map<String, dynamic>>(
-                                context: context,
-                                builder: (_) => OperationLocationScreen(
-                                  services: widget.services,
-                                  operation: _operation,
+                          // With no grid to show there is no label, and
+                          // TextButton.icon still reserves the 8px gap before
+                          // one plus M3's wider trailing inset — which reads as
+                          // the pin sitting off-centre in its own button. The
+                          // plain button centres it, at the same size: both
+                          // variants share one defaultStyleOf.
+                          child: label.isEmpty
+                              ? TextButton(
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: locationColor,
+                                    foregroundColor: onLocationColor,
+                                  ),
+                                  onPressed: _editLocation,
+                                  child: locationPin,
+                                )
+                              : TextButton.icon(
+                                  icon: locationPin,
+                                  label: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontFamily: 'RobotoMono',
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: locationColor,
+                                    foregroundColor: onLocationColor,
+                                  ),
+                                  onPressed: _editLocation,
                                 ),
-                              );
-                              if (patch != null && mounted) {
-                                final updated = Operation(
-                                  uuid: _operation.uuid,
-                                  data: {..._operation.data, ...patch},
-                                  qsoCount: _operation.qsoCount,
-                                  startAtMillisMin: _operation.startAtMillisMin,
-                                  startAtMillisMax: _operation.startAtMillisMax,
-                                  localData: _operation.localData,
-                                );
-                                updateOperation(updated);
-                                widget.onOperationChanged?.call(updated);
-                              }
-                            },
-                          ),
                         ),
                             ],
                           ),
@@ -1632,7 +1849,7 @@ class OperationSheetState extends State<OperationSheet> {
                         if (resultRows.isEmpty && !_loadingSuggestions)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
-                            child: Text(_suggestionsEmptyMessage, style: TextStyle(color: theme.colorScheme.outline)),
+                            child: _suggestionsEmptyContent(theme),
                           )
                         else
                           for (final row in resultRows) Material(type: MaterialType.transparency, child: row),

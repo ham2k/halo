@@ -55,6 +55,7 @@ upcoming:
     - "A contest with no exchange set now says **Not configured!** on its row"
     - "Configurable activities get a settings button beside the delete button"
     - "Activity search: a leading `sota` puts SOTA's hits first, `sota:` shows only those"
+    - "No GPS now says so in red, and tapping it takes a location you type"
 
 "126":
   changes:

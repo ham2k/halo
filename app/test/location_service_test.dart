@@ -22,4 +22,28 @@ void main() {
       expect(parseDevLocation('ZZ99'), isNull);
     });
   });
+
+  group('parseDevLocationStatus (DEV_LOCATION_STATUS)', () {
+    test('unset pins nothing', () {
+      expect(parseDevLocationStatus(''), isNull);
+    });
+
+    test('every status is reachable by name', () {
+      // A flag that silently accepts only some of them would send whoever is
+      // reviewing those states to the wrong screen, looking like the code.
+      for (final status in LocationStatus.values) {
+        expect(parseDevLocationStatus(status.name), status, reason: status.name);
+      }
+    });
+
+    test('case and surrounding space do not have to be got right', () {
+      expect(parseDevLocationStatus('  permissiondenied '), LocationStatus.permissionDenied);
+      expect(parseDevLocationStatus('UNAVAILABLE'), LocationStatus.unavailable);
+    });
+
+    test('an unrecognized name pins nothing rather than throwing at launch', () {
+      expect(parseDevLocationStatus('denied'), isNull);
+      expect(parseDevLocationStatus('nonsense'), isNull);
+    });
+  });
 }

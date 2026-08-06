@@ -455,8 +455,17 @@ class Translations$activitiesView$en {
 	/// en: 'Determining current location… Waiting for GPS fix to find nearby references'
 	String get determiningLocation => 'Determining current location…\nWaiting for GPS fix to find nearby references';
 
-	/// en: 'Location data not available So we cannot determine nearby references'
-	String get noNearbySuggestions => 'Location data not available\nSo we cannot determine nearby references';
+	/// en: 'Location data not available'
+	String get locationUnavailableTitle => 'Location data not available';
+
+	/// en: 'Location permission denied'
+	String get locationDeniedTitle => 'Location permission denied';
+
+	/// en: 'Cannot determine nearby references'
+	String get noNearbyReason => 'Cannot determine nearby references';
+
+	/// en: 'Tap ${icon} to manually enter your location, or just search for references by name'
+	String locationManualHint({required Object icon}) => 'Tap ${icon} to manually enter your location,\nor just search for references by name';
 
 	/// en: 'Use suggestions & search below to add one'
 	String get emptySheet => 'Use suggestions & search below to add one';
@@ -491,8 +500,8 @@ class Translations$activitiesView$en {
 	/// en: 'This extension matches your search, but it is not currently enabled'
 	String get enableExtensionHint => 'This extension matches your search, but it is not currently enabled';
 
-	/// en: 'Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below.'
-	String get onlyDisabledMatches => 'Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below.';
+	/// en: 'Nothing to add yet What you searched for is switched off. Turn it on under Activity Types below.'
+	String get onlyDisabledMatches => 'Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below.';
 }
 
 // Path: loggingControls
@@ -3544,7 +3553,10 @@ extension on Translations {
 			'activitiesView.noSuggestions' => 'No suggestions',
 			'activitiesView.allOptions' => 'Activity Types',
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
-			'activitiesView.noNearbySuggestions' => 'Location data not available\nSo we cannot determine nearby references',
+			'activitiesView.locationUnavailableTitle' => 'Location data not available',
+			'activitiesView.locationDeniedTitle' => 'Location permission denied',
+			'activitiesView.noNearbyReason' => 'Cannot determine nearby references',
+			'activitiesView.locationManualHint' => ({required Object icon}) => 'Tap ${icon} to manually enter your location,\nor just search for references by name',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.options' => 'Options',
@@ -3556,7 +3568,7 @@ extension on Translations {
 			'activitiesView.alreadySelected' => 'Already selected',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
-			'activitiesView.onlyDisabledMatches' => 'Nothing to add yet — what you searched for is switched off. Turn it on under Activity Types below.',
+			'activitiesView.onlyDisabledMatches' => 'Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below.',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -3857,11 +3869,11 @@ extension on Translations {
 			'settings.station.addTitle' => 'Add equipment',
 			'settings.station.searchHint' => 'Search equipment',
 			'settings.station.noMatches' => 'No equipment matches',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.lookingForEquipment' => 'Looking for new equipment…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
