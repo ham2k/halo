@@ -5,7 +5,6 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
-import { summitGlyphFromDetails } from "./summitGlyph.ts"
 import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 
 // Mirrors the group-expansion logic in
@@ -47,17 +46,6 @@ test("TRANSFORMS separates two space-typed summits with a comma", () => {
 
 test("TRANSFORMS leaves an already comma-separated multi-summit list untouched", () => {
   assert.equal(applyTransforms("W6/SD-026,W6/SD-027", TRANSFORMS), "W6/SD-026,W6/SD-027")
-})
-
-test("summitGlyphFromDetails picks the matching circled digit for 1-10 points", () => {
-  assert.equal(summitGlyphFromDetails("Iwaguroyama, 1746m, 10 points"), "\u{2793}")
-  assert.equal(summitGlyphFromDetails("Hagurosan, 461m, 1 points"), "\u{278A}")
-  assert.equal(summitGlyphFromDetails("Crown Point, 1574m, 2 points"), "\u{278B}")
-})
-
-test("summitGlyphFromDetails returns an empty string when there's no points suffix", () => {
-  assert.equal(summitGlyphFromDetails("Some Summit, 500m"), "")
-  assert.equal(summitGlyphFromDetails(""), "")
 })
 
 test("suggestOperationTitleForSota suggests the summit reference as 'at' and the summit's decorated name as subtitle (ham2k/halo-dist#174)", () => {

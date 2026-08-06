@@ -618,6 +618,107 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 120)));
   });
 
+  group('the sota epoch gate', () {
+    // The endpoint answers a bare UUID, and the extension requires that shape
+    // before it will trust one — see the bogus-body test below.
+    const epochOne = 'ed0601ac-a1f9-4666-98ba-2b0e52c07f5e';
+    const epochTwo = '11112222-3333-4444-5555-666677778888';
+    const sotaSpots = '[{"id":1,"timeStamp":"2026-08-05T21:46:18.348572Z","comments":"",'
+        '"callsign":"N0SPOT","summitCode":"W7O/WV-096","summitName":"Sylvania, Mount",'
+        '"activatorCallsign":"KK7ER","activatorName":"Michael","frequency":14.062,"mode":"cw",'
+        '"points":1,"AltM":297,"AltFt":975,"type":null,"epoch":"ed0601ac-a1f9-4666-98ba-2b0e52c07f5e"}]';
+
+    /// Answers `/spots/epoch` from [epochs], one entry per call, and every
+    /// other request with the spot list. Recording the paths is the point:
+    /// what this gate does is NOT send a request.
+    ({List<String> paths, MockClient client}) sotaRecorder(List<String> epochs,
+        {int epochStatus = 200, bool epochThrows = false}) {
+      final paths = <String>[];
+      var call = 0;
+      return (
+        paths: paths,
+        client: MockClient((request) async {
+          paths.add(request.url.path);
+          if (request.url.path.endsWith('/epoch')) {
+            if (epochThrows) throw http.ClientException('connection reset', request.url);
+            final epoch = epochs[call < epochs.length ? call : epochs.length - 1];
+            call++;
+            return http.Response(epoch, epochStatus, headers: {'content-type': 'text/plain'});
+          }
+          return http.Response(sotaSpots, 200, headers: {'content-type': 'application/json'});
+        }),
+      );
+    }
+
+    Future<List> fetchSota(ExtensionHost host) async =>
+        (await host.invokeHook('spots', key: 'sota', method: 'fetchSpots',
+            args: {'online': true}, timeout: const Duration(seconds: 20)) as List);
+
+    test('an unchanged epoch answers from cache without asking for spots again', () async {
+      // The point of the whole gate: SpotsService polls every two minutes for
+      // as long as an operation is open, and SOTAwatch only moves the epoch
+      // when a spot actually changes.
+      final rec = sotaRecorder([epochOne, epochOne]);
+      final host = await hostWith('sota', ['api-db2.sota.org.uk'], rec.client);
+
+      final first = await fetchSota(host);
+      final second = await fetchSota(host);
+
+      expect(first.length, 1);
+      expect(second, first, reason: 'the cached list must be the same spots, not an empty one');
+      expect(rec.paths.where((p) => !p.endsWith('/epoch')).length, 1,
+          reason: 'the second poll should have cost one epoch request and nothing else');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a moved epoch fetches the spots again', () async {
+      // The other half: a gate that never reopens would freeze the board.
+      final rec = sotaRecorder([epochOne, epochTwo]);
+      final host = await hostWith('sota', ['api-db2.sota.org.uk'], rec.client);
+
+      await fetchSota(host);
+      await fetchSota(host);
+
+      expect(rec.paths.where((p) => !p.endsWith('/epoch')).length, 2);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('an epoch the server refuses costs the saving, not the spots', () async {
+      final rec = sotaRecorder(['nope'], epochStatus: 503);
+      final host = await hostWith('sota', ['api-db2.sota.org.uk'], rec.client);
+
+      final spots = await fetchSota(host);
+
+      expect(spots.length, 1, reason: 'a 503 body must not be mistaken for an epoch');
+      expect(rec.paths.where((p) => !p.endsWith('/epoch')).length, 1);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a 200 that is not a UUID never becomes the epoch', () async {
+      // A captive portal or proxy answering 200 with a constant page would
+      // otherwise pin the epoch to it: every later poll short-circuits, the
+      // spots request never runs so nothing can throw, and the board freezes
+      // silently instead of reporting an error.
+      final rec = sotaRecorder(const ['<html>Sign in to continue</html>']);
+      final host = await hostWith('sota', ['api-db2.sota.org.uk'], rec.client);
+
+      await fetchSota(host);
+      final second = await fetchSota(host);
+
+      expect(second.length, 1, reason: 'the board must keep refreshing, not freeze on a bogus epoch');
+      expect(rec.paths.where((p) => !p.endsWith('/epoch')).length, 2);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('an epoch request that throws costs the saving, not the spots', () async {
+      // The host rethrows anything that isn't a DNS failure, so without the
+      // catch a reset connection on the OPTIMISATION request empties the
+      // board of SOTA spots for that cycle while the spots endpoint is fine.
+      final rec = sotaRecorder(const [], epochThrows: true);
+      final host = await hostWith('sota', ['api-db2.sota.org.uk'], rec.client);
+
+      final spots = await fetchSota(host);
+
+      expect(spots.length, 1);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
   test('a feed the manifest never declared is still blocked', () async {
     // The allowlist runs above the transport, so a stub does not become a way
     // around it.

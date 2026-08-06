@@ -823,7 +823,7 @@ class _HostCore {
         // Spot feeds and self-spotting on hosts that send no CORS headers.
         // Narrower than the data-file allowlist in DataFileManager: the other
         // hosts there serve a reference file and nothing else. The remaining
-        // spot sources (spots.wwff.co, api2.sota.org.uk, api.open-meteo.com,
+        // spot sources (spots.wwff.co, api-db2.sota.org.uk, api.open-meteo.com,
         // api.wwbota.org, LoFi) answer cross-origin GETs directly.
         'www.cqgma.org',
         'ontheair.nz',

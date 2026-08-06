@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // SOTA (Summits on the Air) Extension. Registers:
-//   ref:sota / ref:sotaActivation  — validation + summit decoration via api2.sota.org.uk API
+//   ref:sota / ref:sotaActivation  — validation + summit decoration via api-db2.sota.org.uk API
 //   activity                       — SOTA hunting + activation controls
 //   adifFields                     — SOTA_REF/MY_SOTA_REF contributions for exports
 //   adifImport                     — the same fields, plus SIG_INFO, read back
@@ -12,7 +12,6 @@
 
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
-import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
 import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
@@ -40,7 +39,7 @@ import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
-import { summitGlyphFromDetails } from "./summitGlyph.ts"
+import { spotsFromSOTAApi, type SOTAApiSpot } from "./spotMapping.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -48,6 +47,11 @@ export { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 
 const HUNTING_TYPE = 'sota'
 const ACTIVATION_TYPE = 'sotaActivation'
+
+/// api-db2 is SOTA's current database API; the api2 host it replaced is on
+/// its way out. Spot payloads differ between the two — see `SOTAApiSpot`.
+const SOTA_API = 'https://api-db2.sota.org.uk/api'
+const SOTA_SUMMITS_API = `${SOTA_API}/summits`
 
 // See POTA's identical note on why this loads at module scope: resolves
 // both a summit's association code and a caller's callsign to a DXCC
@@ -188,7 +192,10 @@ async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
   // 2. Fall back to network fetch
   let summit: SOTASummitInfo | null = null
   try {
-    const response = await host.fetch(`https://api2.sota.org.uk/api/summits/${encodeURIComponent(ref)}`)
+    // Per segment: a summit reference carries a slash ("W7O/WV-096") that is
+    // part of the API's path, and the server 404s on a percent-encoded one.
+    const path = ref.split('/').map(encodeURIComponent).join('/')
+    const response = await host.fetch(`${SOTA_SUMMITS_API}/${path}`)
     if (response.status === 200 && response.body && response.body !== 'null') {
       summit = JSON.parse(response.body) as SOTASummitInfo
     }
@@ -455,7 +462,7 @@ async function sotaOAuth2Config(
   }
 }
 
-const SOTA_SPOTS_API = 'https://api-db2.sota.org.uk/api/spots'
+const SOTA_SPOTS_API = `${SOTA_API}/spots`
 
 interface SOTATokens {
   accessToken?: string
@@ -650,19 +657,20 @@ async function postSpotToSOTA(
   }
 }
 
-interface SOTAApiSpot {
-  id: number
-  timeStamp: string
-  comments: string | null
-  callsign: string
-  associationCode: string
-  summitCode: string
-  activatorCallsign: string
-  activatorName: string
-  frequency: string
-  mode: string
-  summitDetails: string
-}
+/// `-1` asks for the last hour rather than a count of spots. An activator
+/// spotted longer ago than that has almost certainly moved or packed up, so
+/// a wider window costs bandwidth to deliver rows a chaser can't use.
+const SOTA_SPOTS_WINDOW = '-1/all/all/'
+
+const SOTA_EPOCH_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/// The epoch UUID SOTAwatch last reported, and the spots it mapped to. The
+/// UUID changes whenever any spot does, so an unchanged one means the cached
+/// list is still exactly current and the spots request can be skipped
+/// entirely — `SpotsService` polls every two minutes for as long as an
+/// operation is open, and most of those ticks find nothing new.
+let lastSpotsEpoch: string | undefined
+let lastSpots: Spot[] = []
 
 const SpotsHook = {
   sourceName: 'SOTAWatch',
@@ -670,45 +678,39 @@ const SpotsHook = {
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
 
-    const response = await host.fetch('https://api2.sota.org.uk/api/spots/100')
-    if (response.status !== 200) throw new Error(`SOTA API returned HTTP ${response.status}`)
-    const apiSpots = JSON.parse(response.body) as SOTAApiSpot[]
-
-    // Dedupe activator callsigns, keeping the first (most recent) spot
-    const dedupedSpots: SOTAApiSpot[] = []
-    const includedCalls = new Set<string>()
-    for (const spot of apiSpots) {
-      const call = spot.activatorCallsign.toUpperCase()
-      if (!includedCalls.has(call)) {
-        includedCalls.add(call)
-        dedupedSpots.push(spot)
-      }
+    // The epoch endpoint answers with a bare UUID as text/plain — not JSON,
+    // so nothing to parse. Its failure must not fail the fetch it exists to
+    // save: without the catch, one refused request here empties the board for
+    // the cycle even though the spots endpoint is answering fine.
+    //
+    // The catch cannot bound a request that STALLS rather than fails, and
+    // this one is serialized ahead of the spots fetch. `FetchOptions` carries
+    // no timeout, and `_collectHookResults` spends a single 10s budget across
+    // all spot hooks at once, so a stall here costs every source its spots for
+    // that cycle, not just this one. That ceiling belongs to the host rather
+    // than to an extension — see HALO-179.
+    let epoch: string | undefined
+    try {
+      const epochResponse = await host.fetch(`${SOTA_SPOTS_API}/epoch`)
+      const body = epochResponse.status === 200 ? epochResponse.body.trim() : ''
+      // Only a UUID counts. A captive portal or proxy answering 200 with a
+      // constant page would otherwise pin the epoch to it and short-circuit
+      // every later poll — the spots request never runs, so nothing throws
+      // and the board silently freezes rather than reporting an error.
+      // Failing the check just costs the saving.
+      if (SOTA_EPOCH_REGEX.test(body)) epoch = body
+    } catch {
+      epoch = undefined
     }
+    if (epoch && epoch === lastSpotsEpoch) return lastSpots
 
-    return dedupedSpots.map((spot) => {
-      const freqMHz = parseFloat(spot.frequency)
-      const freq = freqMHz ? freqMHz * 1000 : 0
-      const ref = `${spot.associationCode}/${spot.summitCode}`.toUpperCase()
-      const pointsGlyph = summitGlyphFromDetails(spot.summitDetails)
-      return {
-        their: { call: spot.activatorCallsign },
-        freq: freq || undefined,
-        band: freq ? bandForFrequency(freq) : undefined,
-        mode: spot.mode ? spot.mode.toUpperCase() : undefined,
-        refs: [{ ref, type: HUNTING_TYPE }],
-        spot: {
-          timeInMillis: Date.parse(spot.timeStamp.endsWith('Z') ? spot.timeStamp : spot.timeStamp + 'Z'),
-          source: 'sota',
-          icon: 'image-filter-hdr',
-          label: `${pointsGlyph ? pointsGlyph + ' ' : ''}${ref}: ${spot.summitDetails}`,
-          sourceInfo: {
-            id: spot.id,
-            comments: spot.comments ?? '',
-            spotter: spot.callsign,
-          },
-        },
-      }
-    })
+    const response = await host.fetch(`${SOTA_SPOTS_API}/${SOTA_SPOTS_WINDOW}`)
+    if (response.status !== 200) throw new Error(`SOTA API returned HTTP ${response.status}`)
+    const spots = spotsFromSOTAApi(JSON.parse(response.body) as SOTAApiSpot[])
+
+    lastSpotsEpoch = epoch
+    lastSpots = spots
+    return spots
   },
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
