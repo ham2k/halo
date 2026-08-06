@@ -163,6 +163,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get categoryContest => 'Concursos';
 	@override String get categoryLookup => 'Búsqueda de indicativos';
 	@override String get categorySpots => 'Fuentes de spots';
+	@override String get categoryDashboard => 'Paneles de tablero';
 	@override String get categoryOther => 'Otras extensiones';
 	@override String get searchHint => 'Buscar extensiones';
 	@override String get applying => 'Activando cambios de extensiones, esto puede tardar un momento…';
@@ -1884,6 +1885,7 @@ extension on TranslationsEs {
 			'extensionsPanel.categoryContest' => 'Concursos',
 			'extensionsPanel.categoryLookup' => 'Búsqueda de indicativos',
 			'extensionsPanel.categorySpots' => 'Fuentes de spots',
+			'extensionsPanel.categoryDashboard' => 'Paneles de tablero',
 			'extensionsPanel.categoryOther' => 'Otras extensiones',
 			'extensionsPanel.searchHint' => 'Buscar extensiones',
 			'extensionsPanel.applying' => 'Activando cambios de extensiones, esto puede tardar un momento…',
@@ -2348,9 +2350,9 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
-			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',

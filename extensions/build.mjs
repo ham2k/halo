@@ -142,6 +142,10 @@ const bundles = [
   { key: 'fd', entry: 'contests/fd/src/index.ts', kind: 'extension' },
   { key: 'wfd', entry: 'contests/wfd/src/index.ts', kind: 'extension' },
   { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
+  { key: 'custom-text', entry: 'dashboard/custom-text/src/index.ts', kind: 'extension' },
+  { key: 'clock-panel', entry: 'dashboard/clock/src/index.ts', kind: 'extension' },
+  { key: 'solar-panel', entry: 'dashboard/solar/src/index.ts', kind: 'extension' },
+  { key: 'weather-panel', entry: 'dashboard/weather/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

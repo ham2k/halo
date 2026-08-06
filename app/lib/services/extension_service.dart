@@ -1133,6 +1133,25 @@ class ExtensionService implements PanelExtensionSource {
     await settings?.prefs.setString(_settingsPrefsKey(panelKey, fieldKey), encoded);
   }
 
+  /// Forgets everything stored for one panel's own form.
+  ///
+  /// Only a panel INSTANCE is ever forgotten (see PanelService), so this is
+  /// not a settings reset — it is a placement being thrown away along with
+  /// what the operator put in it. Secrets go too: leaving a keychain entry
+  /// behind for an id that will be handed to the next placement of the same
+  /// panel is exactly the resurrection this exists to prevent.
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {
+    for (final field in fields) {
+      final key = field['key'] as String?;
+      if (key == null) continue;
+      if (field['fieldType'] == 'secret') {
+        await _secureStorage.delete(key: _settingsSecretStorageKey(panelKey, key));
+      } else {
+        await settings?.prefs.remove(_settingsPrefsKey(panelKey, key));
+      }
+    }
+  }
+
   String _settingsPrefsKey(String panelKey, String fieldKey) => 'settingsPanel.$panelKey.$fieldKey';
 
   String _settingsSecretStorageKey(String panelKey, String fieldKey) => 'settingsPanel_secret_${panelKey}_$fieldKey';

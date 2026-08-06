@@ -30,21 +30,32 @@ class PanelContent {
   final String kind;
   final String content;
 
-  const PanelContent({required this.kind, required this.content});
+  /// A tab label for this rendering, overriding the descriptor's title.
+  /// Optional, and the reason it exists is panels an operator may place more
+  /// than once: three panes all labelled "Custom Text" tell them nothing,
+  /// and the operator's own heading is a better label than an ordinal.
+  final String? title;
+
+  const PanelContent({required this.kind, required this.content, this.title});
 
   static PanelContent? fromJson(Object? json) {
     if (json is! Map) return null;
     final kind = json['kind'];
     final content = json['content'];
     if (kind is! String || content is! String) return null;
-    return PanelContent(kind: kind, content: content);
+    final title = json['title'];
+    // Blank is not a label — a panel that computes its title from empty
+    // config would otherwise leave a nameless tab.
+    final trimmed = title is String ? title.trim() : '';
+    return PanelContent(kind: kind, content: content, title: trimmed.isEmpty ? null : trimmed);
   }
 
   @override
-  bool operator ==(Object other) => other is PanelContent && other.kind == kind && other.content == content;
+  bool operator ==(Object other) =>
+      other is PanelContent && other.kind == kind && other.content == content && other.title == title;
 
   @override
-  int get hashCode => Object.hash(kind, content);
+  int get hashCode => Object.hash(kind, content, title);
 }
 
 /// Whether an HTML panel can be shown here at all. Linux has no webview

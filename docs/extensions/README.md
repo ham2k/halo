@@ -181,6 +181,36 @@ Available via `import { host } from "@ham2k/halo-extension-sdk"`:
 | `host.getVersionInfo()` | Read-only build identity: platform, edition, version, versionName, buildNumber, gitSha. `buildNumber` is null on Dev, where the compiled-in number is the last release's rather than the running build's. |
 | `host.log(message)` | Log line, prefixed with your extension key, visible in the app console. |
 
+### What the JS runtime does NOT have
+
+Native builds run **QuickJS-NG**, which is ECMA-262 only. There is no
+ECMA-402: **`Intl` is undefined**. Verified against the engine, not inferred.
+
+The trap is that the fallbacks do not throw. `toLocaleString`,
+`toLocaleTimeString` and friends all exist and all **silently ignore a
+`timeZone` option**, returning host-local time instead. On a machine that
+happens to sit in the requested zone the result looks perfectly right, so the
+bug is invisible to whoever wrote it and shows up only for a user somewhere
+else. Number and date formatting are host-locale-shaped for the same reason —
+`ctx.locale` tells you the app's locale, but nothing in the runtime will
+format *for* it.
+
+Web builds run on the browser's engine, which **does** have full `Intl`. So
+code that reaches for it works in a web build and is quietly wrong in every
+native one — the worst possible split, and the reason to treat `Intl` as
+absent everywhere.
+
+There are also **no timers**: `setTimeout` and `setInterval` are simply not
+defined. Promises work — the host pumps the job queue — but nothing that
+needs the clock to fire does. A timeout raced in JS therefore doesn't merely
+fail to fire, it throws `ReferenceError` out of your hook. Bound a request
+with `host.fetch`'s own `timeout` option, which the host enforces, and let
+the host's periodic triggers (a panel's `tick`) be your clock.
+
+Work in UTC and do the arithmetic yourself
+(`extensions/dashboard/clock/src/offsets.ts` is a worked example), or hand
+the raw value to the host and let Dart format it.
+
 Cross-extension composition (calling other extensions' hooks *inside* the
 runtime, without a bridge round-trip):
 

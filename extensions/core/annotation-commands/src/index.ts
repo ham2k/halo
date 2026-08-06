@@ -29,8 +29,8 @@ import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 import { gridToLocation } from "@ham2k/lib-geo-tools"
 
-import { parseSolarXml, solarMessage, weatherMessage } from "./annotations.ts"
-import type { WeatherData } from "./annotations.ts"
+import { parseSolarXml, solarMessage, weatherMessage } from "../../../shared/spaceWeather.ts"
+import type { WeatherData } from "../../../shared/spaceWeather.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }

@@ -958,9 +958,23 @@ Layout Setup. Values are host-persisted per panel and handed back as
 `args.config`; there is no per-keystroke bridge call and nothing for the
 extension to store.
 
+**`multiple`** lets an operator place more than one of your panel. Off by
+default, because most panels are one thing — two maps or two spot lists would
+be a mistake to offer. Set it where two is the point: a panel whose content
+is the operator's OWN, like `custom-text`'s notes.
+
+Each placement gets its own id and therefore its own config, so `args.config`
+differs per pane with nothing to do on your side. What you DO owe an
+instanceable panel is a `title` on the render result — without one every pane
+reads the same descriptor title and the operator cannot tell them apart.
+
 **`preview`** is a still image for that same list — an SVG document or a
 `data:` URI, never a URL: the list renders offline, and a remote preview
 would make opening it a fetch (and a beacon).
+
+A render result may carry a **`title`**, which replaces the tab label for
+that pane. Blank is ignored rather than producing a nameless tab, and a
+result with no title keeps the descriptor's.
 
 The whole log is deliberately absent from `render`'s args. A panel that
 needs it calls `ctx.getQsos(operation.uuid)` — right for a `'qsoLogged'`

@@ -16,8 +16,8 @@ import {
   parseSolarXml,
   solarMessage,
   weatherMessage,
-} from './annotations.ts'
-import type { WeatherData } from './annotations.ts'
+} from './spaceWeather.ts'
+import type { WeatherData } from './spaceWeather.ts'
 
 // Abridged from a real https://www.hamqsl.com/solarxml.php response —
 // scalar readings plus the nested per-band conditions the parser must skip.

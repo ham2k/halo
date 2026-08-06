@@ -124,6 +124,134 @@ void main() {
     });
   });
 
+  group('instances', () {
+    Future<PanelService> withPanel({required bool multiple}) async {
+      final service = PanelService(_FakeExtensions(entries: [
+        {'hookKey': 'notes', 'key': 'text', 'title': 'Custom Text', 'multiple': multiple},
+      ]));
+      await service.refreshExtensionPanels();
+      return service;
+    }
+
+    test('an instance id resolves to its descriptor but keeps its own id', () async {
+      final service = await withPanel(multiple: true);
+      final instance = service['ext:notes:text#2'];
+
+      expect(instance, isNotNull);
+      // The routing keys are the descriptor's — that is what makes the
+      // render reach the same hook for every placement.
+      expect(instance!.hookKey, 'notes');
+      expect(instance.panelKey, 'text');
+      // But the id is the INSTANCE's, because config is stored under it. If
+      // this returned the descriptor's id, two panes would share one set of
+      // values and editing either would rewrite both.
+      expect(instance.id, 'ext:notes:text#2');
+    });
+
+    test('a panel that did not opt in has no instances', () async {
+      final service = await withPanel(multiple: false);
+      // A suffix on a panel that is meant to exist once is a layout naming
+      // something the catalog cannot explain — the pane says so, which beats
+      // silently handing back the descriptor and letting the placements
+      // share a config.
+      expect(service['ext:notes:text#2'], isNull);
+      expect(service['ext:notes:text'], isNotNull);
+    });
+
+    test('an id with no suffix is its own descriptor', () async {
+      // Every arrangement saved before instances existed is full of these.
+      expect(PanelDefinition.descriptorIdOf('ext:notes:text'), 'ext:notes:text');
+      expect(PanelDefinition.descriptorIdOf('ext:notes:text#3'), 'ext:notes:text');
+      expect(PanelDefinition.descriptorIdOf('logging'), 'logging');
+    });
+
+    test('a key containing # is refused, not read as an instance', () async {
+      final service = PanelService(_FakeExtensions(entries: [
+        {'hookKey': 'notes', 'key': 'text#2', 'title': 'Sneaky'},
+        {'hookKey': 'notes', 'key': 'text', 'title': 'Custom Text', 'multiple': true},
+      ]));
+      await service.refreshExtensionPanels();
+
+      // `#` is what separates a descriptor from a placement of it, so a key
+      // carrying one would be resolved as an instance of a shorter
+      // descriptor — here, silently answering for `ext:notes:text#2`, the
+      // second pane of a different panel entirely.
+      expect(service.catalog.map((p) => p.id), ['ext:notes:text']);
+      expect(service['ext:notes:text#2']?.title, 'Custom Text', reason: 'the real panel, not the sneaky one');
+    });
+
+    test('removing an instance forgets what it held; removing a panel does not', () async {
+      final extensions = _FakeExtensions(entries: [
+        {
+          'hookKey': 'notes',
+          'key': 'text',
+          'title': 'Custom Text',
+          'multiple': true,
+          'form': [
+            {'key': 'content', 'fieldType': 'multiline'},
+          ],
+        },
+        {
+          'hookKey': 'wx',
+          'key': 'forecast',
+          'title': 'Weather',
+          'form': [
+            {'key': 'location', 'fieldType': 'text'},
+          ],
+        },
+      ]);
+      final service = PanelService(extensions);
+      await service.refreshExtensionPanels();
+
+      // An instance id is an anonymous slot — `nextInstanceId` hands `#1` to
+      // whoever asks next — so one pane's notes would otherwise reappear
+      // inside the next pane the operator adds.
+      await service.forgetInstanceConfig('ext:notes:text#1');
+      expect(extensions.forgotten, ['ext:notes:text#1']);
+
+      // A panel placed once is the opposite: its location is the PANEL's
+      // configuration, not that pane's, and removing the pane to put it back
+      // must not throw the operator's setup away.
+      await service.forgetInstanceConfig('ext:wx:forecast');
+      expect(extensions.forgotten, ['ext:notes:text#1'], reason: 'a panel is not a placement');
+    });
+
+    test('a panel whose extension is disabled still forgets its placement', () async {
+      final extensions = _FakeExtensions(entries: [
+        {
+          'hookKey': 'notes',
+          'key': 'text',
+          'title': 'Custom Text',
+          'multiple': true,
+          'form': [
+            {'key': 'content', 'fieldType': 'multiline'},
+          ],
+        },
+      ]);
+      final service = PanelService(extensions);
+      await service.refreshExtensionPanels();
+
+      // Resolving the INSTANCE is what fails while an extension is disabled
+      // or has stopped offering instances — and a pane removed in that state
+      // would leave its contents for the next `#1` to inherit, which is the
+      // one outcome this whole rule exists to prevent. So the descriptor is
+      // what gets looked up.
+      await service.forgetInstanceConfig('ext:notes:text#3');
+      expect(extensions.forgotten, ['ext:notes:text#3']);
+    });
+
+    test('a new instance never collides with one already placed', () {
+      const id = 'ext:notes:text';
+      expect(PanelService.nextInstanceId(id, const []), 'ext:notes:text#1');
+      expect(PanelService.nextInstanceId(id, const ['ext:notes:text#1']), 'ext:notes:text#2');
+      // Gaps are reused rather than counted past: removing #1 and adding
+      // another must not walk the numbering upward forever.
+      expect(PanelService.nextInstanceId(id, const ['ext:notes:text#2']), 'ext:notes:text#1');
+      // Other panels' placements are not this panel's business.
+      expect(PanelService.nextInstanceId(id, const ['ext:other:thing#1']), 'ext:notes:text#1');
+    });
+  });
+
   group('triggers', () {
     test('only names the host actually fires are accepted', () {
       for (final t in ['operation', 'qso', 'qsoLogged', 'lookup', 'spots', 'tick:5', 'tick:3600']) {
@@ -216,4 +344,14 @@ class _FakeExtensions implements PanelExtensionSource {
     required String panelKey,
     required List<Map<String, dynamic>> fields,
   }) async => const {};
+
+  /// What the catalog asked to be forgotten, so a test can assert on the
+  /// distinction between a placement and a panel.
+  final forgotten = <String>[];
+
+  @override
+  Future<void> forgetPanelConfig({
+    required String panelKey,
+    required List<Map<String, dynamic>> fields,
+  }) async => forgotten.add(panelKey);
 }

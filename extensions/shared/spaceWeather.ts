@@ -1,9 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Pure helpers for the annotation commands (SOLAR/WEATHER data shaping),
-// split from index.ts so they can be unit-tested without the kernel —
-// same pattern as dev-commands' seed.ts. Message formats, emoji
+// Shaping solar and weather readings into something readable — shared
+// because two extensions render the same numbers: the SOLAR/WEATHER
+// commands, which write an annotation into the log, and the dashboard
+// panels, which show them in a pane. One place decides what an SFI of 180
+// looks like, so a command and a panel can never disagree about it.
+//
+// Pure, so it unit-tests without the kernel. Message formats, emoji
 // thresholds, and the Open-Meteo weather-code table are ported verbatim
 // from app-polo's AnnotationCommands.js so both apps annotate logs
 // identically.

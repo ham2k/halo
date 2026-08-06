@@ -259,6 +259,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Spot Sources'
 	String get categorySpots => 'Spot Sources';
 
+	/// en: 'Dashboard Panels'
+	String get categoryDashboard => 'Dashboard Panels';
+
 	/// en: 'Other Extensions'
 	String get categoryOther => 'Other Extensions';
 
@@ -3601,6 +3604,7 @@ extension on Translations {
 			'extensionsPanel.categoryContest' => 'Contests',
 			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
 			'extensionsPanel.categorySpots' => 'Spot Sources',
+			'extensionsPanel.categoryDashboard' => 'Dashboard Panels',
 			'extensionsPanel.categoryOther' => 'Other Extensions',
 			'extensionsPanel.searchHint' => 'Search extensions',
 			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
@@ -4065,9 +4069,9 @@ extension on Translations {
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
-			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',

@@ -62,11 +62,17 @@ class ExtensionPanel extends StatefulWidget {
   final PanelService panels;
   final PanelRenderContext renderContext;
 
+  /// A title this render supplied, or null to fall back to the descriptor's.
+  /// The tab lives in the dock, above this widget, so the label has to be
+  /// handed upward — and it can only be known once the panel has answered.
+  final ValueChanged<String?>? onTitle;
+
   const ExtensionPanel({
     super.key,
     required this.panel,
     required this.panels,
     required this.renderContext,
+    this.onTitle,
   });
 
   @override
@@ -256,6 +262,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
         _content = content;
         _error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
       });
+      // After the setState, not inside it: this reaches the VIEW's state, and
+      // a panel is free to return the same title on every render, so the
+      // listener has to be the one that drops a repeat.
+      widget.onTitle?.call(content?.title);
     } catch (e, stack) {
       // Through ErrorPolicy like everything else (docs/design/error-reporting.md):
       // a panel that throws for every operator is exactly the thing that has

@@ -57,6 +57,16 @@ class PanelDefinition {
   /// form of their own.
   final String? settingsTarget;
 
+  /// Whether an arrangement may hold more than one of this panel. Off by
+  /// default: most panels are one thing, and two copies of a map or a spot
+  /// list would be a mistake to offer. A panel whose content is the
+  /// operator's own — a note, a scratchpad — is the case this exists for.
+  ///
+  /// Each placement gets its own [id] (see [instanceIdFor]), and because
+  /// panel config is stored under the panel id, each instance's values are
+  /// separately persisted without any storage code of their own.
+  final bool multiple;
+
   const PanelDefinition({
     required this.id,
     required this.title,
@@ -69,9 +79,27 @@ class PanelDefinition {
     this.triggers = const [],
     this.formFields = const [],
     this.settingsTarget,
+    this.multiple = false,
   });
 
   bool get hasSettings => formFields.isNotEmpty || settingsTarget != null;
+
+  /// This descriptor as one placement of itself. Only the id moves — the
+  /// routing keys, the form and the triggers stay the descriptor's.
+  PanelDefinition asInstance(String instanceId) => PanelDefinition(
+    id: instanceId,
+    title: title,
+    description: description,
+    icon: icon,
+    preview: preview,
+    source: source,
+    hookKey: hookKey,
+    panelKey: panelKey,
+    triggers: triggers,
+    formFields: formFields,
+    settingsTarget: settingsTarget,
+    multiple: multiple,
+  );
 
   /// Value equality so a re-registration with identical content is a no-op:
   /// native panels are registered from `didChangeDependencies`, which runs
@@ -89,6 +117,7 @@ class PanelDefinition {
       other.hookKey == hookKey &&
       other.panelKey == panelKey &&
       other.settingsTarget == settingsTarget &&
+      other.multiple == multiple &&
       listEquals(other.triggers, triggers) &&
       other.formFields.length == formFields.length;
 
@@ -103,6 +132,15 @@ class PanelDefinition {
     final panelKey = entry['key'] as String?;
     final title = entry['title'] as String?;
     if (hookKey == null || panelKey == null || title == null) return null;
+    // `#` separates a descriptor from one of its placements, so a key
+    // containing one would be read as an instance of a shorter descriptor
+    // that may not exist. Dropped with a line rather than sanitized: an id
+    // is persisted inside saved layouts, and quietly rewriting one would
+    // strand every arrangement already holding it.
+    if (hookKey.contains('#') || panelKey.contains('#')) {
+      debugPrint('[panels] ignoring "$hookKey:$panelKey": a panel key may not contain "#"');
+      return null;
+    }
     return PanelDefinition(
       id: extensionPanelId(hookKey: hookKey, panelKey: panelKey),
       title: title,
@@ -135,10 +173,26 @@ class PanelDefinition {
               return const <Map<String, dynamic>>[];
             }(),
       ],
+      multiple: entry['multiple'] == true,
     );
   }
 
   static String extensionPanelId({required String hookKey, required String panelKey}) => 'ext:$hookKey:$panelKey';
+
+  /// The id of one PLACEMENT of a [multiple] panel — the descriptor's id
+  /// with an instance suffix.
+  ///
+  /// `#` is deliberate, and [fromExtensionEntry] enforces that neither key
+  /// contains one, so [descriptorIdOf] splits without ambiguity — and an id
+  /// saved before instances existed parses as its own descriptor, which is
+  /// what keeps every arrangement already on disk working.
+  static String instanceIdFor(String descriptorId, int instance) => '$descriptorId#$instance';
+
+  /// The descriptor an id belongs to — itself, for a panel placed once.
+  static String descriptorIdOf(String id) {
+    final cut = id.indexOf('#');
+    return cut < 0 ? id : id.substring(0, cut);
+  }
 }
 
 /// The triggers the host actually fires, plus `tick:<seconds>`. A name
@@ -186,6 +240,11 @@ abstract interface class PanelExtensionSource {
   });
 
   Future<Map<String, dynamic>> readPanelConfig({
+    required String panelKey,
+    required List<Map<String, dynamic>> fields,
+  });
+
+  Future<void> forgetPanelConfig({
     required String panelKey,
     required List<Map<String, dynamic>> fields,
   });
@@ -245,8 +304,36 @@ class PanelService extends ChangeNotifier {
   /// after — a view's own panes are the ones an operator is looking for.
   List<PanelDefinition> get catalog => [..._native.values, ..._extensionPanels];
 
-  PanelDefinition? operator [](String id) =>
-      _native[id] ?? _extensionPanels.where((p) => p.id == id).firstOrNull;
+  /// The panel an id names. An instance id (`…#2`) resolves to its
+  /// descriptor, but what comes back carries the INSTANCE id — config is
+  /// stored under it, so two Custom Text panes must not share a key.
+  /// Everything that routes a call to the extension reads `hookKey` and
+  /// `panelKey`, which an instance inherits unchanged.
+  PanelDefinition? operator [](String id) {
+    final exact = _native[id] ?? _extensionPanels.where((p) => p.id == id).firstOrNull;
+    if (exact != null) return exact;
+    final descriptorId = PanelDefinition.descriptorIdOf(id);
+    if (descriptorId == id) return null;
+    final descriptor = _extensionPanels.where((p) => p.id == descriptorId).firstOrNull;
+    // A suffix on a descriptor that does not offer instances is a layout
+    // naming something this catalog cannot explain, and the pane says so —
+    // better than silently serving the descriptor and letting two placements
+    // share one config.
+    if (descriptor == null || !descriptor.multiple) return null;
+    return descriptor.asInstance(id);
+  }
+
+  /// An instance id for [descriptorId] that nothing in [inLayout] is using.
+  /// Numbered rather than random: these end up in a saved arrangement and in
+  /// settings keys, where being readable is worth more than being
+  /// unguessable.
+  static String nextInstanceId(String descriptorId, Iterable<String> inLayout) {
+    final taken = inLayout.where((id) => PanelDefinition.descriptorIdOf(id) == descriptorId).toSet();
+    for (var i = 1;; i++) {
+      final candidate = PanelDefinition.instanceIdFor(descriptorId, i);
+      if (!taken.contains(candidate)) return candidate;
+    }
+  }
 
   /// Re-reads what the extensions offer — on every runtime (re)start, and
   /// whenever a caller wants to be certain (the layout sheet asks on open).
@@ -308,4 +395,30 @@ class PanelService extends ChangeNotifier {
 
   Future<Map<String, dynamic>> configFor(PanelDefinition panel) =>
       extensions.readPanelConfig(panelKey: panel.id, fields: panel.formFields);
+
+  /// Throws away what a removed pane held, for INSTANCES only.
+  ///
+  /// The distinction is the whole rule. An instance id is an anonymous slot
+  /// — `#1` is not a thing the operator named, it is wherever the next
+  /// placement happens to land, since [nextInstanceId] reuses the lowest
+  /// free number. Left behind, one pane's notes reappear inside the next
+  /// pane somebody adds, under its old tab name.
+  ///
+  /// A panel placed once is the opposite case and is deliberately NOT
+  /// forgotten: the weather panel's location is that panel's configuration,
+  /// not that pane's, and an operator who removes the pane and puts it back
+  /// expects their setup intact.
+  Future<void> forgetInstanceConfig(String id) async {
+    final descriptorId = PanelDefinition.descriptorIdOf(id);
+    if (descriptorId == id) return;
+    // The DESCRIPTOR, not the instance: `this[id]` returns null while the
+    // owning extension is disabled, or if the descriptor has stopped
+    // offering instances — and a pane removed in either state would leave
+    // its contents behind for the next placement to inherit, which is the
+    // one outcome this must not have.
+    final panel = this[descriptorId];
+    if (panel == null || panel.formFields.isEmpty) return;
+    await extensions.forgetPanelConfig(panelKey: id, fields: panel.formFields);
+    _configRevisions.remove(id);
+  }
 }

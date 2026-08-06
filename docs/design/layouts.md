@@ -291,6 +291,32 @@ catalog is read during **startup**, before the first view builds, so the
 ordinary case never shows a placeholder at all; the placeholder is for a
 panel that is genuinely gone.
 
+**A panel may be placeable more than once.** A descriptor sets
+`multiple: true` and each placement gets an id of the form
+`ext:<hook>:<key>#<n>`; everything else keeps one pane per panel. Because
+panel config is stored under the panel id, each instance's values persist
+separately with no storage code of their own — the property that makes the
+whole feature cheap. `#` is safe as the separator (neither key may contain
+one), so an arrangement saved before instances existed parses as its own
+descriptor and keeps working.
+
+Three consequences worth knowing. Layout Setup keeps an instanceable panel in
+**Available Panels** once placed, because that row is the only "add another"
+control there is. A render result may carry a **`title`** that replaces the
+tab label — without it, three placements of one panel all read the same
+thing, and the operator's own heading beats an ordinal. And **removing an
+instance forgets its config**, because an instance id is an anonymous slot
+that the next placement reuses; a panel placed once is deliberately not
+forgotten, since its settings belong to the panel rather than to that pane.
+
+**Layout Setup offers a panel's own configuration and nothing else.** A
+native panel's `settingsTarget` opens the app's declared settings aimed at
+that pane — the logging panel's tune dialog, reachable from its own tab.
+Those are user settings that happen to concern a pane, and putting them here
+would say the layout and the operator's preferences are the same kind of
+thing. An extension panel's form is the opposite case: it configures that
+pane alone, and this sheet is the only route to it.
+
 **The dock's definition and its state are stored apart.** The definition
 (`LayoutKeys.operationDock`) is the tree — splits, weights, which modules sit
 where. The state (`LayoutKeys.operationDockState`) is what the operator has

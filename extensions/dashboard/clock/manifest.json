@@ -1,0 +1,19 @@
+{
+  "key": "clock-panel",
+  "name": "Clock Panel",
+  "shortName": "Clock",
+  "version": "0.0.1",
+  "description": "UTC and station time, plus any other clocks you add by UTC offset",
+  "category": "dashboard",
+  "enabledByDefault": false,
+  "icon": "clock-outline",
+  "keywords": ["clock", "utc", "time", "zulu", "dashboard", "panel"],
+  "hooks": ["panel"],
+  "translations": {
+    "es": {
+      "name": "Panel de Reloj",
+      "description": "Hora UTC y de la estación, más los relojes que añadas por desfase UTC",
+      "keywords": ["reloj", "utc", "hora"]
+    }
+  }
+}

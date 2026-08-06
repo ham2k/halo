@@ -2005,6 +2005,15 @@ export interface PanelDescriptor {
   /// URI. Not a URL — the sheet must render offline and without a fetch.
   preview?: string
   on?: PanelTrigger[]
+  /// Whether an operator may place more than one of this panel in a layout.
+  /// Default false — most panels are one thing, and two copies of a map
+  /// would be a mistake to offer. Set it for a panel whose content is the
+  /// operator's OWN (a note, a scratchpad), where two is the point.
+  ///
+  /// Each placement gets its own config, so `args.config` differs per pane
+  /// with nothing to do on your side. Give each one a `title` in the render
+  /// result, or every tab reads the same.
+  multiple?: boolean
   /// The panel's own configuration, in the same declarative field schema a
   /// SimpleSettingsPanel uses and rendered by the same core form renderer.
   /// Values are host-persisted per panel and handed back in
@@ -2042,10 +2051,15 @@ export interface PanelRenderArgs {
 /// app's own typography, SVG as a vector image, HTML in a sandboxed web
 /// view. Prefer markdown — it inherits the app's theme, font scale and
 /// density for free, and costs no web view.
+/// `title` overrides the tab label for this rendering. Optional, and only
+/// worth setting on a `multiple` panel — otherwise the descriptor's title
+/// already names it, and three panes reading the same thing is exactly what
+/// this exists to avoid. Blank is ignored rather than producing a nameless
+/// tab.
 export type PanelContent =
-  | { kind: 'markdown'; content: string }
-  | { kind: 'svg'; content: string }
-  | { kind: 'html'; content: string }
+  | { kind: 'markdown'; content: string; title?: string }
+  | { kind: 'svg'; content: string; title?: string }
+  | { kind: 'html'; content: string; title?: string }
 
 /// Registered under category 'panel'. Same two-call shape as
 /// `settingsPanel`'s dynamic tier: discovery once, then content on demand.

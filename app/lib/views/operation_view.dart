@@ -411,6 +411,41 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// Releases this view's spot-cache subscription (see initState).
   VoidCallback? _unsubscribeSpots;
 
+  /// Tab labels panels supplied for themselves, by panel id — what tells two
+  /// placements of one panel apart ("Antenna notes" and "Sked list", not
+  /// "Custom Text" twice). A panel that supplies none is simply absent here
+  /// and keeps its descriptor's title.
+  final _panelTitles = <String, String>{};
+
+  /// What dropping a pane means, in one place so the remove control and
+  /// Reset Layout cannot disagree: the label goes, and so does whatever the
+  /// operator typed into it.
+  ///
+  /// Only an INSTANCE forgets its config — see
+  /// [PanelService.forgetInstanceConfig], which draws that line. Fire and
+  /// forget: nothing here should wait on storage, and a config outliving its
+  /// pane costs a stale value rather than a broken layout.
+  void _forgetPanes(Iterable<String> ids) {
+    for (final id in ids.toList()) {
+      _panelTitles.remove(id);
+      unawaited(widget.services.panels.forgetInstanceConfig(id));
+    }
+  }
+
+  void _onPanelTitle(String id, String? title) {
+    // A panel is free to return the same title on every render, so dropping
+    // the repeat is this side's job — otherwise every render of every titled
+    // panel would rebuild the whole view.
+    if (title == null ? !_panelTitles.containsKey(id) : _panelTitles[id] == title) return;
+    setState(() {
+      if (title == null) {
+        _panelTitles.remove(id);
+      } else {
+        _panelTitles[id] = title;
+      }
+    });
+  }
+
   /// Counts spot refreshes rather than carrying the spots themselves: it
   /// exists only to fire an extension panel's `spots` trigger, and the
   /// panels that care read the cache themselves.
@@ -1307,11 +1342,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     'map': context.t.operation.tabs.map,
     for (final panel in widget.services.panels.catalog)
       if (panel.source == PanelSource.extension) panel.id: panel.title,
-    // A module the catalog cannot explain still needs a tab label. Its own
-    // key reads better than the full `ext:hook:key` id, and the pane behind
-    // it says what is actually wrong.
+    // Every extension module actually in the arrangement, which the catalog
+    // loop above misses for a PLACEMENT: `ext:hook:key#1` is not a catalog
+    // id, so without this a Custom Text pane whose name is still empty — the
+    // default the moment one is added — has a tab reading its raw id.
+    // A module the catalog cannot explain at all falls back to its own key,
+    // which reads better than the full id; the pane behind it says what is
+    // actually wrong.
     for (final id in _dockSpec?.collectModules() ?? const <String>[])
-      if (!_dockModuleIds.contains(id) && widget.services.panels[id] == null) id: panelKeyOfPanelId(id),
+      if (!_dockModuleIds.contains(id)) id: widget.services.panels[id]?.title ?? panelKeyOfPanelId(id),
+    // A panel may name its own tab, which is what tells two placements of
+    // one panel apart. LAST in the map, so it wins over every fallback
+    // above — the operator's own heading beats a descriptor's title.
+    ..._panelTitles,
   };
 
   /// Registers this view's own panels with the service. Called from
@@ -1383,6 +1426,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               key: ValueKey('panel-$id'),
               panel: widget.services.panels[id]!,
               panels: widget.services.panels,
+              onTitle: (title) => _onPanelTitle(id, title),
               renderContext: PanelRenderContext(
                 operation: _draftOperation ?? operation,
                 qso: _draftQso,
@@ -1481,6 +1525,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           onPressed: () => LayoutSheet.showOptions(
             buttonContext,
             onReset: () {
+              // Reset drops every pane at once, and dropping a pane means
+              // the same thing here as it does on the remove button — a
+              // placement's contents go with it. Without this, resetting and
+              // then adding a Custom Text pane hands back `#1` still holding
+              // the notes that were on screen a moment ago.
+              _forgetPanes(dock.modules);
               dock.replaceSpec(_defaultDockSpec());
               setState(() {});
             },
@@ -1535,27 +1585,27 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             }
             return LayoutPanelEntry(
               id: id,
-              title: panel.title,
+              // The panel's OWN title where it has one. Three placements of
+              // one panel are otherwise three identical rows, each with a
+              // remove control — and this is the surface where picking the
+              // wrong one destroys something.
+              title: _panelTitles[id] ?? panel.title,
               description: panel.description,
               preview: panel.preview,
-              openSettings: !panel.hasSettings
+              // Only the panel's OWN configuration, never the operator's.
+              //
+              // A native panel's `settingsTarget` opens the app's declared
+              // settings aimed at that pane — the logging panel's tune
+              // dialog, reachable from its own tab. Those are user settings
+              // that happen to concern a pane; this sheet is about the
+              // LAYOUT, and offering them here says the two are the same
+              // kind of thing. An extension panel's form is the other case:
+              // it configures that pane and nothing else, and there is
+              // nowhere else to reach it from.
+              openSettings: panel.formFields.isEmpty
                   ? null
-                  : (settingsContext) {
-                      final target = panel.settingsTarget;
-                      if (target != null) {
-                        // A native panel's settings are assembled from the
-                        // declared settings aimed at it — the same dialog its
-                        // own tune button opens.
-                        unawaited(showSettingsForTarget(
-                          settingsContext,
-                          services: widget.services,
-                          target: target,
-                          title: settingsContext.t.operation.menu.loggingSettingsTitle,
-                        ));
-                        return;
-                      }
-                      unawaited(showPanelSettings(settingsContext, services: widget.services, panel: panel));
-                    },
+                  : (settingsContext) =>
+                      unawaited(showPanelSettings(settingsContext, services: widget.services, panel: panel)),
             );
           }
 
@@ -1565,10 +1615,27 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // same place in the list it left from.
             available: [
               for (final panel in widget.services.panels.catalog)
-                if (!inLayout.contains(panel.id)) entry(panel.id),
+                // A panel that may be placed more than once stays offered
+                // however many are already in the layout — that row IS the
+                // "add another" control, and there is no other.
+                if (panel.multiple || !inLayout.contains(panel.id)) entry(panel.id),
             ].nonNulls.toList(),
-            onRemove: dock.removeModule,
-            onAdd: dock.addModule,
+            // Only after the dock agrees to drop it: removeModule refuses
+            // for the last module in the arrangement, and forgetting a pane
+            // that is still on screen would wipe what the operator can see.
+            onRemove: (id) {
+              if (dock.removeModule(id)) _forgetPanes([id]);
+            },
+            onAdd: (id) {
+              // Adding an instanceable panel places a NEW one rather than
+              // re-adding the descriptor: its id is what its config is
+              // stored under, so two panes sharing one would share their
+              // contents too.
+              final panel = widget.services.panels[id];
+              dock.addModule(
+                panel != null && panel.multiple ? PanelService.nextInstanceId(id, dock.modules) : id,
+              );
+            },
           );
         },
       ),

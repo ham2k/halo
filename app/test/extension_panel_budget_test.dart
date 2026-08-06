@@ -139,4 +139,10 @@ class _NullSource implements PanelExtensionSource {
     required String panelKey,
     required List<Map<String, dynamic>> fields,
   }) async => const {};
+
+  @override
+  Future<void> forgetPanelConfig({
+    required String panelKey,
+    required List<Map<String, dynamic>> fields,
+  }) async {}
 }

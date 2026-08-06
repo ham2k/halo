@@ -20,6 +20,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
+import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 import 'package:ham2k_logger/views/operation/missing_panel_pane.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
@@ -233,6 +234,179 @@ void main() {
       isNot(contains('spots')),
       reason: 'the arrangement carries no selection at all — that is the whole split',
     );
+
+    await unmount(tester);
+  });
+
+  testWidgets('a multiple panel renders under the title it supplied', (tester) async {
+    final services = await servicesWith(
+      tester,
+      mockHooks: {
+        'panel:*:getPanels': [
+          {
+            'key': 'notes',
+            'ok': true,
+            'value': [
+              {'key': 'text', 'title': 'Custom Text', 'multiple': true},
+            ],
+          },
+        ],
+        'panel:notes:render': {'kind': 'markdown', 'content': 'ok', 'title': 'Sked list'},
+      },
+      layout: const ['logging', 'ext:notes:text#1'],
+    );
+    await pumpOperation(tester, services);
+
+    // Without a render-supplied title, two placements would both read
+    // "Custom Text" and the operator could not tell which pane held which
+    // notes — the whole reason instances need one.
+    expect(find.text('Sked list'), findsOneWidget);
+    expect(find.text('Custom Text'), findsNothing);
+
+    await unmount(tester);
+  });
+
+  /// Two descriptors from one hook: one placeable many times, one not.
+  /// Only ONE of them goes in a layout per test — a second extension pane in
+  /// the same group sits behind a tab, never renders by design, and spins on
+  /// its progress indicator until pumpAndSettle gives up.
+  Map<String, dynamic> twoPanelHooks() => {
+        'panel:*:getPanels': [
+          {
+            'key': 'notes',
+            'ok': true,
+            'value': [
+              {'key': 'text', 'title': 'Custom Text', 'multiple': true},
+              {'key': 'once', 'title': 'Single', 'multiple': false},
+            ],
+          },
+        ],
+        'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
+      };
+
+  Future<LayoutSheet> openSheet(WidgetTester tester) async {
+    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    return tester.widget<LayoutSheet>(find.byType(LayoutSheet));
+  }
+
+  testWidgets('an instanceable panel stays in Available Panels once placed', (tester) async {
+    final services = await servicesWith(
+      tester,
+      mockHooks: twoPanelHooks(),
+      // Placed under the BARE descriptor id, which is what a layout saved
+      // before this panel gained `multiple` holds — and the only case the
+      // rule actually bites. An instance id (`…#1`) never equals the
+      // descriptor id, so the plain filter would keep those anyway.
+      layout: const ['logging', 'ext:notes:text'],
+    );
+    await pumpOperation(tester, services);
+
+    // That row IS the "add another" control, and there is no other — a panel
+    // filtered out once placed could never be placed twice.
+    expect((await openSheet(tester)).available.map((p) => p.id), contains('ext:notes:text'));
+
+    await unmount(tester);
+  });
+
+  testWidgets('adding an instanceable panel again mints a new id, not a duplicate', (tester) async {
+    final services = await servicesWith(
+      tester,
+      mockHooks: twoPanelHooks(),
+      layout: const ['logging', 'ext:notes:text#1'],
+    );
+    await pumpOperation(tester, services);
+
+    final sheet = await openSheet(tester);
+    sheet.onAdd!('ext:notes:text');
+    await tester.pumpAndSettle();
+
+    // Placing the DESCRIPTOR id a second time would put the same module in
+    // the arrangement twice — two panes sharing one config, so editing
+    // either rewrites both — and a duplicate module is a GlobalKey crash
+    // besides. The whole point of the mint is that this cannot happen.
+    final saved = DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules();
+    expect(saved.where((id) => id.startsWith('ext:notes:text')), ['ext:notes:text#1', 'ext:notes:text#2']);
+
+    await unmount(tester);
+  });
+
+  testWidgets("an extension panel's own form still gets a settings control", (tester) async {
+    final services = await servicesWith(
+      tester,
+      mockHooks: {
+        'panel:*:getPanels': [
+          {
+            'key': 'notes',
+            'ok': true,
+            'value': [
+              {
+                'key': 'text',
+                'title': 'Custom Text',
+                'multiple': true,
+                'form': [
+                  {'type': 'field', 'key': 'content', 'fieldType': 'multiline', 'label': 'Text'},
+                ],
+              },
+            ],
+          },
+        ],
+        'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
+      },
+      layout: const ['logging', 'ext:notes:text#1'],
+    );
+    await pumpOperation(tester, services);
+
+    // The other side of the rule dropping the logging pane's gear: a panel
+    // whose form configures that pane and nothing else has nowhere else to
+    // be reached from, so this sheet is the only route to it.
+    final sheet = await openSheet(tester);
+    expect(sheet.panels.firstWhere((p) => p.id == 'ext:notes:text#1').openSettings, isNotNull);
+
+    await unmount(tester);
+  });
+
+  testWidgets('an untitled instance shows the panel name, never its raw id', (tester) async {
+    final services = await servicesWith(
+      tester,
+      mockHooks: {
+        'panel:*:getPanels': [
+          {
+            'key': 'notes',
+            'ok': true,
+            'value': [
+              {'key': 'text', 'title': 'Custom Text', 'multiple': true},
+            ],
+          },
+        ],
+        // No title in the result — the default path, since a freshly added
+        // Custom Text pane has an empty Tab name until somebody types one.
+        'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
+      },
+      layout: const ['logging', 'ext:notes:text#1'],
+    );
+    await pumpOperation(tester, services);
+
+    // The catalog is keyed by DESCRIPTOR id, so a placement matches nothing
+    // in it and the dock falls back to the raw module id — which is what an
+    // operator sees the moment they add one of these.
+    expect(find.text('Custom Text'), findsOneWidget);
+    expect(find.text('ext:notes:text#1'), findsNothing);
+
+    await unmount(tester);
+  });
+
+  testWidgets('a panel that did not opt in still leaves Available Panels once placed', (tester) async {
+    final services = await servicesWith(
+      tester,
+      mockHooks: twoPanelHooks(),
+      layout: const ['logging', 'ext:notes:once'],
+    );
+    await pumpOperation(tester, services);
+
+    // The other half of the rule: `multiple` is opt-in, so an ordinary panel
+    // must not start offering itself a second time.
+    expect((await openSheet(tester)).available.map((p) => p.id), isNot(contains('ext:notes:once')));
 
     await unmount(tester);
   });

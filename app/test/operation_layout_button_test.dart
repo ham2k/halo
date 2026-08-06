@@ -75,8 +75,12 @@ void main() {
     // rather than from a list the sheet keeps of its own.
     final sheet = tester.widget<LayoutSheet>(find.byType(LayoutSheet));
     expect(sheet.panels.map((p) => p.id), ['logging', 'info', 'spots', 'map']);
-    // Only the logging pane declares settings today.
-    expect(sheet.panels.where((p) => p.openSettings != null).map((p) => p.id), ['logging']);
+    // NO settings controls, though the logging pane does have settings.
+    // Its `settingsTarget` opens the app's own declared settings for that
+    // pane — user settings, reachable from the pane's own tab. This sheet is
+    // about the LAYOUT, and a gear here would say the two are the same kind
+    // of thing. Only a panel's own config form (an extension's) belongs.
+    expect(sheet.panels.where((p) => p.openSettings != null), isEmpty);
 
     await unmount(tester);
   });
