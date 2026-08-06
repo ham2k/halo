@@ -23,11 +23,11 @@ Map<String, dynamic> spot(
       },
     };
 
-/// A fetch that answers with [spots] and reports every source reachable —
+/// A fetch that answers with [spots] and reports every source healthy —
 /// what the great majority of these tests are about. Only the tests that
-/// care about an unreachable source build the record themselves.
+/// care about a source in trouble build the record themselves.
 SpotsFetch feed(FutureOr<List<Map<String, dynamic>>> Function() spots) =>
-    () async => (items: await spots(), timedOut: const <String>[]);
+    () async => (items: await spots(), unreachable: const <String>[], failed: const <String>[]);
 
 void main() {
   test('spotsForCall drops spots older than maxAge', () {
@@ -227,7 +227,7 @@ void main() {
     // unreachable feed must cost its own spots and nobody else's, and the
     // operator has to be able to tell an empty band from a silent server.
     final service = SpotsService(
-      fetchSpots: () async => (items: [spot('KI2D', ageMinutes: 1)], timedOut: const ['sota']),
+      fetchSpots: () async => (items: [spot('KI2D', ageMinutes: 1)], unreachable: const ['sota'], failed: const <String>[]),
     );
     addTearDown(service.dispose);
     addTearDown(service.subscribe());
@@ -246,7 +246,7 @@ void main() {
     // did not respond" follows the operator to the Home screen and stays for
     // the session, outliving the outage by hours.
     final service = SpotsService(
-      fetchSpots: () async => (items: const <Map<String, dynamic>>[], timedOut: const ['sota']),
+      fetchSpots: () async => (items: const <Map<String, dynamic>>[], unreachable: const ['sota'], failed: const <String>[]),
     );
     addTearDown(service.dispose);
 
@@ -267,14 +267,14 @@ void main() {
     //
     // See the resubscribe test below for why this asks who is watching NOW
     // rather than whether the subscription ever lapsed.
-    final gate = Completer<({List<Map<String, dynamic>> items, List<String> timedOut})>();
+    final gate = Completer<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})>();
     final service = SpotsService(fetchSpots: () => gate.future);
     addTearDown(service.dispose);
 
     final release = service.subscribe();
     final inFlight = service.refresh();
     release();
-    gate.complete((items: const <Map<String, dynamic>>[], timedOut: const ['sota']));
+    gate.complete((items: const <Map<String, dynamic>>[], unreachable: const ['sota'], failed: const <String>[]));
     await inFlight;
 
     expect(service.unavailableSources, isEmpty);
@@ -287,7 +287,7 @@ void main() {
     // throws that outage away while somebody is watching and the timer is
     // running again — no notice until the next two-minute tick, for an
     // outage already known. The question has to be who is watching NOW.
-    final gate = Completer<({List<Map<String, dynamic>> items, List<String> timedOut})>();
+    final gate = Completer<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})>();
     final service = SpotsService(fetchSpots: () => gate.future);
     addTearDown(service.dispose);
 
@@ -295,7 +295,7 @@ void main() {
     final inFlight = service.refresh();
     release();
     addTearDown(service.subscribe()); // straight back in, same fetch still on the wire
-    gate.complete((items: const <Map<String, dynamic>>[], timedOut: const ['sota']));
+    gate.complete((items: const <Map<String, dynamic>>[], unreachable: const ['sota'], failed: const <String>[]));
     await inFlight;
 
     expect(service.unavailableSources, ['sota']);
@@ -308,7 +308,7 @@ void main() {
     final service = SpotsService(
       fetchSpots: () async {
         if (fail) throw StateError('network down');
-        return (items: const <Map<String, dynamic>>[], timedOut: const ['sota']);
+        return (items: const <Map<String, dynamic>>[], unreachable: const ['sota'], failed: const <String>[]);
       },
     );
     addTearDown(service.dispose);
@@ -323,11 +323,77 @@ void main() {
     expect(service.unavailableSources, isEmpty);
   });
 
+  test('a source that answered with an error is kept apart from one that never replied', () async {
+    // Merging the two would tell the operator to wait out a server that is
+    // up and answering 503 — it will still be answering 503 in ten minutes.
+    final service = SpotsService(
+      fetchSpots: () async => (
+        items: [spot('KI2D', ageMinutes: 1)],
+        unreachable: const ['sota'],
+        failed: const ['pota'],
+      ),
+    );
+    addTearDown(service.dispose);
+    addTearDown(service.subscribe());
+
+    await service.refresh();
+
+    expect(service.unavailableSources, ['sota']);
+    expect(service.failedSources, ['pota']);
+    expect(service.spotsForCall('KI2D', maxAge: const Duration(minutes: 30)), hasLength(1),
+        reason: "a third source's spots must survive both");
+    expect(service.error, isNull, reason: 'one source erroring is not the whole fetch failing');
+  });
+
+  test('the last subscriber leaving clears an error the same way it clears an outage', () async {
+    // Same hazard as the timed-out list: with the timer stopped nothing will
+    // fetch again, so nothing can ever retract "POTA.app returned an error"
+    // — it follows the operator to the Home screen for the rest of the
+    // session.
+    final service = SpotsService(
+      fetchSpots: () async => (items: const <Map<String, dynamic>>[], unreachable: const <String>[], failed: const ['pota']),
+    );
+    addTearDown(service.dispose);
+
+    final release = service.subscribe();
+    await service.refresh();
+    expect(service.failedSources, ['pota']);
+
+    release();
+    expect(service.failedSources, isEmpty);
+  });
+
+  test('a fetch that throws outright drops the failed list too', () async {
+    // Same reason the timed-out list goes: naming one source while the whole
+    // fetch is failing points the operator at the wrong problem.
+    var fail = false;
+    final service = SpotsService(
+      fetchSpots: () async {
+        if (fail) throw StateError('network down');
+        return (items: const <Map<String, dynamic>>[], unreachable: const <String>[], failed: const ['pota']);
+      },
+    );
+    addTearDown(service.dispose);
+    addTearDown(service.subscribe());
+
+    await service.refresh();
+    expect(service.failedSources, ['pota']);
+
+    fail = true;
+    await service.refresh();
+    expect(service.error, isA<StateError>());
+    expect(service.failedSources, isEmpty);
+  });
+
   test('a source that comes back stops being named', () async {
     // Otherwise the status message outlives the outage that justified it.
     var down = true;
     final service = SpotsService(
-      fetchSpots: () async => (items: <Map<String, dynamic>>[], timedOut: down ? const ['sota'] : const <String>[]),
+      fetchSpots: () async => (
+        items: <Map<String, dynamic>>[],
+        unreachable: down ? const ['sota'] : const <String>[],
+        failed: const <String>[],
+      ),
     );
     addTearDown(service.dispose);
     addTearDown(service.subscribe());

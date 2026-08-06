@@ -297,6 +297,24 @@ List<String> spotsFilterBandOptions({
           band,
     ];
 
+/// Every source worth a row in the filter dialog, sorted: the ones that
+/// offered spots, plus the ones that went quiet or answered with an error.
+///
+/// The union is the point. A source in trouble contributes no spots, so it
+/// has no key in `spotsBySource` — listing only those keys drops it from the
+/// filter entirely, and the operator cannot see that it was ever consulted.
+///
+/// A source still absent from this list answered without offering anything,
+/// which is not always the same as having nothing to offer: a hook that opts
+/// out by returning an empty list (WWFF with no API key) is indistinguishable
+/// here from a quiet band. Public for `spots_panel_merge_test.dart`.
+List<String> spotsFilterSourceList({
+  required Iterable<String> withSpots,
+  required Iterable<String> unavailable,
+  required Iterable<String> failed,
+}) =>
+    {...withSpots, ...unavailable, ...failed}.toList()..sort();
+
 String _timeAgo(int millis) {
   final seconds = (DateTime.now().millisecondsSinceEpoch - millis) ~/ 1000;
   if (seconds < 60) return '${seconds}s ago';
@@ -896,9 +914,15 @@ class _SpotsPanelState extends State<SpotsPanel> {
           sortBy: _sortBy,
           groupByBand: _groupByBand,
           groupCallsWithNotes: _groupCallsWithNotes,
-          sources: _spotsBySource.keys.toList()..sort(),
+          sources: spotsFilterSourceList(
+            withSpots: _spotsBySource.keys,
+            unavailable: _spots.unavailableSources,
+            failed: _spots.failedSources,
+          ),
           sourceNames: _sourceNames,
           sourceSpotCounts: _spotsBySource.map((key, spots) => MapEntry(key, spots.length)),
+          unavailableSources: _spots.unavailableSources.toSet(),
+          failedSources: _spots.failedSources.toSet(),
           disabledSources: _disabledSources,
           continentSpotCounts: _continentSpotCounts,
           disabledContinents: _disabledContinents,
@@ -1674,6 +1698,12 @@ class _SpotsFilterDialog extends StatefulWidget {
   final List<String> sources;
   final Map<String, String> sourceNames;
   final Map<String, int> sourceSpotCounts;
+
+  /// Sources that never answered the last fetch, and those that answered with
+  /// an error. Both show in place of a spot count, which for either of them
+  /// would read "0 spots" — indistinguishable from a quiet band.
+  final Set<String> unavailableSources;
+  final Set<String> failedSources;
   final Set<String> disabledSources;
   final Map<String, int> continentSpotCounts;
   final Set<String> disabledContinents;
@@ -1703,6 +1733,8 @@ class _SpotsFilterDialog extends StatefulWidget {
     required this.sources,
     required this.sourceNames,
     required this.sourceSpotCounts,
+    required this.unavailableSources,
+    required this.failedSources,
     required this.disabledSources,
     required this.continentSpotCounts,
     required this.disabledContinents,
@@ -1729,6 +1761,24 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   late bool _groupCallsWithNotes = widget.groupCallsWithNotes;
   late final Set<String> _disabledSources = {...widget.disabledSources};
   late final Set<String> _disabledContinents = {...widget.disabledContinents};
+
+  /// A source row's trailing label: its spot count, or why it hasn't got one.
+  /// A source in trouble contributes no spots at all, so the plain count
+  /// would say "0 spots" — the same thing a healthy source on a dead band
+  /// says, and the confusion this whole distinction exists to end.
+  Widget _sourceStatus(String source) {
+    final t = context.t;
+    final theme = Theme.of(context);
+    final trouble = widget.unavailableSources.contains(source) || widget.failedSources.contains(source);
+    return Text(
+      widget.unavailableSources.contains(source)
+          ? t.operation.spots.filters.sourceNoReply
+          : widget.failedSources.contains(source)
+              ? t.operation.spots.filters.sourceError
+              : t.operation.spots.spotsCount(count: widget.sourceSpotCounts[source] ?? 0),
+      style: trouble ? TextStyle(color: theme.colorScheme.error) : null,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1890,7 +1940,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(t.operation.spots.spotsCount(count: widget.sourceSpotCounts[source] ?? 0)),
+                        _sourceStatus(source),
                         const SizedBox(width: Space.md),
                         Switch(
                           value: !_disabledSources.contains(source),

@@ -61,6 +61,84 @@ Map<String, dynamic> qsonPayloadFor({required Operation operation, required List
       'qsos': [for (final qso in qsos) qso.data],
     };
 
+/// What one `invokeHookAll` fan-out actually produced, split by outcome.
+typedef HookPartition = ({
+  List<Map<String, dynamic>> items,
+  List<String> succeeded,
+  List<String> unreachable,
+  List<({String key, String? error})> failed,
+});
+
+/// The partition of a fan-out that never happened — no hooks ran, so nothing
+/// succeeded and nothing is in trouble.
+const HookPartition emptyHookPartition = (
+  items: <Map<String, dynamic>>[],
+  succeeded: <String>[],
+  unreachable: <String>[],
+  failed: <({String key, String? error})>[],
+);
+
+/// Whether a hook's failure was the network rather than the service.
+///
+/// The markers are the ones `ErrorPolicy._isFetchTransportTransient` already
+/// classifies on, matched the same way — by PREFIX, because a hook that
+/// legitimately throws its own message mentioning a timeout must not be
+/// mistaken for the transport dropping under it. `host.fetch` rejections
+/// cross the bridge stringified and unwrapped, so a dead network arrives here
+/// as `ClientException: Failed host lookup: '<host>'`.
+bool isTransportFailure(String? error) {
+  if (error == null) return false;
+  return error.startsWith('ClientException:') ||
+      error.startsWith('SocketException:') ||
+      error.startsWith('TimeoutException');
+}
+
+/// Splits a fan-out's settled entries into the list items each hook
+/// contributed and the keys of the hooks that contributed nothing, by why.
+///
+/// A hook is in at most one of [HookPartition.unreachable] and
+/// [HookPartition.failed], and the split is by what the operator should do:
+/// nothing came back over the network (wait) versus the service answered and
+/// refused (stop expecting spots). An operator told the wrong one goes
+/// looking in the wrong place.
+///
+/// A transport failure is [HookPartition.unreachable], not a service error —
+/// otherwise a device with no signal reports every healthy feed it has as
+/// broken, which is the commonest way this fan-out fails and the one where
+/// the advice matters most. A hook that doesn't implement the method at all
+/// produces no entry — the kernel filters the roster before calling anything.
+///
+/// Each entry is read under its own guard: one malformed payload must not
+/// discard what has already been learned about the others, including which of
+/// them went quiet, which is the one thing a caller cannot re-derive.
+HookPartition partitionHookEntries(List<Map<String, dynamic>> entries) {
+  final items = <Map<String, dynamic>>[];
+  final succeeded = <String>[];
+  final unreachable = <String>[];
+  final failed = <({String key, String? error})>[];
+  for (final entry in entries) {
+    try {
+      final hookKey = entry['key'] as String?;
+      if (hookKey == null) continue;
+      final error = entry['error']?.toString();
+      if (entry['ok'] == true) {
+        succeeded.add(hookKey);
+        if (entry['value'] is! List) continue;
+        for (final item in (entry['value'] as List)) {
+          if (item is Map) items.add({...item.cast<String, dynamic>(), 'hookKey': hookKey});
+        }
+      } else if (entry['timedOut'] == true || isTransportFailure(error)) {
+        unreachable.add(hookKey);
+      } else {
+        failed.add((key: hookKey, error: error));
+      }
+    } catch (e) {
+      debugPrint('[extensions] unreadable hook entry "${entry['key']}": $e');
+    }
+  }
+  return (items: items, succeeded: succeeded, unreachable: unreachable, failed: failed);
+}
+
 class ExtensionService implements PanelExtensionSource {
   ExtensionHost? _host;
   Future<void>? _starting;
@@ -297,58 +375,84 @@ class ExtensionService implements PanelExtensionSource {
   /// and `getSpots`, which otherwise just differ by category/method/args.
   /// [partialOnTimeout] keeps the hooks that did answer when the shared
   /// budget expires, instead of discarding the lot — and names the ones that
-  /// didn't in `timedOut`. Only worth setting where the hooks are independent
-  /// contributors and some data beats none.
-  Future<({List<Map<String, dynamic>> items, List<String> timedOut})> _collectHookResults(
+  /// didn't in `unreachable`. Only worth setting where the hooks are
+  /// independent contributors and some data beats none.
+  ///
+  /// `unreachable` and `failed` are separate buckets and a hook is in at most
+  /// one — see [partitionHookEntries] for what divides them. Only `failed`
+  /// feeds the failure streak: a call that never got out to the network says
+  /// nothing about whether the code behind it is broken, so counting it would
+  /// upload one report per source every time an operator drives out of range.
+  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> _collectHookResults(
     String category, {
     required String method,
     required Object? args,
     required String debugLabel,
     bool partialOnTimeout = false,
+    int failureThreshold = ErrorReportingService.repeatedFailureThreshold,
   }) async {
     final host = _host;
-    if (host == null) return (items: const <Map<String, dynamic>>[], timedOut: const <String>[]);
-    // Held outside the try, so a malformed item from one hook cannot discard
-    // what has already been learned about the others — including which of
-    // them went quiet, which is the one thing a caller cannot re-derive.
-    final results = <Map<String, dynamic>>[];
-    final timedOut = <String>[];
+    if (host == null) {
+      return (items: const <Map<String, dynamic>>[], unreachable: const <String>[], failed: const <String>[]);
+    }
+    var parts = emptyHookPartition;
     try {
-      final entries = await host.invokeHookAll(
+      parts = partitionHookEntries(await host.invokeHookAll(
         category,
         method: method,
         args: args,
         timeout: const Duration(seconds: 10),
         partialOnTimeout: partialOnTimeout,
-      );
-      for (final entry in entries) {
-        // `timedOut` is only a hook that never answered, not one that
-        // answered with an error — the two mean different things to an
-        // operator, and the second is not "unreachable".
-        if (entry['timedOut'] == true && entry['key'] is String) timedOut.add(entry['key'] as String);
-        if (entry['ok'] != true) {
-          // Said out loud, like the panel fan-out does. A hook throwing every
-          // cycle — a spot API answering 503, say — otherwise loses its
-          // results with nothing recorded anywhere on either side of the
-          // bridge, which looks exactly like a source with nothing to offer.
-          if (entry['timedOut'] != true) {
-            debugPrint('[extensions] $debugLabel hook "${entry['key']}" failed: ${entry['error']}');
-          }
-          continue;
-        }
-        if (entry['value'] is! List) continue;
-        final hookKey = entry['key'] as String?;
-        for (final item in (entry['value'] as List)) {
-          if (item is Map) {
-            results.add({...item.cast<String, dynamic>(), 'hookKey': hookKey});
-          }
-        }
-      }
+      ));
     } catch (e) {
       debugPrint('[extensions] $debugLabel failed: $e');
     }
-    return (items: results, timedOut: timedOut);
+    // Keyed per call AND per hook: a broken `fetchSpots` must not be masked by
+    // a healthy `suggestExportOptions`, nor one dead spot source by four live
+    // ones. Paired with recordSuccess, per reportIfRepeated's own contract —
+    // without it the streak only ever grows.
+    for (final key in parts.succeeded) {
+      ErrorReportingService.recordSuccess('$debugLabel:$key');
+    }
+    for (final failure in parts.failed) {
+      // Said out loud, like the panel fan-out does. A hook throwing every
+      // cycle — a spot API answering 503, say — otherwise loses its results
+      // with nothing recorded anywhere on either side of the bridge, which
+      // looks exactly like a source with nothing to offer.
+      debugPrint('[extensions] $debugLabel hook "${failure.key}" failed: ${failure.error}');
+      // The message is the hook's own, unprefixed: ErrorPolicy's transport
+      // rules match on its FIRST characters (`ClientException:`), so a label
+      // in front of it would silently opt every fetch failure out of the
+      // classification written for it. The label belongs in `context`.
+      ErrorReportingService.reportIfRepeated(
+        '$debugLabel:${failure.key}',
+        ExtensionHostException(failure.error ?? 'hook failed with no error'),
+        null,
+        context: '$debugLabel:${failure.key}',
+        threshold: failureThreshold,
+      );
+    }
+    return (items: parts.items, unreachable: parts.unreachable, failed: [for (final f in parts.failed) f.key]);
   }
+
+  /// Consecutive failures before a spot source is worth uploading, well above
+  /// [ErrorReportingService.repeatedFailureThreshold].
+  ///
+  /// Sized for `getSpots`, the only fan-out here that repeats on a timer: at
+  /// its two-minute cadence the default of 3 is six minutes, which an
+  /// operator reaches by driving through a long tunnel. Ten cycles of a
+  /// source erroring is a defect rather than the world being unreliable.
+  ///
+  /// Ten *cycles*, not twenty minutes: a hook that times out neither raises
+  /// the count nor clears it, so a source that alternates errors with dead
+  /// spots can take far longer than twenty minutes to get here. Deliberate —
+  /// a timeout says nothing either way about whether the service is broken —
+  /// but it means the count is not a clock.
+  ///
+  /// A hand-triggered fan-out keeps the default: ten consecutive Exports
+  /// Panel opens is not a threshold anyone reaches, so borrowing this one
+  /// would mean never reporting at all.
+  static const _spotSourceFailureThreshold = 10;
 
   /// Every export option offered by every `export` hook (Exports Panel).
   /// Hooks that don't implement
@@ -398,15 +502,19 @@ class ExtensionService implements PanelExtensionSource {
   ///
   /// Partial on timeout, unlike every other fan-out here: the sources are
   /// independent, so one unreachable feed must not cost the operator the
-  /// spots the others already returned. `timedOut` names the feeds that
-  /// never answered, which is the difference between "nobody is activating"
-  /// and "SOTAwatch didn't reply".
-  Future<({List<Map<String, dynamic>> items, List<String> timedOut})> getSpots() => _collectHookResults(
+  /// spots the others already returned. `unreachable` and `failed` name the
+  /// feeds nothing came back from and the ones that answered with an error,
+  /// which is the difference between "nobody is activating" and "SOTAwatch
+  /// didn't reply" — a distinction the spots alone cannot carry, since a
+  /// feed that fails contributes no key to group by.
+  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() =>
+      _collectHookResults(
         'spots',
         method: 'fetchSpots',
         args: const {},
         debugLabel: 'getSpots',
         partialOnTimeout: true,
+        failureThreshold: _spotSourceFailureThreshold,
       );
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's

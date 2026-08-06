@@ -235,10 +235,14 @@
         "sortByTime": "Por hora del spot",
         "sortByFrequency": "Por frecuencia",
         "groupByBand": "Agrupar por banda",
-        "groupCallsWithNotes": "Agrupar indicativos destacados"
+        "groupCallsWithNotes": "Agrupar indicativos destacados",
+        "sourceNoReply": "Sin respuesta",
+        "sourceError": "Error"
       },
       "unavailableTitle": "Spots no disponibles",
-      "unavailableText": "${sources} no respondieron"
+      "unavailableText": "${sources} no respondieron.",
+      "failedTitle": "Error en fuente de spots",
+      "failedText": "${sources} devolvieron un error."
     }
   },
   "map": {

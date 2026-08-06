@@ -549,4 +549,38 @@ void main() {
       );
     });
   });
+
+  group('spotsFilterSourceList', () {
+    test('lists a source that offered no spots because it was in trouble', () {
+      // The sharp end of the bug: a source that times out or errors has no
+      // key in spotsBySource at all, so listing only those keys erases it
+      // from the filter — the operator cannot see it was even consulted, and
+      // reads a board missing every SOTA spot as a quiet afternoon.
+      expect(
+        spotsFilterSourceList(withSpots: ['pota'], unavailable: ['sota'], failed: ['wwbota']),
+        ['pota', 'sota', 'wwbota'],
+      );
+    });
+
+    test('a source named in two of the inputs appears once', () {
+      // The three arguments are independent lists from a caller's point of
+      // view — nothing in the signature stops them overlapping — so the
+      // dedupe is the function's own guarantee, not a property inherited
+      // from how SpotsService happens to populate them today.
+      expect(
+        spotsFilterSourceList(withSpots: ['pota', 'sota'], unavailable: ['sota'], failed: const []),
+        ['pota', 'sota'],
+      );
+    });
+
+    test('healthy sources alone are unchanged', () {
+      // The everyday case must not gain rows: an absent source means
+      // "answered, nothing to offer", and that is the signal the marker
+      // stands against.
+      expect(
+        spotsFilterSourceList(withSpots: ['sota', 'pota'], unavailable: const [], failed: const []),
+        ['pota', 'sota'],
+      );
+    });
+  });
 }

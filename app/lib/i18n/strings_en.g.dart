@@ -1827,8 +1827,14 @@ class Translations$operation$spots$en {
 	/// en: 'Spots unavailable'
 	String get unavailableTitle => 'Spots unavailable';
 
-	/// en: '${sources} did not respond'
-	String unavailableText({required Object sources}) => '${sources} did not respond';
+	/// en: '${sources} did not respond.'
+	String unavailableText({required Object sources}) => '${sources} did not respond.';
+
+	/// en: 'Spot source error'
+	String get failedTitle => 'Spot source error';
+
+	/// en: '${sources} returned an error.'
+	String failedText({required Object sources}) => '${sources} returned an error.';
 }
 
 // Path: loggingControls.info
@@ -3087,6 +3093,12 @@ class Translations$operation$spots$filters$en {
 
 	/// en: 'Group Calls with Notes'
 	String get groupCallsWithNotes => 'Group Calls with Notes';
+
+	/// en: 'No reply'
+	String get sourceNoReply => 'No reply';
+
+	/// en: 'Error'
+	String get sourceError => 'Error';
 }
 
 // Path: settings.logging.leftieMode
@@ -3688,8 +3700,12 @@ extension on Translations {
 			'operation.spots.filters.sortByFrequency' => 'By Frequency',
 			'operation.spots.filters.groupByBand' => 'Group by Band',
 			'operation.spots.filters.groupCallsWithNotes' => 'Group Calls with Notes',
+			'operation.spots.filters.sourceNoReply' => 'No reply',
+			'operation.spots.filters.sourceError' => 'Error',
 			'operation.spots.unavailableTitle' => 'Spots unavailable',
-			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} did not respond',
+			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} did not respond.',
+			'operation.spots.failedTitle' => 'Spot source error',
+			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
@@ -4025,12 +4041,12 @@ extension on Translations {
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.relayLoginMalformedEvent' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',

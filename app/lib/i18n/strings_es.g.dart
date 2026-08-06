@@ -931,7 +931,9 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
 	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
 	@override String get unavailableTitle => 'Spots no disponibles';
-	@override String unavailableText({required Object sources}) => '${sources} no respondieron';
+	@override String unavailableText({required Object sources}) => '${sources} no respondieron.';
+	@override String get failedTitle => 'Error en fuente de spots';
+	@override String failedText({required Object sources}) => '${sources} devolvieron un error.';
 }
 
 // Path: loggingControls.info
@@ -1524,6 +1526,8 @@ class _Translations$operation$spots$filters$es extends Translations$operation$sp
 	@override String get sortByFrequency => 'Por frecuencia';
 	@override String get groupByBand => 'Agrupar por banda';
 	@override String get groupCallsWithNotes => 'Agrupar indicativos destacados';
+	@override String get sourceNoReply => 'Sin respuesta';
+	@override String get sourceError => 'Error';
 }
 
 // Path: settings.logging.leftieMode
@@ -1989,8 +1993,12 @@ extension on TranslationsEs {
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
 			'operation.spots.filters.groupByBand' => 'Agrupar por banda',
 			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar indicativos destacados',
+			'operation.spots.filters.sourceNoReply' => 'Sin respuesta',
+			'operation.spots.filters.sourceError' => 'Error',
 			'operation.spots.unavailableTitle' => 'Spots no disponibles',
-			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} no respondieron',
+			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} no respondieron.',
+			'operation.spots.failedTitle' => 'Error en fuente de spots',
+			'operation.spots.failedText' => ({required Object sources}) => '${sources} devolvieron un error.',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
@@ -2326,12 +2334,12 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.relayLoginMalformedEvent' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',

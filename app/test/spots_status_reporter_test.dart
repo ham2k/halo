@@ -18,14 +18,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   late StatusBarService statusBar;
   late List<String> unavailable;
+  late List<String> failed;
   late SpotsService spots;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     statusBar = StatusBarService(await SharedPreferences.getInstance());
     unavailable = [];
+    failed = [];
     spots = SpotsService(
-      fetchSpots: () async => (items: const <Map<String, dynamic>>[], timedOut: unavailable),
+      fetchSpots: () async => (items: const <Map<String, dynamic>>[], unreachable: unavailable, failed: failed),
     );
     // An outage is only recorded while somebody is watching — which in the
     // app is always true when a fetch runs, since the Operation View holds a
@@ -170,6 +172,110 @@ void main() {
     failing = false;
     await refreshAndSettle();
     expect(reported()?.text, contains('sota'), reason: 'the same outage must still be reportable');
+  });
+
+  test('an error and a silence are two clauses of one message', () async {
+    // One status item, never one per source — but the two kinds cannot share
+    // a wording: "did not respond" tells the operator to wait, and waiting is
+    // exactly wrong for a server that is up and answering 503.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      nameFor: (key) async => const {'sota': 'SOTAWatch', 'pota': 'POTA.app'}[key] ?? key,
+    );
+    addTearDown(detach);
+
+    unavailable = ['sota'];
+    failed = ['pota'];
+    await refreshAndSettle();
+
+    expect(reported()?.text, 'SOTAWatch did not respond. POTA.app returned an error.');
+    expect(statusBar.items.where((item) => item.key == spotsUnavailableKey), hasLength(1));
+  });
+
+  test('a source that only errored is not described as silent', () async {
+    // The clause for an empty bucket must not be emitted at all — an empty
+    // source list would otherwise read as " did not respond".
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    failed = ['pota'];
+    await refreshAndSettle();
+
+    expect(reported()?.text, 'pota returned an error.');
+  });
+
+  test('the headline follows the body, so an error is not filed under "unavailable"', () async {
+    // Half the item is not allowed to contradict the other half. A pure-error
+    // outage under an offline cloud saying "Spots unavailable" tells the
+    // operator to wait for a network that is working — the sentence beneath
+    // it says the opposite. Anything mixed keeps the broader wording, which
+    // is true of both kinds.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    failed = ['pota'];
+    await refreshAndSettle();
+    expect(reported()?.title, 'Spot source error');
+    expect(reported()?.icon, isNot('cloud-off-outline'));
+
+    unavailable = ['sota'];
+    await refreshAndSettle();
+    expect(reported()?.title, 'Spots unavailable', reason: 'a mixed outage takes the wording true of both');
+    expect(reported()?.icon, 'cloud-off-outline');
+  });
+
+  test('a second source starting to error reposts, even with the silent set unchanged', () async {
+    // The dedupe has to watch BOTH buckets. Comparing only the timed-out set
+    // leaves a message that is true and incomplete for as long as the first
+    // outage lasts — and says nothing at all about the feed that broke
+    // second. Note the silent set never changes here: a test that moves a
+    // source BETWEEN buckets passes either way, because the timed-out set
+    // changes on its own.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    unavailable = ['sota'];
+    await refreshAndSettle();
+    expect(reported()?.text, 'sota did not respond.');
+
+    failed = ['pota'];
+    await refreshAndSettle();
+
+    expect(reported()?.text, 'sota did not respond. pota returned an error.');
+  });
+
+  test('a source moving from silent to erroring changes the advice', () async {
+    // Same source, opposite instruction: a feed that is back up and refusing
+    // must stop being something to wait out.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    unavailable = ['sota'];
+    await refreshAndSettle();
+    expect(reported()?.text, 'sota did not respond.');
+
+    unavailable = [];
+    failed = ['sota'];
+    await refreshAndSettle();
+
+    expect(reported()?.text, 'sota returned an error.');
   });
 
   test('the message clears when the sources answer again', () async {

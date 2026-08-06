@@ -235,10 +235,14 @@
         "sortByTime": "By Spot Time",
         "sortByFrequency": "By Frequency",
         "groupByBand": "Group by Band",
-        "groupCallsWithNotes": "Group Calls with Notes"
+        "groupCallsWithNotes": "Group Calls with Notes",
+        "sourceNoReply": "No reply",
+        "sourceError": "Error"
       },
       "unavailableTitle": "Spots unavailable",
-      "unavailableText": "${sources} did not respond"
+      "unavailableText": "${sources} did not respond.",
+      "failedTitle": "Spot source error",
+      "failedText": "${sources} returned an error."
     }
   },
   "map": {

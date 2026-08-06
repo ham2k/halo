@@ -782,6 +782,31 @@ void main() {
           reason: 'a source that never answered must be distinguishable from one that answered with an error');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
+    test('a feed answering 503 is an error entry, not a timeout', () async {
+      // The wire contract the operator-facing distinction rests on: an
+      // unhappy server is `ok:false` with no `timedOut`, which is what lets
+      // the app say "returned an error" rather than "did not respond" — the
+      // second would have the operator waiting out a server that is up and
+      // will still be refusing in ten minutes. A feed that swallowed its own
+      // HTTP status and answered with an empty list would look identical to a
+      // quiet band here, and nothing downstream could recover the difference.
+      final host = await hostWithBoth(MockClient((request) async {
+        if (request.url.host.contains('pota')) {
+          return http.Response(potaSpots, 200, headers: {'content-type': 'application/json'});
+        }
+        return http.Response('<html>down</html>', 503);
+      }));
+
+      final entries = await host.invokeHookAll('spots',
+          method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
+
+      final byKey = {for (final e in entries) e['key']: e};
+      expect(byKey['sota']!['ok'], false);
+      expect(byKey['sota']!['timedOut'], isNot(true), reason: 'answering badly is not failing to answer');
+      expect(byKey['sota']!['error'], contains('503'));
+      expect(byKey['pota']!['ok'], true, reason: "the healthy feed's spots must survive");
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
     test('still throws when the caller did not ask for partial results', () async {
       // Partial results are wrong for most categories — half an ADIF field
       // set writes a silently incomplete export — so they stay opt-in.

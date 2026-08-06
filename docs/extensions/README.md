@@ -159,8 +159,9 @@ Rules of the road:
   out the whole fan-out, not your hook, because the runtime answers a fan-out
   with a single call and nothing in it can be cancelled. A caller that opts
   into partial results keeps whatever the other hooks returned and is told
-  which ones went quiet (the Spots Panel does this); every other caller gets
-  an error and no results at all. So a hook with an optional request to make
+  which ones went quiet and which answered with an error, as separate lists
+  (the Spots Panel names both to the operator); every other caller gets an
+  error and no results at all. So a hook with an optional request to make
   should bound it — see `host.fetch`'s `timeout` — rather than leave the
   category's whole budget resting on somebody else's server.
 - Each bundle carries its own copy of the SDK; shared state lives only in

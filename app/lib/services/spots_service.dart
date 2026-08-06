@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-/// One fan-out across every spot source: the spots that came back, and the
-/// hook keys of the sources that never answered within the shared budget.
-/// Two results rather than one because an empty band and an unreachable feed
-/// look identical from the spots alone.
-typedef SpotsFetch = Future<({List<Map<String, dynamic>> items, List<String> timedOut})> Function();
+/// One fan-out across every spot source: the spots that came back, the hook
+/// keys of the sources nothing came back from, and the keys of those that
+/// answered with an error. Three results rather than one because an empty
+/// band, an unreachable feed and a feed that is up and broken look identical
+/// from the spots alone.
+typedef SpotsFetch = Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})>
+    Function();
 
 /// The one place fetched spots live, shared by the Spots Panel (which
 /// displays them) and the `spot-history` lookup extension (which mines them
@@ -65,13 +67,22 @@ class SpotsService extends ChangeNotifier {
   /// successful fetch clears it.
   Object? get error => _error;
 
-  /// Hook keys of sources that didn't answer the last fetch within its
-  /// budget, newest state each time. Distinct from [error], which is the
-  /// whole fetch failing: these sources are individually unreachable while
-  /// the rest of the board is live, and without naming them the operator
-  /// reads an empty band as "nobody out" rather than "we never heard back".
+  /// Hook keys of sources nothing came back from — no reply inside the
+  /// budget, or the request never reaching the network at all. Distinct from
+  /// [error], which is the whole fetch failing: these sources are
+  /// individually unreachable while the rest of the board is live, and
+  /// without naming them the operator reads an empty band as "nobody out"
+  /// rather than "we never heard back".
   List<String> get unavailableSources => List.unmodifiable(_unavailableSources);
   List<String> _unavailableSources = const [];
+
+  /// Hook keys of sources that answered the last fetch with an error — a
+  /// service that is up and unhappy, as against [unavailableSources]' one
+  /// that never replied at all. Kept apart because the two ask different
+  /// things of the operator: one is a network to wait out, the other is a
+  /// feed to stop expecting spots from.
+  List<String> get failedSources => List.unmodifiable(_failedSources);
+  List<String> _failedSources = const [];
 
   /// Starts refreshing while at least one caller holds a subscription.
   /// Returns the unsubscribe callback — call it from `dispose`.
@@ -98,8 +109,9 @@ class SpotsService extends ChangeNotifier {
         // operator back to the Home screen and stays for the session, long
         // after the feed recovers. [_doRefresh] covers the same hazard for a
         // fetch still in flight when this runs.
-        if (_unavailableSources.isNotEmpty) {
+        if (_unavailableSources.isNotEmpty || _failedSources.isNotEmpty) {
           _unavailableSources = const [];
+          _failedSources = const [];
           if (!_disposed) notifyListeners();
         }
       }
@@ -123,7 +135,9 @@ class SpotsService extends ChangeNotifier {
       // clear. Asked at completion, not captured at the start: an operator
       // who closes the operation and reopens it inside that window IS
       // watching, and coalescing (see [refresh]) hands them this same fetch.
-      _unavailableSources = _subscribers > 0 ? fetched.timedOut : const [];
+      final watched = _subscribers > 0;
+      _unavailableSources = watched ? fetched.unreachable : const [];
+      _failedSources = watched ? fetched.failed : const [];
       _bySource.clear();
       _byCall.clear();
       for (final spot in spots) {
@@ -137,10 +151,11 @@ class SpotsService extends ChangeNotifier {
     } catch (e) {
       _error = e;
       _loaded = true;
-      // The whole fetch failed, so last cycle's per-source list describes
-      // nothing current — keeping it would name one source while the failure
-      // is global.
+      // The whole fetch failed, so last cycle's per-source lists describe
+      // nothing current — keeping them would name one source while the
+      // failure is global.
       _unavailableSources = const [];
+      _failedSources = const [];
     }
     if (!_disposed) notifyListeners();
   }
