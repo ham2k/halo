@@ -5,7 +5,6 @@
     "delete": "Eliminar",
     "create": "Crear",
     "error": "Error",
-    "apply": "Aplicar",
     "close": "Cerrar",
     "done": "Listo",
     "callsign": "Indicativo",
@@ -1015,7 +1014,7 @@
     "needsSyncTitle": "Este dispositivo aún no sincroniza",
     "needsSyncText": "Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.",
     "malformedRequest": "El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.",
-    "linkIt": "Sí, vincularlo"
+    "linkIt": "Vincular dispositivo"
   },
   "switchAccounts": {
     "noAccountDetails": "Aún sin detalles de la cuenta",

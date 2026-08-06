@@ -418,14 +418,18 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         children: [
           _buildContent(context),
           const SizedBox(height: Space.xxl),
-          OverflowBar(
-            alignment: MainAxisAlignment.end,
-            spacing: 8,
-            children: [
-              if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)),
+          // The shared footer rather than a hand-rolled OverflowBar: an
+          // end-aligned bar of its own puts Cancel wherever it happens to fall
+          // in the child list — here, last, i.e. exactly where every other
+          // dialog in the app puts its confirm action.
+          haloDialogFooterRow(
+            secondary: _mode == _Mode.menu
+                ? null
+                : TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)),
+            cancel: TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? context.t.common.cancel)),
+            actions: [
               if (_mode == _Mode.email)
                 FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount)),
-              TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? context.t.common.cancel)),
             ],
           ),
         ],

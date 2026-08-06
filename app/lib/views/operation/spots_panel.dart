@@ -1990,9 +1990,11 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
           ),
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.apply)),
-      ],
+      // Done, not Apply: every toggle above has already taken effect on the
+      // spots list behind this dialog, so there is nothing left for a button
+      // to apply. In the `cancel` slot rather than `actions` because it is a
+      // way out, not a confirm — see user-interface.md §Dialogs.
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.done)),
     );
   }
 

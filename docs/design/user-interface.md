@@ -244,9 +244,50 @@ Dialogs can have a title and subtitle pinned at the top, content in the
 middle, and a set of action buttons pinned at the bottom. Clicking outside
 the dialog or pressing Escape dismisses it.
 
-A Cancel/Close button is always the leading, left-aligned button, separate
-from the primary/confirm action(s) grouped at the trailing edge — not merely
-listed first among right-packed buttons (`HaloDialog`'s `cancel` parameter).
+Every footer is `haloDialogFooterRow` — one implementation, not a convention
+each dialog follows on its own. It carries four roles, and `HaloDialog`,
+`showFormDialog` and `showFormPane` all take the same four:
+
+| Role | Where it sits | What it is |
+| --- | --- | --- |
+| `destructive` | leading edge, alone | A verb that destroys what the operator is looking at |
+| `secondary` | trailing group, leftmost | Something else to **do** with the thing being edited |
+| `cancel` | trailing group, next to the primary | The way out |
+| `actions` | trailing edge | The primary/confirm action, normally one `FilledButton` |
+
+This follows Material, which end-aligns dialog buttons with the dismissive
+action immediately left of the confirming one, and gives the leading edge to
+its `neutral` button — the position `destructive` takes here.
+
+**The one deliberate divergence** is the gap: `haloDialogCancelGap`
+(`Space.xxl`, three times the spacing between any other pair) separates
+`cancel` from the primary. A logging operator works this footer at speed, and
+Cancel discards what they just typed; the gap is what stops a mis-aimed tap on
+Save from landing on it. Material spaces all its dialog buttons uniformly.
+
+`cancel` stays a slot of its own rather than being listed first in `actions`,
+even though both now render in the same group: **only that slot gets the gap**,
+so a Cancel passed through `actions` lands flush against Save.
+`app/test/dialog_footer_convention_test.dart` fails the build when one does,
+and when a dialog reaches for a raw `AlertDialog` instead of `HaloDialog`.
+
+### Which verb
+
+- **`Cancel`** when there are pending changes to abandon.
+- **`Done`**, as a plain `TextButton`, when there are not — a dialog whose
+  changes have already taken effect, even when other actions sit beside it.
+  Never a filled button: there is no action to emphasise. `Close` and `Apply`
+  are not dialog-footer verbs (`Close` remains a Modal Pane header icon
+  button's accessible name, which is not a footer button).
+- **`Save`**, filled, when pressing it is what applies the change — or better,
+  a specific verb for what actually happens: `Delete`, `Remove`, `Replace`,
+  `Link Account`, `Link Device`.
+- A clearer word for the situation wins over all of the above: `Dismiss` on an
+  alert the operator is being asked to acknowledge.
+
+A dialog whose every row is itself an action (a menu, an option picker) needs
+no footer at all; this rule governs dialogs that **have** a dismiss button, not
+which dialogs need one.
 
 Pane-sized dialogs — "Modal Panes" — additionally present as full screens on
 phone-sized windows; see [layouts.md](layouts.md).

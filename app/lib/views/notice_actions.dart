@@ -74,7 +74,7 @@ void _showNoticeDialog(Map<String, dynamic> args) {
       content: MarkdownBody(data: text),
       cancel: TextButton(
         onPressed: () => Navigator.of(dialogContext).pop(),
-        child: Text(t.common.close),
+        child: Text(t.common.done),
       ),
       actions: [
         for (final action in dialogActions)

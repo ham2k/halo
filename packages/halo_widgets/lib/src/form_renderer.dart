@@ -178,92 +178,61 @@ Widget _formActionsRow({
   ({String label, VoidCallback onPressed, Color color})? destructive,
   ({String label, VoidCallback onPressed})? secondary,
 }) {
-  // Every button is Flexible and every label ellipsizes, because this row
-  // can carry four verbs at once (the equipment editor's
-  // Cancel/Remove/Report/Save) in a language that spells none of them
-  // shortly, on a pane that is the whole screen on a phone. A Row overflows
-  // rather than shrinking, and an overflowing footer paints red stripes
-  // across the Save button. Shrinking degrades to clipped words instead,
-  // which is legible and reachable.
+  // Every label ellipsizes because this footer can carry four verbs at once
+  // (the equipment editor's Cancel/Remove/Report/Save) in a language that
+  // spells none of them shortly, on a pane that is the whole screen on a
+  // phone. haloDialogFooterRow stacks the buttons before it comes to this,
+  // and never clips Save at all; clipping a word is the last resort after
+  // that, not instead of it.
   Widget label(String text) => Text(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis);
 
-  // An OverflowBar rather than a Row, because this footer can carry four
-  // verbs at once (the equipment editor's Cancel/Remove/Report/Save), on a
-  // pane that IS the screen on a phone, in a language that spells none of
-  // them shortly, at a font scale of up to 1.90. A Row overflows rather than
-  // shrinking, and an overflowing footer paints red stripes across Save.
-  // This lays the two groups out side by side while they fit and stacks them
-  // — trailing edge aligned, so Save stays where the thumb expects it — when
-  // they do not.
-  //
-  // Two children, not four, so the leading/trailing split survives the
-  // stack: `spaceBetween` puts Cancel alone at the leading edge rather than
-  // merely first in a right-packed group (issue #191, same convention as
-  // HaloDialog), and that grouping is what the vertical fallback preserves.
-  return OverflowBar(
-    alignment: MainAxisAlignment.spaceBetween,
-    overflowAlignment: OverflowBarAlignment.end,
-    overflowSpacing: Space.md,
-    children: [
-      // Flexible inside each group as well as the OverflowBar around them:
-      // stacking gives a group the full width, which two long verbs can
-      // still exceed on the narrowest phone. Ellipsis is the last resort
-      // after the stack, not instead of it.
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: TextButton(
-              onPressed: isSubmitting ? null : onCancel,
-              child: label(labels.cancel),
-            ),
+  // The layout itself belongs to haloDialogFooterRow, not here: a form's
+  // footer and a plain dialog's are the same object to the operator, and
+  // when they were two implementations they drifted — the slots below
+  // existed only on this one, so plain dialogs improvised them into
+  // `actions`. What stays here is what is genuinely the form's: its own
+  // labels, the disable-while-submitting rule, and the spinner that replaces
+  // Save mid-flight.
+  return haloDialogFooterRow(
+    // Destructive keeps its colour WITH the action rather than as a second
+    // optional beside it: the point of this button is that a destructive verb
+    // reads as destructive, and a caller that supplied one and forgot the
+    // other would get a Remove button indistinguishable from Cancel.
+    destructive: destructive == null
+        ? null
+        : TextButton(
+            style: TextButton.styleFrom(foregroundColor: destructive.color),
+            onPressed: isSubmitting ? null : destructive.onPressed,
+            child: label(destructive.label),
           ),
-          // Destructive actions belong in the footer with the other verbs,
-          // not in the body among the settings — and in the error colour, at
-          // the leading edge, well away from Save.
-          if (destructive != null) ...[
-            const SizedBox(width: Space.md),
-            Flexible(
-              child: TextButton(
-                // The colour travels WITH the action rather than as a second
-                // optional beside it: the point of this button is that a
-                // destructive verb reads as destructive, and a caller that
-                // supplied one and forgot the other would get a Remove button
-                // indistinguishable from Cancel.
-                style: TextButton.styleFrom(foregroundColor: destructive.color),
-                onPressed: isSubmitting ? null : destructive.onPressed,
-                child: label(destructive.label),
-              ),
-            ),
-          ],
-        ],
-      ),
+    secondary: secondary == null
+        ? null
+        // Disabled while submitting, like every other control on the form: it
+        // opens a dialog of its own (the equipment editor's Report), and a
+        // route pushed over a submitting pane is the route `Navigator.pop`
+        // takes down when the submit lands — the pane stays open and its
+        // values go to whatever was on top instead.
+        : TextButton(
+            onPressed: isSubmitting ? null : secondary.onPressed,
+            child: label(secondary.label),
+          ),
+    cancel: TextButton(
+      onPressed: isSubmitting ? null : onCancel,
+      child: label(labels.cancel),
+    ),
+    actions: [
       if (isSubmitting)
+        // Occupies the primary's place rather than sitting beside it, so the
+        // footer neither grows nor reflows when a submit starts.
         const SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(strokeWidth: 2),
         )
       else
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Beside Save rather than beside Cancel: this is something else
-            // the operator may want to DO with the thing they are editing,
-            // not a way out of the form. Plain text, so it never competes
-            // with Save for the eye.
-            if (secondary != null) ...[
-              Flexible(child: TextButton(onPressed: secondary.onPressed, child: label(secondary.label))),
-              const SizedBox(width: Space.md),
-            ],
-            // The one verb that never gives ground: whatever else gets
-            // clipped, the form's own action stays readable.
-            FilledButton(
-              onPressed: onSave,
-              child: label(labels.save),
-            ),
-          ],
-        ),
+        // The one verb that never gives ground: whatever else gets clipped,
+        // the form's own action stays readable.
+        FilledButton(onPressed: onSave, child: label(labels.save)),
     ],
   );
 }

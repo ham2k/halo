@@ -500,11 +500,11 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
           ],
         ),
       ),
+      cancel: TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(context.t.common.cancel),
+      ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.t.common.cancel),
-        ),
         FilledButton(
           onPressed: _save,
           child: Text(context.t.common.save),

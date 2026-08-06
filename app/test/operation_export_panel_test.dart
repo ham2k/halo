@@ -150,7 +150,10 @@ void main() {
         tester.getCenter(find.text('Save 1 file')).dy,
         lessThan(tester.getCenter(find.text('POTA US-1234')).dy),
       );
-      expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
+      // A plain TextButton, not filled: the exports have already happened by
+      // the time this is pressed, so it dismisses rather than confirms.
+      expect(find.widgetWithText(TextButton, 'Done'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Done'), findsNothing);
       expect(
         tester.getCenter(find.text('Done')).dy,
         greaterThan(tester.getCenter(find.text('Full ADIF Export')).dy),

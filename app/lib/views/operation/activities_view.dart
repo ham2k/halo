@@ -799,7 +799,7 @@ class OperationSheetState extends State<OperationSheet> {
         ),
         cancel: TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(context.t.common.close),
+          child: Text(context.t.common.done),
         ),
       ),
     );

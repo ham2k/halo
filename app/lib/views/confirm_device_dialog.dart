@@ -212,11 +212,9 @@ class _ConfirmDevicePaneState extends State<ConfirmDevicePane> {
         ],
         if (_busy) ...[const SizedBox(height: Space.lg), const Center(child: CircularProgressIndicator())],
         const SizedBox(height: Space.xxl),
-        OverflowBar(
-          alignment: MainAxisAlignment.end,
-          spacing: 8,
-          children: [
-            TextButton(onPressed: _cancel, child: Text(context.t.common.cancel)),
+        haloDialogFooterRow(
+          cancel: TextButton(onPressed: _cancel, child: Text(context.t.common.cancel)),
+          actions: [
             if (_request != null)
               FilledButton(onPressed: _busy ? null : _approve, child: Text(context.t.confirmDevice.linkIt))
             else

@@ -344,13 +344,14 @@ class _ReportSubmissionDialogState extends State<_ReportSubmissionDialog> {
                 (:final ref?, error: _) => st.reportSent(ref: ref),
                 _ => st.reportSentNoRef,
               }),
-        actions: [
-          if (result != null)
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.t.common.close),
-            ),
-        ],
+        // The report has already been sent by the time this shows, so this is
+        // a way out rather than a confirm: Done, plain, in the cancel slot.
+        cancel: result == null
+            ? null
+            : TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(context.t.common.done),
+              ),
       ),
     );
   }

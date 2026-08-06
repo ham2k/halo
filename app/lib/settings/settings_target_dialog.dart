@@ -142,9 +142,9 @@ Future<void> _showSettingsDialog(
           stripVisibleWhen: stripVisibleWhen,
           actions: actions,
         ),
-        actions: [
-          FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.done)),
-        ],
+        // Settings commit as each control changes, so this closes rather
+        // than confirms: a plain Done in the cancel slot.
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.done)),
       ),
     ),
   );

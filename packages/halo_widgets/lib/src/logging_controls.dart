@@ -42,12 +42,14 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'density.dart';
 import 'flags.dart';
 import 'form_renderer.dart';
+import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_controller.dart';
 import 'mdi_icons.g.dart';
+import 'modal_pane.dart' show showHaloDialog;
 import 'option_matching.dart';
 import 'platform_chrome.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -5566,11 +5568,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     var order = _effectiveControlOrder(descriptors);
     var hidden = Set<String>.from(widget.hiddenControlKeys);
 
-    final result = await showDialog<(List<String>, Set<String>)>(
+    final result = await showHaloDialog<(List<String>, Set<String>)>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
+        builder: (dialogContext, setDialogState) => HaloDialog(
           title: Text(widget.controlSettingsTitle ?? 'Logging Controls'),
+          // The ReorderableListView scrolls itself, so the shell must not:
+          // nesting two scrollables on one axis leaves the inner list with no
+          // scroll extent, and a drag toward the edge has nothing to
+          // auto-scroll. `wide` because this carries a list, not a prompt.
+          scrollable: false,
+          wide: true,
           content: SizedBox(
             width: 360,
             child: ReorderableListView(
@@ -5617,11 +5625,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               ],
             ),
           ),
+          cancel: TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(widget.cancelLabel ?? 'Cancel'),
+          ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(widget.cancelLabel ?? 'Cancel'),
-            ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop((order, hidden)),
               child: Text(widget.saveLabel ?? 'Save'),

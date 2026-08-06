@@ -96,9 +96,6 @@ class Translations$common$en {
 	/// en: 'Error'
 	String get error => 'Error';
 
-	/// en: 'Apply'
-	String get apply => 'Apply';
-
 	/// en: 'Close'
 	String get close => 'Close';
 
@@ -1342,8 +1339,8 @@ class Translations$confirmDevice$en {
 	/// en: 'The sync server sent a request this app could not read. Ask the other device to try again.'
 	String get malformedRequest => 'The sync server sent a request this app could not read. Ask the other device to try again.';
 
-	/// en: 'Yes, Link It'
-	String get linkIt => 'Yes, Link It';
+	/// en: 'Link Device'
+	String get linkIt => 'Link Device';
 }
 
 // Path: switchAccounts
@@ -3534,7 +3531,6 @@ extension on Translations {
 			'common.delete' => 'Delete',
 			'common.create' => 'Create',
 			'common.error' => 'Error',
-			'common.apply' => 'Apply',
 			'common.close' => 'Close',
 			'common.done' => 'Done',
 			'common.callsign' => 'Callsign',
@@ -4041,9 +4037,9 @@ extension on Translations {
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
+			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
@@ -4331,7 +4327,7 @@ extension on Translations {
 			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
 			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
-			'confirmDevice.linkIt' => 'Yes, Link It',
+			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',

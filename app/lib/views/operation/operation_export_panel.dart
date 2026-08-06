@@ -176,12 +176,12 @@ Future<void> showExportSettingsDialog(
           );
         },
       ),
-      actions: [
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(t.common.done),
-        ),
-      ],
+      // Export settings apply as each switch changes, so this closes rather
+      // than confirms.
+      cancel: TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(t.common.done),
+      ),
     ),
   );
 }
@@ -711,13 +711,14 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
           child: haloDialogFooterRow(
-            actions: [
-              FilledButton(
-                // maybePop, matching the pane's own close button and barrier.
-                onPressed: () => Navigator.of(context).maybePop(),
-                child: Text(context.t.common.done),
-              ),
-            ],
+            // Everything that DOES something lives in the list above and has
+            // already happened by the time this is pressed, so this is a way
+            // out rather than a confirm: plain Done, in the cancel slot.
+            cancel: TextButton(
+              // maybePop, matching the pane's own close button and barrier.
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: Text(context.t.common.done),
+            ),
           ),
         ),
       ),

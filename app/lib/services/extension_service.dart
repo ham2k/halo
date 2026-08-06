@@ -1890,7 +1890,7 @@ class ExtensionService implements PanelExtensionSource {
         wide: true,
         title: title != null ? Text(title) : null,
         content: MarkdownBody(data: text),
-        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.close)),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
         actions: [
           for (final action in actions)
             if (action['label'] is String && _declarativeActionHandler(action) != null)

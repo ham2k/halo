@@ -60,6 +60,7 @@ upcoming:
     - "No GPS now says so in red, and tapping it takes a location you type"
     - "Denied location offers to ask again; a typed grid must be a real locator"
     - "**Personal Info** in the Callsign settings: name, email, club, ARRL/RAC section"
+    - "Dialog buttons moved: Cancel now sits beside Save, and **Done** replaces Close/Apply"
 
 "126":
   changes:

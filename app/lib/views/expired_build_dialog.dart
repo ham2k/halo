@@ -33,7 +33,9 @@ void maybeShowExpiredBuildDialog(GlobalKey<NavigatorState> navigatorKey, {int at
       }
       return;
     }
-    unawaited(showDialog<void>(context: context, builder: (_) => const ExpiredBuildDialog()));
+    // showHaloDialog, not showDialog: it applies haloDialogConstraints, the
+    // size box every other modal in the app is held to.
+    unawaited(showHaloDialog<void>(context: context, builder: (_) => const ExpiredBuildDialog()));
   });
 }
 
@@ -42,15 +44,23 @@ class ExpiredBuildDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      icon: Icon(MdiIcons.alertOutline, size: 48, color: Theme.of(context).colorScheme.error),
-      title: Text(t.expiredBuild.title),
+    return HaloDialog(
+      title: Row(
+        children: [
+          Icon(MdiIcons.alertOutline, color: Theme.of(context).colorScheme.error),
+          const SizedBox(width: Space.md),
+          Flexible(child: Text(t.expiredBuild.title)),
+        ],
+      ),
       content: Text(t.expiredBuild.body),
+      // Dismiss, not Done: this is an alert the operator is being asked to
+      // acknowledge, not a dialog whose changes have settled — the exception
+      // user-interface.md §Dialogs names for exactly this case.
+      cancel: TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(t.expiredBuild.dismiss),
+      ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(t.expiredBuild.dismiss),
-        ),
         FilledButton(
           onPressed: () => unawaited(launchUrl(Uri.parse('https://ham2k.com'))),
           child: Text(t.expiredBuild.visit),

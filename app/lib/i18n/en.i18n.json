@@ -5,7 +5,6 @@
     "delete": "Delete",
     "create": "Create",
     "error": "Error",
-    "apply": "Apply",
     "close": "Close",
     "done": "Done",
     "callsign": "Callsign",
@@ -1015,7 +1014,7 @@
     "needsSyncTitle": "This device does not sync yet",
     "needsSyncText": "Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.",
     "malformedRequest": "The sync server sent a request this app could not read. Ask the other device to try again.",
-    "linkIt": "Yes, Link It"
+    "linkIt": "Link Device"
   },
   "switchAccounts": {
     "noAccountDetails": "No account details yet",

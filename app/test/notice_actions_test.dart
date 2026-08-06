@@ -33,9 +33,11 @@ void main() {
     expect(find.text('Support Ham2K'), findsOneWidget);
     expect(find.text('Please help'), findsOneWidget);
     expect(find.text('Later'), findsOneWidget);
-    expect(find.text('Close'), findsOneWidget);
+    // Done, not Close: a notice's own actions sit beside it, but the way out
+    // of a dialog with nothing to commit is Done everywhere in the app.
+    expect(find.text('Done'), findsOneWidget);
 
-    await tester.tap(find.text('Close'));
+    await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.text('Support Ham2K'), findsNothing);
   });

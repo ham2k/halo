@@ -266,7 +266,7 @@ Future<void> _showNotice(BuildContext context, String message) => showHaloDialog
         content: Text(message),
         cancel: TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(context.t.common.close),
+          child: Text(context.t.common.done),
         ),
       ),
     );
@@ -490,7 +490,9 @@ class _SummaryContentState extends State<_SummaryContent> {
       ],
       cancel: TextButton(
         onPressed: () => Navigator.of(dialogContext).pop(),
-        child: Text(plan.isEmpty ? context.t.common.close : context.t.common.cancel),
+        // Done when there is nothing to import and so nothing to abandon,
+        // Cancel when the plan would otherwise be applied.
+        child: Text(plan.isEmpty ? context.t.common.done : context.t.common.cancel),
       ),
     );
   }

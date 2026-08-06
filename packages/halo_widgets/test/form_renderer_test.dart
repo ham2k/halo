@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1161,6 +1163,63 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
       expect(submitted?['port'], 'usb-new');
+    });
+
+    testWidgets('every footer verb is disabled while a submit is in flight', (tester) async {
+      // Secondary is the one that gets missed, because it is the only slot
+      // whose action does not close the form — so nothing about it looks
+      // dangerous. It opens a route ON TOP of a submitting pane, and the
+      // `Navigator.pop` that ends the submit takes down whatever is topmost:
+      // the operator's edits go to that route and the pane stays open.
+      final gate = Completer<void>();
+      var secondaryRan = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showFormPane(
+                context,
+                formDefinition: const {
+                  'title': 'Radio',
+                  'elements': [
+                    {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+                  ],
+                },
+                initialState: const {'name': 'Left Radio'},
+                destructiveAction: (label: 'Remove', color: const Color(0xFFB3261E), onPressed: () {}),
+                secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
+                // submit() awaits the validator per field, so holding it here
+                // holds the form in its submitting state.
+                validator: (_, _, _) async {
+                  await gate.future;
+                  return null;
+                },
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+
+      // Mid-flight: the spinner has taken the primary's place, and no verb
+      // beside it accepts a tap.
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      for (final verb in ['Report', 'Remove', 'Cancel']) {
+        expect(
+          tester.widget<TextButton>(find.widgetWithText(TextButton, verb)).onPressed,
+          isNull,
+          reason: '$verb stays live while the form is submitting',
+        );
+      }
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(secondaryRan, 0);
     });
 
     testWidgets('a secondary action runs OVER the pane, while a destructive one closes it first', (tester) async {

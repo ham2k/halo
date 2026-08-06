@@ -84,7 +84,6 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get delete => 'Eliminar';
 	@override String get create => 'Crear';
 	@override String get error => 'Error';
-	@override String get apply => 'Aplicar';
 	@override String get close => 'Cerrar';
 	@override String get done => 'Listo';
 	@override String get callsign => 'Indicativo';
@@ -685,7 +684,7 @@ class _Translations$confirmDevice$es extends Translations$confirmDevice$en {
 	@override String get needsSyncTitle => 'Este dispositivo aún no sincroniza';
 	@override String get needsSyncText => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.';
 	@override String get malformedRequest => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.';
-	@override String get linkIt => 'Sí, vincularlo';
+	@override String get linkIt => 'Vincular dispositivo';
 }
 
 // Path: switchAccounts
@@ -1827,7 +1826,6 @@ extension on TranslationsEs {
 			'common.delete' => 'Eliminar',
 			'common.create' => 'Crear',
 			'common.error' => 'Error',
-			'common.apply' => 'Aplicar',
 			'common.close' => 'Cerrar',
 			'common.done' => 'Listo',
 			'common.callsign' => 'Indicativo',
@@ -2334,9 +2332,9 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
+			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
@@ -2624,7 +2622,7 @@ extension on TranslationsEs {
 			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
 			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
 			'confirmDevice.malformedRequest' => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.',
-			'confirmDevice.linkIt' => 'Sí, vincularlo',
+			'confirmDevice.linkIt' => 'Vincular dispositivo',
 			'switchAccounts.noAccountDetails' => 'Aún sin detalles de la cuenta',
 			'switchAccounts.currentAccount' => 'Cuenta actual',
 			'switchAccounts.otherAccounts' => 'Otras cuentas',

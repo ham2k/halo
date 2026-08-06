@@ -221,11 +221,11 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           const SizedBox(height: Space.xxl),
         ],
       ),
+      cancel: TextButton(
+        onPressed: () => Navigator.of(context).pop(null),
+        child: Text(context.t.common.cancel),
+      ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: Text(context.t.common.cancel),
-        ),
         FilledButton(
           onPressed: _save,
           child: Text(context.t.common.save),

@@ -69,28 +69,99 @@ class HaloDialogHeader extends StatelessWidget {
   }
 }
 
-/// A footer row with [cancel] pinned to the leading edge and [actions]
-/// packed to the trailing edge, wrapping onto extra lines when narrow —
-/// shared by [HaloDialog] and any other footer that needs the same
-/// pinned-cancel convention instead of duplicating the layout.
-Widget haloDialogFooterRow({Widget? cancel, List<Widget> actions = const []}) {
+/// The gap between [haloDialogFooterRow]'s [cancel] and the primary action,
+/// against the [Space.md] separating every other pair of buttons.
+///
+/// This is the app's one deliberate divergence from Material's dialog
+/// footer, which packs the dismissive and confirming actions together with
+/// uniform spacing (see docs/design/user-interface.md §Dialogs). A logging
+/// operator works this footer at speed, often one-handed on a tablet in the
+/// field, and Cancel discards what they just typed — three times the normal
+/// gap is what keeps a mis-aimed tap on Save from landing on Cancel instead.
+/// Pinning Cancel to the opposite edge would separate them further still, at
+/// the cost of the grouping Material's convention depends on.
+const double haloDialogCancelGap = Space.xxl;
+
+/// The single footer layout for every modal surface in the app — plain
+/// dialogs ([HaloDialog]), form dialogs and Modal Panes alike. One
+/// implementation rather than a convention each footer follows on its own.
+/// Duplicating the layout is what lets the copies drift: a slot added to one
+/// (`destructive`, `secondary`) is absent from the other, and the dialogs
+/// built on that one improvise it into [actions] instead.
+///
+/// Four roles, laid out to Material's end-aligned convention:
+///
+/// * [destructive] — alone at the LEADING edge, as far from the primary
+///   action as the row allows. This is the position Material gives its
+///   `neutral` button. A verb that destroys something the operator has
+///   already made does not belong next to the one that saves it.
+/// * [secondary] — trailing group, leftmost. Something else to DO with the
+///   thing being edited, as opposed to a way out of the dialog.
+/// * [cancel] — trailing group, immediately left of [actions], separated
+///   from them by [haloDialogCancelGap].
+/// * [actions] — the trailing edge. The primary/confirm action, normally one
+///   `FilledButton`.
+///
+/// The trailing slots go through an [OverflowBar]: this footer can carry four
+/// verbs at once (the equipment editor's Cancel/Remove/Report/Save) on a pane
+/// that IS the screen on a phone, in a language that spells none of them
+/// shortly, at a font scale of up to 1.90. A [Row] overflows rather than
+/// shrinking, and an overflowing footer paints red stripes across the primary
+/// action; the bar stacks its buttons instead, trailing edge aligned so the
+/// primary stays where the thumb expects it.
+///
+/// [actions] is deliberately NOT wrapped in [Flexible], unlike the slots
+/// before it: whatever else gets clipped, the dialog's own action stays
+/// readable.
+Widget haloDialogFooterRow({
+  Widget? cancel,
+  Widget? destructive,
+  Widget? secondary,
+  List<Widget> actions = const [],
+}) {
+  // The trailing buttons are the OverflowBar's OWN children, not a Row handed
+  // to it as one child. An OverflowBar decides to stack by summing its
+  // children's LAID-OUT sizes (`overflow_bar.dart`'s performLayout), and a Row
+  // clamps itself to the incoming maxWidth however far its contents overflow —
+  // so a grouped Row reports "I fit" while painting red stripes, and the
+  // stacking fallback never runs. Given the buttons directly, the bar measures
+  // each one and stacks when the set of them genuinely does not fit.
   return Row(
-    // start, not the Row default of center: if actions wraps onto more than
-    // one line, cancel lines up with the first line instead of centering
+    // start, not the Row default of center: once the trailing buttons stack,
+    // destructive lines up with the first of them rather than centering
     // against the whole stacked block.
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (cancel != null) cancel,
-      // A minimum gap even when actions is empty/narrow — Expanded alone
-      // only guarantees cancel and actions don't overlap, not that they
-      // don't end up flush against each other.
-      if (cancel != null) const SizedBox(width: Space.lg),
+      // Its natural width, not `Flexible`: a Flexible beside the Expanded
+      // below competes with it for flex share, so a single short verb would
+      // reserve half the footer and force the trailing buttons to stack with
+      // 300pt sitting unused.
+      if (destructive != null) ...[
+        destructive,
+        const SizedBox(width: Space.md),
+      ],
       Expanded(
         child: OverflowBar(
           alignment: MainAxisAlignment.end,
-          spacing: 8,
-          overflowSpacing: 4,
-          children: actions,
+          overflowAlignment: OverflowBarAlignment.end,
+          spacing: Space.md,
+          overflowSpacing: Space.md,
+          children: [
+            if (secondary != null) secondary,
+            if (cancel != null)
+              // The deliberate gap, as padding rather than a sibling spacer:
+              // the bar's own `spacing` is uniform, and a spacer child would
+              // become a stray empty row once the buttons stack. Only when
+              // something follows — a cancel-only footer must land on the same
+              // trailing edge as a primary-only one, not a gap short of it.
+              actions.isEmpty
+                  ? cancel
+                  : Padding(
+                      padding: const EdgeInsets.only(right: haloDialogCancelGap - Space.md),
+                      child: cancel,
+                    ),
+            ...actions,
+          ],
         ),
       ),
     ],
@@ -107,12 +178,26 @@ class HaloDialog extends StatelessWidget {
   /// The footer band's buttons, laid out end-aligned and wrapping when narrow.
   final List<Widget> actions;
 
-  /// The footer's leading, left-aligned button — usually a Cancel/Close
-  /// `TextButton`. Kept separate from [actions] (rather than just being
-  /// listed first in it) so it always sits at the opposite edge from the
-  /// primary action(s), not merely leftmost within the same right-packed
-  /// group.
+  /// The footer's way out — a `TextButton` reading Cancel when there are
+  /// pending changes to abandon, or Done when there are not (see
+  /// docs/design/user-interface.md §Dialogs for the verb rule).
+  ///
+  /// Kept a slot of its own rather than being listed first in [actions],
+  /// even though it now renders in the same trailing group: only this slot
+  /// gets [haloDialogCancelGap] between it and the primary action, so a
+  /// Cancel passed through [actions] lands flush against Save with nothing
+  /// separating them. `dialog_footer_convention_test.dart` fails the build
+  /// when that happens.
   final Widget? cancel;
+
+  /// A verb that destroys what the operator is looking at. Rendered alone at
+  /// the leading edge, as far from [actions] as the footer allows — never in
+  /// [actions] beside the primary.
+  final Widget? destructive;
+
+  /// Something else to DO with the thing being edited, as opposed to a way
+  /// out of the dialog. Sits in the trailing group, left of [cancel].
+  final Widget? secondary;
 
   /// Whether [content] is wrapped in a scroll view. Turn OFF for content that
   /// scrolls itself (a ListView, or its own SingleChildScrollView) — nesting
@@ -132,6 +217,8 @@ class HaloDialog extends StatelessWidget {
     this.content,
     this.actions = const [],
     this.cancel,
+    this.destructive,
+    this.secondary,
     this.scrollable = true,
     this.contentPadding,
     this.wide = false,
@@ -179,10 +266,15 @@ class HaloDialog extends StatelessWidget {
             if (title != null) HaloDialogHeader(title: title),
             // Flexible, not Expanded: a short dialog still shrink-wraps.
             if (body != null) Flexible(child: body),
-            if (actions.isNotEmpty || cancel != null)
+            if (actions.isNotEmpty || cancel != null || destructive != null || secondary != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
-                child: haloDialogFooterRow(cancel: cancel, actions: actions),
+                child: haloDialogFooterRow(
+                  cancel: cancel,
+                  destructive: destructive,
+                  secondary: secondary,
+                  actions: actions,
+                ),
               ),
           ],
         ),
