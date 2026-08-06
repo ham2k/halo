@@ -1437,6 +1437,20 @@ export interface FetchOptions {
    */
   headers?: Record<string, string>
   body?: string
+  /**
+   * Give up on this request after `timeout` milliseconds, instead of the
+   * host's default allowance. Clamped DOWNWARD only — asking for longer than
+   * the default changes nothing — and it bounds the whole request, headers
+   * and body alike.
+   *
+   * For a request whose answer is optional: a cache-validation probe, an
+   * enrichment worth having but not worth waiting for. It matters because a
+   * hook fan-out shares ONE budget across every extension in the category,
+   * so a request that stalls costs the other extensions their results too
+   * (see `invokeHookAll`'s `partialOnTimeout`). This is how a hook says
+   * "not worth waiting the default for" rather than spending everyone's time.
+   */
+  timeout?: number
 }
 
 export interface FetchResponse {

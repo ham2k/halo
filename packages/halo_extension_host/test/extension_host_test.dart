@@ -1066,6 +1066,43 @@ var boundFetch = null
     expect(blocked, contains('declared domains'));
   });
 
+  group('remainingFetchTimeout', () {
+    Duration remaining(int? requested, {Duration elapsed = Duration.zero, Duration? ceiling}) =>
+        remainingFetchTimeout(requested: requested, elapsed: elapsed, ceiling: ceiling ?? fetchHeaderTimeout);
+
+    test('an extension may shorten its own request', () {
+      expect(remaining(3000), const Duration(seconds: 3));
+    });
+
+    test('an extension may NOT lengthen it past the host ceiling', () {
+      // The point of a host ceiling is that a manifest cannot raise it. A
+      // fetch that could ask for a minute would put every other extension in
+      // its fan-out behind that minute.
+      expect(remaining(60000), fetchHeaderTimeout);
+      expect(remaining(60000, ceiling: fetchBodyTimeout), fetchBodyTimeout);
+    });
+
+    test('the ask is one budget for the whole call, not one per phase', () {
+      // The trap: handing each phase the full ask lets a 3s request spend 3s
+      // on headers and 3s more on the body — twice what the caller bounded,
+      // and four times it once the DNS retry runs.
+      expect(remaining(3000, elapsed: const Duration(milliseconds: 2000)), const Duration(seconds: 1));
+    });
+
+    test('a spent budget is spent, rather than starting over', () {
+      expect(remaining(3000, elapsed: const Duration(seconds: 4)), Duration.zero);
+    });
+
+    test('an absent or nonsensical ask falls back rather than failing instantly', () {
+      // Zero is a caller's bug — reading it as "give up immediately" would
+      // turn one bad line in an extension into every fetch it makes throwing.
+      // Distinct from a budget genuinely exhausted, which DOES return zero.
+      expect(remaining(null, elapsed: const Duration(seconds: 99)), fetchHeaderTimeout);
+      expect(remaining(0), fetchHeaderTimeout);
+      expect(remaining(-1), fetchHeaderTimeout);
+    });
+  });
+
   group('resolveFetchUserAgent', () {
     const canonical = 'Ham2K Logger/26.8.0 (macos next 1)';
     const custom = {'User-Agent': 'CustomBot/9'};

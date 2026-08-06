@@ -664,6 +664,11 @@ const SOTA_SPOTS_WINDOW = '-1/all/all/'
 
 const SOTA_EPOCH_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/// The epoch request is an optimisation, so it gets an optimisation's
+/// patience: long enough that a healthy server always answers, short enough
+/// that an unhealthy one is written off well inside the fan-out's budget.
+const SOTA_EPOCH_TIMEOUT = 3000
+
 /// The epoch UUID SOTAwatch last reported, and the spots it mapped to. The
 /// UUID changes whenever any spot does, so an unchanged one means the cached
 /// list is still exactly current and the spots request can be skipped
@@ -683,15 +688,14 @@ const SpotsHook = {
     // save: without the catch, one refused request here empties the board for
     // the cycle even though the spots endpoint is answering fine.
     //
-    // The catch cannot bound a request that STALLS rather than fails, and
-    // this one is serialized ahead of the spots fetch. `FetchOptions` carries
-    // no timeout, and `_collectHookResults` spends a single 10s budget across
-    // all spot hooks at once, so a stall here costs every source its spots for
-    // that cycle, not just this one. That ceiling belongs to the host rather
-    // than to an extension — see HALO-179.
+    // A catch cannot bound a request that STALLS rather than fails, and this
+    // one is serialized ahead of the spots fetch, inside a budget every spot
+    // source shares. Hence the explicit timeout: skipping the saving costs
+    // one extra fetch, while waiting the host's default 15s for a probe would
+    // cost every source its spots for the cycle.
     let epoch: string | undefined
     try {
-      const epochResponse = await host.fetch(`${SOTA_SPOTS_API}/epoch`)
+      const epochResponse = await host.fetch(`${SOTA_SPOTS_API}/epoch`, { timeout: SOTA_EPOCH_TIMEOUT })
       const body = epochResponse.status === 200 ? epochResponse.body.trim() : ''
       // Only a UUID counts. A captive portal or proxy answering 200 with a
       // constant page would otherwise pin the epoch to it and short-circuit
@@ -699,7 +703,12 @@ const SpotsHook = {
       // and the board silently freezes rather than reporting an error.
       // Failing the check just costs the saving.
       if (SOTA_EPOCH_REGEX.test(body)) epoch = body
-    } catch {
+    } catch (e) {
+      // Logged, because the only symptom is one extra full spots fetch every
+      // couple of minutes — invisible. A timeout too tight for a marginal
+      // field link would silently disable the saving this cache exists for,
+      // for the whole session, with nothing to say so.
+      host.log(`SOTA epoch probe failed, fetching spots anyway: ${e}`)
       epoch = undefined
     }
     if (epoch && epoch === lastSpotsEpoch) return lastSpots

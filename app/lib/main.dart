@@ -66,6 +66,7 @@ import 'services/operation_title_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/spots_service.dart';
+import 'services/spots_status_reporter.dart';
 import 'services/status_bar_service.dart';
 import 'settings/core_settings_groups.dart';
 import 'settings/settings_command.dart';
@@ -182,6 +183,33 @@ void _mainBody({
     ErrorReportingService.attachStatusBar(services.statusBar);
     ErrorReportingService.attachSettings(services.settings);
     BuildFreshnessService(statusBar: services.statusBar).start();
+
+    // Names a spot source that stops answering. Cached after the first
+    // successful fetch — a hook's `sourceName` is static per build — but
+    // retried while the cache is still empty, which is what makes it correct
+    // no matter when the runtime came up: `start()` is fire-and-forget, its
+    // first attempt can fail and be retried by `_scheduleRestart`, and the
+    // fan-out has a 5s timeout of its own on a cold launch. Any of those
+    // would otherwise leave every message naming `sota` rather than
+    // SOTAWatch, permanently. Only ever reached when an outage is being
+    // reported, so the retry costs nothing on a healthy run.
+    // One shared future, not a map plus an emptiness check: the reporter
+    // resolves every down source at once, so N separate lookups would all
+    // find the cache empty and fire N concurrent fan-outs over the runtime —
+    // at the exact moment it is already struggling with an outage.
+    Future<Map<String, String>>? spotSourceNames;
+    attachSpotsStatusReporter(
+      spots: services.spots,
+      statusBar: services.statusBar,
+      nameFor: (hookKey) async {
+        final names = await (spotSourceNames ??= services.extensions.getSpotSourceNames());
+        // A fan-out that answered nothing is not an answer worth keeping —
+        // drop it so the next outage asks again instead of naming every
+        // source by its raw hook key for the rest of the session.
+        if (names.isEmpty) spotSourceNames = null;
+        return names[hookKey] ?? hookKey;
+      },
+    );
 
     // Expired-build nag: if this build's expiration date (halo-ops release
     // writes it into version.dart; two weeks for Next and Dev, six months

@@ -13,11 +13,12 @@
 //
 // Bridge protocol (all payloads are JSON strings over the 'polo' channel):
 //   JS → Dart:  {type:'result', id, ok, value|error, jsMillis}
+//               {type:'partial', id, keys|entry}  — only when wantsPartials
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
 //               {type:'updateInterpretation', input, interpretation}
 //   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
-//               __polo.invokeHookAll(id, category, method, argsJson)
+//               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 
@@ -473,7 +474,7 @@ const kernel = {
     })()
   },
 
-  invokeHookAll(id: number, category: string, method: string, argsJson: string) {
+  invokeHookAll(id: number, category: string, method: string, argsJson: string, wantsPartials = false) {
     const startedAt = Date.now()
     void (async () => {
       // Same whole-body containment as invokeHook: anything thrown outside
@@ -608,13 +609,34 @@ const kernel = {
       }
       const online = typeof args?.online === 'boolean' ? args.online : true
       const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function' || r.hook[method] !== undefined)
+
+      // Narration, for a host that means to salvage it: the roster of hooks
+      // about to run, then each entry as it settles, then the final result
+      // unchanged. Without it a host that gives up waiting has nothing to
+      // keep — every entry is trapped in the `Promise.all` below, however
+      // long ago it resolved. The roster comes first because a host seeing
+      // only what arrived cannot tell a hook that went quiet from one that
+      // was never going to answer.
+      //
+      // Off unless asked for, because it is not free: each value crosses the
+      // bridge a second time, and this same path serves `command.interpret`
+      // (per keystroke) and `spots.fetchSpots` (thousands of objects).
+      //
+      // No timer and no cancellation pair with any of this. A host that
+      // stops waiting stops waiting; the hooks below run to completion
+      // regardless. See `partialOnTimeout` in ExtensionHost.
+      if (wantsPartials) post({ type: 'partial', id, keys: records.map((r) => r.key) })
+
       const entries = await Promise.all(
         records.map(async (record) => {
+          let entry: { key: string; ok: boolean; value?: unknown; error?: string }
           try {
-            return { key: record.key, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
+            entry = { key: record.key, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
           } catch (e) {
-            return { key: record.key, ok: false, error: describeError(e) }
+            entry = { key: record.key, ok: false, error: describeError(e) }
           }
+          if (wantsPartials) post({ type: 'partial', id, entry })
+          return entry
         }),
       )
       post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })

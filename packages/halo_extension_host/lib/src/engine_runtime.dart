@@ -22,6 +22,18 @@ class ExtensionHostException implements Exception {
   String toString() => 'ExtensionHostException: $message';
 }
 
+/// A call the host stopped waiting for. Its own type because it is the one
+/// failure with work worth salvaging behind it — hooks that already answered
+/// — which `invokeHookAll`'s `partialOnTimeout` returns and every other
+/// failure has no equivalent of. Callers that only care that something went
+/// wrong still catch [ExtensionHostException].
+class HookTimeoutException extends ExtensionHostException {
+  HookTimeoutException(super.message);
+
+  @override
+  String toString() => 'HookTimeoutException: $message';
+}
+
 abstract class EngineRuntime {
   String get engineDescription;
 
@@ -41,7 +53,12 @@ abstract class EngineRuntime {
   Future<void> load(String kernelSource, List<ExtensionBundle> bundles);
 
   void invoke(int id, String category, String? key, String method, String argsJson);
-  void invokeAll(int id, String category, String method, String argsJson);
+  /// [wantsPartials] asks the kernel to narrate the fan-out — a roster and
+  /// one message per hook as it settles — so a caller that stops waiting can
+  /// still keep what arrived. Off by default because it doubles how much of
+  /// each result crosses the bridge, and only a caller that will actually
+  /// salvage them has anything to show for that.
+  void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false});
   void hostResponse(int callId, bool ok, String resultJson);
 
   /// Drops the kernel's cached hook context (settings, account credentials)

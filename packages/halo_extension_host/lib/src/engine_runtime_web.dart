@@ -67,7 +67,7 @@ self.onmessage = function (e) {
       self.__polo.invokeHook(msg.id, msg.category, msg.key, msg.method, msg.argsJson);
       break;
     case 'invokeAll':
-      self.__polo.invokeHookAll(msg.id, msg.category, msg.method, msg.argsJson);
+      self.__polo.invokeHookAll(msg.id, msg.category, msg.method, msg.argsJson, msg.wantsPartials);
       break;
     case 'hostResponse':
       self.__polo.hostResponse(msg.callId, msg.ok, msg.resultJson);
@@ -156,13 +156,14 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   @override
-  void invokeAll(int id, String category, String method, String argsJson) {
+  void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false}) {
     _send({
       'kind': 'invokeAll',
       'id': id,
       'category': category,
       'method': method,
       'argsJson': argsJson,
+      'wantsPartials': wantsPartials,
     });
   }
 

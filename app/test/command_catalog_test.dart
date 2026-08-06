@@ -37,6 +37,7 @@ class _CatalogHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async {
     if (category != 'command' || method != 'catalog') return const [];
     calls++;

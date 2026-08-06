@@ -2,6 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+/// One fan-out across every spot source: the spots that came back, and the
+/// hook keys of the sources that never answered within the shared budget.
+/// Two results rather than one because an empty band and an unreachable feed
+/// look identical from the spots alone.
+typedef SpotsFetch = Future<({List<Map<String, dynamic>> items, List<String> timedOut})> Function();
+
 /// The one place fetched spots live, shared by the Spots Panel (which
 /// displays them) and the `spot-history` lookup extension (which mines them
 /// for activity references — see `spotsForCall`).
@@ -19,11 +25,11 @@ import 'package:flutter/foundation.dart';
 /// which is the whole point of the lookup.
 class SpotsService extends ChangeNotifier {
   SpotsService({
-    required Future<List<Map<String, dynamic>>> Function() fetchSpots,
+    required SpotsFetch fetchSpots,
     this.refreshInterval = const Duration(minutes: 2),
   }) : _fetchSpots = fetchSpots;
 
-  final Future<List<Map<String, dynamic>>> Function() _fetchSpots;
+  final SpotsFetch _fetchSpots;
 
   /// Matches the cadence the Spots Panel polled at when it owned the fetch.
   final Duration refreshInterval;
@@ -59,6 +65,14 @@ class SpotsService extends ChangeNotifier {
   /// successful fetch clears it.
   Object? get error => _error;
 
+  /// Hook keys of sources that didn't answer the last fetch within its
+  /// budget, newest state each time. Distinct from [error], which is the
+  /// whole fetch failing: these sources are individually unreachable while
+  /// the rest of the board is live, and without naming them the operator
+  /// reads an empty band as "nobody out" rather than "we never heard back".
+  List<String> get unavailableSources => List.unmodifiable(_unavailableSources);
+  List<String> _unavailableSources = const [];
+
   /// Starts refreshing while at least one caller holds a subscription.
   /// Returns the unsubscribe callback — call it from `dispose`.
   VoidCallback subscribe() {
@@ -79,6 +93,15 @@ class SpotsService extends ChangeNotifier {
       if (_subscribers == 0) {
         _timer?.cancel();
         _timer = null;
+        // Nothing will fetch again on its own, so nothing can clear an
+        // outage from here. Left set, "SOTAWatch did not respond" follows the
+        // operator back to the Home screen and stays for the session, long
+        // after the feed recovers. [_doRefresh] covers the same hazard for a
+        // fetch still in flight when this runs.
+        if (_unavailableSources.isNotEmpty) {
+          _unavailableSources = const [];
+          if (!_disposed) notifyListeners();
+        }
       }
     };
   }
@@ -90,7 +113,17 @@ class SpotsService extends ChangeNotifier {
 
   Future<void> _doRefresh() async {
     try {
-      final spots = await _fetchSpots();
+      final fetched = await _fetchSpots();
+      final spots = fetched.items;
+      // Recorded only if somebody is still subscribed when this lands, which
+      // is exactly the condition under which a later fetch can retract it. A
+      // fetch outlives an unsubscribe — a stalled source is the case that
+      // takes ten seconds to settle, ample time to close the operation — and
+      // an outage recorded with the timer stopped is one nothing will ever
+      // clear. Asked at completion, not captured at the start: an operator
+      // who closes the operation and reopens it inside that window IS
+      // watching, and coalescing (see [refresh]) hands them this same fetch.
+      _unavailableSources = _subscribers > 0 ? fetched.timedOut : const [];
       _bySource.clear();
       _byCall.clear();
       for (final spot in spots) {
@@ -104,6 +137,10 @@ class SpotsService extends ChangeNotifier {
     } catch (e) {
       _error = e;
       _loaded = true;
+      // The whole fetch failed, so last cycle's per-source list describes
+      // nothing current — keeping it would name one source while the failure
+      // is global.
+      _unavailableSources = const [];
     }
     if (!_disposed) notifyListeners();
   }

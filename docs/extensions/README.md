@@ -155,7 +155,14 @@ Rules of the road:
 - Hooks are **pure functions of their arguments plus the host API** — no
   global app state, no UI. Everything in and out is JSON.
 - A hook that throws is isolated: the error is reported per-source and other
-  extensions are unaffected. A hook that hangs is timed out by the host.
+  extensions are unaffected. A hook that **hangs** is weaker — the host times
+  out the whole fan-out, not your hook, because the runtime answers a fan-out
+  with a single call and nothing in it can be cancelled. A caller that opts
+  into partial results keeps whatever the other hooks returned and is told
+  which ones went quiet (the Spots Panel does this); every other caller gets
+  an error and no results at all. So a hook with an optional request to make
+  should bound it — see `host.fetch`'s `timeout` — rather than leave the
+  category's whole budget resting on somebody else's server.
 - Each bundle carries its own copy of the SDK; shared state lives only in
   the kernel singleton (`globalThis.__polo`).
 
@@ -165,7 +172,7 @@ Available via `import { host } from "@ham2k/halo-extension-sdk"`:
 
 | Function | Purpose |
 |---|---|
-| `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. Per-extension domain allowlists are planned. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). |
+| `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. Per-extension domain allowlists are planned. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). `options.timeout` (ms) bounds the whole request, and is clamped downward only — you may declare a request not worth the host's default wait, not award yourself a longer one. Worth setting on anything optional, per the hanging-hook note above. |
 | `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). |
 | `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
 | `host.statusBar.clear(key)` | Removes a message/progress item you posted. |

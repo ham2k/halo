@@ -233,7 +233,9 @@
         "sortByFrequency": "By Frequency",
         "groupByBand": "Group by Band",
         "groupCallsWithNotes": "Group Calls with Notes"
-      }
+      },
+      "unavailableTitle": "Spots unavailable",
+      "unavailableText": "${sources} did not respond"
     }
   },
   "map": {

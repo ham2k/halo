@@ -13,6 +13,7 @@
 // the https requirement and the canonical User-Agent all still run, so this
 // exercises the real path and not a mock of it.
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -716,6 +717,112 @@ void main() {
       final spots = await fetchSota(host);
 
       expect(spots.length, 1);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('one stalled source', () {
+    const potaSpots = '[{"spotId":1,"activator":"KI2D","frequency":"14285","mode":"SSB",'
+        '"reference":"US-1234","name":"Somewhere","locationDesc":"US-CA",'
+        '"spotTime":"2026-08-05T21:46:18","spotter":"N0SPOT","comments":"","source":"Web","count":1}]';
+
+    /// POTA answers at once; SOTA's spots request never completes, the way a
+    /// server that accepted the connection and then went quiet behaves. Its
+    /// epoch probe still answers, so the stall lands on the request that
+    /// matters rather than being absorbed by the probe's own timeout.
+    ({MockClient client}) potaFastSotaStalled() => (
+          client: MockClient((request) async {
+            if (request.url.host == 'api.pota.app') {
+              return http.Response(potaSpots, 200, headers: {'content-type': 'application/json'});
+            }
+            if (request.url.path.endsWith('/epoch')) {
+              return http.Response('ed0601ac-a1f9-4666-98ba-2b0e52c07f5e', 200,
+                  headers: {'content-type': 'text/plain'});
+            }
+            return Completer<http.Response>().future; // never settles
+          }),
+        );
+
+    Future<ExtensionHost> hostWithBoth(http.Client client) async {
+      final host = await ExtensionHost.start(
+        kernelSource: bundleSource('kernel'),
+        extensions: [
+          ExtensionBundle(key: 'pota', source: bundleSource('pota')),
+          ExtensionBundle(key: 'sota', source: bundleSource('sota')),
+        ],
+        fetchAllowlists: const {
+          'pota': ['api.pota.app'],
+          'sota': ['api-db2.sota.org.uk'],
+        },
+        httpClient: client,
+        userAgent: 'Ham2K-Test/1.0',
+        onHostCall: nullHostCall,
+      );
+      addTearDown(host.dispose);
+      return host;
+    }
+
+    test('costs only its own spots, not everybody elses', () async {
+      // The runtime answers a fan-out with ONE message, so without the
+      // narration a host that stops waiting discards POTA's spots — finished
+      // and sitting there — because SOTA never replied.
+      final host = await hostWithBoth(potaFastSotaStalled().client);
+
+      final entries = await host.invokeHookAll('spots',
+          method: 'fetchSpots',
+          args: {'online': true},
+          timeout: const Duration(seconds: 3),
+          partialOnTimeout: true);
+
+      final byKey = {for (final e in entries) e['key']: e};
+      expect(byKey.keys, containsAll(['pota', 'sota']));
+      expect(byKey['pota']!['ok'], true, reason: 'POTA answered and must survive SOTA stalling');
+      expect((byKey['pota']!['value'] as List), hasLength(1));
+      expect(byKey['sota']!['ok'], false);
+      expect(byKey['sota']!['timedOut'], true,
+          reason: 'a source that never answered must be distinguishable from one that answered with an error');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('still throws when the caller did not ask for partial results', () async {
+      // Partial results are wrong for most categories — half an ADIF field
+      // set writes a silently incomplete export — so they stay opt-in.
+      final host = await hostWithBoth(potaFastSotaStalled().client);
+
+      await expectLater(
+        host.invokeHookAll('spots',
+            method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 3)),
+        throwsA(isA<HookTimeoutException>()),
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('FetchOptions.timeout', () {
+    test('an extension can give up on its own request before the host would', () async {
+      // SOTA's epoch probe asks for 3s. Against a server that never answers
+      // it, the probe is abandoned and the spots fetch still happens — where
+      // the host's own 15s allowance would have spent the whole fan-out
+      // budget on an optimisation.
+      final paths = <String>[];
+      final client = MockClient((request) async {
+        paths.add(request.url.path);
+        if (request.url.path.endsWith('/epoch')) return Completer<http.Response>().future;
+        return http.Response('[]', 200, headers: {'content-type': 'application/json'});
+      });
+      final host = await ExtensionHost.start(
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'sota', source: bundleSource('sota'))],
+        fetchAllowlists: const {'sota': ['api-db2.sota.org.uk']},
+        httpClient: client,
+        userAgent: 'Ham2K-Test/1.0',
+        onHostCall: nullHostCall,
+      );
+      addTearDown(host.dispose);
+
+      final spots = await host.invokeHook('spots',
+          key: 'sota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 12)) as List;
+
+      expect(spots, isEmpty);
+      expect(paths.where((p) => !p.endsWith('/epoch')), hasLength(1),
+          reason: 'the spots request must still be made after the probe is abandoned');
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 

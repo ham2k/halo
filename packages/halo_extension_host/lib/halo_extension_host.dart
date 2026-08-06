@@ -14,6 +14,9 @@
 //               __polo.hostResponse(callId, ok, resultJson)
 //   JS → Dart   'polo' channel messages:
 //               {type:'result', id, ok, value|error, jsMillis}
+//               {type:'partial', id, keys}    — an invokeAll's roster, and
+//               {type:'partial', id, entry}   — one hook of it as it settles;
+//                                               both only when wantsPartials
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
 
@@ -27,7 +30,7 @@ import 'package:meta/meta.dart' show visibleForTesting;
 
 import 'src/js_engine.dart';
 
-export 'src/engine_runtime.dart' show ExtensionBundle, ExtensionHostException;
+export 'src/engine_runtime.dart' show ExtensionBundle, ExtensionHostException, HookTimeoutException;
 
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
 
@@ -38,6 +41,38 @@ class HookCallSample {
   final int jsMillis;
 
   const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis});
+}
+
+/// The host's own allowances for a fetch, and the ceiling an extension's
+/// `FetchOptions.timeout` is clamped to.
+const fetchHeaderTimeout = Duration(seconds: 15);
+const fetchBodyTimeout = Duration(seconds: 30);
+
+/// How long this phase of a fetch may still take: what remains of the
+/// caller's [requested] millisecond budget after [elapsed], capped at the
+/// host's [ceiling] for the phase.
+///
+/// Downward only. An extension may declare a request not worth waiting the
+/// default for; it may not award itself a longer leash than the host allows,
+/// which is the whole reason the host sets one.
+///
+/// One budget for the whole call, not one per phase. Giving each phase the
+/// full ask would let a 3s request take 3s waiting for headers and 3s more
+/// reading the body — and 12s once the DNS retry doubles it — so a caller
+/// that carefully bounded an optional request would still cost its fan-out
+/// everything it was trying to save.
+///
+/// A zero or negative ask is a caller's bug rather than a request to fail
+/// instantly, and falls back to [ceiling] rather than making every fetch
+/// throw. A budget genuinely spent DOES return zero: the caller said how long
+/// this was worth, and the request is already on the wire by then, so the
+/// timeout has something real to interrupt.
+@visibleForTesting
+Duration remainingFetchTimeout({required int? requested, required Duration elapsed, required Duration ceiling}) {
+  if (requested == null || requested <= 0) return ceiling;
+  final left = Duration(milliseconds: requested) - elapsed;
+  if (left >= ceiling) return ceiling;
+  return left.isNegative ? Duration.zero : left;
 }
 
 /// The `User-Agent` a `host.fetch` should send. HaLo's [canonical] UA wins,
@@ -86,6 +121,11 @@ class ExtensionHost {
 
   final Map<int, Completer<dynamic>> _pending = {};
   final Map<int, (String, Stopwatch)> _inFlight = {};
+
+  /// Per in-flight `invokeAll`, what the runtime has told us so far. Entered
+  /// only while the call is in `_pending` and removed on every exit from it,
+  /// so a fan-out nobody is waiting on leaves nothing behind.
+  final Map<int, _FanOutProgress> _partials = {};
   int _nextId = 1;
   bool _dead = false;
   bool _disposed = false;
@@ -339,25 +379,59 @@ class ExtensionHost {
   /// Invokes `method` on every hook in `category` (priority order). Returns
   /// one entry per hook: `{key, ok, value|error}` — a failing source never
   /// poisons the others.
+  ///
+  /// [timeout] is one budget for the whole fan-out, not one per hook, because
+  /// the runtime answers a fan-out with a single call. What happens when it
+  /// expires is [partialOnTimeout]'s question:
+  ///
+  /// - **false (default)** — throws, and every hook's work is discarded
+  ///   however long ago it finished. Right where a partial answer is a WRONG
+  ///   answer: half of `adifFields` writes a silently incomplete export, half
+  ///   of `dataFile.getDefinition` means a data file that quietly does not
+  ///   exist.
+  /// - **true** — returns the hooks that did answer, plus a synthesized
+  ///   `{key, ok: false, error: 'timed out'}` for each one that did not, so a
+  ///   caller can name the source rather than just noticing an absence. Right
+  ///   where the hooks are independent contributors and some data beats none
+  ///   — spot sources being the case this exists for.
+  ///
+  /// Neither setting stops the slow hook: nothing in the runtime can be
+  /// cancelled, so this is about how long the CALLER waits.
   Future<List<Map<String, dynamic>>> invokeHookAll(
     String category, {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async {
-    final result = await _send('invokeAll', '$category.$method*', {
-      'category': category,
-      'method': method,
-      'argsJson': jsonEncode(args ?? const <String, Object?>{}),
-    }, timeout);
-    return (result as List).cast<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    // Allocated here rather than read back off `_nextId`, so the id this
+    // reads partials under is provably the one the call was sent under.
+    final id = _nextId++;
+    try {
+      final result = await _send('invokeAll', '$category.$method*', {
+        'category': category,
+        'method': method,
+        'argsJson': jsonEncode(args ?? const <String, Object?>{}),
+        // Narration is not free — it puts every hook's result on the bridge a
+        // second time — so it is requested only by a caller that will keep it.
+        'wantsPartials': partialOnTimeout,
+      }, timeout, id: id);
+      return (result as List).cast<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    } on HookTimeoutException {
+      // Only a timeout salvages. A runtime that died, or a fan-out the kernel
+      // failed wholesale, has nothing trustworthy to hand back — those stay
+      // exceptions whatever `partialOnTimeout` says.
+      final progress = _partials.remove(id);
+      if (!partialOnTimeout || progress == null) rethrow;
+      return progress.settledPlusMissing(timeout);
+    }
   }
 
-  Future<dynamic> _send(String type, String label, Map<String, Object?> fields, Duration timeout) async {
+  Future<dynamic> _send(String type, String label, Map<String, Object?> fields, Duration timeout, {int? id}) async {
     if (_dead) {
       throw ExtensionHostException('extension runtime is dead (hook $label not attempted)');
     }
-    final id = _nextId++;
+    id ??= _nextId++;
     final completer = Completer<dynamic>();
     _pending[id] = completer;
     _inFlight[id] = (label, Stopwatch()..start());
@@ -373,7 +447,7 @@ class ExtensionHost {
       // that never settles would otherwise keep the 5ms pump timer spinning
       // forever — constant CPU wake-ups on an all-day field session.
       _dispatch({'type': 'abandon', 'id': id});
-      throw ExtensionHostException('hook $label timed out after ${timeout.inMilliseconds}ms');
+      throw HookTimeoutException('hook $label timed out after ${timeout.inMilliseconds}ms');
     }
   }
 
@@ -419,11 +493,24 @@ class ExtensionHost {
           ));
           if (samples.length > _maxSamples) samples.removeAt(0);
         }
+        _partials.remove(id);
         if (msg['ok'] == true) {
           completer.complete(msg['value']);
         } else {
           completer.completeError(ExtensionHostException(msg['error'] as String? ?? 'unknown extension error'));
         }
+      case 'partial':
+        final id = msg['id'];
+        if (id is! int) return;
+        // Only accumulate for a call still being waited on: a `partial`
+        // arriving after the timeout belongs to a fan-out nobody is holding,
+        // and keeping it would leak an entry per abandoned call.
+        if (!_pending.containsKey(id)) return;
+        final progress = _partials.putIfAbsent(id, _FanOutProgress.new);
+        final keys = msg['keys'];
+        if (keys is List) progress.expected = keys.whereType<String>().toList();
+        final entry = msg['entry'];
+        if (entry is Map) progress.entries.add(entry.cast<String, dynamic>());
       case 'log':
         _log(msg['message'] as String? ?? '');
       case 'activationComplete':
@@ -455,6 +542,10 @@ class ExtensionHost {
         }
         _pending.clear();
         _inFlight.clear();
+        // A dead engine's partials describe a fan-out that will never
+        // finish; nothing may salvage them (the completers above threw
+        // ExtensionHostException, not HookTimeoutException, so nothing tries).
+        _partials.clear();
         _fatalErrors.add(error);
         // A crash before activation ever finishes must not leave a caller
         // awaiting [activated] hanging forever.
@@ -504,6 +595,10 @@ class ExtensionHost {
     }
     _pending.clear();
     _inFlight.clear();
+    // Same reason as the fatalError path: a fan-out on a host that is going
+    // away has nothing worth salvaging, and leaving the map populated is a
+    // trap for whoever makes disposal recoverable.
+    _partials.clear();
 
     // Ask the isolate to shut the engine down before killing it.
     //
@@ -531,6 +626,39 @@ class ExtensionHost {
     await _logs.close();
     await _fatalErrors.close();
     await _interpretationUpdates.close();
+  }
+}
+
+/// What one in-flight `invokeAll` has reported: the roster of hooks it is
+/// about to call, then their entries as they settle.
+class _FanOutProgress {
+  /// Hook keys the runtime said it would call. Empty until the roster
+  /// arrives, which is the first thing the runtime posts.
+  List<String> expected = const [];
+  final List<Map<String, dynamic>> entries = [];
+
+  /// Everything that answered, plus a failure entry naming everything that
+  /// didn't. The synthesized entries are the point: a caller comparing
+  /// against the roster can say WHICH source went quiet, where a bare list
+  /// of what arrived can't distinguish a stalled hook from an absent one.
+  List<Map<String, dynamic>> settledPlusMissing(Duration timeout) {
+    final answered = {for (final entry in entries) entry['key']};
+    return [
+      ...entries,
+      for (final key in expected)
+        if (!answered.contains(key))
+          {
+            'key': key,
+            'ok': false,
+            'error': 'timed out after ${timeout.inMilliseconds}ms',
+            // Distinguishes "never answered" from a hook that ran and threw,
+            // which also arrives as ok:false. A caller telling the operator a
+            // source is unreachable must not say so about one that answered
+            // with an error, and matching on the message text to tell them
+            // apart would be a bug waiting for a reworded string.
+            'timedOut': true,
+          },
+    ];
   }
 }
 
@@ -671,7 +799,8 @@ class _HostCore {
           if (msg['type'] == 'invoke') {
             _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, msg['argsJson'] as String);
           } else {
-            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String);
+            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String,
+                wantsPartials: msg['wantsPartials'] == true);
           }
         } catch (e) {
           _outstandingIds.remove(id);
@@ -715,6 +844,11 @@ class _HostCore {
     switch (msg['type']) {
       case 'result':
         _outstandingIds.remove(msg['id']);
+        emit(msg);
+      case 'partial':
+        // Running commentary on an in-flight `invokeAll`. Deliberately does
+        // NOT touch `_outstandingIds` — the call is still outstanding, and
+        // dropping it here would stop the pump with hooks left to run.
         emit(msg);
       case 'log':
         emit(msg);
@@ -893,17 +1027,27 @@ class _HostCore {
     );
     final body = params['body'] as String?;
 
+    // The caller's ask is ONE budget for the whole call — both phases and the
+    // retry below — so it is measured, not handed out per phase. See
+    // `remainingFetchTimeout`. The host's own defaults stay per-phase: they
+    // were chosen that way, and waiting for headers is not the same thing as
+    // reading a slow body.
+    final requested = (params['timeout'] as num?)?.toInt();
+    final spent = Stopwatch()..start();
+    Duration remaining(Duration ceiling) =>
+        remainingFetchTimeout(requested: requested, elapsed: spent.elapsed, ceiling: ceiling);
+
     for (var attempt = 0;; attempt++) {
       final request = http.Request(method, uri)..headers.addAll(headers);
       if (effectiveUA != null) request.headers['User-Agent'] = effectiveUA;
       if (body != null) request.body = body;
 
       try {
-        final streamed = await _http.send(request).timeout(const Duration(seconds: 15));
+        final streamed = await _http.send(request).timeout(remaining(fetchHeaderTimeout));
         // Headers arriving is no guarantee the body ever finishes: a server
         // stalling mid-body would otherwise hang the calling hook indefinitely
-        // (the 15s above only covers up to the response headers).
-        final response = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
+        // (the timeout above only covers up to the response headers).
+        final response = await http.Response.fromStream(streamed).timeout(remaining(fetchBodyTimeout));
         return {'status': response.statusCode, 'body': response.body};
       } on http.ClientException catch (e) {
         // A resolver hiccup during a network handover, sleep/wake or VPN

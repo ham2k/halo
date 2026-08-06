@@ -139,13 +139,14 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
-  void invokeAll(int id, String category, String method, String argsJson) {
+  void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false}) {
     _evaluate(
       '__polo.invokeHookAll('
       '$id, '
       '${jsonEncode(category)}, '
       '${jsonEncode(method)}, '
-      '${jsonEncode(argsJson)})',
+      '${jsonEncode(argsJson)}, '
+      '$wantsPartials)',
       name: 'invokeHookAll',
     );
   }

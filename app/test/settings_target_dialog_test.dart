@@ -522,6 +522,7 @@ class _StateCapturingHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async {
     if (category == 'settingsPanel' && method == 'getPanels') {
       return [

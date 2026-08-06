@@ -289,24 +289,48 @@ class ExtensionService implements PanelExtensionSource {
   /// `method`, or whose call fails, are silently absent from the result
   /// (a failing source never poisons the others). Shared by `getExportOptions`
   /// and `getSpots`, which otherwise just differ by category/method/args.
-  Future<List<Map<String, dynamic>>> _collectHookResults(
+  /// [partialOnTimeout] keeps the hooks that did answer when the shared
+  /// budget expires, instead of discarding the lot — and names the ones that
+  /// didn't in `timedOut`. Only worth setting where the hooks are independent
+  /// contributors and some data beats none.
+  Future<({List<Map<String, dynamic>> items, List<String> timedOut})> _collectHookResults(
     String category, {
     required String method,
     required Object? args,
     required String debugLabel,
+    bool partialOnTimeout = false,
   }) async {
     final host = _host;
-    if (host == null) return const [];
+    if (host == null) return (items: const <Map<String, dynamic>>[], timedOut: const <String>[]);
+    // Held outside the try, so a malformed item from one hook cannot discard
+    // what has already been learned about the others — including which of
+    // them went quiet, which is the one thing a caller cannot re-derive.
+    final results = <Map<String, dynamic>>[];
+    final timedOut = <String>[];
     try {
       final entries = await host.invokeHookAll(
         category,
         method: method,
         args: args,
         timeout: const Duration(seconds: 10),
+        partialOnTimeout: partialOnTimeout,
       );
-      final results = <Map<String, dynamic>>[];
       for (final entry in entries) {
-        if (entry['ok'] != true || entry['value'] is! List) continue;
+        // `timedOut` is only a hook that never answered, not one that
+        // answered with an error — the two mean different things to an
+        // operator, and the second is not "unreachable".
+        if (entry['timedOut'] == true && entry['key'] is String) timedOut.add(entry['key'] as String);
+        if (entry['ok'] != true) {
+          // Said out loud, like the panel fan-out does. A hook throwing every
+          // cycle — a spot API answering 503, say — otherwise loses its
+          // results with nothing recorded anywhere on either side of the
+          // bridge, which looks exactly like a source with nothing to offer.
+          if (entry['timedOut'] != true) {
+            debugPrint('[extensions] $debugLabel hook "${entry['key']}" failed: ${entry['error']}');
+          }
+          continue;
+        }
+        if (entry['value'] is! List) continue;
         final hookKey = entry['key'] as String?;
         for (final item in (entry['value'] as List)) {
           if (item is Map) {
@@ -314,22 +338,23 @@ class ExtensionService implements PanelExtensionSource {
           }
         }
       }
-      return results;
     } catch (e) {
       debugPrint('[extensions] $debugLabel failed: $e');
-      return const [];
     }
+    return (items: results, timedOut: timedOut);
   }
 
   /// Every export option offered by every `export` hook (Exports Panel).
   /// Hooks that don't implement
   /// `suggestExportOptions` are silently absent from the list.
-  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) => _collectHookResults(
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async =>
+      (await _collectHookResults(
         'export',
         method: 'suggestExportOptions',
         args: args,
         debugLabel: 'getExportOptions',
-      );
+      ))
+          .items;
 
   /// Every `spots` hook currently willing to post a spot (Spotting
   /// control), each tagged with `hookKey` so a later
@@ -364,11 +389,18 @@ class ExtensionService implements PanelExtensionSource {
   /// Every spot offered by every `spots` hook (Spots Panel),
   /// each tagged with `hookKey` so the panel can
   /// group/filter by source.
-  Future<List<Map<String, dynamic>>> getSpots() => _collectHookResults(
+  ///
+  /// Partial on timeout, unlike every other fan-out here: the sources are
+  /// independent, so one unreachable feed must not cost the operator the
+  /// spots the others already returned. `timedOut` names the feeds that
+  /// never answered, which is the difference between "nobody is activating"
+  /// and "SOTAwatch didn't reply".
+  Future<({List<Map<String, dynamic>> items, List<String> timedOut})> getSpots() => _collectHookResults(
         'spots',
         method: 'fetchSpots',
         args: const {},
         debugLabel: 'getSpots',
+        partialOnTimeout: true,
       );
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's

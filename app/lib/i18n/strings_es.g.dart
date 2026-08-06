@@ -861,6 +861,8 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String get allSpots => 'Todos los spots';
 	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
 	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
+	@override String get unavailableTitle => 'Spots no disponibles';
+	@override String unavailableText({required Object sources}) => '${sources} no respondieron';
 }
 
 // Path: loggingControls.info
@@ -1907,6 +1909,8 @@ extension on TranslationsEs {
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
 			'operation.spots.filters.groupByBand' => 'Agrupar por banda',
 			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar indicativos destacados',
+			'operation.spots.unavailableTitle' => 'Spots no disponibles',
+			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} no respondieron',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
@@ -2249,10 +2253,10 @@ extension on TranslationsEs {
 			'settings.station.lookingForEquipment' => 'Buscando equipos nuevos…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',
-			'settings.station.name' => 'Nombre',
-			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.name' => 'Nombre',
+			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			'settings.station.transport' => 'Conexión',
 			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',

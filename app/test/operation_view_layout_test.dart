@@ -708,6 +708,7 @@ class MockExtensionHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async {
     final res = mockHookResults['$category:*:$method'];
     return res == null ? const [] : (res as List).cast<Map<String, dynamic>>();

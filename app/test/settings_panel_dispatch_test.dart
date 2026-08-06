@@ -413,6 +413,7 @@ class MockExtensionHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async {
     final hookKey = '$category:*:$method';
     if (mockHookResults.containsKey(hookKey)) {

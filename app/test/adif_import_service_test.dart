@@ -28,6 +28,7 @@ class _RecordingHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async {
     final records = ((args as Map)['records'] as List)
         .map((r) => ((r as Map)['fields'] as Map).cast<String, String>())
@@ -207,6 +208,7 @@ class _FailingHookHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async =>
       [
         {'key': 'pota', 'ok': false, 'error': 'TypeError: normalize is not a function'},
@@ -223,6 +225,7 @@ class _ThrowingHost implements ExtensionHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
   }) async =>
       throw ExtensionHostException('runtime is dead');
 

@@ -1678,6 +1678,12 @@ class Translations$operation$spots$en {
 
 	late final Translations$operation$spots$continents$en continents = Translations$operation$spots$continents$en.internal(_root);
 	late final Translations$operation$spots$filters$en filters = Translations$operation$spots$filters$en.internal(_root);
+
+	/// en: 'Spots unavailable'
+	String get unavailableTitle => 'Spots unavailable';
+
+	/// en: '${sources} did not respond'
+	String unavailableText({required Object sources}) => '${sources} did not respond';
 }
 
 // Path: loggingControls.info
@@ -3510,6 +3516,8 @@ extension on Translations {
 			'operation.spots.filters.sortByFrequency' => 'By Frequency',
 			'operation.spots.filters.groupByBand' => 'Group by Band',
 			'operation.spots.filters.groupCallsWithNotes' => 'Group Calls with Notes',
+			'operation.spots.unavailableTitle' => 'Spots unavailable',
+			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} did not respond',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
@@ -3852,10 +3860,10 @@ extension on Translations {
 			'settings.station.lookingForEquipment' => 'Looking for new equipment…',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',
-			'settings.station.name' => 'Name',
-			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.name' => 'Name',
+			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
 			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',

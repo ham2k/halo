@@ -233,7 +233,9 @@
         "sortByFrequency": "Por frecuencia",
         "groupByBand": "Agrupar por banda",
         "groupCallsWithNotes": "Agrupar indicativos destacados"
-      }
+      },
+      "unavailableTitle": "Spots no disponibles",
+      "unavailableText": "${sources} no respondieron"
     }
   },
   "map": {
