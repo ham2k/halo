@@ -29,7 +29,7 @@
 # for the next cut. Notes belong to their own task's commit, not the
 # release's.
 
-upcoming:
+"128":
   changes:
     - "**Import QSOs from ADIF** in Operation Options, or drop a log file on the operation"
     - "Chasers get **New Reference** and **New Day** now — POTA/SOTA rules apply without activating"
