@@ -1361,6 +1361,7 @@ export type Hook =
   | DataFileDefinition
   | FormHook
   | SettingsPanelHook
+  | PanelHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -1933,4 +1934,82 @@ export interface StatusBarNoticeParams {
   title?: string
   text: string
   actions?: NoticeAction[]
+}
+
+/// What a panel asks to be re-rendered on. The host debounces and only
+/// renders panels that are actually on screen, but the trigger list is what
+/// keeps a panel out of the per-keystroke path entirely: without one, every
+/// visible extension panel would cross the bridge for every callsign
+/// keystroke.
+///
+///   'operation'  the operation's own data changed (activities, title, refs)
+///   'qso'        the in-progress QSO changed (throttled, not per keystroke)
+///   'qsoLogged'  a QSO was logged, deleted or edited
+///   'lookup'     a callsign lookup resolved
+///   'spots'      the spot list was refreshed
+///   'tick:<n>'   every <n> seconds while the panel is visible (min 5)
+///
+/// A panel with no triggers renders once when it appears, and again only
+/// when its own config form changes — right for a panel showing static
+/// reference material.
+export type PanelTrigger = 'operation' | 'qso' | 'qsoLogged' | 'lookup' | 'spots' | `tick:${number}`
+
+/// One panel an extension contributes. Several may come from one extension,
+/// each with its own identity and config form; the host addresses them as
+/// `ext:<hookKey>:<key>`, where hookKey is the key this hook was registered
+/// under (they are the same string unless you registered under another).
+export interface PanelDescriptor {
+  /// Unique within the extension. Becomes part of the panel's persisted
+  /// layout id, so renaming it drops the panel out of saved arrangements.
+  key: string
+  /// The tab label, and the name in the Layout Setup sheet.
+  title: string
+  /// One line, shown where the operator is choosing panels to add.
+  description?: string
+  /// MDI icon name, matching the rest of the extension's controls.
+  icon?: string
+  /// A still image for the Layout Setup sheet: an SVG document, or a `data:`
+  /// URI. Not a URL — the sheet must render offline and without a fetch.
+  preview?: string
+  on?: PanelTrigger[]
+  /// The panel's own configuration, in the same declarative field schema a
+  /// SimpleSettingsPanel uses and rendered by the same core form renderer.
+  /// Values are host-persisted per panel and handed back in
+  /// `PanelRenderArgs.config`.
+  form?: SettingsField[]
+}
+
+/// The context a panel renders against. Deliberately NOT the whole log: an
+/// operation's QSOs are fetched on demand through `ctx.getQsos`, which the
+/// panel is free to call — a render triggered by 'qsoLogged' is exactly the
+/// place for it, and a per-keystroke one is not.
+export interface PanelRenderArgs {
+  panelKey: string
+  operation: Record<string, JSONValue>
+  /// The QSO being entered right now, including `their.guess` from the
+  /// callsign lookup — absent when the logging panel isn't in the view.
+  qso?: Record<string, JSONValue>
+  /// How many real QSOs the operation holds (event markers excluded), so a
+  /// panel can show a count without reading the log.
+  qsoCount: number
+  /// This panel's own config values, keyed by field.
+  config: Record<string, JSONValue>
+  /// What caused this render — the trigger name, or 'initial'.
+  reason: string
+}
+
+/// A panel's content, rendered natively by the core: markdown through the
+/// app's own typography, SVG as a vector image, HTML in a sandboxed web
+/// view. Prefer markdown — it inherits the app's theme, font scale and
+/// density for free, and costs no web view.
+export type PanelContent =
+  | { kind: 'markdown'; content: string }
+  | { kind: 'svg'; content: string }
+  | { kind: 'html'; content: string }
+
+/// Registered under category 'panel'. Same two-call shape as
+/// `settingsPanel`'s dynamic tier: discovery once, then content on demand.
+export interface PanelHook {
+  getPanels(args: Record<string, never>, ctx: HookContext): Promise<PanelDescriptor[]>
+  render(args: PanelRenderArgs, ctx: HookContext): Promise<PanelContent>
 }

@@ -57,6 +57,7 @@ import 'services/cat/cat_service.dart';
 import 'services/location_service.dart';
 import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
+import 'services/panel_service.dart';
 import 'services/purchase_service.dart';
 import 'services/pusher_service.dart';
 import 'services/radio_service.dart';
@@ -777,6 +778,10 @@ class HaLoServices {
   late final ExportService exports =
       _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+  /// The panel catalog a customizable view arranges (docs/design/layouts.md).
+  /// Lazy like the rest: nothing asks the extensions for panels until a view
+  /// that can hold one is actually built.
+  late final PanelService panels = PanelService(extensions);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
   // Station equipment and CAT control, behind the `cat` experiment

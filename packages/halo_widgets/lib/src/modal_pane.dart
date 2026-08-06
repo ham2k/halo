@@ -343,7 +343,9 @@ class _ModalPaneScaffold extends StatelessWidget {
 ///
 /// [leftInset], when given, left-aligns the pane at that offset from the
 /// screen's left edge instead of centering it — for matching the pane up
-/// with a specific control in the header behind it.
+/// with a specific control in the header behind it. [rightInset] does the
+/// same from the right edge, for a control living at that end of the header.
+/// Pass at most one.
 Future<T?> showTopModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -355,9 +357,15 @@ Future<T?> showTopModalPane<T>(
   String closeLabel = 'Close',
   ValueChanged<Animation<double>>? onAnimation,
   double? leftInset,
+  double? rightInset,
+  double? maxWidth,
+  EdgeInsetsGeometry? contentPadding,
   VoidCallback? onDismiss,
 }) {
+  assert(leftInset == null || rightInset == null, 'a top pane aligns to one edge or the other, not both');
   final route = TopModalPaneRoute<T>(
+    maxWidth: maxWidth,
+    contentPadding: contentPadding,
     builder: builder,
     title: title,
     barrierDismissible: barrierDismissible,
@@ -366,6 +374,7 @@ Future<T?> showTopModalPane<T>(
     trailing: trailing,
     closeLabel: closeLabel,
     leftInset: leftInset,
+    rightInset: rightInset,
     onDismiss: onDismiss,
   );
   final result = Navigator.of(context).push(route);
@@ -394,8 +403,19 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// See [ModalPaneRoute.closeLabel].
   final String closeLabel;
 
-  /// See [showTopModalPane]'s doc comment. Null centers.
+  /// See [showTopModalPane]'s doc comment. Both null centers.
   final double? leftInset;
+  final double? rightInset;
+
+  /// A narrower card than the shared [maxDialogWidth], for a pane whose
+  /// content is a list of short rows rather than a form. Wide layouts only —
+  /// a narrow one is full-screen regardless.
+  final double? maxWidth;
+
+  /// Around a scrollable body. Defaults to a form's generous inset; pass
+  /// [EdgeInsets.zero] for content that supplies its own — full-bleed rows
+  /// and section bands read as inset panels floating in the pane otherwise.
+  final EdgeInsetsGeometry? contentPadding;
 
   /// Called when tapping outside the sheet (barrier below or header above).
   final VoidCallback? onDismiss;
@@ -411,6 +431,9 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.trailing,
     this.closeLabel = 'Close',
     this.leftInset,
+    this.rightInset,
+    this.maxWidth,
+    this.contentPadding,
     this.onDismiss,
   }) : _tapOutsideDismissible = barrierDismissible;
 
@@ -475,8 +498,8 @@ class _TopModalPaneScaffold extends StatelessWidget {
     final sheetWidth = isNarrow
         ? screenSize.width
         // The nudge widens the sheet rather than shifting it: its right
-        // edge stays at leftInset + maxDialogWidth.
-        : math.min(screenSize.width, maxDialogWidth + (route.leftInset == null ? 0.0 : leftNudge));
+        // edge stays at leftInset + its width.
+        : math.min(screenSize.width, (route.maxWidth ?? maxDialogWidth) + (route.leftInset == null ? 0.0 : leftNudge));
     // Never negative: a window shorter than the clearance below (no native
     // min-size floor on web/Linux; a large font scale divides the logical
     // height further) would otherwise assert on invalid constraints — same
@@ -494,6 +517,10 @@ class _TopModalPaneScaffold extends StatelessWidget {
     final leftInset = isNarrow
         ? null
         : (route.leftInset == null ? null : route.leftInset! - leftNudge);
+    // No nudge on this side: [rightInset] lines the sheet's own right EDGE up
+    // with the caller's control, rather than lining a control up with the
+    // sheet's leading button the way [leftInset] does.
+    final rightInset = isNarrow ? null : route.rightInset;
 
     final curvedAnimation = CurvedAnimation(parent: route.animation!, curve: Curves.easeOutCubic);
 
@@ -569,9 +596,13 @@ class _TopModalPaneScaffold extends StatelessWidget {
                 child: SlideTransition(
                   position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(curvedAnimation),
                   child: Align(
-                    alignment: leftInset == null ? Alignment.topCenter : Alignment.topLeft,
+                    alignment: switch ((leftInset, rightInset)) {
+                      (null, null) => Alignment.topCenter,
+                      (null, _) => Alignment.topRight,
+                      _ => Alignment.topLeft,
+                    },
                     child: Padding(
-                      padding: EdgeInsets.only(left: leftInset ?? 0),
+                      padding: EdgeInsets.only(left: leftInset ?? 0, right: rightInset ?? 0),
                       child: GestureDetector(
                         onTap: () {},
                         child: LayoutDensityScope.forHeight(
@@ -629,7 +660,8 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                         child: SizedBox(
                                           width: double.infinity,
                                           child: SingleChildScrollView(
-                                            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
+                                            padding: route.contentPadding ??
+                                                const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
                                             child: _body(),
                                           ),
                                         ),

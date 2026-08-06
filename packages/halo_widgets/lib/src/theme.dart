@@ -353,6 +353,20 @@ Color haloDialogBandColorAt(BuildContext context) {
   );
 }
 
+/// The two tones a sheet that presents a LIST inside a Modal Pane paints
+/// with: [haloSheetListBackground] behind everything, [haloSheetRowColor] on
+/// each row. Rows have to be opaque — the background shows straight through
+/// wherever a section has no row to draw — and both are named here rather
+/// than inlined per sheet so two list sheets can't drift a shade apart.
+/// Deliberately fixed values, not scheme roles: no role in this scheme sits
+/// between `surface` and the band color with enough contrast to separate a
+/// row from the space around it.
+Color haloSheetListBackground(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark ? const Color(0xFF141618) : const Color(0xFFF3F4F6);
+
+Color haloSheetRowColor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark ? const Color(0xFF212426) : Colors.white;
+
 /// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
 /// lightness pushed up) — the fill for the app's standout action buttons
 /// (the home screen's New Operation FAB, the operation sheet's accept

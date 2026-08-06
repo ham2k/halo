@@ -1266,7 +1266,6 @@ class OperationSheetState extends State<OperationSheet> {
     final t = context.t.activitiesView;
     final theme = Theme.of(context);
     final refs = _operation.refs;
-    final isDark = theme.brightness == Brightness.dark;
     // The same color the sheet's top row shows — matching it by hand would
     // drift the moment the pane's own banding changes.
     final accordionColor = haloDialogBandColorAt(context);
@@ -1275,9 +1274,11 @@ class OperationSheetState extends State<OperationSheet> {
     // gray/dark background (the ColoredBox below), which otherwise shows
     // straight through wherever a filling section has no row to draw. The
     // pane brings this background itself so both Modal Pane presentations
-    // (full screen and dialog card) look the same.
-    final listBgColor = isDark ? const Color(0xFF141618) : const Color(0xFFF3F4F6);
-    final rowColor = isDark ? const Color(0xFF212426) : Colors.white;
+    // (full screen and dialog card) look the same. Shared with the Layout
+    // Setup sheet through theme.dart — two list sheets a shade apart read
+    // as a mistake.
+    final listBgColor = haloSheetListBackground(context);
+    final rowColor = haloSheetRowColor(context);
 
     return Material(
       color: listBgColor,

@@ -9,6 +9,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -18,13 +19,17 @@ import '../config/dev_bridge.dart';
 import '../main.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/zero_beat.dart';
+import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'operation_dialogs.dart';
 import 'panel_use_tracker.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
+import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
+import 'operation/layout_sheet.dart';
+import 'operation/panel_settings.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
@@ -305,6 +310,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _registerNativePanels();
     final isTwoPane = ShirtSize.of(context).isTwoPane;
     // Flipping to narrow, land on the QSOs tab: the logging pane was the
     // always-visible left pane, so it's the natural continuation — and it
@@ -379,10 +385,77 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // is typed, which has to work from the logging panel alone. Refcounted,
     // so closing every operation stops the fetching.
     _unsubscribeSpots = widget.services.spots.subscribe();
+    widget.services.spots.addListener(_onSpotsChanged);
+    widget.services.panels.addListener(_onPanelCatalogChanged);
+    // Extensions are asked for their panels once per view, not once per
+    // build: the runtime restarts when an extension is enabled or disabled,
+    // and this view is rebuilt from scratch either way.
+    unawaited(widget.services.panels.refreshExtensionPanels());
+  }
+
+  void _onPanelCatalogChanged() {
+    if (!mounted) return;
+    setState(() {
+      if (!_dockSpecResolved) {
+        final before = _dockSpec;
+        _resolveDockSpec();
+        // DockLayoutView reads initialSpec once, so a spec resolved after it
+        // mounted has to be pushed in. Not reported back out: restoring what
+        // was already saved is not a new arrangement choice.
+        if (!identical(before, _dockSpec)) _dockKey.currentState?.replaceSpec(_dockSpec!, emit: false);
+        return;
+      }
+      _dropPanelsTheCatalogLost();
+    });
+    // Whatever changed, an open Layout Setup is listing it.
+    _bumpSheet();
+  }
+
+  /// Takes out panes whose panel has left the catalog — an extension
+  /// disabled or uninstalled while this view stayed mounted.
+  ///
+  /// The live dock has to be told, not just this view's copy: left alone it
+  /// keeps rendering a tab whose module nothing can build, labelled with its
+  /// raw id, with no row in Layout Setup to remove it by — and this view's
+  /// own `_dockSpec` would then be reset to the default on the next build,
+  /// permanently disagreeing with what the dock is showing.
+  void _dropPanelsTheCatalogLost() {
+    final dock = _dockKey.currentState;
+    if (dock == null) return;
+    final available = _availablePanelIds.toSet();
+    final lost = dock.modules.where((id) => !available.contains(id)).toList();
+    if (lost.isEmpty) return;
+    debugPrint('[layout] removing panes whose panels left the catalog: $lost');
+    for (final id in lost) {
+      // Refused for the last remaining module, which would leave an empty
+      // dock — the default arrangement is the only way back from there.
+      if (!dock.removeModule(id)) {
+        dock.replaceSpec(_defaultDockSpec());
+        return;
+      }
+    }
   }
 
   /// Releases this view's spot-cache subscription (see initState).
   VoidCallback? _unsubscribeSpots;
+
+  /// Counts spot refreshes rather than carrying the spots themselves: it
+  /// exists only to fire an extension panel's `spots` trigger, and the
+  /// panels that care read the cache themselves.
+  int _spotsRevision = 0;
+
+  void _onSpotsChanged() {
+    // Only a layout that can hold an extension panel cares — and only if one
+    // of the panels in it actually asked for spots. Every other operation
+    // view would be rebuilding itself on a two-minute timer for nothing.
+    if (!mounted || !_customLayout) return;
+    final wants = _dockSpec?.collectModules().any((id) {
+      final panel = widget.services.panels[id];
+      return panel != null && panel.triggers.contains('spots');
+    });
+    if (wants != true) return;
+    setState(() => _spotsRevision++);
+  }
 
   /// This view's entry on the command-context stack.
   late final OperationCommandContext _commandContext;
@@ -418,6 +491,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _tabController?.dispose();
     widget.services.closeOperationContext(_commandContext);
     _unsubscribeSpots?.call();
+    widget.services.spots.removeListener(_onSpotsChanged);
+    widget.services.panels.removeListener(_onPanelCatalogChanged);
     super.dispose();
   }
 
@@ -1118,6 +1193,121 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// the fixed layout, but arranged by a persisted, user-editable dock tree
   /// (drag a tab to move a pane; see dock_layout.dart). The default mirrors
   /// the fixed layout — logging on the left, the rest tabbed on the right.
+  /// No 'operation' pane: its settings live in the operation sheet.
+  static const _dockModuleIds = ['logging', 'info', 'spots', 'map'];
+
+  /// Mirrors the fixed wide layout — logging on the left, the rest tabbed on
+  /// the right — and is what Reset Layout restores.
+  DockNode _defaultDockSpec() => DockSplit(Axis.horizontal, [
+    DockGroup(['logging']),
+    // Selected: Info, matching the fixed wide layout's initial tab.
+    DockGroup(['info', 'spots', 'map']),
+  ], [2, 1]);
+
+  /// Every panel this view can hold: its own four, plus whatever the
+  /// extensions contribute through the panels service.
+  List<String> get _availablePanelIds => [
+    ..._dockModuleIds,
+    for (final panel in widget.services.panels.catalog)
+      if (panel.source == PanelSource.extension) panel.id,
+  ];
+
+  /// True once [_dockSpec] has been reconciled against a catalog that could
+  /// actually answer. Until then the view shows its default arrangement but
+  /// does NOT treat it as the operator's choice — the extensions are asked
+  /// for their panels asynchronously, so the first build's catalog holds
+  /// only the native four, and a saved arrangement naming an extension panel
+  /// would otherwise be judged unusable, replaced, and then overwritten by
+  /// the first tab tap.
+  bool _dockSpecResolved = false;
+
+  void _resolveDockSpec() {
+    if (_dockSpecResolved && _dockSpecIsUsable(_dockSpec)) return;
+    final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
+    if (_dockSpecIsUsable(persisted)) {
+      _dockSpec = persisted!;
+    } else {
+      if (persisted != null) {
+        final unknown = persisted.collectModules().where((id) => !_availablePanelIds.contains(id)).toList();
+        // The console is the only place this surfaces; a layout quietly
+        // reverting to the default is exactly the kind of thing nobody can
+        // report usefully (docs/design/error-reporting.md).
+        debugPrint('[layout] saved dock arrangement set aside — this view cannot build $unknown');
+      }
+      _dockSpec = _defaultDockSpec();
+    }
+    // Only final once the catalog could genuinely answer. Until then this is
+    // a provisional arrangement, reconsidered when the panels resolve.
+    _dockSpecResolved = widget.services.panels.resolved;
+  }
+
+  /// Whether an arrangement can be shown as-is. Deliberately NOT
+  /// [DockLayoutView.specMatches]: a spec missing a module is legitimate
+  /// here — the layout sheet removes panes on purpose, and that choice has
+  /// to survive a relaunch. What still disqualifies a spec is naming a
+  /// module this view can't build, naming one twice, or holding nothing at
+  /// all.
+  ///
+  /// An extension panel's id disappears from the catalog when its extension
+  /// is disabled or uninstalled, which is exactly the "can't build it" case
+  /// — the arrangement falls back rather than rendering a pane-sized hole.
+  bool _dockSpecIsUsable(DockNode? spec) {
+    if (spec == null) return false;
+    final modules = spec.collectModules();
+    final available = _availablePanelIds.toSet();
+    return modules.isNotEmpty && modules.length == modules.toSet().length && modules.every(available.contains);
+  }
+
+  Map<String, String> _dockTitles(int realQsoCount) => {
+    // The logging tab carries a live count; the catalog's own title for it
+    // is the plain name the Layout Setup sheet lists.
+    'logging': context.t.operation.tabs.qsos(count: realQsoCount),
+    'info': context.t.operation.tabs.info,
+    'spots': context.t.operation.tabs.spots,
+    'map': context.t.operation.tabs.map,
+    for (final panel in widget.services.panels.catalog)
+      if (panel.source == PanelSource.extension) panel.id: panel.title,
+  };
+
+  /// Registers this view's own panels with the service. Called from
+  /// [didChangeDependencies] rather than [initState] because the titles are
+  /// localized — a locale change has to reach the catalog too.
+  void _registerNativePanels() {
+    final t = context.t.operation;
+    final service = widget.services.panels;
+    service.registerNative(PanelDefinition(
+      id: 'logging',
+      title: t.tabs.qsosPlain,
+      description: t.layout.panels.loggingDescription,
+      icon: 'notebook',
+      source: PanelSource.native,
+      // The same field-visibility and dupe/number toggles the logging
+      // panel's own tune button opens.
+      settingsTarget: 'logging',
+    ));
+    service.registerNative(PanelDefinition(
+      id: 'info',
+      title: t.tabs.info,
+      description: t.layout.panels.infoDescription,
+      icon: 'informationOutline',
+      source: PanelSource.native,
+    ));
+    service.registerNative(PanelDefinition(
+      id: 'spots',
+      title: t.tabs.spots,
+      description: t.layout.panels.spotsDescription,
+      icon: 'radioTower',
+      source: PanelSource.native,
+    ));
+    service.registerNative(PanelDefinition(
+      id: 'map',
+      title: t.tabs.map,
+      description: t.layout.panels.mapDescription,
+      icon: 'map',
+      source: PanelSource.native,
+    ));
+  }
+
   Widget _dockLayout({
     required Widget loggingPanel,
     required Widget infoPanel,
@@ -1125,41 +1315,249 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     required Widget mapPanel,
     required int realQsoCount,
     required List<Qso> qsos,
+    required Operation operation,
   }) {
-    // No 'operation' pane: its settings live in the operation sheet.
-    const ids = ['logging', 'info', 'spots', 'map'];
-    if (_dockSpec == null || !DockLayoutView.specMatches(_dockSpec, ids)) {
-      final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
-      _dockSpec = DockLayoutView.specMatches(persisted, ids)
-          ? persisted!
-          : DockSplit(Axis.horizontal, [
-              DockGroup(['logging']),
-              // Selected: Info, matching the fixed wide layout's initial tab.
-              DockGroup(['info', 'spots', 'map']),
-            ], [2, 1]);
-    }
+    _resolveDockSpec();
+    final inLayout = _dockSpec!.collectModules();
     return DockLayoutView(
       key: _dockKey,
       initialSpec: _dockSpec!,
-      titles: {
-        'logging': context.t.operation.tabs.qsos(count: realQsoCount),
-        'info': context.t.operation.tabs.info,
-        'spots': context.t.operation.tabs.spots,
-        'map': context.t.operation.tabs.map,
-      },
+      titles: _dockTitles(realQsoCount),
       children: {
         'logging': loggingPanel,
         'info': infoPanel,
         'spots': spotsPanel,
         'map': mapPanel,
+        // Extension panels are built only for what the arrangement actually
+        // holds: an ExtensionPanel renders on mount, so building one for a
+        // panel nobody added would cross the bridge for a pane that is never
+        // shown.
+        for (final id in inLayout)
+          if (widget.services.panels[id]?.source == PanelSource.extension)
+            id: ExtensionPanel(
+              key: ValueKey('panel-$id'),
+              panel: widget.services.panels[id]!,
+              panels: widget.services.panels,
+              renderContext: PanelRenderContext(
+                operation: _draftOperation ?? operation,
+                qsoCount: realQsoCount,
+                spotsRevision: _spotsRevision,
+              ),
+            ),
       },
       tabActions: {'logging': (context) => _buildLoggingSettingsButton(qsos, context: context)},
       onSpecChanged: (node) {
-        _dockSpec = node;
+        // setState, not a bare assignment: `children` below is built from
+        // the modules the arrangement held at the LAST parent build, so a
+        // pane added from the layout sheet would otherwise get no widget and
+        // render as an empty tab until something unrelated rebuilt the view.
+        setState(() => _dockSpec = node);
         widget.services.settings.setLayoutData(LayoutKeys.operationDock, node.toJson());
+        // The layout sheet, if it is open, is listing this very tree.
+        _bumpSheet();
       },
     );
   }
+
+  /// Bumped on every change an open layout sheet is listing — dock
+  /// mutations and catalog refreshes both. The sheet sits in its own route,
+  /// above the view that owns the tree, so a `setState` here does not reach
+  /// it.
+  ///
+  /// Created when the sheet opens and disposed when it closes, rather than
+  /// living as long as the view: a notifier the view disposes while the
+  /// sheet's route is still mounted throws when that route finally removes
+  /// its listener.
+  ValueNotifier<int>? _sheetRevision;
+
+  void _bumpSheet() => _sheetRevision?.value++;
+
+  /// The header's layout button — measured, like [_headerTitleLeftInset],
+  /// rather than derived from theme constants, and as a distance from the
+  /// window's RIGHT edge, which is the edge the sheet aligns to.
+  final _layoutButtonKey = GlobalKey();
+
+  double? get _layoutButtonRightInset {
+    final box = _layoutButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return null;
+    final rightEdge = box.localToGlobal(Offset(box.size.width, 0)).dx;
+    return math.max(0.0, MediaQuery.sizeOf(context).width - rightEdge);
+  }
+
+  Future<void> _openLayoutSheet() async {
+    final dock = _dockKey.currentState;
+    if (dock == null) {
+      // The button is only rendered alongside the dock, so this is a bug
+      // rather than a state the operator can be in — and a button that does
+      // nothing at all is not something they could report.
+      debugPrint('[layout] layout button pressed with no dock mounted');
+      return;
+    }
+    // An extension enabled since this view mounted has panels nobody has
+    // asked for yet, and this is where the operator would go looking for
+    // them. The answer lands after the sheet is already built, which is why
+    // the sheet rebuilds on `revision` rather than reading the catalog once.
+    unawaited(widget.services.panels.refreshExtensionPanels());
+    final revision = _sheetRevision = ValueNotifier<int>(0);
+    final t = context.t.operation.layout;
+    try {
+      await showTopModalPane<void>(
+      context,
+      rightInset: _layoutButtonRightInset,
+      // Narrower than a form pane: every row here is a panel name and a
+      // control or two.
+      maxWidth: idealPaneWidth * 0.8,
+      // The sheet's rows and section bands run edge to edge, like the
+      // operation sheet's — a list inset from the pane's walls reads as a
+      // panel floating inside it rather than as the pane's own content.
+      contentPadding: EdgeInsets.zero,
+      closeLabel: context.t.common.close,
+      // A mirror of the operation sheet's top row, because this sheet hangs
+      // off the opposite end of the same header: Options where that one puts
+      // its accept button, the title against the edge the sheet came from,
+      // and the accept button at that edge.
+      leading: Builder(
+        builder: (buttonContext) => TextButton.icon(
+          onPressed: () => LayoutSheet.showOptions(
+            buttonContext,
+            onReset: () {
+              dock.replaceSpec(_defaultDockSpec());
+              setState(() {});
+            },
+          ),
+          icon: const Icon(MdiIcons.cog, size: 18),
+          label: Text(t.options),
+          style: TextButton.styleFrom(foregroundColor: Theme.of(buttonContext).colorScheme.onSurface),
+        ),
+      ),
+      // Its own trailing inset: HaloDialogHeader puts the title's Expanded
+      // and the accept button flush against each other, and a right-aligned
+      // title ends exactly where that button starts.
+      title: Padding(
+        padding: const EdgeInsets.only(right: Space.lg),
+        child: Text(t.title, textAlign: TextAlign.right),
+      ),
+      // The same accept button the operation sheet carries. Nothing is held
+      // back to be saved here — a removed panel is gone the moment it's
+      // tapped — so this only dismisses; it exists because a sheet with an
+      // accept button and one without read as two different kinds of
+      // surface.
+      trailing: Builder(
+        builder: (buttonContext) => IconButton(
+          icon: Icon(MdiIcons.check, semanticLabel: t.done),
+          style: IconButton.styleFrom(
+            backgroundColor: fabAccentColor,
+            foregroundColor: Theme.of(buttonContext).colorScheme.onPrimary,
+          ),
+          onPressed: () => Navigator.of(buttonContext).pop(),
+        ),
+      ),
+      builder: (_) => ValueListenableBuilder<int>(
+        valueListenable: revision,
+        builder: (context, _, _) {
+          final inLayout = dock.modules;
+          // Everything the sheet shows — name, description, preview, whether
+          // there are settings — comes from the panels service, so a panel
+          // an extension contributed lists exactly like one of ours.
+          LayoutPanelEntry? entry(String id) {
+            final panel = widget.services.panels[id];
+            if (panel == null) {
+              // A pane in the layout with no row in the sheet is a pane the
+              // operator cannot remove. _dockSpecIsUsable is supposed to
+              // make this unreachable; if the two ever disagree, say which
+              // id fell through rather than leaving an invisible pane.
+              debugPrint('[layout] no catalog entry for module "$id"; it has no row in Layout Setup');
+              return null;
+            }
+            return LayoutPanelEntry(
+              id: id,
+              title: panel.title,
+              description: panel.description,
+              preview: panel.preview,
+              openSettings: !panel.hasSettings
+                  ? null
+                  : (settingsContext) {
+                      final target = panel.settingsTarget;
+                      if (target != null) {
+                        // A native panel's settings are assembled from the
+                        // declared settings aimed at it — the same dialog its
+                        // own tune button opens.
+                        unawaited(showSettingsForTarget(
+                          settingsContext,
+                          services: widget.services,
+                          target: target,
+                          title: settingsContext.t.operation.menu.loggingSettingsTitle,
+                        ));
+                        return;
+                      }
+                      unawaited(showPanelSettings(settingsContext, services: widget.services, panel: panel));
+                    },
+            );
+          }
+
+          return LayoutSheet(
+            panels: [for (final id in inLayout) entry(id)].nonNulls.toList(),
+            // Catalog order, not removal order, so a panel returns to the
+            // same place in the list it left from.
+            available: [
+              for (final panel in widget.services.panels.catalog)
+                if (!inLayout.contains(panel.id)) entry(panel.id),
+            ].nonNulls.toList(),
+            onRemove: dock.removeModule,
+            onAdd: dock.addModule,
+          );
+        },
+      ),
+      );
+    } finally {
+      _sheetRevision = null;
+      revision.dispose();
+    }
+  }
+
+  /// The header's layout button: a dashboard glyph that fades in as the
+  /// pointer nears the header's right end, rather than sitting permanently
+  /// over the operation's own title. It keeps its layout space either way,
+  /// so the header doesn't reflow as it appears, and it stays hit-testable
+  /// and announced while faded — a click into the zone reveals it on the way
+  /// in, and a screen reader must be able to find it at all.
+  ///
+  /// Touch platforms have no hover to reveal it with, so there it simply
+  /// stays visible.
+  Widget _layoutButton() {
+    final theme = Theme.of(context);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _layoutButtonHovered = true),
+      onExit: (_) => setState(() => _layoutButtonHovered = false),
+      child: SizedBox(
+        // Wider than the button: the reveal is meant to trigger on
+        // approaching that end of the header, not on finding a control that
+        // isn't visible yet.
+        width: LayoutDensity.chromeHeightOf(context) * 2.5,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: AnimatedOpacity(
+            opacity: (_layoutButtonHovered || isMobilePlatform) ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: IconButton(
+              key: _layoutButtonKey,
+              // The app shows no hover tooltips
+              // (docs/design/user-interface.md), so the accessible name is
+              // the only place this button is named.
+              icon: Icon(
+                MdiIcons.viewDashboard,
+                color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+                semanticLabel: context.t.operation.layout.openLabel,
+              ),
+              onPressed: _openLayoutSheet,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _layoutButtonHovered = false;
 
   /// Bakes [fragments] into [operation]'s own `localData['titleSuggestion']`
   /// — the same shape `OperationTitleService` persists, and the one
@@ -1399,7 +1797,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // narrow QSOs tab, or the fixed wide split's pane title bar —
               // see _buildLoggingSettingsButton), since none of its toggles
               // apply to the Info/Spots/Map tabs.
-              actions: [windowsCaptionSpacer(context)],
+              //
+              // The layout button, by contrast, is about the arrangement of
+              // the whole view, so it belongs here — and only where there IS
+              // an arrangement to edit: the dock layout, which is two-pane
+              // and experiment-gated.
+              actions: [
+                if (isTwoPane && _customLayout) _layoutButton(),
+                windowsCaptionSpacer(context),
+              ],
               title: InkWell(
                 key: _headerTitleKey,
                 onTap: () {
@@ -1503,6 +1909,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     mapPanel: mapPanel,
                     realQsoCount: realQsoCount,
                     qsos: qsos,
+                    operation: operation,
                   )
                 : isTwoPane
                 ? ResizableSplitView(

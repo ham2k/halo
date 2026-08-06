@@ -19,6 +19,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'error_reporting_service.dart';
 import 'location_service.dart';
+import 'panel_service.dart';
 import 'settings_service.dart';
 import 'spots_service.dart';
 import 'status_bar_service.dart';
@@ -54,7 +55,7 @@ Map<String, dynamic> qsonPayloadFor({required Operation operation, required List
       'qsos': [for (final qso in qsos) qso.data],
     };
 
-class ExtensionService {
+class ExtensionService implements PanelExtensionSource {
   ExtensionHost? _host;
   Future<void>? _starting;
   Timer? _restartTimer;
@@ -562,6 +563,109 @@ class ExtensionService {
       debugPrint('[extensions] getSettingsPanels failed: $e');
       return const [];
     }
+  }
+
+  /// Every panel every `panel` hook contributes, tagged with the `hookKey`
+  /// that routes [renderPanel] back to it (see docs/extensions/hooks.md).
+  /// Discovery only — nothing here renders anything, and a panel the
+  /// operator has not put in a layout is never asked to.
+  ///
+  /// **Null means "could not ask"** — no runtime yet, or the call failed —
+  /// as distinct from an empty list, which means the extensions genuinely
+  /// offer no panels. Deliberately NOT [_collectHookResults], whose swallow
+  /// to `const []` is right for an additive list (one missing export option
+  /// degrades a menu) and wrong here: a caller reconciling a SAVED LAYOUT
+  /// against this would read a failed call as "that panel no longer exists"
+  /// and throw the operator's arrangement away.
+  Future<List<Map<String, dynamic>>?> getExtensionPanels() async {
+    final host = _host;
+    if (host == null) {
+      debugPrint('[extensions] getExtensionPanels: no runtime yet');
+      return null;
+    }
+    try {
+      final entries = await host.invokeHookAll(
+        'panel',
+        method: 'getPanels',
+        args: const <String, dynamic>{},
+        timeout: const Duration(seconds: 10),
+      );
+      final results = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        // One hook failing is that hook's panels lost, not the catalog's —
+        // but it still says so, unlike the whole call failing above.
+        if (entry['ok'] != true) {
+          debugPrint('[extensions] panel hook "${entry['key']}" getPanels failed: ${entry['error']}');
+          continue;
+        }
+        if (entry['value'] is! List) {
+          // A hook resolving with a single object rather than a list would
+          // otherwise lose its panels with nothing said anywhere.
+          debugPrint('[extensions] panel hook "${entry['key']}" getPanels did not return a list');
+          continue;
+        }
+        for (final item in (entry['value'] as List)) {
+          if (item is Map) results.add({...item.cast<String, dynamic>(), 'hookKey': entry['key']});
+        }
+      }
+      return results;
+    } catch (e) {
+      debugPrint('[extensions] getExtensionPanels failed: $e');
+      return null;
+    }
+  }
+
+  /// One panel's content, right now. Returns null only when there is no
+  /// runtime or the hook answered with something that isn't a document; a
+  /// hook that throws or times out THROWS here, so the caller can tell "this
+  /// panel has nothing to say" from "this panel is broken" and show the
+  /// second as a panel-sized error.
+  ///
+  /// The timeout is short on purpose: this runs while the operator is
+  /// looking at the pane, and a panel that can't answer promptly should say
+  /// so rather than hold a repaint.
+  Future<Map<String, dynamic>?> renderPanel({
+    required String hookKey,
+    required String panelKey,
+    required Map<String, dynamic> args,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook(
+        'panel',
+        key: hookKey,
+        method: 'render',
+        args: {...args, 'panelKey': panelKey},
+        timeout: const Duration(seconds: 5),
+      );
+      if (result is! Map) return null;
+      return result.cast<String, dynamic>();
+    } catch (e) {
+      debugPrint('[extensions] renderPanel($hookKey/$panelKey) failed: $e');
+      rethrow;
+    }
+  }
+
+  /// A panel's own config values, keyed by field — the same declarative
+  /// storage a Tier 1 settings panel's fields use, under the panel's id, so
+  /// a panel's form needs no persistence code of its own.
+  Future<Map<String, dynamic>> readPanelConfig({
+    required String panelKey,
+    required List<Map<String, dynamic>> fields,
+  }) async {
+    final values = <String, dynamic>{};
+    for (final field in fields) {
+      final key = field['key'] as String?;
+      if (key == null) continue;
+      final stored = await _readSettingsValue(
+        panelKey: panelKey,
+        fieldKey: key,
+        isSecret: field['fieldType'] == 'secret',
+      );
+      if (stored != null) values[key] = stored;
+    }
+    return values;
   }
 
   /// The `FormDefinition` for one panel. For a Tier 1 (`kind: 'simple'`)

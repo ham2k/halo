@@ -77,8 +77,21 @@ as a `layoutPolicy` const on the view class:
 
 - **`customizable`** — the view's panes are user-arrangeable via the dock
   layout (`DockLayoutView`, behind the `layouts` experiment). Currently
-  only the **Operation** view. All its dividers — the fixed split's and the
-  dock's — use the **solid** style below.
+  only the **Operation** view. A dragged tab can land on another group's
+  **tab strip** (joining that group at the position aimed at, which is also
+  how tabs reorder), on one of the **four split bands** over a group's body,
+  or on a **dock edge** strip. The bands are thirds running the full length
+  of the body and so overlap at the corners: a corner entered from outside
+  resolves to the horizontal band, and a band already highlighted keeps the
+  pointer as it slides into an overlap, so the highlight doesn't flicker
+  while the operator is still moving. The middle square belongs to no band
+  and a drop there does nothing. A dropped pane takes **the band's own
+  third** — it arrives at the size the operator was looking at — and grows
+  into it over `layoutAnimationDuration`, floored at a group's chrome height
+  so a pane is never laid out shorter than its own tab strip.
+
+  All of a customizable view's dividers — the fixed split's and the dock's —
+  use the **solid** style below.
 - **`fixed`** — the arrangement never changes (Home, Settings). Fixed
   views may opt their splits into the **surfaces** divider style.
 
@@ -245,6 +258,37 @@ ladder ([logging-fields.md](logging-fields.md) — it must not gain a second
 competing squeeze), and the numbers row's key height, which is already at
 Apple's 44pt tap-target minimum.
 
+## The panels a view can hold
+
+A layout-customizable view arranges **panels**, and the list of panels is a
+registry — `PanelService` (`app/lib/services/panel_service.dart`) — not a
+constant in the view. Two sources write into it:
+
+- **Native panels.** The view registers its own (Operation: QSOs, Info,
+  Spots, Map) with their title, description, icon and, where they have any,
+  the settings *target* whose declared settings make up their settings
+  dialog. The service holds identity only: the widget stays with the view
+  that builds it, which is what lets the Layout Setup sheet list a panel it
+  has no way to build.
+- **Extension panels.** Every `panel` hook contributes its own
+  ([hooks.md](../extensions/hooks.md)). An extension panel is a *document* —
+  markdown, SVG, or sandboxed HTML — rendered by `PanelContentView`, never
+  widgets, the same UI-catalog seam every other declarative hook sits behind.
+  Its id is `ext:<hookKey>:<panelKey>`, and that id is what a saved layout
+  stores.
+
+A panel's id disappearing from the catalog — an extension disabled or
+uninstalled — is exactly the case a persisted arrangement must survive: the
+spec is rejected as unusable and the view falls back to its default rather
+than rendering a pane-sized hole.
+
+**Rendering is budgeted, not reactive.** An extension panel declares what it
+re-renders on; the host throttles to one render per `panelRenderThrottle`
+and renders nothing while the panel is behind another tab (dock tabs stay
+mounted, so otherwise a four-panel layout pays for the three nobody is
+looking at). The rule this exists to enforce: **nothing an extension
+declares may put a bridge call on the per-keystroke path.**
+
 ## Dialogs and Modal Panes
 
 Two distinct surfaces; pick deliberately:
@@ -309,6 +353,10 @@ not add it.
 
 | Piece | File |
 |---|---|
+| The panel catalog (native + extension) | `app/lib/services/panel_service.dart` |
+| Extension panel rendering and its HTML sandbox | `app/lib/views/operation/panel_content_view.dart` |
+| A panel's render loop and refresh budget | `app/lib/views/operation/extension_panel.dart` |
+| Layout Setup sheet | `app/lib/views/operation/layout_sheet.dart` |
 | Shirt sizes, ideal pane width, animation constants | `packages/halo_widgets/lib/src/layout.dart` |
 | Layout density, its metrics and the operator's preference | `packages/halo_widgets/lib/src/density.dart` |
 | The root density scope, and the header's snap | `app/lib/main.dart` (`_LayoutDensityFromWindow`) |

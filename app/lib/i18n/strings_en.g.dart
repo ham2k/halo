@@ -355,6 +355,7 @@ class Translations$operation$en {
 	String titleAt({required Object value}) => 'at ${value}';
 
 	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
+	late final Translations$operation$layout$en layout = Translations$operation$layout$en.internal(_root);
 	late final Translations$operation$export$en export = Translations$operation$export$en.internal(_root);
 	late final Translations$operation$spots$en spots = Translations$operation$spots$en.internal(_root);
 }
@@ -1405,6 +1406,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'MAP'
 	String get map => 'MAP';
+
+	/// en: 'QSOs'
+	String get qsosPlain => 'QSOs';
 }
 
 // Path: operation.menu
@@ -1441,6 +1445,56 @@ class Translations$operation$menu$en {
 
 	/// en: 'Relevant Settings'
 	String get relevantSettingsSection => 'Relevant Settings';
+}
+
+// Path: operation.layout
+class Translations$operation$layout$en {
+	Translations$operation$layout$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Layout Setup'
+	String get title => 'Layout Setup';
+
+	/// en: 'Layout setup'
+	String get openLabel => 'Layout setup';
+
+	/// en: 'Panels in this view'
+	String get panelsSection => 'Panels in this view';
+
+	/// en: 'Available panels'
+	String get availableSection => 'Available panels';
+
+	/// en: '${panel} settings'
+	String panelSettings({required Object panel}) => '${panel} settings';
+
+	/// en: 'Remove ${panel}'
+	String removePanel({required Object panel}) => 'Remove ${panel}';
+
+	/// en: 'Add ${panel}'
+	String addPanel({required Object panel}) => 'Add ${panel}';
+
+	/// en: 'Layout Options'
+	String get optionsTitle => 'Layout Options';
+
+	/// en: 'Options'
+	String get options => 'Options';
+
+	/// en: 'Reset layout'
+	String get resetLayout => 'Reset layout';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: '${panel} could not be displayed'
+	String panelRenderFailed({required Object panel}) => '${panel} could not be displayed';
+
+	late final Translations$operation$layout$panels$en panels = Translations$operation$layout$panels$en.internal(_root);
+
+	/// en: 'This panel needs a web view, which this platform does not provide'
+	String get htmlPanelUnsupported => 'This panel needs a web view, which this platform does not provide';
 }
 
 // Path: operation.export
@@ -2725,6 +2779,27 @@ class Translations$settings$panels$en {
 	String get stationDescription => 'Radios and other equipment';
 }
 
+// Path: operation.layout.panels
+class Translations$operation$layout$panels$en {
+	Translations$operation$layout$panels$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'The log and the entry fields'
+	String get loggingDescription => 'The log and the entry fields';
+
+	/// en: 'What we know about the station being worked'
+	String get infoDescription => 'What we know about the station being worked';
+
+	/// en: 'Spots from the clusters and activity programs'
+	String get spotsDescription => 'Spots from the clusters and activity programs';
+
+	/// en: 'Where the contacts are'
+	String get mapDescription => 'Where the contacts are';
+}
+
 // Path: operation.export.compactFileNames
 class Translations$operation$export$compactFileNames$en {
 	Translations$operation$export$compactFileNames$en.internal(this._root);
@@ -3331,6 +3406,7 @@ extension on Translations {
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
+			'operation.tabs.qsosPlain' => 'QSOs',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -3347,6 +3423,23 @@ extension on Translations {
 			'operation.menu.loggingSettingsTitle' => 'Logging Settings',
 			'operation.menu.actionsSection' => 'Actions',
 			'operation.menu.relevantSettingsSection' => 'Relevant Settings',
+			'operation.layout.title' => 'Layout Setup',
+			'operation.layout.openLabel' => 'Layout setup',
+			'operation.layout.panelsSection' => 'Panels in this view',
+			'operation.layout.availableSection' => 'Available panels',
+			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} settings',
+			'operation.layout.removePanel' => ({required Object panel}) => 'Remove ${panel}',
+			'operation.layout.addPanel' => ({required Object panel}) => 'Add ${panel}',
+			'operation.layout.optionsTitle' => 'Layout Options',
+			'operation.layout.options' => 'Options',
+			'operation.layout.resetLayout' => 'Reset layout',
+			'operation.layout.done' => 'Done',
+			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
+			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
+			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
+			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
+			'operation.layout.panels.mapDescription' => 'Where the contacts are',
+			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Export',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
@@ -3758,6 +3851,8 @@ extension on Translations {
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
@@ -3776,8 +3871,6 @@ extension on Translations {
 			'settings.station.reportManufacturer' => 'Manufacturer',
 			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportModel' => 'Model',
 			'settings.station.reportModelDescription' => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".',
 			'settings.station.reportModelRequired' => 'A model is required',

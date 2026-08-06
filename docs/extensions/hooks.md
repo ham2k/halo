@@ -851,6 +851,73 @@ report — as a real CaBo card; the host writes the title, body and kind, the
 transport adds who/where/what-build and owns the account gate.
 Implemented by: `ham2k-lofi`.
 
+## ✅ `panel` — panes an extension contributes to a view
+
+A panel is a PANE the operator can put in a customizable view's layout
+(docs/design/layouts.md), listed in Layout Setup alongside the app's own
+QSOs / Info / Spots / Map. One extension may declare several, each with its
+own identity, config form and refresh budget.
+
+```ts
+interface PanelHook {
+  getPanels(args: {}, ctx): Promise<PanelDescriptor[]>
+  render(args: PanelRenderArgs, ctx): Promise<PanelContent>
+}
+// PanelDescriptor: {key, title, description?, icon?, preview?, on?, form?}
+// PanelRenderArgs: {panelKey, operation, qso?, qsoCount, config, reason}
+// PanelContent:    {kind: 'markdown' | 'svg' | 'html', content}
+```
+
+The host addresses a panel as `ext:<hookKey>:<key>`, and that id is stored
+inside saved layouts — renaming a `key` drops the panel out of every
+arrangement holding it.
+
+**Content is a document, not widgets** — the same UI-catalog seam every
+other declarative hook sits behind. Prefer `markdown`: it renders with the
+app's own typography, theme, font scale and density, and costs no web view.
+`svg` is drawn as a vector image. `html` is the escape hatch and runs
+sandboxed: **no JavaScript, no network for subresources (inline what you
+need as a `data:` URI), and no navigation** — a link the operator taps opens
+in the OS browser; one the document triggers itself is blocked. The
+no-network half is enforced by content blockers on Apple platforms and
+`blockNetworkLoads` on Android; a platform whose web view honours neither
+still gets no scripts and no navigation, so treat "no network" as a rule
+your panel must follow rather than one it is held to everywhere. HTML
+panels do not render at all where there is no web view (Linux, and Windows
+without the WebView2 runtime) — the pane says so. `markdown` has none of
+these caveats, which is the other reason to prefer it.
+
+**`on`** is a refresh budget, not a subscription: `'operation'`,
+`'qsoLogged'`, `'spots'`, `'lookup'`, `'qso'`, or `` `tick:<seconds>` ``
+(floored at 5). The host throttles renders to one per 750ms, and renders
+nothing at all while the panel is behind another tab — an unselected dock
+tab stays mounted, so without that a four-panel layout would pay for the
+three nobody is looking at. A trigger name outside this list is dropped when
+the panel is read, with a line in the console: it would otherwise sit in the
+descriptor looking live and never fire. A descriptor with no `on` renders once when it
+appears. Omitting it is the right default: a trigger costs a bridge call
+every time it fires.
+
+**Not yet supplied by the host:** `args.qso` and the `'qso'` and `'lookup'`
+triggers. The in-progress QSO lives inside the logging panel's own state
+and is not published to the view yet; a panel declaring those triggers is
+accepted and simply never woken by them.
+
+**`form`** declares the panel's own configuration in the same field schema
+a Tier 1 `settingsPanel` uses ([settings.md](./settings.md)), rendered by
+the core's `FormRenderer` and reached from the gear beside the panel in
+Layout Setup. Values are host-persisted per panel and handed back as
+`args.config`; there is no per-keystroke bridge call and nothing for the
+extension to store.
+
+**`preview`** is a still image for that same list — an SVG document or a
+`data:` URI, never a URL: the list renders offline, and a remote preview
+would make opening it a fetch (and a beacon).
+
+The whole log is deliberately absent from `render`'s args. A panel that
+needs it calls `ctx.getQsos(operation.uuid)` — right for a `'qsoLogged'`
+render, wrong for a per-keystroke one.
+
 ## ✅ `settingsPanel` — extension settings forms
 
 Declarative settings panels rendered by the core's `FormRenderer` — full

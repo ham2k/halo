@@ -3,10 +3,12 @@
 //
 // PROTOTYPE of the module-docking layout of DESIGN.md §7: a tree of splits
 // whose leaves are tab groups of "modules" (the pane subtrees a view already
-// builds — logging panel, map, spots…). Every tab doubles as a grab handle:
-// dragging it over another group shows five drop regions (left / right / top
-// / bottom / center-as-tab) plus thin strips along the dock's own edges, and
-// dropping rearranges the tree. Dividers between siblings drag to resize.
+// builds — logging panel, map, spots…). Every tab doubles as a grab handle.
+// Dragging one shows where it can land: on another group's TAB STRIP, at the
+// position under the pointer (which both joins a group and reorders within
+// one), on that group's body in a top/bottom/left/right band that splits it,
+// or on a thin strip along the dock's own edge for a new full-length pane.
+// Dividers between siblings drag to resize.
 //
 // The layout is a plain JSON-serializable tree (see [DockNode.toJson]) so a
 // view can persist it through SettingsService the way divider widths are
@@ -100,8 +102,38 @@ class DockSplit extends DockNode {
   };
 }
 
-/// Where a drag lands relative to a target group (or the dock's own edges).
-enum DockRegion { left, right, top, bottom, center }
+/// Whether the pane reading this is the one on top of its tab group. Every
+/// pane in a group stays MOUNTED (the group is an IndexedStack, so a
+/// half-typed field survives a tab switch), which means a pane that costs
+/// something to keep current — an extension panel crossing the JS bridge —
+/// has no other way to know nobody is looking at it.
+///
+/// Absent means visible: a pane outside a dock (the fixed layouts, a test)
+/// is on screen whenever it is built.
+class DockPaneVisibility extends InheritedWidget {
+  final bool visible;
+
+  const DockPaneVisibility({super.key, required this.visible, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DockPaneVisibility>()?.visible ?? true;
+
+  /// The value WITHOUT registering a dependency, for a caller that already
+  /// depends on it through [of] and needs it mid-frame — `didUpdateWidget`
+  /// runs BEFORE `didChangeDependencies` when a widget and its inherited
+  /// ancestors both change in one pump, so a State reading its own cached
+  /// copy there is reading the previous frame's answer.
+  static bool readOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<DockPaneVisibility>()?.visible ?? true;
+
+  @override
+  bool updateShouldNotify(DockPaneVisibility oldWidget) => oldWidget.visible != visible;
+}
+
+/// Which side of a target group (or of the dock itself) a drag lands on.
+/// Joining a group as a TAB is not a region: it happens on the tab strip and
+/// carries the position within the group, which a region can't say.
+enum DockRegion { left, right, top, bottom }
 
 class DockLayoutView extends StatefulWidget {
   /// The starting arrangement. The view owns mutations from then on,
@@ -116,11 +148,16 @@ class DockLayoutView extends StatefulWidget {
   /// the panes get their latest props; must cover every id in the spec.
   final Map<String, Widget> children;
 
-  /// Module id → a trailing widget for that module's group header — shown
-  /// at the header's right edge, and only when the module is the group's
-  /// selected tab (so a solo module's trailing widget is always visible,
-  /// and one sharing a group with others only shows when it's the active
-  /// tab). Absent ids show nothing.
+  /// Module id → a trailing widget for that module's own TAB — shown at the
+  /// tab's trailing edge, and only while the module is the group's selected
+  /// tab (so a solo module's action is always visible, and one sharing a
+  /// group with others only shows when it's the active tab). Absent ids show
+  /// nothing, and cost nothing: only a module that HAS an action reserves
+  /// the room for one.
+  ///
+  /// It belongs to the tab rather than the header because a group's header
+  /// is entirely tabs — an action parked at the header's own right edge
+  /// reads as belonging to the group, not to the one module it acts on.
   final Map<String, WidgetBuilder>? tabActions;
 
   final ValueChanged<DockNode>? onSpecChanged;
@@ -153,8 +190,46 @@ class DockLayoutView extends StatefulWidget {
 /// [revealModule] — the dock-mode equivalent of the fixed layout's
 /// programmatic `TabController.animateTo` (surfacing command output, a
 /// tapped spot's logging pane, the call-info detail).
-class DockLayoutViewState extends State<DockLayoutView> {
+class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProviderStateMixin {
   late DockNode _spec = widget.initialSpec;
+
+  /// Drives a just-dropped pane from nothing to its share, so the layout is
+  /// seen to rearrange rather than jumping to a new arrangement the operator
+  /// then has to re-read. An explicit controller, not an implicit animation:
+  /// a drop restructures the children list, and an implicit animation would
+  /// be interpolating from whatever pane happened to hold that slot before.
+  /// Built in [initState], not lazily: a `late final` initializer would be
+  /// run BY `dispose()` on a dock that never saw a drop, and creating a
+  /// ticker while the element is being unmounted throws.
+  late final AnimationController _growth;
+
+  /// The split holding the pane being grown, and its index in it.
+  DockSplit? _growingSplit;
+  int _growingIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _growth = AnimationController(vsync: this, duration: layoutAnimationDuration)
+      ..addListener(() {
+        if (mounted) setState(() {});
+      })
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) setState(() => _growingSplit = null);
+      });
+  }
+
+  void _growPane(DockSplit split, int index) {
+    _growingSplit = split;
+    _growingIndex = index;
+    _growth.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _growth.dispose();
+    super.dispose();
+  }
 
   /// The module id being dragged, or null — gates the drop-region overlays.
   String? _dragging;
@@ -189,6 +264,58 @@ class DockLayoutViewState extends State<DockLayoutView> {
       DockSplit() => node.children.any(select),
     };
     setState(() => select(_spec));
+  }
+
+  /// Every module in the layout, in visual order — what a layout editor
+  /// lists. Read from the LIVE tree, not the caller's `initialSpec`, which
+  /// stopped being the arrangement the moment the user moved anything.
+  List<String> get modules => _spec.collectModules();
+
+  /// Drops [id] out of the layout entirely, pruning whatever it leaves empty.
+  /// Refuses to remove the last module — a dock with nothing in it has no
+  /// tab left to drag anything back with, so the layout would be
+  /// unrecoverable from inside the view.
+  ///
+  /// Reported through `onSpecChanged` like any other arrangement change:
+  /// removing a pane is a user choice that must survive a relaunch.
+  bool removeModule(String id) {
+    if (!_spec.collectModules().contains(id) || _spec.collectModules().length <= 1) return false;
+    setState(() => _spec = _removed(_spec, id)!);
+    _emit();
+    return true;
+  }
+
+  /// Brings [id] into the layout as a tab of the LAST group in visual order,
+  /// selected — the far side of the dock from the primary pane, which is
+  /// where a tabbed group normally lives and where a returning pane is least
+  /// likely to displace what the operator is working in. Already-present
+  /// modules are revealed instead of duplicated.
+  void addModule(String id) {
+    if (_spec.collectModules().contains(id)) {
+      revealModule(id);
+      return;
+    }
+    DockGroup lastGroup(DockNode node) => switch (node) {
+      DockGroup() => node,
+      DockSplit() => lastGroup(node.children.last),
+    };
+    setState(() {
+      final group = lastGroup(_spec);
+      group.modules.add(id);
+      group.selected = group.modules.length - 1;
+    });
+    _emit();
+  }
+
+  /// Replaces the whole arrangement — how a view restores its default
+  /// layout, or installs one it could only resolve after this mounted, since
+  /// [DockLayoutView.initialSpec] is read only once.
+  ///
+  /// [emit] false for the latter: reporting a restored arrangement back out
+  /// would persist it as though the operator had just chosen it.
+  void replaceSpec(DockNode spec, {bool emit = true}) {
+    setState(() => _spec = spec);
+    if (emit) _emit();
   }
 
   // --- tree mutations -----------------------------------------------------
@@ -232,19 +359,14 @@ class DockLayoutViewState extends State<DockLayoutView> {
     return null;
   }
 
+  /// A dropped pane takes the share of the band it was dropped on — the
+  /// bands are thirds, so the newcomer arrives at the size the operator was
+  /// looking at when they let go, rather than at half the target and then
+  /// needing a divider drag to become what the target promised.
+  static const _newPaneShare = 1 / 3;
+
   void _handleDrop(String id, DockGroup target, DockRegion region) {
     setState(() {
-      if (region == DockRegion.center) {
-        final existing = target.modules.indexOf(id);
-        if (existing >= 0) {
-          target.selected = existing; // already here — just show it
-          return;
-        }
-        _spec = _removed(_spec, id) ?? DockGroup([id]);
-        target.modules.add(id);
-        target.selected = target.modules.length - 1;
-        return;
-      }
       // A side drop of a group's sole module beside itself is a no-op.
       if (target.modules.length == 1 && target.modules.single == id) return;
       _spec = _removed(_spec, id) ?? DockGroup([id]);
@@ -253,21 +375,55 @@ class DockLayoutViewState extends State<DockLayoutView> {
       final before = region == DockRegion.left || region == DockRegion.top;
       final parent = _parentOf(_spec, target);
       if (parent != null && parent.axis == axis) {
-        // Split the target's share with the newcomer instead of re-weighting
-        // the whole row.
+        // The newcomer takes its share OUT OF THE TARGET rather than out of
+        // the whole row: the panes either side of the target are not part of
+        // what was dropped on and must not move.
         final i = parent.children.indexWhere((c) => identical(c, target));
-        parent.weights[i] = parent.weights[i] / 2;
-        parent.children.insert(before ? i : i + 1, fresh);
-        parent.weights.insert(before ? i : i + 1, parent.weights[i]);
+        final share = parent.weights[i];
+        parent.weights[i] = share * (1 - _newPaneShare);
+        final at = before ? i : i + 1;
+        parent.children.insert(at, fresh);
+        parent.weights.insert(at, share * _newPaneShare);
+        _growPane(parent, at);
       } else {
-        final split = DockSplit(axis, before ? [fresh, target] : [target, fresh], [1, 1]);
+        final weights = before
+            ? [_newPaneShare, 1 - _newPaneShare]
+            : [1 - _newPaneShare, _newPaneShare];
+        final split = DockSplit(axis, before ? [fresh, target] : [target, fresh], weights);
         if (parent == null) {
           _spec = identical(_spec, target) ? split : _spec;
         } else {
           final i = parent.children.indexWhere((c) => identical(c, target));
           parent.children[i] = split;
         }
+        _growPane(split, before ? 0 : 1);
       }
+    });
+    _emit();
+  }
+
+  /// A drop on [target]'s tab strip: the module takes position [insertIndex]
+  /// among that group's tabs, and is selected — a module that lands behind
+  /// an unselected tab looks like a drop that did nothing.
+  ///
+  /// The same call covers reordering (the module is already in this group)
+  /// and joining from elsewhere, because they differ only in where the
+  /// module comes from.
+  void _handleTabDrop(String id, DockGroup target, int insertIndex) {
+    setState(() {
+      final existing = target.modules.indexOf(id);
+      if (existing >= 0) {
+        // [insertIndex] is a position in the list as the operator sees it,
+        // which still holds the module being moved — so once it is out, every
+        // position after it has shifted down by one.
+        target.modules.removeAt(existing);
+        final adjusted = (insertIndex > existing ? insertIndex - 1 : insertIndex).clamp(0, target.modules.length);
+        target.modules.insert(adjusted, id);
+      } else {
+        _spec = _removed(_spec, id) ?? DockGroup([id]);
+        target.modules.insert(insertIndex.clamp(0, target.modules.length), id);
+      }
+      target.selected = target.modules.indexOf(id);
     });
     _emit();
   }
@@ -317,7 +473,6 @@ class DockLayoutViewState extends State<DockLayoutView> {
       DockRegion.right => Positioned(right: 0, top: 0, bottom: 0, width: extent, child: child),
       DockRegion.top => Positioned(left: 0, right: 0, top: 0, height: extent, child: child),
       DockRegion.bottom => Positioned(left: 0, right: 0, bottom: 0, height: extent, child: child),
-      DockRegion.center => throw ArgumentError('center is not an edge'),
     };
   }
 
@@ -334,7 +489,27 @@ class DockLayoutViewState extends State<DockLayoutView> {
         // Floored at zero: a window smaller than the dividers alone must
         // degrade to zero-extent panes, not negative SizedBox widths.
         final available = math.max(0.0, total - _dividerExtent * (split.children.length - 1));
-        final weightSum = split.weights.reduce((a, b) => a + b);
+        // A pane arriving from a drop opens up over the animation rather than
+        // appearing at full size — but never below the height of its own tab
+        // strip, which is the least a group can paint in: a pane shorter than
+        // its chrome overflows its own Column, and a pretty transition is not
+        // worth a layout error. A drop into a pane already near that floor
+        // simply doesn't animate.
+        final growing = identical(split, _growingSplit);
+        final rawSum = split.weights.reduce((a, b) => a + b);
+        final floorWeight = available <= 0 ? 0.0 : LayoutDensity.chromeHeightOf(context) / available * rawSum;
+        final weights = growing
+            ? [
+                for (var i = 0; i < split.weights.length; i++)
+                  i == _growingIndex
+                      ? math.max(
+                          math.min(split.weights[i], floorWeight),
+                          split.weights[i] * layoutAnimationCurve.transform(_growth.value),
+                        )
+                      : split.weights[i],
+              ]
+            : split.weights;
+        final weightSum = weights.reduce((a, b) => a + b);
         // Weights give fractional extents; laying panes out at those puts
         // every boundary after the first one between device pixels, where it
         // antialiases against its neighbor and reads as a hairline gap. Walk
@@ -347,7 +522,7 @@ class DockLayoutViewState extends State<DockLayoutView> {
         final flat = <double>[];
         for (var i = 0; i < split.children.length; i++) {
           if (i > 0) flat.add(_dividerExtent);
-          flat.add(available * split.weights[i] / weightSum);
+          flat.add(available * weights[i] / weightSum);
         }
         var edge = 0.0;
         var snappedEdge = 0.0;
@@ -438,6 +613,54 @@ class DockLayoutViewState extends State<DockLayoutView> {
     );
   }
 
+  /// One tab of [group], as a flex child of the strip's row. [context] must
+  /// be one from inside the header (a module's action builder resolves its
+  /// theme and PaneSafeArea there, not at the dock's root).
+  Widget _buildTab(BuildContext context, DockGroup group, int index) {
+    final id = group.modules[index];
+    // A module's action belongs to that module's own tab and shows only
+    // while the tab is the active one — a solo module's tab always is. The
+    // builder runs only when its result will be seen; `hasAction` is what
+    // holds the room open on the other tabs, so nothing resizes as the
+    // selection moves.
+    final active = group.modules.length == 1 || index == group.selected;
+    final action = widget.tabActions?[id];
+    return Expanded(
+      child: _TabDropSlot(
+        index: index,
+        onDrop: (dragged, at) => _handleTabDrop(dragged, group, at),
+        child: _DockTab(
+        title: widget.titles[id] ?? id,
+        selected: index == group.selected,
+        showHandle: active,
+        hasAction: action != null,
+        action: active ? action?.call(context) : null,
+        // Selection is part of the persisted spec (toJson carries it), so a
+        // tap must emit like a drop does — otherwise the saved arrangement
+        // reopens on a stale tab.
+        onTap: () {
+          setState(() => group.selected = index);
+          _emit();
+        },
+        moduleId: id,
+          onDragStarted: (id) => setState(() => _dragging = id),
+          onDragEnded: () => setState(() => _dragging = null),
+        ),
+      ),
+    );
+  }
+
+  /// A module in the arrangement that the caller supplied no widget for.
+  /// Renders as nothing, but says so: an empty pane where a pane was asked
+  /// for otherwise reads as a broken panel rather than a missing one.
+  Widget _missingPane(String id) {
+    assert(() {
+      debugPrint('[dock] no child widget supplied for module "$id" — rendering an empty pane');
+      return true;
+    }());
+    return const SizedBox.shrink();
+  }
+
   Widget _buildGroup(DockGroup group) {
     final theme = Theme.of(context);
     final headerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
@@ -466,45 +689,43 @@ class DockLayoutViewState extends State<DockLayoutView> {
             // position.
             child: Builder(
               builder: (context) {
-                final selectedModule = group.modules[group.selected];
-                final trailing = widget.tabActions?[selectedModule]?.call(context);
                 return Padding(
                   padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        // Scrollable so many tabs in a narrow pane clip
-                        // gracefully instead of overflowing (scroll-wheel
-                        // reachable; tab drags win the gesture arena over the
-                        // scroll view, which is fine — the strip is primarily
-                        // tapped, and it usually fits).
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                  // Tabs share the strip evenly and only scroll once they
+                  // genuinely don't fit, so a dock group reads as the same
+                  // kind of tab bar as the stock one beside it. The layering
+                  // that gets both: IntrinsicWidth sizes the Row of
+                  // equal-flex tabs to (widest tab × count), ConstrainedBox
+                  // stretches that to the viewport when it is narrower, and
+                  // the scroll view takes over beyond it (scroll-wheel
+                  // reachable; tab drags win the gesture arena over the
+                  // scroll view, which is fine — the strip is primarily
+                  // tapped, and it usually fits).
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        child: IntrinsicWidth(
                           child: Row(
+                            // Stretch, not the default center: centered, a tab
+                            // shrink-wraps its label and paints its
+                            // bottom-border selection indicator at the LABEL's
+                            // bottom edge, well above the strip's — the same
+                            // trap operation_view's _narrowTabBar solves with
+                            // an explicit height. Stretch is what reaches the
+                            // strip's height from here: RenderFlex stretches
+                            // to its incoming maxHeight, and the horizontal
+                            // viewport passes the strip's height through as
+                            // that max.
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              for (var i = 0; i < group.modules.length; i++)
-                                _DockTab(
-                                  title: widget.titles[group.modules[i]] ?? group.modules[i],
-                                  selected: i == group.selected,
-                                  showHandle: group.modules.length == 1 || i == group.selected,
-                                  // Selection is part of the persisted spec
-                                  // (toJson carries it), so a tap must emit
-                                  // like a drop does — otherwise the saved
-                                  // arrangement reopens on a stale tab.
-                                  onTap: () {
-                                    setState(() => group.selected = i);
-                                    _emit();
-                                  },
-                                  moduleId: group.modules[i],
-                                  onDragStarted: (id) => setState(() => _dragging = id),
-                                  onDragEnded: () => setState(() => _dragging = null),
-                                ),
+                              for (var i = 0; i < group.modules.length; i++) _buildTab(context, group, i),
                             ],
                           ),
                         ),
                       ),
-                      if (trailing != null) trailing,
-                    ],
+                    ),
                   ),
                 );
               },
@@ -526,10 +747,24 @@ class DockLayoutViewState extends State<DockLayoutView> {
                 // designed to fill their pane, not shrink-wrap.
                 sizing: StackFit.expand,
                 index: group.selected,
-                children: [for (final id in group.modules) widget.children[id] ?? const SizedBox.shrink()],
+                children: [
+                  for (var i = 0; i < group.modules.length; i++)
+                    DockPaneVisibility(
+                      visible: i == group.selected,
+                      child: widget.children[group.modules[i]] ?? _missingPane(group.modules[i]),
+                    ),
+                ],
               ),
-              if (_dragging != null)
-                _GroupDropRegions(washAlpha: _hitWashAlpha, onDrop: (id, region) => _handleDrop(id, group, region)),
+              // Cross-faded rather than mounted outright: bands that appear
+              // the instant a drag starts read as a flicker under the
+              // pointer, and on drop they would vanish before the layout
+              // they described has finished moving.
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 150),
+                child: _dragging == null
+                    ? const SizedBox.shrink()
+                    : _GroupDropRegions(washAlpha: _hitWashAlpha, onDrop: (id, region) => _handleDrop(id, group, region)),
+              ),
             ],
           ),
         ),
@@ -544,6 +779,15 @@ class _DockTab extends StatelessWidget {
   final String title;
   final bool selected;
   final bool showHandle;
+
+  /// Whether this module has an action at all — reserves its room whether or
+  /// not [action] is being shown right now.
+  final bool hasAction;
+
+  /// The module's own action (a settings button), shown at the tab's trailing
+  /// edge while this tab is the active one.
+  final Widget? action;
+
   final VoidCallback onTap;
   final String moduleId;
   final ValueChanged<String> onDragStarted;
@@ -553,23 +797,53 @@ class _DockTab extends StatelessWidget {
     required this.title,
     required this.selected,
     required this.showHandle,
+    required this.hasAction,
+    required this.action,
     required this.onTap,
     required this.moduleId,
     required this.onDragStarted,
     required this.onDragEnded,
   });
 
-  Widget _labelRow(Color labelColor, {required TextStyle? style}) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (showHandle)
-        Padding(
-          padding: const EdgeInsets.only(right: Space.xs),
-          child: Icon(MdiIcons.dragVertical, size: 16, color: labelColor.withValues(alpha: 0.6)),
+  static const double _handleSize = 16;
+
+  /// A tab's contents: the grab handle pinned to its leading edge, the
+  /// module's action to its trailing edge, and the label centered between
+  /// them.
+  ///
+  /// Both edge slots are the SAME width and are held open whether or not
+  /// they currently hold anything — that is what keeps the label both
+  /// centered in the tab and fixed in place. A slot that collapsed when
+  /// empty would swing the label sideways every time the selection moved
+  /// (the handle and the action only show on the active tab), and unequal
+  /// slots would leave a tab with a settings button reading off-center
+  /// against its neighbours. Same reservation, for the same reason, as
+  /// operation_view.dart's `_narrowTab`.
+  ///
+  /// An action is assumed no wider than one chrome row is tall (the tap
+  /// target an icon button in this strip gets) — again as `_narrowTabBar`
+  /// assumes for its own trailing button.
+  Widget _tabContent(BuildContext context, Color labelColor, {required TextStyle? style}) {
+    final slot = hasAction ? math.max(_handleSize, LayoutDensity.chromeHeightOf(context)) : _handleSize;
+    return Row(
+      children: [
+        SizedBox(
+          width: slot,
+          child: showHandle
+              ? Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Icon(MdiIcons.dragVertical, size: _handleSize, color: labelColor.withValues(alpha: 0.6)),
+                )
+              : null,
         ),
-      Text(title, style: style?.copyWith(color: labelColor)),
-    ],
-  );
+        Expanded(child: Center(child: Text(title, style: style?.copyWith(color: labelColor)))),
+        SizedBox(
+          width: slot,
+          child: action == null ? null : Align(alignment: AlignmentDirectional.centerEnd, child: action),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -602,81 +876,241 @@ class _DockTab extends StatelessWidget {
           opacity: 0.35,
           child: Container(
             decoration: TabChrome.indicatorDecoration(selected: selected, labelColor: ghostLabelColor, tabTheme: tabTheme),
-            padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-            alignment: Alignment.center,
-            child: _labelRow(ghostLabelColor, style: theme.textTheme.titleSmall),
+            padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+            child: _tabContent(context, ghostLabelColor, style: theme.textTheme.titleSmall),
           ),
         ),
         child: TabChrome(
           selected: selected,
           semanticLabel: title,
+          // Far tighter than a stock tab's label padding: the handle and the
+          // action live in this inset, and a grab handle set in from its own
+          // tab's edge reads as decoration next to the label rather than as
+          // the tab's own corner. The label stays centred regardless — the
+          // slots either side of it are equal.
+          padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
           onTap: onTap,
-          builder: (context, labelColor) => _labelRow(labelColor, style: Theme.of(context).textTheme.titleSmall),
+          builder: (context, labelColor) => _tabContent(context, labelColor, style: Theme.of(context).textTheme.titleSmall),
         ),
       ),
     );
   }
 }
 
-/// The five drop regions overlaid on a group's body while a drag is live.
-class _GroupDropRegions extends StatelessWidget {
+/// Which split band [local] falls in, given the band [active] right now.
+/// The bands are thirds and they overlap at the corners — see
+/// [_GroupDropRegions] for why, and for the two rules this implements.
+/// Returns null for the middle square, which belongs to no band.
+@visibleForTesting
+DockRegion? dockSplitRegionAt(Offset local, Size size, {DockRegion? active}) {
+  if (size.isEmpty) return null;
+  final horizontal = local.dy < size.height / 3
+      ? DockRegion.top
+      : local.dy > size.height * 2 / 3
+      ? DockRegion.bottom
+      : null;
+  final vertical = local.dx < size.width / 3
+      ? DockRegion.left
+      : local.dx > size.width * 2 / 3
+      ? DockRegion.right
+      : null;
+  if (horizontal != null && vertical != null) {
+    if (active == horizontal || active == vertical) return active;
+    return horizontal;
+  }
+  return horizontal ?? vertical;
+}
+
+/// The split targets over a group's BODY while a drag is live: a top and a
+/// bottom band, each a third of the height and running the full width, and a
+/// left and a right band, each a third of the width and running the full
+/// height. Joining a group as a tab is not here — that is the tab strip's own
+/// job (see [_TabDropSlot]), where the tabs the module would join actually
+/// are.
+///
+/// The bands OVERLAP at the corners, deliberately: full-length bands are what
+/// make each one big enough to hit without aiming, and the ambiguity that
+/// buys is resolved by two rules rather than by shrinking them —
+///
+/// 1. entering a corner from outside picks the HORIZONTAL band, because a
+///    pointer arriving at a corner is usually on its way somewhere and the
+///    top/bottom split is the one a corner reads as;
+/// 2. a band already highlighted KEEPS the pointer as it slides into an
+///    overlap, so the highlight doesn't flicker between two answers while
+///    the operator is still moving.
+///
+/// The middle square belongs to no band: a drop there is a no-op rather than
+/// a guess.
+class _GroupDropRegions extends StatefulWidget {
   final double washAlpha;
   final void Function(String id, DockRegion region) onDrop;
 
   const _GroupDropRegions({required this.washAlpha, required this.onDrop});
 
   @override
+  State<_GroupDropRegions> createState() => _GroupDropRegionsState();
+}
+
+class _GroupDropRegionsState extends State<_GroupDropRegions> {
+  DockRegion? _active;
+
+  /// The band last highlighted, kept after [_active] clears so the highlight
+  /// can fade out where it was rather than blinking off.
+  DockRegion? _fading;
+
+  void _updateFrom(Offset globalOffset) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final region = dockSplitRegionAt(box.globalToLocal(globalOffset), box.size, active: _active);
+    if (region != _active) {
+      setState(() {
+        _active = region;
+        _fading = region ?? _fading;
+      });
+    }
+  }
+
+  /// Where [region]'s highlight is painted — the band itself, so what the
+  /// operator sees is exactly what they are aiming at.
+  Rect _bandOf(DockRegion region, Size size) => switch (region) {
+    DockRegion.top => Rect.fromLTWH(0, 0, size.width, size.height / 3),
+    DockRegion.bottom => Rect.fromLTWH(0, size.height * 2 / 3, size.width, size.height / 3),
+    DockRegion.left => Rect.fromLTWH(0, 0, size.width / 3, size.height),
+    DockRegion.right => Rect.fromLTWH(size.width * 2 / 3, 0, size.width / 3, size.height),
+  };
+
+  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final sideW = (constraints.maxWidth * 0.25).clamp(32.0, 140.0);
-        final sideH = (constraints.maxHeight * 0.25).clamp(32.0, 140.0);
-        Widget target(DockRegion region) =>
-            _RegionDropTarget(region: region, washAlpha: washAlpha, onDrop: (id) => onDrop(id, region));
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned(left: sideW, right: sideW, top: sideH, bottom: sideH, child: target(DockRegion.center)),
-            Positioned(left: 0, top: 0, bottom: 0, width: sideW, child: target(DockRegion.left)),
-            Positioned(right: 0, top: 0, bottom: 0, width: sideW, child: target(DockRegion.right)),
-            Positioned(left: sideW, right: sideW, top: 0, height: sideH, child: target(DockRegion.top)),
-            Positioned(left: sideW, right: sideW, bottom: 0, height: sideH, child: target(DockRegion.bottom)),
-          ],
+    final primary = Theme.of(context).colorScheme.primary;
+    return DragTarget<String>(
+      // One target over the whole body, not one per band: the overlap rules
+      // above need a single place that knows both where the pointer is and
+      // which band it last chose, and separate DragTargets would each only
+      // know their own half of that.
+      onWillAcceptWithDetails: (details) {
+        _updateFrom(details.offset);
+        return true;
+      },
+      onMove: (details) => _updateFrom(details.offset),
+      onLeave: (_) => setState(() => _active = null),
+      onAcceptWithDetails: (details) {
+        final region = _active;
+        setState(() => _active = null);
+        // The middle square: no band, no guess.
+        if (region != null) widget.onDrop(details.data, region);
+      },
+      builder: (context, candidates, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final size = Size(constraints.maxWidth, constraints.maxHeight);
+            final shown = _active ?? _fading;
+            final band = shown == null ? null : _bandOf(shown, size);
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                // Painted even when nothing is highlighted: a surface is what
+                // routes pointer events over a native platform view (the map)
+                // back to Flutter, so a body that painted nothing would take
+                // no drops at all there.
+                ColoredBox(color: primary.withValues(alpha: widget.washAlpha)),
+                if (band != null)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 120),
+                    curve: layoutAnimationCurve,
+                    left: band.left,
+                    top: band.top,
+                    width: band.width,
+                    height: band.height,
+                    child: AnimatedOpacity(
+                      opacity: _active == null ? 0 : 1,
+                      duration: const Duration(milliseconds: 120),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.30),
+                          border: Border.all(color: primary, width: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
   }
 }
 
-class _RegionDropTarget extends StatelessWidget {
-  final DockRegion region;
-  final double washAlpha;
-  final ValueChanged<String> onDrop;
+/// The drop target on ONE tab: dropping here puts the dragged module in this
+/// group, at this tab's position — which is how a module joins a group of
+/// tabs AND how the tabs within a group are reordered, since they are the
+/// same act seen from two sides.
+///
+/// Which side of the tab the pointer is on decides whether the module lands
+/// before or after it, and an insertion bar is drawn on that edge — the
+/// answer to "where will it go" has to be visible before the drop, not
+/// after.
+class _TabDropSlot extends StatefulWidget {
+  final int index;
 
-  const _RegionDropTarget({required this.region, required this.washAlpha, required this.onDrop});
+  /// Called with the module and the index it should occupy in the group.
+  final void Function(String id, int index) onDrop;
+  final Widget child;
+
+  const _TabDropSlot({required this.index, required this.onDrop, required this.child});
+
+  @override
+  State<_TabDropSlot> createState() => _TabDropSlotState();
+}
+
+class _TabDropSlotState extends State<_TabDropSlot> {
+  /// Null when no drag is over this tab; otherwise the edge the module would
+  /// land on.
+  bool? _after;
+
+  void _updateFrom(Offset globalOffset) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.size.isEmpty) return;
+    final after = box.globalToLocal(globalOffset).dx > box.size.width / 2;
+    if (after != _after) setState(() => _after = after);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.onPrimary;
     return DragTarget<String>(
-      onAcceptWithDetails: (details) => onDrop(details.data),
-      builder: (context, candidates, _) {
-        final active = candidates.isNotEmpty;
-        // Painted even when inactive (the wash) so the drop registers over
-        // native platform views like the map.
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          curve: layoutAnimationCurve,
-          decoration: BoxDecoration(
-            color: primary.withValues(alpha: active ? 0.30 : washAlpha),
-            border: active ? Border.all(color: primary, width: 2) : null,
-            borderRadius: region == DockRegion.center ? BorderRadius.circular(8) : null,
-          ),
-          child: active && region == DockRegion.center
-              ? Center(child: Icon(MdiIcons.tabPlus, color: primary, size: 32))
-              : null,
-        );
+      onWillAcceptWithDetails: (details) {
+        _updateFrom(details.offset);
+        return true;
       },
+      onMove: (details) => _updateFrom(details.offset),
+      onLeave: (_) => setState(() => _after = null),
+      onAcceptWithDetails: (details) {
+        final after = _after ?? false;
+        setState(() => _after = null);
+        widget.onDrop(details.data, after ? widget.index + 1 : widget.index);
+      },
+      builder: (context, candidates, _) => Stack(
+        fit: StackFit.passthrough,
+        children: [
+          widget.child,
+          PositionedDirectional(
+            start: (_after ?? false) ? null : 0,
+            end: (_after ?? false) ? 0 : null,
+            top: 0,
+            bottom: 0,
+            // Always positioned, only its width animates: a bar that is
+            // mounted and unmounted can't slide from one edge of the tab to
+            // the other as the pointer crosses the middle.
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              curve: layoutAnimationCurve,
+              width: _after == null ? 0 : 3,
+              color: primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

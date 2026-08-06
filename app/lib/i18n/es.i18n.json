@@ -81,7 +81,8 @@
       "qsos": "${count} QSOs",
       "info": "INFO",
       "spots": "SPOTS",
-      "map": "MAPA"
+      "map": "MAPA",
+      "qsosPlain": "QSOs"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
@@ -100,6 +101,27 @@
       "loggingSettingsTitle": "Configuración de Registro",
       "actionsSection": "Acciones",
       "relevantSettingsSection": "Ajustes Relevantes"
+    },
+    "layout": {
+      "title": "Configurar Disposición",
+      "openLabel": "Configurar disposición",
+      "panelsSection": "Paneles en esta vista",
+      "availableSection": "Paneles disponibles",
+      "panelSettings": "Configuración de ${panel}",
+      "removePanel": "Quitar ${panel}",
+      "addPanel": "Añadir ${panel}",
+      "optionsTitle": "Opciones de Disposición",
+      "options": "Opciones",
+      "resetLayout": "Restablecer disposición",
+      "done": "Listo",
+      "panelRenderFailed": "No se pudo mostrar ${panel}",
+      "panels": {
+        "loggingDescription": "El registro y los campos de entrada",
+        "infoDescription": "Lo que sabemos de la estación contactada",
+        "spotsDescription": "Spots de los clusters y programas de actividad",
+        "mapDescription": "Dónde están los contactos"
+      },
+      "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },
     "export": {
       "title": "Exportar",

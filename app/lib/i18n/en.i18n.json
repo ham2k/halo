@@ -81,7 +81,8 @@
       "qsos": "${count} QSOs",
       "info": "INFO",
       "spots": "SPOTS",
-      "map": "MAP"
+      "map": "MAP",
+      "qsosPlain": "QSOs"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
@@ -100,6 +101,27 @@
       "loggingSettingsTitle": "Logging Settings",
       "actionsSection": "Actions",
       "relevantSettingsSection": "Relevant Settings"
+    },
+    "layout": {
+      "title": "Layout Setup",
+      "openLabel": "Layout setup",
+      "panelsSection": "Panels in this view",
+      "availableSection": "Available panels",
+      "panelSettings": "${panel} settings",
+      "removePanel": "Remove ${panel}",
+      "addPanel": "Add ${panel}",
+      "optionsTitle": "Layout Options",
+      "options": "Options",
+      "resetLayout": "Reset layout",
+      "done": "Done",
+      "panelRenderFailed": "${panel} could not be displayed",
+      "panels": {
+        "loggingDescription": "The log and the entry fields",
+        "infoDescription": "What we know about the station being worked",
+        "spotsDescription": "Spots from the clusters and activity programs",
+        "mapDescription": "Where the contacts are"
+      },
+      "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },
     "export": {
       "title": "Export",

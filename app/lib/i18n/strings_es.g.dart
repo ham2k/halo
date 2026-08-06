@@ -213,6 +213,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String titleFor({required Object value}) => 'para ${value}';
 	@override String titleAt({required Object value}) => 'en ${value}';
 	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
+	@override late final _Translations$operation$layout$es layout = _Translations$operation$layout$es._(_root);
 	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
 	@override late final _Translations$operation$spots$es spots = _Translations$operation$spots$es._(_root);
 }
@@ -721,6 +722,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get info => 'INFO';
 	@override String get spots => 'SPOTS';
 	@override String get map => 'MAPA';
+	@override String get qsosPlain => 'QSOs';
 }
 
 // Path: operation.menu
@@ -739,6 +741,29 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get loggingSettingsTitle => 'Configuración de Registro';
 	@override String get actionsSection => 'Acciones';
 	@override String get relevantSettingsSection => 'Ajustes Relevantes';
+}
+
+// Path: operation.layout
+class _Translations$operation$layout$es extends Translations$operation$layout$en {
+	_Translations$operation$layout$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Configurar Disposición';
+	@override String get openLabel => 'Configurar disposición';
+	@override String get panelsSection => 'Paneles en esta vista';
+	@override String get availableSection => 'Paneles disponibles';
+	@override String panelSettings({required Object panel}) => 'Configuración de ${panel}';
+	@override String removePanel({required Object panel}) => 'Quitar ${panel}';
+	@override String addPanel({required Object panel}) => 'Añadir ${panel}';
+	@override String get optionsTitle => 'Opciones de Disposición';
+	@override String get options => 'Opciones';
+	@override String get resetLayout => 'Restablecer disposición';
+	@override String get done => 'Listo';
+	@override String panelRenderFailed({required Object panel}) => 'No se pudo mostrar ${panel}';
+	@override late final _Translations$operation$layout$panels$es panels = _Translations$operation$layout$panels$es._(_root);
+	@override String get htmlPanelUnsupported => 'Este panel necesita un visor web, que esta plataforma no ofrece';
 }
 
 // Path: operation.export
@@ -1347,6 +1372,19 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Radios y otros equipos';
 }
 
+// Path: operation.layout.panels
+class _Translations$operation$layout$panels$es extends Translations$operation$layout$panels$en {
+	_Translations$operation$layout$panels$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get loggingDescription => 'El registro y los campos de entrada';
+	@override String get infoDescription => 'Lo que sabemos de la estación contactada';
+	@override String get spotsDescription => 'Spots de los clusters y programas de actividad';
+	@override String get mapDescription => 'Dónde están los contactos';
+}
+
 // Path: operation.export.compactFileNames
 class _Translations$operation$export$compactFileNames$es extends Translations$operation$export$compactFileNames$en {
 	_Translations$operation$export$compactFileNames$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1767,6 +1805,7 @@ extension on TranslationsEs {
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',
+			'operation.tabs.qsosPlain' => 'QSOs',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -1783,6 +1822,23 @@ extension on TranslationsEs {
 			'operation.menu.loggingSettingsTitle' => 'Configuración de Registro',
 			'operation.menu.actionsSection' => 'Acciones',
 			'operation.menu.relevantSettingsSection' => 'Ajustes Relevantes',
+			'operation.layout.title' => 'Configurar Disposición',
+			'operation.layout.openLabel' => 'Configurar disposición',
+			'operation.layout.panelsSection' => 'Paneles en esta vista',
+			'operation.layout.availableSection' => 'Paneles disponibles',
+			'operation.layout.panelSettings' => ({required Object panel}) => 'Configuración de ${panel}',
+			'operation.layout.removePanel' => ({required Object panel}) => 'Quitar ${panel}',
+			'operation.layout.addPanel' => ({required Object panel}) => 'Añadir ${panel}',
+			'operation.layout.optionsTitle' => 'Opciones de Disposición',
+			'operation.layout.options' => 'Opciones',
+			'operation.layout.resetLayout' => 'Restablecer disposición',
+			'operation.layout.done' => 'Listo',
+			'operation.layout.panelRenderFailed' => ({required Object panel}) => 'No se pudo mostrar ${panel}',
+			'operation.layout.panels.loggingDescription' => 'El registro y los campos de entrada',
+			'operation.layout.panels.infoDescription' => 'Lo que sabemos de la estación contactada',
+			'operation.layout.panels.spotsDescription' => 'Spots de los clusters y programas de actividad',
+			'operation.layout.panels.mapDescription' => 'Dónde están los contactos',
+			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportar',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
@@ -2194,6 +2250,8 @@ extension on TranslationsEs {
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			'settings.station.transport' => 'Conexión',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',
 			'settings.station.hostDescription' => 'El nombre de host o la dirección IP de la radio en tu red.',
@@ -2212,8 +2270,6 @@ extension on TranslationsEs {
 			'settings.station.reportManufacturer' => 'Fabricante',
 			'settings.station.reportManufacturerDescription' => 'Quién la fabrica — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'Hace falta un fabricante',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportModel' => 'Modelo',
 			'settings.station.reportModelDescription' => 'El modelo, tal como lo llama la propia radio: «IC-7300», «FT-991A».',
 			'settings.station.reportModelRequired' => 'Hace falta un modelo',
