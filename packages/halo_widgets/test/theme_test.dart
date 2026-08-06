@@ -10,6 +10,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -298,6 +299,264 @@ void main() {
         expect(theme.appBarTheme.backgroundColor, theme.colorScheme.primary);
       }
       expect(buildHaLoTheme(Brightness.dark).colorScheme.primary, const Color(0xFF006783));
+    });
+  });
+
+  // Material 3 hands an unstyled TextButton, OutlinedButton,
+  // progress indicator and text cursor `colorScheme.primary` as a FOREGROUND
+  // on `surface` — a pairing this scheme's dark variant cannot support (see
+  // the group above). Each test below pins the WCAG threshold for what the
+  // widget actually is, so reverting a theme slot to `primary` fails on the
+  // real number rather than merely looking wrong: text/foreground needs
+  // 4.5:1, a stroke or an indicator is a non-text UI component at 3:1.
+  group('primary-as-foreground on the dark surface (HALO-167)', () {
+    // What the disabled/hovered-free resting button actually paints.
+    Color? resolveForeground(ButtonStyle? style) =>
+        style?.foregroundColor?.resolve(const <WidgetState>{});
+
+    test('a bare TextButton clears AA text contrast in both brightnesses', () {
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final foreground = resolveForeground(theme.textButtonTheme.style);
+        expect(foreground, theme.extension<HaLoColors>()!.onSurfaceAccent, reason: '$brightness');
+        expect(_contrast(foreground!, theme.colorScheme.surface), greaterThanOrEqualTo(4.5),
+            reason: '$brightness');
+      }
+    });
+
+    test('a dialog footer Cancel is measured on the BAND it sits on, not on surface', () {
+      // The motivating case of this whole change, and the one place the
+      // obvious background is the wrong one: HaloDialog paints the footer in
+      // `surfaceContainerHighest`, not `surface`, so a test that measures
+      // `surface` reports 6.18:1 for a button that actually renders at 3.37:1.
+      //
+      // That is a 2.3x improvement on primary's 1.45:1 and the right direction,
+      // but it does NOT reach AA, and this asserts the number that is true
+      // rather than the one that flatters. Reaching 4.5:1 on the band needs a
+      // lighter `onSurfaceAccent`, which is an app-wide colour decision.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final band = theme.colorScheme.surfaceContainerHighest;
+        expect(_contrast(resolveForeground(theme.textButtonTheme.style)!, band),
+            greaterThanOrEqualTo(3.0), reason: '$brightness');
+      }
+
+      // Light mode's footer already cleared AA and is deliberately untouched
+      // (its accent IS primary), so only dark mode moves — and only this far.
+      final dark = buildHaLoTheme(Brightness.dark);
+      final band = dark.colorScheme.surfaceContainerHighest;
+      expect(_contrast(dark.colorScheme.primary, band), lessThan(2.0));
+      expect(_contrast(resolveForeground(dark.textButtonTheme.style)!, band), greaterThan(3.0));
+      expect(_contrast(resolveForeground(buildHaLoTheme(Brightness.light).textButtonTheme.style)!,
+          buildHaLoTheme(Brightness.light).colorScheme.surfaceContainerHighest),
+          greaterThanOrEqualTo(4.5));
+    });
+
+    test('a bare OutlinedButton clears AA, and its outline clears the 3:1 UI floor', () {
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final surface = theme.colorScheme.surface;
+        expect(_contrast(resolveForeground(theme.outlinedButtonTheme.style)!, surface),
+            greaterThanOrEqualTo(4.5), reason: '$brightness');
+
+        // Focusing a button must not REDUCE the outline's contrast, which is
+        // what M3's default does here: it swaps `outline` grey for `primary`.
+        final side = theme.outlinedButtonTheme.style?.side;
+        final resting = side!.resolve(const <WidgetState>{})!.color;
+        final focused = side.resolve(const {WidgetState.focused})!.color;
+        expect(_contrast(focused, surface), greaterThanOrEqualTo(3.0), reason: '$brightness');
+        expect(_contrast(focused, surface), greaterThanOrEqualTo(_contrast(resting, surface)),
+            reason: '$brightness: focus cue is weaker than the resting outline');
+
+        // The other two states are Material's own, deliberately left alone —
+        // overriding `side` at all means restating them.
+        expect(resting, theme.colorScheme.outline, reason: '$brightness');
+        expect(side.resolve(const {WidgetState.disabled})!.color,
+            theme.colorScheme.onSurface.withValues(alpha: 0.12), reason: '$brightness');
+      }
+    });
+
+    test('progress indicators clear the 3:1 UI floor', () {
+      // A spinner is a non-text UI component, and there are ~30 unstyled ones
+      // — every "loading" state in settings, sync, exports and the station
+      // panel — so this is the difference between a visible spinner and a
+      // screen that looks frozen.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        expect(_contrast(theme.progressIndicatorTheme.color!, theme.colorScheme.surface),
+            greaterThanOrEqualTo(3.0), reason: '$brightness');
+      }
+    });
+
+    test('the text cursor clears the 3:1 UI floor', () {
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        expect(_contrast(theme.textSelectionTheme.cursorColor!, theme.colorScheme.surface),
+            greaterThanOrEqualTo(3.0), reason: '$brightness');
+      }
+    });
+
+    test('the selection wash is left to Material, because a lighter one would hurt', () {
+      // The trap: `selectionColor` looks like it belongs with the cursor, but
+      // a wash is read THROUGH rather than ON, and every dark-mode surface
+      // carrying a text field carries LIGHT text — so darkening under it
+      // helps and lightening hurts. Moving this to the accent would drop the
+      // logging panel's fields, where most of the app's typing happens, from
+      // 5.63:1 to 4.05:1: under AA, caused by the "fix".
+      final theme = buildHaLoTheme(Brightness.dark);
+      expect(theme.textSelectionTheme.selectionColor, isNull);
+
+      final scheme = theme.colorScheme;
+      final accent = theme.extension<HaLoColors>()!.onSurfaceAccent;
+      for (final background in [scheme.surface, scheme.tertiaryContainer, scheme.secondaryContainer]) {
+        final materialWash = Color.alphaBlend(scheme.primary.withValues(alpha: 0.4), background);
+        final accentWash = Color.alphaBlend(accent.withValues(alpha: 0.4), background);
+        expect(_contrast(scheme.onSurface, materialWash),
+            greaterThanOrEqualTo(_contrast(scheme.onSurface, accentWash)),
+            reason: 'accent wash would read better than Material\'s on $background');
+      }
+      // …and Material's own clears AA on the tightest of them.
+      expect(
+        _contrast(scheme.onSurface,
+            Color.alphaBlend(scheme.primary.withValues(alpha: 0.4), scheme.secondaryContainer)),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    // The ThemeData assertions above can all pass while the theme never
+    // reaches a button — these two pump the real widget instead. The pairing
+    // is the point of the bug report: Cancel and Save sit side by side in
+    // every dialog footer, and Save (a FilledButton, primary as a FILL) was
+    // always fine, which is what made Cancel's 2.67:1 obvious in use.
+    // The color a label ACTUALLY paints. Not `Text.style`, which is null here
+    // — a button's foreground arrives through the DefaultTextStyle its
+    // Material installs, so reading the widget's own style would assert
+    // null == null and pass no matter what the theme said.
+    Color? paintedColor(WidgetTester tester, String label) =>
+        tester.renderObject<RenderParagraph>(find.text(label)).text.style?.color;
+
+    testWidgets('a dialog footer\'s Cancel paints the accent, beside an unchanged Save', (tester) async {
+      final theme = buildHaLoTheme(Brightness.dark);
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: haloDialogFooterRow(
+            cancel: TextButton(onPressed: () {}, child: const Text('Cancel')),
+            actions: [FilledButton(onPressed: () {}, child: const Text('Save'))],
+          ),
+        ),
+      ));
+
+      expect(paintedColor(tester, 'Cancel'), theme.extension<HaLoColors>()!.onSurfaceAccent);
+      // Save is untouched: it uses primary as a BACKGROUND under onPrimary, a
+      // pairing with no contrast problem. This anchors the pairing rather than
+      // the theme — nothing on this branch can move it, but a filledButtonTheme
+      // added later could, and the two buttons sit side by side in every footer.
+      expect(paintedColor(tester, 'Save'), theme.colorScheme.onPrimary);
+    });
+
+    testWidgets('a call site\'s own foregroundColor still wins over the theme', (tester) async {
+      // ButtonStyle resolves widget.style before themeStyleOf, which is what
+      // lets the deliberate exceptions survive this change — form_renderer's
+      // `destructive` error red and status_bar's `onNotice` ink on the
+      // post-it. A theme that overrode them would repaint a Remove button as
+      // an ordinary Cancel.
+      const destructive = Color(0xFFF79797);
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.dark),
+        home: Scaffold(
+          body: TextButton(
+            style: TextButton.styleFrom(foregroundColor: destructive),
+            onPressed: () {},
+            child: const Text('Remove'),
+          ),
+        ),
+      ));
+
+      expect(paintedColor(tester, 'Remove'), destructive);
+    });
+  });
+
+  group('poloFieldDecoration focus underline (HALO-167)', () {
+    testWidgets('is a high-contrast underline in BOTH brightnesses, not a fixed black', (tester) async {
+      // A single hardcoded Colors.black satisfies the "plain, high-contrast
+      // you-are-here cue" intent only in light mode: on the dark surface
+      // (#191C1E) it is black-on-near-black and the focus cue disappears.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        late InputDecoration decoration;
+        await tester.pumpWidget(MaterialApp(
+          // Keyed per brightness so the second iteration builds a fresh tree.
+          // Re-pumping the same one instead swaps the theme UNDER MaterialApp's
+          // AnimatedTheme, and the first frame of that lerp still reports the
+          // outgoing brightness while carrying the incoming surface — the
+          // decoration would be read mid-transition against the wrong surface.
+          key: ValueKey(brightness),
+          theme: theme,
+          home: Builder(builder: (context) {
+            decoration = poloFieldDecoration(context, 'Call');
+            return const SizedBox();
+          }),
+        ));
+
+        final side = (decoration.focusedBorder as UnderlineInputBorder).borderSide;
+        // BOTH backgrounds a field actually sits on, because the underline's
+        // whole rationale is that it works on either: the plain surface, and
+        // the tertiaryContainer tint under the logging panel's fields — the
+        // one the comment names as the reason not to leave this to Material.
+        for (final background in [theme.colorScheme.surface, theme.colorScheme.tertiaryContainer]) {
+          expect(_contrast(side.color, background), greaterThanOrEqualTo(3.0),
+              reason: '$brightness on $background');
+        }
+        // Not the theme's focus color either: primary would compete with that
+        // tint, which is why this is spelled out rather than left to Material.
+        expect(side.color, isNot(theme.colorScheme.primary), reason: '$brightness');
+        // Material drops an overridden focusedBorder back to a plain
+        // BorderSide's 1.0, so the 2.0 weight has to be restated explicitly.
+        expect(side.width, 2.0, reason: '$brightness');
+      }
+    });
+
+    test('the theme must NOT carry a focusedBorder — it reshapes fields, not just recolors them', () {
+      // The tempting fix for the ~8 fields that build their own
+      // InputDecoration, and a trap. `focusedBorder` is selected INSTEAD of
+      // `border` while focused (`_InputDecoratorState.build`), and
+      // `applyDefaults` fills it from the theme on every decoration that
+      // didn't set one — so a theme-level underline turns each of those
+      // OutlineInputBorder boxes into a bare line on focus, and gives the
+      // command bar's `InputBorder.none` field a permanent one.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        expect(theme.inputDecorationTheme.focusedBorder, isNull, reason: '$brightness');
+
+        // The mechanism itself, so this test explains WHY rather than just
+        // pinning null: an outlined field must keep its shape when focused.
+        const outlined = InputDecoration(labelText: 'Search', border: OutlineInputBorder());
+        expect(outlined.applyDefaults(theme.inputDecorationTheme).focusedBorder,
+            isNot(isA<UnderlineInputBorder>()), reason: '$brightness');
+      }
+    });
+
+    test('the focused LABEL is corrected, without flattening disabled or error', () {
+      // The label is safe to set at the theme where the border is not — it
+      // carries no geometry. But WidgetStateTextStyle.resolveWith cannot
+      // return null to defer to Material, so every state it does not name is
+      // silently overridden: a disabled field whose label stayed full-strength
+      // would no longer read as disabled.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final scheme = theme.colorScheme;
+        Color? at(Set<WidgetState> states) =>
+            WidgetStateProperty.resolveAs<TextStyle?>(theme.inputDecorationTheme.floatingLabelStyle, states)?.color;
+
+        expect(at({WidgetState.focused}), theme.extension<HaLoColors>()!.onSurfaceAccent, reason: '$brightness');
+        expect(_contrast(at({WidgetState.focused})!, scheme.surface), greaterThanOrEqualTo(4.5),
+            reason: '$brightness');
+        expect(at({WidgetState.disabled}), scheme.onSurface.withValues(alpha: 0.38), reason: '$brightness');
+        expect(at({WidgetState.error}), scheme.error, reason: '$brightness');
+        expect(at({WidgetState.error, WidgetState.focused}), scheme.error, reason: '$brightness');
+        expect(at(const {}), scheme.onSurfaceVariant, reason: '$brightness');
+      }
     });
   });
 

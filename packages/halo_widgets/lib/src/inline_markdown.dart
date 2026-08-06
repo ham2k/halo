@@ -7,6 +7,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import 'form_renderer.dart' show FormOpenLink;
+import 'theme.dart' show HaLoColors;
 
 /// Opens a link tapped in an [InlineMarkdownText] — the same contract as
 /// [FormOpenLink], reused rather than duplicated so a call site that already has
@@ -134,13 +135,17 @@ class _InlineMarkdownTextState extends State<InlineMarkdownText> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Text.rich(
       TextSpan(
         children: inlineMarkdownSpans(
           widget.text,
           codeStyle: widget.codeStyle,
-          linkStyle: widget.linkStyle ?? TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600),
+          // onSurfaceAccent, not colorScheme.primary: a link is text read ON
+          // the surface, and this widget's whole point is being embedded in a
+          // row of body text rather than on a fill.
+          linkStyle:
+              widget.linkStyle ??
+              TextStyle(color: HaLoColors.of(context).onSurfaceAccent, fontWeight: FontWeight.w600),
           recognizerFor: (url) => _recognizers[url],
           imageBuilder: widget.imageBuilder,
           onOpenLink: widget.onOpenLink,

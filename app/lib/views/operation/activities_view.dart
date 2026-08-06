@@ -1308,7 +1308,10 @@ class OperationSheetState extends State<OperationSheet> {
             Positioned.fill(
               child: IgnorePointer(
                 child: ColoredBox(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35 * value),
+                  // onSurfaceAccent: a flash has to be a change the eye
+                  // catches, which means lightening a dark row rather than
+                  // washing it with the near-invisible dark teal primary is.
+                  color: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.35 * value),
                 ),
               ),
             ),

@@ -1051,7 +1051,7 @@ class _EquipmentTile extends StatelessWidget {
                       // and how old it is matters as much as what it is.
                       color: state.stale
                           ? theme.colorScheme.onSurfaceVariant
-                          : theme.colorScheme.primary,
+                          : HaLoColors.of(context).onSurfaceAccent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

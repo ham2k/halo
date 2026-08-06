@@ -728,7 +728,10 @@ class _CommandDialogState extends State<CommandDialog> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(_searchRadius),
-        border: Border.all(color: theme.colorScheme.primary, width: _searchBorderWidth),
+        // onSurfaceAccent, like every icon in this dialog: the border sits on
+        // `surface` and a stroke needs 3:1 against it, which primary's dark
+        // value doesn't reach.
+        border: Border.all(color: HaLoColors.of(context).onSurfaceAccent, width: _searchBorderWidth),
         boxShadow: [
           // Tight and dark rather than a wide haze — the bar has to sit
           // clearly ON TOP of whatever view it opened over.
@@ -1027,7 +1030,11 @@ class _CommandDialogState extends State<CommandDialog> {
       // Fixed, so [_maxVisibleRows] is an exact count rather than a guess —
       // rows with and without a subtitle have to measure the same.
       height: _rowHeight,
-      color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.14) : null,
+      // onSurfaceAccent: a wash this faint has to be the accent that CONTRASTS
+      // with the surface, so it lightens a dark row and darkens a light one.
+      // primary is dark in both, so in dark mode this highlight — the only
+      // thing marking which result Enter will run — is invisible.
+      color: isSelected ? HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.14) : null,
       padding: const EdgeInsets.symmetric(horizontal: Space.xl),
       child: Row(
         children: [
@@ -1121,9 +1128,11 @@ class _CommandDialogState extends State<CommandDialog> {
     final isError = _engine.isError;
     return Container(
       width: double.infinity,
+      // Same reason as the selected row's wash: at 10% alpha the color has to
+      // contrast with the surface, which primary's dark value does not.
       color: isError
           ? theme.colorScheme.errorContainer
-          : theme.colorScheme.primary.withValues(alpha: 0.10),
+          : HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.10),
       padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
       child: Row(
         children: [

@@ -701,7 +701,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   Widget _buildFooter(BuildContext context, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        // onSurfaceAccent, not primary: at 8% the tint has to read against the
+        // surface it sits on, and primary is dark in both brightnesses.
+        color: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.08),
         border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: SafeArea(

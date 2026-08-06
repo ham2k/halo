@@ -79,8 +79,14 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// role, this needs to read the same regardless of brightness, not invert.
   final Color tabIndicator;
 
-  /// The teal accent for text/icons sitting directly on a surface (a section
-  /// title, a selected settings row) — as opposed to [ColorScheme.primary]
+  /// The teal accent for anything that must read AGAINST the surface rather
+  /// than be read UPON: text and icons (a section title, a selected settings
+  /// row), strokes (the command bar's border), and low-alpha washes (a
+  /// selected row's highlight) alike. All three fail on the same fact below,
+  /// in both directions — a dark teal is illegible as foreground on a dark
+  /// surface, and invisible as a 10%-alpha tint over one.
+  ///
+  /// As opposed to [ColorScheme.primary]
   /// itself, which this app uses as a FILL (the AppBar/FAB/status-bar/dock
   /// chrome) paired with the near-white `onPrimary`. `primary`'s dark-mode
   /// value (#006783) is identical to light mode's — ported byte-for-byte from
@@ -198,8 +204,16 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   HaLoColors lerp(HaLoColors? other, double t) =>
       t < 0.5 ? this : (other ?? this);
 
-  static HaLoColors of(BuildContext context) =>
-      Theme.of(context).extension<HaLoColors>() ?? light;
+  /// The fallback follows the ambient brightness rather than always being
+  /// [light]: a subtree that loses the extension is exactly where a wrong
+  /// answer is invisible, and `light`'s accent on a dark surface is the
+  /// 2.67:1 illegibility [onSurfaceAccent] exists to prevent. Unreachable in
+  /// the app today — every theme comes from [buildHaLoTheme] — but live in
+  /// tests, which mostly pump a bare `MaterialApp`.
+  static HaLoColors of(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.extension<HaLoColors>() ?? (theme.brightness == Brightness.dark ? dark : light);
+  }
 }
 
 /// [context] is unused but kept so every call site doesn't need editing
@@ -425,6 +439,7 @@ InputDecoration poloFieldDecoration(
 }) {
   final theme = Theme.of(context);
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
+  final isDarkTheme = theme.brightness == Brightness.dark;
   final double scale = MediaQuery.textScalerOf(context).scale(1.0);
   final metrics = LayoutDensity.metricsOf(context);
   return InputDecoration(
@@ -460,16 +475,32 @@ InputDecoration poloFieldDecoration(
       4 * scale,
       metrics.fieldPaddingBottom * scale,
     ),
-    // A focused field's underline reads as black regardless of theme/light
-    // vs dark, rather than the default focus-color underline — a plain,
-    // high-contrast "you are here" cue that doesn't compete with the
-    // surrounding tertiaryContainer tint some fields sit on. Width matches
-    // Material's own default focused-border weight (2.0) — overriding
-    // focusedBorder at all drops that default back to a plain BorderSide's
-    // 1.0, so it has to be restored explicitly here.
-    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 2.0)),
+    focusedBorder: haloFocusedInputBorder(isDarkTheme),
   );
 }
+
+/// The focused-field underline: a plain, high-contrast "you are here" cue
+/// rather than Material's default focus-color (primary) one, which would
+/// compete with the `tertiaryContainer` tint some fields sit on and is barely
+/// visible on the dark surface besides. The invariant is the CONTRAST, not the
+/// color — near-black in light, near-white in dark. A single fixed black
+/// satisfies it only in light mode; on the dark surface (#191C1E) a black
+/// underline is the focus cue disappearing.
+///
+/// Deliberately NOT installed on `inputDecorationTheme` — see the comment
+/// there. A theme-level `focusedBorder` reshapes every field that didn't set
+/// one, so this can only be applied by a decoration that knows its own border
+/// shape. The consequence is real and known: the fields that build their own
+/// [InputDecoration] (about eight, all `OutlineInputBorder`) keep Material's
+/// `primary` focus indicator, so in dark mode a field here focuses white
+/// while one of those focuses dark teal at 2.67:1. Giving each its own
+/// matching `focusedBorder` is the fix; a theme slot is not.
+///
+/// Width matches Material's own default focused-border weight (2.0) —
+/// overriding `focusedBorder` at all drops that default back to a plain
+/// BorderSide's 1.0, so it has to be restored explicitly.
+UnderlineInputBorder haloFocusedInputBorder(bool isDark) =>
+    UnderlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0));
 
 /// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
@@ -568,12 +599,14 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
     ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto'),
   );
 
+  final haloColors = isDark ? HaLoColors.dark : HaLoColors.light;
+
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
     textTheme: textTheme,
     scaffoldBackgroundColor: colorScheme.surface,
-    extensions: [isDark ? HaLoColors.dark : HaLoColors.light],
+    extensions: [haloColors],
     // The app's icon language is MDI; framework widgets default to built-in
     // Icons.* glyphs in a different visual style. These builders re-point
     // the framework's own buttons (including the BackButton an AppBar
@@ -621,6 +654,68 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       backgroundColor: colorScheme.primaryContainer,
       foregroundColor: colorScheme.onPrimaryContainer,
     ),
+    // The next four themes all correct the same Material 3 default: an
+    // unstyled TextButton, OutlinedButton, progress indicator and text cursor
+    // each paint `colorScheme.primary` DIRECTLY ON `surface`, which this
+    // scheme's dark variant cannot support — see [HaLoColors.onSurfaceAccent]
+    // for why `primary` is a fill color here and what replaces it. Set at the
+    // theme rather than per call site because the failing widgets are the ones
+    // nobody styled: `FilledButton` (Save) is unaffected, so a dialog's Cancel
+    // sitting beside a perfectly legible Save is what makes it obvious.
+    //
+    // A call site's own `styleFrom` still wins over these PROPERTY BY
+    // PROPERTY, not style by style — ButtonStyle resolves widget.style before
+    // themeStyleOf, one property at a time. So the deliberate exceptions keep
+    // their colors (form_renderer's `destructive` error red, status_bar's
+    // `onNotice` ink on the post-it), but a call site that passes a style
+    // setting only padding or a background still takes the foreground below.
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: haloColors.onSurfaceAccent),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      // copyWith rather than styleFrom's own `side:`, which takes a single
+      // BorderSide for every state — the point here is to change exactly one
+      // state and leave the other two as Material has them.
+      style: OutlinedButton.styleFrom(foregroundColor: haloColors.onSurfaceAccent).copyWith(
+        // Restating `_OutlinedButtonDefaultsM3.side` (Flutter 3.44.6) with
+        // only the focused color changed: ButtonStyle resolves a property as
+        // a whole, so overriding one state means supplying the other two.
+        // Without this, focusing an outlined button in dark mode swaps a
+        // clearly visible `outline` grey for a dark teal — a focus cue with
+        // LESS contrast than the resting state, which is backwards.
+        //
+        // Being a copy, it goes stale silently if a future SDK adds a state
+        // (the framework already resolves `WidgetState.error` on other
+        // properties); the SDK version above is what it was checked against.
+        side: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return BorderSide(color: colorScheme.onSurface.withValues(alpha: 0.12));
+          }
+          if (states.contains(WidgetState.focused)) {
+            return BorderSide(color: haloColors.onSurfaceAccent);
+          }
+          return BorderSide(color: colorScheme.outline);
+        }),
+      ),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: haloColors.onSurfaceAccent),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: haloColors.onSurfaceAccent,
+      selectionHandleColor: haloColors.onSurfaceAccent,
+      // `selectionColor` is deliberately NOT moved to the accent, and it is
+      // the one member of this group where `primary`'s darkness is an asset.
+      // A selection wash is read THROUGH: what matters is the selected text's
+      // contrast against the composite, and every surface carrying a text
+      // field in dark mode carries LIGHT text. Darkening the background under
+      // it helps; lightening it hurts. Against `tertiaryContainer` — the
+      // logging panel's fields, where most of the app's typing happens —
+      // `onSurface` reads at 5.63:1 through primary's wash and only 4.05:1
+      // through the accent's, i.e. under AA. Material's default is what this
+      // wants, so it goes unset.
+      //
+      // The cursor and handles above are the opposite case: they are read ON
+      // the surface, not through, so they take the accent like everything else.
+    ),
     // Material3's default TabBar theming assumes a surface-colored bar and
     // sets the selected label to colorScheme.primary — invisible when the
     // bar itself sits inside our teal (primary-colored) AppBar, as every
@@ -636,7 +731,7 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       // (it's #BCE9FF there) but is a near-black #001F29 in light mode,
       // since that role flips meaning across brightness; this exact blue
       // reads well in both, so it isn't tied to either.
-      indicatorColor: (isDark ? HaLoColors.dark : HaLoColors.light).tabIndicator,
+      indicatorColor: haloColors.tabIndicator,
       // Default M3 hover/focus/pressed overlays are tuned for a
       // surface-colored bar and read as barely-there on this teal
       // background — a bit more opacity so hovering a tab is actually
@@ -660,9 +755,43 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       thickness: 0.5,
       space: 0.5,
     ),
-    inputDecorationTheme: const InputDecorationTheme(
+    inputDecorationTheme: InputDecorationTheme(
       isDense: true,
-      border: UnderlineInputBorder(),
+      border: const UnderlineInputBorder(),
+      // The focused LABEL is corrected here; the focused BORDER deliberately
+      // is not, and must not be. `focusedBorder` replaces a field's border
+      // outright rather than recoloring it (`_InputDecoratorState.build`
+      // selects it INSTEAD of `border` while focused), and it reaches every
+      // decoration that didn't set its own. Every hand-built decoration in
+      // this app uses `OutlineInputBorder`, so a theme-level underline turns
+      // each rounded box into a bare line the moment it takes focus — and
+      // gives the command bar's deliberately border-less field a permanent
+      // one, since that field is focused for the dialog's whole life. There
+      // is no theme slot that recolors a focused border without also
+      // reshaping it, so the color fix stays in [poloFieldDecoration], and
+      // fields that build their own decoration keep Material's focus
+      // indicator until each is given a `focusedBorder` matching its own
+      // shape. `input_decoration_theme_test.dart` holds this line.
+      //
+      // Every state here is respecified, not just the focused one:
+      // `WidgetStateTextStyle.resolveWith` cannot return null to defer, so
+      // omitting a state overrides it with the fallback — which would leave a
+      // disabled field's label at full strength, no longer reading as
+      // disabled, and an errored one no longer reading as an error.
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.38));
+        }
+        if (states.contains(WidgetState.error)) {
+          return TextStyle(
+            color: states.contains(WidgetState.hovered) ? colorScheme.onErrorContainer : colorScheme.error,
+          );
+        }
+        if (states.contains(WidgetState.focused)) {
+          return TextStyle(color: haloColors.onSurfaceAccent);
+        }
+        return TextStyle(color: colorScheme.onSurfaceVariant);
+      }),
     ),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );

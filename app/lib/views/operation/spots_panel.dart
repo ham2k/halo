@@ -1024,6 +1024,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final leftWidth = _spotLeftColumnWidth(context, filtered, hzDigits);
 
     return RefreshIndicator(
+      // Explicit, unlike every other spinner in the app: RefreshIndicator
+      // resolves `color ?? colorScheme.primary` directly and never consults
+      // ProgressIndicatorTheme, so it is the one progress affordance the
+      // theme cannot reach.
+      color: HaLoColors.of(context).onSurfaceAccent,
       onRefresh: _spots.refresh,
       child: filtered.isEmpty
           // While the initial fetch is still in flight (see the progress bar

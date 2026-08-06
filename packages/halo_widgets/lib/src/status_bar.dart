@@ -705,6 +705,12 @@ class _NoticeSurface extends StatelessWidget {
 /// [HaLoColors.notice]), so every markdown role has to be pinned to the notice
 /// ink rather than inherited: what `fromTheme` derives from the ambient
 /// surface is near-white under the dark theme and disappears on the yellow.
+///
+/// The same constraint binds every CONTROL on a notice, not just its markdown,
+/// and it now cuts against the theme's own defaults: a bare `TextButton`,
+/// spinner or text field takes [HaLoColors.onSurfaceAccent], which reads at
+/// 2.46:1 on this yellow. Anything added to a `NoticeCard` has to pin
+/// `onNotice` explicitly the way the action and dismiss buttons below do.
 MarkdownStyleSheet _noticeMarkdownStyle(ThemeData theme, Color onNotice) {
   final body = theme.textTheme.bodyMedium?.copyWith(color: onNotice);
   final faint = onNotice.withValues(alpha: 0.08);

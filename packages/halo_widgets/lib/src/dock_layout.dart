@@ -981,7 +981,15 @@ class _GroupDropRegionsState extends State<_GroupDropRegions> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    // Stays on colorScheme.primary, unlike the rest of the app's on-surface
+    // accents, and deliberately: this paints over PANE CONTENT rather than
+    // over a theme surface, so no single flat color works. The map pane's
+    // tiles are light in BOTH brightnesses, and against white the 2px border
+    // reads at 6.4:1 in primary but only 2.8:1 in the lighter accent — under
+    // the 3:1 a UI stroke needs, on the pane the drop target most needs to
+    // cover. Against a dark pane the trade runs the other way (2.7:1 vs
+    // 6.2:1). Fixing both needs a two-tone stroke, not a different color.
+    final accent = Theme.of(context).colorScheme.primary;
     return DragTarget<String>(
       // One target over the whole body, not one per band: the overlap rules
       // above need a single place that knows both where the pointer is and
@@ -1012,7 +1020,7 @@ class _GroupDropRegionsState extends State<_GroupDropRegions> {
                 // routes pointer events over a native platform view (the map)
                 // back to Flutter, so a body that painted nothing would take
                 // no drops at all there.
-                ColoredBox(color: primary.withValues(alpha: widget.washAlpha)),
+                ColoredBox(color: accent.withValues(alpha: widget.washAlpha)),
                 if (band != null)
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 120),
@@ -1026,8 +1034,8 @@ class _GroupDropRegionsState extends State<_GroupDropRegions> {
                       duration: const Duration(milliseconds: 120),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.30),
-                          border: Border.all(color: primary, width: 2),
+                          color: accent.withValues(alpha: 0.30),
+                          border: Border.all(color: accent, width: 2),
                         ),
                       ),
                     ),
