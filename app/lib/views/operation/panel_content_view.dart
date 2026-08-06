@@ -20,7 +20,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../services/link_opener.dart';
-import '../map/mapbox_webview_map_view.dart';
+import '../../services/windows_webview.dart';
 
 /// One rendered document from a panel's `render`.
 class PanelContent {
@@ -48,10 +48,9 @@ class PanelContent {
 }
 
 /// Whether an HTML panel can be shown here at all. Linux has no webview
-/// implementation; Windows needs the WebView2 runtime, which
-/// [MapboxWebviewMapView.isSupported] probes and caches for the whole
-/// session — read here rather than probed again, and pessimistic until it
-/// has answered.
+/// implementation; Windows needs a WebView2 environment, which
+/// [WindowsWebView] creates once and caches for the whole session — read
+/// here rather than probed again, and pessimistic until it has answered.
 /// `defaultTargetPlatform`, not `dart:io`'s Platform: this file is compiled
 /// into the web build too, and the platform check that works on every
 /// target is the one that doesn't ask the host OS.
@@ -61,7 +60,7 @@ bool get _htmlPanelsSupported {
     case TargetPlatform.linux:
       return false;
     case TargetPlatform.windows:
-      return MapboxWebviewMapView.resolvedSupport ?? false;
+      return WindowsWebView.resolved ?? false;
     default:
       return true;
   }
@@ -116,10 +115,10 @@ class PanelContentView extends StatelessWidget {
         // Every other webview in this app checks first, and for two
         // different reasons: flutter_inappwebview ships no Linux
         // implementation at all (the platform view would throw a
-        // MissingPluginException out of build), and a Windows machine
-        // without the WebView2 runtime renders a permanently blank one —
-        // see map_panel.dart, which keeps a fallback map for exactly that.
-        // A panel has no fallback, so it says so instead.
+        // MissingPluginException out of build), and a Windows machine that
+        // cannot create a WebView2 environment renders a permanently blank
+        // one — see map_panel.dart, which keeps a fallback map for exactly
+        // that. A panel has no fallback, so it says so instead.
         if (!_htmlPanelsSupported) {
           return _message(context, context.t.operation.layout.htmlPanelUnsupported);
         }
@@ -179,6 +178,11 @@ class _SandboxedHtmlView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InAppWebView(
+      // Null off Windows; on Windows the app's own environment, without
+      // which the plugin builds one next to the exe — which fails where that
+      // isn't writable, and where it succeeds gives WebView2 a second
+      // environment whose options don't match ours (see WindowsWebView).
+      webViewEnvironment: WindowsWebView.environment,
       // No baseUrl: the document loads from an opaque origin, so even a
       // relative URL has nothing to resolve against.
       initialData: InAppWebViewInitialData(data: html),

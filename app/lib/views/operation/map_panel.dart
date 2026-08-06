@@ -9,9 +9,9 @@
 //   - iOS/Android: MapboxNativeMapView (mapbox_maps_flutter)
 //   - macOS/Windows: MapboxWebviewMapView (Mapbox GL JS in a webview)
 //   - Web: MapboxWebMapView (Mapbox GL JS on a platform-view div)
-//   - Linux, no Mapbox token configured, or Windows without the WebView2
-//     runtime: OsmMapView (flutter_map/OSM), the zero-token fallback every
-//     platform can render.
+//   - Linux, no Mapbox token configured, or Windows where no WebView2
+//     environment can be created: OsmMapView (flutter_map/OSM), the
+//     zero-token fallback every platform can render.
 // Owns the mercator/globe projection toggle — OsmMapView ignores it (no
 // globe support), the Mapbox backends honor it.
 //
@@ -30,6 +30,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../config/secrets.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
+import '../../services/windows_webview.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_marker_data.dart';
 import '../map/mapbox_native_map_view.dart';
@@ -59,20 +60,22 @@ class _MapPanelState extends State<MapPanel> {
   MapProjection _projection = MapProjection.mercator;
 
   /// Whether the desktop webview backend can run here — false on a Windows
-  /// machine missing the WebView2 runtime, where routing to the webview
-  /// would leave the map permanently blank instead of falling back to OSM.
-  /// macOS starts true (WKWebView is part of the OS); Windows starts from
-  /// the cached answer, pessimistically false the first time, so at worst
-  /// the first map open shows OSM for the few frames the check takes.
+  /// machine where no WebView2 environment can be created, and where routing
+  /// to the webview would leave the map permanently blank instead of falling
+  /// back to OSM. macOS starts true (WKWebView is part of the OS); Windows
+  /// starts from the cached answer, pessimistically false the first time.
+  /// That first answer costs a cold browser-process spawn, not a registry
+  /// lookup, so the first map open of a session visibly shows OSM and then
+  /// swaps to Mapbox — every later one goes straight to the cached answer.
   bool _webviewSupported = false;
 
   @override
   void initState() {
     super.initState();
     if (kIsWeb || !(Platform.isMacOS || Platform.isWindows)) return;
-    _webviewSupported = MapboxWebviewMapView.resolvedSupport ?? !Platform.isWindows;
-    if (MapboxWebviewMapView.resolvedSupport == null) {
-      MapboxWebviewMapView.isSupported().then((ok) {
+    _webviewSupported = WindowsWebView.resolved ?? !Platform.isWindows;
+    if (WindowsWebView.resolved == null) {
+      WindowsWebView.isAvailable().then((ok) {
         if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
       });
     }
@@ -154,7 +157,7 @@ class _MapPanelState extends State<MapPanel> {
       // ships no Linux implementation and mapbox_maps_flutter is
       // mobile-only), so the OSM backend is the real Linux map, not a
       // stopgap. It has markers/lines/callouts, just no globe projection.
-      // Windows without the WebView2 runtime lands here too.
+      // Windows without a usable WebView2 environment lands here too.
       usesMapbox = false;
       map = OsmMapView(markers: markers, lines: lines);
     }

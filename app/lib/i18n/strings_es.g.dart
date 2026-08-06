@@ -1123,6 +1123,7 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get connected => 'Conectado';
 	@override String connectTo({required Object label}) => 'Conectar con ${label}';
 	@override String get openInBrowser => 'Abrir en el navegador';
+	@override String get webViewUnavailable => 'Esta computadora no puede mostrar la página de acceso. Ham2K Logger necesita el Microsoft Edge WebView2 Runtime, y aquí no funciona — instalarlo o repararlo debería solucionarlo. Hasta entonces, no se puede conectar esta cuenta en esta máquina.';
 	@override String loggedInAs({required Object identity}) => 'Sesión iniciada como ${identity}';
 	@override String get pressSaveToKeep => 'Pulsa Guardar para mantener esta cuenta conectada.';
 	@override String connectedTo({required Object label}) => 'Conectado a ${label}';
@@ -2210,6 +2211,7 @@ extension on TranslationsEs {
 			'settings.accounts.connected' => 'Conectado',
 			'settings.accounts.connectTo' => ({required Object label}) => 'Conectar con ${label}',
 			'settings.accounts.openInBrowser' => 'Abrir en el navegador',
+			'settings.accounts.webViewUnavailable' => 'Esta computadora no puede mostrar la página de acceso. Ham2K Logger necesita el Microsoft Edge WebView2 Runtime, y aquí no funciona — instalarlo o repararlo debería solucionarlo. Hasta entonces, no se puede conectar esta cuenta en esta máquina.',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Sesión iniciada como ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Pulsa Guardar para mantener esta cuenta conectada.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'Conectado a ${label}',
@@ -2249,9 +2251,9 @@ extension on TranslationsEs {
 			'settings.station.edit' => 'Editar equipo',
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
-			'settings.station.transport' => 'Conexión',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transport' => 'Conexión',
 			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',
 			'settings.station.hostDescription' => 'El nombre de host o la dirección IP de la radio en tu red.',

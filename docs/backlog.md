@@ -15,9 +15,13 @@ The Map tab routes Windows to the `flutter_inappwebview` Mapbox backend
 (`app/lib/views/map/mapbox_webview_map_view.dart`) — code-audited against
 `flutter_inappwebview_windows` 0.6.0 (the bridge, `evaluateJavascript`,
 `onConsoleMessage`, `transparentBackground` and `initialData` all have
-Windows implementations, and the routing falls back to OSM when the
-WebView2 runtime is missing) but still never run on a Windows machine.
-Two Windows-only caveats, also noted in the backend's header: WebView2's
+Windows implementations, and the routing falls back to OSM when no WebView2
+environment can be created) but still never run on a Windows machine.
+Three Windows-only caveats, also noted in the backend's header: every
+`InAppWebView` must be given the app's own WebView2 environment
+(`app/lib/services/windows_webview.dart`), because the plugin's own is
+rooted next to the exe and fails outright where that directory is not
+writable; WebView2's
 `NavigateToString` ignores `baseUrl`, so tile requests carry no Referer —
 the Mapbox token must stay free of URL restrictions or Windows breaks
 alone; and `NavigateToString` caps the document at 2MB (the page is ~10KB,

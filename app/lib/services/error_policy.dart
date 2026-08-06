@@ -18,13 +18,15 @@
 // docs/design/error-reporting.md is the overview.
 
 import 'dart:async' show TimeoutException;
-import 'dart:io' show SocketException;
+import 'dart:io' show FileSystemException, SocketException;
 
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
+import 'windows_webview.dart' show WindowsWebViewUnavailable;
 
 /// What the app does with an error, from quietest to loudest. Each tier
 /// includes everything the ones above it do.
@@ -162,6 +164,14 @@ class ErrorPolicy {
           'degrades to no reconnect-resync',
       disposition: ErrorDisposition.logOnly,
       matches: _isConnectivityBackendUnavailable,
+    ),
+    ErrorRule(
+      id: 'windows-webview-unavailable',
+      reason: "Windows refused this app a webview (WebView2 missing, or its user data folder "
+          'unwritable where the app was installed); the Map tab falls back to OpenStreetMap and the '
+          'account login says it cannot sign in here, so there is nothing left for the operator to do',
+      disposition: ErrorDisposition.report,
+      matches: _isWindowsWebViewUnavailable,
     ),
     ErrorRule(
       id: 'cat-equipment-unreachable',
@@ -338,6 +348,16 @@ class ErrorPolicy {
   /// value, a StateError from a handshake step, a NoSuchMethodError in a
   /// driver are bugs of ours, and they are exactly what a rule matching "any
   /// failed connect" would swallow.
+  /// The machine's refusal, not ours. The cause is inspected rather than the
+  /// wrapper alone because our own code runs inside that try: a
+  /// MissingPluginException means the Windows plugin isn't registered in the
+  /// build we shipped, which is a packaging bug and must stay loud.
+  static bool _isWindowsWebViewUnavailable(Object error, FlutterErrorDetails? details) {
+    if (error is! WindowsWebViewUnavailable) return false;
+    final cause = error.cause;
+    return cause is PlatformException || cause is FileSystemException || cause is TimeoutException;
+  }
+
   static bool _isCatEquipmentUnreachable(Object error, FlutterErrorDetails? details) {
     if (error is! CatConnectFailure) return false;
     final cause = error.cause;

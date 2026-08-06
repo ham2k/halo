@@ -2172,6 +2172,9 @@ class Translations$settings$accounts$en {
 	/// en: 'Open in Browser'
 	String get openInBrowser => 'Open in Browser';
 
+	/// en: 'This computer can't show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn't working here — installing or repairing it should fix this. Until then, this account can't be connected on this machine.'
+	String get webViewUnavailable => 'This computer can\'t show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn\'t working here — installing or repairing it should fix this. Until then, this account can\'t be connected on this machine.';
+
 	/// en: 'Logged in as ${identity}'
 	String loggedInAs({required Object identity}) => 'Logged in as ${identity}';
 
@@ -3811,6 +3814,7 @@ extension on Translations {
 			'settings.accounts.connected' => 'Connected',
 			'settings.accounts.connectTo' => ({required Object label}) => 'Connect to ${label}',
 			'settings.accounts.openInBrowser' => 'Open in Browser',
+			'settings.accounts.webViewUnavailable' => 'This computer can\'t show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn\'t working here — installing or repairing it should fix this. Until then, this account can\'t be connected on this machine.',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Logged in as ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Press Save to keep this account connected.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'Connected to ${label}',
@@ -3850,9 +3854,9 @@ extension on Translations {
 			'settings.station.edit' => 'Edit equipment',
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
-			'settings.station.transport' => 'Connection',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transport' => 'Connection',
 			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',

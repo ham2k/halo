@@ -635,6 +635,7 @@
       "connected": "Connected",
       "connectTo": "Connect to ${label}",
       "openInBrowser": "Open in Browser",
+      "webViewUnavailable": "This computer can't show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn't working here — installing or repairing it should fix this. Until then, this account can't be connected on this machine.",
       "loggedInAs": "Logged in as ${identity}",
       "pressSaveToKeep": "Press Save to keep this account connected.",
       "connectedTo": "Connected to ${label}",

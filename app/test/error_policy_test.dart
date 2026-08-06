@@ -11,9 +11,10 @@
 // where, what the operator sees) is error_reporting_test.dart's job.
 
 import 'dart:async' show TimeoutException;
-import 'dart:io' show SocketException;
+import 'dart:io' show FileSystemException, SocketException;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 
@@ -25,6 +26,7 @@ import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart' show IcomLoginTimeout;
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) =>
     ErrorPolicy.decide(error, details: details).disposition;
@@ -238,6 +240,55 @@ void main() {
       // alone would let a wrapper of ours ride along.
       expect(dispositionFor(StateError('extension host disposed')), ErrorDisposition.notify);
       expect(dispositionFor(StateError('extension runtime is dead')), ErrorDisposition.notify);
+    });
+  });
+
+  group('windows webview unavailable', () {
+    // The whole point of the fallback: on a machine where WebView2 won't
+    // start, the map quietly becomes OpenStreetMap and the account login says
+    // it can't sign in there. Without this rule the default tier applies and
+    // the operator ALSO gets "Something went wrong" — about a Windows
+    // component, from an app that has already handled it. Uploading still
+    // matters: the HRESULT is the only evidence of why a given machine fails.
+    test("the platform's refusal is uploaded but not put on screen", () {
+      expect(
+        // Verbatim from the plugin when the user data folder is unwritable.
+        dispositionFor(WindowsWebViewUnavailable(
+          PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.'),
+        )),
+        ErrorDisposition.report,
+      );
+      expect(
+        dispositionFor(const WindowsWebViewUnavailable(FileSystemException('Creation failed', r'C:\ProgramData'))),
+        ErrorDisposition.report,
+      );
+      // The browser process never came up; indistinguishable to the operator
+      // from a refusal, and handled the same way.
+      expect(
+        dispositionFor(WindowsWebViewUnavailable(TimeoutException('webview environment', const Duration(seconds: 30)))),
+        ErrorDisposition.report,
+      );
+    });
+
+    test('our own build being broken is still loud', () {
+      // The cause is inspected rather than the wrapper alone because this is
+      // the one failure that is OURS: a Windows build shipped without the
+      // plugin registered fails for every user on every machine, and must not
+      // hide inside a rule written for one operator's PC.
+      expect(
+        dispositionFor(WindowsWebViewUnavailable(MissingPluginException('no implementation found'))),
+        ErrorDisposition.notify,
+      );
+      expect(dispositionFor(WindowsWebViewUnavailable(TypeError())), ErrorDisposition.notify);
+    });
+
+    test('the same platform failure outside the webview is still loud', () {
+      // The wrapper IS the rule's scope. A PlatformException reaching the
+      // policy from anywhere else has no webview to blame.
+      expect(
+        dispositionFor(PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.')),
+        ErrorDisposition.notify,
+      );
     });
   });
 
