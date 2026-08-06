@@ -163,7 +163,7 @@ work with the full suite behind it.
 `halo-ops` already has the tools; they just need running:
 
 ```bash
-mise run ops -- prune-patches     # old Shorebird patch tags
+mise run ops -- prune-code-pushes # old code-push trigger tags
 mise run ops -- prune-previews    # stale web preview deployments
 mise run ops -- status            # released version per edition
 ```

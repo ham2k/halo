@@ -256,10 +256,11 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
     final notesMarkdown = notesLines.join('\n');
 
     // The RUNNING build (kBuildNumber), not the newest notes entry, which can
-    // lag it when a build ships without notes of its own. Unlike the home and
-    // About displays (version_label.dart's buildDetails), this names the build
-    // number even in a Dev build: tester notes are KEYED by build number, so
-    // the heading says which notes these are.
+    // lag it when a build ships without notes of its own. Named here even in a
+    // Dev build, where the home and About displays (version_label.dart's
+    // buildDetails) normally suppress it: tester notes are KEYED by build number, so the
+    // heading says which notes these are. No code-push suffix either — notes
+    // are keyed by the binary, and a push carries none of its own.
     final buildLabel = context.t.testerOverlay.build(build: kBuildNumber.toString());
 
     final panel = Material(

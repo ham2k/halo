@@ -1,6 +1,6 @@
 # Ham2K Logger — Release Architecture
 
-> Status: draft · Last updated: 2026-07-14
+> Status: draft · Last updated: 2026-08-06
 
 This document describes how Ham2K Logger is versioned, built, distributed, and
 updated across every platform it targets, and how its three **editions** — a
@@ -15,9 +15,10 @@ Targets: **Android, iOS, Windows, macOS, Linux, Web.**
 
 ## 1. Core model
 
-Releases follow a **monthly cadence**. Each month a new *main version* is cut,
-named after its target month (e.g. `26.8`). Between main versions, fixes and
-small improvements ship continuously as **patches**, without a new store binary.
+Releases follow a **monthly cadence**. Each month a new *line* is cut, named
+after its target month (e.g. `26.9`). Within a line, fixes and small
+improvements ship continuously as **code pushes**, without a new store binary.
+§2.0 fixes the vocabulary this document uses for all of that.
 
 There are **three independent update planes**, each with a different delivery
 mechanism, cadence, and set of constraints. Keeping them separate is the central
@@ -38,47 +39,110 @@ assigned to the lowest-friction plane that can legally and technically carry it.
 
 ## 2. Versioning, naming, and identity
 
-The app carries **two distinct version identities**, each with a different owner
-and mutability:
+### 2.0 The five coordinates
 
-- **Public-facing version** (§2.1) — the human-readable `MAJOR.MINOR.PATCH` shown
-  in the UI, logs, and sync metadata. It lives in **Dart**, so a Shorebird patch
-  can rewrite it, and no store validates it (so `-preN` labels are safe).
+A release is pinned by five independent numbers, named here before anything
+else because the naming collision is what makes this section necessary. **The
+word "patch" alone names three different things**: semver's third component,
+Shorebird's over-the-air unit, and — casually — any small fix. Conflate them
+and an ordinary occurrence ("September '26 patch 2 has to be a full binary")
+reads as a contradiction.
+
+**The rule: *patch* is the version component; Shorebird's mechanism is a *code
+push*.** This is the vocabulary Ham2K PoLo already uses, and this document
+follows it everywhere.
+
+| Coordinate | Counts | Advances on | Lives in |
+|---|---|---|---|
+| **line** | the month — `26.9`, "September '26" | the monthly cut | `MainVersion` |
+| **patch** | every user-visible update to the line | a binary **or** a code push | `PublicVersion.patch` |
+| **stage** | a Next milestone — `pre3`, `rc1` | a deliberate hand bump | `PublicVersion.preRelease` / `preReleaseLabel` |
+| **build** | the native binary | a full binary only | `kBuildNumber` |
+| **code push** | a Shorebird increment on one build | every Shorebird publish | Shorebird's own counter; shown as `.N` after the build |
+
+The first three compose the public version string (§2.1); the build is the
+native identity (§2.2) and the code push rides on top of it (§4). So *patch 2*
+says **what** changed and *build 131* says **how it arrived**, and the two no
+longer compete for the same word.
+
+**Two identities, two owners.** The five coordinates split cleanly across them:
+
+- **Public-facing version** (§2.1) — the human-readable string shown in the UI,
+  logs, and sync metadata. It lives in **Dart**, so a code push can rewrite it,
+  and no store validates it (which is what makes `-preN` labels safe).
 - **Build/release identity** (§2.2) — the number baked into the native binary at
   build time, encoded to satisfy each platform's format rules. It is **frozen for
   the life of a binary** (Shorebird cannot change it) and is also the key
-  Shorebird uses to match patches to a release.
+  Shorebird uses to bind a code push to a release.
 
 Section 2.3 explains how the patchable public version is stored.
 
-### 2.1 Public-facing version — `MAJOR.MINOR.PATCH`
+### 2.1 Public-facing version — `line.patch[-stage]`
 
-- **`MAJOR.MINOR`** is the *main version*, `YY.M` — the two-digit year and the
-  **target month** (e.g. `26.8` = the August 2026 line). Because Next runs ahead
-  (§2.5), the main version usually carries the *following* month's name and
-  branding while it is still being built.
-- **`PATCH`** (third component) increments continuously after a main version ships:
-  `26.8.0` → `26.8.1` → `26.8.2` … Most increments are **Shorebird patches**
-  (Dart-only, no new binary). Occasionally a full binary rebuild is needed
-  mid-cycle; it simply takes the next number in the same sequence (e.g. `26.8.3`
-  as a full build). The `PATCH` number is a continuous counter — its value does
-  not by itself say whether an increment was a patch or a full build.
-- **Pre-release suffix** (Next only): binary pre-releases append `-<label><N>`,
-  where the label is the stage — `pre` by default (`26.8.0-pre1`, `26.8.0-pre2`,
-  …), or an earlier stage such as `alpha`/`beta`/`rc` (`26.8.0-alpha0`). A
-  Shorebird patch applied to a pre-release appends a further counter:
-  `26.8.0-pre1.1`.
-- **Product stage label** — `kStageLabel` in `config/version.dart`, currently
-  `ALPHA`. Distinct from the pre-release suffix in both scope and lifetime: the
-  suffix marks one build's place within a release cycle, while this marks how
-  mature the product as a whole is, and it applies to every version and every
-  edition until deliberately changed (`''` removes it). It exists only in the
-  human name — `August '26 ALPHA patch 1`, ahead of the patch and pre-release
-  parts — and never in `MAJOR.MINOR.PATCH`, so it reaches no tag, plist, or
-  store field.
+`26.9.0`, `26.9.3`, `26.9.0-pre3`, `26.9.0-rc1`. Assembled by `PublicVersion`
+(`halo_build_tools`) from the first three coordinates:
 
-Every patch/pre-release is bound to the exact release build it was compiled
-against (see §4.1).
+- **line** — `YY.M`, the two-digit year and the **target month** (`26.9` = the
+  September 2026 line). Because Next runs ahead (§2.5), the line usually carries
+  the *following* month's name and branding while it is still being built.
+- **patch** — the third component, counting every user-visible update to the
+  line: `26.9.0` → `26.9.1` → `26.9.2` …. It counts **updates, not
+  mechanisms**. Most arrive as code pushes; when a change can't ride one (§4.2)
+  the next number arrives as a full binary instead, taking its place in the same
+  sequence. The number never says which of the two it was — that is the build's
+  job (§2.2), and wanting the version string to answer it is the mistake this
+  vocabulary exists to prevent.
+- **stage** (Next only) — `-<label><N>`, marking a milestone within a cycle:
+  `pre` by default (`26.9.0-pre1`, `-pre2`, …), or `alpha`/`beta`/`rc`. It is
+  **coarse and hand-bumped** — a milestone you announce, typically spanning
+  several builds — so the build number, not the stage, is Next's fine-grained
+  identity. A code push applied on top of a stage appends its own counter:
+  `26.9.0-pre3.1`.
+- **product stage label** — `kStageLabel` in `config/version.dart`, currently
+  `ALPHA`. Not a coordinate and deliberately not part of the version. The stage
+  suffix marks one build's place within a cycle; this marks how mature the
+  *product as a whole* is, and applies to every version and every edition until
+  deliberately changed (`''` removes it). It exists only in the human name —
+  `September '26 ALPHA patch 1`, ahead of the patch and stage parts — and never
+  in the numeric string, so it reaches no tag, plist, or store field.
+
+Every code push is bound to the exact release build it was compiled against
+(§4.1).
+
+#### Worked examples, and the two traps
+
+**Regular** — the model PoLo already runs, legal on every platform:
+
+```
+September '26            26.9.0  (build 130)      full binary
+September '26 patch 1    26.9.1  (build 130.1)    code push
+September '26 patch 2    26.9.2  (build 131)      full binary — a native fix
+September '26 patch 3    26.9.3  (build 131.1)    code push, on the new base
+```
+
+**Next** — patch pinned at `.0` for the whole cycle, with the stage counter
+carrying the milestone and the build number carrying the churn:
+
+```
+September '26 pre 3      26.9.0-pre3    (build 138)
+September '26 pre 3      26.9.0-pre3    (build 139)    same milestone, new binary
+September '26 pre 3.1    26.9.0-pre3.1  (build 139.1)  code push
+September '26 rc 1       26.9.0-rc1     (build 142)
+```
+
+Two consequences follow, both of which fail silently if forgotten:
+
+- **A mid-month rebuild splits the install base.** Code pushes bind to one
+  build (§4.1), so `26.9.3` published against build 131 never reaches a device
+  still on build 130 — that device catches up only when its store or appcast
+  delivers the new binary. Publishing a fix as a code push after a rebuild
+  therefore covers *part* of the population, and the part it misses is
+  invisible from the Shorebird console, which only reports on the release the
+  push targeted.
+- **Promotion is a rebuild, not a relabel.** `kPublicVersionInfo` is compiled
+  in, and Next and Regular are separate Shorebird apps with separate identities
+  (§2.6, §4.5) — so `rc1` → `26.9.0` means a fresh Regular binary carrying its
+  own build number. There is no operation that renames an existing build.
 
 ### 2.2 Build/release identity — one build number, per-platform encodings
 
@@ -89,6 +153,11 @@ keeps it under every platform's field limit — including the 16-bit Windows/Lin
 narrowing. `halo-ops release` advances it automatically: it takes the highest
 `+<build>` across the `v<version>+<build>` release tags, adds one, writes it into
 `version.dart`, and tags the release — so nobody bumps it by hand.
+
+The code-push counter is **not** part of it and reaches no native field: the
+platform tables below project the line, patch, stage and build only. A code
+push cannot alter a signed binary's metadata, so `build 131.1` exists in the
+Dart layer and on screen (§2.3), never in a plist, manifest or `FILEVERSION`.
 
 The same cut also names the build's **tester notes**. They are written as work
 merges, under the `upcoming` key of `app/assets/tester-notes.yaml`; the cut
@@ -178,18 +247,19 @@ Two projection rules follow from the table:
 
 ### 2.3 Where the public version lives (patchable)
 
-Because Shorebird patches only swap Dart, the public version must live in
+Because a code push only swaps Dart, the public version must live in
 **compiled Dart** — e.g. a constant in `lib/version.dart`:
 
 ```dart
 const kPublicVersion = '26.8.1';
 ```
 
-A patch that bumps the public version edits this file; the new string ships inside
-the patch and updates on-device when the patch lands.
+A code push that bumps the public version edits this file; the new string ships
+inside the push and updates on-device when it lands.
 
 - **Do not source it from `package_info_plus`** — that reads the native
-  Info.plist/manifest (the frozen build identity), which a patch can't change.
+  Info.plist/manifest (the frozen build identity), which a code push can't
+  change.
 - **Version displays take the build number from compiled Dart too**
   (`kBuildNumber`), for the same reason plus a second one: a local `flutter run`
   reports a native build number of `1`, which names no release at all.
@@ -199,40 +269,58 @@ the patch and updates on-device when the patch lands.
   and is targeted by its `shas` (git SHA) instead. `package_info_plus` still
   supplies the build number to the User-Agent (`config/user_agent.dart`) alone;
   it reports the *native* identity and will disagree with the UI on a local
-  build or after a Shorebird patch.
-- **Optionally derive it** from the Shorebird runtime's current patch number
-  (`"$base.${patchNumber ?? 0}"`) so you can't forget to bump it; keep an explicit
-  override for `-preN` labels and full-rebuild jumps.
+  build or once a code push is running.
+- **The patch number is bumped deliberately, not derived** from Shorebird's
+  counter. The two count different things (§2.0): Shorebird restarts at 1 for
+  every release, so deriving would reset the public version at each rebuild and
+  could never express a full-binary patch, which has no code push at all.
+  `halo-ops` guards the bump instead — it refuses to publish a version that has
+  already been triggered, reading HEAD's version.dart against the release tag and
+  the surviving code-push trigger tags. Best-effort by construction: pruned or
+  unreadable tags are reported and skipped, never fatal.
 - **Version displays** carry the version plus a build-identity parenthetical,
   rendered by one shared helper (`buildDetails()` in `views/version_label.dart`)
-  so the home pane and the About row can never disagree: `Version 26.8.1
-  (build 125 - 04e3d1)` — the public version for humans, the build number
-  pinning the native binary, the git SHA pinning the commit. The Dev edition
-  shows the SHA alone: its `kBuildNumber` is the last *release's*, not the
-  running build's. Once Shorebird lands, the patch number joins the same
-  parenthetical to pin the Dart layer. The splash screens carry none of it.
+  so the home pane and the About row can never disagree: `Version 26.9.3
+  (build 131.1 - 04e3d1)` — the public version for humans, the build identity
+  pinning the native binary and the code push running on it, the git SHA pinning
+  the commit. The code push extends the build number rather than taking a field
+  of its own, because Shorebird's counter is only meaningful against one release:
+  a bare `.1` names nothing. With no code push applied the build stands alone
+  (`build 131`). The Dev edition normally shows the SHA alone — its
+  `kBuildNumber` is the last *release's*, not the running build's — but does name
+  the build once a code push is running, since only a `shorebird release` binary
+  can carry one. The splash screens carry none of it.
 - **Sync/log metadata** should record both the public version *and* the
-  build+patch fingerprint, since only the latter reproduces a device's exact code.
+  build + code-push fingerprint, since only the latter reproduces a device's
+  exact code.
 
 ### 2.4 Extension version
 
 Independent semver per extension, gated by a minimum app/API version (see §6).
 
-### 2.5 Release lifecycle (worked example, the `26.8` line)
+### 2.5 Release lifecycle (the `26.9` line, end to end)
 
-1. **Pre-releases on Next.** Binary builds ship to **Logger Next** first, branded
-   for the coming month: `26.8.0-pre1`, `26.8.0-pre2`, … each with its own build
-   number (the next value of the shared counter). Fixes between pre-releases can go
-   out as Next Shorebird patches, e.g. `26.8.0-pre1.1`.
-2. **Stabilize.** When a pre-release is judged stable enough, it is promoted to the
-   official **`26.8.0`**, build `73`. **Both** Logger and Logger Next receive this
-   release.
-3. **Patch through the month.** Subsequent fixes ship as Shorebird patches
-   `26.8.1`, `26.8.2`, … all based on the official build `73`.
-4. **Rare full rebuild.** If a change can't ride a patch (native/engine/plugin),
-   cut a new full binary that takes the next number in sequence, e.g. `26.8.3`,
-   with its own build number. Then resume patching until the next monthly line
-   (`26.9`) begins on Next.
+1. **Stage on Next.** Binary builds ship to **Logger Next** first, branded for
+   the coming month: `26.9.0-pre1`, `-pre2`, …. The patch component stays `.0`
+   for the whole cycle; the stage is the milestone and the build number is the
+   fine-grained identity, so several builds under one stage is normal, not a
+   mistake. Fixes between builds can go out as Next code pushes —
+   `26.9.0-pre3.1`.
+2. **Promote.** When a stage is judged stable enough it becomes the official
+   **`26.9.0`** on Regular. This is a **rebuild**, not a relabel: the version is
+   compiled in and the two editions are separate Shorebird apps, so the promoted
+   release carries its own new build number. Both Logger and Logger Next receive
+   it.
+3. **Patch through the month.** Subsequent fixes ship as code pushes —
+   `26.9.1`, `26.9.2`, … — all bound to the release build promoted in step 2.
+4. **Rebuild when a change can't ride a code push.** Native, engine, plugin or
+   permission changes (§4.2) take the next patch number as a **full binary** —
+   `26.9.2` as build 131 — with its own build number. Code pushes then resume on
+   *that* release. Note what step 4 costs: devices still on the previous build
+   receive none of the code pushes published afterwards, so a fix that matters to
+   everyone belongs in the binary, not in a push layered on top of it.
+
+The cycle then restarts as `26.10` opens on Next.
 
 ### 2.6 Editions and identity
 
@@ -261,8 +349,8 @@ data and settings:
   here is now).
 
   CD Dev is also a **Shorebird release**, against its own Shorebird app, so Dart
-  patches can target it like any other edition (`ios-dev-patch`,
-  `macos-dev-patch`). It still gets **no appcast and no extension OTA** — a new
+  code pushes can target it like any other edition (`ios-dev-code-push`,
+  `macos-dev-code-push`). It still gets **no appcast and no extension OTA** — a new
   Dev *binary* means a rebuild or a fresh download. Everything needed to *build*
   Dev locally remains in the public history (§8), and that path never touches
   Shorebird.
@@ -367,7 +455,7 @@ time for certificates, notarization, and stapling before wiring the updater.
 
 ---
 
-## 4. Dart patch plane — Shorebird code push
+## 4. Code-push plane — Shorebird
 
 Shorebird delivers **Dart-only** changes over the air, with no store submission,
 across **Android, iOS, Windows, macOS, and Linux** (desktop code push went to
@@ -376,20 +464,20 @@ the latest version from our server on load.
 
 ### 4.1 Release binding (the key difference from CodePush)
 
-A Shorebird patch is bound to the **exact release build it was compiled against**.
+A Shorebird code push is bound to the **exact release build it was compiled against**.
 Coming from App Center CodePush — where a deployment key loosely tracks a channel —
 this is the important mental-model change:
 
 - Each monthly binary is a distinct Shorebird **release**.
-- Patches target that release version specifically.
-- Tooling must build/promote patches **per active release line**, not globally.
+- Code pushes target that release version specifically.
+- Tooling must build/promote code pushes **per active release line**, not globally.
 
-This actually fits the monthly-binary + continuous-patch model exactly; it just
+This actually fits the monthly-binary + continuous-code-push model exactly; it just
 has to be respected in CI.
 
-### 4.2 What may ride a patch
+### 4.2 What may ride a code push
 
-Patches must be **pure Dart**. Anything touching plugins, the engine, native
+Code pushes must be **pure Dart**. Anything touching plugins, the engine, native
 assets, or new permissions requires a full binary release (§3). Discipline here is
 essential — keep new native surface for the monthly cut.
 
@@ -405,11 +493,11 @@ bleeding-edge  →  unstable  →  stable
 
 - Publish to `bleeding-edge`, verify, `shorebird patches promote` upward.
 - Within `stable`, use **percentage rollout** for a graduated release even after
-  a patch reaches the stable track.
+  a code push reaches the stable track.
 - **Next** has its **own Shorebird app** (Shorebird keys per app identity), so it
   carries its own `bleeding-edge`/`unstable`/`stable` tracks independently.
 
-**Mechanics.** CI publishes every patch to **`bleeding-edge`**; moving it upward
+**Mechanics.** CI publishes every code push to **`bleeding-edge`**; moving it upward
 is a deliberate, separate act:
 
 ```
@@ -426,8 +514,8 @@ any custom track name, so it covers the whole ladder.
 following an earlier ring is **opt-in per device**, via **Settings → Developer →
 Patch Track** (Developer Mode only). That selector is wired to
 `package:shorebird_code_push`: `ShorebirdUpdateService` (lib/services/) checks the
-chosen track on launch and downloads any patch, applied on the next restart. So a
-`bleeding-edge` patch reaches only the handful of devices that have opted into that
+chosen track on launch and downloads any code push, applied on the next restart. So a
+`bleeding-edge` code push reaches only the handful of devices that have opted into that
 ring — exactly the staging behaviour we want — until it's promoted to `stable`,
 which everyone follows.
 
@@ -441,7 +529,7 @@ the engine isn't present.
 ### 4.4 App Store policy note
 
 Apple 3.3.1 permits hot-patching only where it does not change the app's intended,
-advertised purpose. Keep patches to fixes and tweaks, not features that alter what
+advertised purpose. Keep code pushes to fixes and tweaks, not features that alter what
 review was told the app does.
 
 ### 4.5 How editions map to Shorebird apps, and CI wiring
@@ -461,7 +549,7 @@ as generated**, and Android simply passes `--flavor <edition>`.
 
 iOS and macOS can't use that: with no Xcode schemes, `--flavor` has nothing to
 select, and a flavor-less `shorebird release` would fall back to the top-level
-default app — the wrong one. So for those two platforms the official build/patch
+default app — the wrong one. So for those two platforms the official build/code-push
 scripts call `shorebird_select_edition` (`app_dist/ci/shorebird-common.sh`), which
 reads the edition's id out of the committed `flavors:` map and rewrites
 `shorebird.yaml` **without** the map, leaving exactly the intended app as the
@@ -474,7 +562,7 @@ console (Account → API Keys; `shorebird login:ci` is gone). Prefer the
 CI.
 
 **All three editions have a Shorebird app** — `shorebird init` created one per
-flavor, and CD registers a release for each, so Dev is patchable too. **Web gets
+flavor, and CD registers a release for each, so Dev takes code pushes too. **Web gets
 none**: it reloads the latest bundle on load.
 
 **Native requirements** `shorebird init` adds, both needed for code push to work:
@@ -486,54 +574,54 @@ none**: it reloads the latest bundle on load.
   hardened runtime.
 
 **Flutter version — floor is 3.44.5.** Shorebird's dashboard can only report
-**rollout adoption** (which patch each device is actually running) for releases
-built with **Flutter ≥ 3.44.5**; older releases still patch fine, they just can't
+**rollout adoption** (which code push each device is actually running) for releases
+built with **Flutter ≥ 3.44.5**; older releases still take code pushes fine, they just can't
 report. We therefore pin **3.44.6** (the current stable) in `mise.toml`,
 `codemagic.yaml`, and the build scripts — keep those three in step, and don't drop
-below 3.44.5 or adoption tracking goes dark. Because **patches inherit the
+below 3.44.5 or adoption tracking goes dark. Because **code pushes inherit the
 release's Flutter version**, a release built on an older Flutter can never gain
 adoption reporting: it needs a *new release* to do so.
 
 Shorebird supports our pinned Flutter on
 every target platform (its floors — iOS/Android 3.24, macOS 3.27.3, Windows 3.29,
 Linux 3.32.6 — are all below it). `--flutter-version` is a *release*-only flag;
-**patches inherit the release's Flutter version**, so a Flutter-pin bump is
-inherently a new binary release, never a patch (which reinforces §4.2).
+**code pushes inherit the release's Flutter version**, so a Flutter-pin bump is
+inherently a new binary release, never a code push (which reinforces §4.2).
 
 **Release step.** For Next/Regular the official builds swap `flutter build
 <ipa|apk|…>` for `shorebird release <platform> --flutter-version=<pin> -- <the
 existing flutter args>`. The `--build-name` / `--build-number` projection (§2.2)
 passes straight through as the **release version**, so each monthly binary is the
-distinct Shorebird release its patches bind to (§4.1). Dev and Web keep plain
+distinct Shorebird release its code pushes bind to (§4.1). Dev and Web keep plain
 `flutter build`.
 
-**Patch step.** A separate workflow runs `shorebird patch <platform>` (with the
+**Code push step.** A separate workflow runs `shorebird patch <platform>` (with the
 same edition selection) and publishes to `bleeding-edge`, to be promoted upward
-explicitly (§4.3); `SHOREBIRD_TRACK` overrides the track. Patches must be pure
-Dart (§4.2). A patch is never distributed, so the macOS patch build needs no
+explicitly (§4.3); `SHOREBIRD_TRACK` overrides the track. Code pushes must be pure
+Dart (§4.2). A code push is never distributed, so the macOS code-push build needs no
 Developer ID certificate and no notarization.
 
-Trigger it with **`halo-ops patch`** (or manually from the Codemagic UI): it
-pushes a per-commit `patch-<edition>-<sha>` tag, which fans out to that edition's
-iOS/macOS/Android patch workflows (each `triggering:` on the `patch-<edition>-*`
-pattern). A fresh tag per commit means every patch is a tag creation, so
+Trigger it with **`halo-ops code-push`** (or manually from the Codemagic UI): it
+pushes a per-commit `code-push-<edition>-<sha>` tag, which fans out to that edition's
+iOS/macOS/Android code-push workflows (each `triggering:` on the `code-push-<edition>-*`
+pattern). A fresh tag per commit means every code push is a tag creation, so
 Codemagic triggers reliably. Before pushing, it diffs the current release tag →
 HEAD and **hard-blocks** when any change falls outside the pure-Dart/asset
 surface (native dirs, `pubspec.*`) — `--force` overrides that local pre-flight.
 It's only a heuristic; Shorebird's build-time diff of the compiled artifact is
 the authoritative gate. Old trigger tags are swept by **`halo-ops
-prune-patches`** (anything older than two months by default) — they only trigger
-builds, so deleting them never touches a published patch.
+prune-code-pushes`** (anything older than two months by default) — they only trigger
+builds, so deleting them never touches a published code push.
 
 It passes **`--release-version` explicitly**, resolved by
 `shorebird_release_version` (newest release, or `SHOREBIRD_RELEASE_VERSION`).
-This is not optional: a patch build carries pubspec's placeholder `0.1.0+1`, not
+This is not optional: a code-push build carries pubspec's placeholder `0.1.0+1`, not
 the release's §2.2-projected version, so Shorebird's default lookup fails with
 `Release not found: "0.1.0+1"`. Re-running the projection wouldn't reliably fix it
 either — `kBuildNumber` advances per release, so once it has been bumped past the
 target release the projection no longer names that release.
 
-**Wired so far:** iOS, macOS, and Android for **Next** (release + patch). Regular
+**Wired so far:** iOS, macOS, and Android for **Next** (release + code push). Regular
 follows the same pattern via `HALO_EDITION=prod`; Windows/Linux are not wired yet.
 
 **Prerequisites (one-time):** run `shorebird init` (creates the apps and the
@@ -544,7 +632,7 @@ committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,
 
 ## 5. Linux distribution
 
-Shorebird patches work on Linux; the effort is in **binary distribution and
+Shorebird code pushes work on Linux; the effort is in **binary distribution and
 auto-update**, which has no single standard.
 
 | Format | Role | Notes / trade-offs |
@@ -582,7 +670,7 @@ all platforms including web.
 Extensions call into the app's Dart/native bridge. An OTA extension update cannot
 assume a bridge method that only exists in a newer monthly binary. Tag each
 extension with a **minimum app/API version** and refuse to load incompatible ones —
-the same release-binding discipline Shorebird enforces for patches.
+the same release-binding discipline Shorebird enforces for code pushes.
 
 ### 6.3 Store policy
 
@@ -605,8 +693,8 @@ Dev is built from source and never distributed, so it does not appear below — 
 large matrix that must be driven by CI, not by hand.
 
 ```
-                  Binary plane          Dart patches (Shorebird)      JS extensions
-                  ------------          ------------------------      -------------
+                  Binary plane          Code pushes (Shorebird)       JS extensions
+                  ------------          -----------------------       -------------
 Ham2K Logger
   iOS             App Store             stable/unstable/bleeding      OTA (3 tracks)
   Android         Google Play           stable/unstable/bleeding      OTA (3 tracks)
@@ -627,7 +715,7 @@ Ham2K Logger Next   (own app identity + own Shorebird app + own appcast/OTA feed
 - Build all flavors/platforms; sign, notarize, staple (mac), Authenticode (win),
   sign Linux artifacts.
 - Publish channel-aware appcast feeds.
-- Cut Shorebird releases and build/promote patches **per active release line**.
+- Cut Shorebird releases and build/promote code pushes **per active release line**.
 - Publish and sign JS extension bundles.
 
 Codemagic has first-class Shorebird support; GitHub Actions is the alternative.

@@ -32,6 +32,7 @@ void main() {
     appVersion: '26.8.0',
     appVersionName: "August '26",
     appBuild: '1234',
+    appCodePush: '',
     appSha: 'abc123',
     platform: 'macos',
   );
@@ -65,6 +66,42 @@ void main() {
       expect(e.appBuild, isEmpty);
       // The SHA is what remains to target it by — it names the running commit.
       expect(e.appSha, '04e3d1');
+    });
+
+    test('the code push is reported on its own, leaving the build number bare', () async {
+      // The build must NOT become '126.2'. Both are matched by exact string
+      // membership, so merging them would silently retire every existing
+      // `builds` rule the first time a code push shipped.
+      final e = await FlagsService.defaultNoticeEnvironment(
+        edition: Edition.next,
+        build: 126,
+        sha: '04e3d1',
+        codePush: 2,
+      );
+      expect(e.appBuild, '126');
+      expect(e.appCodePush, '2');
+    });
+
+    test('a Dev build DOES report its code push, unlike its build number', () async {
+      // The two are suppressed for opposite reasons: kBuildNumber is compiled
+      // in and names the last release, while the code push is read from the
+      // running updater and names this install. A Dev build carrying a push is
+      // a real release build, and reachable by a rule.
+      final e = await FlagsService.defaultNoticeEnvironment(
+        edition: Edition.dev,
+        build: 126,
+        sha: '04e3d1',
+        codePush: 2,
+      );
+      expect(e.appBuild, isEmpty);
+      expect(e.appCodePush, '2');
+    });
+
+    test('no code push applied reports empty, not "0"', () async {
+      // '0' would be a matchable value: a `codePushes: ["0"]` rule would then
+      // hit every web, debug and local build at once.
+      final e = await FlagsService.defaultNoticeEnvironment(edition: Edition.next, build: 126, sha: '');
+      expect(e.appCodePush, isEmpty);
     });
   });
 

@@ -6,6 +6,17 @@
 // a manual download). The OSS app ships with a no-op implementation;
 // `HaLoServices` accepts an override at construction time.
 
+/// The code-push number running on top of `kBuildNumber` in this process, or
+/// null when none is applied — including every build with no updater at all
+/// (web, debug, plain `flutter build`).
+///
+/// A synchronous mirror of [UpdateService.currentPatchNumber], cached once by
+/// `bootstrap()`, because the version displays that need it
+/// (`views/version_label.dart`) are plain string builders reached from widgets
+/// that hold no services. Safe to cache: a downloaded push applies only on the
+/// next launch, so this value cannot change while the process runs.
+int? currentCodePush;
+
 abstract class UpdateService {
   /// Whether an over-the-air updater is actually present in this build. False
   /// for the no-op / OSS case and (for Shorebird) for any non-`shorebird

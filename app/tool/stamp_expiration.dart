@@ -3,12 +3,13 @@
 //
 // Re-stamps THIS checkout's lib/config/version.dart with a fresh expiration
 // for the given edition — `dart run tool/stamp_expiration.dart <edition>`,
-// run from app/ by the CI patch scripts (app_dist/ci/patch-*.sh) just
-// before `shorebird patch`. A patch ships "current as of today", so its
-// expiration clock restarts at patch-build time; without this, an install
-// kept current via patches would nag from the original release's date —
+// run from app/ by the CI code-push scripts just before `shorebird patch`
+// (Shorebird's own CLI verb — the mechanism is a *code push* everywhere else,
+// see docs/releases.md §2.0). A code push ships "current as of today", so its
+// expiration clock restarts at code-push build time; without this, an install
+// kept current by code pushes would nag from the original release's date —
 // possibly with nothing newer to download. Build-time only: the rewrite is
-// deliberately NOT committed (the patch plane is a moving tag, not a
+// deliberately NOT committed (the code-push plane is a moving tag, not a
 // ledger). Horizons live in halo_build_tools' expirationDateForBuild, the
 // same function `halo-ops release` stamps with.
 

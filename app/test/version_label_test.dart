@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/config/version.dart';
+import 'package:ham2k_logger/services/update_service.dart' show currentCodePush;
 import 'package:ham2k_logger/views/version_label.dart';
 
 void main() {
@@ -47,6 +48,33 @@ void main() {
 
     test('an official build with no SHA still names the build number', () {
       expect(buildDetails(edition: Edition.next, build: 125, sha: ''), '(build 125)');
+    });
+
+    test('a running code push extends the build number rather than taking a field of its own', () {
+      // `125.2`, not `125 - patch 2`: Shorebird's counter restarts at 1 for
+      // every release, so the push number names nothing without the build it
+      // sits on, and separating them invites a bug report quoting only the ".2".
+      expect(buildDetails(edition: Edition.next, build: 125, sha: '04e3d1', codePush: 2), '(build 125.2 - 04e3d1)');
+    });
+
+    test('a Dev build DOES name the build number once a code push is running', () {
+      // The reason Dev hides kBuildNumber — that it names the last release
+      // rather than the build in hand — stops holding here: only a
+      // `shorebird release` binary can carry a code push, so this IS that
+      // release. Hiding it would leave a Dev tester with no way to say which
+      // of several same-version pushes they are running, the whole point of
+      // showing the number.
+      expect(buildDetails(edition: Edition.dev, build: 125, sha: '04e3d1', codePush: 2), '(build 125.2 - 04e3d1)');
+    });
+
+    test('buildDetails reads the boot-cached code-push number when none is passed', () {
+      // The seam that makes this work at all: every call site is a widget with
+      // no services in reach, so it passes no codePush and the global is the
+      // only path from the updater to the screen. Pass explicit values in every
+      // other test and this wiring can rot silently.
+      addTearDown(() => currentCodePush = null);
+      currentCodePush = 3;
+      expect(buildDetails(edition: Edition.next, build: 125, sha: ''), '(build 125.3)');
     });
 
     test('an empty parenthetical leaves no trailing space on the detail line', () {

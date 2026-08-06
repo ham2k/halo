@@ -3,13 +3,13 @@
 //
 // Shows the version name and public version (docs/releases.md §2.1/§2.3,
 // `kVersionName`/`kPublicVersion`) plus the build identity from
-// [buildDetails]. There's no Shorebird integration yet, so no patch number is
-// shown.
+// [buildDetails].
 
 import 'package:flutter/material.dart';
 
 import '../config/version.dart';
 import '../i18n/strings.g.dart';
+import '../services/update_service.dart' show currentCodePush;
 
 /// The build-identity parenthetical every version display shares —
 /// `(build 125 - 04e3d1)`, or `(build 125)` when no SHA was baked in
@@ -18,16 +18,31 @@ import '../i18n/strings.g.dart';
 /// rewrite the former but not the latter, and a local `flutter run` reports a
 /// native build number of `1` that matches no release.
 ///
-/// Dev builds show the SHA alone — `kBuildNumber` there is the last release's
-/// number, not this build's, so printing it would name a build that isn't
-/// running — and show nothing at all without a SHA, which is every local run.
+/// A code push applied on top of the binary extends the build number rather
+/// than taking a field of its own — `build 125.2` is build 125 at code push 2
+/// (docs/releases.md §2.1). The two are only meaningful together: Shorebird's
+/// counter restarts at 1 for each release, so a bare `.2` names nothing.
 ///
-/// [edition]/[build]/[sha] default to the compiled-in values and exist only so
-/// tests can reach the other three cells of that matrix: compile-time
+/// Dev builds normally show the SHA alone — `kBuildNumber` there is the last
+/// release's number, not this build's, so printing it would name a build that
+/// isn't running — and show nothing at all without a SHA, which is every local
+/// run. A running code push is proof that this IS that release build (only
+/// `shorebird release` output can carry one), so the build number is truthful
+/// again and Dev names it too.
+///
+/// [edition]/[build]/[sha]/[codePush] default to this process's values and
+/// exist only so tests can reach the other cells of that matrix: compile-time
 /// constants can't be faked from a test binary.
-String buildDetails({Edition edition = kEdition, int build = kBuildNumber, String sha = kGitSha}) {
+String buildDetails({
+  Edition edition = kEdition,
+  int build = kBuildNumber,
+  String sha = kGitSha,
+  int? codePush,
+}) {
+  codePush ??= currentCodePush;
+  final buildLabel = codePush == null ? '$build' : '$build.$codePush';
   final parts = <String>[
-    if (edition != Edition.dev) t.versionLabel.build(build: build.toString()),
+    if (edition != Edition.dev || codePush != null) t.versionLabel.build(build: buildLabel),
     if (sha.isNotEmpty) sha,
   ];
   return parts.isEmpty ? '' : '(${parts.join(' - ')})';

@@ -37,6 +37,7 @@ import '../config/version.dart';
 import '../i18n/strings.g.dart';
 import 'notices.dart';
 import 'status_bar_service.dart';
+import 'update_service.dart' show currentCodePush;
 
 /// The default flags server. app-polo reads this from a build-time env var
 /// (`POLO_FLAGS_BASE_URL`); HaLo has no such indirection, so it's a const
@@ -69,6 +70,13 @@ class NoticeEnvironment {
   final String appVersionName;
   final String appBuild;
 
+  /// The Shorebird code-push number running on top of [appBuild], or empty
+  /// when none is applied — which is every build without the updater (web,
+  /// debug, local `flutter build`). Its own field, never folded into
+  /// [appBuild]: see NoticeContext.appCodePush for why that would break
+  /// `builds` rules silently.
+  final String appCodePush;
+
   /// Empty when no SHA was baked in (`--dart-define=HALO_GIT_SHA`, which only
   /// CI sets), which is every local build.
   final String appSha;
@@ -81,6 +89,7 @@ class NoticeEnvironment {
     required this.appVersion,
     required this.appVersionName,
     required this.appBuild,
+    required this.appCodePush,
     required this.appSha,
     required this.platform,
   });
@@ -343,6 +352,7 @@ class FlagsService extends ChangeNotifier {
         appVersion: env.appVersion,
         appVersionName: env.appVersionName,
         appBuild: env.appBuild,
+        appCodePush: env.appCodePush,
         appSha: env.appSha,
         platform: env.platform,
         dismissedKeys: dismissedKeys,
@@ -505,7 +515,9 @@ class FlagsService extends ChangeNotifier {
     Edition edition = kEdition,
     int build = kBuildNumber,
     String sha = kGitSha,
+    int? codePush,
   }) async {
+    codePush ??= currentCodePush;
     String platform;
     if (kIsWeb) {
       platform = 'web';
@@ -530,16 +542,20 @@ class FlagsService extends ChangeNotifier {
     // with, so a `builds` rule authored against a released build number would
     // miss the very installs it names.
     //
-    // A Dev build reports NO build number, exactly as its version display
-    // shows none (views/version_label.dart's buildDetails): kBuildNumber there
-    // is the last release's, and Dev is what the hosted web app, every preview
-    // deploy and every local run are — so reporting it would fire a
-    // release-targeted rule on all of them. `shas` is how a Dev build is
-    // targeted, and it names the commit actually running.
+    // A Dev build reports NO build number: kBuildNumber there is the last
+    // release's, and Dev is what the hosted web app, every preview deploy and
+    // every local run are — so reporting it would fire a release-targeted rule
+    // on all of them. `shas` is how a Dev build is targeted, and it names the
+    // commit actually running.
     return NoticeEnvironment(
       appVersion: kPublicVersion,
       appVersionName: kVersionName,
       appBuild: edition == Edition.dev ? '' : build.toString(),
+      // Reported for EVERY edition, Dev included: unlike kBuildNumber this is
+      // read from the running updater rather than compiled in, so it names the
+      // install in hand rather than the last release — and a Dev build that has
+      // taken a code push is exactly the install a rule would want to reach.
+      appCodePush: codePush?.toString() ?? '',
       appSha: sha,
       platform: platform,
     );

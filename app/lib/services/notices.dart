@@ -57,7 +57,23 @@ class NoticeContext {
   /// `builds`/`exceptBuilds`. This is the number the release ledger and every
   /// version display use, so a rule authored against a released build matches
   /// the build a reporter names.
+  ///
+  /// Stays BARE even when a code push is running: a code push never alters the
+  /// binary, so a `builds` rule must reach every install sitting on that
+  /// binary, whichever push they are at. The push is [appCodePush]'s job.
   final String appBuild;
+
+  /// The Shorebird code-push number running on top of [appBuild] (e.g. `2`),
+  /// or empty when none is applied — matched exactly against
+  /// `codePushes`/`exceptCodePushes`.
+  ///
+  /// A separate field rather than part of [appBuild] because the two are
+  /// matched by exact string membership: folding them into `126.2` would mean
+  /// a rule naming build `126` silently stopped matching the moment a push
+  /// went out — a rule that targets nothing looks exactly like a rule nobody
+  /// tripped. Note the counter restarts at 1 per release, so a `codePushes`
+  /// rule is only meaningful alongside a `builds` one.
+  final String appCodePush;
 
   /// The short git SHA this build was cut from (e.g. `04e3d1`), or empty when
   /// none was baked in — matched exactly against `shas`/`exceptShas`. It is
@@ -88,6 +104,7 @@ class NoticeContext {
     required this.appVersion,
     required this.appVersionName,
     required this.appBuild,
+    required this.appCodePush,
     required this.appSha,
     required this.platform,
     this.dismissedKeys = const {},
@@ -210,6 +227,15 @@ bool _passes(
   if (exceptVersions.isNotEmpty && exceptVersions.any((v) => ctx.appVersion.startsWith(v))) return false;
   final exceptBuilds = _stringList(notice['exceptBuilds']);
   if (exceptBuilds.isNotEmpty && exceptBuilds.contains(ctx.appBuild)) return false;
+  // An install with no code push applied matches no `codePushes` list and is
+  // excluded by no `exceptCodePushes` list, on the same reasoning as `shas`
+  // below: an install that is not running a push is not the one being targeted.
+  final codePushes = _stringList(notice['codePushes']);
+  if (codePushes.isNotEmpty && (ctx.appCodePush.isEmpty || !codePushes.contains(ctx.appCodePush))) return false;
+  final exceptCodePushes = _stringList(notice['exceptCodePushes']);
+  if (exceptCodePushes.isNotEmpty && ctx.appCodePush.isNotEmpty && exceptCodePushes.contains(ctx.appCodePush)) {
+    return false;
+  }
   // A build with no SHA baked in matches no `shas` list and is excluded by no
   // `exceptShas` list — an unidentified build is not the one being targeted.
   // The empty-SHA checks are explicit rather than left to `contains`, because
@@ -353,6 +379,7 @@ Map<String, dynamic> _templateData(NoticeContext ctx) => {
         'version': ctx.appVersion,
         'versionName': ctx.appVersionName,
         'build': ctx.appBuild,
+        'codePush': ctx.appCodePush,
         'sha': ctx.appSha,
         'platform': ctx.platform,
       },

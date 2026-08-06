@@ -618,6 +618,36 @@ Future<HaLoServices> bootstrap({
     updates: updates ?? (kIsWeb || kDebugMode ? const NoopUpdateService() : ShorebirdUpdateService(settings)),
     updateCheck: updateCheck,
   );
+  // Cache the running code-push number for the synchronous version displays
+  // (views/version_label.dart's buildDetails). Awaited rather than
+  // fire-and-forget: a late arrival would leave the first frames naming a
+  // build identity that no rebuild is coming to correct. Started here but
+  // awaited at the end of boot (see below) so the wait overlaps the keyring,
+  // sync and extension work instead of sitting in front of it.
+  //
+  // Every failure mode is swallowed to null, and deliberately so: this decides
+  // a suffix on a version label, and nothing about a version label may cost
+  // the operator their log. A hang is bounded by the timeout; a throw is
+  // caught here rather than in the callee, because UpdateService is an
+  // injectable interface and ShorebirdUpdateService catches only the one
+  // exception its package documents — an isolate that fails to spawn under
+  // memory pressure, or a future package version's new type, would otherwise
+  // escape into bootstrap() and strand the user on the boot-error screen.
+  //
+  // Note what this does NOT bound: constructing ShorebirdUpdater above reads
+  // the patch synchronously on this isolate, and the package's own source
+  // warns that can block on the updater's config lock. No timer can fire
+  // through that, so the guarantee here covers this read, not that one.
+  final codePushFuture = services.updates.currentPatchNumber().timeout(
+    const Duration(seconds: 2),
+    onTimeout: () {
+      debugPrint('[boot] code-push number timed out — the version label drops the suffix');
+      return null;
+    },
+  ).catchError((Object e) {
+    debugPrint('[boot] code-push number unreadable: $e');
+    return null;
+  });
   // A locked/absent keyring yields a null device key (ensureSyncDeviceKey no
   // longer throws) — boot must still complete, so skip sync setup and pick it
   // up on a later launch once the keyring is available.
@@ -695,6 +725,13 @@ Future<HaLoServices> bootstrap({
   }).catchError((e) {
     debugPrint('[boot] failed to initialize data files: $e');
   }));
+
+  // Settled BEFORE the flags refresh below, not merely before `return`: the
+  // notice environment reads this global to report `appCodePush`, and a
+  // `codePushes` rule that evaluated against a not-yet-resolved value would
+  // silently target the wrong installs. Everything above has overlapped the
+  // wait; by here it has almost always already completed.
+  currentCodePush = await codePushFuture;
 
   // Fetch feature flags + notices for the current callsign once the runtime
   // is up (the callsign→DXCC-entity annotation needs it). Fire-and-forget;

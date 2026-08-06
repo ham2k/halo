@@ -22,6 +22,7 @@ void main() {
     int? ituRegion = 2,
     String appVersion = '26.8.0',
     String appBuild = '1234',
+    String appCodePush = '',
     String appSha = '',
     String platform = 'macos',
     Set<String> dismissedKeys = const {},
@@ -37,6 +38,7 @@ void main() {
         appVersion: appVersion,
         appVersionName: "August '26",
         appBuild: appBuild,
+        appCodePush: appCodePush,
         appSha: appSha,
         platform: platform,
         dismissedKeys: dismissedKeys,
@@ -78,6 +80,41 @@ void main() {
         {'key': 'b', 'text': 'x', 'builds': ['9999']},
       ];
       expect(keys(evaluateNotices(notices, ctx(appBuild: '1234'))), ['a']);
+    });
+
+    test('a builds rule keeps matching once a code push is running', () {
+      // THE reason the code push is its own field. `builds` is exact string
+      // membership, so folding the push into appBuild ('1234.2') would make
+      // every existing builds rule stop matching the moment a push shipped —
+      // and a rule that matches nothing is indistinguishable from a rule
+      // nobody tripped. A code push never alters the binary, so the rule must
+      // still reach the install.
+      final notices = [
+        {'key': 'a', 'text': 'x', 'builds': ['1234']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appBuild: '1234', appCodePush: '2'))), ['a']);
+    });
+
+    test('codePushes match exactly, and exceptCodePushes withholds one push from a wider notice', () {
+      final notices = [
+        {'key': 'a', 'text': 'x', 'codePushes': ['2']},
+        {'key': 'b', 'text': 'x', 'codePushes': ['3']},
+        {'key': 'c', 'text': 'x', 'exceptCodePushes': ['2']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appCodePush: '2'))), ['a']);
+      expect(keys(evaluateNotices(notices, ctx(appCodePush: '3'))), ['b', 'c']);
+    });
+
+    test('an install running no code push is targeted by no codePushes rule, nor withheld by exceptCodePushes', () {
+      // Same trap as the empty SHA: '' is "no push applied", not a push
+      // numbered zero. Every web, debug and local build reports it, so
+      // treating it as matchable would fire a push-targeted notice at all of
+      // them at once.
+      final notices = [
+        {'key': 'a', 'text': 'x', 'codePushes': ['2']},
+        {'key': 'b', 'text': 'x', 'exceptCodePushes': ['2']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appCodePush: ''))), ['b']);
     });
 
     test('shas match exactly, and exceptShas withholds one build from a wider notice', () {
