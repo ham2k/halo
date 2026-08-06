@@ -47,15 +47,29 @@ class AdifImportOutcome {
   /// extensions the user expects can tell the difference; this service cannot.
   final Set<String> failedHooks;
 
-  /// Records that were in a batch where something went wrong, so their
-  /// references may be incomplete.
-  final int recordsAtRisk;
+  /// Records in a batch that never reached the runtime, so NO hook ran for
+  /// them and nothing could have been recovered.
+  final int recordsUnreachable;
+
+  /// Records in a batch where a NAMED hook failed. Every other hook still ran
+  /// for these, so their references may be incomplete rather than absent.
+  ///
+  /// Separate from [recordsUnreachable] because the two support different
+  /// sentences, and one total shared between them makes the stronger sentence
+  /// false: a file big enough to hit both failures in different batches would
+  /// otherwise report "nothing was recovered" over records whose other hooks
+  /// answered in full.
+  final int recordsWithFailedHooks;
 
   const AdifImportOutcome({
     required this.records,
     this.failedHooks = const {},
-    this.recordsAtRisk = 0,
+    this.recordsUnreachable = 0,
+    this.recordsWithFailedHooks = 0,
   });
+
+  /// Every record whose references may be short, however they came to be.
+  int get recordsAtRisk => recordsUnreachable + recordsWithFailedHooks;
 
   bool get degraded => failedHooks.isNotEmpty;
 }
@@ -81,12 +95,13 @@ class AdifImportService {
         // No runtime is a known-incomplete import, not a clean one: every
         // reference in the file is silently absent.
         failedHooks: host == null && records.isNotEmpty ? const {'*'} : const {},
-        recordsAtRisk: host == null ? records.length : 0,
+        recordsUnreachable: host == null ? records.length : 0,
       );
     }
 
     final failed = <String>{};
-    var atRisk = 0;
+    var unreachable = 0;
+    var withFailedHooks = 0;
     for (var start = 0; start < records.length; start += _batchSize) {
       final end = start + _batchSize < records.length ? start + _batchSize : records.length;
       final batch = records.sublist(start, end);
@@ -96,10 +111,20 @@ class AdifImportService {
       // damage — understating exactly the number this exists to report.
       final batchFailed = <String>{};
       await _applyBatch(host, batch, batchFailed);
-      if (batchFailed.isNotEmpty) atRisk += batch.length;
+      // Split by KIND, not just counted. Within one batch these are mutually
+      // exclusive — the crossing's catch returns before any named key is added
+      // — but across batches a long file can hit both, and then each number has
+      // to answer for its own sentence.
+      if (batchFailed.contains('*')) unreachable += batch.length;
+      if (batchFailed.any((key) => key != '*')) withFailedHooks += batch.length;
       failed.addAll(batchFailed);
     }
-    return AdifImportOutcome(records: records, failedHooks: failed, recordsAtRisk: atRisk);
+    return AdifImportOutcome(
+      records: records,
+      failedHooks: failed,
+      recordsUnreachable: unreachable,
+      recordsWithFailedHooks: withFailedHooks,
+    );
   }
 
   Future<void> _applyBatch(ExtensionHost host, List<AdifRecord> batch, Set<String> failed) async {

@@ -1079,6 +1079,10 @@
       "one": "No se pudieron recuperar las referencias de ${count} contacto",
       "other": "No se pudieron recuperar las referencias de ${count} contactos"
     },
+    "partialRefs": {
+      "one": "Las referencias de ${programs} pueden estar incompletas en ${count} contacto",
+      "other": "Las referencias de ${programs} pueden estar incompletas en ${count} contactos"
+    },
     "nothingToImport": "No hay nada importable en este archivo",
     "confirm": "Importar",
     "importing": "Importando ${filename}…",

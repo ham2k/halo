@@ -771,6 +771,10 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 		one: 'No se pudieron recuperar las referencias de ${count} contacto',
 		other: 'No se pudieron recuperar las referencias de ${count} contactos',
 	);
+	@override String partialRefs({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto',
+		other: 'Las referencias de ${programs} pueden estar incompletas en ${count} contactos',
+	);
 	@override String get nothingToImport => 'No hay nada importable en este archivo';
 	@override String get confirm => 'Importar';
 	@override String importing({required Object filename}) => 'Importando ${filename}…';
@@ -2677,6 +2681,7 @@ extension on TranslationsEs {
 			'adifImport.unusable' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no se puede importar (sin indicativo)', other: '${count} no se pueden importar (sin indicativo)', ), 
 			'adifImport.flagged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} requiere revisión', other: '${count} requieren revisión', ), 
 			'adifImport.missingRefs' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'No se pudieron recuperar las referencias de ${count} contacto', other: 'No se pudieron recuperar las referencias de ${count} contactos', ), 
+			'adifImport.partialRefs' => ({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto', other: 'Las referencias de ${programs} pueden estar incompletas en ${count} contactos', ), 
 			'adifImport.nothingToImport' => 'No hay nada importable en este archivo',
 			'adifImport.confirm' => 'Importar',
 			'adifImport.importing' => ({required Object filename}) => 'Importando ${filename}…',

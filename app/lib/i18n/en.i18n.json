@@ -1079,6 +1079,10 @@
       "one": "References could not be recovered for ${count} contact",
       "other": "References could not be recovered for ${count} contacts"
     },
+    "partialRefs": {
+      "one": "${programs} references may be incomplete for ${count} contact",
+      "other": "${programs} references may be incomplete for ${count} contacts"
+    },
     "nothingToImport": "Nothing in this file can be imported",
     "confirm": "Import",
     "importing": "Importing ${filename}…",

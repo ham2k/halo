@@ -43,6 +43,41 @@ class _RecordingHost implements ExtensionHost {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Throws on the FIRST batch and answers with a failing hook on the rest, so
+/// one import carries both kinds of failure. Needs more than one batch: within
+/// a single batch the crossing's catch returns before any named key is added,
+/// so the two can only ever coexist across batches.
+class _MixedFailureHost implements ExtensionHost {
+  var _batch = 0;
+
+  @override
+  Future<List<Map<String, dynamic>>> invokeHookAll(
+    String category, {
+    required String method,
+    Object? args,
+    Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
+  }) async {
+    final batch = _batch++;
+    if (batch == 0) throw StateError('crossing died');
+    if (batch == 1) {
+      return [
+        {'ok': false, 'key': 'pota', 'error': 'boom'},
+      ];
+    }
+    // A well-formed "nothing to say about any of these". A bare null would be
+    // an unusable reply, which the service counts as a failure — and this batch
+    // has to be genuinely clean for the test to mean anything.
+    final count = ((args as Map)['records'] as List).length;
+    return [
+      {'ok': true, 'key': 'pota', 'value': [for (var i = 0; i < count; i++) null]},
+    ];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 List<AdifRecord> _records(int count) => [
       for (var i = 0; i < count; i++)
         AdifRecord(number: i + 1, fields: {'call': 'W$i'}, qso: <String, dynamic>{'their': {}}),
@@ -128,7 +163,8 @@ void main() {
     expect(records.every((r) => _refs(r).isEmpty), isTrue);
     // Ref-less because there is no runtime is NOT a clean import.
     expect(outcome.degraded, isTrue);
-    expect(outcome.recordsAtRisk, 2);
+    expect(outcome.recordsUnreachable, 2);
+    expect(outcome.recordsWithFailedHooks, isZero);
   });
 
   test('a crossing that throws loses the batch, and says so', () async {
@@ -140,7 +176,9 @@ void main() {
 
     expect(records.every((r) => _refs(r).isEmpty), isTrue);
     expect(outcome.degraded, isTrue);
-    expect(outcome.recordsAtRisk, 2);
+    // The crossing, not one hook: nothing ran, so nothing could be recovered.
+    expect(outcome.recordsUnreachable, 2);
+    expect(outcome.recordsWithFailedHooks, isZero);
   });
 
   test('a hook reporting ok:false is recorded, not discarded in silence', () async {
@@ -153,7 +191,10 @@ void main() {
     final outcome = await AdifImportService(host).applyHooks(records);
 
     expect(outcome.failedHooks, contains('pota'));
-    expect(outcome.recordsAtRisk, 3);
+    // ONE hook failed, so the others ran — these records are incomplete, not
+    // unreachable, and the summary says so in weaker words.
+    expect(outcome.recordsWithFailedHooks, 3);
+    expect(outcome.recordsUnreachable, isZero);
     expect(outcome.degraded, isTrue);
   });
 
@@ -182,8 +223,24 @@ void main() {
 
     final outcome = await AdifImportService(host).applyHooks(records);
 
-    expect(outcome.recordsAtRisk, 1200);
+    expect(outcome.recordsWithFailedHooks, 1200);
     expect(outcome.failedHooks, contains('pota'));
+  });
+
+  test('the two kinds of failure are counted apart, not pooled', () async {
+    // The defect this split exists to prevent. 1200 records: batch 1's
+    // crossing dies (500 unreachable), batch 2's pota hook reports ok:false
+    // (500 incomplete), batch 3 is clean (200).
+    //
+    // Pooled into one total, the summary says "references could not be
+    // recovered for 1000 contacts" — flatly false for batch 2's 500, whose
+    // every OTHER hook answered in full. Each number has to answer for its own
+    // sentence.
+    final outcome = await AdifImportService(_MixedFailureHost()).applyHooks(_records(1200));
+
+    expect(outcome.recordsUnreachable, 500);
+    expect(outcome.recordsWithFailedHooks, 500);
+    expect(outcome.failedHooks, containsAll(<String>['*', 'pota']));
   });
 
   test('a clean import reports no degradation', () async {
@@ -197,6 +254,8 @@ void main() {
 
     expect(outcome.degraded, isFalse);
     expect(outcome.recordsAtRisk, 0);
+    expect(outcome.recordsUnreachable, isZero);
+    expect(outcome.recordsWithFailedHooks, isZero);
   });
 }
 

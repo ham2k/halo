@@ -21,6 +21,7 @@ import '../../i18n/strings.g.dart';
 import '../../services/adif_import_plan.dart';
 import '../../services/adif_import_service.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/extension_service.dart' show ExtensionInfo;
 import '../../tools/operation_title.dart';
 import '../../main.dart' show HaLoServices;
 
@@ -119,7 +120,11 @@ Future<void> importAdifFile(
     statusBar.clear('adifImport:status');
     if (!context.mounted) return;
 
-    final decision = await _showSummary(context, plan);
+    final decision = await _showSummary(
+      context,
+      plan,
+      failedProgramNames(services.extensions.availableExtensions, plan.failedHooks),
+    );
     if (decision == null) return;
 
     statusBar.setProgress(key: 'adifImport:status', text: t.importing(filename: filename));
@@ -271,6 +276,25 @@ Future<void> _showNotice(BuildContext context, String message) => showHaloDialog
       ),
     );
 
+/// The failed hooks as the operator names them — 'POTA', not 'pota'.
+///
+/// The `'*'` sentinel is dropped rather than translated: it means no hook ran
+/// at all, which is a different sentence and is reported separately. An
+/// unrecognised key falls back to itself, since a key the registry has never
+/// heard of still tells the operator more than nothing does.
+///
+/// Sorted, because the set arrives in the order the hooks happened to reply
+/// across batches and `invokeHookAll` guarantees none. (Dart's default `Set`
+/// is insertion-ordered, so the instability is the replies, not the container.)
+@visibleForTesting
+List<String> failedProgramNames(Iterable<ExtensionInfo> available, Set<String> failedHooks) {
+  final byKey = {for (final info in available) info.key: info.effectiveShortName};
+  return [
+    for (final key in failedHooks)
+      if (key != '*') byKey[key] ?? key,
+  ]..sort();
+}
+
 Future<AdifImportPlan> _planFor(
   HaLoServices services,
   Operation operation,
@@ -289,7 +313,8 @@ Future<AdifImportPlan> _planFor(
     multiRefTypes: await _stackingRefTypes(services, operation),
     unusable: log.errors,
     failedHooks: outcome.failedHooks,
-    recordsMissingRefs: outcome.recordsAtRisk,
+    recordsUnreachable: outcome.recordsUnreachable,
+    recordsWithFailedHooks: outcome.recordsWithFailedHooks,
     // Contacts imported into an operation belong to the station that operation
     // runs as, whatever the file recorded — otherwise the operation's own
     // export would claim a station it never was. An operation with no station
@@ -405,16 +430,25 @@ class _ImportDecision {
   const _ImportDecision({required this.addActivation});
 }
 
-Future<_ImportDecision?> _showSummary(BuildContext context, AdifImportPlan plan) {
+Future<_ImportDecision?> _showSummary(
+  BuildContext context,
+  AdifImportPlan plan,
+  List<String> failedPrograms,
+) {
   return showHaloDialog<_ImportDecision>(
     context: context,
-    builder: (dialogContext) => _SummaryContent(plan: plan),
+    builder: (dialogContext) => _SummaryContent(plan: plan, failedPrograms: failedPrograms),
   );
 }
 
 class _SummaryContent extends StatefulWidget {
   final AdifImportPlan plan;
-  const _SummaryContent({required this.plan});
+
+  /// Resolved outside, because the registry that names them lives on the
+  /// services and this dialog is handed only the plan.
+  final List<String> failedPrograms;
+
+  const _SummaryContent({required this.plan, required this.failedPrograms});
   @override
   State<_SummaryContent> createState() => _SummaryContentState();
 }
@@ -473,8 +507,26 @@ class _SummaryContentState extends State<_SummaryContent> {
             ),
           ],
           if (plan.flagged.isNotEmpty) stat(t.flagged(count: plan.flagged.length), muted: true),
-          if (plan.recordsMissingRefs > 0 || plan.failedHooks.isNotEmpty)
-            stat(t.missingRefs(count: plan.recordsMissingRefs), muted: true),
+          // Two sentences and two counts, because the two failures are not the
+          // same claim about the same records. Nothing reaching the runtime
+          // means no references were recovered, full stop; one program's hook
+          // failing means every other hook still ran, so the most that can
+          // honestly be said is "may be".
+          //
+          // A long file can hit both in different batches, and then sharing one
+          // total would put the unhedged sentence over records whose other
+          // hooks answered in full. Each line counts only its own kind, so the
+          // conflation is not expressible here.
+          if (plan.recordsUnreachable > 0)
+            stat(t.missingRefs(count: plan.recordsUnreachable), muted: true),
+          if (widget.failedPrograms.isNotEmpty)
+            stat(
+              t.partialRefs(
+                programs: widget.failedPrograms.join(', '),
+                count: plan.recordsWithFailedHooks,
+              ),
+              muted: true,
+            ),
           if (plan.isEmpty && plan.refusedCount == 0) stat(t.nothingToImport),
           if (plan.foreignStations.isNotEmpty && plan.stationCall != null)
             _StationWarning(calls: plan.foreignStations, station: plan.stationCall!),

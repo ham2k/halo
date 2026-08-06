@@ -45,10 +45,27 @@ class AdifImportPlan {
   /// timestamp is not here: it is refused outright, in [undated].
   final List<AdifRecord> flagged;
 
-  /// Hook keys that failed during the reference pass, and how many records
-  /// may therefore be missing references. Empty on a clean run.
+  /// Extension keys whose reference pass failed, plus `'*'` for a whole
+  /// crossing that never reached the runtime. Empty on a clean run.
   final Set<String> failedHooks;
-  final int recordsMissingRefs;
+
+  /// Records in a batch that never reached the runtime. No hook ran for them,
+  /// so nothing could have been recovered — the one case that supports an
+  /// unhedged claim.
+  final int recordsUnreachable;
+
+  /// Records in a batch where a NAMED hook failed.
+  ///
+  /// NOT "records missing references": batches are 500 records and this counts
+  /// the WHOLE batch whenever any one hook in it fails, so a single broken
+  /// award extension puts every contact of that batch here — including the
+  /// ones whose references its other hooks supplied in full. An upper bound on
+  /// the damage, and the summary has to word it as one.
+  final int recordsWithFailedHooks;
+
+  /// Whether any batch never reached the runtime. `'*'` is the service's
+  /// sentinel for it.
+  bool get refsUnavailable => failedHooks.contains('*');
 
   /// Station callsigns the file recorded that are NOT the operation's, in the
   /// order first seen. Every one of them will be imported as the operation's
@@ -79,7 +96,8 @@ class AdifImportPlan {
     this.undated = const [],
     this.flagged = const [],
     this.failedHooks = const {},
-    this.recordsMissingRefs = 0,
+    this.recordsUnreachable = 0,
+    this.recordsWithFailedHooks = 0,
     this.foreignStations = const [],
     this.stationCall,
     this.hoistedOperationRefs = const [],
@@ -122,7 +140,8 @@ AdifImportPlan planAdifImport({
   required List<Qso> existing,
   Set<String> multiRefTypes = const {},
   Set<String> failedHooks = const {},
-  int recordsMissingRefs = 0,
+  int recordsUnreachable = 0,
+  int recordsWithFailedHooks = 0,
   List<AdifRecord> unusable = const [],
   String? stationCall,
 }) {
@@ -274,7 +293,8 @@ AdifImportPlan planAdifImport({
     undated: undated,
     flagged: flagged,
     failedHooks: failedHooks,
-    recordsMissingRefs: recordsMissingRefs,
+    recordsUnreachable: recordsUnreachable,
+    recordsWithFailedHooks: recordsWithFailedHooks,
     foreignStations: foreign,
     stationCall: stationCall,
     hoistedOperationRefs: hoisted.operationRefs,

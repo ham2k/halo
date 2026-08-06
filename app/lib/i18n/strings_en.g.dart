@@ -1502,6 +1502,12 @@ class Translations$adifImport$en {
 		other: 'References could not be recovered for ${count} contacts',
 	);
 
+	/// en: '(one) {${programs} references may be incomplete for ${count} contact} (other) {${programs} references may be incomplete for ${count} contacts}'
+	String partialRefs({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${programs} references may be incomplete for ${count} contact',
+		other: '${programs} references may be incomplete for ${count} contacts',
+	);
+
 	/// en: 'Nothing in this file can be imported'
 	String get nothingToImport => 'Nothing in this file can be imported';
 
@@ -4396,6 +4402,7 @@ extension on Translations {
 			'adifImport.unusable' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} cannot be imported (no callsign)', other: '${count} cannot be imported (no callsign)', ), 
 			'adifImport.flagged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} needs a closer look', other: '${count} need a closer look', ), 
 			'adifImport.missingRefs' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${count} contacts', ), 
+			'adifImport.partialRefs' => ({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${count} contacts', ), 
 			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
 			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',

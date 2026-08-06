@@ -162,11 +162,38 @@ void main() {
       records: [_record(_data())],
       existing: const [],
       failedHooks: {'pota'},
-      recordsMissingRefs: 1,
+      recordsWithFailedHooks: 1,
     );
 
     expect(plan.failedHooks, contains('pota'));
-    expect(plan.recordsMissingRefs, 1);
+    expect(plan.recordsWithFailedHooks, 1);
+  });
+
+  test('one program failing is not the runtime failing', () {
+    // The distinction the summary's wording rests on. A named hook failing
+    // leaves every other program's references intact, so the plan must not
+    // report it the way it reports a batch that never ran at all.
+    final named = planAdifImport(
+      filename: 'f.adi',
+      records: [_record(_data())],
+      existing: const [],
+      failedHooks: {'pota'},
+      recordsWithFailedHooks: 1,
+    );
+
+    expect(named.refsUnavailable, isFalse);
+  });
+
+  test("the runtime never running is flagged by the '*' sentinel", () {
+    final dead = planAdifImport(
+      filename: 'f.adi',
+      records: [_record(_data())],
+      existing: const [],
+      failedHooks: {'*'},
+      recordsUnreachable: 1,
+    );
+
+    expect(dead.refsUnavailable, isTrue);
   });
 
   test('planning does not touch the log records it planned against', () {
