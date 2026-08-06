@@ -61,4 +61,35 @@ void main() {
       expect(normalizeGrid(''), '');
     });
   });
+
+  group('isWellFormedGrid', () {
+    test('accepts every locator length, in any case', () {
+      expect(isWellFormedGrid('FN31'), isTrue);
+      expect(isWellFormedGrid('FN31pr'), isTrue);
+      expect(isWellFormedGrid('FN31pr60'), isTrue);
+      expect(isWellFormedGrid('FN31pr60ax'), isTrue);
+      expect(isWellFormedGrid('fn31PR'), isTrue);
+      expect(isWellFormedGrid(' FN31pr '), isTrue, reason: 'typed values arrive with whitespace');
+    });
+
+    test('rejects what an operator can type by mistake', () {
+      expect(isWellFormedGrid('FN'), isFalse, reason: 'half a locator');
+      expect(isWellFormedGrid('FN3'), isFalse);
+      expect(isWellFormedGrid('FN31p'), isFalse, reason: 'half a subsquare');
+      expect(isWellFormedGrid('YZ31pr'), isFalse, reason: 'field letters stop at R');
+      expect(isWellFormedGrid('W1AW'), isFalse, reason: 'a callsign');
+      expect(isWellFormedGrid(''), isFalse);
+      expect(isWellFormedGrid(null), isFalse);
+    });
+
+    test('is stricter than the decoder, which is the point', () {
+      // gridToLocation falls back to the square's centre for a subsquare it
+      // can't read, so it answers for text no operator meant to type. Using it
+      // as the validator would accept both of these.
+      expect(gridToLocation('FN31ZZ'), isNotNull);
+      expect(isWellFormedGrid('FN31ZZ'), isFalse);
+      expect(gridToLocation('FN31pr!!'), isNotNull);
+      expect(isWellFormedGrid('FN31pr!!'), isFalse);
+    });
+  });
 }

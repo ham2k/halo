@@ -191,6 +191,46 @@ void main() {
       expect(_names(merged), ['park']);
     });
 
+    test('a hook with no suggest method has NOT failed', () {
+      // The kernel reports a missing method as a successful null, and every
+      // contest registers an `activity` hook for its setup control without a
+      // `suggest`. Reading that as a failure tells an operator running only
+      // contests that the search is down, on every keystroke, forever.
+      expect(
+        allActivitySourcesFailed([
+          {'key': 'cqww', 'ok': true, 'value': null},
+          {'key': 'naqp', 'ok': true, 'value': null},
+        ]),
+        isFalse,
+      );
+    });
+
+    test('every hook erroring IS a failure', () {
+      expect(
+        allActivitySourcesFailed([
+          {'key': 'pota', 'ok': false, 'error': 'boom'},
+          {'key': 'sota', 'ok': false, 'error': 'boom'},
+        ]),
+        isTrue,
+      );
+    });
+
+    test('one survivor means the search is not down', () {
+      expect(
+        allActivitySourcesFailed([
+          {'key': 'pota', 'ok': false, 'error': 'boom'},
+          {'key': 'sota', 'ok': true, 'value': const []},
+        ]),
+        isFalse,
+      );
+    });
+
+    test('nobody asked is not everybody failing', () {
+      // A runtime still starting has not failed, and saying so on every
+      // launch is the fastest way to teach an operator to ignore the message.
+      expect(allActivitySourcesFailed(const []), isFalse);
+    });
+
     test('a preferred extension that answered nothing does not blank the list', () {
       final merged = mergeActivitySuggestions([
         {'key': 'sota', 'ok': false, 'error': 'boom'},

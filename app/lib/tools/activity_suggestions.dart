@@ -8,6 +8,22 @@
 // a hook can return without standing up the JS runtime. Same reasoning as
 // `qso_patch.dart`.
 
+/// Whether every hook in [entries] came back with an ERROR — the difference
+/// between "nobody had a match" and "nobody could answer", which are the same
+/// empty list of suggestions and mean opposite things to the operator.
+///
+/// False when [entries] is empty: nobody was asked, and a runtime still
+/// starting has not failed.
+///
+/// Answering `null` is NOT failing, and this is the trap. An `activity` hook
+/// is free to have no `suggest` method at all — every contest registers one
+/// for its setup control and none of them suggests anything — and the kernel
+/// reports a missing method as a successful `null`. Requiring a list here
+/// would tell an operator running only contests that their search is down, on
+/// every keystroke, forever.
+bool allActivitySourcesFailed(List<Map<String, dynamic>> entries) =>
+    entries.isNotEmpty && entries.every((entry) => entry['ok'] != true);
+
 /// The suggestions carried by [entries] — one `{key, ok, value}` per activity
 /// hook, the shape `invokeHookAll` returns — in the order the picker should
 /// show them.

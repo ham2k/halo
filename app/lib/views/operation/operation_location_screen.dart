@@ -84,6 +84,10 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   }
 
   void _onGridTextChanged() {
+    // Editing IS the response to being told the locator is wrong, so the
+    // complaint goes away as soon as they act on it rather than surviving
+    // until the next Save.
+    if (_gridRejected) setState(() => _gridRejected = false);
     if (_gridSource != 'manual') {
       setState(() {
         _gridSource = 'manual';
@@ -94,16 +98,35 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   void _adoptGrid(String grid, String source) {
     setState(() {
       _gridSource = source;
+      // Detached so the assignment doesn't read as manual typing — which also
+      // means the listener's own clearing of [_gridRejected] doesn't run, and
+      // a refused locator replaced by a suggested one would keep the
+      // complaint underneath a field that no longer earns it.
+      _gridRejected = false;
       _gridController.removeListener(_onGridTextChanged);
       _gridController.text = grid;
       _gridController.addListener(_onGridTextChanged);
     });
   }
 
+  /// Set once a save has been refused, so the field explains itself. Not shown
+  /// while typing: a locator is invalid for most of the time it takes to type
+  /// one, and a field that goes red at the second keystroke is nagging.
+  bool _gridRejected = false;
+
   void _save() {
     final grid = _gridController.text.trim();
     final state = _stateController.text.trim();
     final county = _countyController.text.trim();
+
+    // Nothing downstream validates this: the operation would carry a grid that
+    // `gridToLocation` can't place, so nearby suggestions would silently
+    // return nothing while every control claimed a location was set.
+    if (grid.isNotEmpty && !isWellFormedGrid(grid)) {
+      setState(() => _gridRejected = true);
+      _gridFocus.requestFocus();
+      return;
+    }
 
     Navigator.of(context).pop(<String, dynamic>{
       'grid': grid.isEmpty ? null : grid,
@@ -124,6 +147,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       LocationStatus.available => location.grid ?? '',
       LocationStatus.unknown || LocationStatus.determining => t.locating,
       LocationStatus.permissionDenied => t.permissionDenied,
+      LocationStatus.permissionBlocked => t.permissionBlocked,
       LocationStatus.unavailable => t.gpsUnavailable,
     };
 
@@ -142,7 +166,11 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               selectAllOnFocus: false,
               controller: _gridController,
               focusNode: _gridFocus,
-              decoration: poloFieldDecoration(context, t.gridSquare),
+              decoration: poloFieldDecoration(
+                context,
+                t.gridSquare,
+                errorText: _gridRejected ? t.gridInvalid : null,
+              ),
               onSubmitted: (_) => _save(),
             ),
           ),

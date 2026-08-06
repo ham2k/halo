@@ -462,11 +462,32 @@ class Translations$activitiesView$en {
 	/// en: 'Location permission denied'
 	String get locationDeniedTitle => 'Location permission denied';
 
+	/// en: 'Location permission blocked'
+	String get locationBlockedTitle => 'Location permission blocked';
+
 	/// en: 'Cannot determine nearby references'
 	String get noNearbyReason => 'Cannot determine nearby references';
 
 	/// en: 'Tap ${icon} to manually enter your location, or just search for references by name'
 	String locationManualHint({required Object icon}) => 'Tap ${icon} to manually enter your location,\nor just search for references by name';
+
+	/// en: 'Allow location access'
+	String get locationGrantAction => 'Allow location access';
+
+	/// en: 'Open Settings'
+	String get locationSettingsAction => 'Open Settings';
+
+	/// en: 'Allow location access in your system settings'
+	String get locationSettingsUnavailable => 'Allow location access in your system settings';
+
+	/// en: 'Still no location — the system said no again'
+	String get locationGrantRefused => 'Still no location — the system said no again';
+
+	/// en: 'Activity search unavailable'
+	String get searchUnavailableTitle => 'Activity search unavailable';
+
+	/// en: 'No activity extension could answer. Try again in a moment.'
+	String get searchUnavailableReason => 'No activity extension could answer. Try again in a moment.';
 
 	/// en: 'Use suggestions & search below to add one'
 	String get emptySheet => 'Use suggestions & search below to add one';
@@ -1201,6 +1222,9 @@ class Translations$operationLocationScreen$en {
 	/// en: 'Maidenhead Grid Square Locator'
 	String get gridSquare => 'Maidenhead Grid Square Locator';
 
+	/// en: 'Needs 4, 6, 8 or 10 characters, like FN31pr'
+	String get gridInvalid => 'Needs 4, 6, 8 or 10 characters, like FN31pr';
+
 	/// en: 'Suggested Locations'
 	String get suggestedLocations => 'Suggested Locations';
 
@@ -1215,6 +1239,9 @@ class Translations$operationLocationScreen$en {
 
 	/// en: 'Location permission denied'
 	String get permissionDenied => 'Location permission denied';
+
+	/// en: 'Location permission blocked'
+	String get permissionBlocked => 'Location permission blocked';
 
 	/// en: 'More Details'
 	String get moreDetails => 'More Details';
@@ -3691,8 +3718,15 @@ extension on Translations {
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
 			'activitiesView.locationUnavailableTitle' => 'Location data not available',
 			'activitiesView.locationDeniedTitle' => 'Location permission denied',
+			'activitiesView.locationBlockedTitle' => 'Location permission blocked',
 			'activitiesView.noNearbyReason' => 'Cannot determine nearby references',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'Tap ${icon} to manually enter your location,\nor just search for references by name',
+			'activitiesView.locationGrantAction' => 'Allow location access',
+			'activitiesView.locationSettingsAction' => 'Open Settings',
+			'activitiesView.locationSettingsUnavailable' => 'Allow location access in your system settings',
+			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
+			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
+			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.options' => 'Options',
@@ -3995,6 +4029,8 @@ extension on Translations {
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.relayLoginMalformedEvent' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
@@ -4002,8 +4038,6 @@ extension on Translations {
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
 			'settings.station.title' => 'Station Configuration',
 			'settings.station.none' => 'No equipment configured',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.add' => 'Add equipment',
 			'settings.station.addTitle' => 'Add equipment',
 			'settings.station.searchHint' => 'Search equipment',
@@ -4253,11 +4287,13 @@ extension on Translations {
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
+			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
+			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.county' => 'County (optional)',

@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
@@ -80,7 +81,7 @@ class _AddFlowExtensions extends ExtensionServiceWithMockHost {
       controls;
 
   @override
-  Future<List<Map<String, dynamic>>> suggestActivities(
+  Future<ActivitySuggestionResult> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
@@ -88,7 +89,7 @@ class _AddFlowExtensions extends ExtensionServiceWithMockHost {
     String? preferredKey,
     String? preferredSearchTerm,
   }) async =>
-      suggestions;
+      (suggestions: suggestions, allSourcesFailed: false);
 
   /// Stands in for the contest's own decorateRef. The identity keys have to
   /// survive or the saved row can't be found again to replace.

@@ -263,8 +263,15 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get determiningLocation => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas';
 	@override String get locationUnavailableTitle => 'Datos de ubicación no disponibles';
 	@override String get locationDeniedTitle => 'Permiso de ubicación denegado';
+	@override String get locationBlockedTitle => 'Permiso de ubicación bloqueado';
 	@override String get noNearbyReason => 'No se pueden determinar referencias cercanas';
 	@override String locationManualHint({required Object icon}) => 'Toca ${icon} para introducir tu ubicación manualmente,\no simplemente busca referencias por nombre';
+	@override String get locationGrantAction => 'Permitir acceso a la ubicación';
+	@override String get locationSettingsAction => 'Abrir Ajustes';
+	@override String get locationSettingsUnavailable => 'Permite el acceso a la ubicación en los ajustes del sistema';
+	@override String get locationGrantRefused => 'Sigue sin ubicación — el sistema volvió a negarlo';
+	@override String get searchUnavailableTitle => 'Búsqueda de actividades no disponible';
+	@override String get searchUnavailableReason => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.';
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
 	@override String get exports => 'Exportar';
 	@override String get options => 'Opciones';
@@ -614,11 +621,13 @@ class _Translations$operationLocationScreen$es extends Translations$operationLoc
 	@override String get title => 'Ubicación de la operación';
 	@override String get selectedLocation => 'Ubicación seleccionada';
 	@override String get gridSquare => 'Locator de cuadrícula Maidenhead';
+	@override String get gridInvalid => 'Necesita 4, 6, 8 o 10 caracteres, como FN31pr';
 	@override String get suggestedLocations => 'Ubicaciones sugeridas';
 	@override String get deviceGps => 'GPS del dispositivo';
 	@override String get locating => 'Localizando…';
 	@override String get gpsUnavailable => 'Ubicación no disponible';
 	@override String get permissionDenied => 'Permiso de ubicación denegado';
+	@override String get permissionBlocked => 'Permiso de ubicación bloqueado';
 	@override String get moreDetails => 'Más detalles';
 	@override String get stateOrProvince => 'Estado o provincia (opcional)';
 	@override String get county => 'Condado (opcional)';
@@ -2010,8 +2019,15 @@ extension on TranslationsEs {
 			'activitiesView.determiningLocation' => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas',
 			'activitiesView.locationUnavailableTitle' => 'Datos de ubicación no disponibles',
 			'activitiesView.locationDeniedTitle' => 'Permiso de ubicación denegado',
+			'activitiesView.locationBlockedTitle' => 'Permiso de ubicación bloqueado',
 			'activitiesView.noNearbyReason' => 'No se pueden determinar referencias cercanas',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'Toca ${icon} para introducir tu ubicación manualmente,\no simplemente busca referencias por nombre',
+			'activitiesView.locationGrantAction' => 'Permitir acceso a la ubicación',
+			'activitiesView.locationSettingsAction' => 'Abrir Ajustes',
+			'activitiesView.locationSettingsUnavailable' => 'Permite el acceso a la ubicación en los ajustes del sistema',
+			'activitiesView.locationGrantRefused' => 'Sigue sin ubicación — el sistema volvió a negarlo',
+			'activitiesView.searchUnavailableTitle' => 'Búsqueda de actividades no disponible',
+			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.options' => 'Opciones',
@@ -2314,6 +2330,8 @@ extension on TranslationsEs {
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.relayLoginMalformedEvent' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
@@ -2321,8 +2339,6 @@ extension on TranslationsEs {
 			'settings.accounts.noSecureStorageInline' => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.',
 			'settings.station.title' => 'Configuración de Estación',
 			'settings.station.none' => 'No hay equipo configurado',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.add' => 'Agregar equipo',
 			'settings.station.addTitle' => 'Agregar equipo',
 			'settings.station.searchHint' => 'Buscar equipos',
@@ -2572,11 +2588,13 @@ extension on TranslationsEs {
 			'operationLocationScreen.title' => 'Ubicación de la operación',
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',
+			'operationLocationScreen.gridInvalid' => 'Necesita 4, 6, 8 o 10 caracteres, como FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Ubicaciones sugeridas',
 			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
 			'operationLocationScreen.locating' => 'Localizando…',
 			'operationLocationScreen.gpsUnavailable' => 'Ubicación no disponible',
 			'operationLocationScreen.permissionDenied' => 'Permiso de ubicación denegado',
+			'operationLocationScreen.permissionBlocked' => 'Permiso de ubicación bloqueado',
 			'operationLocationScreen.moreDetails' => 'Más detalles',
 			'operationLocationScreen.stateOrProvince' => 'Estado o provincia (opcional)',
 			'operationLocationScreen.county' => 'Condado (opcional)',

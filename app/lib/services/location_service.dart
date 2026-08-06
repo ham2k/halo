@@ -14,7 +14,10 @@ import 'package:halo_core/halo_core.dart';
 
 import '../config/dev_flags.dart';
 
-enum LocationStatus { unknown, determining, available, unavailable, permissionDenied }
+/// `permissionDenied` and `permissionBlocked` are kept apart because their
+/// FIXES are: the first is one the app may ask for again, the second the
+/// operator has to grant in OS settings and asking again does nothing.
+enum LocationStatus { unknown, determining, available, unavailable, permissionDenied, permissionBlocked }
 
 /// Parses the raw `DEV_LOCATION` value into a grid location, or null when
 /// unset/invalid (logging the invalid case). Extracted to a top-level
@@ -151,16 +154,31 @@ class LocationService extends ChangeNotifier {
     // to retry that check rather than being silently ignored.
     if (_sub != null) return;
 
+    return _seekFix();
+  }
+
+  /// Resolves permission and opens the position stream. Separate from [start]
+  /// because it must be retryable WITHOUT taking another listener: [start] is
+  /// paired one-to-one with [stop], and a retry that went through it would
+  /// leave a count nobody ever releases and a stream that never stops.
+  Future<void> _seekFix() async {
     _status = LocationStatus.determining;
     notifyListeners();
 
     try {
       final permission = await _resolvePermission();
       // Every caller may have stopped while the checks above were in
-      // flight — don't start a stream nothing will ever cancel.
-      if (_listenerCount == 0) return;
+      // flight — don't start a stream nothing will ever cancel. Back out of
+      // `determining` on the way, or the next view to open inherits a pulsing
+      // "GPS…" for a fix nobody is looking for any more.
+      if (_listenerCount == 0) {
+        _status = LocationStatus.unknown;
+        return;
+      }
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        _status = LocationStatus.permissionDenied;
+        _status = permission == LocationPermission.deniedForever
+            ? LocationStatus.permissionBlocked
+            : LocationStatus.permissionDenied;
         notifyListeners();
         return;
       }
@@ -202,6 +220,62 @@ class LocationService extends ChangeNotifier {
     if (_listenerCount == 0) {
       unawaited(_sub?.cancel());
       _sub = null;
+    }
+  }
+
+  /// Asks the OS for location permission again, then retries the fix.
+  ///
+  /// Only meaningful from [LocationStatus.permissionDenied]: once the OS says
+  /// `deniedForever` it answers instantly without prompting, which is why that
+  /// state is [LocationStatus.permissionBlocked] and is offered
+  /// [openSystemSettings] instead. Answers whether a fix is now being sought,
+  /// so a caller can say something when the OS said no again.
+  ///
+  /// The in-flight request is cleared first: `_resolvePermission` memoizes, and
+  /// a retry that re-awaits the previous denial would never reach the OS.
+  Future<bool> requestPermissionAgain() async {
+    if (_devStatus != null) return false;
+    // Not while one is already in flight: geolocator throws
+    // PermissionRequestInProgressException for a second concurrent request,
+    // and a double-tap would turn into an unhandled error rather than a
+    // second prompt. Clearing the memo is what makes THIS ask reach the OS
+    // rather than re-await the refusal that got us here.
+    if (_permissionRequest != null) return false;
+    _permissionRequest = null;
+    final LocationPermission permission;
+    try {
+      permission = await _resolvePermission();
+    } catch (e) {
+      debugPrint('[location] permission re-request failed: $e');
+      return false;
+    }
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      _status = permission == LocationPermission.deniedForever
+          ? LocationStatus.permissionBlocked
+          : LocationStatus.permissionDenied;
+      notifyListeners();
+      return false;
+    }
+    // Granted. The stream was never opened (start() returned at the denial),
+    // so this is what actually goes and gets a fix — without taking a second
+    // listener the caller would never release.
+    await _seekFix();
+    return true;
+  }
+
+  /// Opens the OS's own settings page for this app — the only place a
+  /// `deniedForever` can be undone. False when there is no such page to open.
+  ///
+  /// Not every platform has one: geolocator's web implementation throws
+  /// outright and Linux never implements it. Answering false lets the caller
+  /// say what to do instead, where letting the throw escape would turn the one
+  /// button on screen into an error toast.
+  Future<bool> openSystemSettings() async {
+    try {
+      return await Geolocator.openAppSettings();
+    } catch (e) {
+      debugPrint('[location] no app settings page to open: $e');
+      return false;
     }
   }
 

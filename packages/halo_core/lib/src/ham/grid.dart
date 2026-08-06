@@ -64,6 +64,18 @@ final _gridShape = RegExp(
   caseSensitive: false,
 );
 
+/// Whether [grid] is a well-formed Maidenhead locator — 4, 6, 8 or 10
+/// characters, in the right alternation of letter pairs and digit pairs.
+///
+/// The question [gridToLocation] answers is a different one: it DECODES, and
+/// decodes leniently, falling back to the square's centre for anything it
+/// can't read past position 4. `FN31ZZ` gets a location out of it (`ZZ` is not
+/// a subsquare, so it yields FN31's centre) and `FN31pr99xx` gets one too.
+/// That is the right behaviour for reading a locator off the air or out of a
+/// data file, and the wrong one for deciding whether to accept what an
+/// operator typed — validate with this, decode with that.
+bool isWellFormedGrid(String? grid) => grid != null && _gridShape.hasMatch(grid.trim());
+
 /// Normalizes a Maidenhead locator to its conventional case combination —
 /// uppercase field pair, lowercase subsquare letters ("fn31PR" → "FN31pr").
 /// Grid *input* fields are uppercase-only like every other logging control,

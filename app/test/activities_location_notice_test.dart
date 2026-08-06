@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
@@ -56,7 +57,11 @@ class _FixedLocation extends LocationService {
 }
 
 class _NoActivityExtensions extends ExtensionServiceWithMockHost {
-  _NoActivityExtensions({this.offersNearby = true}) : super(const MockExtensionHost({}));
+  _NoActivityExtensions({this.offersNearby = true, this.allSourcesFail = false}) : super(const MockExtensionHost({}));
+
+  /// Stands in for every activity hook being broken — the empty list that
+  /// means "nobody could answer" rather than "nobody had anything".
+  final bool allSourcesFail;
 
   /// Whether this stands in for extensions that have something nearby to
   /// offer. False is the "searched and genuinely found nothing" case, which is
@@ -80,7 +85,7 @@ class _NoActivityExtensions extends ExtensionServiceWithMockHost {
   /// else. Keying on "non-empty" instead would hand results back for a
   /// half-typed `FN` that the real ones cannot answer at all.
   @override
-  Future<List<Map<String, dynamic>>> suggestActivities(
+  Future<ActivitySuggestionResult> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
@@ -89,18 +94,30 @@ class _NoActivityExtensions extends ExtensionServiceWithMockHost {
     String? preferredSearchTerm,
   }) async {
     searches++;
-    if (!offersNearby || gridToLocation(operationData['grid'] as String?) == null) return const [];
-    return const [
-      {'type': 'pota', 'ref': 'US-0001', 'label': 'POTA US-0001', 'shortLabel': 'US-0001', 'name': 'Some Park'},
-    ];
+    if (allSourcesFail) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);
+    if (!offersNearby || gridToLocation(operationData['grid'] as String?) == null) {
+      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
+    }
+    return (
+      suggestions: const [
+        {'type': 'pota', 'ref': 'US-0001', 'label': 'POTA US-0001', 'shortLabel': 'US-0001', 'name': 'Some Park'},
+      ],
+      allSourcesFailed: false,
+    );
   }
 }
 
-Future<(HaLoServices, Operation)> _harness(LocationStatus status, {String? grid, bool offersNearby = true}) async {
+Future<(HaLoServices, Operation)> _harness(
+  LocationStatus status, {
+  String? grid,
+  bool offersNearby = true,
+  bool allSourcesFail = false,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = _NoActivityExtensions(offersNearby: offersNearby)..settings = settings;
+  final extensions = _NoActivityExtensions(offersNearby: offersNearby, allSourcesFail: allSourcesFail)
+    ..settings = settings;
   extensions.debugSetAvailableExtensions(const []);
   return (
     HaLoServices(db, settings, extensions: extensions, location: _FixedLocation(status)),
@@ -261,6 +278,47 @@ void main() {
     // The fake answers on the grid, so the observable proof is that a search
     // ran at all: the notice is gone only if the suggestions were refetched.
     expect(_searchCount(services), greaterThan(1));
+  });
+
+  testWidgets('every source failing says so, rather than "No suggestions"', (tester) async {
+    // Identical empty lists, opposite meanings: "nobody had a match" sends the
+    // operator on to something else, "nobody could answer" should send them
+    // back in a moment. Reporting the first for the second loses the reference
+    // that was there all along.
+    final (services, operation) = await _harness(LocationStatus.available, allSourcesFail: true);
+    await _pump(tester, services, operation);
+
+    final t = AppLocale.en.buildSync().activitiesView;
+    expect(find.textContaining(t.searchUnavailableTitle, findRichText: true), findsOneWidget);
+    expect(find.textContaining(t.noSuggestions, findRichText: true), findsNothing);
+  });
+
+  testWidgets('a blocked permission offers Settings, a denied one offers to ask again', (tester) async {
+    // The two OS states take different fixes, and a button offering the wrong
+    // one wastes the only tap the operator is likely to give it.
+    final t = AppLocale.en.buildSync().activitiesView;
+
+    final (denied, op1) = await _harness(LocationStatus.permissionDenied);
+    await _pump(tester, denied, op1);
+    expect(find.text(t.locationGrantAction), findsOneWidget);
+    expect(find.text(t.locationSettingsAction), findsNothing);
+
+    final (blocked, op2) = await _harness(LocationStatus.permissionBlocked);
+    await _pump(tester, blocked, op2);
+    expect(find.text(t.locationSettingsAction), findsOneWidget);
+    expect(find.text(t.locationGrantAction), findsNothing);
+    expect(find.textContaining(t.locationBlockedTitle, findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('no permission button when the OS is not what is in the way', (tester) async {
+    // `unavailable` is a device with no fix to give; asking for permission
+    // again would be a button that cannot possibly help.
+    final (services, operation) = await _harness(LocationStatus.unavailable);
+    await _pump(tester, services, operation);
+
+    final t = AppLocale.en.buildSync().activitiesView;
+    expect(find.text(t.locationGrantAction), findsNothing);
+    expect(find.text(t.locationSettingsAction), findsNothing);
   });
 
   testWidgets('a grid the search cannot use is no grid at all', (tester) async {

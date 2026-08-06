@@ -100,4 +100,74 @@ void main() {
     final settledTile = tester.widget<ListTile>(tileFinder);
     expect(settledTile.tileColor, theme.colorScheme.errorContainer.withValues(alpha: 0.4));
   });
+
+  group('grid validation', () {
+    // Nothing downstream validates what this dialog returns, and a locator it
+    // can't decode is worse than none: `gridToLocation` answers null, so the
+    // search quietly loses its location while every control claims one is set.
+    // The operator sees "No suggestions" and believes there is nothing nearby.
+    Future<Map<String, dynamic>?> saveGrid(WidgetTester tester, String typed) async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+      final services = HaLoServices(db, settings, extensions: extensions);
+      final operation = Operation(uuid: 'op-1', data: const {'refs': []});
+
+      Map<String, dynamic>? popped;
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                popped = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (_) => OperationLocationScreen(services: services, operation: operation),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, typed);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppLocale.en.buildSync().common.save));
+      await tester.pumpAndSettle();
+      return popped;
+    }
+
+    testWidgets('a half-typed locator is refused, and the dialog says why', (tester) async {
+      final popped = await saveGrid(tester, 'FN');
+
+      expect(popped, isNull, reason: 'nothing may be saved');
+      expect(find.byType(OperationLocationScreen), findsOneWidget, reason: 'the dialog stays open to be corrected');
+      expect(find.text(AppLocale.en.buildSync().operationLocationScreen.gridInvalid), findsOneWidget);
+    });
+
+    testWidgets('8- and 10-character locators are perfectly good', (tester) async {
+      // Longer than the 6 the app itself generates, and legitimate Maidenhead.
+      expect((await saveGrid(tester, 'FN31pr60'))?['grid'], 'FN31pr60');
+      expect((await saveGrid(tester, 'FN31pr60ax'))?['grid'], 'FN31pr60ax');
+    });
+
+    testWidgets('an empty grid still means "no location", not an error', (tester) async {
+      final popped = await saveGrid(tester, '');
+      expect(popped, isNotNull);
+      expect(popped!['grid'], isNull);
+    });
+
+    testWidgets('editing clears the complaint rather than making them Save to see it go', (tester) async {
+      await saveGrid(tester, 'FN');
+      final t = AppLocale.en.buildSync().operationLocationScreen;
+      expect(find.text(t.gridInvalid), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, 'FN31');
+      await tester.pumpAndSettle();
+      expect(find.text(t.gridInvalid), findsNothing);
+    });
+  });
 }

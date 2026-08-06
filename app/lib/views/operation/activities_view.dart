@@ -378,6 +378,11 @@ class OperationSheetState extends State<OperationSheet> {
   /// back reads as "not found", which is worse than a marked-up hit.
   bool _suggestionsAreSearchResults = false;
 
+  /// Whether the last search came back with every source broken rather than
+  /// merely empty-handed. The two are the same empty list, and only one of
+  /// them is worth an apology.
+  bool _searchFailed = false;
+
   static const _flashDuration = Duration(milliseconds: 900);
 
   /// The Current Activities row currently flashing (see [_flashExistingRef]),
@@ -692,7 +697,8 @@ class OperationSheetState extends State<OperationSheet> {
     // in flight — only the still-current request gets to apply its results.
     if (mounted && requestId == _searchRequestId) {
       setState(() {
-        _suggestions = results;
+        _suggestions = results.suggestions;
+        _searchFailed = results.allSourcesFailed;
         _suggestionsAreSearchResults = trimmed.isNotEmpty;
         _disabledMatches = _disabledExtensionsMatching(term);
         // The enable row lives in the Activity Types section, which the
@@ -894,28 +900,33 @@ class OperationSheetState extends State<OperationSheet> {
     if (_enablingExtension) return;
     _enablingExtension = true;
     setState(() => _loadingSuggestions = true);
+    // Held across the reload and re-search too, not just the restart: those are
+    // awaited as well, and a guard released before them leaves the second tap
+    // this exists to stop free to queue a second restart on top of the first.
     try {
-      await widget.services.extensions.setExtensionEnabled(info.key, true);
-    } catch (e, st) {
-      // A failed restart must not strand the section on its spinner.
-      debugPrint('[activities] enabling ${info.key} failed: $e');
-      ErrorReportingService.report(e, st, context: 'activities:enable-extension');
-      if (mounted) setState(() => _loadingSuggestions = false);
-      return;
+      try {
+        await widget.services.extensions.setExtensionEnabled(info.key, true);
+      } catch (e, st) {
+        // A failed restart must not strand the section on its spinner.
+        debugPrint('[activities] enabling ${info.key} failed: $e');
+        ErrorReportingService.report(e, st, context: 'activities:enable-extension');
+        if (mounted) setState(() => _loadingSuggestions = false);
+        return;
+      }
+      if (!mounted) return;
+      await _loadControls();
+      if (!mounted) return;
+      final scoped =
+          ActivitySearchQuery.scopePrefixFor(info.key) + searchTextAfterKey(_searchController.text, info.key);
+      _searchController.value = TextEditingValue(
+        text: scoped,
+        selection: TextSelection.collapsed(offset: scoped.length),
+      );
+      _debounce?.cancel();
+      await _search(scoped);
     } finally {
       _enablingExtension = false;
     }
-    if (!mounted) return;
-    await _loadControls();
-    if (!mounted) return;
-    final scoped =
-        ActivitySearchQuery.scopePrefixFor(info.key) + searchTextAfterKey(_searchController.text, info.key);
-    _searchController.value = TextEditingValue(
-      text: scoped,
-      selection: TextSelection.collapsed(offset: scoped.length),
-    );
-    _debounce?.cancel();
-    await _search(scoped);
   }
 
   /// Tapping an activity type scopes the search to it (`pota: `) rather than
@@ -1047,13 +1058,14 @@ class OperationSheetState extends State<OperationSheet> {
   /// Whether the operation carries a location of its own, and so needs nothing
   /// from the device.
   ///
-  /// Measured by what the SEARCH can do with it, not by the field being filled:
-  /// `suggestActivities` runs the grid through [gridToLocation] and gets
-  /// nothing for `''` (which arrives via sync and import) or for a half-typed
-  /// `FN` (which the location editor saves unvalidated). Either read as a
-  /// location would answer a muted "No suggestions" over a grid the hooks were
-  /// never given — the "there is nothing near you" misreading this whole
-  /// notice exists to prevent, reached by way of taking its advice.
+  /// Measured by what the SEARCH can do with it, not by the field being
+  /// filled: `suggestActivities` runs the grid through [gridToLocation] and
+  /// gets nothing for `''`, which still arrives through sync and import. The
+  /// location editor now refuses a locator this can't place, so it is no
+  /// longer a source of them — but it is not the only door into the field, and
+  /// one read as a location would answer a muted "No suggestions" over a grid
+  /// the hooks were never given: the "there is nothing near you" misreading
+  /// this whole notice exists to prevent, reached by way of taking its advice.
   bool get _hasOperationGrid => gridToLocation(_operation.grid) != null;
 
   /// The empty state for the Suggestions & Search section.
@@ -1109,6 +1121,45 @@ class OperationSheetState extends State<OperationSheet> {
         child: child,
       );
 
+  /// What to do about a location the OS is withholding, or null when the OS
+  /// isn't the thing in the way (no GPS at all, or a fix still coming).
+  VoidCallback? get _locationPermissionAction => switch (widget.services.location.status) {
+        LocationStatus.permissionDenied => () => unawaited(_grantLocationPermission()),
+        LocationStatus.permissionBlocked => () => unawaited(_openLocationSettings()),
+        _ => null,
+      };
+
+  /// Sends the operator to the OS settings page, or tells them where to go
+  /// when the platform has none — a button that silently does nothing is the
+  /// worst of the three outcomes.
+  Future<void> _openLocationSettings() async {
+    final opened = await widget.services.location.openSystemSettings();
+    if (opened || !mounted) return;
+    widget.services.statusBar.setMessage(
+      key: 'activities:location-permission',
+      text: context.t.activitiesView.locationSettingsUnavailable,
+    );
+  }
+
+  /// Asks the OS again, and says so when the answer is still no — a button
+  /// that appears to do nothing is worse than no button, and "denied again"
+  /// and "denied forever" look identical from here.
+  Future<void> _grantLocationPermission() async {
+    final granted = await widget.services.location.requestPermissionAgain();
+    if (!mounted) return;
+    if (granted) {
+      // The fix that just arrived is what nearby suggestions are computed
+      // from; nothing else re-runs the search for a permission grant.
+      _debounce?.cancel();
+      unawaited(_search(_searchController.text));
+    } else {
+      widget.services.statusBar.setMessage(
+        key: 'activities:location-permission',
+        text: context.t.activitiesView.locationGrantRefused,
+      );
+    }
+  }
+
   /// A location problem gets the loud treatment: a red headline, and the way
   /// out spelled with the very pin that opens the location editor. Muted grey
   /// saying nothing is nearby reads as "there is nothing nearby" — the
@@ -1119,8 +1170,24 @@ class OperationSheetState extends State<OperationSheet> {
 
     // A bare "no suggestions" here would contradict the enable row sitting in
     // the expanded section below: the activity they searched for does exist.
+    // Ahead of the failure state below, because that row comes from extension
+    // metadata rather than from the hooks — it is a real answer even when
+    // every hook is broken.
     if (_disabledMatches.isNotEmpty) {
       return _emptyStatePadding(child: _emptyStateFromMessage(theme, t.onlyDisabledMatches));
+    }
+    // Nobody could answer, which is not the same as nobody having anything —
+    // and telling the operator "no suggestions" for it sends them looking for
+    // a reference that may well be there.
+    if (_searchFailed) {
+      return _emptyStatePadding(
+        child: _emptyStateMessage(
+          theme,
+          title: t.searchUnavailableTitle,
+          body: t.searchUnavailableReason,
+          titleColor: theme.colorScheme.error,
+        ),
+      );
     }
     // A typed search, or a location the search could actually use, was
     // answerable — it simply found nothing, and location has no part in that.
@@ -1138,6 +1205,7 @@ class OperationSheetState extends State<OperationSheet> {
     // apart: only one of them is the operator's to grant.
     final (String? title, String plain) = switch (widget.services.location.status) {
       LocationStatus.permissionDenied => (t.locationDeniedTitle, t.noNearbyReason),
+      LocationStatus.permissionBlocked => (t.locationBlockedTitle, t.noNearbyReason),
       LocationStatus.unavailable => (t.locationUnavailableTitle, t.noNearbyReason),
       LocationStatus.unknown || LocationStatus.determining => (null, t.determiningLocation),
       LocationStatus.available => (null, t.noSuggestions),
@@ -1173,6 +1241,22 @@ class OperationSheetState extends State<OperationSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _emptyStateMessage(theme, title: title, body: plain, titleColor: theme.colorScheme.error),
+                // The fix the OS will actually accept, when there is one: a
+                // permission the app may ask for again is a button that asks,
+                // and one the operator has already refused for good is a button
+                // that opens the settings page where it can be undone. Offering
+                // either in the other's place wastes the tap.
+                if (_locationPermissionAction != null) ...[
+                  const SizedBox(height: Space.lg),
+                  FilledButton(
+                    onPressed: _locationPermissionAction,
+                    child: Text(
+                      widget.services.location.status == LocationStatus.permissionDenied
+                          ? t.locationGrantAction
+                          : t.locationSettingsAction,
+                    ),
+                  ),
+                ],
                 // What to do about it is its own paragraph, not a third line of
                 // the diagnosis.
                 const SizedBox(height: Space.lg),

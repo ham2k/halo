@@ -47,6 +47,12 @@ import '../tools/qso_patch.dart';
 /// and [HaLoServices.connectLofiRealtime] alike.
 typedef LofiClientRegistration = ({String pushChannelName, String webhookClientToken});
 
+/// What the activity picker's search came back with, and whether it came back
+/// at all. [allSourcesFailed] separates "no extension had a match" from "no
+/// extension could answer" — identical empty lists that mean opposite things
+/// to the operator.
+typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, bool allSourcesFailed});
+
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
 /// with `uuid` folded in, plus each QSO's raw QSON `data`.
@@ -2410,7 +2416,10 @@ class ExtensionService implements PanelExtensionSource {
   /// is still asked, but that hook's results lead the list and it searches for
   /// [preferredSearchTerm] — the box's text with its own key stripped — while
   /// the others get [searchTerm] verbatim.
-  Future<List<Map<String, dynamic>>> suggestActivities(
+  /// Answers whether every source failed as well as the suggestions
+  /// themselves: "nothing matched" and "every extension broke" are the same
+  /// empty list, and only the second is worth telling the operator about.
+  Future<ActivitySuggestionResult> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
@@ -2419,7 +2428,7 @@ class ExtensionService implements PanelExtensionSource {
     String? preferredSearchTerm,
   }) async {
     final host = _host;
-    if (host == null) return const [];
+    if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 
     final grid = operationData['grid'] as String?;
     final gridLocation = gridToLocation(grid) ?? fallbackLocation;
@@ -2445,14 +2454,19 @@ class ExtensionService implements PanelExtensionSource {
           args: argsSearchingFor(searchTerm),
           timeout: const Duration(seconds: 5),
         );
-        return mergeActivitySuggestions([
-          {'ok': true, 'value': value}
-        ]);
+        final entries = [
+          <String, dynamic>{'ok': true, 'value': value}
+        ];
+        return (suggestions: mergeActivitySuggestions(entries), allSourcesFailed: allActivitySourcesFailed(entries));
       }
 
       // The preferred hook is asked SEPARATELY because it searches for
       // something else — its own key stripped off the front — so its answer to
       // the everyone-else question is discarded below rather than merged.
+      // A fan-out that never returned an entry is a failure with nothing to
+      // count, so it contributes one — the caller has to be able to tell
+      // "nobody could answer" from "nobody had anything".
+      var fanOutFailed = false;
       final preferred = preferredKey == null
           ? Future.value(const <Map<String, dynamic>>[])
           : host
@@ -2486,23 +2500,26 @@ class ExtensionService implements PanelExtensionSource {
           )
           .onError<ExtensionHostException>((e, _) {
         debugPrint('[extensions] activity suggestion fan-out failed: $e');
+        fanOutFailed = true;
         return const [];
       });
 
       final results = await Future.wait([preferred, everyone]);
-      return mergeActivitySuggestions(
-        [
-          ...results[0],
-          for (final entry in results[1])
-            if (preferredKey == null || entry['key'] != preferredKey) entry,
-        ],
-        preferredKey: preferredKey,
+      final entries = [
+        ...results[0],
+        for (final entry in results[1])
+          if (preferredKey == null || entry['key'] != preferredKey) entry,
+      ];
+      return (
+        suggestions: mergeActivitySuggestions(entries, preferredKey: preferredKey),
+        allSourcesFailed: (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
       );
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] suggestActivities failed: $e');
-      return const [];
+      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);
     }
   }
+
 
   /// The current LoFi account/device/client info, for display in Settings.
   /// Returns null if the runtime isn't up or the request failed (e.g. no

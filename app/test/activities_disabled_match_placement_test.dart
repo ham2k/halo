@@ -56,7 +56,7 @@ class _NoActivityExtensions extends ExtensionServiceWithMockHost {
   // loaded. That is exactly the case under test — the enable row is the only
   // answer there is.
   @override
-  Future<List<Map<String, dynamic>>> suggestActivities(
+  Future<ActivitySuggestionResult> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
@@ -64,7 +64,7 @@ class _NoActivityExtensions extends ExtensionServiceWithMockHost {
     String? preferredKey,
     String? preferredSearchTerm,
   }) async =>
-      const [];
+      (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 }
 
 Future<(HaLoServices, Operation)> _harness({
