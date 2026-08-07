@@ -115,6 +115,16 @@ void runHaLoApp({
   ));
 }
 
+/// Whether a dev flag passed as a dart-define or an environment variable is
+/// on. Accepts `1` and `true` (any case): the flags are documented as `=1`
+/// but a dart-define spelled `=true` is the shape `bool.fromEnvironment`
+/// trained everyone to expect, and silently ignoring either one is how
+/// POLO_OPEN_FIRST_OP went unnoticed.
+bool isDevFlagSet(String value) {
+  final v = value.trim().toLowerCase();
+  return v == '1' || v == 'true';
+}
+
 void _mainBody({
   MetricsService? metrics,
   PurchaseService? purchases,
@@ -252,9 +262,17 @@ void _mainBody({
     // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
     // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
     // into the most recent operation.
-    const openFirstOpDefine = bool.fromEnvironment('POLO_OPEN_FIRST_OP');
-    final openFirstOp = openFirstOpDefine || (!kIsWeb && Platform.environment['POLO_OPEN_FIRST_OP'] == '1');
-    debugPrint('[boot] openFirstOp=$openFirstOp (define=$openFirstOpDefine)');
+    // Read as a STRING, not with `bool.fromEnvironment`, which recognizes only
+    // the literals "true" and "false" — every other value, `=1` included,
+    // reads as false. Both this flag's documented spellings use `=1`
+    // (DEVELOPMENT.md), so the dart-define half silently did nothing: the app
+    // launched, printed `openFirstOp=false`, and looked like the flag had been
+    // dropped rather than mis-typed. The env-var half below always worked,
+    // which is what kept it hidden.
+    const openFirstOpDefine = String.fromEnvironment('POLO_OPEN_FIRST_OP');
+    final openFirstOp = isDevFlagSet(openFirstOpDefine) ||
+        (!kIsWeb && isDevFlagSet(Platform.environment['POLO_OPEN_FIRST_OP'] ?? ''));
+    debugPrint('[boot] openFirstOp=$openFirstOp (define="$openFirstOpDefine")');
     if (openFirstOp) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await Future<void>.delayed(const Duration(milliseconds: 300));
