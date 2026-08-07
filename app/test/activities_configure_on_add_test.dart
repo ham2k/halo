@@ -73,12 +73,16 @@ class _AddFlowExtensions extends ExtensionServiceWithMockHost {
   final List<Map<String, dynamic>> controls;
   final List<Map<String, dynamic>> suggestions;
 
+  /// Set to fail the controls fetch the way a timed-out hook does: no
+  /// descriptors, and the fan-out saying so.
+  bool controlsFail = false;
+
   @override
-  Future<List<Map<String, dynamic>>> operationControls(
+  Future<ControlsResult> operationControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async =>
-      controls;
+      controlsFail ? (controls: const <Map<String, dynamic>>[], loadFailed: true) : (controls: controls, loadFailed: false);
 
   @override
   Future<ActivitySuggestionResult> suggestActivities(
@@ -156,6 +160,32 @@ void main() {
     // The form's own title — proof the dialog opened rather than the row
     // simply appearing in the list.
     expect(find.text('Field Day Setup'), findsOneWidget);
+  });
+
+  testWidgets('a setup form that could not be fetched says so instead of adding in silence', (tester) async {
+    // `_configureNewRef` reloads the descriptors before deciding whether to
+    // prompt, so a failed fetch leaves `control == null` — which is also what
+    // a type with no form looks like. Read as the latter, the contest saves
+    // unconfigured, no dialog appears, and `refTypeIsEditable(null)` renders
+    // the row inert, so nothing on screen offers a way back to the setup.
+    final (services, operation) = await _harness(
+      controls: const [_contestControl],
+      suggestions: const [_contestSuggestion],
+    );
+    (services.extensions as _AddFlowExtensions).controlsFail = true;
+    await _pumpSheet(tester, services, operation);
+
+    // Its short label, not the full name: with no control to build the row
+    // title from, `activityRowTitle` falls back to the ref itself.
+    await tester.tap(find.text('FD 2027').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Field Day Setup'), findsNothing, reason: 'there were no descriptors to build it from');
+    expect(
+      services.statusBar.items.any((item) => item.key == 'activities:setup-unavailable'),
+      isTrue,
+      reason: 'the operator is told, rather than left with an unconfigured contest and an inert row',
+    );
   });
 
   testWidgets('cancelling the setup form leaves the activity added', (tester) async {

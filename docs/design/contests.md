@@ -837,8 +837,10 @@ to the looked-up name, and derives the location from state / DXCC entity.
 - `loggingControls({operation, qso})` receives the in-progress QSO **including
   `their.guess`** from the callsign-lookup pipeline, and is **re-invoked when a
   lookup resolves** (`types.ts:281-290`; the panel passes
-  `refreshActivityControls: (qso) => loggingControls(operation.data, qso: qso)`,
-  `logging_panel.dart:410-411`).
+  `refreshActivityControls`, `logging_panel.dart`). That callback answers
+  **null** when the fan-out could not be read, which the panel keeps its
+  current controls over — an empty list means the activities want none, and
+  installing one for a failure blanks the fields mid-QSO.
 - It is `async`, so an extension may `await host.dbLookupSelectOne` /
   `dbLookupSelectAll` / `dbLookupSelectByLocation` (`sdk/src/index.ts:175-184`,
   Dart side `extension_service.dart:1031-1063`) to consult offline lookup tables

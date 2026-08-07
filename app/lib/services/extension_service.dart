@@ -53,6 +53,21 @@ typedef LofiClientRegistration = ({String pushChannelName, String webhookClientT
 /// to the operator.
 typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, bool allSourcesFailed});
 
+/// The control descriptors an activity fan-out produced, and whether any
+/// source failed to answer. [loadFailed] separates "no extension declares
+/// controls" from "an extension that does declare them could not answer" —
+/// identical empty lists, and only the second may not be treated as the
+/// operator's ref types being unknown. Without it a hook that throws or
+/// times out is indistinguishable from its extension being uninstalled, and
+/// `isUnknownRefType` says exactly that to the operator.
+typedef ControlsResult = ({List<Map<String, dynamic>> controls, bool loadFailed});
+
+/// How far a screen's [ControlsResult] fetch has got. A bool cannot express
+/// [failed] — it only says "not loaded yet" — so a fetch that threw leaves a
+/// two-state screen showing its loading placeholder forever, with the
+/// unknown-ref treatment suppressed the whole time.
+enum ControlsLoadState { loading, loaded, failed }
+
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
 /// with `uuid` folded in, plus each QSO's raw QSON `data`.
@@ -2441,11 +2456,11 @@ class ExtensionService implements PanelExtensionSource {
   /// lookup pipeline) — pass it so an extension can key a QSO-scoped
   /// `placeholder`/`transforms` (e.g. a DXCC-derived reference prefix) off
   /// it; omit for a QSO-agnostic refresh (e.g. right after the operation loads).
-  Future<List<Map<String, dynamic>>> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
       _collectControls('loggingControls', operationData, qso: qso);
 
   /// Descriptors for controls activities want in operation settings.
-  Future<List<Map<String, dynamic>>> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
       _collectControls('operationControls', operationData, qso: qso);
 
   /// Lets activities project data they own into generic QSON fields just
@@ -2498,29 +2513,88 @@ class ExtensionService implements PanelExtensionSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _collectControls(
+  Future<ControlsResult> _collectControls(
     String method,
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async {
-    final host = _host;
-    if (host == null) return const [];
+    // Through the getter, not `_host`: a test subclass overrides `host`, and
+    // reading the field behind it routes every such test down the no-host
+    // path below without ever invoking a hook.
+    final host = this.host;
+    // No host is a failure, not an empty answer: the runtime is dead or
+    // still starting (see ErrorPolicy's `extension-runtime-dead`), and the
+    // operator's refs are no less real for it.
+    if (host == null) return (controls: const <Map<String, dynamic>>[], loadFailed: true);
     try {
       final entries = await host.invokeHookAll(
         'activity',
         method: method,
         args: {'operation': operationData, 'qso': ?qso},
+        // The timeout is ONE budget for the whole fan-out, so without this a
+        // single slow extension discards the controls every other hook had
+        // already returned — the operator loses POTA's fields because SOTA
+        // is warming a cache. Activities are independent contributors here,
+        // and the hooks that time out come back synthesized as ok:false,
+        // which is what sets `loadFailed` and names them below. A partial
+        // answer is safe precisely because it is no longer a silent one.
+        partialOnTimeout: true,
       );
       final controls = <Map<String, dynamic>>[];
+      var loadFailed = false;
       for (final entry in entries) {
-        if (entry['ok'] != true || entry['value'] is! List) continue;
-        controls.addAll((entry['value'] as List).cast<Map>().map((c) => c.cast<String, dynamic>()));
+        // `invokeHookAll` synthesizes {key, ok: false, error} precisely so a
+        // caller can name the source rather than just notice an absence.
+        if (entry['ok'] != true) {
+          loadFailed = true;
+          debugPrint('[extensions] $method: hook ${entry['key']} failed: ${entry['error']}');
+          continue;
+        }
+        // A hook that answered with something other than a list contributed
+        // nothing, but it ANSWERED — `partitionHookEntries` classifies the
+        // same entry as a success, and the two must agree. The kernel wraps
+        // every return as `value: (await …) ?? null`, so a hook that simply
+        // falls off its end lands here; calling that a failure would show a
+        // permanent "controls unavailable" notice for a legal no-op.
+        //
+        // A non-null one is still a shape bug worth an author seeing, though:
+        // `[42]` below is named in the log, and silence here would make the
+        // narrower mistake the harder one to find.
+        final value = entry['value'];
+        if (value is! List) {
+          if (value != null) {
+            debugPrint('[extensions] $method: hook ${entry['key']} answered ${value.runtimeType}, wanted a List');
+          }
+          continue;
+        }
+        for (final control in value) {
+          // Per element, NOT `value.cast<Map>()`: that cast is lazy, so a bad
+          // element throws its TypeError during `addAll` — past the
+          // ExtensionHostException catch below, out through the unawaited
+          // future the callers start in initState, leaving them stuck on
+          // `loading` for the life of the screen.
+          if (control is! Map) {
+            loadFailed = true;
+            debugPrint('[extensions] $method: hook ${entry['key']} returned a ${control.runtimeType} control');
+            continue;
+          }
+          controls.add(control.cast<String, dynamic>());
+        }
       }
-      controls.sort((a, b) => ((a['order'] as num?) ?? 0).compareTo((b['order'] as num?) ?? 0));
-      return controls;
+      // Read, don't cast: `as num?` throws on `{'order': '1'}` — a string an
+      // extension reading its own config produces easily — and it throws from
+      // inside the comparator, which is the same escape route past the catch
+      // below that the per-element check above exists to close.
+      num orderOf(Map<String, dynamic> control) => control['order'] is num ? control['order'] as num : 0;
+      controls.sort((a, b) => orderOf(a).compareTo(orderOf(b)));
+      return (controls: controls, loadFailed: loadFailed);
     } on ExtensionHostException catch (e) {
+      // A timeout with something salvageable behind it is handled above, by
+      // `partialOnTimeout`. What reaches here is the whole fan-out failing —
+      // a dead runtime, or a timeout with nothing settled — where there is
+      // no partial answer to keep.
       debugPrint('[extensions] $method failed: $e');
-      return const [];
+      return (controls: const <Map<String, dynamic>>[], loadFailed: true);
     }
   }
 

@@ -87,6 +87,7 @@
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
     "deleteOperation": "Eliminar operación",
+    "loggingControlsStale": "Los campos de actividad podrían estar desactualizados; reabre la operación para actualizarlos",
     "locationNone": "Sin definir",
     "generalOperation": "Operación general",
     "titleFor": "para ${value}",
@@ -298,6 +299,10 @@
     "alreadySelected": "Ya seleccionada",
     "enableExtension": "Activar ${name}",
     "enableExtensionHint": "Esta extensión coincide con tu búsqueda, pero no está activada",
+    "setupUnavailable": "No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar",
+    "controlsUnavailableTitle": "Controles de actividad no disponibles",
+    "controlsUnavailableReason": "Tus referencias están a salvo, pero ahora mismo no se pueden editar.",
+    "controlsUnavailableRetry": "Reintentar",
     "onlyDisabledMatches": "Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo."
   },
   "loggingControls": {
@@ -997,6 +1002,9 @@
     "permissionBlocked": "Permiso de ubicación bloqueado",
     "moreDetails": "Más detalles",
     "stateOrProvince": "Estado o provincia (opcional)",
+    "controlsUnavailableTitle": "Controles de actividad no disponibles",
+    "controlsUnavailableReason": "Estas referencias siguen siendo utilizables; solo no se pudo contactar con sus actividades.",
+    "controlsUnavailableRetry": "Reintentar",
     "county": "Condado (opcional)"
   },
   "versionLabel": {
@@ -1084,6 +1092,7 @@
       "one": "Las referencias de ${programs} pueden estar incompletas en ${count} contacto",
       "other": "Las referencias de ${programs} pueden estar incompletas en ${count} contactos"
     },
+    "stackingTypesUnknown": "Los contactos combinados podrían perder una referencia: las actividades no pudieron indicar qué tipos se acumulan. Cancela y reinténtalo para evitarlo.",
     "nothingToImport": "No hay nada importable en este archivo",
     "confirm": "Importar",
     "importing": "Importando ${filename}…",

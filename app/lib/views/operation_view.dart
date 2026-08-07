@@ -723,8 +723,28 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   }
 
   Future<void> _refreshLoggingControls(Operation operation) async {
-    final controls = await widget.services.extensions.loggingControls(operation.data);
-    if (mounted) setState(() => _loggingControls = controls);
+    final result = await widget.services.extensions.loggingControls(operation.data);
+    if (!mounted) return;
+    // A fetch that failed says nothing about what the activities want, so the
+    // panel keeps what it is already showing rather than blanking a live
+    // logging panel because the runtime happened to be restarting.
+    //
+    // But the only thing that re-runs this is a REF CHANGE, so a failure here
+    // is always a set that no longer matches the operation — the contest just
+    // added has no exchange field, the POTA ref just removed still has one —
+    // and nothing corrects it until the operation is reopened. Keeping it
+    // quiet would leave the operator staring at the wrong fields with no
+    // account of why, which is the whole defect this change exists to end.
+    if (result.loadFailed) {
+      widget.services.statusBar.setMessage(
+        key: 'operation:logging-controls-stale',
+        text: context.t.operation.loggingControlsStale,
+      );
+      if (_loggingControls.isNotEmpty) return;
+    } else {
+      widget.services.statusBar.clear('operation:logging-controls-stale');
+    }
+    setState(() => _loggingControls = result.controls);
   }
 
   void _onQsosChanged(List<Qso> qsos) {

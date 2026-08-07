@@ -301,6 +301,7 @@ Future<AdifImportPlan> _planFor(
   XFile file,
   String filename,
 ) async {
+  final stacking = await _stackingRefTypes(services, operation);
   final log = parseAdifLogBytes(await file.readAsBytes());
   final outcome = await AdifImportService(services.extensions.host).applyHooks(log.qsos);
 
@@ -310,7 +311,8 @@ Future<AdifImportPlan> _planFor(
     // Live contacts only. A merge into a soft-deleted row would count as
     // written and stay invisible.
     existing: await services.qsos.watchForOperation(operation.uuid).first,
-    multiRefTypes: await _stackingRefTypes(services, operation),
+    multiRefTypes: stacking.types,
+    stackingTypesUnknown: stacking.unknown,
     unusable: log.errors,
     failedHooks: outcome.failedHooks,
     recordsUnreachable: outcome.recordsUnreachable,
@@ -339,16 +341,19 @@ Future<AdifImportPlan> _planFor(
 /// `hoistOperationRefs` has already lifted off before any merge sees them. The
 /// set would be empty exactly where it matters, and merging a park-to-park
 /// contact would drop one of its parks.
-Future<Set<String>> _stackingRefTypes(HaLoServices services, Operation operation) async {
-  final controls = await services.extensions.loggingControls(operation.data);
-  return {
-    for (final control in controls)
+Future<({Set<String> types, bool unknown})> _stackingRefTypes(HaLoServices services, Operation operation) async {
+  final result = await services.extensions.loggingControls(operation.data);
+  // A fan-out that failed yields the same empty-ish set as an operation whose
+  // activities simply don't stack, and only one of them costs the operator a
+  // reference. The caller has to be able to tell them apart.
+  return (unknown: result.loadFailed, types: {
+    for (final control in result.controls)
       // `refType` lives on the control's `input`, not at the top level —
       // reading it from the wrong place yields an empty set and merges that
       // quietly refuse to stack.
       if (control['allowsMultiple'] == true && (control['input'] as Map?)?['refType'] is String)
         (control['input'] as Map)['refType'] as String,
-  };
+  });
 }
 
 /// Accepts a log file dropped anywhere on its [child].
@@ -527,6 +532,10 @@ class _SummaryContentState extends State<_SummaryContent> {
               ),
               muted: true,
             ),
+          // The plan already answers whether a reference can actually be
+          // lost — unknown types AND a fold that will run. Re-deriving that
+          // here is how the addition-fold path got missed.
+          if (plan.mayDropReferences) stat(t.stackingTypesUnknown, muted: true),
           if (plan.isEmpty && plan.refusedCount == 0) stat(t.nothingToImport),
           if (plan.foreignStations.isNotEmpty && plan.stationCall != null)
             _StationWarning(calls: plan.foreignStations, station: plan.stationCall!),

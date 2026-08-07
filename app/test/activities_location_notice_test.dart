@@ -69,11 +69,11 @@ class _NoActivityExtensions extends ExtensionServiceWithMockHost {
   final bool offersNearby;
 
   @override
-  Future<List<Map<String, dynamic>>> operationControls(
+  Future<ControlsResult> operationControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async =>
-      const [];
+      (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   /// How many times the view has asked — the only way to see that a search
   /// re-ran when its answer happens to be the same either way.

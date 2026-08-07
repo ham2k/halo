@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
@@ -52,7 +53,7 @@ class _ContestExtensions extends ExtensionServiceWithMockHost {
   static const _refDependentField = {'type': 'field', 'fieldType': 'text', 'key': 'mode', 'label': 'Mode'};
 
   @override
-  Future<List<Map<String, dynamic>>> operationControls(
+  Future<ControlsResult> operationControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async {
@@ -65,7 +66,7 @@ class _ContestExtensions extends ExtensionServiceWithMockHost {
       input['form'] = form;
       control['input'] = input;
     }
-    return [control];
+    return (controls: [control], loadFailed: false);
   }
 
   /// Stands in for simple-contest's own decorateRef: label the ref with the

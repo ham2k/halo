@@ -633,7 +633,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
             activityControls: widget.loggingControls,
             refreshActivityControls: (qso) => widget.services.extensions
-                .loggingControls(widget.operation.data, qso: qso),
+                .loggingControls(widget.operation.data, qso: qso)
+                .then((result) => result.loadFailed ? null : result.controls),
             decorateQsoBeforeSave: (qso) =>
                 widget.services.extensions.decorateQsoBeforeSave(qso, widget.operation.data),
             decorateRef: widget.services.extensions.decorateRef,

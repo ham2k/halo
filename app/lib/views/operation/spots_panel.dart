@@ -774,9 +774,24 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // of whether this operation has that activity added), not tied to the
     // operation's own configured activities, since a spot can be for any
     // hunted activity type.
-    widget.services.extensions.loggingControls(widget.operation.data).then((controls) {
-      if (mounted) setState(() => _activityControls = controls);
-    });
+    unawaited(_loadActivityControls());
+  }
+
+  /// Fetched once, and nothing re-runs it: these decide every spot row's
+  /// activity icon, so a failure leaves the panel rendering hunted activities
+  /// with generic icons for the session. There is nothing on screen to keep
+  /// at first load, so waiting out a booting runtime is the whole defence.
+  Future<void> _loadActivityControls() async {
+    await widget.services.extensions.start();
+    if (!mounted) return;
+    final result = await widget.services.extensions.loggingControls(widget.operation.data);
+    if (!mounted) return;
+    // Logged, not surfaced: what this costs is a generic icon on spot rows,
+    // which is a degradation the operator can see for themselves — unlike a
+    // ref wrongly marked as belonging to an uninstalled extension, which is
+    // the claim the notices elsewhere exist to retract.
+    if (result.loadFailed) debugPrint('[extensions] spots panel: activity controls unavailable');
+    setState(() => _activityControls = result.controls);
   }
 
   @override

@@ -87,6 +87,7 @@
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
     "deleteOperation": "Delete operation",
+    "loggingControlsStale": "Activity fields may be out of date — reopen the operation to refresh them",
     "locationNone": "Not set",
     "generalOperation": "General Operation",
     "titleFor": "for ${value}",
@@ -298,6 +299,10 @@
     "alreadySelected": "Already selected",
     "enableExtension": "Enable ${name}",
     "enableExtensionHint": "This extension matches your search, but it is not currently enabled",
+    "setupUnavailable": "Could not load this activity's setup — try again from Manage",
+    "controlsUnavailableTitle": "Activity controls unavailable",
+    "controlsUnavailableReason": "Your references are safe, but editing them is unavailable right now.",
+    "controlsUnavailableRetry": "Retry",
     "onlyDisabledMatches": "Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below."
   },
   "loggingControls": {
@@ -997,6 +1002,9 @@
     "permissionBlocked": "Location permission blocked",
     "moreDetails": "More Details",
     "stateOrProvince": "State or Province (optional)",
+    "controlsUnavailableTitle": "Activity controls unavailable",
+    "controlsUnavailableReason": "These references are still usable; their activities just could not be reached.",
+    "controlsUnavailableRetry": "Retry",
     "county": "County (optional)"
   },
   "versionLabel": {
@@ -1084,6 +1092,7 @@
       "one": "${programs} references may be incomplete for ${count} contact",
       "other": "${programs} references may be incomplete for ${count} contacts"
     },
+    "stackingTypesUnknown": "Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.",
     "nothingToImport": "Nothing in this file can be imported",
     "confirm": "Import",
     "importing": "Importing ${filename}…",

@@ -210,6 +210,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
 	@override String get titleNone => 'Sin título';
 	@override String get deleteOperation => 'Eliminar operación';
+	@override String get loggingControlsStale => 'Los campos de actividad podrían estar desactualizados; reabre la operación para actualizarlos';
 	@override String get locationNone => 'Sin definir';
 	@override String get generalOperation => 'Operación general';
 	@override String titleFor({required Object value}) => 'para ${value}';
@@ -285,6 +286,10 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get alreadySelected => 'Ya seleccionada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
+	@override String get setupUnavailable => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar';
+	@override String get controlsUnavailableTitle => 'Controles de actividad no disponibles';
+	@override String get controlsUnavailableReason => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.';
+	@override String get controlsUnavailableRetry => 'Reintentar';
 	@override String get onlyDisabledMatches => 'Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo.';
 }
 
@@ -646,6 +651,9 @@ class _Translations$operationLocationScreen$es extends Translations$operationLoc
 	@override String get permissionBlocked => 'Permiso de ubicación bloqueado';
 	@override String get moreDetails => 'Más detalles';
 	@override String get stateOrProvince => 'Estado o provincia (opcional)';
+	@override String get controlsUnavailableTitle => 'Controles de actividad no disponibles';
+	@override String get controlsUnavailableReason => 'Estas referencias siguen siendo utilizables; solo no se pudo contactar con sus actividades.';
+	@override String get controlsUnavailableRetry => 'Reintentar';
 	@override String get county => 'Condado (opcional)';
 }
 
@@ -775,6 +783,7 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 		one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto',
 		other: 'Las referencias de ${programs} pueden estar incompletas en ${count} contactos',
 	);
+	@override String get stackingTypesUnknown => 'Los contactos combinados podrían perder una referencia: las actividades no pudieron indicar qué tipos se acumulan. Cancela y reinténtalo para evitarlo.';
 	@override String get nothingToImport => 'No hay nada importable en este archivo';
 	@override String get confirm => 'Importar';
 	@override String importing({required Object filename}) => 'Importando ${filename}…';
@@ -1914,6 +1923,7 @@ extension on TranslationsEs {
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
+			'operation.loggingControlsStale' => 'Los campos de actividad podrían estar desactualizados; reabre la operación para actualizarlos',
 			'operation.locationNone' => 'Sin definir',
 			'operation.generalOperation' => 'Operación general',
 			'operation.titleFor' => ({required Object value}) => 'para ${value}',
@@ -2070,6 +2080,10 @@ extension on TranslationsEs {
 			'activitiesView.alreadySelected' => 'Ya seleccionada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
+			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
+			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
+			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
+			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo.',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
@@ -2350,13 +2364,13 @@ extension on TranslationsEs {
 			'settings.accounts.browserLoginTitle' => 'Termina de iniciar sesión con tu navegador',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Cuando termines, el navegador intentará abrir un enlace que empieza con "${prefix}". Es muy probable que tu escritorio no tenga nada registrado para abrirlo, así que copia ese enlace — de la barra de direcciones o de la página de error del navegador — y pégalo aquí.',
 			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con "${prefix}" — y pégalo aquí.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.copyLoginLink' => 'Copiar enlace de inicio de sesión',
 			'settings.accounts.pastedLinkLabel' => 'Pega el enlace aquí',
 			'settings.accounts.finishLogin' => 'Terminar inicio de sesión',
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
@@ -2633,6 +2647,9 @@ extension on TranslationsEs {
 			'operationLocationScreen.permissionBlocked' => 'Permiso de ubicación bloqueado',
 			'operationLocationScreen.moreDetails' => 'Más detalles',
 			'operationLocationScreen.stateOrProvince' => 'Estado o provincia (opcional)',
+			'operationLocationScreen.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
+			'operationLocationScreen.controlsUnavailableReason' => 'Estas referencias siguen siendo utilizables; solo no se pudo contactar con sus actividades.',
+			'operationLocationScreen.controlsUnavailableRetry' => 'Reintentar',
 			'operationLocationScreen.county' => 'Condado (opcional)',
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
@@ -2684,6 +2701,7 @@ extension on TranslationsEs {
 			'adifImport.flagged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} requiere revisión', other: '${count} requieren revisión', ), 
 			'adifImport.missingRefs' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'No se pudieron recuperar las referencias de ${count} contacto', other: 'No se pudieron recuperar las referencias de ${count} contactos', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto', other: 'Las referencias de ${programs} pueden estar incompletas en ${count} contactos', ), 
+			'adifImport.stackingTypesUnknown' => 'Los contactos combinados podrían perder una referencia: las actividades no pudieron indicar qué tipos se acumulan. Cancela y reinténtalo para evitarlo.',
 			'adifImport.nothingToImport' => 'No hay nada importable en este archivo',
 			'adifImport.confirm' => 'Importar',
 			'adifImport.importing' => ({required Object filename}) => 'Importando ${filename}…',

@@ -344,6 +344,9 @@ class Translations$operation$en {
 	/// en: 'Delete operation'
 	String get deleteOperation => 'Delete operation';
 
+	/// en: 'Activity fields may be out of date — reopen the operation to refresh them'
+	String get loggingControlsStale => 'Activity fields may be out of date — reopen the operation to refresh them';
+
 	/// en: 'Not set'
 	String get locationNone => 'Not set';
 
@@ -525,6 +528,18 @@ class Translations$activitiesView$en {
 
 	/// en: 'This extension matches your search, but it is not currently enabled'
 	String get enableExtensionHint => 'This extension matches your search, but it is not currently enabled';
+
+	/// en: 'Could not load this activity's setup — try again from Manage'
+	String get setupUnavailable => 'Could not load this activity\'s setup — try again from Manage';
+
+	/// en: 'Activity controls unavailable'
+	String get controlsUnavailableTitle => 'Activity controls unavailable';
+
+	/// en: 'Your references are safe, but editing them is unavailable right now.'
+	String get controlsUnavailableReason => 'Your references are safe, but editing them is unavailable right now.';
+
+	/// en: 'Retry'
+	String get controlsUnavailableRetry => 'Retry';
 
 	/// en: 'Nothing to add yet What you searched for is switched off. Turn it on under Activity Types below.'
 	String get onlyDisabledMatches => 'Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below.';
@@ -1277,6 +1292,15 @@ class Translations$operationLocationScreen$en {
 	/// en: 'State or Province (optional)'
 	String get stateOrProvince => 'State or Province (optional)';
 
+	/// en: 'Activity controls unavailable'
+	String get controlsUnavailableTitle => 'Activity controls unavailable';
+
+	/// en: 'These references are still usable; their activities just could not be reached.'
+	String get controlsUnavailableReason => 'These references are still usable; their activities just could not be reached.';
+
+	/// en: 'Retry'
+	String get controlsUnavailableRetry => 'Retry';
+
 	/// en: 'County (optional)'
 	String get county => 'County (optional)';
 }
@@ -1507,6 +1531,9 @@ class Translations$adifImport$en {
 		one: '${programs} references may be incomplete for ${count} contact',
 		other: '${programs} references may be incomplete for ${count} contacts',
 	);
+
+	/// en: 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.'
+	String get stackingTypesUnknown => 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.';
 
 	/// en: 'Nothing in this file can be imported'
 	String get nothingToImport => 'Nothing in this file can be imported';
@@ -3637,6 +3664,7 @@ extension on Translations {
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
+			'operation.loggingControlsStale' => 'Activity fields may be out of date — reopen the operation to refresh them',
 			'operation.locationNone' => 'Not set',
 			'operation.generalOperation' => 'General Operation',
 			'operation.titleFor' => ({required Object value}) => 'for ${value}',
@@ -3793,6 +3821,10 @@ extension on Translations {
 			'activitiesView.alreadySelected' => 'Already selected',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
+			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
+			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
+			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
+			'activitiesView.controlsUnavailableRetry' => 'Retry',
 			'activitiesView.onlyDisabledMatches' => 'Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below.',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
@@ -4073,13 +4105,13 @@ extension on Translations {
 			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.',
 			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.copyLoginLink' => 'Copy login link',
 			'settings.accounts.pastedLinkLabel' => 'Paste the link here',
 			'settings.accounts.finishLogin' => 'Finish Login',
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
@@ -4356,6 +4388,9 @@ extension on Translations {
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
+			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
+			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
+			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
@@ -4407,6 +4442,7 @@ extension on Translations {
 			'adifImport.flagged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} needs a closer look', other: '${count} need a closer look', ), 
 			'adifImport.missingRefs' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${count} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${count} contacts', ), 
+			'adifImport.stackingTypesUnknown' => 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.',
 			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
 			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',

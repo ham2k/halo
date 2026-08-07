@@ -46,11 +46,11 @@ class _NoActivityExtensions extends ExtensionServiceWithMockHost {
   _NoActivityExtensions() : super(const MockExtensionHost({}));
 
   @override
-  Future<List<Map<String, dynamic>>> operationControls(
+  Future<ControlsResult> operationControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async =>
-      const [];
+      (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   // No suggestion can come back for a disabled extension: its hooks aren't
   // loaded. That is exactly the case under test — the enable row is the only

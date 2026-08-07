@@ -356,7 +356,13 @@ class LoggingControls extends StatefulWidget {
   /// `transforms` (e.g. a DXCC-derived reference prefix) off
   /// `qso.their.guess`. When null, or while a refresh is pending,
   /// `activityControls` is used as-is.
-  final Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> qso)? refreshActivityControls;
+  ///
+  /// Answering null means "I could not fetch them" — distinct from an empty
+  /// list, which means the activities genuinely want no controls for this
+  /// QSO. A refresh that fails must keep whatever is already displayed: an
+  /// empty list installed mid-QSO takes every activity field off the panel
+  /// while the operator is typing into it.
+  final Future<List<Map<String, dynamic>>?> Function(Map<String, dynamic> qso)? refreshActivityControls;
 
   /// Last chance for an activity to shape a QSO before it is written, via the
   /// extension runtime's `processQsoBeforeSave` — a contest mirroring the
@@ -5950,6 +5956,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (refresh == null) return;
     final controls = await refresh(_getCurrentQsoData(callOverride: activeCall));
     if (!mounted || _callAtCursor != activeCall) return;
+    // Null is "the fetch failed", so the panel keeps the controls it is
+    // already showing rather than blanking the QSO in progress.
+    if (controls == null) return;
     setState(() {
       _refreshedActivityControls = controls;
       // A lookup just resolved, so any suggestedValue it produced can now fill

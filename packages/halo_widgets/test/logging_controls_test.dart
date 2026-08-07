@@ -2688,6 +2688,75 @@ void main() {
     });
   });
 
+  group('a refresh that could not fetch', () {
+    // `refreshActivityControls` fires when a callsign lookup resolves, mid-QSO,
+    // while the operator is typing. Its result is installed over
+    // `activityControls` — so a fan-out that failed and answered with an empty
+    // list would take every activity field off the panel with no message. Null
+    // is how "I could not fetch them" is said; an empty list still means "no
+    // controls for this QSO" and must keep working.
+    const exchange = {
+      'key': 'c/exchange',
+      'label': 'Exch',
+      'icon': 'flag-checkered',
+      'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+    };
+
+    Future<void> pumpTyping(
+      WidgetTester tester,
+      Future<List<Map<String, dynamic>>?> Function(Map<String, dynamic>) refresh, {
+      List<Map<String, dynamic>> panelControls = const [],
+    }) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['c']),
+            qsosRepository: qsos,
+            activityControls: panelControls,
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                {'guess': <String, dynamic>{}},
+            refreshActivityControls: refresh,
+          ),
+        ),
+      ));
+    }
+
+    testWidgets('a later failure keeps what an earlier refresh fetched', (tester) async {
+      // The panel-level set is EMPTY here on purpose. Assigning null on
+      // failure would look harmless — `_effectiveActivityControls` falls back
+      // to `widget.activityControls` — which is exactly why the fallback must
+      // not be the thing under test: with nothing to fall back to, dropping
+      // the guard takes the field away and only this shape notices.
+      var call = 0;
+      await pumpTyping(tester, (_) async => call++ == 0 ? [exchange] : null);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'the first refresh fetched it');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
+          reason: 'a refresh that could not fetch must not blank the QSO in progress');
+    });
+
+    testWidgets('an empty answer still means the activities want no controls', (tester) async {
+      // The mutation this catches: folding empty in with null would make a
+      // control impossible to remove for a QSO once it had been shown.
+      var call = 0;
+      await pumpTyping(tester, (_) async => call++ == 0 ? [exchange] : const []);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsNothing);
+    });
+  });
+
   group('clearing an exchange', () {
     // An empty field means two different things and a contest has to tell them
     // apart: never filled in, or emptied on purpose. Only the latter is

@@ -63,6 +63,18 @@ class AdifImportPlan {
   /// the damage, and the summary has to word it as one.
   final int recordsWithFailedHooks;
 
+  /// Whether this plan can lose a reference: the stacking ref types could not
+  /// be read from the extensions, AND something actually folds.
+  ///
+  /// A fold stacks only the types named in `multiRefTypes` and keeps ONE of
+  /// anything else, so an unknown set is not a neutral default — it drops the
+  /// second park off a park-to-park contact. Both fold sites count: folding
+  /// into a logged contact produces a merge, folding two file records
+  /// together produces an ADDITION, and gating on `merges` alone would stay
+  /// silent through the second — which is the shape a one-QSO-per-park export
+  /// arrives in.
+  final bool mayDropReferences;
+
   /// Whether any batch never reached the runtime. `'*'` is the service's
   /// sentinel for it.
   bool get refsUnavailable => failedHooks.contains('*');
@@ -98,6 +110,7 @@ class AdifImportPlan {
     this.failedHooks = const {},
     this.recordsUnreachable = 0,
     this.recordsWithFailedHooks = 0,
+    this.mayDropReferences = false,
     this.foreignStations = const [],
     this.stationCall,
     this.hoistedOperationRefs = const [],
@@ -142,6 +155,7 @@ AdifImportPlan planAdifImport({
   Set<String> failedHooks = const {},
   int recordsUnreachable = 0,
   int recordsWithFailedHooks = 0,
+  bool stackingTypesUnknown = false,
   List<AdifRecord> unusable = const [],
   String? stationCall,
 }) {
@@ -211,6 +225,10 @@ AdifImportPlan planAdifImport({
   // anchor from drifting as a group grows.
   final fresh = <_FreshGroup>[];
   final freshByCall = <String, List<_FreshGroup>>{};
+  // Whether ANY fold ran — into an existing contact or between two file
+  // records. `merges` covers only the first, and both drop a ref when the
+  // stacking types are unknown, so `merges` is the wrong thing to warn on.
+  var foldedAny = false;
 
   for (final record in incoming) {
     final call = _callKey(record.qso);
@@ -236,6 +254,9 @@ AdifImportPlan planAdifImport({
     final candidates = call == null ? const <_FreshGroup>[] : (freshByCall[call] ?? const <_FreshGroup>[]);
     final group = _nearest(candidates, record.qso, (g) => g.anchor, stationCall);
     if (group != null) {
+      // A fold between two FILE records, which becomes an addition rather
+      // than a merge — and drops a ref just as readily, so it counts.
+      foldedAny = true;
       group.folded = mergeQsos(group.folded, record.qso, multiRefTypes: multiRefTypes, stationCall: stationCall);
     } else {
       final created = _FreshGroup(record.qso);
@@ -257,6 +278,7 @@ AdifImportPlan planAdifImport({
     // taking precedence over what came before, the same rule that governs the
     // file against the log.
     for (final record in entry.value) {
+      foldedAny = true;
       data = mergeQsos(data, record, multiRefTypes: multiRefTypes, stationCall: stationCall);
     }
     // A merge that changes nothing is not a merge. `writeBatch` re-stamps
@@ -295,6 +317,7 @@ AdifImportPlan planAdifImport({
     failedHooks: failedHooks,
     recordsUnreachable: recordsUnreachable,
     recordsWithFailedHooks: recordsWithFailedHooks,
+    mayDropReferences: stackingTypesUnknown && foldedAny,
     foreignStations: foreign,
     stationCall: stationCall,
     hoistedOperationRefs: hoisted.operationRefs,

@@ -13,7 +13,11 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import 'package:halo_extension_host/halo_extension_host.dart';
+
 import '../../main.dart';
+import '../../services/error_reporting_service.dart';
+import '../../services/extension_service.dart';
 import '../../services/location_service.dart';
 import '../../i18n/strings.g.dart';
 
@@ -42,27 +46,50 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   String? _gridSource;
 
   List<Map<String, dynamic>> _controls = const [];
-  // While this is true, _controls is still empty — a ref whose extension IS
-  // active would otherwise flash the unknown-type red/question-mark
-  // treatment for a moment on every open (mirrors ActivitiesView's own
-  // _loadingControls).
-  bool _loadingControls = true;
+  ControlsLoadState _controlsState = ControlsLoadState.loading;
+
+  // While this is true, _controls is empty or incomplete — a ref whose
+  // extension IS active would otherwise flash the unknown-type
+  // red/question-mark treatment for a moment on every open, and wear it
+  // permanently when a hook failed to answer (mirrors ActivitiesView's own
+  // _controlsUnreliable).
+  bool get _controlsUnreliable => _controlsState != ControlsLoadState.loaded;
 
   @override
   void initState() {
     super.initState();
     _gridSource = widget.operation.data['gridSource'] as String?;
     _gridController.addListener(_onGridTextChanged);
-    widget.services.extensions.operationControls(widget.operation.data).then((controls) {
-      if (mounted) {
-        setState(() {
-          _controls = controls;
-          _loadingControls = false;
-        });
-      }
-    });
+    _loadControls();
     widget.services.location.start();
     widget.services.location.addListener(_onLocationChanged);
+  }
+
+  Future<void> _loadControls() async {
+    ControlsResult result;
+    try {
+      // Wait for a booting runtime rather than calling its absence a failure
+      // — see ActivitiesView._loadControls. Idempotent.
+      await widget.services.extensions.start();
+      if (!mounted) return;
+      result = await widget.services.extensions.operationControls(widget.operation.data);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] operationControls failed: $e');
+      result = (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    } catch (e, stack) {
+      // Ours, not an extension's — see ActivitiesView._loadControls. Every
+      // path still has to reach a terminal state: an escaped exception
+      // otherwise leaves the screen on `loading`, which suppresses the
+      // unknown-type treatment indefinitely rather than showing anything.
+      ErrorReportingService.report(e, stack, context: 'operationLocation:operationControls');
+      result = (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    }
+    if (mounted) {
+      setState(() {
+        _controls = result.controls;
+        _controlsState = result.loadFailed ? ControlsLoadState.failed : ControlsLoadState.loaded;
+      });
+    }
   }
 
   @override
@@ -184,15 +211,31 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           ),
           for (final ref in refsWithGrid)
             ListTile(
-              tileColor: !_loadingControls && isUnknownRefType(_controls, ref['type'] as String?)
+              tileColor: !_controlsUnreliable && isUnknownRefType(_controls, ref['type'] as String?)
                   ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                   : null,
-              leading: _loadingControls
+              leading: _controlsUnreliable
                   ? Icon(MdiIcons.toyBrick)
                   : activityRefIcon(_controls, ref['type'] as String?),
               title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
               subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),
               onTap: () => _adoptGrid(ref['grid'] as String, 'manual'),
+            ),
+          // Only worth saying when a ref is actually standing there without
+          // its activity's icon and label — with no refs to explain, the
+          // controls are of no consequence to this screen.
+          if (_controlsState == ControlsLoadState.failed && refsWithGrid.isNotEmpty)
+            ListTile(
+              leading: Icon(MdiIcons.alertCircleOutline, color: theme.colorScheme.error),
+              title: Text(t.controlsUnavailableTitle, style: TextStyle(color: theme.colorScheme.error)),
+              subtitle: Text(t.controlsUnavailableReason),
+              trailing: TextButton(
+                onPressed: () {
+                  setState(() => _controlsState = ControlsLoadState.loading);
+                  _loadControls();
+                },
+                child: Text(t.controlsUnavailableRetry),
+              ),
             ),
           const SizedBox(height: Space.md),
           SectionHeader(t.moreDetails),

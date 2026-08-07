@@ -263,7 +263,13 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         // than failing the whole load.
         widget.services.extensions
             .operationControls(widget.operation.data)
-            .catchError((_) => <Map<String, dynamic>>[]),
+            // Which is also why `loadFailed` is dropped here and acted on
+            // everywhere else: a tint is not worth a notice.
+            .then((result) => result.controls)
+            .catchError((Object e) {
+              debugPrint('[extensions] operationControls failed for the export panel: $e');
+              return <Map<String, dynamic>>[];
+            }),
       ]);
       final options = (results[0] as List<Map<String, dynamic>>)
         ..sort((a, b) => ((b['priority'] as num?) ?? 0).compareTo((a['priority'] as num?) ?? 0));

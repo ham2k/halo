@@ -519,11 +519,11 @@ class _ExtensionsWithControls extends ExtensionService {
   _ExtensionsWithControls(this.controls);
 
   @override
-  Future<List<Map<String, dynamic>>> operationControls(
+  Future<ControlsResult> operationControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async =>
-      controls;
+      (controls: controls, loadFailed: false);
 
   @override
   Future<void> start() async {}

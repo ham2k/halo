@@ -48,6 +48,71 @@ void main() {
     expect(plan.importCount, 1);
   });
 
+  group('a stacking set that could not be read', () {
+    // A fold keeps ONE ref of any type not named in `multiRefTypes`, so an
+    // unknown set drops the second park off a park-to-park contact. The plan
+    // answers whether that can actually happen — unknown AND something folds
+    // — because re-deriving it at the dialog is how the addition path below
+    // went unwarned.
+    test('a fold into a logged contact can lose a reference', () {
+      final plan = planAdifImport(
+        filename: 'f.adi',
+        records: [_record(_data(theirExtra: {'grid': 'FN31pr'}))],
+        existing: [_logged(_data())],
+        stackingTypesUnknown: true,
+      );
+
+      expect(plan.merges, hasLength(1));
+      expect(plan.mayDropReferences, isTrue);
+    });
+
+    test('two file records folding into each other can too, and produce NO merge', () {
+      // The case a `merges.isNotEmpty` gate stays silent through: these fold
+      // at the fresh-group site, so the result is an addition. One QSO per
+      // park is exactly how a park-to-park export is written.
+      final plan = planAdifImport(
+        filename: 'f.adi',
+        records: [
+          _record(_data(at: '2024-07-23T12:00:00Z')),
+          _record(_data(at: '2024-07-23T12:01:00Z')),
+        ],
+        existing: const [],
+        stackingTypesUnknown: true,
+      );
+
+      expect(plan.merges, isEmpty, reason: 'this is the shape that has no merge to gate on');
+      expect(plan.additions, hasLength(1), reason: 'the two records folded into one');
+      expect(plan.mayDropReferences, isTrue);
+    });
+
+    test('nothing folding means nothing can be lost', () {
+      // Unknown types are harmless on their own — warning anyway trains the
+      // operator to ignore the line that matters.
+      final plan = planAdifImport(
+        filename: 'f.adi',
+        records: [_record(_data(their: 'K1ABC'))],
+        existing: [_logged(_data(their: 'W1AW'))],
+        stackingTypesUnknown: true,
+      );
+
+      expect(plan.merges, isEmpty);
+      expect(plan.additions, hasLength(1));
+      expect(plan.mayDropReferences, isFalse);
+    });
+
+    test('a plan that read the stacking set never warns', () {
+      // The negative case: hardcoding the flag true would pass every test
+      // above and warn on every clean import.
+      final plan = planAdifImport(
+        filename: 'f.adi',
+        records: [_record(_data())],
+        existing: [_logged(_data())],
+      );
+
+      expect(plan.mayDropReferences, isFalse);
+    });
+  });
+
   test('a contact already logged becomes a merge, keeping what only the log has', () {
     final plan = planAdifImport(
       filename: 'f.adi',

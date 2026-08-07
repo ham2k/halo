@@ -28,6 +28,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
+
 import '../../services/error_reporting_service.dart';
 import '../../services/location_service.dart';
 import '../../services/extension_service.dart';
@@ -349,7 +351,13 @@ class OperationSheetState extends State<OperationSheet> {
     }
   }
   List<Map<String, dynamic>> _controls = const [];
-  bool _loadingControls = true;
+  ControlsLoadState _controlsState = ControlsLoadState.loading;
+
+  /// Whether the descriptors are good enough to judge a ref type by. Both
+  /// non-loaded states say no: an absent control means "not loaded yet" or
+  /// "the hook could not answer", and rendering either as the unknown-type
+  /// treatment tells the operator an installed extension isn't there.
+  bool get _controlsUnreliable => _controlsState != ControlsLoadState.loaded;
   int _controlsRequest = 0;
 
   final _searchController = TextEditingController();
@@ -444,11 +452,37 @@ class OperationSheetState extends State<OperationSheet> {
     // leaves two lookups in flight, and the slower one must not install the
     // descriptors for the earlier state.
     final request = ++_controlsRequest;
-    final controls = await widget.services.extensions.operationControls(_operation.data);
+    ControlsResult result;
+    try {
+      // A runtime still booting has no host, which `_collectControls` reports
+      // as a failure — correctly, but the sheet can open inside that window
+      // (the onboarding auto-open fires on a ~300ms transition) and "could not
+      // load" is a lie about a runtime that is merely starting. Idempotent, so
+      // every call after the first costs nothing.
+      await widget.services.extensions.start();
+      if (!mounted) return;
+      result = await widget.services.extensions.operationControls(_operation.data);
+    } on ExtensionHostException catch (e) {
+      // An extension misbehaving: logged, never uploaded. A report the
+      // maintainer cannot act on is noise (docs/design/error-reporting.md).
+      debugPrint('[extensions] operationControls failed: $e');
+      result = (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    } catch (e, stack) {
+      // Anything else reaching here is OUR bug, not an extension's, and a
+      // bare catch would bury it for good. Uploaded without a notice: the
+      // failed state below is what the operator needs to see.
+      //
+      // The state machine has to terminate on every path either way. Without
+      // it the sheet sits on `loading` forever — the placeholder has no
+      // terminal state of its own, and `_controlsUnreliable` suppresses the
+      // very treatment that would show something is wrong.
+      ErrorReportingService.report(e, stack, context: 'activities:operationControls');
+      result = (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    }
     if (mounted && request == _controlsRequest) {
       setState(() {
-        _controls = controls;
-        _loadingControls = false;
+        _controls = result.controls;
+        _controlsState = result.loadFailed ? ControlsLoadState.failed : ControlsLoadState.loaded;
       });
     }
   }
@@ -848,6 +882,18 @@ class OperationSheetState extends State<OperationSheet> {
     if (!mounted) return;
 
     final control = controlForRefType(_controls, ref['type'] as String?);
+    // Which of the two absences this is, is now answerable, and they call for
+    // opposite things. A type with no form is done here; a form that could
+    // not be FETCHED leaves the operator with an unconfigured contest, a row
+    // that renders non-editable because `refTypeIsEditable(null)` is false,
+    // and — silently — no way back to the setup they were about to be shown.
+    if (control == null && _controlsState == ControlsLoadState.failed) {
+      widget.services.statusBar.setMessage(
+        key: 'activities:setup-unavailable',
+        text: context.t.activitiesView.setupUnavailable,
+      );
+      return;
+    }
     if (!refTypeIsForm(control)) return;
 
     final updated = await _runSetupForm(control!, existing: ref);
@@ -1110,6 +1156,39 @@ class OperationSheetState extends State<OperationSheet> {
         ],
       ),
       textAlign: TextAlign.center,
+    );
+  }
+
+  /// Why the refs below are showing without their activities' controls.
+  ///
+  /// Says the refs are safe on purpose: the rows lose their icons, labels and
+  /// tap targets all at once, which reads like the operation lost the refs
+  /// themselves. Retry re-runs the fan-out — a hook that timed out on a cold
+  /// cache usually answers the second time.
+  Widget _controlsFailedNotice(ThemeData theme) {
+    final t = context.t.activitiesView;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.xl, Space.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _emptyStateMessage(
+              theme,
+              title: t.controlsUnavailableTitle,
+              body: t.controlsUnavailableReason,
+              titleColor: theme.colorScheme.error,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => _controlsState = ControlsLoadState.loading);
+              _loadControls();
+            },
+            child: Text(t.controlsUnavailableRetry),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1831,12 +1910,16 @@ class OperationSheetState extends State<OperationSheet> {
                       }
                       final suggestionControl = controlForRefType(_controls, suggestion['type'] as String?);
                       return ListTile(
-                        tileColor: _loadingControls
+                        tileColor: _controlsUnreliable
                             ? rowColor
                             : (isUnknownRefType(_controls, suggestion['type'] as String?)
                                 ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                                 : rowColor),
-                        leading: _loadingControls
+                        // Only a ref with NO control is ambiguous. A partial
+                        // failure leaves the hooks that did answer perfectly
+                        // usable, and blanking their icons too overstates the
+                        // damage.
+                        leading: _controlsUnreliable && suggestionControl == null
                             ? const Icon(MdiIcons.toyBrick)
                             : activityRefIcon(_controls, suggestion['type'] as String?),
                         title: Row(
@@ -1881,6 +1964,8 @@ class OperationSheetState extends State<OperationSheet> {
                   slivers: [
                     SliverList(
                       delegate: SliverChildListDelegate([
+                    if (_controlsState == ControlsLoadState.failed && refs.isNotEmpty)
+                      _controlsFailedNotice(theme),
                     for (final ref in refs)
                       Builder(builder: (context) {
                         final control = controlForRefType(_controls, ref['type'] as String?);
@@ -1890,7 +1975,7 @@ class OperationSheetState extends State<OperationSheet> {
                           child: _flashableRow(
                             ref,
                             ListTile(
-                              tileColor: _loadingControls
+                              tileColor: _controlsUnreliable
                                   ? rowColor
                                   : (control == null
                                       ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
@@ -1903,7 +1988,7 @@ class OperationSheetState extends State<OperationSheet> {
                               // added left of it hangs off that alignment
                               // rather than moving it.
                               contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
-                              leading: _loadingControls
+                              leading: _controlsUnreliable && control == null
                                   ? const Icon(MdiIcons.toyBrick)
                                   : activityRefIcon(_controls, ref['type'] as String?),
                               title: Text(

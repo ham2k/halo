@@ -42,11 +42,11 @@ class _FakeExtensions extends ExtensionService {
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
 
   @override
-  Future<List<Map<String, dynamic>>> loggingControls(
+  Future<ControlsResult> loggingControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async =>
-      const [];
+      (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   @override
   Future<Map<String, dynamic>?> lookupCall(
