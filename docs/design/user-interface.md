@@ -316,6 +316,42 @@ A dialog whose every row is itself an action (a menu, an option picker) needs
 no footer at all; this rule governs dialogs that **have** a dismiss button, not
 which dialogs need one.
 
+### One way out, and it works
+
+A surface carries **one** way out per level. A dialog that walks the operator
+through steps gives each step a `Back`, and that Back **is** the way out of
+it — a `cancel` beside it is a second dismiss next to the first, and in a
+Modal Pane a third, next to the header's close icon. So `cancel` belongs only
+where the Back beside it cannot act, and where nothing else can either: the
+first level, which has no Back; and, on a surface with no chrome of its own,
+a request in flight, which disables it. A Modal Pane needs no second case —
+its header icon covers that state.
+
+Two buttons spelled the same way, going to different places, is the failure
+this prevents. **It counts in time as well as space**: one button whose
+destination changes with the surface's state is the same trap, harder to see.
+And it counts against the **chrome**, not just the footer — a Modal Pane's
+full-screen presentation leads with a `BackButton`, whose accessible name is
+"Back", so a stepped pane on a phone can pair that with a footer "Back" going
+somewhere else. Known, unresolved, and worst for a screen reader.
+
+Which leaves the header icon carrying real weight, so **it has to work**. A
+`PopScope` that guards something in flight must intercept the gesture, not
+refuse it: Escape and that icon both route through `Navigator.maybePop()`, and
+a `canPop: false` with no `onPopInvokedWithResult` turns both into controls
+that visibly do nothing. Honour the dismissal and abandon what was pending.
+Two things that guard has to get right, and both are easy to miss: the flag
+it reads must be true for the **whole** window it claims to cover —
+a request is in flight before there is anything polling for it — and a
+`PopScope` only does anything at all with a `ModalRoute` above it, so a
+surface mounted over the Navigator (an overlay) is not protected by one and
+must carry its way out in the footer.
+
+Guarding the **barrier** is separate and is a different judgement: a stray tap
+outside is not a decision the way Escape is, so a pane whose work is expensive
+to redo opens with `barrierDismissible: false` — which nulls the barrier's own
+tap handler and has nothing to do with `canPop`.
+
 Pane-sized dialogs — "Modal Panes" — additionally present as full screens on
 phone-sized windows; see [layouts.md](layouts.md).
 

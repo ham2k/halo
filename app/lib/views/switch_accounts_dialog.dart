@@ -117,7 +117,17 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   final _emailController = TextEditingController();
   bool _busy = false;
   String? _error;
+  /// Set by whichever exit runs first, and the reason both check it: `mounted`
+  /// does NOT mean "still on screen". A route stays mounted for its whole exit
+  /// animation, so a host call suspended across a dismissal wakes on a live
+  /// State whose route is already leaving — and a second `Navigator.pop` from
+  /// there lands on whatever sits underneath, closing the caller's own screen.
+  /// The first exit decides; a later one has nothing left to report to.
+  bool _closing = false;
+
   void _onSuccess() {
+    if (_closing) return;
+    _closing = true;
     _stopPolling();
     if (widget.onLinked != null) {
       widget.onLinked!();
@@ -127,6 +137,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   void _doCancel() {
+    if (_closing) return;
+    _closing = true;
     _stopPolling();
     if (widget.onCancel != null) {
       widget.onCancel!();
@@ -146,12 +158,14 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   /// minutes; both flows renew it from a poll tick past this instant.
   DateTime? _challengeExpiresAt;
 
-  /// Non-null only while a challenge is genuinely being polled for — always
-  /// cleared through [_stopPolling], never a bare `cancel()`. A cancelled
-  /// Timer left in this field reads as a live poll to [build]'s PopScope,
-  /// which then blocks Escape, the system back gesture and the Modal Pane's
-  /// close icon for the rest of the pane's life — on a menu that shows no
-  /// footer button of its own, that is a pane with no way out at all.
+  /// Non-null only while a challenge is genuinely being POLLED for — which is
+  /// narrower than "a request is in flight", the question [build]'s PopScope
+  /// actually asks: `_busy` covers the request that precedes the poll, and the
+  /// two disagree for its whole duration.
+  ///
+  /// Always cleared through [_stopPolling], never a bare `cancel()`, because
+  /// `Timer.cancel()` leaves the reference in place and this field is read as
+  /// a state, not as a handle.
   Timer? _pollTimer;
 
   void _stopPolling() {
@@ -400,6 +414,10 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _qrUrl = null;
     });
     await _requestQrPermission();
+    // The dismissal that happened while the request was in flight has already
+    // disposed this State and stopped its poll; starting one here would assign
+    // a periodic Timer to a dead object, and nothing could ever cancel it.
+    if (!mounted) return;
     _startPolling();
   }
 
@@ -417,28 +435,35 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     unawaited(_loadAccountData());
   }
 
-  /// Whether the footer carries a way out of the pane, and the [_backToMenu]
-  /// button beside it. Two rules, one per host, and between them one
-  /// invariant: **the footer never shows two buttons spelled "Back", and
-  /// never shows zero enabled ways out.**
-  ///
-  /// Hosted in a Modal Pane, the two slots are distinct words and both are
-  /// always real. A sub-mode's is Cancel — a live challenge poll gates the
-  /// header's close icon through the [PopScope] below, leaving Cancel the
-  /// only control that can abandon the request. The menu's is [_cancelLabel]'s
-  /// Done: nothing there is pending, since a quick switch takes effect the
-  /// moment it is tapped, and Done is the verb the dialog convention gives a
-  /// dialog whose changes have already happened (user-interface.md §Dialogs).
-  ///
-  /// Hosted in an onboarding step there is no chrome and both slots would
-  /// read "Back", so the footer carries exactly ONE, always enabled, doing
-  /// the most local thing still available: to the menu from a sub-mode, and
-  /// out to the step behind this pane from the menu — or from a sub-mode
-  /// whose request is in flight, where returning to the menu is not on offer
-  /// and this is the difference between a wait and a dead end.
-  bool get _showCancel => widget.hostHasCloseIcon || !_showBackToMenu;
+  /// Whether an enabled [_backToMenu] is on screen. A sub-mode's Back walks
+  /// back one level, which is the whole way out of that sub-mode — but it
+  /// stands down while a request is in flight, and a disabled button is not
+  /// a way out.
+  bool get _backIsUsable => _mode != _Mode.menu && !_busy;
 
-  bool get _showBackToMenu => _mode != _Mode.menu && !(_busy && !widget.hostHasCloseIcon);
+  /// Whether the footer carries a way out of the pane itself, beside the
+  /// [_backToMenu] button. One rule, both hosts: **only where the Back beside
+  /// it cannot act.**
+  ///
+  /// A sub-mode that can go Back needs nothing else. Cancel there would be a
+  /// second dismiss next to a first — and in a Modal Pane a third, next to
+  /// the header's close icon. The menu has no Back, so it carries the way
+  /// out itself: Done in a dialog, where a quick switch has already taken
+  /// effect and there is nothing to abandon (user-interface.md §Dialogs), and
+  /// Back in the onboarding step, which walks back to the callsign question.
+  ///
+  /// The exception is the onboarding step with a request in flight, where
+  /// Back is disabled and the step has no chrome of its own: without this the
+  /// footer would offer nothing that works. A Modal Pane needs no such
+  /// exception — its header icon and Escape dismiss from every state, the
+  /// [PopScope] below turning a live poll into an abandon rather than a
+  /// refusal.
+  bool get _showCancel => _mode == _Mode.menu || (!_backIsUsable && !widget.hostHasCloseIcon);
+
+  /// Rendered whenever there is a menu to go back to — except in the
+  /// onboarding step, where a disabled Back beside an exit that also says
+  /// "Back" is the two-buttons-one-word problem this footer exists to avoid.
+  bool get _showBackToMenu => _mode != _Mode.menu && (widget.hostHasCloseIcon || !_busy);
 
   /// The host's own word for it wins — onboarding's exit walks back a step,
   /// so it says Back. Otherwise the verb follows what leaving would discard:
@@ -457,13 +482,34 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     // the action row lives here because it depends on this State (_mode,
     // _busy).
     return PopScope(
-      // While a challenge is being polled for (QR/code/emailSent), Escape
-      // and the system back gesture must not be able to abandon it any more
-      // accidentally than a stray tap outside could — the whole reason this
-      // pane opens with barrierDismissible: false. The explicit Cancel
-      // button below still works: it pops directly rather than through the
-      // canPop-gated path PopScope intercepts.
-      canPop: _pollTimer == null,
+      // A request in flight is intercepted, not refused. Escape, the header
+      // close icon and the system back gesture all route through
+      // `Navigator.maybePop()`, which this gates: a deliberate dismissal gets
+      // to abandon the request, but it goes through [_doCancel] so the poll
+      // stops and the caller is told the account did not change, rather than
+      // the route vanishing out from under a running timer.
+      //
+      // Both flags, not just the poll: a challenge is requested BEFORE it is
+      // polled for, and a guard watching only the poll leaves that gap open —
+      // a dismissal there slips past uninterrupted, handing the caller a null
+      // where it needs "not switched".
+      //
+      // This is the Modal Pane's story alone. An onboarding step mounts above
+      // the Navigator (main.dart wraps it in its own Overlay), so there is no
+      // ModalRoute to register against and nothing here runs at all: that host
+      // has no Escape and no icon, and its footer is the whole control surface.
+      //
+      // A tap OUTSIDE stays inert throughout, and is not this flag's doing —
+      // the pane opens with `barrierDismissible: false`, which nulls the
+      // barrier's own tap handler (modal_pane.dart's `_tapOutsideDismissible`).
+      // Losing a challenge to a stray tap means a trip back to the other
+      // device for a fresh code; losing it to Escape is something the
+      // operator asked for.
+      canPop: _pollTimer == null && !_busy,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _doCancel();
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

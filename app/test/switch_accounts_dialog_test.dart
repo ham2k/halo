@@ -144,7 +144,7 @@ void main() {
     expect(linkedEmails, isEmpty);
   });
 
-  testWidgets('the footer verb follows what leaving would discard', (tester) async {
+  testWidgets('a sub-mode offers Back alone, and the menu the way out', (tester) async {
     final results = <bool?>[];
     await pumpDialog(
       tester,
@@ -153,34 +153,37 @@ void main() {
       linkClient: (email) async => {'permission': {'status': 'pending', 'challenge_token': 'A1B2C3'}},
     );
 
-    // Nothing is pending at the menu — a quick switch takes effect on the tap
-    // — so leaving discards nothing and the verb is Done, never Cancel
-    // (user-interface.md §Dialogs).
+    // The menu has no Back, so it carries the way out itself. Nothing is
+    // pending there — a quick switch takes effect on the tap — so the verb is
+    // Done, never Cancel (user-interface.md §Dialogs).
     expect(find.text('Done'), findsOneWidget);
     expect(find.text('Cancel'), findsNothing);
 
     await tester.tap(find.text('Link with an email address'));
     await tester.pumpAndSettle();
 
-    // A sub-mode has a challenge in flight to abandon, so the same slot turns
-    // into Cancel — and it is the only control that can abandon one, since a
-    // live poll gates the header icon through PopScope.
-    expect(find.text('Cancel'), findsOneWidget);
+    // A sub-mode's Back IS the way out of it, so nothing sits beside it: a
+    // Cancel here would be a second dismiss next to the first, and a third
+    // next to the header's close icon.
+    expect(find.text('Back'), findsOneWidget);
+    expect(find.text('Cancel'), findsNothing);
     expect(find.text('Done'), findsNothing);
 
-    // Done is a way out, not decoration.
+    // Back retraces rather than closing, and Done is a way out, not decoration.
     await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
+    expect(find.text('Link with a QR code'), findsOneWidget, reason: 'Back returns to the menu');
+    expect(results, isEmpty, reason: 'Back must not close the pane');
+
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(results, [false]);
   });
 
-  testWidgets('backing out of a poll un-gates the header icon again', (tester) async {
-    // The header icon dismisses through maybePop, which the PopScope gates on
-    // the poll — so a poll that is cancelled but whose Timer is still in the
-    // field reads as live forever and kills that icon, Escape, and the system
-    // back gesture for the rest of the pane's life.
+  testWidgets('the header icon closes from the menu, having backed out of a poll', (tester) async {
+    // The path a user actually walks out of a QR challenge: Back to the menu,
+    // then close. Both legs go through code that a live poll changes the
+    // meaning of, so this pins the whole sequence rather than either half.
     final results = <bool?>[];
     await pumpDialog(
       tester,
@@ -449,7 +452,159 @@ void main() {
     expect(results, [true]);
   });
 
-  testWidgets('Escape cannot abandon an active QR poll, but the Cancel button still can', (tester) async {
+  // Through the PRODUCTION helper, not pumpDialog: the barrier flag is
+  // showSwitchAccountsDialog's own argument, so a harness that passes its own
+  // copy pins nothing about what ships. Everything else here goes through
+  // pumpDialog for the poll clock it can inject.
+  testWidgets('dismissing mid-request abandons it, and leaves no poll behind', (tester) async {
+    // The gap between asking for a challenge and polling for it. A guard that
+    // watches only the poll leaves this window open: a dismissal inside it
+    // slips past uninterrupted, handing the caller a null where it needs "not
+    // switched", and _showQr — resuming on a State dispose has finished with —
+    // starts a periodic Timer nothing can cancel, calling fetchAccountData
+    // every 5s for the life of the process with every reply thrown away.
+    var polls = 0;
+    final gate = Completer<Map<String, dynamic>?>();
+    final results = <bool?>[];
+
+    await pumpDialog(
+      tester,
+      results: results,
+      fetchAccountData: () async {
+        polls++;
+        return accountData();
+      },
+      linkClient: (email) => gate.future,
+    );
+
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pump();
+    final pollsAtDismiss = polls;
+
+    await tester.tap(find.byIcon(MdiIcons.close));
+    await tester.pumpAndSettle();
+    expect(results, [false], reason: 'the dismissal must be intercepted, not slip past as a bare pop');
+
+    // Let the request land on the now-disposed State, then run well past
+    // several poll intervals. A leaked Timer also fails the test outright —
+    // the binding reports one still pending after disposal.
+    gate.complete(const {
+      'permission': {'status': 'pending', 'client': 'c1', 'challenge_token': 'TOK'},
+    });
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 30));
+    expect(polls, pollsAtDismiss, reason: 'nothing may keep polling once the pane is gone');
+  });
+
+  testWidgets('a poll that lands after dismissal cannot close the screen underneath', (tester) async {
+    // `mounted` is not "still on screen": a route stays mounted for its whole
+    // exit animation. A poll suspended on the network across a dismissal wakes
+    // on a live State whose route is already leaving, and if it declares
+    // success there, its Navigator.pop lands on the caller's own screen and
+    // shuts it. Needs a route underneath to catch that, so no pumpDialog here.
+    final gate = Completer<Map<String, dynamic>?>();
+    var fetches = 0;
+    final results = <bool?>[];
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (rootContext) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(rootContext).push(MaterialPageRoute(
+                  builder: (settingsContext) => Scaffold(
+                    body: TextButton(
+                      onPressed: () async => results.add(await showModalPane<bool>(
+                        settingsContext,
+                        title: 'Switch Accounts',
+                        barrierDismissible: false,
+                        builder: (_) => SwitchAccountsPane(
+                          fetchAccountData: () async {
+                            fetches++;
+                            if (fetches == 1) return {'current_account': {'uuid': 'acct-1'}, 'accounts': []};
+                            return gate.future;
+                          },
+                          linkClient: (email) async => {
+                            'permission': {'status': 'pending', 'client': 'c1', 'challenge_token': 'TOK'},
+                          },
+                          linkClientWithEmail: (email) async => const {},
+                          hostHasCloseIcon: true,
+                          pollInterval: const Duration(seconds: 5),
+                        ),
+                      )),
+                      child: const Text('stand-in for Settings'),
+                    ),
+                  ),
+                )),
+                child: const Text('root'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('root'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('stand-in for Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+
+    // One tick fires and hangs on the gate; dismiss while it is suspended.
+    await tester.pump(const Duration(seconds: 6));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    // It resumes to find the account genuinely changed — the one case that
+    // makes it want to declare success and pop.
+    gate.complete(const {'current_account': {'uuid': 'acct-2'}, 'accounts': []});
+    await tester.pumpAndSettle();
+
+    expect(results, [false], reason: 'the first exit decides the answer');
+    expect(find.text('stand-in for Settings'), findsOneWidget,
+        reason: "the caller's screen must survive a late success");
+  });
+
+  testWidgets('the shipped dialog refuses a tap outside', (tester) async {
+    final results = <bool?>[];
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => results.add(await showSwitchAccountsDialog(
+                context,
+                fetchAccountData: () async => accountData(),
+                linkClient: (email) async => const {},
+                linkClientWithEmail: (email) async => const {},
+              )),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link with a QR code'), findsOneWidget);
+
+    // Nothing is in flight here and the pane would happily close — this is
+    // about the gesture, not the state. Losing a challenge to a mis-aimed tap
+    // costs a trip back to the other device for a fresh code.
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+    expect(results, isEmpty, reason: 'the barrier must not dismiss this pane');
+    expect(find.text('Link with a QR code'), findsOneWidget);
+
+    // Escape is a decision, and it does close.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(results, hasLength(1));
+  });
+
+  testWidgets('Escape abandons an active QR poll; a tap outside still cannot', (tester) async {
     final results = <bool?>[];
     await pumpDialog(
       tester,
@@ -469,19 +624,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(QrImageView), findsOneWidget);
 
-    // Escape must not abandon an active poll any more than a stray tap
-    // outside could — the pane opened with barrierDismissible: false
-    // specifically to prevent that.
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    // A stray tap outside must never cost a challenge: losing it means a trip
+    // back to the other device for a fresh code. The barrier's own handler is
+    // null, so this is inert no matter what the PopScope says.
+    await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
-    expect(results, isEmpty, reason: 'Escape must not abandon an active poll');
+    expect(results, isEmpty, reason: 'a tap outside must not abandon the request');
     expect(find.byType(QrImageView), findsOneWidget, reason: 'the pane must still be open');
 
-    // The explicit Cancel button is a deliberate action and still works —
-    // it pops directly rather than through the canPop-gated path.
-    await tester.tap(find.text('Cancel'));
+    // Escape is a deliberate act, so it abandons rather than being swallowed:
+    // the poll stops and the caller is told the account did not change.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(results, [false]);
+    expect(find.byType(QrImageView), findsNothing);
+  });
+
+  testWidgets('the header icon abandons an active poll too, not just Escape', (tester) async {
+    final results = <bool?>[];
+    await pumpDialog(
+      tester,
+      results: results,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {
+        'permission': {'status': 'pending', 'client': 'c1', 'challenge_token': 'FFEE99'},
+      },
+    );
+
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+
+    // Both dismissals route through maybePop, so both meet the same PopScope
+    // — a gesture it swallows is a control that does nothing.
+    await tester.tap(find.byIcon(MdiIcons.close));
+    await tester.pumpAndSettle();
+    expect(results, [false]);
+    expect(find.byType(QrImageView), findsNothing);
   });
 
   testWidgets('server unreachable: linking reports it and never fakes success', (tester) async {
