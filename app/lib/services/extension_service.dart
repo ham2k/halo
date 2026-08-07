@@ -1211,10 +1211,10 @@ class ExtensionService implements PanelExtensionSource {
       final locationAllowlist = <String>{};
       final loaded = <String>{};
       for (final info in available) {
-        // Disabled extensions are simply never loaded — their hooks,
-        // settings panels, and commands are absent until a re-enable
-        // restarts the runtime with them included.
-        if (!isExtensionEnabled(info)) continue;
+        // Disabled (or experiment-gated) extensions are simply never
+        // loaded — their hooks, settings panels, and commands are absent
+        // until a re-enable restarts the runtime with them included.
+        if (!isExtensionActive(info)) continue;
         loaded.add(info.key);
         bundles.add(ExtensionBundle(
           key: info.key,
@@ -1238,6 +1238,13 @@ class ExtensionService implements PanelExtensionSource {
         };
         if (visible.isNotEmpty) extensionSecrets[info.key] = visible;
       }
+      // Boot is a gating site too: an experiment can change between runs
+      // (or an update can gate an extension that used to load), and nothing
+      // else stamps disabledSince before the stale-data purge reads it —
+      // without this, a gated-at-startup extension's purge grace clock
+      // never starts.
+      final settingsForStamps = settings;
+      if (settingsForStamps != null) await _updateDisabledSince(settingsForStamps);
       _locationAllowlist = locationAllowlist;
       // Pessimistic from the moment a host exists until its activations have
       // genuinely settled below, so a consumer reading it the instant `host`
@@ -1361,23 +1368,52 @@ class ExtensionService implements PanelExtensionSource {
 
   /// Core extensions are always on; the rest follow the user's override,
   /// falling back to the build index's default. A null [settings] (tests,
-  /// benches) resolves to defaults.
+  /// benches) resolves to defaults. Enabled is the user's intent only —
+  /// whether the extension actually loads also requires
+  /// [isExtensionAvailable].
   bool isExtensionEnabled(ExtensionInfo info) =>
       info.core || (settings?.extensionOverrides[info.key] ?? info.enabledByDefault);
 
+  /// Whether [info] is offered at all: every experiment its manifest
+  /// declares (experiments.yaml keys) must be enabled. An unavailable
+  /// extension is hidden from the Extensions panel and never loaded, but
+  /// its stored override is deliberately KEPT — one enabled before the
+  /// experiment turned off comes back enabled when it turns on again. A
+  /// null [settings] (tests, benches) resolves to available.
+  bool isExtensionAvailable(ExtensionInfo info) {
+    final currentSettings = settings;
+    return currentSettings == null || info.experiments.every(currentSettings.experimentEnabled);
+  }
+
+  /// Whether [info] actually loads: offered ([isExtensionAvailable]) AND
+  /// switched on ([isExtensionEnabled]). Every load-set computation must go
+  /// through this one predicate — a gate applied at only some sites makes
+  /// the desired and loaded sets disagree, and then a needed restart
+  /// silently never happens.
+  bool isExtensionActive(ExtensionInfo info) => isExtensionAvailable(info) && isExtensionEnabled(info);
+
   /// Persists enable/disable choices and applies them by restarting the
-  /// runtime with the filtered bundle set — but only when the effective
-  /// set actually changes (and the runtime is up; a pending boot picks the
-  /// fresh overrides up on its own). The overrides land BEFORE any restart,
-  /// so a quit mid-apply loses nothing.
+  /// runtime with the filtered bundle set. The overrides land BEFORE any
+  /// restart, so a quit mid-apply loses nothing.
   Future<void> setExtensionsEnabled(Map<String, bool> changes) async {
     final currentSettings = settings;
     if (currentSettings == null || changes.isEmpty) return;
     await currentSettings.setExtensionOverrides({...currentSettings.extensionOverrides, ...changes});
+    await applyExtensionAvailability();
+  }
+
+  /// Recomputes which extensions should be loaded (overrides + experiment
+  /// gates), re-stamps disabledSince, and restarts the runtime — but only
+  /// when the effective set actually changes (and the runtime is up; a
+  /// pending boot picks the fresh state up on its own). Call after flipping
+  /// an experiment; most toggles gate nothing and return cheaply.
+  Future<void> applyExtensionAvailability() async {
+    final currentSettings = settings;
+    if (currentSettings == null) return;
     await _updateDisabledSince(currentSettings);
     final desired = {
       for (final info in availableExtensions)
-        if (isExtensionEnabled(info)) info.key,
+        if (isExtensionActive(info)) info.key,
     };
     if (_host == null || setEquals(desired, _loadedExtensionKeys)) return;
     await restartRuntime();
@@ -1393,7 +1429,7 @@ class ExtensionService implements PanelExtensionSource {
     var changed = false;
     for (final info in availableExtensions) {
       if (info.core) continue;
-      final disabled = !isExtensionEnabled(info);
+      final disabled = !isExtensionActive(info);
       if (disabled && !disabledSince.containsKey(info.key)) {
         disabledSince[info.key] = now;
         changed = true;
@@ -2992,6 +3028,10 @@ class ExtensionInfo {
   final String? category;
   final bool enabledByDefault;
 
+  /// Experiment keys (experiments.yaml) gating this extension's very
+  /// availability — see [ExtensionService.isExtensionAvailable].
+  final List<String> experiments;
+
   /// MDI icon name (resolveIconName), mirroring the icon the extension's
   /// own hooks use (e.g. POTA's 'pine-tree'); null falls back to a
   /// category icon in the panel.
@@ -3028,6 +3068,7 @@ class ExtensionInfo {
     this.shortName,
     this.category,
     this.enabledByDefault = true,
+    this.experiments = const [],
     this.icon,
     this.description,
     this.accentColor,
@@ -3077,6 +3118,7 @@ class ExtensionInfo {
         shortName: json['shortName'] as String?,
         category: json['category'] as String?,
         enabledByDefault: json['enabledByDefault'] as bool? ?? true,
+        experiments: ((json['experiments'] as List?) ?? const []).cast<String>(),
         icon: json['icon'] as String?,
         description: json['description'] as String?,
         accentColor: json['accentColor'] as String?,

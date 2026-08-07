@@ -5,6 +5,7 @@
   "version": "0.0.1",
   "description": "Current conditions and today's sunrise and sunset, for the operation's location or one you choose",
   "category": "dashboard",
+  "experiments": ["layouts"],
   "enabledByDefault": false,
   "icon": "weather-partly-cloudy",
   "keywords": ["weather", "forecast", "sunrise", "sunset", "dashboard", "panel"],

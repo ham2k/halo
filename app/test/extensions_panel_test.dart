@@ -31,6 +31,9 @@ const _testExtensions = [
   ExtensionInfo(
       key: 'qrz', file: 'qrz.js', core: false, name: 'QRZ.com Callsign Lookups', category: 'lookup',
       enabledByDefault: false),
+  ExtensionInfo(
+      key: 'solar-panel', file: 'solar-panel.js', core: false, name: 'Solar Panel', category: 'dashboard',
+      experiments: ['layouts']),
 ];
 
 void main() {
@@ -75,6 +78,37 @@ void main() {
     expect(info.core, isTrue);
     expect(info.name, 'mystery');
     expect(info.enabledByDefault, isTrue);
+    expect(info.experiments, isEmpty, reason: 'no gate → always available');
+  });
+
+  test('experiment gating hides the extension but keeps the stored override', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(_testExtensions);
+    final solar = _testExtensions.firstWhere((e) => e.key == 'solar-panel');
+
+    expect(extensions.isExtensionAvailable(solar), isFalse, reason: 'layouts experiment off → gated');
+
+    await settings.setExperimentEnabled('layouts', true);
+    expect(extensions.isExtensionAvailable(solar), isTrue);
+
+    // The user enables it, then the experiment goes away: the override must
+    // survive the round trip — turning the experiment back on restores the
+    // extension as enabled without the user touching anything.
+    await extensions.setExtensionsEnabled({'solar-panel': true});
+    await settings.setExperimentEnabled('layouts', false);
+    await extensions.applyExtensionAvailability();
+    expect(extensions.isExtensionAvailable(solar), isFalse);
+    expect(settings.extensionOverrides['solar-panel'], isTrue, reason: 'gating must not rewrite overrides');
+    // Gated counts as disabled for the data-purge grace clock.
+    expect(settings.extensionDisabledSince.keys, contains('solar-panel'));
+
+    await settings.setExperimentEnabled('layouts', true);
+    await extensions.applyExtensionAvailability();
+    expect(extensions.isExtensionAvailable(solar), isTrue);
+    expect(extensions.isExtensionEnabled(solar), isTrue);
+    expect(settings.extensionDisabledSince.keys, isNot(contains('solar-panel')));
   });
 
   test('listActiveExtensions surfaces the kernel-info listing', () async {
@@ -134,5 +168,37 @@ void main() {
     expect(settings.extensionOverrides, {'sota': false});
     expect(settings.extensionSettingsGroups(), isEmpty);
     expect(switchValue('Summits on the Air'), isFalse);
+  });
+
+  testWidgets('panel hides experiment-gated extensions until the experiment is enabled', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(_testExtensions);
+    final services = HaLoServices(db, settings, extensions: extensions);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    // Gated, not disabled: neither the tile nor its category header shows.
+    expect(find.text('Solar Panel'), findsNothing);
+    expect(find.text('Dashboard Panels'), findsNothing);
+
+    // The panel listens to settings, so flipping the experiment reveals the
+    // extension live, with its stored (default) state.
+    await settings.setExperimentEnabled('layouts', true);
+    await tester.pumpAndSettle();
+    expect(find.text('Solar Panel'), findsOneWidget);
+
+    await settings.setExperimentEnabled('layouts', false);
+    await tester.pumpAndSettle();
+    expect(find.text('Solar Panel'), findsNothing);
   });
 }

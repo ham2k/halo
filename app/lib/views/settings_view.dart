@@ -2480,7 +2480,7 @@ class _DeveloperPanel extends StatelessWidget {
                       context,
                       title: context.t.settings.developer.experiments,
                       closeLabel: context.t.common.close,
-                      builder: (_) => ExperimentsPane(settings: settings),
+                      builder: (_) => ExperimentsPane(services: services),
                     ),
                   );
                 },

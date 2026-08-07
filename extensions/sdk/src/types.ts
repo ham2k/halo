@@ -1436,6 +1436,11 @@ export interface ExtensionManifest {
   /// `domains`: the host refuses the call for any extension that doesn't
   /// set this.
   requiresLocation?: boolean
+  /// Experiment keys (app/experiments.yaml) gating this extension: unless
+  /// EVERY listed experiment is enabled, the extension is hidden from the
+  /// Extensions panel and its bundle never loads. The user's enable/disable
+  /// choice is kept while hidden, so it comes back when the experiment does.
+  experiments?: string[]
   /// Per-locale overrides for name/description plus extra localized search
   /// keywords, keyed by language code. Localized keywords ADD to the base
   /// `keywords` (both are searchable), they don't replace them.

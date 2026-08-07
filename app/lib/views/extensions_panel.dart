@@ -92,7 +92,13 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
-        final listed = widget.services.extensions.availableExtensions.where((info) => !info.core).toList();
+        // Experiment-gated extensions are hidden entirely, not shown
+        // disabled — their stored override survives for when the
+        // experiment returns (isExtensionAvailable).
+        final extensionService = widget.services.extensions;
+        final listed = extensionService.availableExtensions
+            .where((info) => !info.core && extensionService.isExtensionAvailable(info))
+            .toList();
         final locale = LocaleSettings.currentLocale.languageCode;
         // Search matches both the localized and the English name/description,
         // so a user can find an extension by either.

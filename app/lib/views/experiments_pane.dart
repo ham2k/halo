@@ -12,15 +12,16 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/experiments.dart';
-import '../services/settings_service.dart';
+import '../main.dart';
 
 class ExperimentsPane extends StatelessWidget {
-  final SettingsService settings;
+  final HaLoServices services;
 
-  const ExperimentsPane({super.key, required this.settings});
+  const ExperimentsPane({super.key, required this.services});
 
   @override
   Widget build(BuildContext context) {
+    final settings = services.settings;
     return FutureBuilder<List<ExperimentDefinition>>(
       future: loadExperiments(),
       builder: (context, snapshot) {
@@ -48,7 +49,14 @@ class ExperimentsPane extends StatelessWidget {
                     title: Text(definition.name),
                     subtitle: definition.description == null ? null : Text(definition.description!),
                     value: settings.experimentEnabled(definition.key),
-                    onChanged: (enabled) => settings.setExperimentEnabled(definition.key, enabled),
+                    // The availability pass may restart the extension
+                    // runtime (an experiment revealing or hiding gated
+                    // extensions); the switch itself flips immediately via
+                    // the settings listenable.
+                    onChanged: (enabled) async {
+                      await settings.setExperimentEnabled(definition.key, enabled);
+                      await services.extensions.applyExtensionAvailability();
+                    },
                     contentPadding: EdgeInsets.zero,
                   ),
               ],

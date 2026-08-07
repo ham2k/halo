@@ -1449,6 +1449,10 @@ class HaLoServices {
         }
         final enabled = !settings.experimentEnabled(experiment.key);
         await settings.setExperimentEnabled(experiment.key, enabled);
+        // The availability pass may restart the extension runtime (an
+        // experiment revealing or hiding gated extensions) — don't hold
+        // the command's feedback on it.
+        unawaited(extensions.applyExtensionAvailability());
         return (
           text: enabled
               ? t.commands.experimentEnabled(name: experiment.name)

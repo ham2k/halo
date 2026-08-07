@@ -918,6 +918,9 @@ class OperationSheetState extends State<OperationSheet> {
   }
 
   /// Non-core extensions that match [input] but are switched off.
+  /// Experiment-gated extensions are excluded: enabling one from here
+  /// couldn't load it anyway (the gate still holds), leaving a dead
+  /// "enable" row and a scope prefix that matches nothing.
   List<ExtensionInfo> _disabledExtensionsMatching(String input) {
     final candidates = extensionSearchCandidates(input);
     if (candidates.search.isEmpty) return const [];
@@ -926,6 +929,7 @@ class OperationSheetState extends State<OperationSheet> {
     return [
       for (final info in extensions.availableExtensions)
         if (!info.core &&
+            extensions.isExtensionAvailable(info) &&
             !extensions.isExtensionEnabled(info) &&
             (info.key.toLowerCase() == candidates.key || info.matchesSearch(candidates.search, locale: locale)))
           info,

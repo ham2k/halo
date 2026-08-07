@@ -150,6 +150,13 @@ const bundles = [
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 
+// The experiment KEYS the app's catalog defines (aliases don't count: the
+// host gates on `experimentEnabled(key)`, which matches keys only). Used to
+// validate manifests' `experiments` lists below. Extracted by regex rather
+// than a yaml dependency — the catalog is a flat hand-edited list.
+const experimentsCatalog = await readFile(resolve(root, '../app/experiments.yaml'), 'utf-8')
+const knownExperiments = new Set([...experimentsCatalog.matchAll(/^\s*-\s*key:\s*(\S+)/gm)].map((m) => m[1]))
+
 // Load and sanity-check every extension's manifest up front, so a typo'd
 // key, a missing file, or a missing required field fails the build before
 // any bundling work.
@@ -163,6 +170,21 @@ for (const bundle of bundles) {
   for (const field of ['name', 'version', 'description']) {
     if (typeof manifest[field] !== 'string' || manifest[field].trim() === '') {
       throw new Error(`manifest for '${bundle.key}' is missing required field '${field}' (${manifestPath})`)
+    }
+  }
+  // `experiments` gates availability in the host: a malformed list — or a
+  // key the catalog doesn't define (a typo, an alias, a retired entry) —
+  // would silently hide the extension for everyone, so it fails the build
+  // instead.
+  if ('experiments' in manifest &&
+      (!Array.isArray(manifest.experiments) ||
+        manifest.experiments.some((e) => typeof e !== 'string' || e.trim() === ''))) {
+    throw new Error(`manifest for '${bundle.key}' has an invalid 'experiments' list (${manifestPath})`)
+  }
+  for (const experiment of manifest.experiments ?? []) {
+    if (!knownExperiments.has(experiment)) {
+      throw new Error(
+        `manifest for '${bundle.key}' gates on experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
     }
   }
   bundle.manifest = manifest
@@ -225,6 +247,7 @@ await writeFile(
           domains: m.domains ?? [],
           ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
           ...(m.requiresLocation ? { requiresLocation: true } : {}),
+          ...(m.experiments?.length ? { experiments: m.experiments } : {}),
           core: !m.category,
           ...(m.category
             ? {
