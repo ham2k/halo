@@ -1466,6 +1466,27 @@ class Translations$switchAccounts$en {
 	/// en: 'Could not reach the sync server. Try again later.'
 	String get serverUnreachable => 'Could not reach the sync server. Try again later.';
 
+	/// en: 'Enter an email address to link.'
+	String get emailRequired => 'Enter an email address to link.';
+
+	/// en: 'No account found for ${email}.'
+	String noAccountForEmail({required Object email}) => 'No account found for ${email}.';
+
+	/// en: 'The sync server rejected the request: ${error}'
+	String serverRejected({required Object error}) => 'The sync server rejected the request: ${error}';
+
+	/// en: 'The sync server did not return a link code. Try again later.'
+	String get noLinkCode => 'The sync server did not return a link code. Try again later.';
+
+	/// en: 'The sync server did not send a confirmation code. Try again later.'
+	String get noConfirmationCode => 'The sync server did not send a confirmation code. Try again later.';
+
+	/// en: 'That account did not accept the switch. Try linking it with an email address instead.'
+	String get switchNotAccepted => 'That account did not accept the switch. Try linking it with an email address instead.';
+
+	/// en: 'Something went wrong talking to the sync server. Try again later.'
+	String get requestFailed => 'Something went wrong talking to the sync server. Try again later.';
+
 	/// en: '(one) {${count} QSO} (other) {${count} QSOs}'
 	String qsoCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} QSO',
@@ -4431,6 +4452,13 @@ extension on Translations {
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
+			'switchAccounts.emailRequired' => 'Enter an email address to link.',
+			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
+			'switchAccounts.serverRejected' => ({required Object error}) => 'The sync server rejected the request: ${error}',
+			'switchAccounts.noLinkCode' => 'The sync server did not return a link code. Try again later.',
+			'switchAccounts.noConfirmationCode' => 'The sync server did not send a confirmation code. Try again later.',
+			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
+			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			'adifImport.title' => 'Import QSOs from ADIF',

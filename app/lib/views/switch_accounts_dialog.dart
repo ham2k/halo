@@ -31,6 +31,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../i18n/strings.g.dart';
+import '../services/error_reporting_service.dart';
 import '../tools/sync_account_identity.dart';
 
 /// How the other device's deep link is assembled — same scheme and params
@@ -187,7 +188,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   Future<void> _loadAccountData() async {
-    final data = await widget.fetchAccountData();
+    final data = await _attempt('account-data', widget.fetchAccountData,
+        paintError: false, operatorAction: false);
     if (!mounted) return;
     setState(() {
       _accountData = data;
@@ -243,7 +245,15 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   Future<void> _pollTick() async {
-    final data = await widget.fetchAccountData();
+    // Deliberately NOT through _attempt: a tick's own fetch failing says
+    // nothing about the challenge on screen, which is still perfectly valid,
+    // so painting an error over it would be a lie. The renewals this tick may
+    // go on to call DO paint — an expired challenge really is dead — but they
+    // pass operatorAction: false, because a timer retrying every five seconds
+    // is not the "somebody pressed this three times" the streak measures.
+    // That a poll which never succeeds still says nothing is a separate gap,
+    // and not one this catch closes.
+    final data = await widget.fetchAccountData().catchError((_) => null);
     if (!mounted || data == null) return;
     final newUuid = (data['current_account'] as Map?)?['uuid'] as String?;
     if (newUuid != null && _baselineAccountUuid != null && newUuid != _baselineAccountUuid) {
@@ -259,23 +269,24 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     final expired = _challengeExpiresAt != null && widget.now().isAfter(_challengeExpiresAt!);
     if (expired) {
       if (_mode == _Mode.qr) {
-        await _requestQrPermission();
+        await _requestQrPermission(operatorAction: false);
       } else if (_mode == _Mode.code) {
-        await _renewEmailChallenge();
+        await _renewEmailChallenge(operatorAction: false);
       }
     }
   }
 
   /// The on-screen code expired before the other device confirmed it:
   /// re-request the pending permission, which regenerates its token.
-  Future<void> _renewEmailChallenge() async {
+  Future<void> _renewEmailChallenge({bool operatorAction = true}) async {
     final email = _pendingEmail;
     if (email == null) return;
-    final result = _usableResult(await widget.linkClient(email), emailForNotFound: email);
+    final result = await _attempt('renew-challenge', () => widget.linkClient(email),
+        emailForNotFound: email, operatorAction: operatorAction);
     if (!mounted) return;
     final permission = (result?['permission'] as Map?)?.cast<String, dynamic>();
     if (permission == null) {
-      setState(() {}); // surface whatever _usableResult recorded
+      setState(() {}); // surface whatever _attempt recorded
       return;
     }
     if (permission['status'] == 'active') {
@@ -293,19 +304,78 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     _challengeExpiresAt = expires != null ? DateTime.tryParse(expires) : null;
   };
 
-  /// Shared shape of every `linkClient` result: null → unreachable,
-  /// `error` → the server said no. Returns the map only when usable.
-  Map<String, dynamic>? _usableResult(Map<String, dynamic>? result, {String? emailForNotFound}) {
+  /// Every host call goes through here, so that "did this give me something I
+  /// can use?" is one question with one answer however the call failed —
+  /// thrown, null, or an error payload. Returns the map only when usable, and
+  /// records the reason in [_error] otherwise; callers `setState` around it.
+  ///
+  /// A throw is the case that has no other safety net. `syncLinkClient`
+  /// converts only `ExtensionHostException` into a null, so anything else
+  /// escapes an `await` here and takes `_busy` with it — the operator is left
+  /// with a spinner and every control disabled. Catching keeps the pane
+  /// answerable; it does not decide the error is uninteresting, which is
+  /// [ErrorPolicy]'s job alone (error-reporting.md).
+  ///
+  /// [key] separates the streaks: reporting is per call, not per pane, so a
+  /// broken QR request is not masked by a working email one.
+  ///
+  /// [paintError] is false for a call the operator did not make — the fetch on
+  /// mount — where a red line about account data would greet a step that never
+  /// shows any and whose linking flows work without it.
+  ///
+  /// [operatorAction] is false for anything a timer drove. The streak exists to
+  /// separate "the world is unreliable" from "this is broken", and only a
+  /// person pressing a button carries that meaning; a poll retrying every five
+  /// seconds would reach the threshold on its own, with nobody having asked
+  /// for anything.
+  Future<Map<String, dynamic>?> _attempt(
+    String key,
+    Future<Map<String, dynamic>?> Function() call, {
+    String? emailForNotFound,
+    bool paintError = true,
+    bool operatorAction = true,
+  }) async {
+    Map<String, dynamic>? result;
+    try {
+      result = await call();
+    } catch (e, st) {
+      // Unconditional, and the reason it is not left to reportIfRepeated: that
+      // one prints only on the throw that reaches the threshold, so a call
+      // failing intermittently — the flaky-backend case — would otherwise
+      // leave no trace anywhere at all. The console is where an error without
+      // a notice is supposed to be findable (error-reporting.md).
+      debugPrint('[switch-accounts] $key failed: $e\n$st');
+      // Not report(): a link the operator triggers by hand fails for a tunnel
+      // or a captive portal far more often than for a defect, and uploading
+      // every one of those tells nobody anything. The same call failing three
+      // times running is the defect, and that does report.
+      if (operatorAction) {
+        ErrorReportingService.reportIfRepeated('switch-accounts:$key', e, st,
+            context: 'switch-accounts:$key');
+      }
+      if (paintError) _error = t.switchAccounts.requestFailed;
+      return null;
+    }
+    // Anything that RETURNED proves the call itself works, so it ends the
+    // streak — including "unreachable" and a rejection. Only a throw counts,
+    // which is what lets the report say "in a row" and mean it.
+    if (operatorAction) ErrorReportingService.recordSuccess('switch-accounts:$key');
     if (result == null) {
-      _error = t.switchAccounts.serverUnreachable;
+      if (paintError) _error = t.switchAccounts.serverUnreachable;
       return null;
     }
     if (result['error'] != null) {
-      _error = result['error_status'] == 404 && emailForNotFound != null
-          ? 'No account found for $emailForNotFound.'
-          : 'The sync server rejected the request: ${result['error']}';
+      if (paintError) {
+        _error = result['error_status'] == 404 && emailForNotFound != null
+            ? t.switchAccounts.noAccountForEmail(email: emailForNotFound)
+            : t.switchAccounts.serverRejected(error: '${result['error']}');
+      }
       return null;
     }
+    // A usable answer retires the previous failure's message. Callers below
+    // then use `??=` for their own "usable but not what I needed" cases, which
+    // is only correct because nothing stale can be sitting here.
+    if (paintError) _error = null;
     return result;
   }
 
@@ -316,7 +386,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _busy = true;
       _error = null;
     });
-    final result = _usableResult(await widget.linkClient(email), emailForNotFound: email);
+    final result = await _attempt('quick-switch', () => widget.linkClient(email), emailForNotFound: email);
     if (!mounted) return;
     final permission = (result?['permission'] as Map?)?.cast<String, dynamic>();
     if (permission?['status'] == 'active') {
@@ -338,17 +408,30 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _startPolling();
       return;
     }
-    setState(() => _busy = false);
+    // Reachable, no error, and neither switched nor challenged — a shape this
+    // client has no move for. Saying nothing here is what makes the row read
+    // as a dead control; _attempt cannot catch it, because the call worked.
+    setState(() {
+      _busy = false;
+      _error ??= t.switchAccounts.switchNotAccepted;
+    });
   }
 
   Future<void> _submitEmail() async {
     final email = _emailController.text.trim();
-    if (email.isEmpty) return;
+    // Reached both by the button and by the soft keyboard's Go key. Returning
+    // in silence makes whichever one they pressed a control that does nothing
+    // — and it returns before the _error reset below, so the previous
+    // attempt's message sits there unchanged, saying something else entirely.
+    if (email.isEmpty) {
+      setState(() => _error = t.switchAccounts.emailRequired);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
-    final result = _usableResult(await widget.linkClient(email), emailForNotFound: email);
+    final result = await _attempt('link-by-email', () => widget.linkClient(email), emailForNotFound: email);
     if (!mounted) return;
     if (result == null) {
       setState(() => _busy = false);
@@ -361,10 +444,20 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _onSuccess();
       return;
     }
+    // No challenge means there is no code to show and nothing for the poll to
+    // wait for: the code view would render an em dash under "Waiting for
+    // confirmation…" forever. Stay put and say so.
+    if (permission?['challenge_token'] == null) {
+      setState(() {
+        _busy = false;
+        _error = t.switchAccounts.noConfirmationCode;
+      });
+      return;
+    }
     setState(() {
       _busy = false;
       _pendingEmail = email;
-      if (permission != null) _applyChallenge(permission)();
+      _applyChallenge(permission!)();
       _mode = _Mode.code;
     });
     _startPolling();
@@ -377,20 +470,17 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _busy = true;
       _error = null;
     });
-    final result = await widget.linkClientWithEmail(email);
+    final result = await _attempt('send-confirmation', () => widget.linkClientWithEmail(email));
     if (!mounted) return;
     setState(() {
       _busy = false;
-      if (result == null) {
-        _error = t.switchAccounts.serverUnreachable;
-      } else {
-        _mode = _Mode.emailSent;
-      }
+      if (result != null) _mode = _Mode.emailSent;
     });
   }
 
-  Future<void> _requestQrPermission() async {
-    final result = _usableResult(await widget.linkClient(null));
+  Future<void> _requestQrPermission({bool operatorAction = true}) async {
+    final result =
+        await _attempt('request-qr', () => widget.linkClient(null), operatorAction: operatorAction);
     if (!mounted) return;
     final permission = (result?['permission'] as Map?)?.cast<String, dynamic>();
     final clientUuid = permission?['client'] as String?;
@@ -401,7 +491,10 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         _qrUrl = linkClientQrUrl(clientUuid: clientUuid, challengeToken: token);
         _applyChallenge(permission!)();
       } else {
-        _error ??= 'The sync server did not return a link code. Try again later.';
+        // `??=`, so _attempt's specific reason (unreachable, rejected, 404)
+        // outranks this generic one — it cannot be stale, since a usable
+        // answer clears _error.
+        _error ??= t.switchAccounts.noLinkCode;
       }
     });
   }
@@ -727,18 +820,22 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
           context.t.switchAccounts.qrPrompt,
         ),
         const SizedBox(height: Space.xl),
-        Center(
-          child: url == null
-              ? const Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator())
-              // White quiet zone regardless of theme so cameras can read it.
-              : Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(Space.lg),
-                  // Keyed by payload so a regenerated challenge (expiry)
-                  // replaces, not just repaints, the QR widget.
-                  child: QrImageView(key: ValueKey(url), data: url, size: 200),
-                ),
-        ),
+        // The spinner belongs to the request, not to the absence of a code:
+        // gated on _qrUrl alone it spins forever after a failed one, saying
+        // "loading" over an error message that says the opposite.
+        if (url != null || _busy)
+          Center(
+            child: url == null
+                ? const Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator())
+                // White quiet zone regardless of theme so cameras can read it.
+                : Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(Space.lg),
+                    // Keyed by payload so a regenerated challenge (expiry)
+                    // replaces, not just repaints, the QR widget.
+                    child: QrImageView(key: ValueKey(url), data: url, size: 200),
+                  ),
+          ),
         if (url != null) ...[const SizedBox(height: Space.xl), Center(child: Text(context.t.switchAccounts.waitingForConfirmation))],
         ..._errorAndBusy(context),
       ],

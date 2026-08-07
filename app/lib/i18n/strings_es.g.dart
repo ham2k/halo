@@ -739,6 +739,13 @@ class _Translations$switchAccounts$es extends Translations$switchAccounts$en {
 	@override String get resendEmail => 'Reenviar email';
 	@override String get qrPrompt => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.';
 	@override String get serverUnreachable => 'No se pudo contactar el servidor de sincronización. Inténtalo más tarde.';
+	@override String get emailRequired => 'Escribe una dirección de email para vincular.';
+	@override String noAccountForEmail({required Object email}) => 'No se encontró ninguna cuenta para ${email}.';
+	@override String serverRejected({required Object error}) => 'El servidor de sincronización rechazó la solicitud: ${error}';
+	@override String get noLinkCode => 'El servidor de sincronización no devolvió un código de vinculación. Inténtalo más tarde.';
+	@override String get noConfirmationCode => 'El servidor de sincronización no envió un código de confirmación. Inténtalo más tarde.';
+	@override String get switchNotAccepted => 'Esa cuenta no aceptó el cambio. Prueba a vincularla con una dirección de email.';
+	@override String get requestFailed => 'Algo salió mal al contactar el servidor de sincronización. Inténtalo más tarde.';
 	@override String qsoCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} QSO',
 		other: '${count} QSOs',
@@ -2690,6 +2697,13 @@ extension on TranslationsEs {
 			'switchAccounts.resendEmail' => 'Reenviar email',
 			'switchAccounts.qrPrompt' => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.',
 			'switchAccounts.serverUnreachable' => 'No se pudo contactar el servidor de sincronización. Inténtalo más tarde.',
+			'switchAccounts.emailRequired' => 'Escribe una dirección de email para vincular.',
+			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No se encontró ninguna cuenta para ${email}.',
+			'switchAccounts.serverRejected' => ({required Object error}) => 'El servidor de sincronización rechazó la solicitud: ${error}',
+			'switchAccounts.noLinkCode' => 'El servidor de sincronización no devolvió un código de vinculación. Inténtalo más tarde.',
+			'switchAccounts.noConfirmationCode' => 'El servidor de sincronización no envió un código de confirmación. Inténtalo más tarde.',
+			'switchAccounts.switchNotAccepted' => 'Esa cuenta no aceptó el cambio. Prueba a vincularla con una dirección de email.',
+			'switchAccounts.requestFailed' => 'Algo salió mal al contactar el servidor de sincronización. Inténtalo más tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			'adifImport.title' => 'Importar QSOs desde ADIF',

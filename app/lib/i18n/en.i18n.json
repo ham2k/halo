@@ -1055,6 +1055,13 @@
     "resendEmail": "Resend email",
     "qrPrompt": "Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.",
     "serverUnreachable": "Could not reach the sync server. Try again later.",
+    "emailRequired": "Enter an email address to link.",
+    "noAccountForEmail": "No account found for ${email}.",
+    "serverRejected": "The sync server rejected the request: ${error}",
+    "noLinkCode": "The sync server did not return a link code. Try again later.",
+    "noConfirmationCode": "The sync server did not send a confirmation code. Try again later.",
+    "switchNotAccepted": "That account did not accept the switch. Try linking it with an email address instead.",
+    "requestFailed": "Something went wrong talking to the sync server. Try again later.",
     "qsoCount": {
       "one": "${count} QSO",
       "other": "${count} QSOs"

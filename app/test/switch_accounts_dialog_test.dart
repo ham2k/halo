@@ -16,8 +16,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
 
 Map<String, dynamic> accountData({String uuid = 'acct-1', List<Map<String, dynamic>> others = const []}) => {
       'current_account': {'uuid': uuid, 'call': 'N0CALL', 'email': 'me@example.com'},
@@ -565,6 +568,329 @@ void main() {
     expect(results, [false], reason: 'the first exit decides the answer');
     expect(find.text('stand-in for Settings'), findsOneWidget,
         reason: "the caller's screen must survive a late success");
+  });
+
+  // Failure paths. Everything below is a way this pane can fail to do what
+  // was asked; each one reached the operator as a spinner that stopped, or a
+  // screen waiting on something that was never created, before these existed.
+
+  testWidgets('a host call that throws leaves a message, not a spinner', (tester) async {
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(),
+      // syncLinkClient converts only ExtensionHostException to null; anything
+      // else escapes the await and takes _busy with it.
+      linkClient: (email) async => throw StateError('the host blew up'),
+    );
+
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'friend@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'the throw must be handled, not escape the handler');
+
+    expect(find.text(t.switchAccounts.requestFailed), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing, reason: 'not left spinning');
+    expect(find.text('Link account'), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Link account')).onPressed,
+        isNotNull, reason: 'the operator must be able to try again');
+  });
+
+  testWidgets('three throws in a row are reported; one is not', (tester) async {
+    // The bargain reportIfRepeated exists for: a tunnel is not a defect, a
+    // call that never works is.
+    final backend = FakeErrorReportingBackend();
+    ErrorReportingService.resetFailureStreaks();
+    addTearDown(ErrorReportingService.resetFailureStreaks);
+
+    await withErrorHooks(() async {
+      await pumpDialog(
+        tester,
+        fetchAccountData: () async => accountData(),
+        linkClient: (email) async => throw StateError('the host blew up'),
+      );
+      await tester.tap(find.text('Link with an email address'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'friend@example.com');
+
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        await tester.tap(find.text('Link account'));
+        await tester.pumpAndSettle();
+        tester.takeException();
+        expect(backend.exceptions, hasLength(attempt < 3 ? 0 : 1),
+            reason: 'upload lands on the third failure, not before and not twice');
+      }
+    }, backend: backend);
+  });
+
+  testWidgets('a quick switch the server neither accepts nor challenges says so', (tester) async {
+    // Reachable, no error field, but the permission is neither active nor
+    // carries a challenge — a shape this client has no move for. Without a
+    // message the spinner just stops and the row reads as a dead control.
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(others: [
+        {'uuid': 'acct-2', 'email': 'other@example.com'},
+      ]),
+      linkClient: (email) async => {'permission': {'status': 'revoked'}},
+    );
+
+    await tester.tap(find.text('other@example.com'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.switchAccounts.switchNotAccepted), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('no challenge means no challenge screen', (tester) async {
+    // A null permission still moved to the code view and started polling: an
+    // em dash under "Waiting for confirmation…", waiting on a challenge the
+    // server never made. An empty map is enough to trigger it.
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => const {},
+    );
+
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'friend@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.switchAccounts.noConfirmationCode), findsOneWidget);
+    expect(find.text(t.switchAccounts.waitingForConfirmation), findsNothing,
+        reason: 'nothing is being waited for');
+    expect(find.text('—'), findsNothing, reason: 'no code was ever issued');
+    expect(find.text(t.switchAccounts.emailAddress), findsOneWidget, reason: 'still on the email step');
+  });
+
+  testWidgets('a failed QR request leaves no spinner claiming to load', (tester) async {
+    var attempts = 0;
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async {
+        attempts++;
+        // First attempt unreachable, second works.
+        if (attempts == 1) return null;
+        return {'permission': {'client': 'c1', 'challenge_token': 'TOK'}};
+      },
+    );
+
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+    expect(find.text(t.switchAccounts.serverUnreachable), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing,
+        reason: 'a failed request must not leave a spinner claiming to be loading');
+
+    // Back out and retry: the code now renders, and the red text is gone.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QrImageView), findsOneWidget);
+  });
+
+  testWidgets('a renewal that succeeds clears the failure that came before it', (tester) async {
+    // The renewal path never passes through the taps that reset _error, so
+    // only the shared attempt helper can retire a stale message here. Without
+    // that, a code the operator can actually use sits under red text saying
+    // the server could not be reached.
+    var fakeNow = DateTime.utc(2026, 1, 1, 12, 0, 0);
+    var issued = 0;
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(),
+      now: () => fakeNow,
+      linkClient: (email) async {
+        issued++;
+        // First issues a challenge; the renewal fails; the one after works.
+        if (issued == 2) return null;
+        return {
+          'permission': {
+            'status': 'pending',
+            'challenge_token': issued == 1 ? 'AAA111' : 'CCC333',
+            'challenge_expires_at': fakeNow.add(const Duration(minutes: 10)).toIso8601String(),
+          },
+        };
+      },
+    );
+
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'friend@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+    expect(find.text('AAA111'), findsOneWidget);
+
+    // Expire it: the renewal tick fails, and says so.
+    fakeNow = fakeNow.add(const Duration(minutes: 11));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.text(t.switchAccounts.serverUnreachable), findsOneWidget);
+
+    // The next tick renews successfully — the new code appears and the
+    // stale failure goes with it.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.text('CCC333'), findsOneWidget);
+    expect(find.text(t.switchAccounts.serverUnreachable), findsNothing);
+  });
+
+  testWidgets('the fetch on mount fails quietly — nobody asked for it', (tester) async {
+    // The onboarding step embeds this pane with hideAccountsList, so it never
+    // shows account data and both linking flows work without it. Painting
+    // "could not reach the server" there greets the operator with a failure
+    // for something they did not ask for and does not need.
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: SwitchAccountsPane(
+              // What syncAccountData returns when there is no host.
+              fetchAccountData: () async => null,
+              linkClient: (email) async => const {},
+              linkClientWithEmail: (email) async => const {},
+              hideAccountsList: true,
+              cancelLabel: 'Back',
+              onCancel: () {},
+              onLinked: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.switchAccounts.serverUnreachable), findsNothing);
+    expect(find.text('Link with a QR code'), findsOneWidget, reason: 'the step is usable regardless');
+  });
+
+  testWidgets('a poll-driven renewal never builds the streak a person owns', (tester) async {
+    // The streak separates "the world is unreliable" from "this is broken",
+    // and only somebody pressing a button carries that meaning. A renewal
+    // retrying every five seconds would otherwise reach the threshold on its
+    // own, uploading the tunnel case the threshold exists to exclude — and
+    // burning the count so a later real failure can never report.
+    final backend = FakeErrorReportingBackend();
+    ErrorReportingService.resetFailureStreaks();
+    addTearDown(ErrorReportingService.resetFailureStreaks);
+
+    await withErrorHooks(() async {
+      var fakeNow = DateTime.utc(2026, 1, 1, 12, 0, 0);
+      var issued = 0;
+      await pumpDialog(
+        tester,
+        fetchAccountData: () async => accountData(),
+        now: () => fakeNow,
+        linkClient: (email) async {
+          issued++;
+          if (issued == 1) {
+            return {
+              'permission': {
+                'status': 'pending',
+                'challenge_token': 'AAA111',
+                'challenge_expires_at': fakeNow.add(const Duration(minutes: 10)).toIso8601String(),
+              },
+            };
+          }
+          throw StateError('renewal keeps failing');
+        },
+      );
+
+      await tester.tap(find.text('Link with an email address'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'friend@example.com');
+      await tester.tap(find.text('Link account'));
+      await tester.pumpAndSettle();
+      expect(find.text('AAA111'), findsOneWidget);
+
+      // Expire it and let several renewal ticks fail in a row.
+      fakeNow = fakeNow.add(const Duration(minutes: 11));
+      for (var tick = 0; tick < 4; tick++) {
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+        tester.takeException();
+      }
+
+      expect(issued, greaterThan(3), reason: 'the renewals really did run and fail');
+      expect(backend.exceptions, isEmpty, reason: 'a timer pressing the button is not a person doing it');
+    }, backend: backend);
+  });
+
+  testWidgets('a rejection between throws breaks the streak', (tester) async {
+    // "Failed three times in a row" has to be true. A server that ANSWERS —
+    // even to say no — proves the call itself works, so it ends the run.
+    final backend = FakeErrorReportingBackend();
+    ErrorReportingService.resetFailureStreaks();
+    addTearDown(ErrorReportingService.resetFailureStreaks);
+
+    await withErrorHooks(() async {
+      var call = 0;
+      await pumpDialog(
+        tester,
+        fetchAccountData: () async => accountData(),
+        linkClient: (email) async {
+          call++;
+          if (call == 3) return {'error': 'nope', 'error_status': 400};
+          throw StateError('boom');
+        },
+      );
+      await tester.tap(find.text('Link with an email address'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'friend@example.com');
+
+      // throw, throw, rejection, throw — never three throws running.
+      for (var i = 1; i <= 4; i++) {
+        await tester.tap(find.text('Link account'));
+        await tester.pumpAndSettle();
+        tester.takeException();
+      }
+      expect(backend.exceptions, isEmpty);
+    }, backend: backend);
+  });
+
+  testWidgets('submitting an empty address says so, from the button and from Go', (tester) async {
+    // The guard returned in silence, so whichever control they pressed did
+    // nothing at all — and it returned BEFORE the _error reset, leaving the
+    // previous attempt's message on screen saying something else entirely.
+    var calls = 0;
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async {
+        calls++;
+        return null; // unreachable, so the first attempt leaves a message
+      },
+    );
+
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+
+    // Land a different message first, so silence would be visibly wrong.
+    await tester.enterText(find.byType(TextField), 'friend@example.com');
+    await tester.tap(find.text(t.switchAccounts.linkAccount));
+    await tester.pumpAndSettle();
+    expect(find.text(t.switchAccounts.serverUnreachable), findsOneWidget);
+
+    // Now empty it and press the button.
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.tap(find.text(t.switchAccounts.linkAccount));
+    await tester.pumpAndSettle();
+    expect(find.text(t.switchAccounts.emailRequired), findsOneWidget);
+    expect(find.text(t.switchAccounts.serverUnreachable), findsNothing,
+        reason: 'the stale message must not outlive the attempt it described');
+    expect(calls, 1, reason: 'an empty field makes no request');
+
+    // The soft keyboard's Go key reaches _submitEmail without the button.
+    await tester.enterText(find.byType(TextField), '');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text(t.switchAccounts.emailRequired), findsOneWidget);
+    expect(calls, 1);
   });
 
   testWidgets('the shipped dialog refuses a tap outside', (tester) async {
