@@ -16,7 +16,9 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +27,14 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final lookups = LookupRepository(db);
-    final extensions = ExtensionService()..lookups = lookups;
+    // SOTA is not in the default set — only POTA is — so the runtime has to
+    // be asked for it before its account hook is there to answer.
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.setExtensionOverrides({'sota': true});
+    final extensions = ExtensionService()
+      ..lookups = lookups
+      ..settings = settings;
     await extensions.start();
 
     final accounts = await extensions.getAccounts();

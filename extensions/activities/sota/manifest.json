@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "description": "Summit references, spots, and activation logging",
   "category": "activity",
-  "enabledByDefault": true,
+  "enabledByDefault": false,
   "icon": "image-filter-hdr",
   "accentColor": "#6295BF",
   "keywords": [
