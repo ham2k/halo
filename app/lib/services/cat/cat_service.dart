@@ -36,7 +36,7 @@ const _storageVersion = 1;
 /// Bands where SSB voice conventionally sits on the lower sideband.
 /// Everything else is upper — including 60 m, which is channelized USB by
 /// international agreement despite being below 10 MHz.
-const _lsbBands = {'160m', '80m', '40m'};
+const _lsbBands = {'2190m', '630m', '560m', '160m', '80m', '40m'};
 
 /// How long a connected radio may say NOTHING before the row stops
 /// presenting its last reading as current.

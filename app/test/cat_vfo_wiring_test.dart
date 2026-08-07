@@ -343,6 +343,23 @@ void main() {
       expect(session().commands, contains('mode:USB'));
     });
 
+    test('the MF/LF bands below 160m are lower sideband', () async {
+      await connectedRadio();
+      radio.setVfo('vfoA', freq: 475, mode: 'SSB');
+      await pumpEventQueue();
+      expect(session().commands, contains('mode:LSB'));
+
+      // Detour through a USB band: mode commands only go out on change, so
+      // jumping straight from 630m to 2190m would send nothing.
+      radio.setVfo('vfoA', freq: 14200, mode: 'SSB');
+      await pumpEventQueue();
+
+      session().commands.clear();
+      radio.setVfo('vfoA', freq: 136, mode: 'SSB');
+      await pumpEventQueue();
+      expect(session().commands, contains('mode:LSB'));
+    });
+
     test('a configured but disconnected radio is written to when it connects, not before', () async {
       final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
