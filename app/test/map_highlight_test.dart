@@ -4,12 +4,14 @@
 // The map highlights the QSO currently in the logging panel: a marker and a
 // great-circle line drawn on top of everything else, in the panel's accent
 // colour — orange while composing a new QSO, blue while editing one. This
-// covers the colour/location logic; the on-top layering is per-backend and
-// verified on-device.
+// covers the colour/location logic, plus the one part of the layering a Dart
+// test can reach: the order the GL script builds its layers in. The rest is
+// per-backend and verified on-device.
 
 import 'package:flutter/material.dart' show Color, HSLColor;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart' show CallInfoData;
+import 'package:ham2k_logger/views/map/map_gl_script.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
 
@@ -59,6 +61,26 @@ void main() {
     final result = build(CallInfoData(call: 'W1AW', guess: {'grid': 'FN31pr'}), grid: null);
     expect(result.markers, hasLength(1));
     expect(result.lines, isEmpty);
+  });
+
+  // The GL backends paint in layer-creation order, and there is nothing in the
+  // script itself that would fail if that order were disturbed — the symptom is
+  // a line quietly passing under a dot, on web and desktop only. Whether the
+  // pixels actually land that way is checked in a browser, not here.
+  test('the GL script creates the base marker layer before the highlight line', () {
+    final added = RegExp(r"ensureLayer\(\w+\('([\w-]+)'")
+        .allMatches(mapGlScript)
+        .map((match) => match.group(1))
+        .toList();
+
+    expect(added, ['polo-lines', 'polo-markers', 'polo-lines-highlight', 'polo-markers-highlight'],
+        reason: "the current QSO's line has to come after the base markers, or it passes under their dots");
+  });
+
+  // A mapboxgl.Marker is a DOM element above the canvas, which no layer can
+  // paint over — reaching for one again would undo the layering above.
+  test('the GL script draws markers in the canvas, not as DOM overlays', () {
+    expect(mapGlScript, isNot(contains('new mapboxgl.Marker')));
   });
 
   test('mapHighlightColor brightens a muted hue without shifting it', () {

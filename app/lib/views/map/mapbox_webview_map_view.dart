@@ -17,8 +17,10 @@
 // building this view without one, on a machine that can't create it, leaves
 // a permanently blank pane instead of routing to the OSM backend.
 //
-// QSOs are band-colored circle divs, the QTH a black one, connected by
-// great-circle lines in a GeoJSON layer (pre-densified by the facade).
+// QSOs are band-colored circles, the QTH a black one, connected by
+// great-circle lines — all GL layers over two GeoJSON sources (the lines
+// pre-densified by the facade), so that the current QSO's line can paint over
+// the other stations' circles.
 // Clicking a circle opens a mapboxgl.Popup with the QSO's details, styled
 // to match the Flutter backends' MapPopupCard.
 

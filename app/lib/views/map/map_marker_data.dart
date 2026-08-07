@@ -25,7 +25,8 @@ class MapMarkerData {
   final double latitude;
   final double longitude;
 
-  /// Callsign, or the grid for a QTH marker — tooltip/accessibility text.
+  /// Callsign, or the grid for a QTH marker — the popup's title when the
+  /// facade left [popupTitle] empty.
   final String label;
   final MapMarkerKind kind;
 
@@ -106,8 +107,8 @@ class MapLineData {
   final Color color;
 
   /// The current QSO's great-circle line — drawn last in a top layer so it
-  /// paints over the other lines (and, on the native/OSM backends, over the
-  /// markers too). See map_panel.dart's highlight build.
+  /// paints over every other line AND marker. See map_panel.dart's highlight
+  /// build.
   final bool highlight;
 
   const MapLineData({required this.id, required this.points, required this.color, this.highlight = false});
