@@ -59,7 +59,17 @@ enum _OnboardingStep {
   consent,
 }
 
-class OnboardingOverlayView extends StatefulWidget {
+/// Pins the light theme, and does nothing else.
+///
+/// The pin is HERE, above the content's own State, rather than inside it —
+/// and that placement is the guarantee, not a style choice. A State whose
+/// `build` creates the pin has a `context` that is an ANCESTOR of it, so
+/// every method on that class resolves the app's ambient brightness instead:
+/// in dark mode, dark-mode colors painted onto this deliberately white band,
+/// silently, with the light-mode case still perfectly correct. Splitting the
+/// pin out means the content's `State.context` sits BELOW it and there is no
+/// wrong context left in scope to reach for.
+class OnboardingOverlayView extends StatelessWidget {
   final HaLoServices services;
 
   /// The release entry providing the background photo — the same imagery
@@ -71,10 +81,29 @@ class OnboardingOverlayView extends StatefulWidget {
   const OnboardingOverlayView({super.key, required this.services, required this.release, required this.onDone});
 
   @override
-  State<OnboardingOverlayView> createState() => _OnboardingOverlayViewState();
+  Widget build(BuildContext context) {
+    // Theme.of BELOW this wrapper, never a bare buildHaLoTheme() read: only
+    // Theme.of resolves text geometry (release_overlay.dart documents the
+    // null-fontSize trap).
+    return Theme(
+      data: buildHaLoTheme(Brightness.light),
+      child: _OnboardingContent(services: services, release: release, onDone: onDone),
+    );
+  }
 }
 
-class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
+class _OnboardingContent extends StatefulWidget {
+  final HaLoServices services;
+  final ReleaseNotesEntry? release;
+  final VoidCallback onDone;
+
+  const _OnboardingContent({required this.services, required this.release, required this.onDone});
+
+  @override
+  State<_OnboardingContent> createState() => _OnboardingContentState();
+}
+
+class _OnboardingContentState extends State<_OnboardingContent> {
   var _step = _OnboardingStep.welcome;
 
   /// Whether the last step change moved forward — steers the slide
@@ -326,18 +355,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   Widget build(BuildContext context) {
     // The whole overlay resolves against the light theme regardless of the
     // app's mode: the panel palette is fixed (see header comment), and any
-    // control left reading the ambient theme paints dark-mode colors onto
-    // the white band — a #40484C Skip chip under teal text, a pale TextField
-    // label. Theme.of BELOW this wrapper, never a bare buildHaLoTheme()
-    // read: only Theme.of resolves text geometry (release_overlay.dart
-    // documents the null-fontSize trap).
-    return Theme(
-      data: buildHaLoTheme(Brightness.light),
-      child: Builder(builder: _buildOverlay),
-    );
-  }
-
-  Widget _buildOverlay(BuildContext context) {
+    // control left reading the ambient theme paints dark-mode colors onto the
+    // white band — a #40484C Skip chip under teal text, a pale TextField
+    // label. [OnboardingOverlayView] pins that theme above this State, so
+    // `State.context` — which is this parameter, the same element — already
+    // resolves it. The context that would NOT is the wrapper's own, and that
+    // one is not in scope anywhere on this class.
     final theme = Theme.of(context);
     final versionLabelStyle = overlayVersionLabelStyle(theme);
     final creditsStyle = overlayCreditsStyle(theme);
@@ -465,10 +488,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                                     child: child,
                                   );
                                 },
-                                child: KeyedSubtree(
-                                  key: ValueKey(_step),
-                                  child: _buildStep(context, theme, isHeightConstrained),
-                                ),
+                                child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(theme, isHeightConstrained)),
                               ),
                             ),
                           ),
@@ -486,11 +506,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     );
   }
 
-  /// [context] must come from BELOW the light Theme `build` pins — the state's
-  /// own context is an ancestor of that pin, so anything resolving against it
-  /// reads the app's ambient brightness and paints dark-mode colors onto this
-  /// white band.
-  Widget _buildStep(BuildContext context, ThemeData theme, bool isHeightConstrained) {
+  Widget _buildStep(ThemeData theme, bool isHeightConstrained) {
     final s = context.t.onboarding;
     final titleStyle = theme.textTheme.titleLarge?.copyWith(
       fontFamily: 'RobotoSlab',
@@ -539,8 +555,9 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                   border: callsignBorder,
                   // Black whatever the app's brightness, like every other
                   // focus cue in this flow — including the SwitchAccountsPane
-                  // field a later step embeds. That depends entirely on
-                  // [context] being the one _buildStep documents.
+                  // field a later step embeds. This State sits below the pin
+                  // (see [OnboardingOverlayView]), so its context resolves the
+                  // light theme even when the app is dark.
                   focusedBorder: haloFocusedBorder(callsignBorder, context),
                 ),
                 onSubmitted: (_) => _nextFromCallsign(),

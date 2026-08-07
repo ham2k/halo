@@ -207,6 +207,11 @@ void main() {
     // Without the light-theme pin the panel keeps its white band and black
     // text but its controls resolve dark-mode colors — the Skip chip paints
     // the dark surfaceContainerHighest under teal text.
+    //
+    // This asserts the pin EXISTS, and only that. It cannot tell whether the
+    // overlay actually resolved through it: every context in the tree is
+    // below the pin, so this reads light either way. The callsign-field test
+    // below is what covers the resolution.
     final ambient = Theme.of(tester.element(find.text('Skip')));
     expect(ambient.brightness, Brightness.light);
     await drainTimers(tester);

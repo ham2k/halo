@@ -208,20 +208,40 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
     // light theme — same pin as ReleaseOverlayView: anything not explicitly
     // forced below (markdown styles beyond p/listBullet/strong, scrollbars,
     // ink) would otherwise paint dark-mode colors onto the white band.
+    //
+    // Content in its own widget below the pin, same rule as
+    // [OnboardingOverlayView], which documents why: nothing on a class that
+    // pins a theme may read one.
     return Focus(
       focusNode: _focusNode,
       onKeyEvent: _onKeyEvent,
       child: Theme(
         data: buildHaLoTheme(Brightness.light),
-        child: Builder(builder: _buildPanel),
+        child: _TesterPanel(
+          entries: widget.entries,
+          release: widget.release,
+          onDismiss: widget.onDismiss,
+        ),
       ),
     );
   }
+}
 
-  Widget _buildPanel(BuildContext context) {
-    final entries = widget.entries;
-    final release = widget.release;
-    final onDismiss = widget.onDismiss;
+/// The overlay's content, built BELOW the light-theme pin — see
+/// [_TesterOverlayViewState.build] for why this is a widget and not a method.
+class _TesterPanel extends StatelessWidget {
+  final List<TesterNotesEntry> entries;
+  final ReleaseNotesEntry? release;
+  final VoidCallback onDismiss;
+
+  const _TesterPanel({required this.entries, required this.release, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    // A local, so the null check below promotes it — a PUBLIC field never
+    // does. (Dart promotes private final fields; this one can't be private,
+    // it's a constructor parameter of a widget.)
+    final release = this.release;
     // Theme.of below the pin, never a bare `buildHaLoTheme()` read — a
     // standalone ThemeData isn't fully resolved the way a Theme threaded
     // through the widget tree is (its textTheme font sizes come back null,

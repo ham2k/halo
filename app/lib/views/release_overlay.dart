@@ -143,14 +143,39 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
     // pinned to the light theme — anything not explicitly forced below
     // (markdown styles beyond p/listBullet/strong, scrollbars, ink) would
     // otherwise paint dark-mode colors onto the white band.
+    //
+    // Content in its own widget below the pin, same rule as
+    // [OnboardingOverlayView], which documents why: nothing on a class that
+    // pins a theme may read one.
     return Theme(
       data: buildHaLoTheme(Brightness.light),
-      child: Builder(builder: _buildOverlay),
+      child: _ReleaseOverlayContent(
+        release: widget.release,
+        onDismiss: widget.onDismiss,
+        expanded: _expanded,
+        onToggleExpanded: _toggleExpanded,
+      ),
     );
   }
+}
 
-  Widget _buildOverlay(BuildContext context) {
-    final release = widget.release;
+/// The overlay's content, built BELOW the light-theme pin — see
+/// [_ReleaseOverlayViewState.build] for why this is a widget and not a method.
+class _ReleaseOverlayContent extends StatelessWidget {
+  final ReleaseNotesEntry release;
+  final VoidCallback onDismiss;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+
+  const _ReleaseOverlayContent({
+    required this.release,
+    required this.onDismiss,
+    required this.expanded,
+    required this.onToggleExpanded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     // Theme.of below the pin, never a bare `buildHaLoTheme()` read — a
     // standalone ThemeData isn't fully resolved the way a Theme threaded
     // through the widget tree is (its textTheme font sizes come back null,
@@ -192,8 +217,8 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
           // the desktop modal presentation, where this widget is confined to
           // a pane-sized box smaller than the window (see main.dart).
           final totalHeight = constraints.maxHeight;
-          final bandHeight = totalHeight * (_expanded ? _bandHeightFactorExpanded : _bandHeightFactorCollapsed);
-          final bandOpacity = _expanded ? _bandOpacityExpanded : _bandOpacityCollapsed;
+          final bandHeight = totalHeight * (expanded ? _bandHeightFactorExpanded : _bandHeightFactorCollapsed);
+          final bandOpacity = expanded ? _bandOpacityExpanded : _bandOpacityCollapsed;
 
           // Tapping anywhere in the view dismisses it, EXCEPT the notes text
           // (its own GestureDetector below toggles expand/collapse instead)
@@ -204,7 +229,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
           // triggering it.
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: widget.onDismiss,
+            onTap: onDismiss,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -240,7 +265,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                 // layers). Tapping the notes area (not the Continue button)
                 // toggles between a short, non-scrollable preview and an
                 // expanded, scrollable view; the band's height/opacity and the
-                // caption's fade-out both animate off of `_expanded`.
+                // caption's fade-out both animate off of `expanded`.
                 Positioned(
                   left: 0,
                   right: 0,
@@ -255,7 +280,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                           child: AnimatedOpacity(
                             duration: _bandAnimationDuration,
                             curve: Curves.easeInOut,
-                            opacity: _expanded ? 0 : 1,
+                            opacity: expanded ? 0 : 1,
                             child: Text(
                               release.photoCaption,
                               textAlign: TextAlign.center,
@@ -281,9 +306,9 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                                 Expanded(
                                   child: GestureDetector(
                                     behavior: HitTestBehavior.opaque,
-                                    onTap: _toggleExpanded,
+                                    onTap: onToggleExpanded,
                                     child: ClipRect(
-                                      child: _expanded
+                                      child: expanded
                                           ? SingleChildScrollView(
                                               child: MarkdownBody(data: notesMarkdown, styleSheet: notesStyleSheet),
                                             )
@@ -326,7 +351,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                                 const SizedBox(height: Space.md),
                                 Align(
                                   alignment: Alignment.centerRight,
-                                  child: FilledButton(onPressed: widget.onDismiss, child: Text(context.t.onboarding.kContinue)),
+                                  child: FilledButton(onPressed: onDismiss, child: Text(context.t.onboarding.kContinue)),
                                 ),
                               ],
                             ),
@@ -488,14 +513,24 @@ class _PhotoWordmarkContent extends StatelessWidget {
   Widget build(BuildContext context) {
     // Pinned to the light theme like ReleaseOverlayView above — everything
     // here is forced white today, but the pin keeps any future addition on
-    // the fixed palette too.
+    // the fixed palette too. Content in its own widget below the pin, same
+    // rule as [OnboardingOverlayView].
     return Theme(
       data: buildHaLoTheme(Brightness.light),
-      child: Builder(builder: _buildContent),
+      child: _PhotoWordmarkBody(release: release, onDismiss: onDismiss),
     );
   }
+}
 
-  Widget _buildContent(BuildContext context) {
+/// Built BELOW [_PhotoWordmarkContent]'s pin, so its context is the pinned one.
+class _PhotoWordmarkBody extends StatelessWidget {
+  final ReleaseNotesEntry? release;
+  final VoidCallback onDismiss;
+
+  const _PhotoWordmarkBody({required this.release, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
     // Same sizing math as ReleaseOverlayView above, so the brand mark,
     // credits, release name, and caption all read at the same relative
     // scale here as they do on the startup overlay.

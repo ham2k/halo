@@ -42,6 +42,33 @@ Two distinct things are both loosely called "the splash" — keep them separate:
   the release name. Shown for release notes and when tapping the About-screen
   logo — never at startup.
 
+### Overlays that pin their own palette
+
+The onboarding, release and tester overlays sit over a photo rather than the
+app chrome, so their panel colours are fixed regardless of the app's light/dark
+mode: each pins its subtree to `buildHaLoTheme(Brightness.light)`. Anything not
+explicitly forced (markdown styles, scrollbars, button ink, a field's focus
+border) would otherwise paint dark-mode colours onto the white band.
+
+**The pin must sit ABOVE the class that reads the theme — never inside it.**
+A class whose `build` creates the pin has a `context` that is an *ancestor* of
+it, so anything on that class resolving a theme reads the app's ambient
+brightness instead. That failure is invisible in every way that usually catches
+one: nothing throws, nothing logs, and in light mode the wrong code and the
+right code are indistinguishable.
+
+The rule this leaves is checkable by reading a file: **no class both pins a
+theme and reads one.** Give the content its own widget below the pin.
+
+That rule is enforced by reading, not by a test — no widget test distinguishes
+a method that takes a `BuildContext` parameter from one that falls back to
+`State.context`, because the correct shape and the broken one build the same
+tree. What tests *can* cover is the resolution, and there the trap repeats:
+asserting `Theme.of` at a widget in the tree proves only that the pin exists,
+since every context in the tree is below it either way. A test that can fail
+has to assert a value a build method **resolved**, with the app theme dark —
+`onboarding_test.dart`'s "the callsign field still focuses DARK" is the model.
+
 ## Main views
 
 The app has three main views:

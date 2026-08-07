@@ -2233,8 +2233,9 @@ class _OnboardingGateState extends State<_OnboardingGate> {
       // Always full screen — see this class's doc comment — so no
       // wideModalChrome wrap on wide layouts, unlike the release overlay.
       final view = OnboardingOverlayView(
-        // A fresh State per showing (matters for DEVONBOARD re-shows —
-        // step position and toggles reset).
+        // Re-inflates the whole subtree per showing, so the content's State is
+        // fresh (matters for DEVONBOARD re-shows — step position and toggles
+        // reset). This widget holds no state of its own.
         key: ValueKey('onboarding-$_firstRun-$_pending'),
         services: widget.services,
         release: _release,
