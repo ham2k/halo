@@ -140,16 +140,21 @@ void main() {
   /// always finds another frame scheduled and runs to its timeout.
   Future<void> settle(WidgetTester tester) async {
     var still = 0;
+    var moved = false;
     var last = double.nan;
-    for (var frame = 0; frame < 80; frame++) {
+    for (var frame = 0; frame < 120; frame++) {
       await tester.pump(const Duration(milliseconds: 50));
       final now = offsetOf(tester);
+      if (now != 0) moved = true;
       still = (now - last).abs() < 0.01 ? still + 1 : 0;
       last = now;
-      // The floor matters as much as the stillness: a reveal begins in a
-      // post-frame callback that can wait several frames before it runs, and
-      // without the floor that wait reads as "nothing is going to move".
-      if (frame >= 20 && still >= 6) return;
+      // A list still at rest says nothing about whether a scroll is coming: the
+      // reveal is several post-frame hops deep (arriving on screen, then the
+      // row-height calibration, then the arm), and how many frames those take
+      // is not fixed. Stillness only ends the wait once something has actually
+      // moved; a test expecting no movement spends the whole budget, which is
+      // the only honest way to conclude nothing was going to happen.
+      if (moved && still >= 6) return;
     }
   }
 
@@ -399,7 +404,9 @@ void main() {
       await tester.pump();
       await settle(tester);
 
-      expect(offsetOf(tester), greaterThan(0));
+      expect(offsetOf(tester), greaterThan(0),
+          reason: 'the reveal owed from while it was hidden never ran; K0050 built: '
+              '${find.text('K0050').evaluate().isNotEmpty}');
       expect(find.text('K0050'), findsOneWidget);
     });
 
