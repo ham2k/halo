@@ -110,7 +110,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
   /// transition's direction (forward: new step enters from the right).
   var _movedForward = true;
   final _callsignController = TextEditingController();
-  final _callsignKey = GlobalKey();
 
   /// Navigation is ignored while a slide is in flight: reversing
   /// mid-transition would give AnimatedSwitcher an outgoing entry with the
@@ -537,7 +536,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
         return _stepScaffold(
           title: Text(s.callsignTitle, style: titleStyle),
           body: Column(
-            key: _callsignKey,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(s.callsignBody, style: bodyStyle),
