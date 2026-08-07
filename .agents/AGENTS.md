@@ -62,11 +62,13 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 ## Tooling
 
 - **Verify with `./scripts/test.sh`** (or `mise run test`) before saying tests
-  pass or merging — it is what CI runs. Per-package `flutter test` is right
-  for a fast inner loop but is NOT the gate: it skips the extensions'
-  `npm run typecheck`, skips `halo_build_tools`, and skips rebuilding the
-  extension bundles that the Dart integration tests load, so stale bundles pass
-  silently. `--quick` for analyze+typecheck only. See DEVELOPMENT.md.
+  pass or merging — it is what CI runs. For the inner loop, run **subsets**
+  through the same script: `./scripts/test.sh <group>...` (see `--list`) or
+  `./scripts/test.sh --changed` — it keeps the extension bundles fresh (the
+  stale-bundle trap raw `flutter test` falls into) while skipping
+  npm ci / pub get / analyze. Subset runs are NOT the gate: no analyze, no
+  extensions typecheck, no dependent packages, no browser step — the full
+  no-arg run is still required before merging. `--quick` for analyze+typecheck only. See DEVELOPMENT.md.
 
 - On the development environment, we use `mise` to manage dependencies and tool versions.
 

@@ -130,6 +130,24 @@ which mirrors CI: it typechecks + tests the extensions, **rebuilds the bundles**
 (Dart integration tests load them), copies the mapbox token template if missing,
 then runs `flutter analyze` + `flutter test` for every package and the app.
 
+For the inner loop, the same script runs **subsets** — it handles the
+stale-bundle problem itself (rebuilding only when `extensions/` is newer than
+the built bundles) and skips `npm ci` / `pub get` / `analyze`:
+
+```sh
+./scripts/test.sh --list            # see the groups (packages + app/test subsets)
+./scripts/test.sh spots logging     # named groups; app groups combine into one run
+./scripts/test.sh widgets           # a whole package
+./scripts/test.sh --changed         # derive the subset from the diff vs origin/main
+```
+
+`--changed` maps changed package paths to their package, and `app/lib` files to
+test files sharing their name prefix; what it can't scope (helpers, pubspecs,
+assets) widens to the whole app suite, and build/CI infrastructure changes get
+a loud "run the full gate". Subset runs are a convenience, **not** the gate:
+they skip analyze, dependent packages, and the browser-platform step. The full
+`./scripts/test.sh` is still what counts before a merge.
+
 Run pieces directly while iterating:
 
 ```sh
@@ -140,7 +158,7 @@ cd extensions && npm run typecheck && npm test
 
 If you run Dart tests directly, `npm run build` the extensions first — the
 gitignored bundles are loaded by the extension-host tests, so stale bundles give
-misleading results. Prefer `scripts/test.sh` when in doubt.
+misleading results. Prefer `scripts/test.sh` (full or subset) when in doubt.
 
 ---
 

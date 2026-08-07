@@ -30,7 +30,7 @@ bundle = {
 }
 test = {
   run = "./scripts/test.sh",
-  description = "Typecheck + test extensions, rebuild bundles, then analyze + test every Dart package"
+  description = "Full gate: typecheck + test extensions, rebuild bundles, analyze + test every Dart package. Subsets: `mise run test -- --list | --changed | <group>...`"
 }
 android = {
   run = "cd app && flutter run -d android",
