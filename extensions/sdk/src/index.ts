@@ -36,6 +36,8 @@ export * from "./activityExports"
 export * from "./activityAdifImport"
 export * from "./exportNames"
 export * from "./referenceActivity"
+export * from "./templates"
+export * from "./templateContext"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

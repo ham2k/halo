@@ -42,6 +42,7 @@ import * as libQsonAdif from "@ham2k/lib-qson-adif"
 import * as libQsonCabrillo from "@ham2k/lib-qson-cabrillo"
 import * as libQsonTools from "@ham2k/lib-qson-tools"
 import i18next from "i18next"
+import * as liquidjs from "liquidjs"
 
 declare const __SHARED_VERSIONS__: Record<string, string>
 
@@ -57,6 +58,9 @@ const sharedModules: Record<string, any> = {
   "@ham2k/lib-qson-cabrillo": libQsonCabrillo,
   "@ham2k/lib-qson-tools": libQsonTools,
   "i18next": i18next,
+  // The template engine every extension reaches through sdk/src/templates.ts
+  // — one copy here rather than 80 KB in each bundle that renders text.
+  "liquidjs": liquidjs,
 }
 
 declare function sendMessage(channel: string, message: string): void

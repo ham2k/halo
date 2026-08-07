@@ -18,7 +18,8 @@
     "@ham2k/lib-qson-adif": "^1.1.0",
     "@ham2k/lib-qson-cabrillo": "^1.1.0",
     "@ham2k/lib-qson-tools": "^1.4.1",
-    "i18next": "^23.11.5"
+    "i18next": "^23.11.5",
+    "liquidjs": "^10.28.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

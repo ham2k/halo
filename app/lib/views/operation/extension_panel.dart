@@ -12,6 +12,12 @@
 // the dock publishes through DockPaneVisibility; without that last rule a
 // four-panel layout would keep paying for the three panels nobody is looking
 // at.
+//
+// The budget has two halves: what the panel's DESCRIPTOR declared, paid by
+// every placement of that panel, and what THIS placement's last render asked
+// for (`PanelContent.triggers`). The second exists for panels whose content
+// the operator writes — one custom-text pane naming the callsign being typed
+// must not put the others on the typing path with it.
 
 import 'dart:async';
 
@@ -144,6 +150,18 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
     _startTicker();
   }
 
+  /// Everything this pane re-renders for: the triggers of the definition it
+  /// was built with, plus the ones its own last render declared.
+  ///
+  /// The definition, NOT `panels[id]` — a pane outlives a runtime restart
+  /// and keeps rendering while the catalog has no answer for its id, and
+  /// asking the catalog would silently drop its descriptor's triggers for
+  /// the length of that gap.
+  Set<String> get _triggers => {
+    ...widget.panel.triggers,
+    ...widget.panels.declaredTriggers(widget.panel.id),
+  };
+
   /// The panel's own config was edited (its form is host-persisted, so
   /// nothing else would tell this panel its inputs changed).
   void _onCatalogChanged() {
@@ -178,7 +196,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       }
       return;
     }
-    final fired = widget.renderContext.changesFrom(old.renderContext).intersection(widget.panel.triggers.toSet());
+    final fired = widget.renderContext.changesFrom(old.renderContext).intersection(_triggers);
     if (fired.isEmpty) return;
     // Read fresh, not from `_visible`: this method runs before
     // didChangeDependencies, so a pane hidden in the same pump that fired
@@ -194,7 +212,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
 
   void _startTicker() {
     _tick?.cancel();
-    final seconds = widget.panel.triggers
+    final seconds = _triggers
         .map((t) => t.startsWith('tick:') ? int.tryParse(t.substring(5)) : null)
         .nonNulls
         .fold<int?>(null, (best, s) => best == null ? s : (s < best ? s : best));
@@ -250,7 +268,16 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
         config = const {};
       }
       final result = await widget.panels.render(panel, {
-        'operation': {...ctx.operation.data, 'uuid': ctx.operation.uuid},
+        'operation': {
+          ...ctx.operation.data,
+          'uuid': ctx.operation.uuid,
+          // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
+          // and a panel is the surface that most wants to say when the
+          // operation ran. Without them a template naming the operation's
+          // date has nothing to name (see the SDK's `opValues`).
+          if (ctx.operation.startAtMillisMin != null) 'startAtMillisMin': ctx.operation.startAtMillisMin,
+          if (ctx.operation.startAtMillisMax != null) 'startAtMillisMax': ctx.operation.startAtMillisMax,
+        },
         if (ctx.qso != null) 'qso': ctx.qso,
         'qsoCount': ctx.qsoCount,
         'config': config,
@@ -258,6 +285,12 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       });
       if (!mounted || panel.id != widget.panel.id) return;
       final content = PanelContent.fromJson(result);
+      // Before the content is shown, so the ticker a template just asked for
+      // is running by the time anyone could look at what it rendered. A
+      // render that fails leaves the previous declaration standing: a panel
+      // that throws has said nothing about what it needs, and dropping its
+      // triggers would strand it on the error it just produced.
+      if (content != null && widget.panels.declareTriggers(panel.id, content.triggers)) _startTicker();
       setState(() {
         _content = content;
         _error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
@@ -293,6 +326,26 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
     super.dispose();
   }
 
+  /// Asks again after a failure, by hand.
+  ///
+  /// The only way back for a pane that declares no triggers: nothing else
+  /// would ever ask it, `didUpdateWidget` has an empty set to intersect
+  /// against, and the come-back-to-the-tab path is gated on a trigger having
+  /// fired. Until this existed, a panel whose FIRST render failed — a
+  /// runtime still starting, a bridge timeout — stayed broken for the rest
+  /// of the session, and editing its config was the only cure.
+  ///
+  /// Clears the error, which is all it clears: a pane that rendered once and
+  /// failed later goes back to showing that document while the retry is in
+  /// flight, rather than throwing away the last thing it had to say. Only a
+  /// pane whose first render failed has nothing to fall back to, and that
+  /// one shows the spinner.
+  void _retry() {
+    setState(() => _error = null);
+    _requestRender('retry');
+  }
+
   @override
-  Widget build(BuildContext context) => PanelContentView(content: _content, error: _error);
+  Widget build(BuildContext context) =>
+      PanelContentView(content: _content, error: _error, onRetry: _error == null ? null : _retry);
 }

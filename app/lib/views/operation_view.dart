@@ -457,13 +457,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// so each one is gated on somebody actually having asked for it. A layout
   /// that can't hold an extension panel at all never gets past the first
   /// line.
+  /// Reads the EFFECTIVE triggers, so a signal only one placement asked for
+  /// in its last render — an operator's template naming the callsign being
+  /// typed — starts being produced. `PanelService` notifies when that set
+  /// changes, and [_onPanelCatalogChanged] rebuilds, which is what makes the
+  /// new answer take effect. The first render of such a template necessarily
+  /// happens before it: the panel is answered with no draft, then woken by
+  /// the next change to one.
   bool _anyPanelWants(String trigger) {
     if (!_customLayout) return false;
-    return _dockSpec?.collectModules().any((id) {
-          final panel = widget.services.panels[id];
-          return panel != null && panel.triggers.contains(trigger);
-        }) ??
-        false;
+    return _dockSpec?.collectModules().any((id) => widget.services.panels.triggersFor(id).contains(trigger)) ?? false;
   }
 
   void _onSpotsChanged() {

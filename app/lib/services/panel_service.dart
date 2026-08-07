@@ -386,6 +386,67 @@ class PanelService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// What each PLACEMENT asked for in its last render, on top of what its
+  /// descriptor declared (`PanelContent.triggers`).
+  final _declaredTriggers = <String, List<String>>{};
+
+  /// Records one placement's runtime triggers, and reports whether they
+  /// changed — the caller restarts its ticker on true, and listeners re-read
+  /// [triggersFor] so the view can start producing a signal nobody wanted
+  /// until now (a template that names the QSO being typed).
+  ///
+  /// Unknown names are dropped here, the same way and for the same reason as
+  /// a descriptor's: a trigger the host never fires would leave a panel
+  /// rendered once and silent forever, looking exactly like one that meant
+  /// to be.
+  bool declareTriggers(String id, List<String> triggers) {
+    final accepted = {...triggers.where(isKnownPanelTrigger)};
+    // Compared as a SET, and the rejects are reported only when the answer
+    // changes. This runs on EVERY render — a `tick:5` panel reaches it once
+    // per five seconds, a `qso` one once per keystroke pause — so a line
+    // printed per call would drown the console that is the operator's only
+    // window on error-policy'd failures, and a set that merely arrived in a
+    // different order would restart tickers and rebuild the view for nothing.
+    final previous = _declaredTriggers[id] ?? const <String>[];
+    if (setEquals(previous.toSet(), accepted)) return false;
+    for (final rejected in triggers.toSet().difference(accepted)) {
+      debugPrint('[panels] "$id" rendered an unrecognized trigger ($rejected); it will never fire');
+    }
+    if (accepted.isEmpty) {
+      _declaredTriggers.remove(id);
+    } else {
+      _declaredTriggers[id] = accepted.toList();
+    }
+    notifyListeners();
+    return true;
+  }
+
+  /// What the placement [id]'s own last render asked for.
+  List<String> declaredTriggers(String id) => _declaredTriggers[id] ?? const [];
+
+  /// Everything that re-renders the placement [id]: its descriptor's
+  /// triggers plus the ones its own last render asked for.
+  ///
+  /// For callers that hold only an id. A widget that holds the
+  /// [PanelDefinition] itself must union with THAT rather than with the
+  /// catalog's copy: a pane whose extension is being restarted keeps
+  /// rendering from the definition it was built with, while `this[id]`
+  /// answers null for as long as the runtime is down.
+  ///
+  /// A panel the catalog cannot explain wants NOTHING, whatever it once
+  /// declared. Its pane is showing a placeholder rather than rendering, so
+  /// every signal produced for it is produced for nobody — and the
+  /// expensive one is real: a disabled extension whose pane had asked for
+  /// `qso` would otherwise keep the whole operation view rebuilding the QSO
+  /// draft on every keystroke for the rest of the session. The declaration
+  /// is kept rather than deleted, so re-enabling the extension restores it
+  /// without waiting for a render.
+  Set<String> triggersFor(String id) {
+    final panel = this[id];
+    if (panel == null) return const {};
+    return {...panel.triggers, ..._declaredTriggers[id] ?? const []};
+  }
+
   /// One extension panel's content. Native panels never come through here —
   /// they are widgets, and the view builds them itself.
   Future<Map<String, dynamic>?> render(PanelDefinition panel, Map<String, dynamic> args) {
@@ -409,6 +470,15 @@ class PanelService extends ChangeNotifier {
   /// not that pane's, and an operator who removes the pane and puts it back
   /// expects their setup intact.
   Future<void> forgetInstanceConfig(String id) async {
+    // Ahead of every guard below, because none of their reasoning applies to
+    // this: trigger declarations are runtime state, not the operator's
+    // configuration. An instance id is a slot `nextInstanceId` hands to the
+    // next placement, and a pane added behind a dock tab does not render
+    // until it is looked at — so a static-text pane could otherwise inherit
+    // the previous occupant's `qso` declaration and hold the whole view on
+    // the per-keystroke draft path for the session.
+    _declaredTriggers.remove(id);
+
     final descriptorId = PanelDefinition.descriptorIdOf(id);
     if (descriptorId == id) return;
     // The DESCRIPTOR, not the instance: `this[id]` returns null while the

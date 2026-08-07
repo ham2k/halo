@@ -26,6 +26,7 @@ const sharedPackages = [
   "@ham2k/lib-qson-cabrillo",
   "@ham2k/lib-qson-tools",
   "i18next",
+  "liquidjs",
 ]
 
 // Resolve the versions of all shared libraries installed in local node_modules
@@ -44,7 +45,7 @@ function sharedLibsPlugin(extensionDependencies = {}) {
   return {
     name: 'shared-libs',
     setup(build) {
-      build.onResolve({ filter: /^(@ham2k\/lib-|i18next$)/ }, (args) => {
+      build.onResolve({ filter: /^(@ham2k\/lib-|i18next$|liquidjs$)/ }, (args) => {
         const packageName = args.path
         // NOTE: today every extension shares the workspace-root package.json
         // (there are no per-extension manifests), so `extensionDependencies`
@@ -186,6 +187,14 @@ for (const bundle of bundles) {
       // parse, so bundling it breaks the kernel on Android/Windows/Linux.
       // See shims/camelcase.ts for the ASCII replacement.
       'camelcase': join(root, 'shims/camelcase.ts'),
+      // liquidjs's `main`/`module` are its NODE builds, which import node:fs
+      // and node:path for `{% include %}`'s filesystem loader. Its browser
+      // build is reachable only through the `browser` field, and
+      // `platform: 'neutral'` ignores that field — so without this alias the
+      // kernel fails to bundle. Nothing is lost: filesystem partials have no
+      // meaning in a runtime with no filesystem, so `{% include %}` throws
+      // either way (docs/extensions/templates.md).
+      'liquidjs': join(root, 'node_modules/liquidjs/dist/liquid.browser.mjs'),
     },
     logLevel: 'warning',
     metafile: true,

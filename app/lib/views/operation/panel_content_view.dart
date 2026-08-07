@@ -11,7 +11,7 @@
 // web view. SVG is a vector image, drawn with the app's own painter. HTML is
 // the escape hatch, and it runs under the sandbox below.
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -36,7 +36,20 @@ class PanelContent {
   /// and the operator's own heading is a better label than an ordinal.
   final String? title;
 
-  const PanelContent({required this.kind, required this.content, this.title});
+  /// What THIS placement asks to be re-rendered on, added to whatever its
+  /// descriptor declared (`PanelDefinition.triggers`).
+  ///
+  /// A descriptor's triggers are per panel KIND and so are paid by every
+  /// placement of it; these are per instance. That distinction exists for
+  /// panels whose content is written by the operator: a custom-text pane
+  /// showing a band plan must not put every other custom-text pane on the
+  /// typing path just because one of them names the callsign being entered.
+  ///
+  /// Unknown names are dropped by [PanelService.declareTriggers] — a panel
+  /// cannot invent a signal the host doesn't fire.
+  final List<String> triggers;
+
+  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const []});
 
   static PanelContent? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -47,15 +60,25 @@ class PanelContent {
     // Blank is not a label — a panel that computes its title from empty
     // config would otherwise leave a nameless tab.
     final trimmed = title is String ? title.trim() : '';
-    return PanelContent(kind: kind, content: content, title: trimmed.isEmpty ? null : trimmed);
+    final triggers = json['triggers'];
+    return PanelContent(
+      kind: kind,
+      content: content,
+      title: trimmed.isEmpty ? null : trimmed,
+      triggers: triggers is List ? triggers.whereType<String>().toList() : const [],
+    );
   }
 
   @override
   bool operator ==(Object other) =>
-      other is PanelContent && other.kind == kind && other.content == content && other.title == title;
+      other is PanelContent &&
+      other.kind == kind &&
+      other.content == content &&
+      other.title == title &&
+      listEquals(other.triggers, triggers);
 
   @override
-  int get hashCode => Object.hash(kind, content, title);
+  int get hashCode => Object.hash(kind, content, title, Object.hashAll(triggers));
 }
 
 /// Whether an HTML panel can be shown here at all. Linux has no webview
@@ -87,11 +110,17 @@ class PanelContentView extends StatelessWidget {
   /// and that then says nothing is worse than one that says it broke.
   final String? error;
 
-  const PanelContentView({super.key, required this.content, this.error});
+  /// Asks the panel again. Offered beside [error] because a pane can
+  /// otherwise be stuck for the session: one that declares no triggers has
+  /// nothing that would ever ask on its own, and a failure during a runtime
+  /// restart is exactly the case that would succeed a moment later.
+  final VoidCallback? onRetry;
+
+  const PanelContentView({super.key, required this.content, this.error, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    if (error != null) return _message(context, error!, isError: true);
+    if (error != null) return _message(context, error!, isError: true, onRetry: onRetry);
     final content = this.content;
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
@@ -139,17 +168,26 @@ class PanelContentView extends StatelessWidget {
     }
   }
 
-  Widget _message(BuildContext context, String text, {bool isError = false}) {
+  Widget _message(BuildContext context, String text, {bool isError = false, VoidCallback? onRetry}) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(Space.xl),
       child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isError ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isError ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: Space.md),
+              TextButton(onPressed: onRetry, child: Text(context.t.operation.layout.panelRenderRetry)),
+            ],
+          ],
         ),
       ),
     );

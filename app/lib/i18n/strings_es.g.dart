@@ -851,6 +851,7 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String get resetLayout => 'Restablecer disposición';
 	@override String get done => 'Listo';
 	@override String panelRenderFailed({required Object panel}) => 'No se pudo mostrar ${panel}';
+	@override String get panelRenderRetry => 'Reintentar';
 	@override late final _Translations$operation$layout$panels$es panels = _Translations$operation$layout$panels$es._(_root);
 	@override String get htmlPanelUnsupported => 'Este panel necesita un visor web, que esta plataforma no ofrece';
 }
@@ -1941,6 +1942,7 @@ extension on TranslationsEs {
 			'operation.layout.resetLayout' => 'Restablecer disposición',
 			'operation.layout.done' => 'Listo',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => 'No se pudo mostrar ${panel}',
+			'operation.layout.panelRenderRetry' => 'Reintentar',
 			'operation.layout.panels.loggingDescription' => 'El registro y los campos de entrada',
 			'operation.layout.panels.infoDescription' => 'Lo que sabemos de la estación contactada',
 			'operation.layout.panels.spotsDescription' => 'Spots de los clusters y programas de actividad',
@@ -2353,9 +2355,9 @@ extension on TranslationsEs {
 			'settings.accounts.finishLogin' => 'Terminar inicio de sesión',
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
-			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',

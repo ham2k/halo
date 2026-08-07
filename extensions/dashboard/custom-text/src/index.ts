@@ -12,8 +12,15 @@
 // its own id, and therefore its own config, with nothing to do here. The
 // one obligation this side has is naming them, via the render result's
 // `title`; without it every tab would read "Custom Text".
+//
+// The text is a TEMPLATE (docs/extensions/templates.md), so the same pane
+// can show the log's own numbers, and it is the reference for per-instance
+// triggers for the same reason it is the reference for `multiple`: what one
+// operator's text asks for is not what another's does, and a band plan that
+// never changes must not be re-rendered on every keystroke because the pane
+// beside it names the callsign being typed.
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
+import { TemplateError, defineExtension, renderTemplate, templateContext, triggersForTemplate } from "@ham2k/halo-extension-sdk"
 import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/halo-extension-sdk"
 
 import manifest from "../manifest.json"
@@ -42,10 +49,10 @@ export const CustomTextPanel: PanelHook = {
         // per pane and keys config by it, so nothing here has to know how
         // many exist.
         multiple: true,
-        // No triggers: this panel's content depends on its own config and
-        // nothing else, and the host already re-renders when that changes.
-        // Declaring any would be a bridge call per event for a document
-        // that cannot have changed.
+        // No triggers HERE: a descriptor's are paid by every placement, and
+        // most panes hold static text. What a pane needs depends on what its
+        // operator wrote in it, so each render declares its own
+        // (`PanelContent.triggers`).
         form: [
           {
             type: "field",
@@ -59,25 +66,80 @@ export const CustomTextPanel: PanelHook = {
             key: "content",
             fieldType: "multiline",
             label: "Text",
-            description: "Markdown: **bold**, *italic*, # headings, - lists, [links](https://example.com)",
+            description:
+              "Markdown: **bold**, *italic*, # headings, - lists, [links](https://example.com). " +
+              "Templates too: {{ op.station }}, {{ op.qsoCount }}, {{ now | date: '%H:%M' }}Z, " +
+              "{% if qso %}{{ qso.their.call }}{% endif %}",
           },
         ],
       },
     ]
   },
 
-  async render(args: PanelRenderArgs, _ctx: HookContext): Promise<PanelContent> {
+  async render(args: PanelRenderArgs, ctx: HookContext): Promise<PanelContent> {
     const title = typeof args.config?.title === "string" ? args.config.title.trim() : ""
     const content = typeof args.config?.content === "string" ? args.config.content.trim() : ""
-    return {
-      kind: "markdown",
-      // An empty pane looks like a panel that failed rather than one nobody
-      // has filled in yet, and the gear it points at is the only way to fix
-      // that — an operator who cannot find it just sees a blank pane.
-      content: content || "_Nothing here yet. Open this panel's settings to write something._",
-      // Blank is dropped by the host, so an untitled pane keeps "Custom
-      // Text" rather than losing its label entirely.
-      title,
+
+    // Both the text and the tab name, so a pane can be called after what it
+    // shows ("142 QSOs"). Derived from both for the same reason.
+    const triggers = [...new Set([...triggersForTemplate(content), ...triggersForTemplate(title)])]
+
+    const context = templateContext({
+      operation: args.operation,
+      qso: args.qso,
+      qsoCount: args.qsoCount,
+      config: args.config,
+      appName: ctx.appName,
+    })
+
+    // Rendered separately from the content, and its failure is not the
+    // content's: a typo in a two-word tab name would otherwise replace a
+    // working document with an error block. A tab that can't be rendered
+    // falls back to the descriptor's title rather than showing its own
+    // source, which is what the operator would read as the panel breaking.
+    //
+    // Before the empty-content case below, not after: a pane named
+    // `{{ op.qsoCount }} QSOs` with nothing written in it yet would
+    // otherwise wear its own template as its label.
+    let renderedTitle = ""
+    try {
+      renderedTitle = renderTemplate(title, context).trim()
+    } catch {
+      renderedTitle = ""
+    }
+
+    if (!content) {
+      return {
+        kind: "markdown",
+        // An empty pane looks like a panel that failed rather than one nobody
+        // has filled in yet, and the gear it points at is the only way to fix
+        // that — an operator who cannot find it just sees a blank pane.
+        content: "_Nothing here yet. Open this panel's settings to write something._",
+        // Blank is dropped by the host, so an untitled pane keeps "Custom
+        // Text" rather than losing its label entirely.
+        title: renderedTitle,
+        triggers,
+      }
+    }
+
+    try {
+      return { kind: "markdown", content: renderTemplate(content, context), title: renderedTitle, triggers }
+    } catch (e) {
+      // The operator's own text is shown BELOW the error, never replaced by
+      // it. Notes written before this panel could template — or holding a
+      // `{{TODO}}`, or a fenced code sample — parse as a broken template on
+      // the first launch after an update, and a pane that answered by
+      // deleting what somebody wrote would be the worse failure by far.
+      // liquid's message names the line, so the fix is still findable.
+      const message = e instanceof TemplateError ? e.message : String(e)
+      return {
+        kind: "markdown",
+        content: `**Template error**\n\n\`\`\`\n${message}\n\`\`\`\n\n---\n\n${content}`,
+        title: renderedTitle,
+        // Kept, so fixing the template doesn't ALSO require a trigger to
+        // fire before the pane recovers — the config edit re-renders it.
+        triggers,
+      }
     }
   },
 }

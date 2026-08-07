@@ -37,13 +37,28 @@ void main() {
 
   Operation operation() => Operation(uuid: 'op-1', data: const {'stationCall': 'N0DEV'});
 
-  Widget harness(_RecordingPanels panels, {required bool visible, int qsoCount = 0}) => TranslationProvider(
+  /// The same panel with nothing declared up front — what a panel rendering
+  /// operator-written text looks like before it has read any.
+  const triggerless = PanelDefinition(
+    id: 'ext:text:custom',
+    title: 'Custom Text',
+    source: PanelSource.extension,
+    hookKey: 'text',
+    panelKey: 'custom',
+  );
+
+  Widget harness(
+    _RecordingPanels panels, {
+    required bool visible,
+    int qsoCount = 0,
+    PanelDefinition panel = definition,
+  }) => TranslationProvider(
         child: MaterialApp(
           home: Scaffold(
             body: DockPaneVisibility(
               visible: visible,
               child: ExtensionPanel(
-                panel: definition,
+                panel: panel,
                 panels: panels,
                 renderContext: PanelRenderContext(operation: operation(), qsoCount: qsoCount),
               ),
@@ -102,18 +117,95 @@ void main() {
     // put — tab switching is not itself a reason to cross the bridge.
     expect(panels.renders, ['initial']);
   });
+
+  // The half of the budget a panel can only decide once it has read its own
+  // config: an operator's `{{ op.qsoCount }}` has to start updating without
+  // the descriptor — and therefore every other placement of the same panel —
+  // paying for it.
+  testWidgets('a trigger the render itself declared wakes that placement', (tester) async {
+    final panels = _RecordingPanels(declares: ['qsoLogged']);
+    await tester.pumpWidget(harness(panels, visible: true, panel: triggerless));
+    await settle(tester);
+    expect(panels.renders, ['initial']);
+
+    await tester.pumpWidget(harness(panels, visible: true, qsoCount: 1, panel: triggerless));
+    await settle(tester);
+    expect(panels.renders, ['initial', 'qsoLogged']);
+  });
+
+  testWidgets('a placement that declared nothing is left alone by one that did', (tester) async {
+    final panels = _RecordingPanels(declares: ['qsoLogged']);
+    await tester.pumpWidget(harness(panels, visible: true, panel: triggerless));
+    await settle(tester);
+
+    // A second pane of the same panel, rendering static text.
+    panels.declares = const [];
+    const other = PanelDefinition(
+      id: 'ext:text:custom#2',
+      title: 'Custom Text',
+      source: PanelSource.extension,
+      hookKey: 'text',
+      panelKey: 'custom',
+    );
+    await tester.pumpWidget(harness(panels, visible: true, panel: other));
+    await settle(tester);
+    panels.renders.clear();
+
+    await tester.pumpWidget(harness(panels, visible: true, qsoCount: 1, panel: other));
+    await settle(tester);
+    expect(panels.renders, isEmpty, reason: "the other pane's template is what asked for qsoLogged");
+  });
+
+  // A triggerless pane has nothing that would ever ask again: no ticker, an
+  // empty set for didUpdateWidget to intersect, and a come-back-to-the-tab
+  // path gated on a trigger having fired. A first render that fails — a
+  // runtime still starting, a bridge timeout — would otherwise leave the
+  // pane broken for the whole session, curable only by editing its config.
+  testWidgets('a failed panel offers a retry, and the retry renders', (tester) async {
+    final panels = _RecordingPanels()..failNextRender = true;
+    await tester.pumpWidget(harness(panels, visible: true, panel: triggerless));
+    await settle(tester);
+    expect(panels.renders, ['initial']);
+    expect(find.text('Try again'), findsOneWidget);
+
+    await tester.tap(find.text('Try again'));
+    await settle(tester);
+
+    expect(panels.renders, ['initial', 'retry']);
+    expect(find.text('Try again'), findsNothing, reason: 'the retry succeeded, so the pane is content again');
+  });
+
+  testWidgets('a tick a render declared starts the ticker', (tester) async {
+    final panels = _RecordingPanels(declares: ['tick:5']);
+    await tester.pumpWidget(harness(panels, visible: true, panel: triggerless));
+    await settle(tester);
+    expect(panels.renders, ['initial']);
+
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump();
+    expect(panels.renders, ['initial', 'tick']);
+  });
 }
 
-/// Records what it was asked to render, and why.
+/// Records what it was asked to render, and why. [declares] is what its
+/// renders claim to need, as a templated panel's would.
 class _RecordingPanels extends PanelService {
-  _RecordingPanels() : super(_NullSource());
+  _RecordingPanels({this.declares = const []}) : super(_NullSource());
 
+  List<String> declares;
   final renders = <String>[];
+
+  /// Fails one render, then answers normally — a runtime still starting.
+  bool failNextRender = false;
 
   @override
   Future<Map<String, dynamic>?> render(PanelDefinition panel, Map<String, dynamic> args) async {
     renders.add(args['reason'] as String);
-    return {'kind': 'markdown', 'content': 'ok'};
+    if (failNextRender) {
+      failNextRender = false;
+      return null;
+    }
+    return {'kind': 'markdown', 'content': 'ok', if (declares.isNotEmpty) 'triggers': declares};
   }
 
   @override

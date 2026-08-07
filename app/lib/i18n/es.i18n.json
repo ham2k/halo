@@ -118,6 +118,7 @@
       "resetLayout": "Restablecer disposición",
       "done": "Listo",
       "panelRenderFailed": "No se pudo mostrar ${panel}",
+      "panelRenderRetry": "Reintentar",
       "panels": {
         "loggingDescription": "El registro y los campos de entrada",
         "infoDescription": "Lo que sabemos de la estación contactada",

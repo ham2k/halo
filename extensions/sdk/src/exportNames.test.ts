@@ -67,6 +67,20 @@ test("a slashed callsign keeps both halves", () => {
   )
 })
 
+// A part that is punctuation only slugs away to nothing, and the separator
+// beside it has to go too — a `N0CALL--20260727.adi` reads as a bug in the
+// app. `activity` is caller-supplied, so this is reachable.
+test("a part that slugs away takes its separator with it", () => {
+  assert.equal(
+    exportFilename({ stationCall: "N0CALL", activity: "!!!", startAtMillis: JULY_27, extension: "adi", compact: true }),
+    "N0CALL-20260727.adi",
+  )
+  assert.equal(
+    exportFilename({ stationCall: "!!!", ref: "US-1234", startAtMillis: JULY_27, extension: "adi", compact: true }),
+    "US-1234-20260727.adi",
+  )
+})
+
 // An operation with no callsign, no title and no refs still has to produce
 // something openable: ".adi" alone is an extensionless dotfile that hides on
 // Unix and shows as nameless everywhere else.

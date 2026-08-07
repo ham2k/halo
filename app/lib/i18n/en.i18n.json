@@ -118,6 +118,7 @@
       "resetLayout": "Reset layout",
       "done": "Done",
       "panelRenderFailed": "${panel} could not be displayed",
+      "panelRenderRetry": "Try again",
       "panels": {
         "loggingDescription": "The log and the entry fields",
         "infoDescription": "What we know about the station being worked",

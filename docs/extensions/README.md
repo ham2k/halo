@@ -7,6 +7,8 @@ core knows nothing about any of them — it invokes **hooks** and renders
 **declarative UI contributions** (see [DESIGN.md](../../DESIGN.md) §2–§5).
 
 - **[hooks.md](hooks.md)** — reference for every hook category.
+- **[templates.md](templates.md)** — the templating engine and the values a
+  template can name, for panels, filenames and ADIF fields.
 - **[cli.md](cli.md)** — `halo-ext`, which runs these hooks outside the app.
 
 ## Anatomy of an extension
@@ -223,6 +225,15 @@ const entries = await hooks.invokeAll('adifFields', 'fieldsForOneQSO', { qso, op
 Planned host APIs from the design (not yet implemented): `host.lookups`
 (offline reference datasets), `host.qsos`/`host.operations` (indexed log
 queries), `host.events` (subscriptions), `host.secrets` (keychain).
+
+## Turning data into text
+
+Panel documents, export filenames and ADIF free-text fields are TEMPLATES
+over one shared vocabulary — see **[templates.md](templates.md)**. The engine
+(`liquidjs`) lives in the kernel like `i18next`, so a bundle that renders
+text carries only the wrapper. Reach it through the SDK's `renderTemplate` /
+`templateContext`, never by constructing a `Liquid` yourself: the wrapper
+owns the options, and UTC is one of them.
 
 ## Internationalization (i18n)
 

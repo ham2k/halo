@@ -1670,6 +1670,9 @@ class Translations$operation$layout$en {
 	/// en: '${panel} could not be displayed'
 	String panelRenderFailed({required Object panel}) => '${panel} could not be displayed';
 
+	/// en: 'Try again'
+	String get panelRenderRetry => 'Try again';
+
 	late final Translations$operation$layout$panels$en panels = Translations$operation$layout$panels$en.internal(_root);
 
 	/// en: 'This panel needs a web view, which this platform does not provide'
@@ -3662,6 +3665,7 @@ extension on Translations {
 			'operation.layout.resetLayout' => 'Reset layout',
 			'operation.layout.done' => 'Done',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
+			'operation.layout.panelRenderRetry' => 'Try again',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
@@ -4074,9 +4078,9 @@ extension on Translations {
 			'settings.accounts.finishLogin' => 'Finish Login',
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
-			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',

@@ -3,14 +3,15 @@
 //
 // ADIF export. Lives in the extension runtime (DESIGN.md §4: export hooks are
 // extension territory) and reuses the published ham-js-libs for dates and
-// mode/submode mapping. Deliberately minimal compared to app-polo's
-// template-driven exporter — activity/contest extensions contribute their
-// own fields via `adifFields` hooks.
+// mode/submode mapping. The contact's own fields are written directly, not
+// through app-polo's template layer — activity/contest extensions contribute
+// their program's fields via `adifFields` hooks. The three FREE-TEXT fields
+// are the exception, and are templated: see [TEXT_FIELD_TEMPLATES].
 
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { defineExtension, exportFilename, hooks, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { defineExtension, exportFilename, hooks, qsoValues, renderTemplate, startMillisOf, templateContext } from "@ham2k/halo-extension-sdk"
 import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -23,6 +24,27 @@ function field(name: string, value: unknown): string {
   const text = String(value)
   return `<${name}:${text.length}>${text} `
 }
+
+/// ADIF's three free-text fields, as templates over the standard vocabulary
+/// (docs/extensions/templates.md) — the same engine that names the file.
+/// app-polo templates exactly these three (`ADIFNotesTemplate`,
+/// `ADIFCommentTemplate`, `ADIFQslMsgTemplate`).
+///
+/// COMMENT and QSLMSG are EMPTY and so write nothing. polo defaults COMMENT
+/// to the notes and QSLMSG to the operation's references; both stay empty
+/// here until there is a settings screen to edit them in, because a default
+/// nobody can see is a default nobody can turn off — and these end up in
+/// files submitted to a program's servers.
+///
+/// Whatever fills them has to respect the private/public split below:
+/// `notes` is the operator's own words about the station they worked, so it
+/// belongs only in a field this export withholds when `includePrivateData`
+/// is false. NOTES is such a field; COMMENT and QSLMSG are not.
+const TEXT_FIELD_TEMPLATES: { name: string; template: string; private: boolean }[] = [
+  { name: 'NOTES', template: '{{ qso.notes }}', private: true },
+  { name: 'COMMENT', template: '', private: false },
+  { name: 'QSLMSG', template: '', private: false },
+]
 
 /// The whole-log export claims no single reference, so the operation's title
 /// is what distinguishes one file from the next.
@@ -60,6 +82,10 @@ function baseRowFor(
   stationCall: string,
   timeOffsetMillis: number,
   includePrivateData: boolean,
+  /// The export's `op`/`log`/`app` values, built once for the whole file —
+  /// only `qso` changes per contact, and rebuilding the rest ten thousand
+  /// times would be the expensive half of a large export.
+  exportContext: Record<string, unknown>,
 ): string {
   const our = (qso.our ?? {}) as Record<string, unknown>
   const their = (qso.their ?? {}) as Record<string, unknown>
@@ -96,7 +122,22 @@ function baseRowFor(
   row += field('COUNTRY', their.country ?? theirGuess.country)
   if (includePrivateData) {
     row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
-    row += field('NOTES', qso.notes)
+  }
+
+  // Built once, on the first field that will actually render — `qsoValues`
+  // formats four dates and copies the contact, per RECORD, and with private
+  // data off every template below is skipped, which is the common case for
+  // an upload.
+  let textContext: Record<string, unknown> | undefined
+  for (const textField of TEXT_FIELD_TEMPLATES) {
+    if (textField.template === '') continue
+    if (textField.private && !includePrivateData) continue
+    textContext ??= { ...exportContext, qso: qsoValues(qso as Record<string, JSONValue>) }
+    // Not caught: these templates are ours, so a throw here is a bug in one
+    // of them and belongs in front of whoever changed it. An operator's own
+    // template reaching this table is a later feature, and the settings
+    // screen that accepts it is where a typo has to be reported.
+    row += field(textField.name, renderTemplate(textField.template, textContext, `ADIF ${textField.name}`))
   }
   return row
 }
@@ -189,6 +230,18 @@ const ExportHandler = {
     lines.push('<EOH>')
     lines.push('')
 
+    const exportContext = templateContext({
+      operation,
+      qsoCount: qsos.length,
+      appName: ctx.appName,
+      // The operation's row columns don't cross the bridge, so the log's own
+      // day comes from its first contact — the same instant the filename
+      // uses, so a file and the fields inside it cannot disagree about when
+      // the operation was.
+      atMillis: startMillisOf(operation, qsos),
+      log: { station: stationCall, format: 'adif', exportType: 'adif', extension: 'adi', compact: compactFilenames },
+    })
+
     for (const qso of qsos) {
       // Activity extensions contribute their program fields (SIG, POTA_REF…)
       // via in-runtime hook composition — no bridge crossing.
@@ -202,7 +255,7 @@ const ExportHandler = {
         // Records split out of one contact would otherwise be identical, and a
         // log processor is entitled to read that as a duplicate. app-polo
         // shifts each by a second (`qsonToADIF.js:144`); so do we.
-        let row = baseRowFor(qso, stationCall, n * 1000, includePrivateData === true)
+        let row = baseRowFor(qso, stationCall, n * 1000, includePrivateData === true, exportContext)
         for (const sets of perHook) {
           // A hook with a single set describes the contact rather than one of
           // its records, so it belongs on all of them.

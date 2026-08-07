@@ -13,41 +13,66 @@
 // **Normal** is the readable form, for a person filing a download:
 //   `2026-07-27 N0CALL at US-1234.adi`
 // **Compact** is the terse form, for uploaders and small screens:
-//   `N0CALL@us-1234-20260727.adi`
+//   `N0CALL@US-1234-20260727.adi`
 //
-// Both are app-polo's (`dataExportOptions.js` `basePartialTemplates`), minus
-// the Handlebars: HaLo's hooks build a filename from named parts, so a
-// template engine would only buy per-user editing, which nothing asks for.
+// Both are app-polo's (`dataExportOptions.js` `basePartialTemplates`), and
+// like polo's they are TEMPLATES rather than string-building code: the same
+// engine and vocabulary as every other operator-facing text in the app
+// (templates.ts, docs/extensions/templates.md). Nothing edits them yet, so
+// today the only thing that buys is one dialect instead of two — but the
+// scheme an operator will want to change is written in the language they will
+// change it in, and `exportNames.test.ts` pins every form's output.
+//
+// The context here is narrower than the panel and ADIF surfaces: these
+// templates get `log.*` and the DATE half of `op`, because a filename is
+// built from parts rather than from an operation (see [ExportNameParts]).
 
 import type { JSONValue } from "./types"
+import { dateValues, logValues } from "./templateContext.ts"
+import { oneLine, renderTemplate } from "./templates.ts"
 
-/// Lowercase, alphanumeric, dash-separated, for FREE TEXT — an operation
-/// title, a program name: `Field Day 2026` → `field-day-2026`.
-function slug(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-}
+/// The named templates, one per shape a filename can take. Kept as separate
+/// named strings rather than one template with branches, so that each is
+/// short enough to read — and so overriding one later means replacing one
+/// line, which is how app-polo's `basePartialTemplates` is organized too.
+///
+/// Empty parts are guarded rather than left to collapse: a missing station
+/// callsign would otherwise leave a leading `@` or `-`, and collapsing
+/// separators after the fact would also eat the ones inside `US-1234`.
+///
+/// The guard is `!= blank`, not a bare `{% if %}`: in liquid ONLY `nil` and
+/// `false` are falsy, so an empty string is TRUE and a bare test would keep
+/// every separator it was meant to drop.
+type NameShape = "NormalRefName" | "NormalActivityName" | "NormalName" | "CompactRefName" | "CompactActivityName" | "CompactName"
 
-/// Dash-separated but case-preserving, for IDENTIFIERS — callsigns and
-/// references, which the hobby writes in capitals and which stay legible in
-/// a compact name precisely because they aren't flattened:
-/// `N0CALL/P` → `N0CALL-P`, `US-1234` → `US-1234`. app-polo does the same
-/// (`{{log.station}}@…{{log.ref}}`, neither passed through `downcase`).
-function token(text: string): string {
-  return text.replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-+|-+$/g, "")
-}
+const NAME_TEMPLATES: Record<NameShape, string> = {
+  // Date first: chronological order, and it reads as a sentence. Whitespace
+  // does collapse here (see [oneLine]), so an absent part just closes up.
+  NormalRefName: "{{ op.date }} {{ log.station }} at {{ log.ref }} {{ log.modifier }}",
+  NormalActivityName: "{{ op.date }} {{ log.station }} for {{ log.activity }} {{ log.modifier }}",
+  NormalName: "{{ op.date }} {{ log.station }} {{ log.modifier }}",
 
-/// `2026-07-27` in UTC — the date the log is *about*, so it must not shift
-/// with the reader's timezone.
-function isoDate(millis: number): string {
-  return new Date(millis).toISOString().slice(0, 10)
-}
-
-/// `20260727` — the same date with the separators taken out.
-function compactDate(millis: number): string {
-  return isoDate(millis).replace(/-/g, "")
+  // Callsign first: these sort together per station, which is the order that
+  // matters once a season's uploads share one folder. `dash` preserves case
+  // for identifiers (`N0CALL/P` → `N0CALL-P`, `US-1234` unchanged) while
+  // free text goes through `downcase | dash`.
+  // Each part is slugged into a variable and the SLUG is what's tested: a
+  // part that is punctuation only (`!!!`) is not blank but slugs to nothing,
+  // and testing the raw value would leave the separator behind — a double
+  // dash where the old code's filtered join left none.
+  CompactRefName:
+    "{% assign s = log.station | dash %}{% assign m = log.modifier | downcase | dash %}" +
+    "{% if s != blank %}{{ s }}@{% endif %}{{ log.ref | dash }}-{{ op.dateCompact }}" +
+    "{% if m != blank %}-{{ m }}{% endif %}",
+  CompactActivityName:
+    "{% assign s = log.station | dash %}{% assign a = log.activity | downcase | dash %}" +
+    "{% assign m = log.modifier | downcase | dash %}" +
+    "{% if s != blank %}{{ s }}-{% endif %}{% if a != blank %}{{ a }}-{% endif %}{{ op.dateCompact }}" +
+    "{% if m != blank %}-{{ m }}{% endif %}",
+  CompactName:
+    "{% assign s = log.station | dash %}{% assign m = log.modifier | downcase | dash %}" +
+    "{% if s != blank %}{{ s }}-{% endif %}{{ op.dateCompact }}" +
+    "{% if m != blank %}-{{ m }}{% endif %}",
 }
 
 /// Characters no filesystem wants, plus the ones that would silently split a
@@ -58,7 +83,8 @@ function sanitize(name: string): string {
 
 export interface ExportNameParts {
   /// The operating station's callsign. Shown as given in the normal form
-  /// (`N0CALL`), slugged in the compact one.
+  /// (`N0CALL`); in the compact one only its separators change (`N0CALL/P` →
+  /// `N0CALL-P`), since a flattened callsign stops being one.
   stationCall?: JSONValue
   /// The reference this file claims, e.g. `US-1234`. Produces the "at" form.
   ref?: string
@@ -84,44 +110,36 @@ export interface ExportNameParts {
 ///
 /// | parts | normal | compact |
 /// |---|---|---|
-/// | `ref` | `2026-07-27 N0CALL at US-1234.adi` | `N0CALL@us-1234-20260727.adi` |
+/// | `ref` | `2026-07-27 N0CALL at US-1234.adi` | `N0CALL@US-1234-20260727.adi` |
 /// | `activity` | `2026-07-27 N0CALL for POTA.adi` | `N0CALL-pota-20260727.adi` |
-/// | neither | `2026-07-27 N0CALL Field Day.adi` | `n0call-20260727-field-day.adi` |
+/// | neither | `2026-07-27 N0CALL Field Day.adi` | `N0CALL-20260727-field-day.adi` |
 export function exportFilename(parts: ExportNameParts): string {
   const millis = parts.startAtMillis && parts.startAtMillis > 0 ? parts.startAtMillis : Date.now()
-  const call = String(parts.stationCall ?? "").trim()
-  const modifier = (parts.modifier ?? "").trim()
   const extension = parts.extension.replace(/^\./, "")
 
-  let stem: string
-  if (parts.compact) {
-    // Callsign first: these sort together per station, which is the order
-    // that matters once a season's uploads share one folder.
-    const station = token(call)
-    const date = compactDate(millis)
-    if (parts.ref) {
-      stem = [`${station ? `${station}@` : ""}${token(parts.ref)}`, date, slug(modifier)].filter((x) => x).join("-")
-    } else {
-      stem = [station, slug(parts.activity ?? ""), date, slug(modifier)].filter((x) => x).join("-")
-    }
-  } else {
-    // Date first: chronological order, and it reads as a sentence.
-    const date = isoDate(millis)
-    if (parts.ref) {
-      stem = [date, call, "at", parts.ref, modifier].filter((x) => x).join(" ")
-    } else if (parts.activity) {
-      stem = [date, call, "for", parts.activity, modifier].filter((x) => x).join(" ")
-    } else {
-      stem = [date, call, modifier].filter((x) => x).join(" ")
-    }
-  }
+  // Typed as a closed union, so a seventh shape can't be added without a
+  // template to go with it: an unresolved key would render nothing, and
+  // every export in the app would quietly be called `export.adi`.
+  const shape: NameShape = `${parts.compact ? "Compact" : "Normal"}${parts.ref ? "Ref" : parts.activity ? "Activity" : ""}Name`
+
+  const stem = oneLine(
+    renderTemplate(NAME_TEMPLATES[shape], {
+      op: dateValues(millis),
+      log: logValues({
+        station: String(parts.stationCall ?? "").trim(),
+        ref: parts.ref,
+        activity: parts.activity,
+        modifier: (parts.modifier ?? "").trim(),
+        extension,
+        compact: parts.compact,
+      }),
+    }, shape),
+  )
 
   // Every part can be empty — an operation with no station callsign and no
   // title would otherwise produce a filename that is nothing but ".adi",
   // which reads as an extensionless dotfile and hides on Unix.
-  if (!stem) stem = "export"
-
-  return `${sanitize(stem)}.${extension}`
+  return `${sanitize(stem) || "export"}.${extension}`
 }
 
 /// The first QSO's start time, for [exportFilename]'s `startAtMillis`. Falls

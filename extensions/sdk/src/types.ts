@@ -2056,10 +2056,22 @@ export interface PanelRenderArgs {
 /// already names it, and three panes reading the same thing is exactly what
 /// this exists to avoid. Blank is ignored rather than producing a nameless
 /// tab.
+///
+/// `triggers` re-renders THIS placement on the named signals, added to
+/// whatever the descriptor declared and taking the same values
+/// (`PanelDescriptor.triggers`, including `tick:<seconds>`). A descriptor's
+/// triggers are paid by every placement of that panel; these are not — which
+/// is what lets a panel rendering OPERATOR-written text ask for only what
+/// that text turned out to need (`triggersForTemplate`). Unknown names are
+/// dropped with a line in the console.
+///
+/// The declaration lands after the render that carried it, so the first
+/// render of a panel that asks for `qso` is answered without one; it is woken
+/// by the next change to the draft.
 export type PanelContent =
-  | { kind: 'markdown'; content: string; title?: string }
-  | { kind: 'svg'; content: string; title?: string }
-  | { kind: 'html'; content: string; title?: string }
+  | { kind: 'markdown'; content: string; title?: string; triggers?: string[] }
+  | { kind: 'svg'; content: string; title?: string; triggers?: string[] }
+  | { kind: 'html'; content: string; title?: string; triggers?: string[] }
 
 /// Registered under category 'panel'. Same two-call shape as
 /// `settingsPanel`'s dynamic tier: discovery once, then content on demand.

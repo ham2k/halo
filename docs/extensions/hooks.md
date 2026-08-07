@@ -901,7 +901,7 @@ interface PanelHook {
 }
 // PanelDescriptor: {key, title, description?, icon?, preview?, on?, form?}
 // PanelRenderArgs: {panelKey, operation, qso?, qsoCount, config, reason}
-// PanelContent:    {kind: 'markdown' | 'svg' | 'html', content}
+// PanelContent:    {kind: 'markdown' | 'svg' | 'html', content, title?, triggers?}
 ```
 
 The host addresses a panel as `ext:<hookKey>:<key>`, and that id is stored
@@ -975,6 +975,21 @@ would make opening it a fetch (and a beacon).
 A render result may carry a **`title`**, which replaces the tab label for
 that pane. Blank is ignored rather than producing a nameless tab, and a
 result with no title keeps the descriptor's.
+
+A render result may also carry **`triggers`** — the same names as `on`,
+added to the descriptor's for THAT PLACEMENT only. `on` is per panel and so
+is paid by every pane of it; this is per pane, and exists for panels whose
+content is written by the operator: `custom-text` derives its triggers from
+the template in each pane (`triggersForTemplate`), so a pane showing a band
+plan renders once while the pane beside it, naming the callsign being typed,
+gets woken per keystroke pause. Unknown names are dropped with a line in the
+console, exactly as in a descriptor.
+
+The declaration necessarily lands AFTER the render that carried it, so a
+panel asking for `'qso'` this way is answered without one the first time and
+woken by the next change to the draft. Declare in `on` instead when the
+panel always needs the signal — a descriptor's triggers are in force before
+its first render.
 
 The whole log is deliberately absent from `render`'s args. A panel that
 needs it calls `ctx.getQsos(operation.uuid)` — right for a `'qsoLogged'`
