@@ -9,9 +9,11 @@
 // same freq+refs' calls) and its 0.5kHz/30min and 0.1kHz/10min tolerances.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -361,6 +363,147 @@ Map<String, dynamic> spotCandidateQso(String call, Map<String, dynamic> spot, {r
       'startAtMillis': now,
     };
 
+/// Whether [spot] is for the callsign being logged right now — [currentCall],
+/// already uppercased, like [spotDisplayFlags]'s `ourCall`. Any operator on a
+/// merged multi-op spot counts, the same reading of `their.call` that flags
+/// `isSelf`.
+///
+/// Exact: a portable or fixed suffix is a different station to work, so
+/// W1AW/P must not light up while W1AW is being entered. Public for
+/// `spots_panel_current_qso_test.dart`.
+bool spotIsCurrentQso(Map<String, dynamic> spot, {String? currentCall}) {
+  if (currentCall == null || currentCall.isEmpty) return false;
+  return _callsIn(_callOf(spot)).any((c) => c.toUpperCase() == currentCall);
+}
+
+/// The fill for the row of the QSO being logged: the logging panel's own
+/// background — `tertiaryContainer` composing a new QSO, `secondaryContainer`
+/// editing an existing one (`LoggingControls`' `accentTheme`) — blended
+/// halfway into the surface the spots list sits on. The map says the same
+/// thing in the same two hues but as a MARKER rather than a fill, so it reads
+/// `tertiary`/`secondary` instead; new-vs-editing is what the three share, not
+/// a colour token.
+///
+/// Blended toward the surface rather than lightened in HSL, in both
+/// brightnesses: the row is an echo of the logging panel and must read weaker
+/// than it, and in dark mode a literally lighter tint is the brighter of the
+/// two. Public for `spots_panel_current_qso_test.dart`.
+Color currentQsoHighlight(ColorScheme scheme, {required bool editing}) => Color.lerp(
+      scheme.surface,
+      editing ? scheme.secondaryContainer : scheme.tertiaryContainer,
+      0.5,
+    )!;
+
+/// A spot row's height, divider included, at an OS text scale of 1.0 —
+/// declared rather than measured, like `LayoutMetrics`' own row heights and
+/// for the same reason: the reveal has to know where a row it cannot see would
+/// be.
+///
+/// These are a BASELINE, not the final answer. The OS accessibility text-scale
+/// preference composes on top of the app's own Font Scale
+/// (docs/design/ui-scaling.md rule 3), and a tile that is two text lines inside
+/// constant padding grows with it — 50 becomes 61 at a text scale of 1.3.
+/// [_SpotsPanelState._rowHeightScale] measures that stretch off a real row and
+/// applies it to every value here.
+///
+/// The three values are additive because they land on different lines of the
+/// tile, and none of them answers to density: [_SpotTile]'s padding is a plain
+/// constant, unlike the QSO row's ladder. Keep them in step with what that
+/// tile paints — every pixel of disagreement is multiplied by the number of
+/// rows above the one being revealed.
+const spotRowHeight = 50.0;
+
+/// A reference label draws its line at the callsign's size rather than the
+/// mode's, and a note emoji is taller than the callsign beside it. Both
+/// measured; the emoji is worth barely a pixel because it stretches a line
+/// that is already there, where the label adds one.
+const _spotRowLabelHeight = 3.0;
+const _spotRowEmojiHeight = 1.0;
+
+/// The height [_SpotTile] paints for a row with these features. Public for
+/// `spots_panel_current_qso_test.dart`.
+double spotRowHeightFor({required bool hasLabel, required bool hasEmoji}) =>
+    spotRowHeight +
+    (hasLabel ? _spotRowLabelHeight : 0) +
+    (hasEmoji ? _spotRowEmojiHeight : 0);
+
+/// Where the row for [currentCall] sits in a sectioned spots list: the scroll
+/// offset it begins at, and the height it paints. Null when no spot matches.
+///
+/// The first match wins, and the pinned duplicate in "Calls of Note" is a row
+/// like any other: whichever copy comes first is the one nearest the top,
+/// which is where the operator looks.
+///
+/// The offset is summed from what each row above ACTUALLY paints — [heightOf]
+/// answers per spot — rather than multiplying a count by one representative
+/// height. A single height is wrong by a few pixels on every labelled or noted
+/// row, and on a board where most rows are both, that error reaches a row's
+/// worth long before the target and puts it outside what the correction pass
+/// can even measure.
+///
+/// Deliberately NOT derived from the list's scroll extent either: a `ListView`
+/// lays its children out lazily, so `maxScrollExtent` is itself an estimate
+/// built from whichever rows happen to be laid out, and reading a row height
+/// back out of it gives a different answer on two runs of the same code.
+///
+/// The row comes back as a `(section, index)` PAIR rather than the spot
+/// object, because `sectionSpots` pins the very same `Map` instance in the
+/// notes section and in its band section — identity names both copies, and a
+/// caller keying rows by it would put one GlobalKey on two tiles. Public for
+/// `spots_panel_current_qso_test.dart`.
+({int section, int index, double top, double height})? locateCurrentSpotRow(
+  List<({String label, List<Map<String, dynamic>> spots})> sections, {
+  String? currentCall,
+  required double headerHeight,
+  required double Function(Map<String, dynamic> spot) heightOf,
+}) {
+  var top = 0.0;
+  for (final (sectionIndex, section) in sections.indexed) {
+    // Its own section's header sits above it, so this one counts too.
+    top += headerHeight;
+    for (final (index, spot) in section.spots.indexed) {
+      final height = heightOf(spot);
+      if (spotIsCurrentQso(spot, currentCall: currentCall)) {
+        return (section: sectionIndex, index: index, top: top, height: height);
+      }
+      top += height;
+    }
+  }
+  return null;
+}
+
+/// The offset to scroll to so the span [top]..[bottom] is fully on screen,
+/// moving the LEAST that does it — or null when it already is, or when the
+/// move would be under half a pixel.
+///
+/// Not moving an already-visible row is the contract: typing a call whose spot
+/// happens to be on screen must not yank the list out from under the operator.
+///
+/// Unlike the QSO list's counterpart there is no leading inset for a section
+/// header — those headers scroll with this list rather than pinning above it,
+/// so a row flush against the top of the viewport is visible. Public for
+/// `spots_panel_current_qso_test.dart`.
+double? spotScrollTarget({
+  required double top,
+  required double bottom,
+  required double pixels,
+  required double viewport,
+  required double minExtent,
+  required double maxExtent,
+}) {
+  final double target;
+  if (top < pixels) {
+    target = top;
+  } else if (bottom > pixels + viewport) {
+    target = bottom - viewport;
+  } else {
+    return null; // already fully visible
+  }
+  final clamped = target.clamp(minExtent, maxExtent);
+  if ((clamped - pixels).abs() < 0.5) return null;
+  return clamped;
+}
+
 /// How a spot should read: struck through when worked, tinted when it's our
 /// own station, accented per the scoring notices its operators carry.
 /// [scores] is keyed by [spotCandidateKey]; [ourCall] is the operation's
@@ -421,13 +564,38 @@ class SpotsPanel extends StatefulWidget {
   /// a scoring pass runs, not per build.
   final List<Qso> qsos;
 
+  /// The QSO being logged right now, pushed up from the logging panel — the
+  /// same payload the map highlights from, so both panes agree on what "the
+  /// current QSO" is and on the new-vs-editing accent that says so. Null when
+  /// the logging panel isn't showing call-info: fewer than three alphanumeric
+  /// characters typed, or a command message occupying the area.
+  final CallInfoData? callInfo;
+
+  /// Whether the TAB holding this panel is the selected one. Only half of
+  /// whether the panel is on screen: in a dock arrangement the pane's own
+  /// `DockPaneVisibility` is the other half, and the two are ANDed. A hidden
+  /// panel is still built (it is kept alive behind its tab), so without both
+  /// it would scroll itself off-screen and the operator would find the list
+  /// moved when they came back.
+  ///
+  /// A listenable rather than a plain flag: the tab controller notifies on
+  /// every frame of the tab-change animation, and rebuilding the spots list a
+  /// dozen times to carry one boolean across is not worth it.
+  ///
+  /// Required, and not nullable: a caller that omitted it would get a panel
+  /// that considers itself permanently hidden, so the tint would keep working
+  /// while the reveal silently never fired again.
+  final ValueListenable<bool> visible;
+
   const SpotsPanel({
     super.key,
     required this.operation,
     required this.services,
     required this.logRevision,
+    required this.visible,
     this.onSuggestQso,
     this.qsos = const [],
+    this.callInfo,
   });
 
   @override
@@ -490,9 +658,95 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// settings writes that notify — including this panel's own filter persist.
   late Set<String> _enabledBands;
 
+  final _scrollController = ScrollController();
+
+  /// The call whose row this panel has already scrolled to. Only ever set
+  /// while the panel is visible, so a call typed behind a hidden tab is still
+  /// pending when the tab comes back.
+  String? _revealedCall;
+
+  /// Where the current QSO's first row sits, as counts of the rows and section
+  /// headers above it plus the totals for the whole list — the raw material
+  /// for [_revealCurrent]'s arithmetic. Null when no spot matches. Written by
+  /// `_buildSpotsList`, the only place the sectioned list exists.
+  ({double top, double height})? _currentRowPosition;
+
+  /// Identifies the current QSO's row to [_correctRevealFor]. Placed by
+  /// `(section, index)` — the one spot pinned in "Calls of Note" is the same
+  /// object as its copy in the band section, so keying by identity would put
+  /// this key on two tiles at once and the tree would throw.
+  final _currentRowKey = GlobalKey();
+  ({int section, int index})? _currentRowAt;
+
+  /// The call the latest build placed a keyed row for — a staleness guard, so
+  /// a correction chained to one call's scroll can't measure a row the list has
+  /// since given to another. It does NOT say the row was inflated: this list
+  /// builds every child widget but the viewport only mounts the ones near it.
+  /// Whether there is anything to measure is what [_currentRowKey]'s null
+  /// `currentContext` answers.
+  String? _keyedRowCall;
+
+  /// The call [_correctRevealFor] has already straightened out, so one drifted
+  /// landing costs one correction rather than a loop against a drift it can't
+  /// close.
+  String? _correctedRevealFor;
+
+  /// How much taller a row actually paints than [spotRowHeightFor] declares.
+  /// 1.0 until a row has been measured, which is exactly right at an OS text
+  /// scale of 1.0 and wrong by a fifth at 1.3.
+  ///
+  /// Measured rather than computed from `MediaQuery.textScalerOf`: a tile is
+  /// text lines inside constant padding, so it grows by LESS than the text
+  /// scaler (1.22 at a scale of 1.3), and no arithmetic over the tile's font
+  /// sizes would survive a change to what it paints. One reading covers every
+  /// row shape — plain, labelled and noted rows stretch within about a percent
+  /// of each other, which over a long board stays inside what
+  /// [_correctRevealFor] can absorb.
+  double _rowHeightScale = 1.0;
+
+  /// The calibration row's key, and the height [spotRowHeightFor] declares for
+  /// it. Null when this build placed no calibration row — an empty board, or
+  /// one whose first row is the current QSO's and so already carries
+  /// [_currentRowKey].
+  final _calibrationKey = GlobalKey();
+  double? _calibrationDeclared;
+
+  /// Cached rather than read where it is used, like `qso_list.dart`'s own:
+  /// [_revealCurrent] runs from a post-frame callback, outside build, where
+  /// depending on an inherited widget is not allowed — and the cache is also
+  /// what keeps the header height the scroll arithmetic uses identical to the
+  /// one the headers paint with.
+  late LayoutMetrics _metrics;
+
+  /// The dock's half of [_onScreen], cached for the same reason as [_metrics]
+  /// — the reveal runs from post-frame callbacks. True outside a dock, where
+  /// a built pane is a visible one.
+  bool _dockVisible = true;
+
+  /// Whether this panel is really the pane on screen: its tab is selected AND
+  /// its dock group is showing it. `DockPaneVisibility` comes from the
+  /// `IndexedStack` that does the hiding, so unlike anything the operation
+  /// view could mirror down it cannot go stale — notably across a
+  /// `revealModule`, which surfaces another pane without telling that view.
+  bool get _onScreen => widget.visible.value && _dockVisible;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _metrics = LayoutDensity.metricsOf(context);
+    // [_revealedCall] is deliberately left alone in both directions, matching
+    // the tab half in `_onVisibilityChanged`: a call typed while this pane was
+    // behind another is already pending, because [_armReveal] returns before
+    // latching while off screen — and one already revealed stays revealed, so
+    // flipping to another pane in the group and back does not yank the list
+    // away from wherever the operator scrolled it.
+    _dockVisible = DockPaneVisibility.of(context);
+  }
+
   @override
   void initState() {
     super.initState();
+    widget.visible.addListener(_onVisibilityChanged);
     _loadPersistedFilters();
     _enabledBands = widget.services.settings.enabledBands.toSet();
     widget.services.settings.addListener(_onSettingsChanged);
@@ -530,9 +784,34 @@ class _SpotsPanelState extends State<SpotsPanel> {
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onVfoChanged);
     widget.services.spots.removeListener(_onSpotsChanged);
+    widget.visible.removeListener(_onVisibilityChanged);
     _scoreDebounce?.cancel();
     _unsubscribeSpots?.call();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Becoming the visible pane re-arms the reveal, so a call typed while this
+  /// was behind another tab is scrolled to on arrival rather than left
+  /// wherever the list happened to be.
+  ///
+  /// Deliberately not a reveal on the spot: the list may not have been rebuilt
+  /// since, and [_currentRowPosition] would then place the row from a list
+  /// that has moved on. Re-arming and letting the next build decide costs one
+  /// rebuild per tab switch and cannot act on a stale position. The setState
+  /// waits for the frame because the notifier fires from the operation view's
+  /// own build.
+  void _onVisibilityChanged() {
+    if (!_onScreen) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_onScreen) return;
+      // A bare rebuild is the whole job. [_armReveal] returns before latching
+      // while hidden, so a call entered behind another tab is still unequal to
+      // the latch and arms itself the moment this build runs — and one that was
+      // already revealed still matches, so coming back to the tab does not
+      // yank the list to a row the operator last saw exactly where it is.
+      setState(() {});
+    });
   }
 
   /// Restores band/mode/age/sources/continents/sorting/grouping from the
@@ -602,6 +881,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
   void didUpdateWidget(SpotsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.logRevision != oldWidget.logRevision) _scheduleSpotScores();
+    if (widget.visible != oldWidget.visible) {
+      oldWidget.visible.removeListener(_onVisibilityChanged);
+      widget.visible.addListener(_onVisibilityChanged);
+    }
   }
 
   /// Debounced entry point to [_refreshSpotScores] — every trigger goes through
@@ -975,6 +1258,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final vfo = widget.services.radio.vfoA;
 
     if (_error != null) {
+      // There is no list while this shows, so nothing is revealed on it. Left
+      // latched, the call being logged would be retired against a list the
+      // operator never saw, and the rebuilt one would never scroll to it.
+      _revealedCall = null;
       return Center(child: Text(t.operation.spots.error(error: _error!), style: theme.textTheme.bodyMedium));
     }
 
@@ -1047,6 +1334,17 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // right-aligned frequencies still line up.
     final leftWidth = _spotLeftColumnWidth(context, filtered, hzDigits);
 
+    final currentCall = widget.callInfo?.call.toUpperCase();
+    final highlight = widget.callInfo == null
+        ? null
+        : currentQsoHighlight(theme.colorScheme, editing: widget.callInfo!.isEditing);
+    _locateCurrentRow(sections, currentCall);
+    // Registered before the reveal's own callback so it runs first: a reveal
+    // armed this frame is then measured against a scale learned from this
+    // frame, rather than spending its one arm on the previous one's.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _calibrateRowHeight());
+    _armReveal(currentCall);
+
     return RefreshIndicator(
       // Explicit, unlike every other spinner in the app: RefreshIndicator
       // resolves `color ?? colorScheme.primary` directly and never consults
@@ -1068,12 +1366,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
                   ),
                 ]))
           : ListView(
+              controller: _scrollController,
               children: [
-                for (final section in sections) ...[
+                for (final (sectionIndex, section) in sections.indexed) ...[
                   _SpotsSectionHeader(section.label),
-                  for (final spot in section.spots)
+                  for (final (index, spot) in section.spots.indexed)
                     if (_flagsFor(spot) case final flags)
                       _SpotTile(
+                        key: _isCurrentRow(sectionIndex, index)
+                            ? _currentRowKey
+                            : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
                         spot: spot,
                         noteEmoji: _noteEmojiOf(spot),
                         hzDigits: hzDigits,
@@ -1083,6 +1385,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
                         worked: flags.worked,
                         isSelf: flags.isSelf,
                         notices: flags.notices,
+                        highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
                         onTap: widget.onSuggestQso == null
                             ? null
                             : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
@@ -1090,6 +1393,196 @@ class _SpotsPanelState extends State<SpotsPanel> {
                 ],
               ],
             ),
+    );
+  }
+
+  /// What [_SpotTile] paints for [spot], for the reveal's offset arithmetic.
+  /// The note emoji is read from the same cache the tile draws it from, so a
+  /// board whose note lookups have not landed yet is summed a few pixels short
+  /// per noted row — which is what [_correctRevealFor] is left to close.
+  double _spotRowHeightOf(Map<String, dynamic> spot) => spotRowHeightFor(
+        hasLabel: _labelOf(spot) != null,
+        hasEmoji: _noteEmojiOf(spot) != null,
+      );
+
+  /// Whether the tile at `(section, index)` is the current QSO's row, and so
+  /// carries [_currentRowKey].
+  bool _isCurrentRow(int section, int index) {
+    final at = _currentRowAt;
+    return at != null && at.section == section && at.index == index;
+  }
+
+  /// Runs [locateCurrentSpotRow] over this build's sections and keeps what it
+  /// found, for [_revealCurrent] and for the row key.
+  ///
+  /// Every declared height goes through [_rowHeightScale], headers included:
+  /// the headers are text in constant padding like the rows, and a sum that
+  /// scaled only one of the two would drift by a header on every section.
+  void _locateCurrentRow(
+    List<({String label, List<Map<String, dynamic>> spots})> sections,
+    String? currentCall,
+  ) {
+    final found = locateCurrentSpotRow(
+      sections,
+      currentCall: currentCall,
+      headerHeight: _metrics.sectionHeaderHeight * _rowHeightScale,
+      heightOf: (spot) => _spotRowHeightOf(spot) * _rowHeightScale,
+    );
+    _currentRowAt = found == null ? null : (section: found.section, index: found.index);
+    _currentRowPosition = found == null ? null : (top: found.top, height: found.height);
+    _keyedRowCall = found == null ? null : currentCall;
+
+    // The first row of the first section is the calibration row: it is the one
+    // row that is certainly mounted on a panel that has just been built, which
+    // is where the reading has to come from — a scale learned only after the
+    // first reveal would be learned one reveal too late.
+    final first = sections.isEmpty || sections.first.spots.isEmpty ? null : sections.first.spots.first;
+    _calibrationDeclared = first == null || _isCurrentRow(0, 0) ? null : _spotRowHeightOf(first);
+  }
+
+  /// Learns [_rowHeightScale] from the calibration row, if this build placed
+  /// one and the viewport mounted it. Silent when it did not: the row is only
+  /// mounted near the top of the list, and a scale already learned holds until
+  /// something moves that row back into view.
+  void _calibrateRowHeight() {
+    if (!mounted) return;
+    final declared = _calibrationDeclared;
+    if (declared == null || declared <= 0) return;
+    final box = _calibrationKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || box.size.height <= 0) return;
+
+    final scale = box.size.height / declared;
+    // A reading this close changes no offset the correction couldn't absorb,
+    // and settling for it is what stops a rebuild from re-triggering a rebuild.
+    if ((scale - _rowHeightScale).abs() < 0.005) return;
+    setState(() => _rowHeightScale = scale);
+    // The geometry every pending reveal was armed against has just moved, so
+    // let the next build arm again rather than leaving a call retired against
+    // offsets that were wrong when they were summed.
+    _revealedCall = null;
+  }
+
+  /// Schedules a scroll when the current QSO's call has changed since the last
+  /// one this panel revealed. Skipped entirely while the panel is hidden, and
+  /// [_revealedCall] is left alone there rather than cleared — that is what
+  /// makes the call still pending when the tab comes back.
+  void _armReveal(String? currentCall) {
+    if (!_onScreen || currentCall == _revealedCall) return;
+    // No row for it — on the board a call is typed against, or nothing typed
+    // at all. Left un-latched in the first case, so the reveal still happens
+    // when the spot for that call arrives on the next fetch.
+    if (currentCall != null && _currentRowPosition == null) return;
+    _revealedCall = currentCall;
+    _correctedRevealFor = null;
+    if (currentCall == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // The latch moving between arming and here means something in the same
+      // post-frame batch superseded this reveal — [_calibrateRowHeight] clears
+      // it when the geometry it was armed against turns out to be wrong. Bail
+      // without touching the latch: nulling it would retract whatever re-armed.
+      if (_revealedCall != currentCall) return;
+      // Un-latched whenever the reveal gave up, which is permission for the
+      // next rebuild to try again rather than a retry in itself — deliberately,
+      // since a reveal that cannot succeed (a pane collapsed to no height)
+      // would otherwise rebuild the panel forever. Every reason it gives up is
+      // one a later frame recovers from, and a latch left set would retire that
+      // callsign for the rest of the session.
+      if (!_revealCurrent(currentCall)) _revealedCall = null;
+    });
+  }
+
+  /// Brings the current QSO's row into view, scrolling the least that does it
+  /// — a row already fully visible doesn't move, so typing a call that happens
+  /// to be on screen never yanks the list out from under the operator. Returns
+  /// whether it got far enough to decide; already-visible counts as revealed.
+  ///
+  /// Works out where the row *is* arithmetically, like `qso_list.dart`'s
+  /// `_revealSelected` and for the same reason: a row outside the viewport
+  /// either isn't built or carries a paint transform from wherever it last
+  /// sat, and both read as a confident, wrong position.
+  ///
+  /// [locateCurrentSpotRow] does the arithmetic and says what it is exact
+  /// about; [_correctRevealFor] closes the rest — a wrapped section-header
+  /// label, an emoji the note lookup had not yet reported when the offsets
+  /// were summed.
+  ///
+  /// [call] is passed in rather than read back off [_revealedCall]: this runs a
+  /// frame after it was scheduled, and reading the latch here means a reveal
+  /// can find it moved and quietly scroll nothing while still reporting done.
+  bool _revealCurrent(String call) {
+    if (!mounted || !_scrollController.hasClients || !_onScreen) return false;
+    final at = _currentRowPosition;
+    if (at == null) return false;
+
+    final scroll = _scrollTo(at.top, at.top + at.height);
+    if (_correctedRevealFor != call) {
+      // Chained to the scroll's completion, because measuring a row in flight
+      // reads a position it is about to leave. Scheduled even when nothing
+      // moved: "the estimate says it is already on screen" is exactly the claim
+      // an accumulated drift makes wrongly, and it is the one case no later
+      // step would otherwise check.
+      if (scroll == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _correctRevealFor(call));
+      } else {
+        scroll.whenComplete(() => _correctRevealFor(call));
+      }
+    }
+    return true;
+  }
+
+  /// One measured pass over whatever the summed offsets got wrong, once the
+  /// row is close enough to measure honestly. That sum is exact for the row
+  /// shapes [spotRowHeightFor] knows, so this is a safety net rather than the
+  /// thing that lands the scroll: a section-header label long enough to wrap,
+  /// a note emoji the lookup had not reported when the offsets were summed,
+  /// or a tile that grew without those constants growing with it.
+  ///
+  /// Latches [_correctedRevealFor] where it ACTS, not where it is scheduled:
+  /// every return below is a reason it could not measure at all, and retiring
+  /// the call on one of those would leave the estimate's drift standing with
+  /// nothing left to close it. Latching here still can't loop — one correction
+  /// is scheduled per arm, and this ignores its own scroll's future.
+  void _correctRevealFor(String call) {
+    if (!mounted || !_scrollController.hasClients || !_onScreen) return;
+    if (_revealedCall != call || _keyedRowCall != call) return;
+    // Null when the viewport never mounted this row — the list builds every
+    // child widget but only inflates the ones within reach of where it landed.
+    // Which is the case this correction exists for: the estimate was off by
+    // more than that reach, so there is nothing here to measure.
+    final box = _currentRowKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final RenderObject? viewport = RenderAbstractViewport.maybeOf(box);
+    if (viewport is! RenderBox || !viewport.attached) return;
+
+    final position = _scrollController.position;
+    final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
+    // Beyond what the viewport plus its cache can hold is a stale transform,
+    // not a row waiting to be nudged. Measured against the cache extent as well
+    // as the viewport: a row laid out in the cache is honestly measurable, and
+    // in a pane shorter than the cache the viewport alone would reject it.
+    final reach = math.max(position.viewportDimension, RenderAbstractViewport.defaultCacheExtent);
+    if (top < -reach || top > position.viewportDimension + reach) return;
+    _correctedRevealFor = call;
+    _scrollTo(position.pixels + top, position.pixels + top + box.size.height);
+  }
+
+  /// Scrolls to [spotScrollTarget]'s answer, or not at all when there is none.
+  /// Returns the scroll's future, or null when nothing moved.
+  Future<void>? _scrollTo(double top, double bottom) {
+    final position = _scrollController.position;
+    final target = spotScrollTarget(
+      top: top,
+      bottom: bottom,
+      pixels: position.pixels,
+      viewport: position.viewportDimension,
+      minExtent: position.minScrollExtent,
+      maxExtent: position.maxScrollExtent,
+    );
+    if (target == null) return null;
+    return _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
     );
   }
 
@@ -1238,7 +1731,15 @@ class _SpotTile extends StatelessWidget {
   /// would accent most rows most of the time.
   final Set<String> notices;
 
+  /// Fill for the row of the QSO being logged right now
+  /// ([currentQsoHighlight]), null for every other row. Painted behind the
+  /// content rather than folded into the text styles like [worked] and
+  /// [isSelf]: those say something about the spot, this says which row the
+  /// operator's own attention is on.
+  final Color? highlight;
+
   const _SpotTile({
+    super.key,
     required this.spot,
     this.noteEmoji,
     this.hzDigits = 0,
@@ -1249,6 +1750,7 @@ class _SpotTile extends StatelessWidget {
     this.worked = false,
     this.isSelf = false,
     this.notices = const {},
+    this.highlight,
   });
 
   @override
@@ -1441,7 +1943,9 @@ class _SpotTile extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
       ),
-      child: row,
+      // Outside the InkWell's Material, so the fill still shows on a row with
+      // no tap handler, and edge to edge like the divider above it.
+      child: highlight == null ? row : ColoredBox(color: highlight!, child: row),
     );
   }
 }

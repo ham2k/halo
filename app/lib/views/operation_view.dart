@@ -220,6 +220,32 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// is ever added to or removed from either layout's list.
   static const int _kTabCount = 3;
 
+  /// Spots is the middle tab in both arrangements — QSOs/Info, Spots, Map.
+  /// Keep this in sync alongside [_kTabCount] if either list is reordered: it
+  /// decides whether the Spots pane thinks it is on screen, and pointing it at
+  /// the wrong tab means the hidden panel scrolls and the visible one doesn't.
+  static const int _kSpotsTabIndex = 1;
+
+  /// Whether the Spots TAB is the selected one, for [SpotsPanel.visible].
+  /// Only half the answer — in the dock arrangement the pane's own
+  /// `DockPaneVisibility` is the other half, and the panel ANDs the two. This
+  /// side is a notifier rather than a prop because the tab controller notifies
+  /// on every frame of the tab-change animation, and nothing else in this view
+  /// rebuilds on a tab change.
+  final _spotsVisible = ValueNotifier(false);
+
+  /// Re-reads that, from [_wasTwoPane] rather than a fresh `ShirtSize.of` so
+  /// it can also run from the tab controller's listener — reading an inherited
+  /// widget outside build would register a dependency there. Safe to call from
+  /// build: `SpotsPanel` answers it without a setState of its own.
+  ///
+  /// The dock arrangement has no tab strip of its own here, so this side is
+  /// unconditionally true there and `DockPaneVisibility` decides alone.
+  void _syncSpotsVisibility() {
+    _spotsVisible.value =
+        (_wasTwoPane == true && _customLayout) || _tabController?.index == _kSpotsTabIndex;
+  }
+
   void _updateTabControllerIfNeeded(int requiredLength) {
     if (_tabController == null || _tabController!.length != requiredLength) {
       final oldIndex = _tabController?.index ?? 0;
@@ -228,7 +254,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         length: requiredLength,
         vsync: this,
         initialIndex: oldIndex.clamp(0, requiredLength - 1),
-      );
+      )..addListener(_syncSpotsVisibility);
       // Disposed after the frame, not here: this runs DURING build, and the
       // TabBar/TabBarView still holding the old controller are only rebuilt
       // with the new one later in the same frame — disposing it inline makes
@@ -571,6 +597,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _rescoreDebounce?.cancel();
     _draftQsoDebounce?.cancel();
     _tabController?.dispose();
+    _spotsVisible.dispose();
     widget.services.closeOperationContext(_commandContext);
     _unsubscribeSpots?.call();
     widget.services.spots.removeListener(_onSpotsChanged);
@@ -1450,6 +1477,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // No setState: which pane is on top changes nothing this build
         // depends on, and the dock has already redrawn itself. The field
         // still has to move, since it is what a remounted dock opens on.
+        // A pane that cares which one is on top reads `DockPaneVisibility`,
+        // which the dock derives per rebuild and this can never contradict.
         _dockState = state;
         widget.services.settings.setLayoutData(LayoutKeys.operationDockState, state.toJson());
       },
@@ -1846,6 +1875,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 onSuggestQso: _suggestQso,
                 logRevision: _logRevisionFor(qsos),
                 qsos: qsos,
+                // Same payload the map panel highlights from, so the two panes
+                // agree on which station is being worked and on the
+                // new-vs-editing accent that says so.
+                callInfo: _callInfo,
+                visible: _spotsVisible,
               ),
             ),
           ),
@@ -1885,6 +1919,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // already be this build's final instance, not the one about to be
         // replaced, by the time any of them are constructed.
         _updateTabControllerIfNeeded(_kTabCount);
+        // After the controller, and after `_dockState`/`_customLayout` have
+        // settled for this build — the tab controller's own listener only
+        // covers the index moving under a view that isn't rebuilding.
+        _syncSpotsVisibility();
 
         // Wide: Info, Spots, Map — logging has its own pane in the split.
         // Narrow: QSOs, Spots, Map — logging is what the view is for, and
