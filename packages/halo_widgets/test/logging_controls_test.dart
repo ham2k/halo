@@ -7,6 +7,7 @@
 // writes (which start inside the fake zone) run to completion.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
@@ -15,6 +16,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+
+// WCAG 2.1 relative luminance / contrast ratio, so the focus-indicator test
+// pins an actual accessibility threshold rather than "some color".
+double _linear(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+double _luminance(Color c) => 0.2126 * _linear(c.r) + 0.7152 * _linear(c.g) + 0.0722 * _linear(c.b);
+double _contrast(Color a, Color b) {
+  final la = _luminance(a), lb = _luminance(b);
+  final hi = math.max(la, lb), lo = math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 void main() {
   late HaLoDatabase db;
@@ -89,6 +100,7 @@ void main() {
     String defaultReportCW = '',
     bool switchSentRcvd = false,
     bool jumpAfterRST = false,
+    ThemeData? appTheme,
   }) {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
@@ -147,6 +159,7 @@ void main() {
       scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
     );
     return MaterialApp(
+      theme: appTheme,
       home: Scaffold(
         // Matches the operation view: the Scaffold doesn't resize for the
         // keyboard (LoggingControls reserves its own bottom spacer), and the
@@ -6747,6 +6760,44 @@ void main() {
       expect(dropdowns, findsNWidgets(2));
       expect(tester.getSize(dropdowns.at(0)).height, freqHeight);
       expect(tester.getSize(dropdowns.at(1)).height, freqHeight);
+    });
+  }
+
+  // A DropdownMenu takes an inputDecorationTheme, and these two BUILD one
+  // rather than copyWith-ing the app's — so every slot the app theme carries
+  // is silently absent here unless restated. The focus indicator is one of
+  // them, and unrestated it lands on `primary`: 2.67:1 on the dark surface,
+  // beside a Frequency field focusing white.
+  for (final brightness in Brightness.values) {
+    testWidgets('$brightness: the Band and Mode dropdowns restate the focus indicator', (tester) async {
+      final theme = buildHaLoTheme(brightness);
+      await tester.pumpWidget(host(appTheme: theme));
+      await openControl(tester, MdiIcons.radio);
+
+      final dropdowns = tester.widgetList<DropdownMenu<String>>(find.byType(DropdownMenu<String>));
+      expect(dropdowns.length, 2);
+      for (final dropdown in dropdowns) {
+        final side = dropdown.inputDecorationTheme?.focusedBorder?.borderSide;
+        expect(side, isNotNull, reason: '$brightness');
+        // Not just "≠ primary": a fixed Colors.black satisfies that and is
+        // black-on-near-black once the pane goes dark. The invariant is the
+        // CONTRAST against the surface the field sits on, not the color.
+        expect(_contrast(side!.color, theme.colorScheme.surface), greaterThanOrEqualTo(3.0),
+            reason: '$brightness');
+        // The same underline poloFieldDecoration gives the Frequency field
+        // beside it — these must not diverge into two focus cues in one row.
+        // (Both sides move together if the helper changes; what this catches is
+        // the dropdowns drifting away from it, not the helper going wrong.)
+        expect(side.color, haloFocusedInputBorder(brightness == Brightness.dark).borderSide.color,
+            reason: '$brightness');
+        // The focus indicator above is an UNDERLINE, which matches only while
+        // these declare no shape of their own and Material's default applies.
+        // Declaring an outline here without also reshaping the focused border
+        // makes the field collapse to a bare line on focus — the exact trap
+        // that keeps this out of the app theme (theme.dart).
+        expect(dropdown.inputDecorationTheme?.border, isNull, reason: '$brightness');
+        expect(dropdown.inputDecorationTheme?.enabledBorder, isNull, reason: '$brightness');
+      }
     });
   }
 

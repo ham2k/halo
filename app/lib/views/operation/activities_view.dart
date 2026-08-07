@@ -1726,6 +1726,11 @@ class OperationSheetState extends State<OperationSheet> {
                   }
                 }
 
+                final searchBorder = OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
+                );
+
                 final searchBand = Material(
                   color: accordionColor,
                   child: Column(
@@ -1748,10 +1753,11 @@ class OperationSheetState extends State<OperationSheet> {
                               // Paler than the band it sits on, so the field
                               // reads as a well rather than blending in.
                               fillColor: theme.colorScheme.surface,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
-                              ),
+                              border: searchBorder,
+                              // Contrast is against the field's own `surface`
+                              // fill, not the accordion band around it — the
+                              // indicator is drawn over the well.
+                              focusedBorder: haloFocusedBorder(searchBorder, context),
                               isDense: true,
                             ),
                             onChanged: _onSearchChanged,

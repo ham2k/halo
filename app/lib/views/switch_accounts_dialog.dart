@@ -540,7 +540,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
           autofocus: true,
           enabled: !_busy,
           keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(labelText: context.t.switchAccounts.emailAddress, border: const OutlineInputBorder()),
+          decoration: poloFieldDecoration(context, context.t.switchAccounts.emailAddress),
           onSubmitted: (_) => _submitEmail(),
         ),
         ..._errorAndBusy(context),

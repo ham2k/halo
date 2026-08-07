@@ -9,6 +9,8 @@
 // in the places the rest of the app reads: the default profile, the
 // privacy group, and the extensions' own settings groups.
 
+import 'dart:math' as math;
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +33,16 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'fake_secure_storage.dart';
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+
+// WCAG 2.1 contrast ratio — the focus-indicator test below pins an actual
+// accessibility threshold rather than a specific color.
+double _linear(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+double _luminance(Color c) => 0.2126 * _linear(c.r) + 0.7152 * _linear(c.g) + 0.0722 * _linear(c.b);
+double _contrast(Color a, Color b) {
+  final la = _luminance(a), lb = _luminance(b);
+  final hi = math.max(la, lb), lo = math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 Future<HaLoServices> makeServices({
   Map<String, Object> prefs = const {},
@@ -197,6 +209,28 @@ void main() {
     // the dark surfaceContainerHighest under teal text.
     final ambient = Theme.of(tester.element(find.text('Skip')));
     expect(ambient.brightness, Brightness.light);
+    await drainTimers(tester);
+  });
+
+  testWidgets('in dark mode the callsign field still focuses DARK, against the overlay\'s white band', (tester) async {
+    // The pin above is only half the guarantee. A step builder that resolves a
+    // color from the state's own context reads the AMBIENT brightness — that
+    // context is an ancestor of the pin, not a descendant — and hands this
+    // field a white focus border on a white panel: invisible, and nothing
+    // throws. Reading the ambient Theme at a widget in the tree (as the test
+    // above does) cannot catch it, because every such context is below the pin.
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    final services = await makeServices();
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.widgetWithText(TextField, "Operator's Callsign"));
+    final side = field.decoration!.focusedBorder!.borderSide;
+    final panel = Theme.of(tester.element(find.text('Continue'))).colorScheme.surface;
+    expect(_contrast(side.color, panel), greaterThanOrEqualTo(3.0));
     await drainTimers(tester);
   });
 

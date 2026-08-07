@@ -490,17 +490,44 @@ InputDecoration poloFieldDecoration(
 /// Deliberately NOT installed on `inputDecorationTheme` — see the comment
 /// there. A theme-level `focusedBorder` reshapes every field that didn't set
 /// one, so this can only be applied by a decoration that knows its own border
-/// shape. The consequence is real and known: the fields that build their own
-/// [InputDecoration] (about eight, all `OutlineInputBorder`) keep Material's
-/// `primary` focus indicator, so in dark mode a field here focuses white
-/// while one of those focuses dark teal at 2.67:1. Giving each its own
-/// matching `focusedBorder` is the fix; a theme slot is not.
+/// shape. A decoration that builds its own border must therefore pass its own
+/// through [haloFocusedBorder]; one that doesn't keeps Material's `primary`
+/// indicator, which on the dark surface is 2.67:1.
 ///
 /// Width matches Material's own default focused-border weight (2.0) —
 /// overriding `focusedBorder` at all drops that default back to a plain
 /// BorderSide's 1.0, so it has to be restored explicitly.
 UnderlineInputBorder haloFocusedInputBorder(bool isDark) =>
-    UnderlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0));
+    UnderlineInputBorder(borderSide: _haloFocusedSide(isDark));
+
+/// [base] recolored to the focus indicator and left otherwise untouched, for
+/// the `focusedBorder` of a decoration that builds its own [border].
+///
+/// Pass the field's own border rather than restating its shape: `focusedBorder`
+/// replaces `border` outright while focused (`_InputDecoratorState.build`), so
+/// any divergence between the two is the field visibly changing shape as it
+/// takes focus. Copying is what makes that impossible.
+///
+/// Takes a [context] rather than a brightness for the same reason
+/// [poloFieldDecoration] does — but note what that does and does not buy. A
+/// subtree can pin its own [Theme] (the onboarding overlay pins light), and a
+/// context from ABOVE that pin resolves the app's ambient brightness instead:
+/// in dark mode that is a white border on a white dialog, invisible, and
+/// nothing throws. Passing a context makes the correct thing the natural thing
+/// to type; it does not make the incorrect thing impossible. In a method that
+/// receives no context of its own, the state's `context` is exactly the
+/// ancestor that gets this wrong.
+///
+/// Only a field with a **visible** border needs this. Material recolors a
+/// focused border by copying the field's own shape too, but returns early when
+/// `borderSide == BorderSide.none` (`_getDefaultBorder`) — so a border-less
+/// field paints no focus indicator at all, in any color, and has nothing here
+/// to correct.
+InputBorder haloFocusedBorder(InputBorder base, BuildContext context) =>
+    base.copyWith(borderSide: _haloFocusedSide(Theme.of(context).brightness == Brightness.dark));
+
+BorderSide _haloFocusedSide(bool isDark) =>
+    BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0);
 
 /// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
@@ -762,16 +789,15 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       // is not, and must not be. `focusedBorder` replaces a field's border
       // outright rather than recoloring it (`_InputDecoratorState.build`
       // selects it INSTEAD of `border` while focused), and it reaches every
-      // decoration that didn't set its own. Every hand-built decoration in
-      // this app uses `OutlineInputBorder`, so a theme-level underline turns
-      // each rounded box into a bare line the moment it takes focus — and
-      // gives the command bar's deliberately border-less field a permanent
-      // one, since that field is focused for the dialog's whole life. There
-      // is no theme slot that recolors a focused border without also
-      // reshaping it, so the color fix stays in [poloFieldDecoration], and
-      // fields that build their own decoration keep Material's focus
-      // indicator until each is given a `focusedBorder` matching its own
-      // shape. `input_decoration_theme_test.dart` holds this line.
+      // decoration that didn't set its own. The hand-built decorations in this
+      // app use `OutlineInputBorder`, so a theme-level underline turns each
+      // rounded box into a bare line the moment it takes focus — and gives the
+      // command bar's deliberately border-less field a permanent one, since
+      // that field is focused for the dialog's whole life. There is no theme
+      // slot that recolors a focused border without also reshaping it, so the
+      // color fix stays in [poloFieldDecoration] and, for a decoration that
+      // builds its own border, in [haloFocusedBorder]. `theme_test.dart` holds
+      // this line.
       //
       // Every state here is respecified, not just the focused one:
       // `WidgetStateTextStyle.resolveWith` cannot return null to defer, so

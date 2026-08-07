@@ -585,6 +585,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
           for (final row in rows)
             if (_matches(row, query)) row,
         ];
+        final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
 
         return HaloDialog(
           // Rows run edge to edge and the content scrolls itself, so the
@@ -616,7 +617,8 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                             onPressed: () => setState(_searchController.clear),
                           ),
                     hintText: st.searchHint,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: searchBorder,
+                    focusedBorder: haloFocusedBorder(searchBorder, context),
                   ),
                 ),
               ),

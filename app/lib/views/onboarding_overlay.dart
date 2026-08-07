@@ -465,7 +465,10 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                                     child: child,
                                   );
                                 },
-                                child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(theme, isHeightConstrained)),
+                                child: KeyedSubtree(
+                                  key: ValueKey(_step),
+                                  child: _buildStep(context, theme, isHeightConstrained),
+                                ),
                               ),
                             ),
                           ),
@@ -483,7 +486,11 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     );
   }
 
-  Widget _buildStep(ThemeData theme, bool isHeightConstrained) {
+  /// [context] must come from BELOW the light Theme `build` pins — the state's
+  /// own context is an ancestor of that pin, so anything resolving against it
+  /// reads the app's ambient brightness and paints dark-mode colors onto this
+  /// white band.
+  Widget _buildStep(BuildContext context, ThemeData theme, bool isHeightConstrained) {
     final s = context.t.onboarding;
     final titleStyle = theme.textTheme.titleLarge?.copyWith(
       fontFamily: 'RobotoSlab',
@@ -510,6 +517,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
           isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.callsign:
+        const callsignBorder = OutlineInputBorder();
         return _stepScaffold(
           title: Text(s.callsignTitle, style: titleStyle),
           body: Column(
@@ -528,7 +536,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                 decoration: InputDecoration(
                   labelText: s.callsignLabel,
                   hintText: 'N0CALL',
-                  border: const OutlineInputBorder(),
+                  border: callsignBorder,
+                  // Black whatever the app's brightness, like every other
+                  // focus cue in this flow — including the SwitchAccountsPane
+                  // field a later step embeds. That depends entirely on
+                  // [context] being the one _buildStep documents.
+                  focusedBorder: haloFocusedBorder(callsignBorder, context),
                 ),
                 onSubmitted: (_) => _nextFromCallsign(),
               ),

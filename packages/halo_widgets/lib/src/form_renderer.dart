@@ -1660,6 +1660,7 @@ class FormRendererState extends State<FormRenderer> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           final theme = Theme.of(dialogContext);
+          final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
           // Values are treated as opaque (FormFieldOption.value is `any` in
           // the SDK) — membership by equality, never a String cast.
           final currentValue = ((_values[key] as List?) ?? const []);
@@ -1790,7 +1791,8 @@ class FormRendererState extends State<FormRenderer> {
                                   onPressed: () => setDialogState(() => searchController!.clear()),
                                 ),
                           hintText: widget.labels.searchHint,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          border: searchBorder,
+                          focusedBorder: haloFocusedBorder(searchBorder, dialogContext),
                         ),
                       ),
                     ),

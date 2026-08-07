@@ -4092,6 +4092,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   // poloFieldDecoration TextFields (53px); the whole field
                   // is tappable, so the shrunken icon target costs nothing.
                   suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
+                  // This theme replaces the app's rather than extending it, so
+                  // the focus indicator has to be restated too — otherwise this
+                  // field focuses `primary` while the Frequency field beside it
+                  // focuses white. Underline is already the shape here (no
+                  // `border` is set), so this recolors without reshaping.
+                  focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
                 ),
                 dropdownMenuEntries: _bandMenuEntries,
                 onSelected: (value) {
@@ -4187,8 +4193,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     Space.xs,
                     dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
                   ),
-                  // Same height trim as the Band dropdown above.
+                  // Same height trim, and same restated focus indicator, as the
+                  // Band dropdown above.
                   suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
+                  focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
                 ),
                 dropdownMenuEntries: _modeMenuEntries,
                 onSelected: (value) {

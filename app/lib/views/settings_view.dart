@@ -1133,6 +1133,7 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
     // the scroll view below only needs the smaller row-background margin,
     // since its rows pick theirs up from the ambient ListTileTheme.
     final safeLeft = PaneSafeArea.leftOf(context);
+    final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1156,7 +1157,8 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
                       onPressed: () => setState(() => _searchController.clear()),
                     ),
               hintText: context.t.settings.search.hint,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: searchBorder,
+              focusedBorder: haloFocusedBorder(searchBorder, context),
             ),
           ),
         ),

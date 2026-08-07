@@ -239,10 +239,7 @@ class _ConfirmDevicePaneState extends State<ConfirmDevicePane> {
           enabled: !_busy,
           textCapitalization: TextCapitalization.characters,
           style: const TextStyle(fontFamily: 'RobotoMono', letterSpacing: 4),
-          decoration: InputDecoration(
-            labelText: context.t.confirmDevice.code,
-            border: const OutlineInputBorder(),
-          ),
+          decoration: poloFieldDecoration(context, context.t.confirmDevice.code),
           onSubmitted: (_) => _lookUpByCode(),
         ),
       ],

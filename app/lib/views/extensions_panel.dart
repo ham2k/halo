@@ -139,6 +139,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           }
         }
 
+        final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -159,7 +161,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                           onPressed: () => setState(() => _searchController.clear()),
                         ),
                   hintText: t.extensionsPanel.searchHint,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: searchBorder,
+                  focusedBorder: haloFocusedBorder(searchBorder, context),
                 ),
               ),
             ),

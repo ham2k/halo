@@ -560,6 +560,123 @@ void main() {
     });
   });
 
+  group('haloFocusedBorder (HALO-191)', () {
+    // The escape hatch from the trap above: a field that builds its own
+    // decoration can't take the fix from the theme, so it passes its own
+    // border through this instead.
+
+    /// The border the helper hands a field built under [appTheme], optionally
+    /// with [pinned] wrapped around it the way an overlay pins its own Theme.
+    /// Keyed per call: re-pumping the same MaterialApp swaps the theme under
+    /// its AnimatedTheme, and the first lerp frame still reports the outgoing
+    /// brightness (see the poloFieldDecoration test above).
+    Future<InputBorder> resolve(
+      WidgetTester tester,
+      InputBorder base, {
+      required ThemeData appTheme,
+      ThemeData? pinned,
+      required String key,
+    }) async {
+      late InputBorder result;
+      Widget probe = Builder(builder: (context) {
+        result = haloFocusedBorder(base, context);
+        return const SizedBox();
+      });
+      if (pinned != null) probe = Theme(data: pinned, child: probe);
+      await tester.pumpWidget(MaterialApp(key: ValueKey(key), theme: appTheme, home: probe));
+      return result;
+    }
+
+    testWidgets('recolors without reshaping — the whole reason it takes the base border', (tester) async {
+      // Returning haloFocusedInputBorder(...) here would satisfy every color
+      // assertion below and still be wrong: a rounded search box would collapse
+      // to a bare line the moment it took focus, which is exactly what stopped
+      // this being a theme slot.
+      final rounded = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+      final focused =
+          await resolve(tester, rounded, appTheme: buildHaLoTheme(Brightness.dark), key: 'shape');
+
+      expect(focused, isA<OutlineInputBorder>());
+      expect((focused as OutlineInputBorder).borderRadius, rounded.borderRadius);
+      // Everything about the shape survives, not just the two fields above.
+      expect(focused.copyWith(borderSide: rounded.borderSide), rounded);
+    });
+
+    testWidgets('carries the same high-contrast invariant as poloFieldDecoration, in BOTH brightnesses',
+        (tester) async {
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final border =
+            await resolve(tester, const OutlineInputBorder(), appTheme: theme, key: 'contrast-$brightness');
+        final side = border.borderSide;
+
+        // 3:1 is the non-text-contrast floor a focus indicator has to clear.
+        // `primary` is 2.67:1 on the dark surface, which is the defect: a
+        // field decorated by hand focused dark teal while the one beside it,
+        // decorated by poloFieldDecoration, focused white.
+        expect(_contrast(side.color, theme.colorScheme.surface), greaterThanOrEqualTo(3.0),
+            reason: '$brightness');
+        expect(side.color, isNot(theme.colorScheme.primary), reason: '$brightness');
+        // Same restoration as haloFocusedInputBorder: overriding focusedBorder
+        // at all drops Material's 2.0 back to a plain BorderSide's 1.0.
+        expect(side.width, 2.0, reason: '$brightness');
+      }
+    });
+
+    testWidgets('follows a PINNED theme, not the app\'s — why this takes a context, not a bool', (tester) async {
+      // The onboarding overlay pins itself to the light theme while the app
+      // around it may be dark. A brightness resolved above that pin yields
+      // white, and a white 2px border on the overlay's white dialog is the
+      // focus cue silently disappearing — nothing throws, nothing logs.
+      final light = buildHaLoTheme(Brightness.light);
+      final border = await resolve(
+        tester,
+        const OutlineInputBorder(),
+        appTheme: buildHaLoTheme(Brightness.dark),
+        pinned: light,
+        key: 'pinned',
+      );
+
+      expect(_contrast(border.borderSide.color, light.colorScheme.surface), greaterThanOrEqualTo(3.0));
+      expect(border.borderSide.color, isNot(Colors.white));
+    });
+
+    testWidgets('actually reaches the canvas — the slot is honored, not just set', (tester) async {
+      // A focusedBorder Material declined to use would pass every assertion
+      // above while the field on screen still focused teal. This decoration is
+      // the app's search fields' shape exactly (rounded 8, no fill).
+      final theme = buildHaLoTheme(Brightness.dark);
+      final border = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+      final node = FocusNode();
+      addTearDown(node.dispose);
+
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return TextField(
+              focusNode: node,
+              decoration: InputDecoration(
+                border: border,
+                focusedBorder: haloFocusedBorder(border, context),
+              ),
+            );
+          }),
+        ),
+      ));
+      node.requestFocus();
+      await tester.pumpAndSettle();
+
+      // Rounded, so the border paints as an RRect — a plain rect here would
+      // mean the shape was lost on the way to the canvas.
+      expect(
+        find.byType(InputDecorator),
+        paints..rrect(color: Colors.white, strokeWidth: 2.0),
+      );
+      expect(find.byType(InputDecorator), isNot(paints..rrect(color: theme.colorScheme.primary)));
+    });
+  });
+
   group('haloDialogConstraints', () {
     // Captures the constraints plus the screen/header heights the helper saw,
     // so expectations derive from the same MediaQuery rather than hardcoded
