@@ -9,6 +9,8 @@
 // success is only ever declared when the server says the account actually
 // changed. These tests pin those promises, not widget cosmetics.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,6 +52,12 @@ Future<void> pumpDialog(
                 fetchAccountData: fetchAccountData,
                 linkClient: linkClient,
                 linkClientWithEmail: linkClientWithEmail ?? (email) async => {},
+                // Mirrors showSwitchAccountsDialog. The header close icon
+                // decides where the footer needs a Cancel of its own, so this
+                // file — the DIALOG's harness — must set it; the `false`
+                // configuration is the onboarding step's, covered over in
+                // onboarding_test.dart.
+                hostHasCloseIcon: true,
                 pollInterval: const Duration(seconds: 5),
                 now: now ?? DateTime.now,
               ),
@@ -134,6 +142,108 @@ void main() {
     await tester.tap(find.text('Anonymous Account (#0A1B2C3D)'));
     await tester.pumpAndSettle();
     expect(linkedEmails, isEmpty);
+  });
+
+  testWidgets('the footer verb follows what leaving would discard', (tester) async {
+    final results = <bool?>[];
+    await pumpDialog(
+      tester,
+      results: results,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {'permission': {'status': 'pending', 'challenge_token': 'A1B2C3'}},
+    );
+
+    // Nothing is pending at the menu — a quick switch takes effect on the tap
+    // — so leaving discards nothing and the verb is Done, never Cancel
+    // (user-interface.md §Dialogs).
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Cancel'), findsNothing);
+
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+
+    // A sub-mode has a challenge in flight to abandon, so the same slot turns
+    // into Cancel — and it is the only control that can abandon one, since a
+    // live poll gates the header icon through PopScope.
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Done'), findsNothing);
+
+    // Done is a way out, not decoration.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(results, [false]);
+  });
+
+  testWidgets('backing out of a poll un-gates the header icon again', (tester) async {
+    // The header icon dismisses through maybePop, which the PopScope gates on
+    // the poll — so a poll that is cancelled but whose Timer is still in the
+    // field reads as live forever and kills that icon, Escape, and the system
+    // back gesture for the rest of the pane's life.
+    final results = <bool?>[];
+    await pumpDialog(
+      tester,
+      results: results,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {
+        'permission': {'status': 'pending', 'client': 'c1', 'challenge_token': 'FFEE99'},
+      },
+    );
+
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+    expect(find.byType(QrImageView), findsOneWidget);
+
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(MdiIcons.close));
+    await tester.pumpAndSettle();
+    expect(find.text('Link with a QR code'), findsNothing, reason: 'the header icon must still close the pane');
+  });
+
+  testWidgets('a request that never returns still leaves an enabled way out', (tester) async {
+    // Onboarding embeds this pane with no chrome of its own, so the footer is
+    // the entire control surface. Back-to-menu is disabled while busy; if the
+    // host call throws or hangs, _busy never clears, and without an exit
+    // beside it the user is stranded on a spinner during first-run setup.
+    var cancelled = false;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: SwitchAccountsPane(
+              fetchAccountData: () async => accountData(),
+              // Never completes — a host call that has gone away, which is
+              // what leaves _busy stuck true.
+              linkClient: (email) => Completer<Map<String, dynamic>?>().future,
+              linkClientWithEmail: (email) => Completer<Map<String, dynamic>?>().future,
+              hideAccountsList: true,
+              cancelLabel: 'Back',
+              onCancel: () => cancelled = true,
+              onLinked: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Plain pumps, never pumpAndSettle, for the rest of this test: _busy is
+    // stuck true, so the busy spinner animates forever and nothing settles —
+    // which is the stranding this test is about.
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+    // Exactly one Back — never two spelled the same — and it works.
+    expect(find.text('Back'), findsOneWidget);
+    await tester.tap(find.text('Back'));
+    await tester.pump();
+    expect(cancelled, isTrue, reason: 'the only control on screen must not be a dead one');
   });
 
   testWidgets('email flow: a pending permission shows its challenge code on screen', (tester) async {

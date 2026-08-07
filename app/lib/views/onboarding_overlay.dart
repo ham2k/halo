@@ -453,41 +453,52 @@ class _OnboardingContentState extends State<_OnboardingContent> {
                     AnimatedSize(
                       duration: _bandAnimationDuration,
                       curve: Curves.easeInOut,
-                      child: Container(
+                      // SizedBox + ColoredBox, never a Container: a Container
+                      // emits its ConstrainedBox only when it HAS constraints,
+                      // so a height that goes null when the soft keyboard opens
+                      // changes the tree's shape and re-inflates everything
+                      // below — the step loses its State mid-typing, closing
+                      // the keyboard it just opened. SizedBox always emits one.
+                      child: SizedBox(
                         height: (isKeyboardOpen || _step == _OnboardingStep.welcome) ? null : bandHeight + keyboardInset,
-                        color: _bandColor.withValues(alpha: bandOpacity),
-                        // Material (not just the animated color) so the step's
-                        // tiles and switches paint their ink on the band.
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: SafeArea(
-                            top: false,
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl + keyboardInset),
-                              // Steps slide horizontally: forward navigation
-                              // enters from the right (and exits left), Back
-                              // the mirror image. StackFit.expand keeps both
-                              // children band-sized during the transition;
-                              // ClipRect keeps the slide inside the band.
-                              child: AnimatedSwitcher(
-                                duration: _bandAnimationDuration,
-                                switchInCurve: Curves.easeInOut,
-                                switchOutCurve: Curves.easeInOut,
-                                layoutBuilder: (currentChild, previousChildren) => ClipRect(
-                                  child: Stack(
-                                    fit: isHeightConstrained ? StackFit.expand : StackFit.loose,
-                                    children: [...previousChildren, if (currentChild != null) currentChild],
+                        child: ColoredBox(
+                          color: _bandColor.withValues(alpha: bandOpacity),
+                          // Material (not just the animated color) so the step's
+                          // tiles and switches paint their ink on the band.
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: SafeArea(
+                              top: false,
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl + keyboardInset),
+                                // Steps slide horizontally: forward navigation
+                                // enters from the right (and exits left), Back
+                                // the mirror image. StackFit.expand keeps both
+                                // children band-sized during the transition;
+                                // ClipRect keeps the slide inside the band.
+                                child: AnimatedSwitcher(
+                                  duration: _bandAnimationDuration,
+                                  switchInCurve: Curves.easeInOut,
+                                  switchOutCurve: Curves.easeInOut,
+                                  layoutBuilder: (currentChild, previousChildren) => ClipRect(
+                                    child: Stack(
+                                      fit: isHeightConstrained ? StackFit.expand : StackFit.loose,
+                                      children: [...previousChildren, if (currentChild != null) currentChild],
+                                    ),
+                                  ),
+                                  transitionBuilder: (child, animation) {
+                                    final incoming = child.key == ValueKey(_step);
+                                    final fromRight = incoming == _movedForward;
+                                    return SlideTransition(
+                                      position: Tween(begin: Offset(fromRight ? 1 : -1, 0), end: Offset.zero).animate(animation),
+                                      child: child,
+                                    );
+                                  },
+                                  child: KeyedSubtree(
+                                    key: ValueKey(_step),
+                                    child: _buildStep(theme, isHeightConstrained),
                                   ),
                                 ),
-                                transitionBuilder: (child, animation) {
-                                  final incoming = child.key == ValueKey(_step);
-                                  final fromRight = incoming == _movedForward;
-                                  return SlideTransition(
-                                    position: Tween(begin: Offset(fromRight ? 1 : -1, 0), end: Offset.zero).animate(animation),
-                                    child: child,
-                                  );
-                                },
-                                child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(theme, isHeightConstrained)),
                               ),
                             ),
                           ),
@@ -703,15 +714,31 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           children: [
             title,
             const SizedBox(height: Space.lg),
-            isHeightConstrained ? Expanded(child: bodyWidget) : bodyWidget,
+            // One Flexible in both cases, never `constrained ? Expanded(body)
+            // : body`: swapping the widget AT this slot re-inflates the whole
+            // body, and the soft keyboard opening is exactly what flips
+            // [isHeightConstrained]. A step with State of its own — the
+            // callsign field's focus, the link-account pane's mode — would be
+            // reset by the keystroke that opened the keyboard. flex 0 keeps
+            // the body inflexible when the band is unbounded, which a flexible
+            // child in an unbounded Column is not allowed to be.
+            Flexible(
+              flex: isHeightConstrained ? 1 : 0,
+              fit: isHeightConstrained ? FlexFit.tight : FlexFit.loose,
+              child: bodyWidget,
+            ),
             const SizedBox(height: Space.md),
             Row(
               children: [
-                TextButton(
-                  onPressed: onSecondary,
-                  style: secondaryButtonStyle,
-                  child: Text(secondaryLabel),
-                ),
+                // An empty label means the step has no button for that slot,
+                // same as the primary below — a TextButton around empty text
+                // is invisible but still takes a tap.
+                if (secondaryLabel.isNotEmpty)
+                  TextButton(
+                    onPressed: onSecondary,
+                    style: secondaryButtonStyle,
+                    child: Text(secondaryLabel),
+                  ),
                 if (primaryLabel.isNotEmpty) ...[
                   const Spacer(),
                   FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),

@@ -57,6 +57,7 @@ Future<bool?> showSwitchAccountsDialog(
       fetchAccountData: fetchAccountData,
       linkClient: linkClient,
       linkClientWithEmail: linkClientWithEmail,
+      hostHasCloseIcon: true,
     ),
   );
 }
@@ -73,6 +74,11 @@ class SwitchAccountsPane extends StatefulWidget {
   final bool hideAccountsList;
   final String? cancelLabel;
 
+  /// Whether the host surface carries a way out of its own — a Modal Pane's
+  /// header close icon. Decides where the footer needs one too; see
+  /// [_SwitchAccountsPaneState._showCancel].
+  final bool hostHasCloseIcon;
+
   /// Overridable so tests can drive the poll loop without real 5s waits.
   final Duration pollInterval;
 
@@ -88,6 +94,7 @@ class SwitchAccountsPane extends StatefulWidget {
     this.onCancel,
     this.hideAccountsList = false,
     this.cancelLabel,
+    this.hostHasCloseIcon = false,
     this.pollInterval = const Duration(seconds: 5),
     this.now = DateTime.now,
   });
@@ -111,7 +118,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   bool _busy = false;
   String? _error;
   void _onSuccess() {
-    _pollTimer?.cancel();
+    _stopPolling();
     if (widget.onLinked != null) {
       widget.onLinked!();
     } else if (mounted) {
@@ -120,7 +127,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   void _doCancel() {
-    _pollTimer?.cancel();
+    _stopPolling();
     if (widget.onCancel != null) {
       widget.onCancel!();
     } else if (mounted) {
@@ -139,7 +146,18 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   /// minutes; both flows renew it from a poll tick past this instant.
   DateTime? _challengeExpiresAt;
 
+  /// Non-null only while a challenge is genuinely being polled for — always
+  /// cleared through [_stopPolling], never a bare `cancel()`. A cancelled
+  /// Timer left in this field reads as a live poll to [build]'s PopScope,
+  /// which then blocks Escape, the system back gesture and the Modal Pane's
+  /// close icon for the rest of the pane's life — on a menu that shows no
+  /// footer button of its own, that is a pane with no way out at all.
   Timer? _pollTimer;
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
 
   @override
   void initState() {
@@ -149,7 +167,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _stopPolling();
     _emailController.dispose();
     super.dispose();
   }
@@ -206,7 +224,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   void _startPolling() {
-    _pollTimer?.cancel();
+    _stopPolling();
     _pollTimer = Timer.periodic(widget.pollInterval, (_) => unawaited(_pollTick()));
   }
 
@@ -386,7 +404,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   void _backToMenu() {
-    _pollTimer?.cancel();
+    _stopPolling();
     setState(() {
       _mode = _Mode.menu;
       _error = null;
@@ -398,6 +416,40 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     });
     unawaited(_loadAccountData());
   }
+
+  /// Whether the footer carries a way out of the pane, and the [_backToMenu]
+  /// button beside it. Two rules, one per host, and between them one
+  /// invariant: **the footer never shows two buttons spelled "Back", and
+  /// never shows zero enabled ways out.**
+  ///
+  /// Hosted in a Modal Pane, the two slots are distinct words and both are
+  /// always real. A sub-mode's is Cancel — a live challenge poll gates the
+  /// header's close icon through the [PopScope] below, leaving Cancel the
+  /// only control that can abandon the request. The menu's is [_cancelLabel]'s
+  /// Done: nothing there is pending, since a quick switch takes effect the
+  /// moment it is tapped, and Done is the verb the dialog convention gives a
+  /// dialog whose changes have already happened (user-interface.md §Dialogs).
+  ///
+  /// Hosted in an onboarding step there is no chrome and both slots would
+  /// read "Back", so the footer carries exactly ONE, always enabled, doing
+  /// the most local thing still available: to the menu from a sub-mode, and
+  /// out to the step behind this pane from the menu — or from a sub-mode
+  /// whose request is in flight, where returning to the menu is not on offer
+  /// and this is the difference between a wait and a dead end.
+  bool get _showCancel => widget.hostHasCloseIcon || !_showBackToMenu;
+
+  bool get _showBackToMenu => _mode != _Mode.menu && !(_busy && !widget.hostHasCloseIcon);
+
+  /// The host's own word for it wins — onboarding's exit walks back a step,
+  /// so it says Back. Otherwise the verb follows what leaving would discard:
+  /// Cancel abandons the challenge a sub-mode has in flight, while the menu
+  /// has nothing outstanding to abandon.
+  String get _cancelLabel =>
+      widget.cancelLabel ?? (_mode == _Mode.menu ? t.common.done : t.common.cancel);
+
+  bool get _showPrimaryAction => _mode == _Mode.email;
+
+  bool get _hasFooter => _showBackToMenu || _showCancel || _showPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -417,18 +469,21 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildContent(context),
-          const SizedBox(height: Space.xxl),
+          // The gap belongs to the footer, not the content: a state with no
+          // footer button at all (the Modal Pane's menu) would otherwise end
+          // in Space.xxl of blank pane below its last row.
+          if (_hasFooter) const SizedBox(height: Space.xxl),
           // The shared footer rather than a hand-rolled OverflowBar: an
           // end-aligned bar of its own puts Cancel wherever it happens to fall
           // in the child list — here, last, i.e. exactly where every other
           // dialog in the app puts its confirm action.
           haloDialogFooterRow(
-            secondary: _mode == _Mode.menu
-                ? null
-                : TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)),
-            cancel: TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? context.t.common.cancel)),
+            secondary: _showBackToMenu
+                ? TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back))
+                : null,
+            cancel: _showCancel ? TextButton(onPressed: _doCancel, child: Text(_cancelLabel)) : null,
             actions: [
-              if (_mode == _Mode.email)
+              if (_showPrimaryAction)
                 FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount)),
             ],
           ),

@@ -553,17 +553,90 @@ void main() {
     expect(find.byType(QrImageView), findsOneWidget);
     expect(find.textContaining('Scan this QR code'), findsOneWidget);
 
-    // Tap Back to menu
-    await tester.ensureVisible(find.text('Back').first);
-    await tester.tap(find.text('Back').first);
+    // ONE Back per level, retracing the way in. The step has no chrome of
+    // its own, so the pane carries both the way back to its menu and the way
+    // back to the callsign question — spelled the same, they must never be on
+    // screen together, or the step offers two "Back" buttons going to
+    // different places with nothing to tell them apart.
+    expect(find.text('Back'), findsOneWidget);
+    await tester.ensureVisible(find.text('Back'));
+    await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
     expect(find.text('Link with a QR code'), findsOneWidget);
 
-    // Tap Back to Callsign step
-    await tester.ensureVisible(find.text('Back').last);
-    await tester.tap(find.text('Back').last);
+    expect(find.text('Back'), findsOneWidget);
+    await tester.ensureVisible(find.text('Back'));
+    await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
     expect(find.text("What's your callsign?"), findsOneWidget);
+
+    await drainTimers(tester);
+  });
+
+  // The two tests below both catch the same mutation: any step of the band
+  // whose widget TYPE changes with the keyboard — a `Container` whose height
+  // goes null, an `Expanded` that becomes a bare child — re-inflates the step
+  // and destroys whatever State it owns. On a phone that reads as the keyboard
+  // opening for a few frames and closing again, taking the step's progress
+  // with it; on desktop, where viewInsets never move, it is invisible.
+  testWidgets('the callsign field survives the keyboard it opens', (tester) async {
+    final services = await makeServices();
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    final field = find.widgetWithText(TextField, "Operator's Callsign");
+    await tester.enterText(field, 'KI2D');
+    await tester.pumpAndSettle();
+
+    final editable = find.descendant(of: field, matching: find.byType(EditableText));
+    expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
+    // Identity, captured BEFORE the change. Text and focus alone would not
+    // prove survival here: the controller is the overlay State's own field,
+    // and `autofocus: true` hands focus straight back to a freshly inflated
+    // field — so a re-inflated step reads identical on both unless the test
+    // pins the State object itself.
+    final before = tester.state<EditableTextState>(editable);
+
+    // The soft keyboard arriving: viewInsets grow from the bottom.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+
+    expect(tester.state<EditableTextState>(editable), same(before));
+    expect(tester.widget<EditableText>(editable).controller.text, 'KI2D');
+    expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
+
+    await drainTimers(tester);
+  });
+
+  testWidgets('the link-account pane stays on the step the keyboard was opened for', (tester) async {
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+      'qsos': {'total': 0},
+      'operations': {'total': 0},
+    };
+
+    final services = await makeServices(extensions: mockExtensions);
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Already have an account?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter the email address of the account you want this device to use.'), findsOneWidget);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+
+    // The pane owns the email/QR/code mode in its own State: losing it drops
+    // the user back to the menu, which reads as an uninvited Back.
+    expect(find.text('Enter the email address of the account you want this device to use.'), findsOneWidget);
+    expect(find.text('Link with an email address'), findsNothing);
 
     await drainTimers(tester);
   });
