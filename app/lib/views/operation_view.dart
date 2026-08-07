@@ -1083,7 +1083,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       showOperationExportPanel(context, services: widget.services, operation: operation);
 
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
-      runCommandAction(widget.services, this, action, params);
+      runCommandAction(widget.services, action, params);
 
   /// The logging panel's own settings — field visibility, dupe/number
   /// display, a bulk lookup refresh — behind the tune icon, built from

@@ -180,6 +180,15 @@ enum CommandMessageKind {
 
   /// A `confirm` from a command that just ran. Clears itself after 5s.
   confirmation,
+
+  /// A command that RAN and reported that it did not work — an action's own
+  /// bad news (`updateSetting` rejecting a value, a spot a source refused).
+  ///
+  /// Kept apart from [error], which is a command that never ran at all and
+  /// leaves the operator's text in the field to be fixed. This one is a
+  /// RESPONSE: the field is empty behind it, it reads in the error style, and
+  /// it lives on the same five-second clock as a [confirmation].
+  failure,
 }
 
 /// Drives callsign lookup and command interpretation for one text field.
@@ -203,8 +212,32 @@ class CommandEngine extends ChangeNotifier {
   final Map<String, dynamic>? Function() operationContext;
 
   /// Invoked after a command's actions have been dispatched. The dialog
-  /// closes itself here; the Home bar does nothing.
+  /// decides there whether to stay up for the response; the Home bar does
+  /// nothing.
   final void Function()? onExecuted;
+
+  /// Invoked when a just-run command's response has had its five seconds and
+  /// cleared itself. The ⌘K dialog dismisses itself here — the response is
+  /// what kept it open.
+  ///
+  /// Fires from the clock alone, never from the other paths that clear the
+  /// message, so a keystroke — which cancels that clock ([_onTextChanged]) —
+  /// stops the dismissal. That is NOT the same as "the field is empty when
+  /// this fires": the stale-submit path in [_submit] starts a confirmation's
+  /// clock over text the operator typed during the round trip. A listener
+  /// that closes a surface here has to check the field itself.
+  final void Function()? onResponseExpired;
+
+  /// Whether this bar can actually be READ right now — not merely alive.
+  ///
+  /// [showResponse] is the destination `runCommandAction` prefers over the
+  /// status bar, and it only earns that on the strength of being visible. The
+  /// Home bar's engine outlives its visibility by a long way: HomeView stays
+  /// mounted underneath every pushed route, so a command run there and
+  /// answered after the operator opened an operation would paint its failure
+  /// onto a bar buried two screens down and report success doing it. Null
+  /// means "always readable".
+  final bool Function()? canShowResponse;
 
   /// Whether Enter on text that matched no command should wipe the field.
   ///
@@ -214,9 +247,12 @@ class CommandEngine extends ChangeNotifier {
   /// asked for, and drops the palette back to its suggestions.
   final bool clearOnNoMatch;
 
-  /// Runs one dispatched `CommandAction`. Defaults to the app-wide
-  /// [runCommandAction], which needs a `State` for its mounted check —
-  /// callers pass their own so a message lands on the right widget.
+  /// Runs one dispatched `CommandAction` — the app-wide `runCommandAction`
+  /// for both bars; a callback so tests can stand in for it. Where whatever
+  /// it has to say ENDS UP is not this callback's business: an action
+  /// dispatched by the logging panel never passes through here at all, so the
+  /// destination is decided by `HaLoServices.commandResponseSink`, which
+  /// [_submit] holds open across the whole batch.
   final Future<void> Function(String action, Map<String, dynamic>? params) runAction;
 
   CommandEngine({
@@ -224,6 +260,8 @@ class CommandEngine extends ChangeNotifier {
     required this.operationContext,
     required this.runAction,
     this.onExecuted,
+    this.onResponseExpired,
+    this.canShowResponse,
     this.clearOnNoMatch = true,
   });
 
@@ -256,11 +294,21 @@ class CommandEngine extends ChangeNotifier {
   /// How [message] should read.
   CommandMessageKind get messageKind => _messageKind;
 
-  /// Whether [message] is a recognized-but-unrunnable command's error.
-  bool get isError => _message != null && _messageKind == CommandMessageKind.error;
+  /// Whether [message] should read as bad news — either a command that could
+  /// not run, or one that ran and failed.
+  bool get isError =>
+      _message != null &&
+      (_messageKind == CommandMessageKind.error || _messageKind == CommandMessageKind.failure);
 
   /// Whether [message] is a just-executed command's confirmation.
   bool get isConfirmation => _message != null && _messageKind == CommandMessageKind.confirmation;
+
+  /// Whether [message] is a finished command's ANSWER — what it did, or why it
+  /// could not. Both kinds sit over an emptied field and share the clock; only
+  /// their styling differs.
+  bool get isResponse =>
+      _message != null &&
+      (_messageKind == CommandMessageKind.confirmation || _messageKind == CommandMessageKind.failure);
 
   /// Whether an interpretation of the CURRENT text is still on its way —
   /// true from the keystroke until its debounced `interpret` answers.
@@ -312,12 +360,59 @@ class CommandEngine extends ChangeNotifier {
 
   String get trimmedText => _text.trim();
 
+  StreamSubscription<Map<String, dynamic>>? _interpretationUpdatesSub;
+
   /// Starts listening to [controller]. Call once, from the caller's
   /// `initState`.
   void attach(TextEditingController controller) {
     _controller?.removeListener(_onTextChanged);
     _controller = controller;
     controller.addListener(_onTextChanged);
+    _interpretationUpdatesSub ??=
+        services.extensions.commandInterpretationUpdates.listen(_onInterpretationUpdate);
+  }
+
+  /// A `command` hook pushing a later interpretation for an input it has
+  /// already answered — SOLAR/WEATHER's background fetch landing after the
+  /// "Fetching…" preview their own interpret call returned (see
+  /// `host.updateInterpretation`'s SDK doc).
+  ///
+  /// The reading has to replace that preview everywhere it shows, which is why
+  /// this sets [currentInterpretation] and not just the message: in the ⌘K
+  /// dialog the preview is the "run what's typed" row's subtitle, and a row
+  /// still reading "Fetching…" a second after the fetch answered is the thing
+  /// this exists to fix.
+  ///
+  /// Never dispatches `commands`, whatever the push carries — only Enter runs
+  /// anything.
+  void _onInterpretationUpdate(Map<String, dynamic> event) {
+    final text = trimmedText;
+    // The push names the input it answers, and the field has usually moved on.
+    if (text.isEmpty || event['input'] != text) return;
+    // A command that just ran owns the line for its five seconds: its
+    // execute-time answer is the newer news, and a push landing behind it
+    // would replace that answer with a preview of the same command.
+    if (isResponse) return;
+    // The host fills a missing interpretation in as `{}` before it gets
+    // here, and an empty one is a hook RETRACTING its preview — which is null
+    // internally. Left as `{}` it reads as a recognized command, and Enter
+    // stops clearing the Home bar's search for that text.
+    final pushed = (event['interpretation'] as Map?)?.cast<String, dynamic>();
+    _applyInterpretation(pushed == null || pushed.isEmpty ? null : pushed);
+    notifyListeners();
+  }
+
+  /// Records an interpretation and derives the message line from it. Callers
+  /// notify.
+  void _applyInterpretation(Map<String, dynamic>? result) {
+    _currentInterpretation = result;
+    if (result != null && result['error'] is String) {
+      _setMessage(result['error'] as String, CommandMessageKind.error);
+    } else if (result != null && result['describe'] is String) {
+      _setMessage(result['describe'] as String, CommandMessageKind.describe);
+    } else {
+      _setMessage(null, CommandMessageKind.describe);
+    }
   }
 
   /// Set before anything else in [dispose] so an in-flight [_submit] can tell
@@ -332,6 +427,7 @@ class CommandEngine extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _controller?.removeListener(_onTextChanged);
+    unawaited(_interpretationUpdatesSub?.cancel());
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
     _lookupDebounce?.cancel();
@@ -416,14 +512,7 @@ class CommandEngine extends ChangeNotifier {
         // Stale — a newer keystroke started while this was awaiting, and owns
         // everything below.
         if (generation != _interpretGeneration) return;
-        _currentInterpretation = result;
-        if (result != null && result['error'] is String) {
-          _setMessage(result['error'] as String, CommandMessageKind.error);
-        } else if (result != null && result['describe'] is String) {
-          _setMessage(result['describe'] as String, CommandMessageKind.describe);
-        } else {
-          _setMessage(null, CommandMessageKind.describe);
-        }
+        _applyInterpretation(result);
         notifyListeners();
       });
     }
@@ -513,14 +602,59 @@ class CommandEngine extends ChangeNotifier {
     }
   }
 
-  /// The command's own confirmation on the field's message line, self-clearing
-  /// after five seconds the same way a describe does. Callers notify.
-  void _showConfirmationMessage(String confirm) {
+  /// What a command ACTION had to say about what it did — dispatched app-side
+  /// (`runCommandAction`), so it lands after the hook's optimistic `confirm`
+  /// and outranks it: the action is the one that knows whether the write
+  /// actually happened. Same line, same five seconds, and the clock restarts
+  /// so a slow action's news isn't half-expired by the time it arrives.
+  ///
+  /// Returns whether it was actually shown. This is reached through
+  /// `HaLoServices.commandResponseSink`, from code that has no idea whether
+  /// this engine's surface is still there — and a caller told "shown" for a
+  /// message nobody can see has no reason to fall back to the status bar, so
+  /// the false here is what keeps an action's failure from vanishing.
+  ///
+  /// Deliberately does NOT start the clock, even though this is a finished
+  /// action's word: this runs from INSIDE [_submit]'s dispatch, where a later
+  /// action in the same batch may still be running. [_submit] arms it once the
+  /// whole batch has settled.
+  bool showResponse(String message, {bool failed = false}) {
+    if (_disposed || !(canShowResponse?.call() ?? true)) return false;
+    // Within one batch the WORST news wins, not the last: an action that
+    // failed followed by one that succeeded must not end up reading as
+    // success. Claimed as shown either way — the failure already on the line
+    // is this batch's answer, and sending the success on to the status bar
+    // would just contradict it somewhere else.
+    if (!failed && _messageKind == CommandMessageKind.failure) return true;
+    _setMessage(message, failed ? CommandMessageKind.failure : CommandMessageKind.confirmation);
+    _executeMessageTimer?.cancel();
+    notifyListeners();
+    return true;
+  }
+
+  /// Puts a command's confirmation on the field's message line. Does NOT start
+  /// its five seconds — see [_armResponseClock]. Callers notify.
+  void _setConfirmation(String confirm) {
     _executeMessageTimer?.cancel();
     _setMessage(confirm, CommandMessageKind.confirmation);
+  }
+
+  /// Starts (or restarts) the five seconds a response stays up, and with it
+  /// the ⌘K palette's own dismissal.
+  ///
+  /// Armed once the command has actually finished, never when its optimistic
+  /// `confirm` is first shown: `syncAll` resyncs a whole account and a
+  /// settings write can wait on an extension validator for thirty seconds, so
+  /// a clock started at the confirm expires mid-flight — closing the surface
+  /// that the action's own word, the one that knows whether the write
+  /// happened, was about to be delivered to.
+  void _armResponseClock() {
+    if (!isResponse) return;
+    _executeMessageTimer?.cancel();
     _executeMessageTimer = Timer(const Duration(seconds: 5), () {
       _setMessage(null, CommandMessageKind.describe);
       notifyListeners();
+      onResponseExpired?.call();
     });
   }
 
@@ -566,7 +700,11 @@ class CommandEngine extends ChangeNotifier {
       // line is all we get, and it has to carry the outcome.
       if (trimmedText != text) {
         if (confirm != null) {
-          _showConfirmationMessage(confirm);
+          _setConfirmation(confirm);
+          // Nothing is dispatched down this path, so the clock starts here.
+          // It is the one place a confirmation's five seconds run with text
+          // already in the field — see [onResponseExpired].
+          _armResponseClock();
           notifyListeners();
         }
         return false; // stale — the field changed while awaiting
@@ -588,7 +726,7 @@ class CommandEngine extends ChangeNotifier {
 
       _currentInterpretation = null;
       if (confirm != null) {
-        _showConfirmationMessage(confirm);
+        _setConfirmation(confirm);
       } else {
         _setMessage(null, CommandMessageKind.describe);
       }
@@ -596,9 +734,32 @@ class CommandEngine extends ChangeNotifier {
 
       final commands = executable['commands'];
       if (commands is List) {
-        await dispatchActions(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
+        // Every action's message arrives inside this awaited window — the
+        // logging panel's dispatcher awaits each `onCommandAction` in turn —
+        // so this is exactly how long the sink needs to exist, and holding it
+        // any longer catches messages belonging to commands typed elsewhere
+        // (see `HaLoServices.commandResponseSink`). Restored rather than
+        // nulled: a command run from the ⌘K palette over an operation reaches
+        // here through the palette's engine while the Home bar's engine may
+        // have its own claim standing.
+        final outer = services.commandResponseSink;
+        services.commandResponseSink = showResponse;
+        try {
+          await dispatchActions(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
+        } finally {
+          if (services.commandResponseSink == showResponse) services.commandResponseSink = outer;
+        }
       }
-      onExecuted?.call();
+      // Only now, with the batch settled and any action's word already on the
+      // line, does the response start counting down — and only if there is
+      // still a surface to count down for. Dispatch can outlive this engine
+      // (the operator dismisses the ⌘K palette while a sync runs), and a clock
+      // armed past that fires `notifyListeners` on a disposed ChangeNotifier.
+      if (!_disposed) {
+        _armResponseClock();
+        notifyListeners();
+        onExecuted?.call();
+      }
       return true;
     } else if (interpretation == null && clearOnNoMatch) {
       // Nothing matched — the Home bar treats Enter as "clear this search".

@@ -324,7 +324,12 @@ One field, four kinds of result:
   label rather than a grouping heading, since rows are ranked across
   categories.
 - **What's typed**, when a `command` hook recognizes it — listed first, since
-  running it is usually what Enter should do.
+  running it is usually what Enter should do. A hook that answers with a
+  placeholder and fills it in later (SOLAR describes itself as "Fetching solar
+  conditions…" while its fetch runs, then pushes the reading through
+  `host.updateInterpretation`) updates this row in place: the row IS the
+  describe here, so a push that only reached the message line would leave the
+  palette reading "Fetching…" long after the answer arrived.
 - **Navigation** — Home, Settings, a new operation, or any existing operation
   matched by title.
 - **The callsign lookup**, when the text looks like a callsign. It says
@@ -344,6 +349,58 @@ the search" behaviour; the shared engine takes a flag for it.) An
 operation-scoped command (SEED, NOTE, SPOT) is simply **not offered** when no
 operation is open — listing something unpickable is noise, and picking it
 would only produce the hook's error.
+
+**What a command says lands in the bar it was typed into**, at the foot of the
+results card — never the status bar, which outlives the route and would still
+be carrying "Band set to 20m" over an unrelated screen minutes later. That
+answer gets the card **to itself**, set at the field's own size rather than a
+footnote's: executing clears the field, and an empty field is exactly what
+puts the sample commands on screen, so without suppressing them the card reads
+"here is what happened, and here are two unrelated things to try". A describe
+or an interpret-time error stays small — that is commentary on text still
+being typed, not the thing Enter was pressed for.
+
+The palette therefore stays up after running a command and dismisses itself
+once the response has had its five seconds. It closes at once when the command
+had nothing to say; **Enter dismisses a response** rather than waiting it out,
+since the field behind it is empty and Enter would otherwise be the one key
+here that does nothing; and typing again cancels the dismissal, because those
+five seconds are for a palette nobody is using. The consequence to know about
+is that the palette holds focus for those seconds — an operator who runs a
+band change and immediately types the next callsign puts it in the palette,
+which then stays open.
+
+A command ACTION's message (`syncAll`'s status, EXP's outcome, a failed
+setting write) replaces the hook's `confirm` on that same line: the action is
+the one that knows whether anything actually happened — **including whether it
+is bad news**, which it says explicitly rather than leaving the wording to be
+read. A failure gets the error wash and the alert icon: `updateSetting`
+returns text only when it could NOT store the value, while `syncAll` returns
+it either way, so nothing downstream could tell them apart. Within one batch
+the worst news wins, not the last — a spot one source refused and the next
+accepted must not read as success, because the operator's next move is to
+spot the refused one again. It gets there through
+`HaLoServices.commandResponseSink`, because with an operation open it is the
+logging panel's dispatcher, not the bar, that runs those actions — the message
+comes back through code the bar never touches, so a parameter could not carry
+it. `CommandEngine` holds that slot open for the length of ONE command's
+dispatch and no longer: every action's message arrives inside that awaited
+window, and a slot held for a bar's whole lifetime instead catches messages
+belonging to commands typed elsewhere — a SPOT started in the call field,
+answering seconds later on a palette that has since opened, blanking its card
+and dismissing it over a command that was never typed there. The Home bar's
+message line works identically, minus the closing.
+
+The five seconds start when the command **settles**, not when its confirm
+appears: `syncAll` resyncs a whole account and a settings write can wait on an
+extension validator, and a clock started at the confirm expires mid-flight —
+closing the surface the action's own word was about to land on. If it lands
+anyway with nowhere to go (the operator dismissed the palette meanwhile), the
+status bar takes it: a message that reaches nobody is the one outcome ruled
+out. DEVNOTICE/DEVSTATUS/DEVPROGRESS are the exception that proves the rule —
+painting the status bar is what those commands are *for* — as is anything a
+command finishes **after** its dispatch returns, notably RELOAD's data-file
+progress, which reports there by design.
 
 The sheet shows at most five rows and scrolls beyond that. An **empty field is
 not a browse-everything list**: for the first ten opens it offers two random

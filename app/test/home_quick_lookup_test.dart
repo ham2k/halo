@@ -66,6 +66,20 @@ class _CannedCommandExtensions extends ExtensionService {
         ],
       };
     }
+    // Carries an action whose outcome only the app knows: sync is off in
+    // these tests, so nothing syncs however confident the hook's confirm is.
+    if (trimmed == 'SYNCALL') {
+      return {
+        'describe': 'Sync everything?',
+        'confirm': 'Syncing…',
+        'commands': [
+          {'syncAll': {}},
+        ],
+      };
+    }
+    // The SOLAR shape: answers at once with a placeholder, then pushes the
+    // real reading through `host.updateInterpretation`.
+    if (trimmed == 'SOLAR') return {'describe': 'Fetching solar conditions…'};
     // A recognized prefix still awaiting its (free-text) parameter — same
     // shape as the real RELOAD hook.
     if (trimmed == 'RELOAD') return {'describe': 'reload what?', 'expectsParams': true};
@@ -74,6 +88,18 @@ class _CannedCommandExtensions extends ExtensionService {
     if (trimmed.startsWith('NOTE')) return {'describe': 'add a note', 'mixedCase': true};
     return null;
   }
+
+  /// Stands in for the extension runtime's `host.updateInterpretation`
+  /// channel, which the real service feeds from the host.
+  final _pushes = StreamController<Map<String, dynamic>>.broadcast();
+
+  @override
+  Stream<Map<String, dynamic>> get commandInterpretationUpdates => _pushes.stream;
+
+  /// A `command` hook answering again, later, for an input it already
+  /// interpreted.
+  void pushInterpretation(String input, Map<String, dynamic> interpretation) =>
+      _pushes.add({'input': input, 'interpretation': interpretation});
 }
 
 void main() {
@@ -363,6 +389,128 @@ void main() {
       expect(controller.text, 'DEVMODE!'); // ...so it is left exactly as typed
       expect(engine.message, 'Developer mode activated');
       expect(engine.isConfirmation, isTrue);
+    });
+
+    testWidgets("an action's own word lands on the bar, not the status bar", (tester) async {
+      // SYNCALL's confirm is optimistic — the hook cannot know sync is turned
+      // off. The action can, and its answer is the one the operator needs, on
+      // the line they are already reading. The status bar outlives this screen
+      // and would still be carrying it long after.
+      final services = await makeServices();
+      expect(services.settings.syncEnabled, isFalse);
+      await pumpLookup(tester, services);
+
+      await tester.enterText(find.byType(TextField), 'SYNCALL');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(find.text(t.commands.enableSyncFirst), findsOneWidget);
+      expect(find.text('Syncing…'), findsNothing, reason: 'nothing is syncing; the action knows better');
+      expect(services.statusBar.items, isEmpty);
+    });
+
+    testWidgets('a hook answering late replaces its own placeholder', (tester) async {
+      // SOLAR describes itself as "Fetching…" and pushes the reading when the
+      // fetch lands (host.updateInterpretation). Both bars run this engine, so
+      // a push the engine ignored would leave either one saying "Fetching…"
+      // for as long as the text stood.
+      final services = await makeServices();
+      final extensions = services.extensions as _CannedCommandExtensions;
+      await pumpLookup(tester, services);
+
+      await tester.enterText(find.byType(TextField), 'SOLAR');
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('Fetching solar conditions…'), findsOneWidget);
+
+      extensions.pushInterpretation('SOLAR', {'describe': 'SFI 168, A 5, K 2'});
+      await tester.pump();
+
+      expect(find.text('SFI 168, A 5, K 2'), findsOneWidget);
+      expect(find.text('Fetching solar conditions…'), findsNothing);
+    });
+
+    test('a bar nobody can see declines the message rather than swallowing it', () async {
+      // This bar's engine outlives its visibility: HomeView stays mounted
+      // under every pushed route, so a command run here and answered after the
+      // operator opened an operation would paint its failure onto a bar two
+      // screens down — and, by reporting success, stop runCommandAction from
+      // saying it anywhere the operator is actually looking.
+      final services = await makeServices();
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (action, params) => runCommandAction(services, action, params),
+        canShowResponse: () => false, // what a covered-up bar answers
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController(text: 'SYNCALL');
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      await engine.submit();
+
+      expect(engine.message, isNot(t.commands.enableSyncFirst), reason: 'nothing is painted where nobody looks');
+      expect(services.statusBar.items.map((i) => i.text), contains(t.commands.enableSyncFirst),
+          reason: 'and the status bar picks up what the bar declined');
+    });
+
+    test('a hook retracting its preview leaves nothing recognized', () async {
+      // The host fills a missing interpretation in as `{}` before it reaches
+      // the engine, so an empty push is how a hook says "never mind". Kept as
+      // an empty map it reads as a RECOGNIZED command: Enter stops clearing
+      // this bar's search, and submit takes the execute path for text no hook
+      // claims.
+      final services = await makeServices();
+      final extensions = services.extensions as _CannedCommandExtensions;
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+      controller.text = 'SOLAR';
+      await pumpEventQueue();
+
+      extensions.pushInterpretation('SOLAR', const {});
+      await pumpEventQueue();
+
+      expect(engine.currentInterpretation, isNull);
+    });
+
+    test('a late answer does not wipe out the confirmation of a command that ran', () async {
+      // The pairing of the two rules above: the operator typed on while a
+      // command was executing, so a confirmation for what RAN sits on the line
+      // over text that has moved on — and a push answering that new text would
+      // erase the only record that the first command happened at all.
+      final services = await makeServices();
+      final extensions = services.extensions as _CannedCommandExtensions;
+      final engine = CommandEngine(
+        services: services,
+        operationContext: () => null,
+        runAction: (_, _) async {},
+      );
+      addTearDown(engine.dispose);
+      final controller = TextEditingController(text: 'DEVMODE');
+      addTearDown(controller.dispose);
+      engine.attach(controller);
+
+      extensions.executeGate = Completer<void>();
+      final submitted = engine.submit();
+      await pumpEventQueue();
+      controller.text = 'SOLAR';
+      extensions.executeGate!.complete();
+      await submitted;
+      expect(engine.message, 'Developer mode activated');
+
+      extensions.pushInterpretation('SOLAR', {'describe': 'SFI 168, A 5, K 2'});
+      await pumpEventQueue();
+
+      expect(engine.message, 'Developer mode activated',
+          reason: 'the command that ran keeps the line for its five seconds');
     });
 
     testWidgets('whitespace that is not the space key still reaches the field', (tester) async {

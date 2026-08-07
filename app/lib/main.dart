@@ -1073,6 +1073,25 @@ class HaLoServices {
   CommandActionsDispatcher? get currentCommandDispatch =>
       _operationStack.isEmpty ? null : _operationStack.last.dispatch;
 
+  /// Where a command action's message goes: the command bar that is running a
+  /// command right now, on its own response line, rather than the status bar
+  /// (see [runCommandAction]). Returns whether it could show it.
+  ///
+  /// A sink here rather than a parameter because a command bar does NOT
+  /// dispatch most commands itself: with an operation open the whole action
+  /// batch goes to the front-most logging panel ([currentCommandDispatch]),
+  /// whose own handler is the one that ends up calling [runCommandAction]. So
+  /// the message comes back through code the bar never touches, and this is
+  /// the only thing they share.
+  ///
+  /// Set for the duration of ONE command's dispatch by `CommandEngine`, not
+  /// for a bar's lifetime: every action's message arrives inside that awaited
+  /// window, and a slot held open longer catches messages from commands typed
+  /// somewhere else entirely — a SPOT started in the call field, answering
+  /// seconds later on a palette that has since opened, blanking the card and
+  /// dismissing itself over a command the operator never typed there.
+  bool Function(String message, {bool failed})? commandResponseSink;
+
   /// Registers a newly opened Operation View and returns its entry, which the
   /// caller fills in as its operation loads and must pass back to
   /// [closeOperationContext] on dispose.
@@ -1308,13 +1327,13 @@ class HaLoServices {
   /// caller to show in a SnackBar, or null for nothing — the dev-command
   /// cases return null since their `confirm` text already shows in the
   /// call field, and the status bar item itself is the visible result.
-  Future<String?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
+  Future<CommandActionOutcome?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     track('command_executed', {'command': action});
     switch (action) {
       case 'syncAll':
-        if (!settings.syncEnabled) return t.commands.enableSyncFirst;
+        if (!settings.syncEnabled) return (text: t.commands.enableSyncFirst, failed: true);
         await syncEngine.forceFullResync();
-        return t.commands.fullResyncStarted;
+        return (text: t.commands.fullResyncStarted, failed: false);
       case 'reloadDataFiles':
         final p = params ?? const {};
         final target = (p['target'] as String?)?.toUpperCase();
@@ -1340,7 +1359,10 @@ class HaLoServices {
           debugPrint('[data-file] reloadDataFiles failed: $e');
           statusBar.setProgress(key: 'command:reloadDataFiles', text: t.commands.reloadFailed(error: e), value: 1.0);
         }));
-        return target == 'ALL' ? t.commands.reloadingAll : t.commands.reloadingTarget(target: target);
+        return (
+          text: target == 'ALL' ? t.commands.reloadingAll : t.commands.reloadingTarget(target: target),
+          failed: false,
+        );
       case 'devNotice':
         final p = params ?? const {};
         final devNoticeKey = p['key'] as String? ?? 'devNotice-${DateTime.now().microsecondsSinceEpoch}';
@@ -1391,7 +1413,10 @@ class HaLoServices {
           StackTrace.current,
           context: 'devsentry',
         );
-        return ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly;
+        return (
+          text: ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly,
+          failed: false,
+        );
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':
@@ -1401,12 +1426,17 @@ class HaLoServices {
         final token = (params?['token'] as String? ?? '').trim();
         if (token.isEmpty) return null;
         final experiment = findExperiment(await loadExperiments(), token);
-        if (experiment == null) return t.commands.unknownExperiment(token: token.toUpperCase());
+        if (experiment == null) {
+          return (text: t.commands.unknownExperiment(token: token.toUpperCase()), failed: true);
+        }
         final enabled = !settings.experimentEnabled(experiment.key);
         await settings.setExperimentEnabled(experiment.key, enabled);
-        return enabled
-            ? t.commands.experimentEnabled(name: experiment.name)
-            : t.commands.experimentDisabled(name: experiment.name);
+        return (
+          text: enabled
+              ? t.commands.experimentEnabled(name: experiment.name)
+              : t.commands.experimentDisabled(name: experiment.name),
+          failed: false,
+        );
       case 'updateSetting':
         // SET/SHOW/HIDE: the hook already resolved the key and coerced the
         // value through `searchSettings`, so this only writes. Returns null on
@@ -1416,7 +1446,8 @@ class HaLoServices {
         // (an extension field's validator rejecting the value).
         final settingKey = params?['key'] as String?;
         if (settingKey == null || settingKey.isEmpty) return null;
-        return applySettingCommand(this, key: settingKey, value: params?['value']);
+        final rejected = await applySettingCommand(this, key: settingKey, value: params?['value']);
+        return rejected == null ? null : (text: rejected, failed: true);
       case 'openSettings':
         // The setting can't be typed on one line (multiselect, account,
         // secret), the operator named it without a value, or the query
@@ -1442,16 +1473,16 @@ class HaLoServices {
   /// QSY/QRX/SPOTLAST-family commands (`logging_controls.dart`'s
   /// `_dispatchActions`, which already resolved *who* gets spotted —
   /// this only posts and summarizes the per-source result).
-  Future<String> _sendSpot(Map<String, dynamic> params) async {
+  Future<CommandActionOutcome> _sendSpot(Map<String, dynamic> params) async {
     final operation = (params['operation'] as Map?)?.cast<String, dynamic>() ?? const {};
     final qso = (params['qso'] as Map?)?.cast<String, dynamic>();
     final target = params['target'] as String? ?? 'self';
-    if (target == 'last' && qso == null) return t.spotting.noQsoYet;
+    if (target == 'last' && qso == null) return (text: t.spotting.noQsoYet, failed: true);
     final freq = (params['freq'] as num?)?.toDouble();
-    if (qso == null && freq == null) return t.spotting.setFrequencyFirst;
+    if (qso == null && freq == null) return (text: t.spotting.setFrequencyFirst, failed: true);
 
     final sources = await extensions.suggestSpotSources(operation: operation, qso: qso);
-    if (sources.isEmpty) return t.spotting.nothingToSpot;
+    if (sources.isEmpty) return (text: t.spotting.nothingToSpot, failed: true);
 
     final results = await extensions.sendSpot(
       sources: sources,
@@ -1464,15 +1495,21 @@ class HaLoServices {
     );
 
     final summaries = <String>[];
+    // One source refusing is bad news even when another accepted: the
+    // operator's next move is to spot the failed one again, and a summary
+    // reading as success is what stops them.
+    var anyFailed = false;
     for (final source in sources) {
       final hookKey = source['hookKey'] as String? ?? '?';
       final result = results[hookKey];
       if (result == null) continue;
+      if (result['ok'] != true) anyFailed = true;
       summaries.add(result['ok'] == true
           ? t.spotting.spottedOn(source: hookKey)
           : t.spotting.spotFailed(source: hookKey, message: result['message'] ?? t.spotting.unknownError));
     }
-    return summaries.isEmpty ? t.spotting.notSent : summaries.join('; ');
+    if (summaries.isEmpty) return (text: t.spotting.notSent, failed: true);
+    return (text: summaries.join('; '), failed: anyFailed);
   }
 
   Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {
@@ -1489,20 +1526,50 @@ class HaLoServices {
   }
 }
 
+/// What a command action had to say about what it did, and whether that is
+/// bad news.
+///
+/// The two travel together because the destination has to tell them apart:
+/// "Spotted on POTA" and "POTA: 503" reach the same line, and rendered alike
+/// the second reads as the first. Only the action knows which it is —
+/// `updateSetting` returns text ONLY on failure, while `syncAll` returns it
+/// either way — so the classification is made where that is known and carried
+/// from there, never guessed from the wording downstream.
+typedef CommandActionOutcome = ({String text, bool failed});
+
 /// Runs one command action through [HaLoServices.handleCommandAction] and
-/// surfaces its returned message in the status bar (skipped if [state] was
-/// unmounted while the action ran) — so feedback that's only known app-side
-/// (a toggled experiment's outcome, syncAll's status) isn't silently
-/// dropped. Shared by home_view's and operation_view's command dispatch.
-/// Returns true when the action had something to SAY — a failure, or an
-/// outcome only the app knows. A caller that also has a message for the same
-/// status-bar slot must not post it over this one: the action's word is the
-/// later and more specific news, and it is usually the bad news.
-Future<bool> runCommandAction(HaLoServices services, State state, String action,
+/// surfaces its returned message — so feedback that's only known app-side (a
+/// toggled experiment's outcome, syncAll's status) isn't silently dropped.
+/// Shared by home_view's, operation_view's and the ⌘K dialog's command
+/// dispatch.
+///
+/// A command typed into one of the two command bars is answered THERE, on the
+/// bar's own response line ([HaLoServices.commandResponseSink], which that bar
+/// holds open only while its command is dispatching). Everything else — a
+/// command typed into the call field — gets the status bar beside it.
+///
+/// The action's word is the LATER and more specific news than the hook's
+/// optimistic `confirm` — it is usually the bad news — so it deliberately
+/// replaces it rather than queueing behind it.
+///
+/// A non-null message ALWAYS reaches something. A bar that has closed is a
+/// reason to say it somewhere else and never a reason to drop it: a rejected
+/// write announced to nobody leaves the operator holding a confirmation for
+/// something that did not happen, which is the failure this whole path exists
+/// to prevent. The sink declining is what routes it onward, so a caller must
+/// not second-guess that with a liveness test of its own — whether the widget
+/// that dispatched the action is still mounted says nothing about whether the
+/// bar waiting on the answer is.
+///
+/// Returns true when the action had something to say at all.
+Future<bool> runCommandAction(HaLoServices services, String action,
     [Map<String, dynamic>? params]) async {
-  final message = await services.handleCommandAction(action, params);
-  if (message == null || !state.mounted) return false;
-  services.statusBar.setMessage(key: 'commandAction', text: message);
+  final outcome = await services.handleCommandAction(action, params);
+  if (outcome == null) return false;
+  final sink = services.commandResponseSink;
+  if (sink == null || !sink(outcome.text, failed: outcome.failed)) {
+    services.statusBar.setMessage(key: 'commandAction', text: outcome.text);
+  }
   return true;
 }
 

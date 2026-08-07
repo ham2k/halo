@@ -86,7 +86,10 @@ class _CannedExtensions extends ExtensionService {
   ]) async {
     final trimmed = input.trim().toUpperCase();
     interpretCalls++;
-    if (execute) executed.add(trimmed);
+    if (execute) {
+      executed.add(trimmed);
+      if (executeGate != null) await executeGate!.future;
+    }
     if (trimmed == 'DEVMODE') {
       return {
         'describe': 'Activate developer mode?',
@@ -124,6 +127,11 @@ class _CannedExtensions extends ExtensionService {
       };
     }
     if (trimmed == 'NOTE') return {'expectsParams': true, 'mixedCase': true};
+    // The SOLAR shape: a hook that answers immediately with a placeholder and
+    // pushes the real reading through `host.updateInterpretation` once its
+    // fetch lands. Deliberately NOT in the catalog — the ranking tests count
+    // on the entries there.
+    if (trimmed == 'SOLAR') return {'describe': 'Fetching solar conditions…'};
     // Recognized but not runnable right now — the shape a hook returns when
     // the app isn't in a state to accept it. WIPEDB is also in the catalog, so
     // this is the case where an error and a result row are on screen together.
@@ -152,12 +160,28 @@ class _CannedExtensions extends ExtensionService {
     return null;
   }
 
+  /// Stands in for the extension runtime's `host.updateInterpretation`
+  /// channel, which the real service feeds from the host.
+  final _pushes = StreamController<Map<String, dynamic>>.broadcast();
+
+  @override
+  Stream<Map<String, dynamic>> get commandInterpretationUpdates => _pushes.stream;
+
+  /// A `command` hook answering again, later, for an input it already
+  /// interpreted.
+  void pushInterpretation(String input, Map<String, dynamic> interpretation) =>
+      _pushes.add({'input': input, 'interpretation': interpretation});
+
   /// Each lookup pass, in order, as ('CALL', online) — so a test can assert
   /// the offline pass really does run first, and that a caret move causes no
   /// further passes at all.
   final lookupPasses = <(String, bool)>[];
 
   int interpretCalls = 0;
+
+  /// Holds an execute-time interpret open, so a test can type into the field
+  /// while a command it already ran is still in flight.
+  Completer<void>? executeGate;
 
   /// Completes the online pass only when a test says so, to hold the dialog
   /// in its mid-lookup state.
@@ -452,7 +476,10 @@ void main() {
     final extensions = services.extensions as _CannedExtensions;
     expect(extensions.executed, contains('SETUP'));
     expect(extensions.executed, isNot(contains('SYNCALL')));
-    // Running a command dismisses the palette.
+    // Running a command dismisses the palette, once its response has been on
+    // screen for its five seconds.
+    await tester.pump(const Duration(seconds: 6));
+    await _settle(tester);
     expect(find.byType(CommandDialog), findsNothing);
 
     await _unmount(tester);
@@ -472,6 +499,12 @@ void main() {
 
     expect((services.extensions as _CannedExtensions).executed, contains('DEVMODE'));
     expect(services.settings.developerMode, isTrue, reason: 'the action must actually be dispatched');
+
+    // The palette holds its response for five seconds and then dismisses
+    // itself — see the response tests below.
+    expect(find.byType(CommandDialog), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await _settle(tester);
     expect(find.byType(CommandDialog), findsNothing);
 
     await _unmount(tester);
@@ -980,10 +1013,10 @@ void main() {
   testWidgets('HALO-151: an action\'s failure is not painted over by the optimistic confirm', (tester) async {
     // The engine sets `confirm` BEFORE dispatching, so by the time the action
     // reports it could not write, the palette is holding a message that says
-    // it did. Both go to the same status-bar slot, and the confirm is posted
-    // last — so without the guard the operator is told "Thing set to On" for a
-    // write that failed, which is the failure this whole feature keeps
-    // circling back to.
+    // it did. Both land on the same response line, the confirm first — so
+    // without the action's word replacing it the operator is told "Thing set
+    // to On" for a write that failed, which is the failure this whole feature
+    // keeps circling back to.
     final services = await _services(tester);
     await _pumpDialog(tester, services);
 
@@ -992,9 +1025,377 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
 
-    final posted = services.statusBar.items.map((i) => i.text).toList();
-    expect(posted, isNot(contains('Thing set to On')),
+    expect(find.text('Thing set to On'), findsNothing,
         reason: 'the write failed; the confirm must not be the last word');
+    expect(find.textContaining('noSuchThing'), findsOneWidget,
+        reason: "the action's own account of the failure is what the operator gets");
+    final posted = services.statusBar.items.map((i) => i.text).toList();
+    expect(posted, isNot(contains('Thing set to On')));
+    await _unmount(tester);
+  });
+
+  testWidgets('a command answers in the palette, not the status bar, and then dismisses it', (tester) async {
+    // The palette is where the operator is looking when they press Enter, so
+    // that is where the command's word goes. The status bar outlives the route
+    // and would still be showing it minutes later, over a screen that has
+    // nothing to do with the command.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(find.text('Developer mode activated'), findsOneWidget);
+    expect(find.byType(CommandDialog), findsOneWidget, reason: 'it has to stay up to be read');
+    expect(services.statusBar.items.map((i) => i.text), isNot(contains('Developer mode activated')));
+
+    // The answer has the card to itself. Executing clears the field, and an
+    // empty field is what puts the sample commands on screen — so without the
+    // response state they crowd in underneath, and the card reads "here is
+    // what happened, and here are two unrelated things to try".
+    expect(find.text('SETUP'), findsNothing, reason: 'the empty-field samples must not return under the answer');
+    expect(find.text('20M'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 6));
+    await _settle(tester);
+    expect(find.byType(CommandDialog), findsNothing, reason: 'the response has had its five seconds');
+    await _unmount(tester);
+  });
+
+  testWidgets("an action's message is the palette's response too", (tester) async {
+    // SYNCALL's outcome is known only app-side — sync is off, so nothing is
+    // syncing whatever the hook's confirm claims. Route that answer anywhere
+    // but this line and the operator reads "Syncing…" on the palette while the
+    // truth sits in the status bar behind it.
+    final services = await _services(tester);
+    expect(services.settings.syncEnabled, isFalse);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget);
+    expect(find.text('Syncing…'), findsNothing, reason: 'nothing is syncing; the action knows better');
+    expect(services.statusBar.items, isEmpty);
+    await _unmount(tester);
+  });
+
+  testWidgets('an action dispatched by the logging panel still answers on the palette', (tester) async {
+    // With an operation open the palette dispatches almost nothing itself —
+    // the whole batch goes to the front-most logging panel, whose handler is
+    // what calls runCommandAction. That message comes back through code the
+    // palette never touches, so the sink is the only thing joining them;
+    // without it, SPOT from ⌘K answers in the status bar behind the palette.
+    final services = await _services(tester);
+    // Stands in for LoggingControls' own dispatcher, which handles the
+    // app-scoped actions by calling runCommandAction with ITS state — code
+    // reached only through `currentCommandDispatch`, never through anything
+    // the palette passed in.
+    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
+      for (final _ in actions) {
+        await runCommandAction(services, 'syncAll', null);
+      }
+    });
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget,
+        reason: 'the panel dispatched it, and the answer still comes back to where it was typed');
+    expect(services.statusBar.items, isEmpty);
+    await _unmount(tester);
+  });
+
+  testWidgets('an action outliving the response clock still answers, and holds the palette open', (tester) async {
+    // The clock must not start on the hook's optimistic confirm: syncAll
+    // resyncs a whole account and a settings write waits on an extension
+    // validator. A clock started at the confirm expires mid-flight, closing
+    // the very surface the action's own word was about to be delivered to —
+    // and leaving "Syncing…" as the operator's last word on a sync that never
+    // started.
+    final services = await _services(tester);
+    final gate = Completer<void>();
+    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
+      await gate.future;
+      await runCommandAction(services, 'syncAll', null);
+    });
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    // Well past the five seconds, with the action still in flight.
+    await tester.pump(const Duration(seconds: 8));
+    expect(find.byType(CommandDialog), findsOneWidget, reason: 'nothing has finished; there is nothing to dismiss for');
+
+    gate.complete();
+    await _settle(tester);
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget);
+    expect(services.statusBar.items, isEmpty);
+
+    await tester.pump(const Duration(seconds: 6));
+    await _settle(tester);
+    expect(find.byType(CommandDialog), findsNothing, reason: 'the clock runs from when the command settled');
+    await _unmount(tester);
+  });
+
+  testWidgets("an action's failure reads as one, not as a confirmation", (tester) async {
+    // Same line, same five seconds — but "Sync is not enabled" rendered in the
+    // confirmation's accent wash is pixel-identical to "Band set to 20m", and
+    // then auto-dismisses. The operator scanning it takes the styling for the
+    // answer and reads success. Only the action knows which it is, so it says
+    // so and the line renders what it was told.
+    final services = await _services(tester);
+    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
+      await runCommandAction(services, 'syncAll', null);
+    });
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget);
+    expect(find.byIcon(MdiIcons.alertCircle), findsOneWidget,
+        reason: 'the error affordance the message line already has, for the message that needs it');
+    await _unmount(tester);
+  });
+
+  testWidgets('a failed action outranks a later success in the same batch', (tester) async {
+    // The batch's answer is its WORST news, not its last. A spot refused by
+    // one source and accepted by the next must not end up reading as success —
+    // the operator's next move is to spot the refused one again, and a line
+    // saying it worked is what stops them.
+    final services = await _services(tester);
+    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
+      await runCommandAction(services, 'syncAll', null); // fails: sync is off
+      await runCommandAction(services, 'devSentry', {'message': 'ok'}); // succeeds
+    });
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget,
+        reason: 'the failure is still the answer after a later action succeeded');
+    expect(find.byIcon(MdiIcons.alertCircle), findsOneWidget);
+    expect(services.statusBar.items, isEmpty,
+        reason: 'and the suppressed success does not go contradict it somewhere else');
+    await _unmount(tester);
+  });
+
+  testWidgets('an early action in a slow batch does not start the clock for the rest', (tester) async {
+    // The clock belongs to the BATCH, not to whichever action spoke first.
+    // `[updateSetting, syncAll]` is the real shape: the write's validator
+    // fails at once and the resync then runs for longer than five seconds —
+    // so a clock armed by that first message expires with dispatch still in
+    // flight, dismissing the palette and sending everything the rest of the
+    // batch has to say to the status bar behind an unrelated screen.
+    final services = await _services(tester);
+    final gate = Completer<void>();
+    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
+      await runCommandAction(services, 'syncAll', null);
+      await gate.future; // a second, slower action in the same batch
+    });
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 8));
+    expect(find.byType(CommandDialog), findsOneWidget, reason: 'the batch has not finished');
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget,
+        reason: "the first action's word must still be there when the batch ends");
+
+    gate.complete();
+    await _settle(tester);
+    await tester.pump(const Duration(seconds: 6));
+    await _settle(tester);
+    expect(find.byType(CommandDialog), findsNothing, reason: 'now the batch is done, the clock runs');
+    await _unmount(tester);
+  });
+
+  testWidgets('an action answering after its bar is gone falls back to the status bar', (tester) async {
+    // Escape mid-flight, or any surface that dies while an action runs. The
+    // message has nowhere to be shown, which is a reason to say it elsewhere
+    // and never a reason to drop it — an operator who sees no trace of a
+    // rejected write is left holding the optimistic confirm.
+    final services = await _services(tester);
+    final gate = Completer<void>();
+    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
+      await gate.future;
+      await runCommandAction(services, 'syncAll', null);
+    });
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await _settle(tester);
+    expect(find.byType(CommandDialog), findsNothing);
+
+    gate.complete();
+    await _settle(tester);
+    expect(services.statusBar.items.map((i) => i.text), contains(_t(tester).commands.enableSyncFirst),
+        reason: 'the palette is gone; the message is not');
+    await _unmount(tester);
+  });
+
+  testWidgets('typing again keeps the palette open past the response', (tester) async {
+    // The five-second dismissal is for a palette nobody is using. Closing one
+    // out from under an operator mid-command is the worse failure by far.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+    expect(find.text('Developer mode activated'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'SET');
+    await _settle(tester);
+    await tester.pump(const Duration(seconds: 6));
+
+    expect(find.byType(CommandDialog), findsOneWidget);
+    // …and the results are the new text's again, not still held back for a
+    // response that is no longer what the operator is looking at.
+    expect(find.text('SETUP'), findsOneWidget);
+    await _unmount(tester);
+  });
+
+  testWidgets('Enter on a response dismisses the palette without waiting it out', (tester) async {
+    // The field is empty behind the answer, so Enter has nothing to run and
+    // would otherwise be the one key here that does nothing — leaving the
+    // operator to sit through the five seconds or reach for Escape.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+    expect(find.text('Developer mode activated'), findsOneWidget);
+
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(find.byType(CommandDialog), findsNothing);
+    expect((services.extensions as _CannedExtensions).executed.where((c) => c == 'DEVMODE').length, 1,
+        reason: 'dismissing is not re-running the command that just ran');
+    await _unmount(tester);
+  });
+
+  testWidgets('a confirmation landing over text the operator typed does not close the palette', (tester) async {
+    // The one path where a response's five seconds run with text ALREADY in
+    // the field: the operator typed on while the command was executing, so
+    // the engine puts the confirmation up over their new text (it is the only
+    // record that a non-idempotent command ran) and starts the clock there.
+    // Expiry must not then dismiss a palette somebody is mid-command in —
+    // "the clock was cancelled by their keystrokes" is not true here, because
+    // the confirmation was set after them.
+    final services = await _services(tester);
+    final extensions = services.extensions as _CannedExtensions;
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await _settle(tester);
+    extensions.executeGate = Completer<void>();
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'SET');
+    await _settle(tester);
+    extensions.executeGate!.complete();
+    await _settle(tester);
+    expect(find.text('Developer mode activated'), findsOneWidget, reason: 'the command ran; that has to be said');
+
+    await tester.pump(const Duration(seconds: 6));
+    await _settle(tester);
+
+    expect(find.byType(CommandDialog), findsOneWidget);
+    expect(find.text('SET'), findsWidgets, reason: "the operator's text is still theirs");
+    await _unmount(tester);
+  });
+
+  testWidgets('a response is set larger than the describe it replaces', (tester) async {
+    // The response is what the operator pressed Enter for and it has the card
+    // to itself; a describe is commentary on text still being typed. Same
+    // widget renders both, so nothing but a test keeps them from converging.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SET lt');
+    await _settle(tester);
+    final describeSize = _messageFontSize(tester, 'No setting matches that');
+
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+
+    expect(_messageFontSize(tester, 'Developer mode activated'), greaterThan(describeSize));
+    await _unmount(tester);
+  });
+
+  testWidgets('a hook answering late updates the row, not just the message line', (tester) async {
+    // SOLAR describes itself as "Fetching…" and pushes the real reading
+    // through host.updateInterpretation when its fetch lands. The row IS the
+    // describe here — with a result on screen the message line is suppressed
+    // as a duplicate — so a push that only reached the message line would
+    // leave the palette reading "Fetching…" forever.
+    final services = await _services(tester);
+    final extensions = services.extensions as _CannedExtensions;
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SOLAR');
+    await _settle(tester);
+    expect(find.textContaining('Fetching solar conditions'), findsOneWidget);
+
+    extensions.pushInterpretation('SOLAR', {'describe': 'SFI 168, A 5, K 2'});
+    await _settle(tester);
+
+    expect(find.textContaining('SFI 168'), findsOneWidget);
+    expect(find.textContaining('Fetching solar conditions'), findsNothing);
+    await _unmount(tester);
+  });
+
+  testWidgets('a late answer for text the operator has moved on from is ignored', (tester) async {
+    // The push names the input it answers, and a hook that took two seconds
+    // has no idea what the field says now. Applying it anyway would describe
+    // one command with another's answer.
+    final services = await _services(tester);
+    final extensions = services.extensions as _CannedExtensions;
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'SOLAR');
+    await _settle(tester);
+    await tester.enterText(find.byType(TextField), '20M');
+    await _settle(tester);
+
+    extensions.pushInterpretation('SOLAR', {'describe': 'SFI 168, A 5, K 2'});
+    await _settle(tester);
+
+    expect(find.textContaining('SFI 168'), findsNothing);
+    expect(find.textContaining('Change band to'), findsOneWidget);
     await _unmount(tester);
   });
 
@@ -1012,6 +1413,29 @@ void main() {
         reason: 'shown once, as the typed row\'s subtitle — not twice');
     await _unmount(tester);
   });
+}
+
+/// This tree's translations — the app's own strings, so a test asserting on a
+/// message the app composed can't drift from it by transcribing it.
+Translations _t(WidgetTester tester) =>
+    TranslationProvider.of(tester.element(find.byType(MaterialApp))).translations;
+
+/// The size the message line actually renders [text] at. Read off the
+/// RichText the markdown body builds: the style is set on a
+/// MarkdownStyleSheet, so there is no widget a finder can name it by — and it
+/// lands on the SPAN carrying the words, not on the root, which keeps the
+/// ambient 14.
+double _messageFontSize(WidgetTester tester, String text) {
+  final rich = tester
+      .widgetList<RichText>(find.byType(RichText))
+      .firstWhere((w) => w.text.toPlainText() == text, orElse: () => throw StateError('no message reading "$text"'));
+  double? size;
+  rich.text.visitChildren((span) {
+    if (span is TextSpan && (span.text?.isNotEmpty ?? false)) size ??= span.style?.fontSize;
+    return size == null;
+  });
+  if (size == null) throw StateError('"$text" carries no font size to compare');
+  return size!;
 }
 
 /// ⌘K on macOS, ⌃K elsewhere — the handler accepts either modifier, so the

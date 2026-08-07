@@ -844,7 +844,10 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
       // The home screen has no open operation, so operation-scoped commands
       // (SEED, NOTE, SPOT) answer with their own error here.
       operationContext: () => null,
-      runAction: (action, params) => runCommandAction(widget.services, this, action, params),
+      runAction: (action, params) => runCommandAction(widget.services, action, params),
+      // HomeView stays mounted under every pushed route, so being alive
+      // says nothing about being on screen.
+      canShowResponse: () => mounted && (ModalRoute.of(context)?.isCurrent ?? false),
     )..attach(_controller);
     _engine.addListener(_onEngineChanged);
     // The clear button and the numbers row's contextual key both key off the

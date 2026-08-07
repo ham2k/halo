@@ -144,10 +144,6 @@ class _CommandDialogState extends State<CommandDialog> {
 
   late final CommandEngine _engine;
 
-  /// Set when a dispatched action posted its own status-bar message, so
-  /// [_close] doesn't paint the engine's optimistic confirm over it.
-  bool _actionSpoke = false;
-
   /// The `catalog` entries every command hook advertises, read once when the
   /// dialog opens ([ExtensionService.getCommandCatalog] caches them across
   /// opens, so this is a bridge call only the first time).
@@ -234,10 +230,13 @@ class _CommandDialogState extends State<CommandDialog> {
     _engine = CommandEngine(
       services: widget.services,
       operationContext: () => widget.services.currentOperationContext,
-      runAction: (action, params) async {
-        if (await runCommandAction(widget.services, this, action, params)) _actionSpoke = true;
-      },
-      onExecuted: _close,
+      runAction: (action, params) => runCommandAction(widget.services, action, params),
+      onExecuted: _onExecuted,
+      onResponseExpired: _onResponseExpired,
+      // Not just `mounted`: a pop starts the exit transition and only
+      // disposes this State when it finishes, so for those 140ms the
+      // palette is alive and already unreadable.
+      canShowResponse: () => mounted && (ModalRoute.of(context)?.isCurrent ?? false),
       // Enter on a callsign must not wipe it: the lookup below the field IS
       // the result, and clearing would drop the palette back to suggestions.
       clearOnNoMatch: false,
@@ -429,28 +428,36 @@ class _CommandDialogState extends State<CommandDialog> {
   /// standing, which reads to the operator as Enter doing nothing at all.
   void _close() {
     if (!mounted) return;
-    // A command that just ran set its `confirm` on the engine — and this
-    // dialog is about to dispose that engine, so nothing would ever paint it.
-    // Hand it to the status bar, which outlives the route, the same place
-    // `runCommandAction` already puts a command action's own message.
-    // Otherwise every confirmation run from the palette is lost: "Developer
-    // mode activated", "Band set to 20m", and the SET commands' "already Off"
-    // — the last of which exists precisely so Enter doesn't read as a no-op.
-    // …unless one of the actions already said something. The engine's confirm
-    // is set BEFORE the actions run, so it is the optimistic version: a
-    // `updateSetting` that could not store the value has since posted the
-    // failure to this very slot, and overwriting it with "X set to Y" is
-    // precisely the "told about a write that never happened" this feature
-    // keeps trying not to do.
-    if (_engine.isConfirmation && !_actionSpoke) {
-      widget.services.statusBar.setMessage(key: 'commandAction', text: _engine.message!);
-    }
     final route = ModalRoute.of(context);
     if (route == null || route.isCurrent) {
       Navigator.of(context).pop();
     } else {
       Navigator.of(context).removeRoute(route);
     }
+  }
+
+  /// A command has run. The palette STAYS UP to show what it said — a
+  /// command's answer belongs where it was typed, not in the status bar the
+  /// operator isn't looking at — and dismisses itself once that answer has
+  /// had its five seconds ([_onResponseExpired]).
+  ///
+  /// Two cases close at once instead. A command with nothing to say would
+  /// otherwise hold an empty card open for no reason; and one whose action
+  /// pushed a route over us (SET on a multiselect opens the settings form)
+  /// has already buried the response, so lingering underneath it just delays
+  /// the palette popping out from under the form.
+  void _onExecuted() {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (_engine.message == null || !(route?.isCurrent ?? true)) _close();
+  }
+
+  /// The response has had its five seconds — unless the operator started
+  /// typing again, in which case the palette is back in use and the response
+  /// was merely the last thing on the line.
+  void _onResponseExpired() {
+    if (!mounted || _controller.text.isNotEmpty) return;
+    _close();
   }
 
   bool get _hasOperation => widget.services.currentOperationContext != null;
@@ -479,11 +486,26 @@ class _CommandDialogState extends State<CommandDialog> {
     return null;
   }
 
+  /// Whether the card is given over to a just-run command's answer.
+  ///
+  /// The field is cleared on execution, so this is an EMPTY field with a
+  /// finished command's answer on it — confirmation or failure alike. That is
+  /// what separates it from the operator typing over that answer, where the
+  /// message is merely the last thing on the line and the results belong to
+  /// what they are typing now.
+  bool get _showingResponse => _engine.isResponse && _controller.text.trim().isEmpty;
+
   /// Every row to show, in display order, for the current text.
   List<_Result> _buildResults(List<Operation> operations) {
     final t = context.t;
     final query = _controller.text.trim().toUpperCase();
     final results = <_Result>[];
+
+    // A command's answer gets the card to itself. The samples below would
+    // otherwise crowd in under it the moment the field clears, and reading as
+    // "here is what happened, and here are two unrelated things to try" is
+    // exactly the wrong emphasis for the second or two it is up.
+    if (_showingResponse) return results;
 
     // The typed text's own interpretation comes first — when a hook
     // recognizes it, running it is almost always what Enter should do.
@@ -581,6 +603,14 @@ class _CommandDialogState extends State<CommandDialog> {
   }
 
   Future<void> _activate(List<_Result> results) async {
+    // The card is showing a command's answer, and the field it was typed into
+    // is empty — so Enter has nothing left to run, and the only thing the
+    // operator can mean by it is "yes, read it, now go away". Without this it
+    // is the one key on the keyboard that does nothing at all here.
+    if (_showingResponse) {
+      _close();
+      return;
+    }
     final selectable = _selectableOf(results);
     if (selectable.isEmpty || _selected >= selectable.length) {
       // Nothing to pick — run whatever's typed, same as the Home bar's Enter.
@@ -1126,6 +1156,11 @@ class _CommandDialogState extends State<CommandDialog> {
   Widget _messageLine(ThemeData theme) {
     final message = _engine.message!;
     final isError = _engine.isError;
+    // A response has the card to itself ([_showingResponse]) and is the thing
+    // the operator pressed Enter for, so it is set at the field's own size
+    // rather than a footnote's. A describe or an interpret-time error is
+    // commentary on text still being typed, and stays out of the way of it.
+    final response = _showingResponse;
     return Container(
       width: double.infinity,
       // Same reason as the selected row's wash: at 10% alpha the color has to
@@ -1133,11 +1168,11 @@ class _CommandDialogState extends State<CommandDialog> {
       color: isError
           ? theme.colorScheme.errorContainer
           : HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.10),
-      padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
+      padding: EdgeInsets.symmetric(horizontal: Space.xl, vertical: response ? Space.lg : Space.md),
       child: Row(
         children: [
           if (isError) ...[
-            Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onErrorContainer),
+            Icon(MdiIcons.alertCircle, size: response ? 20 : 16, color: theme.colorScheme.onErrorContainer),
             const SizedBox(width: Space.md),
           ],
           Expanded(
@@ -1145,6 +1180,10 @@ class _CommandDialogState extends State<CommandDialog> {
               data: message,
               styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
                 p: theme.textTheme.bodyMedium?.copyWith(
+                  // The field's own size, in plain logical pixels — UiScale
+                  // scales the whole tree (docs/design/ui-scaling.md); never
+                  // multiply by the font scale here.
+                  fontSize: response ? 17 : null,
                   color: isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
