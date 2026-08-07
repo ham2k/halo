@@ -35,10 +35,20 @@ on:
       - '.claude/**'
 
 jobs:
+  # Every job caps its own runtime. Without a cap GitHub allows 6 hours, and
+  # some of what runs here cannot fail on its own: the Dart suites drive the JS
+  # engine over FFI, and an isolate blocked in a native eval never runs the
+  # timer behind `flutter test`'s per-test timeout — so losing the engine's
+  # eval deadline hangs the job rather than reddening it
+  # (docs/design/js-engine.md §9). Only the runner's own kill ends that, which
+  # makes these caps the mechanism and not a formality. Each is roughly 3x the
+  # job's observed time, so a slow runner never trips one.
+
   # The root job: `dart`, `app-test` and `dist` all consume the bundle
   # artifact this builds, and their plain `needs:` skips them if it fails.
   extensions:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +80,7 @@ jobs:
   dart:
     needs: extensions
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -123,6 +134,7 @@ jobs:
     needs: extensions
     if: github.repository == 'ham2k/halo-dist'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -165,6 +177,7 @@ jobs:
   app-test:
     needs: extensions
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

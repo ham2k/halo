@@ -321,17 +321,17 @@ human" argument are in [maintenance.md](../maintenance.md) §1.
 - Per-platform smoke: first-run onboarding with a real callsign, the path an
   engine-startup crash takes down first.
 
-**A suite that blocks in native code cannot time itself out, and nothing here
-currently catches that.** A blocked isolate never runs the timer behind
-`flutter test`'s own per-test timeout — a 3s timeout does not fire against a
-runaway eval. So losing the eval deadline does not turn these tests red, it
-hangs the run: the assertions after the eval simply never execute, and the
-suite neither passes nor fails.
+**A suite that blocks in native code cannot time itself out.** A blocked
+isolate never runs the timer behind `flutter test`'s own per-test timeout — a
+3s timeout does not fire against a runaway eval. So losing the eval deadline
+does not turn these tests red, it hangs the run: the assertions after the eval
+simply never execute, and the suite neither passes nor fails.
 
-Only a kill from outside the process converts that back into a failure, and
-the natural place for it is `timeout-minutes` on the CI jobs — `ci.yml` sets
-none today, so a hang runs to GitHub's 6-hour default. An in-script watchdog is
-the wrong tool: `scripts/test.sh` is not what CI runs (see its own note), and
+Only a kill from outside the process converts that back into a failure, which
+is what `timeout-minutes` on every `ci.yml` job is for — without it a hang runs
+to GitHub's 6-hour default. Locally there is no such backstop: a hung
+`./scripts/test.sh` waits for a Ctrl-C. An in-script watchdog is the wrong way
+to add one — `scripts/test.sh` is not what CI runs (see its own note), and
 wrapping the runner risks making a broken environment look like a pass, which
 is far worse than the hang it would prevent.
 
