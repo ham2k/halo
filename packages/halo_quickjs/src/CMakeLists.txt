@@ -10,7 +10,7 @@
 #
 # Build cost is ~5 CPU-seconds for the four quickjs translation units, and
 # CMake caches objects, so this is noise against a Flutter build. See
-# docs/design/js-engine.md §2.
+# docs/design/js-engine.md §1.
 cmake_minimum_required(VERSION 3.10)
 
 project(halo_quickjs_library VERSION 0.0.1 LANGUAGES C)

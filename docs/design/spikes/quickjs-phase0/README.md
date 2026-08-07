@@ -1,9 +1,15 @@
 # Phase 0 spike — direct QuickJS-NG binding
 
 **Throwaway.** This is not production code and is not built by anything. It
-exists so the claims in [js-engine.md](../../js-engine.md) §4b are
-reproducible rather than asserted. Phase 1 rewrites all of it as a real
-Flutter plugin.
+exists so the measurements in [js-engine.md](../../js-engine.md) — the ABI and
+callback findings, and the recursion depths behind the stack-anchor gate — are
+reproducible rather than asserted. `packages/halo_quickjs` is the real plugin
+that replaced it.
+
+`stack_test.c`'s measurement approach now lives in
+`packages/halo_quickjs/test/` as a real test, rebuilt to calibrate its bounds at
+runtime rather than carry this file's hardcoded macOS-arm64 threshold
+(js-engine.md §4).
 
 quickjs-ng source is deliberately **not** vendored here — fetch it.
 

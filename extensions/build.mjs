@@ -182,10 +182,9 @@ for (const bundle of bundles) {
     outfile: join(outDir, `${bundle.key}.js`),
     alias: {
       '@ham2k/halo-extension-sdk': join(root, 'sdk/src/index.ts'),
-      // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) uses \p{...}
-      // regex literals that the QuickJS builds flutter_js ships cannot even
-      // parse, so bundling it breaks the kernel on Android/Windows/Linux.
-      // See shims/camelcase.ts for the ASCII replacement.
+      // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) is a unicode-aware
+      // package doing an ASCII job: Cabrillo tags are ASCII by specification.
+      // shims/camelcase.ts covers that job without the dependency.
       'camelcase': join(root, 'shims/camelcase.ts'),
       // liquidjs's `main`/`module` are its NODE builds, which import node:fs
       // and node:path for `{% include %}`'s filesystem loader. Its browser

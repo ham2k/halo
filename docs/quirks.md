@@ -4,10 +4,6 @@ Workarounds we carry for upstream or platform bugs. Each entry records what
 breaks, why, and where the fix lives — so nobody later "cleans up" a
 load-bearing workaround without knowing what it protects.
 
-The one long-standing entry — `flutter_js` failing to bundle its prebuilt
-quickjs bridge on Linux — went away with `flutter_js` itself in Phase 3 of the
-JS engine work ([design/js-engine.md](design/js-engine.md)).
-
 ## `flutter_inappwebview` has no Linux implementation
 
 **Breaks:** anything that builds an `InAppWebView` crashes on Linux — an

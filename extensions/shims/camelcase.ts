@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // ASCII-only replacement for the npm `camelcase` package, wired in via the
-// esbuild alias in build.mjs. camelcase@8 builds /[\p{Lu}]/u-style regexes at
-// module top level, and the QuickJS binaries flutter_js ships are compiled
-// without CONFIG_ALL_UNICODE, so those literals fail to PARSE — taking the
-// entire kernel bundle down on Android/Windows/Linux (macOS/iOS use
-// JavaScriptCore and never noticed). The only consumer bundled into the
-// kernel is @ham2k/lib-qson-cabrillo, which camel-cases ASCII Cabrillo tags
-// like "CREATED-BY", so ASCII semantics are all we need.
+// esbuild alias in build.mjs. The only consumer bundled into the kernel is
+// @ham2k/lib-qson-cabrillo, which camel-cases Cabrillo tags like "CREATED-BY"
+// — ASCII by specification — so ASCII semantics are the whole requirement and
+// this stays in place of the dependency.
+//
+// The engine parses \p{...} literals perfectly well, so "the real package
+// would work now" is true and is not a reason to switch back — it buys
+// unicode this caller has no input for, at the cost of a dependency in every
+// kernel build. It is a reimplementation, so it can drift: camelcase.test.ts
+// pins the behaviour Cabrillo relies on. Any change here belongs there first.
 export default function camelCase (input: string | string[]): string {
   const joined = Array.isArray(input) ? input.join('-') : input
   const words = joined.trim().split(/[-_. ]+/).filter(Boolean)

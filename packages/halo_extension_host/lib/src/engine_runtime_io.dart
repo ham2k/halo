@@ -205,7 +205,7 @@ class _IoEngineRuntime implements EngineRuntime {
 
   /// Frees the engine's native heap (10-12MB for the kernel bundle alone) and
   /// closes the NativeCallable behind onSend, which would otherwise keep its
-  /// isolate alive forever (docs/design/js-engine.md §4b).
+  /// isolate alive forever (docs/design/js-engine.md §3).
   @override
   void dispose() {
     if (_disposed) return;

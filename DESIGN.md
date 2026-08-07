@@ -104,19 +104,18 @@ knowledge we do not re-port. Only hot-path utilities the UI needs at 60fps
 
 ### Engine
 
-- **QuickJS (QuickJS-NG) via dart:ffi.** The `flutter_js` package wraps
-  QuickJS, but we bind directly for control over interrupts, memory limits,
-  and module loading. QuickJS is ~700KB, runs on iOS / Android / macOS /
-  Windows / Linux, and is more than adequate for this workload: hooks fire on
-  human timescales (keystrokes, spot refreshes), never per-frame.
+- **QuickJS (QuickJS-NG) via dart:ffi.** We bind to QuickJS directly, in
+  `packages/halo_quickjs`, for control over interrupts, memory limits, and
+  module loading. QuickJS is ~700KB, runs on iOS / Android / macOS / Windows /
+  Linux, and is more than adequate for this workload: hooks fire on human
+  timescales (keystrokes, spot refreshes), never per-frame. Web runs on the
+  browser's own engine. [js-engine.md](docs/design/js-engine.md) covers the
+  binding and the constraints it enforces.
 - The engine runs on a **dedicated background isolate**. The UI never blocks
   on an extension; every hook call is async by construction.
 - The engine choice is hidden behind the bridge interface. If QuickJS ever
   becomes the bottleneck, Hermes or JavaScriptCore can be swapped in — the
   protocol, not the engine, is the contract.
-- We run on `flutter_js` today, not yet the direct binding described above.
-  [js-engine.md](docs/design/js-engine.md) covers why that has to change and
-  the plan to get there.
 
 ### Protocol
 

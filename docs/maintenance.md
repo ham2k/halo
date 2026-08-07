@@ -1,6 +1,6 @@
 # Maintenance — things that rot quietly
 
-> Status: living document · Last reviewed: 2026-07-25
+> Status: living document · Last reviewed: 2026-08-07
 
 Most of what breaks a shipped app is not a bug someone wrote; it is something
 that was correct when it was written and stopped being correct while nobody
@@ -70,24 +70,7 @@ interrupt or stack handling would not necessarily fail to compile.
 missing a security or correctness fix, so this is a "read the changelog" check
 rather than a "does it still build" one.
 
-## 2. `flutter_js` — remove it
-
-**Status:** being removed. Its native bridge
-([`abner/quickjs-c-bridge`](https://github.com/abner/quickjs-c-bridge)) has
-been unmaintained since **2021-04**, ships x86-64-only prebuilts on Linux and
-Windows, and has already cost a production crash (#349).
-
-Until the swap lands, three workarounds exist purely to prop it up, and all
-three should disappear together:
-
-- `app/linux/CMakeLists.txt` — hand re-bundles the prebuilt `.so`
-- `scripts/test.sh` — `LD_LIBRARY_PATH` into the pub cache
-- `app_dist/ci/build-linux.sh` — a "safety net" copy of the same file
-
-**When this section can be deleted:** when `flutter_js` is gone from
-`packages/halo_extension_host/pubspec.yaml` and those three are removed.
-
-## 3. Reference data files
+## 2. Reference data files
 
 Extensions declare downloadable datasets: `pota-all-parks`,
 `sota-all-summits`, `call-notes`. They refresh at runtime through
@@ -101,7 +84,7 @@ format is the realistic failure.
 yields zero records looks exactly like "no nearby parks", not like an error.
 Worth spot-checking that a known reference still resolves.
 
-## 4. Amateur-radio reference libraries
+## 3. Amateur-radio reference libraries
 
 `extensions/package.json` pins the `@ham2k/lib-*` packages. Note
 `@ham2k/lib-country-files` is version-stamped by date
@@ -114,7 +97,7 @@ change — new entities, prefix reassignments, callsign-block changes.
 **Silent failure:** yes. Stale country data means wrong entity, wrong flag,
 wrong scoring — plausible-looking output, not an error.
 
-## 5. Build expiration dates
+## 4. Build expiration dates
 
 `app/lib/config/version.dart` carries `kDevExpirationDate`,
 `kNextExpirationDate`, `kProdExpirationDate` (and `kBuildExpiration`). Past
@@ -129,7 +112,7 @@ hasn't passed.
 users*, which is worse than loud to us. Do not let a release ship with a date
 that has already passed.
 
-## 6. Signing, notarization, and update feeds
+## 5. Signing, notarization, and update feeds
 
 Everything here fails at build or install time, often confusingly:
 
@@ -148,7 +131,7 @@ artifact it names actually downloads.
 **Silent failure:** yes, in the worst way — existing installs stop receiving
 updates while new builds still work, so nothing looks broken from here.
 
-## 7. Toolchain pins
+## 6. Toolchain pins
 
 `mise.toml` pins Flutter (and Node/Bun) with per-platform URLs. CI and local
 dev share the pin, which is what keeps them honest.
@@ -158,7 +141,7 @@ supported stable. Bumping Flutter is a real change — it moves the Dart SDK,
 the engine, and plugin compatibility together, so treat it as its own piece of
 work with the full suite behind it.
 
-## 8. Housekeeping commands
+## 7. Housekeeping commands
 
 `halo-ops` already has the tools; they just need running:
 
@@ -171,7 +154,7 @@ mise run ops -- status            # released version per edition
 **Also worth pruning:** merged git branches and stale worktrees — this repo
 accumulated 28 worktrees and 90+ branches before a cleanup in July 2026.
 
-## 9. Dependency audit
+## 8. Dependency audit
 
 ```bash
 (cd app && flutter pub outdated)
@@ -185,7 +168,7 @@ numbers. `flutter_js` looked maintained (its Dart side still shipped
 releases) while the native bridge that actually mattered had been dead for
 four years. Judge a dependency by the layer you depend on.
 
-## 10. Icon fonts and glyph tables
+## 9. Icon fonts and glyph tables
 
 **Pinned at:** `@mdi/font` + `@mdi/svg` **7.4.47**, `@fortawesome/fontawesome-free`
 **6.7.2** — the versions live in `packages/halo_widgets/tool/update_icons.py`,
@@ -221,8 +204,9 @@ would surface as a missing-glyph box one user report at a time.
 *third-party* extensions — those degrade to a puzzle-piece placeholder by
 design and are nobody's bug. Everything in-repo fails loudly in the suite.
 
-## 11. This document
+## 10. This document
 
 **Check quarterly.** Update the "Last reviewed" date at the top. Remove
-sections that stop applying (section 2 is written to be deleted), and add
-whatever most recently bit us.
+sections that stop applying — a section covering a dependency we are removing
+should say what condition retires it, so the removal needs no judgment — and
+add whatever most recently bit us.

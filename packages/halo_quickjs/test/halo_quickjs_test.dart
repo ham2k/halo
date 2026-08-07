@@ -214,6 +214,76 @@ void main() {
     expect(js.eval("'alive'").text, 'alive', reason: 'the guard must not poison the runtime');
   });
 
+  test('a nested eval inherits the outer call\'s stack budget, not a fresh one', () {
+    // halo_enter re-anchors QuickJS's stack_top ONLY at depth 0. Re-anchoring
+    // a nested entry measures a whole fresh budget from an already-deep sp, so
+    // the two frames together use ~2x the configured guard and run off the
+    // real OS stack: the process dies uncatchably, with nothing on Sentry.
+    //
+    // Deleting the depth gate leaves every other assertion in this file green,
+    // so this test is the only thing standing between that gate and a
+    // plausible-looking cleanup.
+    //
+    // It measures rather than provokes: a segfault-based test would be
+    // platform-dependent and would take the runner down instead of failing.
+    // The budget is small enough that even the broken case (2x) fits inside
+    // the test isolate's real stack, so a regression reports a number here
+    // instead of crashing the suite.
+    // Re-throws anything that is not the stack guard, so a recursion that
+    // stopped for some other reason comes back as ok == false rather than as a
+    // smaller number that would silently move every bound derived from it.
+    const measureDepth = '(function(){ let d=0; function r(){ d++; r() }'
+        ' try { r() } catch(e){ if (!/stack/i.test(String(e))) throw e }'
+        ' return d })()';
+    const stack = 512 * 1024;
+
+    // Nothing is measured inside the callback: halo_quickjs.dart wraps the
+    // Dart side of onSend in a bare catch, so an expect() or a parse failure
+    // in there vanishes and leaves the test asserting against a sentinel.
+    // Carry the raw result out and do all the checking on the way back.
+    int depthOf(HaloQuickJsResult r, String what) {
+      expect(r.ok, isTrue, reason: '$what did not evaluate: ${r.text}');
+      final d = int.tryParse(r.text);
+      expect(d, isNotNull, reason: '$what returned ${r.text}, not a depth');
+      return d!;
+    }
+
+    // Calibrate: how deep one full budget goes on THIS platform. Frame sizes
+    // differ per architecture and compiler, so every bound below is derived
+    // from this number — never hardcoded.
+    final calibrator = HaloQuickJs()..maxStackSize = stack;
+    addTearDown(calibrator.dispose);
+    final fullBudget = depthOf(calibrator.eval(measureDepth), 'calibration');
+    expect(fullBudget, greaterThan(100), reason: 'calibration must have room to discriminate');
+
+    // Drive the outer call most of the way down, then re-enter from the send
+    // callback exactly as the host does, and see how much the nested eval has
+    // left. Correctly gated it inherits the remainder; ungated it gets the
+    // whole budget again.
+    final outerTarget = (fullBudget * 0.75).round();
+    final nested = HaloQuickJs()..maxStackSize = stack;
+    addTearDown(nested.dispose);
+    HaloQuickJsResult? nestedResult;
+    nested.onSend((_, _) {
+      // The outer call unwinds back through here, so measure only the first.
+      nestedResult ??= nested.eval(measureDepth);
+    });
+    final outer = nested.eval(
+      "function d(n){ if(n<=0){ sendMessage('c','m'); return 0 } return 1+d(n-1) }"
+      "d($outerTarget); 'ok'",
+    );
+
+    expect(outer.ok, isTrue, reason: 'the outer call must survive to make the measurement mean anything');
+    expect(nestedResult, isNotNull, reason: 'the outer call never reached sendMessage');
+    final nestedDepth = depthOf(nestedResult!, 'the nested eval');
+    // Measured on macOS arm64: 116 of 535 when gated, exactly 535 when not.
+    // Half the budget sits far outside both regimes, so the bound discriminates
+    // without depending on the absolute numbers.
+    expect(nestedDepth, lessThan(fullBudget ~/ 2),
+        reason: 'the nested eval got a fresh stack budget — the depth gate on '
+            'JS_UpdateStackTop is gone, and two budgets overflow the real stack');
+  });
+
   test('dispose from inside the host callback defers instead of crashing', () {
     // Verified segfault before the guard (EXC_BAD_ACCESS at 0x0): freeing the
     // context while a JS frame is still on the stack pulls it out from under

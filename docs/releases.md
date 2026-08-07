@@ -723,7 +723,7 @@ later if demand appears.
 ## 6. JS extension plane — first-party OTA
 
 Extensions are JavaScript authored by Ham2K and executed in the app's embedded JS
-engine (flutter_js/QuickJS or a WebView). Because they are **content we serve**,
+engine (QuickJS or a WebView). Because they are **content we serve**,
 they update over the air with no Shorebird and no store submission, identically on
 all platforms including web.
 

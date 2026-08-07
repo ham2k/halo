@@ -1,7 +1,7 @@
 #
 # Compiles quickjs-ng + the shim directly into the app binary. There is no
 # vendored_library and no separate dylib to sign or notarize — see
-# docs/design/js-engine.md §2.1.
+# docs/design/js-engine.md §1.1.
 #
 Pod::Spec.new do |s|
   s.name             = 'halo_quickjs'
