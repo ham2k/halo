@@ -564,8 +564,8 @@ interface CommandHook {
 // CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, updateSetting?, openSettings?, setCallField?,
-//   reloadDataFiles?, devNotice?, devStatus?, devProgress?, devSplash?,
-//   devOnboard?, devTester?, toggleExperiment?}
+//   reloadDataFiles?, devNotice?, devStatus?, devProgress?, devHammer?,
+//   devSplash?, devOnboard?, devTester?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"
@@ -653,7 +653,11 @@ required 3+ digits before any decimal point; the extension delegates to
 handles this correctly. Also implemented by `dev-commands` (DEVMODE toggles
 developer mode; DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the
 status bar via the `devNotice`/`devStatus`/`devProgress` action fields, for
-exercising that UI without a real extension driving it; DEVSPLASH re-shows
+exercising that UI without a real extension driving it; DEVHAMMER
+(`devHammer`) churns the footer the way a data-file sync does — items
+appearing, ticking and clearing — which is what provokes the web engine into
+blurring a focused text field, and which the real thing only does on a cold
+profile; DEVSPLASH re-shows
 the startup release-notes overlay (Issue #42) via the `devSplash` action
 field, bypassing its normal once-per-version gate — for previewing that
 overlay on demand instead of only once per release; RELOAD forces a

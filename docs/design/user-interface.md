@@ -205,6 +205,31 @@ parameter to turn it off, so the app root wraps everything in
 enforces the rule; not setting `tooltip:` in our own code is the other half.
 Both halves are guarded by `app/test/no_hover_tooltips_test.dart`.
 
+**Chrome that animates stays out of the semantics tree.** A widget that
+creates and destroys semantics nodes as its content changes — an
+`AnimatedSwitcher` rebuilding a row per update, a stack whose depth follows a
+list — can stop a completely unrelated text field from receiving keystrokes on
+web. The engine gives every semantics node a DOM element chosen by its role and
+disposes that element when the role changes; the framework recycles
+`SemanticsNode`s as the tree churns, so nodes the churn frees are handed on to
+other widgets, and one handed to a focused field's neighbour takes that field's
+`<input>` with it. The caret goes on blinking and the typing goes nowhere.
+
+Animated chrome therefore announces itself through ONE node whose *label*
+changes, with `ExcludeSemantics` around the moving parts and any control inside
+hoisted out of the animation so its own node survives. `StatusBarFooter`
+(`halo_widgets/status_bar.dart`) is the worked example: a `liveRegion` for
+messages, not announced for progress ticks (the label still changes; the
+`liveRegion` flag is what stops it being read out several times a second),
+dismiss button outside the switcher. The
+notice stack's peeking card is the other half of the lesson — `IgnorePointer`
+does **not** remove semantics, and `Opacity` only does so at exactly zero.
+
+This does not apply to CONTENT — search results, a spot list, anything the
+operator is meant to read. Excluding those would trade a focus bug for an
+accessibility one; `ViewFocusGuard` (`app/lib/services/view_focus_guard.dart`)
+is the net for what remains, and `DEVHAMMER` reproduces the churn on demand.
+
 Widget APIs that let a caller name an icon-only button do so with a `…Label`
 parameter (`closeLabel`, `expandLabel`/`collapseLabel`, `clearLabel`,
 `openPageLabel`) — the app passes a translated string, and the widget package

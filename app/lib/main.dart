@@ -67,6 +67,7 @@ import 'services/settings_service.dart';
 import 'services/spots_service.dart';
 import 'services/spots_status_reporter.dart';
 import 'services/status_bar_service.dart';
+import 'services/view_focus_guard.dart';
 import 'settings/core_settings_groups.dart';
 import 'settings/settings_command.dart';
 import 'settings/settings_registry.dart';
@@ -153,6 +154,9 @@ void _mainBody({
   DevLog.instance.enabled = !kReleaseMode;
   WindowChromeService.init();
   HardwareKeyboardService.init();
+  // Web only: undoes the browser's spurious "the view lost focus" reports,
+  // which otherwise park every field dead mid-typing. See ViewFocusGuard.
+  ViewFocusGuard.install();
   // Web-only, non-release-only: exposes window.__halo for agent inspection
   // (no-op on native and in production release). See config/dev_bridge.dart.
   installDevBridge();
@@ -1232,6 +1236,71 @@ class HaLoServices {
     );
   }
 
+  /// How long DEVHAMMER churns for when the command doesn't say.
+  static const _statusBarHammerDefaultSeconds = 15;
+
+  /// Set while a run is in flight, so a second DEVHAMMER doesn't interleave
+  /// with the first — two runs share the same four keys, and the first to
+  /// finish would clear the other's items out from under it.
+  bool _hammering = false;
+
+  /// Reproduces a data-file sync's churn on demand (DEVHAMMER): several items
+  /// appearing, ticking and clearing, the way `DataFileManager` does one
+  /// entry per file.
+  ///
+  /// This exists because that churn is what provokes the web engine into
+  /// blurring the focused text field (see `ViewFocusGuard`), and the real
+  /// thing only happens on a cold profile — once the files are cached a
+  /// RELOAD finishes without churning at all, so there is nothing left to
+  /// test a fix against. What matters is items COMING AND GOING: a single
+  /// progress bar ticking on a stable key changes a label and provokes
+  /// nothing.
+  ///
+  /// Returns false when a run is already in flight, so the caller can say so
+  /// rather than echo a confirmation over nothing happening.
+  Future<bool> _hammerStatusBar(int seconds) async {
+    if (_hammering) return false;
+    _hammering = true;
+    try {
+      // A beat before the first item, deliberately: the interesting case is
+      // typing INTO the churn, and without this the tester is still reaching
+      // for the keyboard while it runs.
+      await Future<void>.delayed(const Duration(seconds: 1));
+      const slots = 4;
+      const tick = Duration(milliseconds: 120);
+      final until = DateTime.now().add(Duration(seconds: seconds));
+      var step = 0;
+      while (DateTime.now().isBefore(until)) {
+        final slot = step % slots;
+        statusBar.setProgress(
+          key: _hammerKey(slot),
+          icon: 'progress-download',
+          title: 'Hammer $slot',
+          text: 'file $step',
+          value: (step % 10) / 10,
+        );
+        // Retire a DIFFERENT slot: the one written two ticks ago, so frames
+        // have gone by between its last write and its removal. Clearing the
+        // slot just set, in the same breath and with no frame between, only
+        // undoes the write — no item ever appears, so none ever leaves, and
+        // leaving is the half that provokes anything. Offsetting by two also
+        // takes every slot in turn; keying the clear off `step % 10` reached
+        // only the odd ones.
+        if (step >= slots) statusBar.clear(_hammerKey((slot + 2) % slots));
+        step++;
+        await Future<void>.delayed(tick);
+      }
+      for (var slot = 0; slot < slots; slot++) {
+        statusBar.clear(_hammerKey(slot));
+      }
+      return true;
+    } finally {
+      _hammering = false;
+    }
+  }
+
+  static String _hammerKey(int slot) => 'command:devHammer:$slot';
+
   HaLoServices(
     this.db,
     this.settings, {
@@ -1410,6 +1479,16 @@ class HaLoServices {
           title: p['title'] as String?,
           value: percent == null ? null : percent.toDouble() / 100,
         );
+        return null;
+      case 'devHammer':
+        // Normally no text of our own — the extension's `confirm` says it, in
+        // English, like every other dev command's (dev-commands carries no
+        // i18n). The exception is a run already in flight: the confirmation is
+        // printed before this returns, so staying quiet would tell the tester
+        // it is hammering while nothing happens — and a tester who sees no
+        // churn concludes the churn stopped provoking the bug.
+        if (_hammering) return (text: 'DEVHAMMER is already running', failed: true);
+        unawaited(_hammerStatusBar((params?['seconds'] as num?)?.toInt() ?? _statusBarHammerDefaultSeconds));
         return null;
       case 'devSplash':
         devSplashTrigger.trigger();

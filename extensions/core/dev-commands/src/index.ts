@@ -5,7 +5,9 @@
 // (a dev tool, not a radio one, so it lives here and not radio-commands), and
 // DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the status bar so
 // the footer/notice UI can be exercised without a real extension driving
-// it. DEVSPLASH re-shows the startup release-notes overlay on
+// it, and DEVHAMMER reproduces a data-file sync's CHURN — items appearing,
+// ticking and clearing — which is what provokes the web engine into blurring
+// a focused text field. DEVSPLASH re-shows the startup release-notes overlay on
 // demand, bypassing its normal "once per version" gate. DEVSENTRY pushes a
 // synthetic error through the error-reporting pipeline to verify the
 // Sentry wiring. RELOAD forces a data-file re-sync (bypassing the normal 30-day
@@ -165,6 +167,25 @@ const DevProgressCommand = {
   },
 
   catalog: devCatalog('DEVPROGRESS', 'Post a sample progress bar', { params: '[percent]' }),
+}
+
+// "DEVHAMMER" alone -> the default run; "DEVHAMMER 20" -> 20 seconds of it.
+const DEV_HAMMER_MATCH = /^DEVHAMMER(?:\s+(\d+))?$/i
+
+const DevHammerCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    const match = DEV_HAMMER_MATCH.exec(input.trim())
+    if (!match) return null
+    const seconds = match[1] ? Math.min(120, Math.max(1, parseInt(match[1], 10))) : undefined
+    const howLong = seconds === undefined ? '' : ` for ${seconds}s`
+    return {
+      describe: `Churn the status bar${howLong}, like a data-file sync does?`,
+      confirm: `Hammering the status bar${howLong} — focus a field and type`,
+      commands: [{ devHammer: { seconds } }],
+    }
+  },
+
+  catalog: devCatalog('DEVHAMMER', 'Churn the status bar like a data-file sync', { params: '[seconds]' }),
 }
 
 const DevSplashCommand = {
@@ -452,6 +473,7 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-devnotice', hook: DevNoticeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devstatus', hook: DevStatusCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devhammer', hook: DevHammerCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devtester', hook: DevTesterCommand, priority: 100 })

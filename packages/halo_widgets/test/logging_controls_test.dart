@@ -5427,6 +5427,48 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('devHammer forwards to onCommandAction', (tester) async {
+    // The same whitelist trap as the test above. A missing branch here is
+    // especially quiet for DEVHAMMER: interpretation still matches and the
+    // palette still prints the extension's confirmation, so the tester is
+    // told the status bar is being hammered while nothing happens at all —
+    // which reads as the churn no longer provoking the bug.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeHammerCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != 'DEVHAMMER') return null;
+      return {
+        'describe': 'Churn the status bar?',
+        'confirm': 'Hammering the status bar',
+        'commands': [
+          {
+            'devHammer': {'seconds': 5},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeHammerCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVHAMMER');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'devHammer');
+    expect(dispatched.single.value, {'seconds': 5});
+  });
+
   testWidgets('the settings-command actions (updateSetting/openSettings) forward to onCommandAction', (tester) async {
     // Same silent-no-op trap as the reloadDataFiles test above. SET/SHOW/HIDE
     // are especially prone to it: the describe preview is produced entirely by

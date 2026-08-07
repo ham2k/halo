@@ -981,6 +981,13 @@ export interface CommandAction {
   /// Developer-only: posts a progress bar (DEVPROGRESS); omit `percent` for
   /// an indeterminate bar.
   devProgress?: { icon?: string; title?: string; percent?: number }
+  /// Developer-only: churns the status bar the way a data-file sync does —
+  /// several items appearing, ticking and clearing (DEVHAMMER). Exists to
+  /// make that churn reproducible on demand, because it is what provokes the
+  /// web engine into blurring the focused text field. `seconds` bounds the
+  /// run; the app waits a beat before the first item so a tester can get a
+  /// field focused and type INTO the churn.
+  devHammer?: { seconds?: number }
   /// Developer-only: re-shows the startup release-notes overlay (DEVSPLASH),
   /// bypassing its normal "once per version" gate — see
   /// `app/lib/main.dart`'s `_ReleaseOverlayGate`.

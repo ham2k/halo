@@ -810,6 +810,8 @@ class CommandEngine extends ChangeNotifier {
         await runAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await runAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+      } else if (map['devHammer'] is Map) {
+        await runAction('devHammer', (map['devHammer'] as Map).cast<String, dynamic>());
       } else if (map['devSplash'] is Map) {
         await runAction('devSplash', null);
       } else if (map['devOnboard'] is Map) {

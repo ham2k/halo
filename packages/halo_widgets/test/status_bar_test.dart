@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -51,6 +52,120 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'item changes move the footer\'s semantics LABEL without changing the shape of its tree',
+    (tester) async {
+      // The invariant this pins, and why it is not cosmetic: on web the engine
+      // gives every semantics node a DOM element chosen by its ROLE, and
+      // disposes that element the moment the role changes ("Role changed. This
+      // should be avoided as much as possible" — the engine's own comment in
+      // semantics.dart). The framework recycles SemanticsNodes as the tree
+      // churns, so a footer that creates and destroys nodes on every item
+      // frees them to be handed to some other widget — and when the node
+      // handed on is the one hosting a FOCUSED TEXT FIELD, the engine disposes
+      // its `<input>` and the operator's keystrokes stop arriving mid-word,
+      // with the caret still blinking as if nothing were wrong.
+      //
+      // So the footer may say something different; it may not grow or lose
+      // nodes. What moves with the item count and is deliberately not pinned
+      // here: the tap action the expand affordance contributes once a second
+      // item makes the list expandable. That changes the node's actions and
+      // flags, not the set of nodes, and the engine picks a node's DOM element
+      // by role — which a bare tap does not change.
+      final handle = tester.ensureSemantics();
+
+      int nodeCount() {
+        var total = 0;
+        void walk(SemanticsNode node) {
+          total++;
+          node.visitChildren((child) {
+            walk(child);
+            return true;
+          });
+        }
+
+        walk(tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
+        return total;
+      }
+
+      await tester.pumpWidget(host([item('dataFile:a')]));
+      await tester.pumpAndSettle();
+      final before = nodeCount();
+      expect(
+        tester.getSemantics(find.byType(StatusBarFooter)).label,
+        'dataFile:a',
+        reason: 'the message has to reach assistive tech from the stable node, not the animated row',
+      );
+
+      // A different item, a different count, a different switcher key — the
+      // whole visual row is torn down and rebuilt here.
+      await tester.pumpWidget(host([item('dataFile:a'), item('dataFile:b')]));
+      await tester.pumpAndSettle();
+
+      expect(nodeCount(), before, reason: 'an item change must not add or remove semantics nodes');
+      expect(tester.getSemantics(find.byType(StatusBarFooter)).label, 'dataFile:b');
+      // A count alone is satisfied just as well by "the control has no node at
+      // all" as by "it has one that survives" — and putting the dismiss button
+      // back inside the excluded switcher passes every other assertion here
+      // while making the footer's only control invisible to assistive tech.
+      expect(
+        find.bySemanticsLabel('Dismiss'),
+        findsOneWidget,
+        reason: 'the one control down here keeps its own node across item changes',
+      );
+
+      handle.dispose();
+    },
+  );
+
+  testWidgets(
+    'the notice peeking behind the top one is seen and not heard',
+    (tester) async {
+      // The peek is a few pixels of card edge saying "there is another one".
+      // Neither wrapper around it keeps it out of the semantics tree —
+      // IgnorePointer defaults `ignoringSemantics` to null (read as false) and
+      // 0.7 opacity is not zero — so without an explicit exclusion assistive
+      // tech is read the SECOND notice in full, ahead of the one on top, plus
+      // a close button deliberately wired to a no-op. It is churn as well:
+      // a card's worth of nodes appearing and vanishing as notices stack, and
+      // freed nodes get recycled onto other widgets — on web, onto a focused
+      // text field, whose `<input>` the engine then disposes mid-word.
+      final handle = tester.ensureSemantics();
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: NoticeStack(
+            notices: [
+              StatusBarNoticeData(key: 'older', title: 'Older', text: 'the one underneath', createdAt: DateTime(2026)),
+              StatusBarNoticeData(key: 'newer', title: 'Newer', text: 'the one on top', createdAt: DateTime(2026, 1, 2)),
+            ],
+            onDismiss: (_) {},
+            dismissLabel: 'Dismiss',
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // Both cards are built — the peek is visible, and the invisible ghost
+      // sizes the stack — so this is really about what is ANNOUNCED.
+      expect(find.text('the one underneath'), findsWidgets);
+
+      expect(
+        find.bySemanticsLabel('the one underneath'),
+        findsNothing,
+        reason: 'the stacked notice is decoration until it reaches the top',
+      );
+      expect(find.bySemanticsLabel('the one on top'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Dismiss'),
+        findsOneWidget,
+        reason: 'one real close button — not the peek\'s no-op copy, nor the ghost\'s',
+      );
+
+      handle.dispose();
     },
   );
 
