@@ -159,27 +159,9 @@ platform tables below project the line, patch, stage and build only. A code
 push cannot alter a signed binary's metadata, so `build 131.1` exists in the
 Dart layer and on screen (§2.3), never in a plist, manifest or `FILEVERSION`.
 
-The same cut also names the build's **tester notes**. They are written as work
-merges, under the `upcoming` key of `app/assets/tester-notes.yaml`; the cut
-renames that key to the build number it just computed and commits it alongside
-`version.dart`, inside the tagged commit. No build number is typed there
-either, and a note can't end up filed under a build that never ships. Until the
-rename, `upcoming` is a non-numeric key the app's parser skips — that is what
-keeps accumulated notes off a tester's screen before the build carrying them
-exists.
-
-Because that file is hand-edited and the cut commits, tags and pushes it
-unseen, the cut vets it rather than trusting it. It parses the document on both
-sides of the rename and **refuses** — before writing, tagging or pushing
-anything — on a file that no longer parses, a top-level key that is neither a
-build number nor `upcoming` (a typo there would otherwise be dropped silently
-by the cut *and* the app), a build that already has an entry, or **any
-uncommitted change to the file**: notes ride in their own task's commit, so at
-cut time it must match `HEAD`, and `git commit --only` would otherwise sweep an
-in-progress note into the release. A key created ahead of its notes is simply
-left for the next cut. Every planning surface (`--json`, `--dry-run`, a
-dev-branch preview) reports the problem instead of failing, since none of them
-writes anything.
+The same cut also names the build's **tester notes**, renaming their `upcoming`
+key to the build number it just computed and committing that inside the tagged
+commit — see §2.7.
 
 > Earlier lines used a date-encoded `YYMM·MMDD·S` id. That overflowed the 16-bit
 > Windows/Linux field (forcing a separate desktop part) and, being large, pinned
@@ -398,6 +380,78 @@ edition suffix `" (Dev)"` / `" Next"` / none):
 
 Machine-facing strings (ADIF `PROGRAMID`, HTTP `User-Agent`, spot source) stay the
 fixed, edition- and platform-agnostic **"Ham2K Logger"** regardless of the above.
+
+### 2.7 What we tell users — release notes and tester notes
+
+Two hand-edited YAML files under `app/assets/`, both rendering each entry under
+`changes` as markdown — so a multi-line note can use a YAML block scalar. They
+carry no comments beyond a pointer here: **this section is their
+documentation.**
+
+| | `release-notes.yaml` | `tester-notes.yaml` |
+|---|---|---|
+| Audience | everyone | Dev and Next editions only |
+| Shown in | startup "what's new" overlay, Settings → About → Recent Changes | tester overlay (`config/tester_notes.dart`) |
+| Keyed by | full public version (`kPublicVersion`, §2.3), e.g. `"26.8.0"` | build number (`kBuildNumber`, §2.2), e.g. `"130"` |
+| Extra keys | `name` (`August '26`), `photoCaption` | — |
+| Written | at release time | as work merges |
+
+A release's cover photo lives at
+`assets/images/releases/<MAJOR.MINOR>-photo.jpg`, shared across the patches of a
+main version.
+
+A tester sees **every entry newer than the last build they dismissed**, not just
+the current one — which is why a note written today still lands for someone who
+skipped two builds, and why notes may safely accumulate under `upcoming`.
+
+**How an entry is written** — both files, except where a bullet says otherwise:
+
+- **About a dozen words on one line**: what changed and where to find it. Setup
+  steps, caveats and rationale do not fit — those belong in the docs or on the
+  card. Length is set by this rule, not by whatever the surrounding entries
+  happen to look like: don't pattern-match off them.
+- **Tester notes only**: a short ask ("tell us what works") fits inside that
+  dozen words. A release note never solicits — it announces.
+- **One entry per change, never one per detail.** A rule the feature happens to
+  have, or a special case it handles, is not its own entry.
+- **Neither file is a changelog.** Only a new feature or a new control someone
+  can go and exercise earns an entry. Bug fixes, refinements to behaviour that
+  already existed, polish and platform-specific fixes usually do not, and work
+  with no user-visible surface (refactors, docs, CI, tooling) never does — so
+  most merged changes get no tester note at all, and a release lists its
+  headlines rather than its month.
+- **Never mention an experiment**, in either file — not the feature behind one,
+  not the `EXP` word that toggles it, not the fact that one gates something
+  else. Experiments are announced deliberately, to the people invited to try
+  them; a note broadcasts them to everyone on the edition instead. Work behind
+  an experiment earns its note in the build that ships it without the gate.
+  Nothing enforces this — it is checked when the note is written.
+
+**How tester notes reach a build.** They are written as work merges, under an
+`upcoming` key at the left margin (created when the last cut took it):
+
+```yaml
+upcoming:
+  changes:
+    - "Something a tester should try, in markdown"
+```
+
+`halo-ops release` renames that key to the build it ships in, so nobody types a
+build number and no note lands under a build that never ships. Until the rename,
+`upcoming` is a non-numeric key the app's parser skips — that is what keeps
+accumulated notes off a tester's screen before the build carrying them exists.
+
+Because the file is hand-edited and the cut commits, tags and pushes it unseen,
+the cut vets it rather than trusting it. It parses the document on both sides of
+the rename and **refuses** — before writing, tagging or pushing anything — on a
+file that no longer parses, a top-level key that is neither a build number nor
+`upcoming` (a typo there would otherwise be dropped silently by the cut *and*
+the app), a build that already has an entry, or **any uncommitted change to the
+file**: notes ride in their own task's commit, so at cut time it must match
+`HEAD`, and `git commit --only` would otherwise sweep an in-progress note into
+the release. A key created ahead of its notes is simply left for the next cut.
+Every planning surface (`--json`, `--dry-run`, a dev-branch preview) reports the
+problem instead of failing, since none of them writes anything.
 
 ---
 

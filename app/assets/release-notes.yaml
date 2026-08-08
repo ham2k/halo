@@ -1,11 +1,6 @@
-# Release notes shown in the startup "what's new" overlay and in
-# Settings → About → Recent Changes. Keyed by the full public version
-# (config/version.dart's kPublicVersion). Each entry under `changes` is
-# rendered as markdown, so multi-line notes can use YAML block scalars.
+# Public "what's new", keyed by the full public version.
 #
-# The cover photo for a release lives at
-# assets/images/releases/<MAJOR.MINOR>-photo.jpg (shared across patches
-# of the same main version).
+# How to write one, and what never goes in: docs/releases.md §2.7.
 
 "26.8.0":
   name: "August '26"
