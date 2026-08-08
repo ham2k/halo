@@ -21,8 +21,16 @@ import 'dart:async';
 import 'package:auto_updater/auto_updater.dart';
 import 'package:flutter/foundation.dart';
 
-import '../config/version.dart' show Edition, kEdition;
+import '../config/version.dart' show Edition, kBuildNumber, kEdition;
 import 'error_reporting_service.dart';
+import 'winsparkle_config.dart';
+
+/// Signature of [configureWinSparkleBeforeInit], so a test can stand in for it
+/// — see [AutoUpdateService.debugConfigureWinSparkle].
+typedef WinSparkleConfigurator = bool Function({
+  required String buildVersion,
+  required int checkIntervalSeconds,
+});
 
 /// Outcome of a [AutoUpdateService.checkSilently] call.
 enum SparkleCheckResult { upToDate, updateAvailable, error }
@@ -105,7 +113,8 @@ class AutoUpdateService {
   /// every caller. See [_ensureConfigured].
   static Future<void>? _configureCall;
 
-  /// Configures the native updater — feed URL and scheduled-check interval —
+  /// Configures the native updater — the Windows-only settings the plugin
+  /// exposes no channel for, the feed URL, and the scheduled-check interval —
   /// **exactly once per process**.
   ///
   /// `setFeedURL` is not idempotent on Windows. `auto_updater_windows`
@@ -125,8 +134,21 @@ class AutoUpdateService {
   /// it again, leaving the process on the native default for its whole life.
   Future<void> _ensureConfigured() async {
     final call = _configureCall ??= () async {
+      // BEFORE setFeedURL, always. That handler is where the Windows plugin
+      // runs win_sparkle_init(), and everything this configures is documented
+      // before-init only (winsparkle_config_io.dart says which and why).
+      // No-op off Windows, where the plugin leaves nothing unexposed.
+      final configure = (kDebugMode ? debugConfigureWinSparkle : null) ?? configureWinSparkleBeforeInit;
+      final configured = configure(
+        buildVersion: kBuildNumber.toString(),
+        checkIntervalSeconds: _checkIntervalSeconds,
+      );
+
       await autoUpdater.setFeedURL(feedUrl);
-      await autoUpdater.setScheduledCheckInterval(_checkIntervalSeconds);
+
+      // Redundant on Windows once the shim has run, and it lands after init
+      // there, which is out of contract — so let the shim own it when it can.
+      if (!configured) await autoUpdater.setScheduledCheckInterval(_checkIntervalSeconds);
     }();
     try {
       await call;
@@ -142,6 +164,17 @@ class AutoUpdateService {
   /// observed by any test at all.
   @visibleForTesting
   static bool? debugSupportedOverride;
+
+  /// Test seam for the WinSparkle shim. The real one resolves symbols that
+  /// exist only on Windows, so the ordering contract it depends on — every
+  /// setting applied BEFORE the plugin's setFeedURL runs win_sparkle_init() —
+  /// is otherwise unobservable from any other platform, and a violation is
+  /// silent: WinSparkle ignores a late call rather than failing it.
+  ///
+  /// Read only under [kDebugMode], for the same reason as
+  /// [debugSupportedOverride]: it must not be able to divert a shipped build.
+  @visibleForTesting
+  static WinSparkleConfigurator? debugConfigureWinSparkle;
 
   @visibleForTesting
   static void debugResetConfiguration() => _configureCall = null;

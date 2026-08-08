@@ -74,6 +74,10 @@ dependencies:
   # Desktop binary self-update (Sparkle/WinSparkle), see auto_update_service.dart
   # (§3.2). Confirm/pin the exact version on the first `flutter pub get`.
   auto_updater: ^1.0.0
+  # Utf16 marshalling for the WinSparkle settings auto_updater exposes no
+  # method channel for (winsparkle_config_io.dart). Transitive via auto_updater
+  # already, but imported directly, so declared directly.
+  ffi: ^2.1.0
   # Must be declared HERE, not only in app_dist/pubspec.yaml, even though only
   # the dist entry point imports it. The dist build runs `flutter pub get` in
   # app/ and then compiles --target=../app_dist/lib/main_dist.dart against

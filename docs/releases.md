@@ -204,14 +204,26 @@ Two projection rules follow from the table:
     `ProductVersion` (Windows) / `version.json`'s `build_number` (Linux), both from
     `--build-number` — so the About view shows the build instead of the old
     **"Build 0"** (which came from passing `--build-number=0`).
-  - **WinSparkle** compares the appcast's `<sparkle:version>` against the exe's
-    `FileVersion` string, so the appcast advertises the exact
-    `<public version>+<build>` string (`26.8.1-alpha1+73`); the trailing `+build`
-    increments per build, so a genuinely newer build still compares newer while a
-    build never re-offers itself. **Caveat:** two builds that share a public
-    version differ only in `+build`, so if a `.deb` is added later its packaging
-    must fold the build number into the Debian version for `dpkg` upgrade ordering
-    (AppImage needs no version comparison; the current scheme is fine for it).
+  - **WinSparkle** compares **build numbers**, like Sparkle on macOS: the app
+    calls `win_sparkle_set_app_build_version` with the bare build at startup, so
+    the appcast advertises `<sparkle:version>131</sparkle:version>` plus a
+    `<sparkle:shortVersionString>` carrying the public version for display. That
+    call is not in the `auto_updater` plugin — it is bound directly to the
+    bundled `WinSparkle.dll` in `app/lib/services/winsparkle_config_io.dart`,
+    which also explains the ordering constraint (everything there must run before
+    the plugin's `setFeedURL`, since that is where `win_sparkle_init()` happens).
+
+    **Never go back to advertising the `FileVersion` string.** WinSparkle
+    compares version *strings* by splitting on character class and treats `-`
+    and `+` as string parts compared lexicographically, so `26.8.1-alpha1+125`
+    sorts **above** `26.8.1+130` (`-` is `0x2D`, `+` is `0x2B`): every install
+    predating a cosmetic suffix change judges *itself* newer than the release and
+    never updates again. That stranded the whole pre-127 Windows fleet. A build
+    number is an integer comparison and cannot repeat it.
+  - **Caveat for a future `.deb`:** two builds that share a public version differ
+    only in the build number, so its packaging must fold that number into the
+    Debian version for `dpkg` upgrade ordering (AppImage needs no version
+    comparison; the current scheme is fine for it).
 - **iOS marketing string cannot carry `-preN`.** `CFBundleShortVersionString` must
   be pure `X.Y.Z`, so the plist marketing version stays `26.8.1` for all of
   `alpha1`/`pre1`, `pre2`, and the final release; the pre-release label lives in the

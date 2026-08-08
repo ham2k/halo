@@ -17,7 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:auto_updater_platform_interface/auto_updater_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'package:ham2k_logger/config/version.dart' show kEdition;
+import 'package:ham2k_logger/config/version.dart' show kBuildNumber, kEdition;
 import 'package:ham2k_logger/services/auto_update_service.dart';
 
 /// Stands in for the native plugin, counting calls and answering each check
@@ -29,12 +29,18 @@ class _FakeAutoUpdaterPlatform extends AutoUpdaterPlatform with MockPlatformInte
   int checkCalls = 0;
   final List<int> intervals = [];
 
+  /// Every native call in the order it arrived. The WinSparkle shim has to run
+  /// BEFORE setFeedURL (the plugin runs win_sparkle_init in that handler), and
+  /// order is the only way to see that.
+  final List<String> events = [];
+
   /// Fails the next [setFeedURL], as an offline box would at boot.
   bool failNextFeedUrl = false;
 
   void reset() {
     feedUrls.clear();
     intervals.clear();
+    events.clear();
     checkCalls = 0;
     failNextFeedUrl = false;
   }
@@ -49,6 +55,7 @@ class _FakeAutoUpdaterPlatform extends AutoUpdaterPlatform with MockPlatformInte
       throw Exception('no route to host');
     }
     feedUrls.add(feedUrl);
+    events.add('setFeedURL');
   }
 
   @override
@@ -58,7 +65,10 @@ class _FakeAutoUpdaterPlatform extends AutoUpdaterPlatform with MockPlatformInte
   }
 
   @override
-  Future<void> setScheduledCheckInterval(int interval) async => intervals.add(interval);
+  Future<void> setScheduledCheckInterval(int interval) async {
+    intervals.add(interval);
+    events.add('setScheduledCheckInterval');
+  }
 }
 
 void main() {
@@ -72,16 +82,41 @@ void main() {
   final platform = _FakeAutoUpdaterPlatform();
   AutoUpdaterPlatform.instance = platform;
 
+  List<String> installShimStub({required bool applied}) {
+    final builds = <String>[];
+    AutoUpdateService.debugConfigureWinSparkle = ({
+      required String buildVersion,
+      required int checkIntervalSeconds,
+    }) {
+      builds.add(buildVersion);
+      platform.events.add('winSparkleConfig');
+      return applied;
+    };
+    return builds;
+  }
+
   setUp(() {
     platform.reset();
     AutoUpdateService.debugSupportedOverride = true;
     AutoUpdateService.debugResetConfiguration();
+    // Every test runs with debugSupportedOverride on, so without a stub here
+    // the tests that don't install their own would reach the REAL shim — and
+    // on a Windows dev box that means DynamicLibrary.open inside
+    // flutter_tester, throwing and filing an error report from a unit test.
+    // False is what the real one returns off Windows, so the plugin keeps the
+    // interval, exactly as those tests already assert.
+    installShimStub(applied: false);
   });
 
   tearDown(() {
     AutoUpdateService.debugSupportedOverride = null;
+    AutoUpdateService.debugConfigureWinSparkle = null;
     AutoUpdateService.debugResetConfiguration();
   });
+
+  /// Stands in for the Windows-only FFI shim, logging into the same ordered
+  /// event list as the fake plugin. [applied] is what the real one returns:
+  /// true on Windows, false everywhere else.
 
   test('sets the feed URL once across a boot and repeated checks', () async {
     const service = AutoUpdateService();
@@ -169,5 +204,62 @@ void main() {
     expect(platform.feedUrls, isEmpty);
     expect(platform.checkCalls, 0);
     expect(await service.checkSilently(), SparkleCheckResult.upToDate);
+  });
+
+  group('the WinSparkle settings the plugin exposes no channel for', () {
+    test('are applied before setFeedURL, which is where init happens', () async {
+      installShimStub(applied: true);
+
+      await const AutoUpdateService().start();
+
+      // Not merely "both happened": every setting the shim applies is
+      // documented before-init only, and WinSparkle ignores a late one
+      // silently rather than reporting it, so order IS the contract.
+      expect(platform.events, ['winSparkleConfig', 'setFeedURL']);
+    });
+
+    test('carry the build number, not the display version', () async {
+      final builds = installShimStub(applied: true);
+
+      await const AutoUpdateService().start();
+
+      // win_sparkle_set_app_build_version switches WinSparkle onto an integer
+      // comparison; handing it a display string like "26.9.0" would put it
+      // straight back on the string comparison that stranded the pre-127
+      // fleet.
+      expect(builds, [kBuildNumber.toString()]);
+    });
+
+    test('take ownership of the check interval when they applied', () async {
+      installShimStub(applied: true);
+
+      await const AutoUpdateService().start();
+
+      // The plugin's own setScheduledCheckInterval lands AFTER init, so it is
+      // out of contract on Windows — asking it again would be the late call
+      // the shim exists to avoid.
+      expect(platform.intervals, isEmpty);
+    });
+
+    test('leave the interval to the plugin when they could not apply', () async {
+      installShimStub(applied: false);
+
+      await const AutoUpdateService().start();
+
+      // Off Windows, and on a Windows box where the DLL or a symbol did not
+      // resolve, the plugin remains the only way to set this at all.
+      expect(platform.intervals, [3600]);
+    });
+
+    test('are applied once per process, like the rest of the configuration', () async {
+      installShimStub(applied: true);
+      const service = AutoUpdateService();
+
+      await service.start();
+      await service.checkSilently();
+      await service.checkForUpdatesInteractively();
+
+      expect(platform.events.where((e) => e == 'winSparkleConfig'), hasLength(1));
+    });
   });
 }
