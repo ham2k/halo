@@ -512,7 +512,7 @@ any custom track name, so it covers the whole ladder.
 
 **Which devices see a track.** An installed app only checks `stable` by default;
 following an earlier ring is **opt-in per device**, via **Settings → Developer →
-Patch Track** (Developer Mode only). That selector is wired to
+Code Push Track** (Developer Mode only). That selector is wired to
 `package:shorebird_code_push`: `ShorebirdUpdateService` (lib/services/) checks the
 chosen track on launch and downloads any code push, applied on the next restart. So a
 `bleeding-edge` code push reaches only the handful of devices that have opted into that

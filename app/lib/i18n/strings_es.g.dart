@@ -1429,16 +1429,16 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 		one: '${count} habilitado',
 		other: '${count} habilitados',
 	);
-	@override String get patchTrack => 'Canal de parches';
-	@override String get patchTrackDescription => 'Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.';
+	@override String get patchTrack => 'Canal de code push';
+	@override String get patchTrackDescription => 'Qué canal de code push over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los code push se aplican en el próximo reinicio.';
 	@override String get trackStable => 'Estable';
 	@override String get trackUnstable => 'Inestable';
 	@override String get trackBleeding => 'Vanguardia';
-	@override String checkingTrack({required Object track}) => 'Buscando un parche en «${track}»…';
-	@override String get patchDownloaded => 'Parche descargado — reinicia la app para aplicarlo.';
-	@override String noNewPatch({required Object track}) => 'No hay parches nuevos en «${track}».';
-	@override String get noPatchInstalled => 'No hay parche instalado — ejecutando el binario de la versión.';
-	@override String runningPatch({required Object patch}) => 'Ejecutando el parche #${patch}.';
+	@override String checkingTrack({required Object track}) => 'Buscando un code push en «${track}»…';
+	@override String get patchDownloaded => 'Code push descargado — reinicia la app para aplicarlo.';
+	@override String noNewPatch({required Object track}) => 'No hay code push nuevo en «${track}».';
+	@override String get noPatchInstalled => 'No hay code push instalado — ejecutando el binario de la versión.';
+	@override String runningPatch({required Object patch}) => 'Ejecutando el code push #${patch}.';
 	@override String get systemInformation => 'Información del sistema';
 	@override String get activeExtensions => 'Extensiones activas';
 	@override String get appVersion => 'Versión de la app';
@@ -2516,16 +2516,16 @@ extension on TranslationsEs {
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',
 			'settings.developer.experiments' => 'Experimentos',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} habilitado', other: '${count} habilitados', ), 
-			'settings.developer.patchTrack' => 'Canal de parches',
-			'settings.developer.patchTrackDescription' => 'Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.',
+			'settings.developer.patchTrack' => 'Canal de code push',
+			'settings.developer.patchTrackDescription' => 'Qué canal de code push over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los code push se aplican en el próximo reinicio.',
 			'settings.developer.trackStable' => 'Estable',
 			'settings.developer.trackUnstable' => 'Inestable',
 			'settings.developer.trackBleeding' => 'Vanguardia',
-			'settings.developer.checkingTrack' => ({required Object track}) => 'Buscando un parche en «${track}»…',
-			'settings.developer.patchDownloaded' => 'Parche descargado — reinicia la app para aplicarlo.',
-			'settings.developer.noNewPatch' => ({required Object track}) => 'No hay parches nuevos en «${track}».',
-			'settings.developer.noPatchInstalled' => 'No hay parche instalado — ejecutando el binario de la versión.',
-			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el parche #${patch}.',
+			'settings.developer.checkingTrack' => ({required Object track}) => 'Buscando un code push en «${track}»…',
+			'settings.developer.patchDownloaded' => 'Code push descargado — reinicia la app para aplicarlo.',
+			'settings.developer.noNewPatch' => ({required Object track}) => 'No hay code push nuevo en «${track}».',
+			'settings.developer.noPatchInstalled' => 'No hay code push instalado — ejecutando el binario de la versión.',
+			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el code push #${patch}.',
 			'settings.developer.systemInformation' => 'Información del sistema',
 			'settings.developer.activeExtensions' => 'Extensiones activas',
 			'settings.developer.appVersion' => 'Versión de la app',

@@ -2903,11 +2903,11 @@ class Translations$settings$developer$en {
 		other: '${count} enabled',
 	);
 
-	/// en: 'Patch Track'
-	String get patchTrack => 'Patch Track';
+	/// en: 'Code Push Track'
+	String get patchTrack => 'Code Push Track';
 
-	/// en: 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.'
-	String get patchTrackDescription => 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.';
+	/// en: 'Which over-the-air code push ring this device follows. More adventurous rings get fixes earlier, less tested. Code pushes apply on the next restart.'
+	String get patchTrackDescription => 'Which over-the-air code push ring this device follows. More adventurous rings get fixes earlier, less tested. Code pushes apply on the next restart.';
 
 	/// en: 'Stable'
 	String get trackStable => 'Stable';
@@ -2918,20 +2918,20 @@ class Translations$settings$developer$en {
 	/// en: 'Bleeding'
 	String get trackBleeding => 'Bleeding';
 
-	/// en: 'Checking "${track}" for a patch…'
-	String checkingTrack({required Object track}) => 'Checking "${track}" for a patch…';
+	/// en: 'Checking "${track}" for a code push…'
+	String checkingTrack({required Object track}) => 'Checking "${track}" for a code push…';
 
-	/// en: 'Patch downloaded — restart the app to apply it.'
-	String get patchDownloaded => 'Patch downloaded — restart the app to apply it.';
+	/// en: 'Code push downloaded — restart the app to apply it.'
+	String get patchDownloaded => 'Code push downloaded — restart the app to apply it.';
 
-	/// en: 'No new patch on "${track}".'
-	String noNewPatch({required Object track}) => 'No new patch on "${track}".';
+	/// en: 'No new code push on "${track}".'
+	String noNewPatch({required Object track}) => 'No new code push on "${track}".';
 
-	/// en: 'No patch installed — running the release binary.'
-	String get noPatchInstalled => 'No patch installed — running the release binary.';
+	/// en: 'No code push installed — running the release binary.'
+	String get noPatchInstalled => 'No code push installed — running the release binary.';
 
-	/// en: 'Running patch #${patch}.'
-	String runningPatch({required Object patch}) => 'Running patch #${patch}.';
+	/// en: 'Running code push #${patch}.'
+	String runningPatch({required Object patch}) => 'Running code push #${patch}.';
 
 	/// en: 'System Information'
 	String get systemInformation => 'System Information';
@@ -4271,16 +4271,16 @@ extension on Translations {
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
-			'settings.developer.patchTrack' => 'Patch Track',
-			'settings.developer.patchTrackDescription' => 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.',
+			'settings.developer.patchTrack' => 'Code Push Track',
+			'settings.developer.patchTrackDescription' => 'Which over-the-air code push ring this device follows. More adventurous rings get fixes earlier, less tested. Code pushes apply on the next restart.',
 			'settings.developer.trackStable' => 'Stable',
 			'settings.developer.trackUnstable' => 'Unstable',
 			'settings.developer.trackBleeding' => 'Bleeding',
-			'settings.developer.checkingTrack' => ({required Object track}) => 'Checking "${track}" for a patch…',
-			'settings.developer.patchDownloaded' => 'Patch downloaded — restart the app to apply it.',
-			'settings.developer.noNewPatch' => ({required Object track}) => 'No new patch on "${track}".',
-			'settings.developer.noPatchInstalled' => 'No patch installed — running the release binary.',
-			'settings.developer.runningPatch' => ({required Object patch}) => 'Running patch #${patch}.',
+			'settings.developer.checkingTrack' => ({required Object track}) => 'Checking "${track}" for a code push…',
+			'settings.developer.patchDownloaded' => 'Code push downloaded — restart the app to apply it.',
+			'settings.developer.noNewPatch' => ({required Object track}) => 'No new code push on "${track}".',
+			'settings.developer.noPatchInstalled' => 'No code push installed — running the release binary.',
+			'settings.developer.runningPatch' => ({required Object patch}) => 'Running code push #${patch}.',
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.activeExtensions' => 'Active Extensions',
 			'settings.developer.appVersion' => 'App Version',
