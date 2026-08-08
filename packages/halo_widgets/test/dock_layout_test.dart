@@ -1112,6 +1112,39 @@ void main() {
     expect(find.text('count-a: 1'), findsOneWidget, reason: 'moving a pane must not reset its State');
   });
 
+  testWidgets('split dividers fatten while editing', (tester) async {
+    // While editing, a divider drag competes with the pane drags for the
+    // same pointer, so the bar has to read as a grab target rather than as
+    // furniture — and it has to grow in LAYOUT, not just in paint, or the
+    // fingertip target is unchanged. Measuring the rendered bar (rather than
+    // the constant) is what catches an extent that widens for the divider
+    // while the panes are still laid out against the narrow one.
+    final spec = DockSplit(Axis.horizontal, [
+      DockGroup(['a']),
+      DockGroup(['b']),
+    ], [1, 1]);
+    await tester.pumpWidget(harness(spec: spec));
+    await tester.pumpAndSettle();
+    final viewing = tester.getRect(find.byType(SolidPaneDivider));
+    // Within a device pixel, not exactly: the rendered extent is the gap
+    // between two PixelGrid-snapped boundaries, so at some DPRs it lands a
+    // fraction off the nominal width (see resizable_split_view_test.dart's
+    // own snapping test). Exact equality here passes only at the harness's
+    // incidental default DPR.
+    expect(viewing.width, moreOrLessEquals(paneDividerWidth(), epsilon: 0.5));
+
+    await tester.pumpWidget(harness(spec: spec, editing: true));
+    await tester.pumpAndSettle();
+    final editing = tester.getRect(find.byType(SolidPaneDivider));
+    expect(editing.width, moreOrLessEquals(paneDividerWidth(editing: true), epsilon: 0.5));
+    expect(editing.width, greaterThan(viewing.width));
+    // The two panes gave up the difference between them: the bar owns its
+    // layout space, so a wider one pushes their shared boundary outwards
+    // rather than painting over content.
+    expect(editing.left, moreOrLessEquals(viewing.left - (editing.width - viewing.width) / 2, epsilon: 0.5));
+    expect(editing.right, moreOrLessEquals(viewing.right + (editing.width - viewing.width) / 2, epsilon: 0.5));
+  });
+
   testWidgets('pane boundaries land on whole device pixels and tile the run', (tester) async {
     // Weight-derived extents are fractional, and a boundary that falls
     // between device pixels antialiases into both — the neighboring panes
@@ -1145,7 +1178,7 @@ void main() {
     // and the run is covered end to end.
     expect(panes.first.left, 0);
     expect(panes.last.right, moreOrLessEquals(1000));
-    final available = 1000 - paneDividerWidth * 2;
+    final available = 1000 - paneDividerWidth() * 2;
     expect(panes[0].width, moreOrLessEquals(available / 6, epsilon: 0.4));
     expect(panes[1].width, moreOrLessEquals(available * 2 / 6, epsilon: 0.4));
   });

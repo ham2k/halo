@@ -45,13 +45,6 @@ const Size minWindowSize = Size(ShirtSize.xsMax, 480.0);
 const Duration layoutAnimationDuration = Duration(milliseconds: 300);
 const Curve layoutAnimationCurve = Curves.easeInOut;
 
-/// Width of the SOLID pane divider (pane_divider.dart) — the default
-/// separator between side-by-side panes: a header-colored bar that owns its
-/// own layout space (no overlay, no shadow). Shared by ResizableSplitView's
-/// solid style and the dock layout's split dividers so the two systems
-/// can't drift apart visually.
-const double paneDividerWidth = 7.0;
-
 /// How a root view participates in layout customization (DESIGN.md §7).
 ///
 /// The classification drives the divider language: [customizable] views use

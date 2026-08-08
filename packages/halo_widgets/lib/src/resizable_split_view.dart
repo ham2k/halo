@@ -239,7 +239,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // The solid divider's own thickness is snapped too, so its FAR edge
         // (the secondary pane's left edge) lands on the grid as well — with
         // the near edge already snapped, that makes both boundaries crisp.
-        final dividerExtent = grid.snapUp(paneDividerWidth);
+        final dividerExtent = grid.snapUp(paneDividerWidth());
         // The bound reserves the divider on top of minSecondaryWidth — for
         // surfaces because the grab strip overlays the secondary's leftmost
         // pixels (at max drag the secondary still has its full minimum

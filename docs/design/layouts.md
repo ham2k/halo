@@ -118,12 +118,30 @@ separated by one of two divider styles (`SplitDividerStyle`):
 
 **Solid (the default).** A header-colored bar
 ([`SolidPaneDivider`](../../packages/halo_widgets/lib/src/pane_divider.dart),
-`paneDividerWidth` wide) that owns its own layout space — no overlay, no
+`paneDividerWidth()` wide) that owns its own layout space — no overlay, no
 drop shadow. It reads as chrome between panes, matching the app bar's
 surface, and it is the shared divider language of layout-customizable
 views: the dock layout's split dividers are the same widget, so the fixed
 split and the dock can't drift apart visually. Being an opaque painted
 bar, it needs no special handling over native platform views.
+
+Its thickness varies on two axes. The mobile **platforms**
+(`isMobilePlatform` — iOS or Android, not web, the same gate `LayoutDensity`
+uses for its touch minimum) get a few pixels more than a pointer everywhere,
+7 → 9; a touch tablet on the web build reads as a pointer. And while a layout
+is being **edited** the bar fattens further, 11 on desktop and 16 on mobile,
+because there a divider drag competes with pane drags for the same pointer
+and has to read as a grab target rather than as furniture.
+
+The editing width is granted unconditionally — the panes give it up, and
+nothing rations it against what they can spare. **Edit mode is not
+overflow-safe in a very short dock, and the divider is the smaller half of
+why.** A group is a Column of its tab strip over an Expanded body, so a pane
+shorter than its own strip overflows; entering edit mode also gives every
+headerless group a strip it did not have, a whole chrome height that no
+divider width can give back. A guard on the bar alone would buy a guarantee
+that still does not hold, so the bar stays simple and the real fix belongs
+where the chrome is added.
 
 **Surfaces (opt-in — Home and Settings today).** The divider consumes no
 layout space — it is a transparent drag overlay (with grab dots) on the

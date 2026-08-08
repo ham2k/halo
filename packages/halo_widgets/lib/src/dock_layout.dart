@@ -619,8 +619,18 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   }
 
   // Dock splits use the shared solid divider (pane_divider.dart) — same
-  // header-colored bar as ResizableSplitView's default style.
-  static const double _dividerExtent = paneDividerWidth;
+  // header-colored bar as ResizableSplitView's default style, at the width
+  // the dock's mode calls for.
+  //
+  // The editing width is granted unconditionally, NOT rationed against what
+  // the panes can spare. A dock short enough that those few extra points
+  // overflow a pane is already overflowing for a larger reason: entering edit
+  // mode also gives every headerless group a tab strip, a whole chrome height
+  // the divider cannot give back. Rationing the bar buys a guarantee that
+  // still does not hold, so the honest version is the plain one — see
+  // docs/design/layouts.md.
+  double get _dividerExtent => paneDividerWidth(editing: widget.editing);
+
   static const double _minPaneExtent = 120.0;
 
   /// Publishes a pane's own density when it is genuinely shorter than what it
@@ -910,9 +920,10 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
       builder: (context, constraints) {
         final horizontal = split.axis == Axis.horizontal;
         final total = horizontal ? constraints.maxWidth : constraints.maxHeight;
+        final dividerExtent = _dividerExtent;
         // Floored at zero: a window smaller than the dividers alone must
         // degrade to zero-extent panes, not negative SizedBox widths.
-        final available = math.max(0.0, total - _dividerExtent * (split.children.length - 1));
+        final available = math.max(0.0, total - dividerExtent * (split.children.length - 1));
         // A pane arriving from a drop opens up over the animation rather than
         // appearing at full size — but never below the height of its own tab
         // strip, which is the least a group can paint in: a pane shorter than
@@ -945,7 +956,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         final grid = PixelGrid.of(context);
         final flat = <double>[];
         for (var i = 0; i < split.children.length; i++) {
-          if (i > 0) flat.add(_dividerExtent);
+          if (i > 0) flat.add(dividerExtent);
           flat.add(available * weights[i] / weightSum);
         }
         var edge = 0.0;

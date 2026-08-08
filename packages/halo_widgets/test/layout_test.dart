@@ -6,6 +6,7 @@
 // and idealPaneWidth must stay strictly between the S and L boundaries (the
 // "no M" gap) or two-pane defaults stop making sense.
 
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -52,5 +53,26 @@ void main() {
       ));
       expect(size, ShirtSize.l);
     });
+  });
+
+  group('paneDividerWidth', () {
+    // Two independent axes, and the mobile one is the easy one to lose: the
+    // test platform IS mobile, so a hard-coded desktop constant would pass
+    // every widget test in this package and ship a 7pt bar to fingertips.
+    test('the four widths are the ones docs/design/layouts.md records', () {
+      // Pinned by VALUE, not by ordering: an ordering-only assertion survives
+      // a retune that puts the mobile viewing width above the desktop editing
+      // one, which collapses the grab-target distinction the widening exists
+      // for while leaving the docs describing numbers the code no longer has.
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      expect(paneDividerWidth(), 7.0);
+      expect(paneDividerWidth(editing: true), 11.0);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(paneDividerWidth(), 9.0);
+      expect(paneDividerWidth(editing: true), 16.0);
+    });
+
   });
 }

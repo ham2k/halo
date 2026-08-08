@@ -48,7 +48,7 @@ void main() {
     expect(primaryWidth(tester), 500);
     // The default (solid) divider owns its own layout space between the
     // panes — the secondary starts after it, no overlay.
-    expect(tester.getSize(find.byKey(const Key('secondary'))).width, 1000 - 500 - paneDividerWidth);
+    expect(tester.getSize(find.byKey(const Key('secondary'))).width, 1000 - 500 - paneDividerWidth());
   });
 
   testWidgets('surfaces style: the secondary stretches to the primary edge (overlay divider)', (tester) async {
@@ -479,7 +479,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(primaryWidth(tester), 700 - 280 - paneDividerWidth);
+    expect(primaryWidth(tester), 700 - 280 - paneDividerWidth());
     expect(reported, isEmpty, reason: 'clamping must never write back the preference');
   });
 
@@ -616,8 +616,9 @@ void main() {
   testWidgets('the solid divider snaps its own thickness, so BOTH its edges are on-grid', (tester) async {
     // Snapping only the primary's width leaves the divider's far edge — the
     // secondary pane's left edge — off the device grid whenever the divider
-    // width times the grid is fractional (7 × 2.5 = 17.5 device px), which
-    // seams the divider against the secondary exactly like an unsnapped pane.
+    // width times the grid is fractional (9 × 2.5 = 22.5 device px on the
+    // touch platform this suite runs as), which seams the divider against the
+    // secondary exactly like an unsnapped pane.
     tester.view.physicalSize = const Size(2500, 1500);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
@@ -632,9 +633,9 @@ void main() {
 
     final secondaryLeft = tester.getTopLeft(find.byKey(const Key('secondary'))).dx;
     expect(primaryWidth(tester), 500);
-    // 7 logical → 17.5 device px → 18 → 7.2 logical, so the secondary starts
-    // at 507.2 logical = 1268 whole device px.
-    expect(secondaryLeft, moreOrLessEquals(507.2));
+    // 9 logical → 22.5 device px → 23 → 9.2 logical, so the secondary starts
+    // at 509.2 logical = 1273 whole device px.
+    expect(secondaryLeft, moreOrLessEquals(509.2));
     expect(secondaryLeft * 2.5, moreOrLessEquals((secondaryLeft * 2.5).roundToDouble()));
   });
 
@@ -666,7 +667,7 @@ void main() {
     const overshootTo = 500.0 + 5000.0; // virtual position after the move
     await gesture.moveBy(const Offset(5000, 0));
     await tester.pump();
-    final pinned = 1000 - 280 - paneDividerWidth;
+    final pinned = 1000 - 280 - paneDividerWidth();
     expect(primaryWidth(tester), pinned);
 
     // Reversing while the cursor is still far past the limit: no movement.
