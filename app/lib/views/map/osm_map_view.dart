@@ -18,6 +18,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../services/map_error_reporter.dart';
 import 'map_marker_data.dart';
 import 'map_popup.dart';
 
@@ -87,6 +88,16 @@ class _OsmMapViewState extends State<OsmMapView> {
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ham2k.poloNext',
+          // Otherwise a failed tile is swallowed by flutter_map and the pane
+          // just shows grey squares with no evidence anywhere. The tile URL
+          // is stripped from the message (NetworkImageLoadException embeds
+          // it): the reporter dedups by message, and one per-URL variant per
+          // tile would burn its whole upload budget on one failure class.
+          errorTileCallback: (tile, error, stackTrace) => MapErrorReporter.report(
+              backend: 'osm',
+              kind: 'tile-load',
+              message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'),
+              stack: stackTrace),
         ),
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in

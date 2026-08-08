@@ -24,6 +24,7 @@
 // Clicking a circle opens a mapboxgl.Popup with the QSO's details, styled
 // to match the Flutter backends' MapPopupCard.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -32,7 +33,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../config/secrets.dart';
 import '../../services/windows_webview.dart';
+import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
+import 'map_load_notice.dart';
 import 'map_marker_data.dart';
 
 class MapboxWebviewMapView extends StatefulWidget {
@@ -54,6 +57,45 @@ class MapboxWebviewMapView extends StatefulWidget {
 class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   InAppWebViewController? _controller;
   bool _mapReady = false;
+  bool _loadFailed = false;
+
+  /// Covers the window before the page's own error channel exists: if
+  /// mapbox-gl.js never loads (offline at map open, DNS, a proxy) or WebGL
+  /// init throws, the inline script dies before `create()` installs the
+  /// watchdog, `poloMapReady` never fires, and without this timer the pane
+  /// is blank with no evidence anywhere.
+  Timer? _readyWatchdog;
+
+  /// One 'poloMapEvent' call from the page: 'style-timeout' and 'recovered'
+  /// drive the in-panel notice, everything (bar 'recovered') goes to
+  /// ErrorPolicy through the reporter. Only the banner needs [mounted] —
+  /// the reporter is static, and an error draining during teardown is
+  /// still evidence.
+  void _onMapEvent(String kind, String message) {
+    if (kind == 'recovered') {
+      if (mounted && _loadFailed) setState(() => _loadFailed = false);
+      return;
+    }
+    if (kind == 'style-timeout' && mounted && !_loadFailed) setState(() => _loadFailed = true);
+    MapErrorReporter.report(backend: 'webview', kind: kind, message: message);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _readyWatchdog = Timer(const Duration(seconds: 15), () {
+      if (!mounted || _mapReady) return;
+      setState(() => _loadFailed = true);
+      MapErrorReporter.report(
+          backend: 'webview', kind: 'never-ready', message: 'the map page never reported ready');
+    });
+  }
+
+  @override
+  void dispose() {
+    _readyWatchdog?.cancel();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(MapboxWebviewMapView oldWidget) {
@@ -82,7 +124,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
 
   @override
   Widget build(BuildContext context) {
-    return InAppWebView(
+    final webview = InAppWebView(
       // Null off Windows, where the platform's own webview needs no
       // environment; on Windows this is the one map_panel proved it could
       // create, so the plugin doesn't fall back to making its own next to
@@ -100,28 +142,74 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
           handlerName: 'poloMapReady',
           callback: (args) {
             _mapReady = true;
+            _readyWatchdog?.cancel();
+            // A never-ready banner shown by the watchdog is stale the
+            // moment the page reports in; the style watchdog re-raises it
+            // if the map is ready but its style is stuck.
+            if (mounted && _loadFailed) setState(() => _loadFailed = false);
             _applyProjection();
             _applyMarkers();
             _applyLines();
             return null;
           },
         );
+        controller.addJavaScriptHandler(
+          handlerName: 'poloMapEvent',
+          callback: (args) {
+            if (args.length >= 2) {
+              _onMapEvent('${args[0]}', '${args[1]}');
+            } else {
+              debugPrint('[map-webview] malformed poloMapEvent: $args');
+            }
+            return null;
+          },
+        );
       },
+    );
+    return Stack(
+      children: [
+        Positioned.fill(child: webview),
+        if (_loadFailed) const MapLoadNotice(),
+      ],
     );
   }
 
   // The marker/line/popup logic lives in the shared mapGlScript (also used
   // by the Flutter web backend); this page just hosts it and bridges the
-  // window.polo* entry points the Dart side calls. The 'map error' console
-  // logging inside the shared script reaches Dart via onConsoleMessage —
-  // the only signal we get out of this page for "why is the map blank"
-  // reports (e.g. an invalid/expired token) without opening real devtools.
+  // window.polo* entry points the Dart side calls. The script's event
+  // callback crosses on its own 'poloMapEvent' handler rather than riding
+  // onConsoleMessage: a console line is a debug print, and these have to
+  // reach ErrorPolicy.
   static String _html(String token) => '''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <script>
+    // Installed before anything can fail: an uncaught page error (mapbox-gl.js
+    // missing so create() throws ReferenceError, WebGL init failing) happens
+    // before the map's own error channel exists, and onConsoleMessage never
+    // sees uncaught exceptions. Buffered until the bridge is ready — these
+    // errors tend to fire exactly in the window where it isn't yet.
+    window.__poloPendingErrors = [];
+    function __poloPageError(text) {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler('poloMapEvent', 'page-error', text);
+      } else {
+        window.__poloPendingErrors.push(text);
+      }
+    }
+    window.onerror = function (message, source, line) {
+      __poloPageError(message + ' (' + source + ':' + line + ')');
+      return false;
+    };
+    window.addEventListener('flutter_inappwebviewready', function () {
+      var pending = window.__poloPendingErrors;
+      window.__poloPendingErrors = [];
+      pending.forEach(__poloPageError);
+    });
+  </script>
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet" />
   <style>
@@ -133,7 +221,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   <div id="map"></div>
   <script>$mapGlScript</script>
   <script>
-    const handle = window.poloMapGl.create(document.getElementById('map'), '$token');
+    const handle = window.poloMapGl.create(document.getElementById('map'), '$token', function (kind, message) {
+      window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
+    });
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
     window.poloSetProjection = handle.setProjection;

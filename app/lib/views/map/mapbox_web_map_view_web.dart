@@ -19,7 +19,9 @@ import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
 import '../../config/secrets.dart';
+import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
+import 'map_load_notice.dart';
 import 'map_marker_data.dart';
 
 const _mapboxGlVersion = 'v3.9.0';
@@ -27,29 +29,39 @@ const _mapboxGlVersion = 'v3.9.0';
 /// Loads mapbox-gl.js/.css and injects the shared map script, once per page.
 Future<void>? _glLoading;
 
+/// A FAILED load is not cached: the next map open retries, because the
+/// common cause is being offline at the moment the panel first opened — a
+/// cached failure would keep the map dead for the whole page lifetime after
+/// the device comes back into coverage.
 Future<void> _ensureGlLoaded() {
-  return _glLoading ??= () async {
-    final head = web.document.head!;
+  final loading = _glLoading ??= _loadGl();
+  return loading.catchError((Object e, StackTrace s) {
+    if (identical(_glLoading, loading)) _glLoading = null;
+    Error.throwWithStackTrace(e, s);
+  });
+}
 
-    head.append(web.HTMLLinkElement()
-      ..rel = 'stylesheet'
-      ..href = 'https://api.mapbox.com/mapbox-gl-js/$_mapboxGlVersion/mapbox-gl.css');
-    // Popup styling the webview backend gets from its own page's <style>.
-    head.append(web.HTMLStyleElement()
-      ..textContent = '.mapboxgl-popup-content { padding: 6px 10px; border-radius: 8px; }');
+Future<void> _loadGl() async {
+  final head = web.document.head!;
 
-    final script = web.HTMLScriptElement()
-      ..src = 'https://api.mapbox.com/mapbox-gl-js/$_mapboxGlVersion/mapbox-gl.js';
-    final loaded = Completer<void>();
-    script.addEventListener(
-        'load', ((web.Event _) => loaded.complete()).toJS);
-    script.addEventListener(
-        'error', ((web.Event _) => loaded.completeError(StateError('mapbox-gl.js failed to load'))).toJS);
-    head.append(script);
-    await loaded.future;
+  head.append(web.HTMLLinkElement()
+    ..rel = 'stylesheet'
+    ..href = 'https://api.mapbox.com/mapbox-gl-js/$_mapboxGlVersion/mapbox-gl.css');
+  // Popup styling the webview backend gets from its own page's <style>.
+  head.append(web.HTMLStyleElement()
+    ..textContent = '.mapboxgl-popup-content { padding: 6px 10px; border-radius: 8px; }');
 
-    head.append(web.HTMLScriptElement()..textContent = mapGlScript);
-  }();
+  final script = web.HTMLScriptElement()
+    ..src = 'https://api.mapbox.com/mapbox-gl-js/$_mapboxGlVersion/mapbox-gl.js';
+  final loaded = Completer<void>();
+  script.addEventListener(
+      'load', ((web.Event _) => loaded.complete()).toJS);
+  script.addEventListener(
+      'error', ((web.Event _) => loaded.completeError(StateError('mapbox-gl.js failed to load'))).toJS);
+  head.append(script);
+  await loaded.future;
+
+  head.append(web.HTMLScriptElement()..textContent = mapGlScript);
 }
 
 class MapboxWebMapView extends StatefulWidget {
@@ -73,6 +85,21 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   web.HTMLDivElement? _container;
   JSObject? _handle;
+  bool _loadFailed = false;
+
+  /// The shared script's event callback: 'style-timeout' and 'recovered'
+  /// drive the in-panel notice, everything (bar 'recovered') goes to
+  /// ErrorPolicy through the reporter. Only the banner needs [mounted] —
+  /// the reporter is static, and an error draining during teardown is
+  /// still evidence.
+  void _onMapEvent(String kind, String message) {
+    if (kind == 'recovered') {
+      if (mounted && _loadFailed) setState(() => _loadFailed = false);
+      return;
+    }
+    if (kind == 'style-timeout' && mounted && !_loadFailed) setState(() => _loadFailed = true);
+    MapErrorReporter.report(backend: 'web', kind: kind, message: message);
+  }
 
   @override
   void initState() {
@@ -89,10 +116,22 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   }
 
   Future<void> _createMap() async {
-    await _ensureGlLoaded();
-    if (!mounted || _container == null || _handle != null) return;
-    final gl = web.window.getProperty<JSObject>('poloMapGl'.toJS);
-    _handle = gl.callMethod<JSObject>('create'.toJS, _container!, (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').toJS);
+    try {
+      await _ensureGlLoaded();
+      if (!mounted || _container == null || _handle != null) return;
+      final gl = web.window.getProperty<JSObject>('poloMapGl'.toJS);
+      final onEvent = ((JSString kind, JSString message) => _onMapEvent(kind.toDart, message.toDart)).toJS;
+      _handle = gl.callMethod<JSObject>(
+          'create'.toJS, _container!, (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').toJS, onEvent);
+    } catch (e, s) {
+      // A CDN load failure (offline at map open) or a create() throw (no
+      // WebGL) would otherwise escape as a generic zone error: no offline
+      // stamp, no banner, and a blank pane with no evidence — the exact
+      // defect this backend's error channel exists to close.
+      MapErrorReporter.report(backend: 'web', kind: 'gl-load', message: '$e', stack: s);
+      if (mounted) setState(() => _loadFailed = true);
+      return;
+    }
     _applyProjection();
     // Defer the data (and its camera fit) one frame so the div has been
     // attached and laid out — fitBounds on a still-zero-sized container
@@ -134,5 +173,10 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   }
 
   @override
-  Widget build(BuildContext context) => HtmlElementView(viewType: _viewType);
+  Widget build(BuildContext context) => Stack(
+        children: [
+          Positioned.fill(child: HtmlElementView(viewType: _viewType)),
+          if (_loadFailed) const MapLoadNotice(),
+        ],
+      );
 }

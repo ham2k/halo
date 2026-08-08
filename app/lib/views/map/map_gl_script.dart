@@ -8,16 +8,27 @@
 // drives it through js_interop). One copy of the marker/line/popup/projection
 // logic, so the two can't drift apart.
 //
-// Exposes `window.poloMapGl.create(container, token)` returning a handle
-// with `setMarkersJson`, `setLinesJson`, `setProjection`, and `remove`.
-// Data crosses as JSON strings — both callers already have the payload
-// serialized, and strings keep the interop layer trivial on each side.
+// Exposes `window.poloMapGl.create(container, token, onEvent)` returning a
+// handle with `setMarkersJson`, `setLinesJson`, `setProjection`, and
+// `remove`. Data crosses as JSON strings — both callers already have the
+// payload serialized, and strings keep the interop layer trivial on each
+// side.
+//
+// `onEvent(kind, message)` is the host's error channel: every failure this
+// script can observe goes through it, so each backend can route into
+// ErrorPolicy (via MapErrorReporter) instead of a console nobody reads in a
+// release build. Kinds: 'gl-error' (the map's own error event),
+// 'style-timeout' (the pending-payload watchdog — the "map stays blank"
+// signal, which backends also surface in-panel), 'recovered' (a payload
+// applied after a style-timeout: not an error, it clears that notice),
+// 'deferred-update' and 'marker-drift'. Without a callback the script falls
+// back to the console, which is where a bare devtools session still looks.
 
 /// JS that defines `window.poloMapGl`. Requires mapbox-gl.js (v3.x) to be
 /// loaded first. Idempotent — safe to inject more than once.
 const mapGlScript = '''
 window.poloMapGl = window.poloMapGl || {
-  create: function (container, token) {
+  create: function (container, token, onEvent) {
     mapboxgl.accessToken = token;
     const map = new mapboxgl.Map({
       container: container,
@@ -47,6 +58,24 @@ window.poloMapGl = window.poloMapGl || {
     let pendingMarkers = null;
     let pendingLines = null;
     let flushQueued = false;
+
+    // Whether the watchdog has declared the style stuck — a later successful
+    // apply emits 'recovered' exactly once, so the host's notice can clear.
+    let styleTimedOut = false;
+
+    // The event callback itself must not be able to break the map: it runs
+    // inside Mapbox's own listeners, which have no catch of their own. A
+    // callback failure is named in the fallback line — a broken bridge that
+    // silently demoted every event to the console would otherwise be
+    // indistinguishable from a healthy channel.
+    function report(kind, message) {
+      if (onEvent) {
+        try { onEvent(kind, message); return; } catch (err) {
+          message = message + ' (onEvent failed: ' + err + ')';
+        }
+      }
+      console.log('map ' + kind + ': ' + message);
+    }
 
     function showPopup(m) {
       if (popup) popup.remove();
@@ -164,7 +193,7 @@ window.poloMapGl = window.poloMapGl || {
           if (markers) setMarkers(markers);
           if (lines) setLines(lines);
         } catch (err) {
-          console.log('map error: deferred map update failed: ' + ((err && err.message) || err));
+          report('deferred-update', 'deferred map update failed: ' + ((err && err.message) || err));
         }
       });
       // 'idle' is fired from a render frame, and the loop schedules another
@@ -176,13 +205,24 @@ window.poloMapGl = window.poloMapGl || {
         // Still holding a payload long after the nudge: the style never
         // finished. Nothing else would say so — the map just stays empty.
         if (pendingMarkers || pendingLines) {
-          console.log('map error: the style never finished loading; markers and lines are still waiting');
+          styleTimedOut = true;
+          report('style-timeout', 'the style never finished loading; markers and lines are still waiting');
         }
       }, 10000);
     }
 
+    // A successful apply after the watchdog fired means the style did load
+    // in the end (the device came back into coverage, a slow link caught
+    // up), so the "could not load" state the host is showing is stale.
+    function clearTimeoutState() {
+      if (!styleTimedOut) return;
+      styleTimedOut = false;
+      report('recovered', 'a payload applied after a style timeout');
+    }
+
     function setMarkers(data) {
       if (!ensureLayers()) { pendingMarkers = data; flushWhenReady(); return; }
+      clearTimeoutState();
       if (popup) { popup.remove(); popup = null; }
       markersById = {};
       const baseBounds = new mapboxgl.LngLatBounds();
@@ -223,6 +263,7 @@ window.poloMapGl = window.poloMapGl || {
 
     function setLines(data) {
       if (!ensureLayers()) { pendingLines = data; flushWhenReady(); return; }
+      clearTimeoutState();
       map.getSource('polo-lines').setData({ type: 'FeatureCollection', features: data.features });
       // Opacity arrives once for the whole set (see mapLinesPayload); the
       // highlight line keeps the full-strength opacity its layer was built
@@ -242,7 +283,7 @@ window.poloMapGl = window.poloMapGl || {
       if (hits.length) {
         // A rendered dot with no record means the source and markersById have
         // drifted apart; silently it just reads as a dead click.
-        console.log('map error: clicked feature ' + hits[0].properties.id + ' has no marker record');
+        report('marker-drift', 'clicked feature ' + hits[0].properties.id + ' has no marker record');
       }
       if (popup) { popup.remove(); popup = null; }
     });
@@ -259,10 +300,16 @@ window.poloMapGl = window.poloMapGl || {
     const resizeObserver = new ResizeObserver(function () { map.resize(); });
     resizeObserver.observe(container);
 
-    // Surfaced to each backend's own logging path — the only signal we get
-    // for "why is the map blank" reports (e.g. an invalid/expired token).
+    // The only signal Mapbox gives for "why is the map blank" (an
+    // invalid/expired token, a style that won't load, a failed tile).
+    // JSON.stringify of an event with no error commonly yields '{}' (its
+    // interesting fields are non-enumerable), so name what is knowable.
     map.on('error', function (e) {
-      console.log('map error: ' + (e && e.error ? e.error.message : JSON.stringify(e)));
+      var message = e && e.error && e.error.message;
+      if (!message) {
+        message = ((e && e.sourceId) ? 'source ' + e.sourceId + ': ' : '') + JSON.stringify(e);
+      }
+      report('gl-error', message);
     });
 
     return {

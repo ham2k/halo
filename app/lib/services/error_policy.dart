@@ -27,6 +27,7 @@ import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHost
 
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
+import 'map_error_reporter.dart' show MapError;
 
 /// What the app does with an error, from quietest to loudest. Each tier
 /// includes everything the ones above it do.
@@ -188,6 +189,14 @@ class ErrorPolicy {
           'in aggregate, not worth an operator notice for a TCP blip the caller already retries',
       disposition: ErrorDisposition.report,
       matches: _isFetchTransportTransient,
+    ),
+    ErrorRule(
+      id: 'map-offline',
+      reason: 'a map error raised while the device was offline; a field operation without '
+          'coverage fails every tile and style fetch, and that is the normal state of an '
+          'off-grid activation, not a defect',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isMapErrorWhileOffline,
     ),
   ];
 
@@ -385,6 +394,16 @@ class ErrorPolicy {
     if (error is! ExtensionHostException) return false;
     return error.message.startsWith('ClientException:') || error.message.startsWith('TimeoutException');
   }
+
+  /// A [MapError] stamped offline at arrival. The stamp is the whole match:
+  /// with no network there is nothing a map backend can fetch, so every
+  /// style, tile and token check fails as a matter of course — on a summit
+  /// or in a park that is the session's normal state, and uploading it
+  /// would bury the online failures this type exists to surface. The same
+  /// error raised ONLINE (a bad token, a style that won't parse, a layer
+  /// bug of ours) matches nothing and uploads.
+  static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
+      error is MapError && error.offline;
 
   static final _oncePerSessionLogged = <String>{};
 

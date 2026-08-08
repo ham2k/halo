@@ -27,6 +27,7 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
+import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) =>
     ErrorPolicy.decide(error, details: details).disposition;
@@ -391,6 +392,28 @@ void main() {
         dispositionFor(StateError('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')),
         ErrorDisposition.notify,
       );
+    });
+  });
+
+  group('map errors while offline', () {
+    // The offline stamp is the whole discriminator: a device without
+    // coverage fails every style and tile fetch as a matter of course (the
+    // normal state of an off-grid activation), while the same error online
+    // is the evidence HALO-214 exists to collect.
+    test('an offline-stamped map error is console-only', () {
+      const error = MapError.raw(backend: 'web', kind: 'gl-error', message: 'Failed to fetch', offline: true);
+      final decision = ErrorPolicy.decide(error);
+      expect(decision.rule?.id, 'map-offline');
+      expect(decision.disposition, ErrorDisposition.logOnly);
+    });
+
+    test('the same error online stays loud', () {
+      // An expired token, a style that won't parse, a layer bug of ours —
+      // all arrive online, and quieting them would make a blank map
+      // evidence-free again.
+      const error = MapError.raw(backend: 'web', kind: 'gl-error', message: 'Failed to fetch', offline: false);
+      expect(ErrorPolicy.decide(error).rule, isNull);
+      expect(dispositionFor(error), ErrorDisposition.notify);
     });
   });
 

@@ -12,7 +12,6 @@ import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
@@ -49,6 +48,7 @@ import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
+import 'services/connectivity_service.dart';
 import 'services/error_reporting_backend.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
@@ -152,6 +152,9 @@ void _mainBody({
   // builds — console output + a buffer window.__halo.recentLog() can query.
   // Off in release, so nothing is emitted or buffered there.
   DevLog.instance.enabled = !kReleaseMode;
+  // Before bootstrap, so the offline flag is answered by the time anything
+  // can fail (map errors are stamped with it — see MapError).
+  ConnectivityService.start();
   WindowChromeService.init();
   HardwareKeyboardService.init();
   // Web only: undoes the browser's spurious "the view lost focus" reports,
@@ -988,7 +991,7 @@ class HaLoServices {
         extensions: extensions,
         prefs: settings.prefs,
         statusBar: statusBar,
-        connectivity: Connectivity().onConnectivityChanged,
+        connectivity: ConnectivityService.changes,
       );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
 

@@ -229,6 +229,7 @@ class _Translations$map$es extends Translations$map$en {
 
 	// Translations
 	@override String get emptyState => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.';
+	@override String get loadFailed => 'No se pudo cargar el mapa. Verifica tu conexión.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
 	@override String distanceKm({required Object distance}) => '${distance} km';
 	@override String distanceMiles({required Object distance}) => '${distance} mi';
@@ -2039,6 +2040,7 @@ extension on TranslationsEs {
 			'operation.spots.failedTitle' => 'Error en fuente de spots',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} devolvieron un error.',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
+			'map.loadFailed' => 'No se pudo cargar el mapa. Verifica tu conexión.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
@@ -2370,9 +2372,9 @@ extension on TranslationsEs {
 			'settings.accounts.lookupFailed' => 'Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento',
 			'settings.accounts.browserLoginTitle' => 'Termina de iniciar sesión con tu navegador',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Cuando termines, el navegador intentará abrir un enlace que empieza con "${prefix}". Es muy probable que tu escritorio no tenga nada registrado para abrirlo, así que copia ese enlace — de la barra de direcciones o de la página de error del navegador — y pégalo aquí.',
-			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con "${prefix}" — y pégalo aquí.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con "${prefix}" — y pégalo aquí.',
 			'settings.accounts.copyLoginLink' => 'Copiar enlace de inicio de sesión',
 			'settings.accounts.pastedLinkLabel' => 'Pega el enlace aquí',
 			'settings.accounts.finishLogin' => 'Terminar inicio de sesión',

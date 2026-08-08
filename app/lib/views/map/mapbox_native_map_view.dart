@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' hide Visibility;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/secrets.dart';
+import '../../services/map_error_reporter.dart';
 import 'map_marker_data.dart';
 import 'map_popup.dart';
 
@@ -116,7 +117,8 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   void _applyAnnotations({required bool base, required bool highlight}) {
     _annotationApplications = _annotationApplications
         .then((_) => _applyAnnotationsNow(base: base, highlight: highlight))
-        .catchError((Object e) => debugPrint('[map] annotation update failed: $e'));
+        .catchError((Object e, StackTrace s) => MapErrorReporter.report(
+            backend: 'native', kind: 'annotation-update', message: 'annotation update failed: $e', stack: s));
   }
 
   Future<void> _applyAnnotationsNow({required bool base, required bool highlight}) async {
@@ -265,6 +267,11 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
             styleUri: MapboxStyles.STANDARD,
             onMapCreated: _onMapCreated,
             onCameraChangeListener: (_) => _repositionPopup(),
+            // The SDK's only account of a style, source or tile that failed
+            // to load — without it a native map failure has no channel at
+            // all, matching the GL script's 'gl-error' event.
+            onMapLoadErrorListener: (event) => MapErrorReporter.report(
+                backend: 'native', kind: 'load-error', message: '${event.type.name}: ${event.message}'),
           ),
         ),
         if (_selectedMarker != null && popupPoint != null)

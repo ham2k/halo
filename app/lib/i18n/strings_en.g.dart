@@ -376,6 +376,9 @@ class Translations$map$en {
 	/// en: 'No QSO locations yet. QSOs with a grid square, state, or country will show up here.'
 	String get emptyState => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.';
 
+	/// en: 'The map could not load. Check your connection.'
+	String get loadFailed => 'The map could not load. Check your connection.';
+
 	/// en: 'QTH: ${grid}'
 	String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
 
@@ -3794,6 +3797,7 @@ extension on Translations {
 			'operation.spots.failedTitle' => 'Spot source error',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
+			'map.loadFailed' => 'The map could not load. Check your connection.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
@@ -4125,9 +4129,9 @@ extension on Translations {
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.',
-			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.',
 			'settings.accounts.copyLoginLink' => 'Copy login link',
 			'settings.accounts.pastedLinkLabel' => 'Paste the link here',
 			'settings.accounts.finishLogin' => 'Finish Login',
