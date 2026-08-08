@@ -18,8 +18,12 @@
 //    another one (or a worker), so it has to cross that boundary — at boot and
 //    on every change. A silent revert to real time is invisible from Dart.
 //
-// The clock dashboard is the probe because it renders `new Date()` straight into
-// its output, so a mismatch is readable rather than inferred.
+// The probe is the Custom Text panel rendering a `{{ now }}` template: the SDK's
+// `templateContext` resolves that through the sandbox's `Date`, so the rendered
+// timestamp is a direct, readable statement of what time the sandbox thinks it
+// is. Deliberately a bundle whose only job is rendering what it is told —
+// probing a panel that exists to show a clock ties this file to that panel's
+// continued existence, which is how it broke once already.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -36,7 +40,7 @@ void main() {
   /// ExtensionService listener that normally does this lives in the app, above
   /// this package.
   Future<ExtensionHost> travelledHost() async {
-    final host = await sharedHost(['clock-panel']);
+    final host = await sharedHost(['custom-text']);
     final clock = AppClock.instance;
     host.setClockTravel(
       anchorRealMillis: clock.anchorRealMillis,
@@ -46,20 +50,26 @@ void main() {
     return host;
   }
 
+  /// Renders `{{ now }}`, which the SDK's templateContext fills from the
+  /// sandbox's `Date`.
   Future<Object?> renderClockPanel(ExtensionHost host) => host.invokeHook(
         'panel',
-        key: 'clock-panel',
+        key: 'custom-text',
         method: 'render',
-        args: const {'panelKey': 'clock', 'config': <String, dynamic>{}, 'reason': 'initial'},
+        args: const {
+          'panelKey': 'custom-text',
+          'config': {'content': 'NOW={{ now }}'},
+          'reason': 'initial',
+        },
         timeout: const Duration(seconds: 30),
       );
 
-  /// The `_YYYY-MM-DD UTC_` footer the clock panel renders, as a plain date.
+  /// The date the sandbox rendered, as `YYYY-MM-DD`.
   Future<String> renderedDate() async {
     final content = await renderClockPanel(await travelledHost());
     final markdown = (content as Map)['content'] as String;
-    final match = RegExp(r'_(\d{4}-\d{2}-\d{2}) UTC_').firstMatch(markdown);
-    expect(match, isNotNull, reason: 'the clock panel should render its UTC date footer:\n$markdown');
+    final match = RegExp(r'NOW=(\d{4}-\d{2}-\d{2})').firstMatch(markdown);
+    expect(match, isNotNull, reason: 'the panel should have rendered its {{ now }}:\n$markdown');
     return match!.group(1)!;
   }
 
@@ -85,11 +95,10 @@ void main() {
   });
 
   test('date arithmetic still works on a constructed date', () async {
-    // The panel's clock rows go through `getTime()`, a one-argument
-    // construction and `getUTCHours/Minutes` (offsets.ts's clockAt) — so this
-    // proves the proxied constructor really produces a working Date in this
+    // `templateContext` formats through `new Date(ms)` and the ISO getters, so
+    // this proves the proxied constructor really produces a working Date in this
     // engine. A construction the engine mishandles renders NaNs, which no
-    // date-shaped regex on the footer alone would catch.
+    // date-shaped regex alone would catch.
     AppClock.instance.travel(delta: const Duration(days: 500, hours: 7, minutes: 13));
     final expected = nowUtc();
     final content = await renderClockPanel(await travelledHost());
@@ -102,10 +111,10 @@ void main() {
     expect(
       markdown,
       anyOf(
-        contains('**${hhmm(expected)}**'),
-        contains('**${hhmm(expected.add(const Duration(minutes: 1)))}**'),
+        contains('T${hhmm(expected)}'),
+        contains('T${hhmm(expected.add(const Duration(minutes: 1)))}'),
       ),
-      reason: 'the UTC row should read the travelled time:\n$markdown',
+      reason: 'the rendered timestamp should read the travelled time:\n$markdown',
     );
   });
 
@@ -128,7 +137,7 @@ void main() {
     final clock = AppClock.instance;
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'clock-panel', source: bundleSource('clock-panel'))],
+      extensions: [ExtensionBundle(key: 'custom-text', source: bundleSource('custom-text'))],
       clock: ClockTravelState(
         anchorRealMillis: clock.anchorRealMillis,
         anchorVirtualMillis: clock.anchorVirtualMillis,

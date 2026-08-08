@@ -6,7 +6,7 @@
 // to load. Output goes into the Flutter app's assets.
 
 import { build } from 'esbuild'
-import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, readdir, unlink } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import semver from 'semver'
@@ -268,4 +268,19 @@ await writeFile(
     2,
   ),
 )
+// Delete bundles for extensions that no longer exist. The output directory is
+// gitignored and never cleaned, so removing an extension otherwise leaves its
+// .js behind forever — and an ORPHAN is worse than a stale bundle, because the
+// staleness check compares timestamps and an orphan has no source to be newer
+// than it. A test or host that reads such a bundle by key keeps working locally
+// off a file that no longer has any right to exist, while CI — which builds into
+// a clean tree — fails. That is how the sandbox clock test came to pass here and
+// fail there.
+const expected = new Set([...bundles.map((b) => `${b.key}.js`), 'index.json'])
+for (const name of await readdir(outDir)) {
+  if (expected.has(name)) continue
+  await unlink(join(outDir, name))
+  console.log(`removed orphan — ${name}`)
+}
+
 console.log(`index.json — ${bundles.length - 1} extensions`)
