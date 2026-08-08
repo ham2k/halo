@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "New **Clock** pane — LCD, analog or Swiss railway face, in any time zone"
     - "Windows: new **Check automatically** switch under Settings → About"
+    - "Offline data that had quietly stopped refreshing updates again — check Settings → Offline Data"
 
 "130":
   changes:
