@@ -56,11 +56,61 @@ String versionDetailLine() {
   return details.isEmpty ? version : '$version $details';
 }
 
+/// `Patch 1 PRE 1 (build 130)` — everything about this build that isn't in
+/// [kVersionMainName], as the second line of [VersionLabel]'s `nameAndBuild`
+/// mode. Each part drops out when it doesn't apply, so a stable patch-0
+/// release reads as a bare `(build 130)` and a local Dev build of one is
+/// empty (its caller then renders no second line at all).
+///
+/// The pre-release label is upper-cased to sit alongside the stage marker on
+/// the line above (`August '26 ALPHA` / `Patch 1 PRE 1`); both are stage
+/// markers to a reader, whatever the lower-case token in the version string.
+/// EXCEPT when the two would come out identical — `-alpha1` under an `ALPHA`
+/// stage — where upper-casing puts the same word on both lines and a reader
+/// can't tell the product's stage from this build's pre-release counter. Case
+/// is what keeps the two apart.
+///
+/// [bareBuildNumber] names the BINARY — the build number alone, no code push
+/// and no SHA, on a Dev build too. Only the tester overlay wants this: its
+/// notes are KEYED by that number, and a header reading `build 130.2 - 04e3d1`
+/// over notes titled "What's new in build 130" names an identity the notes
+/// index doesn't contain.
+///
+/// [version]/[edition]/[build]/[sha]/[codePush]/[stageLabel] default to this
+/// process's values and exist only so tests can reach the other cells of that
+/// matrix — including the collision above, which is otherwise only reachable
+/// while the product happens to sit in the stage the version names.
+String versionBuildLine({
+  PublicVersion version = kPublicVersionInfo,
+  Edition edition = kEdition,
+  int build = kBuildNumber,
+  String sha = kGitSha,
+  int? codePush,
+  bool bareBuildNumber = false,
+  String stageLabel = kStageLabel,
+}) {
+  final preRelease = version.preRelease;
+  final parts = <String>[
+    if (version.patch != 0) t.versionLabel.patch(patch: version.patch.toString()),
+    if (preRelease != null)
+      '${_preReleaseLabel(version.preReleaseLabel, stageLabel: stageLabel)} $preRelease'
+          '${version.preReleasePatch == null ? '' : '.${version.preReleasePatch}'}',
+    if (bareBuildNumber)
+      '(${t.versionLabel.build(build: build.toString())})'
+    else
+      buildDetails(edition: edition, build: build, sha: sha, codePush: codePush),
+  ];
+  return parts.where((part) => part.isNotEmpty).join(' ');
+}
+
 /// The same two lines [VersionLabel]'s `detailed` mode renders — `August '26
 /// ALPHA patch 1 (Dev Edition)` then `Version 26.8.1 (build 125 - 04e3d1)` —
 /// as plain text, for callers that copy the version details elsewhere (e.g.
 /// the About screen's version row).
 String versionDetailsText() => '$kEditionVersionName\n${versionDetailLine()}';
+
+String _preReleaseLabel(String label, {String stageLabel = kStageLabel}) =>
+    label.toUpperCase() == stageLabel.toUpperCase() ? label.toLowerCase() : label.toUpperCase();
 
 /// `August '26 ALPHA patch 1 (Dev Edition) · 26.8.1 (04e3d1)`. With
 /// [detailed], instead renders two centered lines — the same edition version
@@ -73,11 +123,23 @@ class VersionLabel extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   final bool boldFirstLine;
 
-  /// Show ONLY the release name ([kVersionName]) — no edition qualifier and no
-  /// version/build detail line — for places where the edition is shown
-  /// separately (the edition badge SVG) and the build detail isn't wanted: the
-  /// home right pane, the splash, and onboarding.
-  final bool nameOnly;
+  /// Two lines — `August '26 ALPHA` over `Patch 1 (build 130)` — for the photo
+  /// overlays (release, tester, onboarding) and the home right pane. No edition
+  /// qualifier: those surfaces all show the edition on the brand mark's badge.
+  /// The second line is dropped when [versionBuildLine] has nothing to say.
+  ///
+  /// Neither line wraps: the two shrink together to fit the width they are
+  /// given (see [_oneLine]).
+  final bool nameAndBuild;
+
+  /// The second line's style in [nameAndBuild] mode. Required there: the two
+  /// callers sit at sizes an order apart (a 32pt name over a photo, a 14pt one
+  /// in the home pane), and no single ratio off [style] reads well at both.
+  final TextStyle? detailStyle;
+
+  /// Name the BINARY's build number — see [versionBuildLine]. Only the tester
+  /// overlay sets this.
+  final bool bareBuildNumber;
 
   const VersionLabel({
     super.key,
@@ -86,14 +148,31 @@ class VersionLabel extends StatelessWidget {
     this.detailed = false,
     this.crossAxisAlignment = CrossAxisAlignment.center,
     this.boldFirstLine = false,
-    this.nameOnly = false,
-  });
+    this.nameAndBuild = false,
+    this.detailStyle,
+    this.bareBuildNumber = false,
+  }) : assert(!nameAndBuild || detailStyle != null, 'nameAndBuild needs an explicit detailStyle');
 
   @override
   Widget build(BuildContext context) {
     final textAlign = crossAxisAlignment == CrossAxisAlignment.start ? TextAlign.start : TextAlign.center;
-    if (nameOnly) {
-      return Text(kVersionName, style: style, textAlign: textAlign);
+    if (nameAndBuild) {
+      final buildLine = versionBuildLine(bareBuildNumber: bareBuildNumber);
+      // ONE box around both lines, never one each: a short build line never
+      // needs shrinking, so per-line fitting would scale the two by different
+      // factors and leave the secondary line out-sizing the name above it.
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: textAlign == TextAlign.start ? Alignment.centerLeft : Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: crossAxisAlignment,
+          children: [
+            _oneLine(kVersionMainName, style, textAlign),
+            if (buildLine.isNotEmpty) _oneLine(buildLine, detailStyle, textAlign),
+          ],
+        ),
+      );
     }
     if (detailed) {
       // Resolve a concrete base style (the About row passes none, inheriting
@@ -119,4 +198,10 @@ class VersionLabel extends StatelessWidget {
     final version = details.isEmpty ? kPublicVersion : '$kPublicVersion $details';
     return SelectableText('$prefix$kEditionVersionName · $version', style: style);
   }
+
+  /// [text] as ONE unwrappable line — these lines sit under a brand mark over a
+  /// photo, where a wrap reads as a layout bug. Narrow panes are handled by the
+  /// block-level [FittedBox] above, not by wrapping.
+  Widget _oneLine(String text, TextStyle? lineStyle, TextAlign textAlign) =>
+      Text(text, style: lineStyle, textAlign: textAlign, maxLines: 1, softWrap: false);
 }

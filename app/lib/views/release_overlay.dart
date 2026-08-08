@@ -115,6 +115,71 @@ TextStyle? overlayVersionLabelStyle(ThemeData theme) => theme.textTheme.titleMed
       shadows: _creditsAndVersionShadows,
     );
 
+/// The header the photo overlays share — brand mark, credits, and the version's
+/// two lines — pinned to the TOP of the photo, above the notes band.
+///
+/// It sits in a Stack-tight column with no room to grow and nothing to scroll,
+/// so a block taller than the viewport (a phone in landscape, or any window at a
+/// large Font Scale, which divides the logical viewport —
+/// docs/design/ui-scaling.md) would paint overflow stripes across the release
+/// photo; scaling it down as one block is what keeps the version name larger
+/// than the build line under it.
+///
+/// Two constraints hold that in place, and both are easy to lose:
+/// * the fixed inner WIDTH makes the [FittedBox] scale on height alone. Handed
+///   unbounded width instead, it shrinks the whole header — brand mark included
+///   — to whatever the unwrappable version name asks for.
+/// * the [Align]: under the Stack's tight constraints the header would
+///   otherwise take the full photo and float down its middle. Align also
+///   loosens those constraints, which is what lets the block size to its
+///   content and scale.
+///
+/// It deliberately measures only itself, never the notes band below. Scaling to
+/// the room above the band reads as the tidier rule and is a trap: the band's
+/// height lives in another coordinate space (this subtree is already inset by
+/// SafeArea and the callers' padding), it animates while this doesn't, and the
+/// onboarding band is content-sized on its first step — so the arithmetic ends
+/// up subtracting a height that is wrong, stale, or larger than what is left,
+/// and the header silently stops painting. The cost is that a short viewport's
+/// notes band covers the version lines — fully, on a small phone — which is
+/// what the layout did before this header existed.
+///
+/// [bareBuildNumber] is the tester overlay's rule — see [versionBuildLine].
+Widget overlayVersionHeader(BuildContext context, {required double logoWidth, bool bareBuildNumber = false}) {
+  final theme = Theme.of(context);
+  final creditsStyle = overlayCreditsStyle(theme);
+  return LayoutBuilder(
+    builder: (context, constraints) => Align(
+      alignment: Alignment.topCenter,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(
+          width: constraints.maxWidth,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: Space.xl),
+              Ham2kBrandMark(logoWidth: logoWidth, showShadow: true),
+              const SizedBox(height: Space.md),
+              overlayCreditsText(context.t.startScreen.credits, creditsStyle),
+              const SizedBox(height: Space.xs),
+              // The RUNNING build's version, not the notes entry's `name` — all
+              // three overlays name what the reader is running, and the notes
+              // below say which release they describe.
+              VersionLabel(
+                nameAndBuild: true,
+                style: overlayVersionLabelStyle(theme),
+                detailStyle: creditsStyle,
+                bareBuildNumber: bareBuildNumber,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 TextStyle overlayCreditsStyle(ThemeData theme) => TextStyle(
       fontSize: (overlayVersionLabelStyle(theme)?.fontSize ?? 32) * 0.75 * 0.85,
       color: Colors.white,
@@ -181,7 +246,6 @@ class _ReleaseOverlayContent extends StatelessWidget {
     // through the widget tree is (its textTheme font sizes come back null,
     // tripping flutter_markdown's assertion).
     final theme = Theme.of(context);
-    final versionLabelStyle = overlayVersionLabelStyle(theme);
     final creditsStyle = overlayCreditsStyle(theme);
     // flutter_markdown's `fromTheme` bases `p`/`listBullet` on bodyMedium.
     // `color: Colors.black` is explicit on all three — bodyMedium's own
@@ -243,18 +307,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
                   bottom: false,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: Space.xl),
-                        const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
-                        const SizedBox(height: Space.md),
-                        overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                        const SizedBox(height: Space.xs),
-                        Text(release.name, textAlign: TextAlign.center, style: versionLabelStyle),
-                      ],
-                    ),
+                    child: overlayVersionHeader(context, logoWidth: 180),
                   ),
                 ),
                 // The caption and the notes band are siblings in ONE
@@ -535,7 +588,6 @@ class _PhotoWordmarkBody extends StatelessWidget {
     // credits, release name, and caption all read at the same relative
     // scale here as they do on the startup overlay.
     final theme = Theme.of(context);
-    final versionLabelStyle = overlayVersionLabelStyle(theme);
     final creditsStyle = overlayCreditsStyle(theme);
     final caption = release?.photoCaption;
 
@@ -555,21 +607,7 @@ class _PhotoWordmarkBody extends StatelessWidget {
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: Space.xl),
-                    const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
-                    const SizedBox(height: Space.md),
-                    overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                    const SizedBox(height: Space.xs),
-                    // The full release name (kVersionName), without the edition
-                    // qualifier (shown by the brand mark's badge) — matching the
-                    // splash and onboarding.
-                    VersionLabel(nameOnly: true, style: versionLabelStyle),
-                  ],
-                ),
+                child: overlayVersionHeader(context, logoWidth: 180),
               ),
             ),
             if (caption != null && caption.isNotEmpty)

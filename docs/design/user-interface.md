@@ -39,8 +39,28 @@ Two distinct things are both loosely called "the splash" — keep them separate:
 - **The "version splash" overlay** ([`release_overlay.dart`](../../app/lib/views/release_overlay.dart)'s
   photo/wordmark overlay). A richer, edition-aware panel over the release photo:
   the brand mark (arc wordmark + product name + edition badge), the credits, and
-  the release name. Shown for release notes and when tapping the About-screen
+  the version. Shown for release notes and when tapping the About-screen
   logo — never at startup.
+
+  The version reads as two lines — `August '26 ALPHA` over
+  `Patch 1 (build 130)` ([`version_label.dart`](../../app/lib/views/version_label.dart)'s
+  `VersionLabel(nameAndBuild: true)`). Neither line wraps: over a brand mark a
+  broken line reads as a layout bug, so the whole header block scales down
+  instead (`release_overlay.dart`'s `overlayVersionHeader`, which the tester and
+  onboarding overlays share; the home screen's right pane scales its branding
+  column, which scales the version lines along with the logo). That header
+  measures only itself and never the notes band below it: on a phone-sized
+  viewport the band covers the version lines entirely, which predates the
+  two-line treatment and is the cost of not having the header chase a height
+  that lives in another coordinate space and animates. The tester overlay, the
+  onboarding overlay and the home pane show the same two lines, and none of
+  them repeats the edition, which the brand mark's badge already carries.
+
+  The tester overlay is the one deliberate divergence: its build number is a
+  notes KEY, so it names the binary's number alone — no code push, no SHA, and
+  named even on a Dev build where the others suppress it (`bareBuildNumber`).
+  Making it match the rest would break the link between that header and the
+  notes listed under it.
 
 ### Overlays that pin their own palette
 

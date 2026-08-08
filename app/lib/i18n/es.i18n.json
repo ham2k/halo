@@ -44,7 +44,6 @@
   },
   "testerOverlay": {
     "tape": "PRECAUCIÓN: EN CONSTRUCCIÓN",
-    "build": "Build ${build}",
     "warningTitle": "Esta aplicación es un trabajo en progreso",
     "warningBody": "La mayoría de las funciones tienen superficies irregulares y hay peligros de tropiezo por todas partes. Por favor, busca actualizaciones con frecuencia.",
     "whatsNew": "Novedades del build ${build}",
@@ -1064,6 +1063,7 @@
   },
   "versionLabel": {
     "version": "Versión ${version}",
+    "patch": "Parche ${patch}",
     "build": "build ${build}"
   },
   "notices": {

@@ -748,7 +748,6 @@ class _BrandingPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final details = buildDetails();
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
@@ -794,22 +793,15 @@ class _BrandingPane extends StatelessWidget {
             ),
           ],
           const SizedBox(height: Space.xl),
-          // Just the release name, without the edition qualifier (the edition
-          // is already shown by the badge SVG above).
+          // The release name, without the edition qualifier (the edition is
+          // already shown by the badge SVG above), over its patch and build
+          // line — a bug report from a release build is the one that most
+          // needs to say which build it came from.
           VersionLabel(
-            nameOnly: true,
+            nameAndBuild: true,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            detailStyle: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
-          // Build number and/or git SHA underneath, in every build mode: a bug
-          // report from a release build is the one that most needs to say which
-          // build it came from. Empty only when there is nothing to identify
-          // this build by (see buildDetails), and then the line is dropped
-          // rather than rendered as a bare "()".
-          if (details.isNotEmpty)
-            Text(
-              details,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
         ],
         ),
       ),

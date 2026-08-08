@@ -11,6 +11,7 @@ import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/tester_overlay.dart';
+import 'package:ham2k_logger/views/version_label.dart';
 
 void main() {
   // Deliberately BELOW kBuildNumber (125): the header must name the running
@@ -20,7 +21,10 @@ void main() {
     TesterNotesEntry(build: 124, changes: ['Newest change']),
     TesterNotesEntry(build: 123, changes: ['Older change']),
   ];
-  final runningBuildLabel = 'Build $kBuildNumber';
+  // The header's build line for the RUNNING binary. `bareBuildNumber`, because
+  // `flutter test` runs as the Dev edition, where every other version display
+  // suppresses the build number — this overlay must name it anyway.
+  final runningBuildLine = versionBuildLine(bareBuildNumber: true);
 
   // The covering flag is process-global; a test that fails mid-overlay must
   // not leave it stuck for the next one.
@@ -42,8 +46,12 @@ void main() {
     expect(tester.widget<CautionTape>(find.byType(CautionTape)).label, 'CAUTION: UNDER CONSTRUCTION');
     // The RUNNING build (kBuildNumber), not the newest entry's 124 — the
     // notes can lag the build when one ships without entries of its own.
-    expect(find.text(runningBuildLabel), findsOneWidget);
-    expect(find.text('Build 124'), findsNothing);
+    // Spelled out rather than compared to versionBuildLine's own output: this
+    // line is the notes KEY, so it must name the binary's number exactly —
+    // a `130.2` from a code push still `contains('130')` and would slip past a
+    // looser check while naming a build the notes index doesn't hold.
+    expect(runningBuildLine, endsWith('(build $kBuildNumber)'));
+    expect(find.text(runningBuildLine), findsOneWidget);
     // The warning and every pending build's section are lines within the
     // same MarkdownBody — a catch-up tester must get BOTH builds' notes,
     // not just the newest (the "since last seen" contract).
@@ -96,8 +104,11 @@ void main() {
     await tester.tap(find.textContaining('work in progress'));
     expect(dismissCount, 1);
 
-    // The header, over the bare photo, dismisses too.
-    await tester.tap(find.text(runningBuildLabel));
+    // The header, over the bare photo, dismisses too — tapped through
+    // `hitTestable()` so a header that has slid under the notes band fails here
+    // instead of quietly dismissing via the band's own handler.
+    expect(find.text(runningBuildLine).hitTestable(), findsOneWidget);
+    await tester.tap(find.text(runningBuildLine).hitTestable());
     expect(dismissCount, 2);
   });
 

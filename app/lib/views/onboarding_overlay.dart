@@ -23,12 +23,10 @@ import '../main.dart';
 import '../services/error_reporting_service.dart';
 import '../services/settings_service.dart';
 import 'package:halo_core/halo_core.dart';
-import 'ham2k_logo.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
 import 'settings_view.dart';
 import 'switch_accounts_dialog.dart';
-import 'version_label.dart';
-import 'release_overlay.dart' show overlayCreditsText, overlayCreditsStyle, overlayVersionLabelStyle, ReleasePhoto;
+import 'release_overlay.dart' show overlayCreditsStyle, overlayVersionHeader, ReleasePhoto;
 
 // Matches release_overlay.dart's fixed light-panel palette — this overlay
 // also sits over a photo and never follows dark mode.
@@ -379,7 +377,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     // resolves it. The context that would NOT is the wrapper's own, and that
     // one is not in scope anywhere on this class.
     final theme = Theme.of(context);
-    final versionLabelStyle = overlayVersionLabelStyle(theme);
     final creditsStyle = overlayCreditsStyle(theme);
     final release = widget.release;
     final caption = release?.photoCaption ?? '';
@@ -427,20 +424,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: Space.xl),
-                      Center(child: Ham2kBrandMark(logoWidth: compact ? 90 : 140, showShadow: true)),
-                      const SizedBox(height: Space.md),
-                      overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                      const SizedBox(height: Space.xs),
-                      // The full release name, without the edition qualifier
-                      // (the edition is shown by the brand mark's badge).
-                      VersionLabel(nameOnly: true, style: versionLabelStyle),
-                    ],
-                  ),
+                  child: overlayVersionHeader(context, logoWidth: compact ? 90 : 140),
                 ),
               ),
               // Caption + band in one bottom column, same as the release

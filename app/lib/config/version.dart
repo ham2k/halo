@@ -19,7 +19,7 @@ import 'package:halo_core/halo_core.dart';
 // Re-exported so the app's single version entry point also carries the build
 // edition (Dev/Next/Regular — docs/releases.md §2.6). Set at build time via
 // `--dart-define=HALO_EDITION=…`; defaults to Dev.
-export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
+export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition, PublicVersion;
 
 /// The single source of truth for the public version (§2.1/§2.3). Exposed (not
 /// just its derived strings) so CI tooling can project it, together with
@@ -87,6 +87,14 @@ final kPublicVersion = kPublicVersionInfo.value;
 /// e.g. `August '26 ALPHA`, `August '26 ALPHA patch 2`,
 /// `August '26 ALPHA patch 2 pre 1`.
 final kVersionName = kPublicVersionInfo.displayName(stageLabel: kStageLabel);
+
+/// e.g. `August '26 ALPHA` — the release line and stage marker alone, with the
+/// patch and pre-release parts left to `versionBuildLine()`, which puts them on
+/// their own line beneath (views/version_label.dart). This is a display split
+/// of [kVersionName], not a second identity: nothing outside the UI uses it.
+final kVersionMainName = kStageLabel.isEmpty
+    ? kPublicVersionInfo.main.displayName
+    : '${kPublicVersionInfo.main.displayName} $kStageLabel';
 
 /// [kVersionName] with the edition qualifier appended for the non-stable
 /// editions — `August '26 ALPHA (Dev Edition)`, `… (Next Edition)` — so a

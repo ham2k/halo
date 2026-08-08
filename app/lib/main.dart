@@ -2697,6 +2697,10 @@ class _ReleaseOverlayGateState extends State<_ReleaseOverlayGate> {
   Future<void> _showDevSplash() async {
     final notes = await loadReleaseNotes();
     if (notes.isEmpty || !mounted) return;
+    // The newest entry whatever the running version — and the overlay's header
+    // names the RUNNING build (version_label.dart), not this entry, so on a
+    // build that has moved past the newest notes the preview shows this
+    // version over that release's changes.
     setState(() => _pending = notes.first);
   }
 

@@ -265,10 +265,16 @@ void main() {
     // there's no notes band or Continue button to dismiss.
     expect(find.byType(Ham2kBrandMark), findsNWidgets(2));
     expect(find.textContaining('KI2D'), findsOneWidget);
-    // The modal shows the full release name (kVersionName), matching the
-    // splash/onboarding — not the shorter release-notes name. The version row
-    // behind shows the edition-qualified name, a different exact string.
-    expect(find.text(kVersionName), findsOneWidget);
+    // The modal shows the release line over its build line, matching the
+    // splash/onboarding — not the shorter release-notes name, and not the whole
+    // kVersionName on one line. The version row behind shows the
+    // edition-qualified name, a different exact string.
+    expect(find.text(kVersionMainName), findsOneWidget);
+    // Guarded on emptiness, not on today's `Patch 1`: the next release cut that
+    // resets the patch to 0 makes versionBuildLine() empty in a Dev test run,
+    // and VersionLabel then renders no second line at all.
+    final buildLine = versionBuildLine();
+    expect(find.text(buildLine), buildLine.isEmpty ? findsNothing : findsOneWidget);
     expect(find.text(_testRelease.photoCaption), findsOneWidget);
     expect(find.byType(FilledButton), findsNothing);
 

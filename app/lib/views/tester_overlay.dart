@@ -21,11 +21,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/release_notes.dart';
 import '../config/tester_notes.dart';
-import '../config/version.dart';
 import '../i18n/strings.g.dart';
-import 'ham2k_logo.dart';
-import 'release_overlay.dart' show ReleasePhoto, overlayCreditsText, overlayCreditsStyle, overlayVersionLabelStyle;
-import 'version_label.dart';
+import 'release_overlay.dart' show ReleasePhoto, overlayVersionHeader;
 
 // Same fixed (theme-mode-independent) palette as release_overlay.dart — this
 // panel also sits over a photo, not the app chrome.
@@ -247,8 +244,6 @@ class _TesterPanel extends StatelessWidget {
     // through the widget tree is (its textTheme font sizes come back null,
     // tripping flutter_markdown's assertion).
     final theme = Theme.of(context);
-    final versionLabelStyle = overlayVersionLabelStyle(theme);
-    final creditsStyle = overlayCreditsStyle(theme);
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
     final notesStyleSheet = MarkdownStyleSheet.fromTheme(theme).copyWith(
       p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
@@ -274,14 +269,6 @@ class _TesterPanel extends StatelessWidget {
       ],
     ];
     final notesMarkdown = notesLines.join('\n');
-
-    // The RUNNING build (kBuildNumber), not the newest notes entry, which can
-    // lag it when a build ships without notes of its own. Named here even in a
-    // Dev build, where the home and About displays (version_label.dart's
-    // buildDetails) normally suppress it: tester notes are KEYED by build number, so the
-    // heading says which notes these are. No code-push suffix either — notes
-    // are keyed by the binary, and a push carries none of its own.
-    final buildLabel = context.t.testerOverlay.build(build: kBuildNumber.toString());
 
     final panel = Material(
       color: _panelBackground,
@@ -312,22 +299,9 @@ class _TesterPanel extends StatelessWidget {
                   bottom: false,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: Space.xl),
-                        const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
-                        const SizedBox(height: Space.md),
-                        overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                        const SizedBox(height: Space.xs),
-                        // The full release name (kVersionName), like the
-                        // splash and onboarding, with the build number —
-                        // what tester-notes entries are keyed by — beneath.
-                        VersionLabel(nameOnly: true, style: versionLabelStyle),
-                        Text(buildLabel, textAlign: TextAlign.center, style: creditsStyle),
-                      ],
-                    ),
+                    // `bareBuildNumber`: this header's number is a notes KEY,
+                    // not a build identity — see versionBuildLine.
+                    child: overlayVersionHeader(context, logoWidth: 180, bareBuildNumber: true),
                   ),
                 ),
                 Positioned(

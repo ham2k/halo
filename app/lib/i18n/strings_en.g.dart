@@ -223,9 +223,6 @@ class Translations$testerOverlay$en {
 	/// en: 'CAUTION: UNDER CONSTRUCTION'
 	String get tape => 'CAUTION: UNDER CONSTRUCTION';
 
-	/// en: 'Build ${build}'
-	String build({required Object build}) => 'Build ${build}';
-
 	/// en: 'This app is a work in progress'
 	String get warningTitle => 'This app is a work in progress';
 
@@ -1328,6 +1325,9 @@ class Translations$versionLabel$en {
 
 	/// en: 'Version ${version}'
 	String version({required Object version}) => 'Version ${version}';
+
+	/// en: 'Patch ${patch}'
+	String patch({required Object patch}) => 'Patch ${patch}';
 
 	/// en: 'build ${build}'
 	String build({required Object build}) => 'build ${build}';
@@ -3821,7 +3821,6 @@ extension on Translations {
 			'onboarding.finishingSetup' => 'Finishing setup — downloading reference data…',
 			'startScreen.credits' => 'by KI2D and friends',
 			'testerOverlay.tape' => 'CAUTION: UNDER CONSTRUCTION',
-			'testerOverlay.build' => ({required Object build}) => 'Build ${build}',
 			'testerOverlay.warningTitle' => 'This app is a work in progress',
 			'testerOverlay.warningBody' => 'Most features have uneven surfaces and there are trip hazards all over. Please check for updates regularly.',
 			'testerOverlay.whatsNew' => ({required Object build}) => 'What\'s new in build ${build}',
@@ -4295,9 +4294,9 @@ extension on Translations {
 			'settings.syncPanel.disabledDescription' => 'Off — your log stays on this device only',
 			'settings.syncPanel.syncing' => 'Syncing',
 			'settings.syncPanel.account' => 'Account',
+			'settings.syncPanel.refresh' => 'Refresh',
 			_ => null,
 		} ?? switch (path) {
-			'settings.syncPanel.refresh' => 'Refresh',
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
@@ -4636,6 +4635,7 @@ extension on Translations {
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
+			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',

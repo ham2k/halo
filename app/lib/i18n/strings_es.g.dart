@@ -145,7 +145,6 @@ class _Translations$testerOverlay$es extends Translations$testerOverlay$en {
 
 	// Translations
 	@override String get tape => 'PRECAUCIÓN: EN CONSTRUCCIÓN';
-	@override String build({required Object build}) => 'Build ${build}';
 	@override String get warningTitle => 'Esta aplicación es un trabajo en progreso';
 	@override String get warningBody => 'La mayoría de las funciones tienen superficies irregulares y hay peligros de tropiezo por todas partes. Por favor, busca actualizaciones con frecuencia.';
 	@override String whatsNew({required Object build}) => 'Novedades del build ${build}';
@@ -670,6 +669,7 @@ class _Translations$versionLabel$es extends Translations$versionLabel$en {
 
 	// Translations
 	@override String version({required Object version}) => 'Versión ${version}';
+	@override String patch({required Object patch}) => 'Parche ${patch}';
 	@override String build({required Object build}) => 'build ${build}';
 }
 
@@ -1960,7 +1960,6 @@ extension on TranslationsEs {
 			'onboarding.finishingSetup' => 'Terminando la configuración — descargando datos de referencia…',
 			'startScreen.credits' => 'por KI2D y amigos',
 			'testerOverlay.tape' => 'PRECAUCIÓN: EN CONSTRUCCIÓN',
-			'testerOverlay.build' => ({required Object build}) => 'Build ${build}',
 			'testerOverlay.warningTitle' => 'Esta aplicación es un trabajo en progreso',
 			'testerOverlay.warningBody' => 'La mayoría de las funciones tienen superficies irregulares y hay peligros de tropiezo por todas partes. Por favor, busca actualizaciones con frecuencia.',
 			'testerOverlay.whatsNew' => ({required Object build}) => 'Novedades del build ${build}',
@@ -2434,9 +2433,9 @@ extension on TranslationsEs {
 			'settings.syncPanel.disabledDescription' => 'Desactivado — tu registro se queda solo en este dispositivo',
 			'settings.syncPanel.syncing' => 'Sincronizando',
 			'settings.syncPanel.account' => 'Cuenta',
+			'settings.syncPanel.refresh' => 'Actualizar',
 			_ => null,
 		} ?? switch (path) {
-			'settings.syncPanel.refresh' => 'Actualizar',
 			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',
@@ -2775,6 +2774,7 @@ extension on TranslationsEs {
 			'operationLocationScreen.controlsUnavailableRetry' => 'Reintentar',
 			'operationLocationScreen.county' => 'Condado (opcional)',
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
+			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',

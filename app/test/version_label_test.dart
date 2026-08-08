@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_build_tools/halo_build_tools.dart' show MainVersion;
 import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/services/update_service.dart' show currentCodePush;
 import 'package:ham2k_logger/views/version_label.dart';
@@ -153,14 +154,220 @@ void main() {
     expect(lines[1].style?.fontSize, 14);
   });
 
-  testWidgets('nameOnly shows just the release name — no edition qualifier, no detail line', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: VersionLabel(nameOnly: true)));
+  group('versionBuildLine', () {
+    const august26 = MainVersion(year: 26, month: 8);
 
-    // The bare release name (kVersionName), NOT the edition-qualified name —
-    // the edition is shown separately by the badge SVG (docs/releases.md §2.6) —
-    // and none of the detailed mode's "Version …" line.
-    expect(find.text(kVersionName), findsOneWidget);
+    test('a patch release names the patch, then the build', () {
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1),
+          edition: Edition.next,
+          build: 130,
+          sha: '',
+        ),
+        'Patch 1 (build 130)',
+      );
+    });
+
+    test('patch 0 is not spelled out — the line is the build alone', () {
+      // "Patch 0" would name a thing that doesn't exist: the first release of a
+      // version has no patch, which is why displayName omits it too.
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 0),
+          edition: Edition.next,
+          build: 130,
+          sha: '',
+        ),
+        '(build 130)',
+      );
+    });
+
+    test('a pre-release rides between the patch and the build, upper-cased', () {
+      // Upper-cased to read as a stage marker next to ALPHA on the line above,
+      // whatever case the version string's own token carries.
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1, preRelease: 1),
+          edition: Edition.next,
+          build: 130,
+          sha: '',
+        ),
+        'Patch 1 PRE 1 (build 130)',
+      );
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1, preRelease: 1, preReleasePatch: 2),
+          edition: Edition.next,
+          build: 130,
+          sha: '',
+        ),
+        'Patch 1 PRE 1.2 (build 130)',
+      );
+    });
+
+    test('a Dev build keeps its rule: no build number, so the line can be the patch alone', () {
+      // The whole reason buildDetails exists — Dev's kBuildNumber names the
+      // last RELEASE, not the build in hand. Splitting the name across two
+      // lines must not smuggle it back in.
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1),
+          edition: Edition.dev,
+          build: 130,
+          sha: '',
+        ),
+        'Patch 1',
+      );
+    });
+
+    test('a patch-0 Dev build with no SHA has nothing to say, so the line is empty', () {
+      // The state every local `flutter run` lands in the day `halo-ops release`
+      // cuts a new month version — asserted directly rather than through the
+      // compiled-in constants, which only reach this case for one release at a
+      // time. VersionLabel drops the whole second line on this, so an empty
+      // string here is a contract, not an accident.
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 0),
+          edition: Edition.dev,
+          build: 130,
+          sha: '',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a pre-release label that matches the stage marker stays lower-case', () {
+      // `September '26 ALPHA` over `Patch 1 ALPHA 1` puts the same token on both
+      // lines, and a tester can no longer tell the product's stage from this
+      // build's pre-release counter. Case is what keeps them apart.
+      //
+      // stageLabel is passed rather than leaning on kStageLabel: pinned to the
+      // constant, this case would stop being the collision case — and the one
+      // below would start being it — the day a release cut edits that token,
+      // reddening the suite for a reason unrelated to the edit.
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1, preRelease: 1, preReleaseLabel: 'alpha'),
+          edition: Edition.next,
+          build: 130,
+          sha: '',
+          stageLabel: 'ALPHA',
+        ),
+        'Patch 1 alpha 1 (build 130)',
+      );
+    });
+
+    test('a pre-release label that differs from the stage marker is upper-cased', () {
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1, preRelease: 1, preReleaseLabel: 'alpha'),
+          edition: Edition.next,
+          build: 130,
+          sha: '',
+          stageLabel: 'BETA',
+        ),
+        'Patch 1 ALPHA 1 (build 130)',
+      );
+    });
+
+    test('a code push extends the build number, and the SHA rides along', () {
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1),
+          edition: Edition.next,
+          build: 130,
+          sha: '04e3d1',
+          codePush: 2,
+        ),
+        'Patch 1 (build 130.2 - 04e3d1)',
+      );
+    });
+
+    test('bareBuildNumber names the binary alone — no code push, no SHA, Dev or not', () {
+      // The tester overlay's line is a notes KEY. Its notes are indexed by the
+      // binary's number, so `build 130.2 - 04e3d1` over notes headed "What's new
+      // in build 130" would name a build the index doesn't contain — and on Dev,
+      // where every other display suppresses the number, it must still appear.
+      expect(
+        versionBuildLine(
+          version: const PublicVersion(main: august26, patch: 1),
+          edition: Edition.dev,
+          build: 130,
+          sha: '04e3d1',
+          codePush: 2,
+          bareBuildNumber: true,
+        ),
+        'Patch 1 (build 130)',
+      );
+    });
+  });
+
+  testWidgets('nameAndBuild splits the version across two lines', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: VersionLabel(nameAndBuild: true, detailStyle: TextStyle(fontSize: 12))));
+
+    // The release LINE and stage marker on top (`August '26 ALPHA`), never the
+    // whole kVersionName and never the edition-qualified name — the edition is
+    // shown separately by the badge SVG (docs/releases.md §2.6).
+    expect(find.text(kVersionMainName), findsOneWidget);
     expect(find.text(kEditionVersionName), findsNothing);
     expect(find.textContaining('Version '), findsNothing);
+    // The build line is a SEPARATE line, not appended to the name above — and
+    // when this build has nothing to identify it by (a patch-0 Dev build with
+    // no SHA), no empty line is rendered in its place. Written against
+    // versionBuildLine's emptiness rather than today's `Patch 1`, which becomes
+    // '' the next time `halo-ops release` resets the patch to 0.
+    final buildLine = versionBuildLine();
+    expect(find.text(buildLine), buildLine.isEmpty ? findsNothing : findsOneWidget);
+    if (kVersionName != kVersionMainName) expect(find.text(kVersionName), findsNothing);
+  });
+
+  group('nameAndBuild lines never wrap', () {
+    // Fitting is the CALLER's job now (the overlays' shared header and the home
+    // branding pane each scale their whole block), so what this label owes them
+    // is lines that stay single — a wrapped line inside a scaled block would
+    // shrink the brand mark to make room for a break that shouldn't be there.
+    const style = TextStyle(fontSize: 32);
+    const detail = TextStyle(fontSize: 20);
+
+    testWidgets('both lines are unwrappable, whatever the pane does with them', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Center(
+            child: SizedBox(width: 60, child: VersionLabel(nameAndBuild: true, style: style, detailStyle: detail)),
+          ),
+        ),
+      );
+
+      for (final text in tester.widgetList<Text>(find.byType(Text))) {
+        expect(text.maxLines, 1, reason: 'wrapped line: "${text.data}"');
+        expect(text.softWrap, isFalse, reason: 'wrappable line: "${text.data}"');
+      }
+    });
+
+    testWidgets('one fit box around BOTH lines, never one each', (tester) async {
+      // Two boxes scale by different factors: a short build line never needs
+      // shrinking, so it would come out BIGGER than the version name it sits
+      // under. One box keeps the hierarchy on the way down.
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Center(
+            child: SizedBox(width: 60, child: VersionLabel(nameAndBuild: true, style: style, detailStyle: detail)),
+          ),
+        ),
+      );
+
+      // ONE box, scaling the whole column. The box COUNT is the assertion that
+      // catches a per-line regression: `getSize` reports each Text's NATURAL
+      // size (a FittedBox applies its fit as a paint transform), so comparing
+      // the two lines' sizes passes under per-line boxes too — and comparing
+      // the box's own width and height ratios is tautological, since scaleDown
+      // is uniform by definition.
+      expect(find.byType(FittedBox), findsOneWidget);
+      final box = tester.getSize(find.byType(FittedBox));
+      final column = tester.getSize(find.byType(Column).last);
+      expect(box.width, lessThan(column.width), reason: 'the block should scale down into the 60px pane');
+    });
   });
 }

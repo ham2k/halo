@@ -8,7 +8,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
+import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/views/release_overlay.dart';
+import 'package:ham2k_logger/views/version_label.dart';
 
 void main() {
   const release = ReleaseNotesEntry(
@@ -17,6 +19,61 @@ void main() {
     photoCaption: 'M1SDH at GB-4724',
     changes: ['First change', 'Second change'],
   );
+
+  testWidgets('a short viewport does not overflow the photo', (tester) async {
+    // The header (brand mark, credits, two version lines) sits in a
+    // Stack-tight column with nothing to scroll, so anything that makes it
+    // taller — a second version line, or a large Font Scale, which divides the
+    // logical viewport (docs/design/ui-scaling.md) — paints overflow stripes
+    // across the release photo instead. 600x300 is a phone in landscape.
+    tester.view.physicalSize = const Size(600, 300);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: ReleaseOverlayView(release: release, onDismiss: () {})),
+    ));
+
+    expect(tester.takeException(), isNull);
+  });
+
+  group('overlayVersionHeader', () {
+    // Exercised directly rather than through an overlay: the overlays' notes
+    // bands have their own layouts (and their own overflow at extreme heights),
+    // so driving the header through one tests two things at once and reports
+    // the wrong one.
+    testWidgets('scales the block down when the viewport is too short for it, and never overflows', (tester) async {
+      // Pumped through a builder so the header gets a real BuildContext.
+      Future<Rect> render(Size size) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(builder: (context) => overlayVersionHeader(context, logoWidth: 180)),
+            ),
+          ),
+        ));
+        expect(tester.takeException(), isNull);
+        return tester.getRect(find.byType(Ham2kBrandMark));
+      }
+
+      final roomy = await render(const Size(800, 600));
+      // Anchored to the TOP: under the Stack's tight constraints the block
+      // would otherwise float down the middle of the photo.
+      expect(roomy.top, lessThan(60));
+
+      // Compared against the SAME mark on the roomy viewport rather than a
+      // pixel constant: the numbers follow logoWidth and the header's spacing,
+      // and a threshold tuned to today's version strings stops testing anything
+      // the day a patch-0 cut empties the build line.
+      final short = await render(const Size(600, 200));
+      expect(short.width, lessThan(roomy.width));
+      expect(short.height, greaterThan(0), reason: 'a mis-measured allowance collapses the box and paints nothing');
+      expect(short.top, lessThan(60));
+    });
+  });
 
   testWidgets(
       'shows the brand mark, release name, caption, and "What\'s new in this release" changes; '
@@ -30,7 +87,21 @@ void main() {
     ));
 
     expect(find.byType(Ham2kBrandMark), findsOneWidget);
-    expect(find.text("August '26"), findsOneWidget);
+    // Anchored to the TOP of the photo. Asserted at this (roomy) viewport
+    // rather than the short one below, where the header fills the height and a
+    // centered block would land in the same place as a top-anchored one — the
+    // FittedBox takes the whole Stack under its tight constraints, so its
+    // alignment is the only thing keeping the header out of the middle.
+    expect(tester.getRect(find.byType(Ham2kBrandMark)).top, lessThan(60));
+    // The RUNNING build's version over its build line, NOT `release.name` from
+    // the notes entry ("August '26") — the header names what the reader is
+    // running, the notes below describe the release.
+    expect(find.text(kVersionMainName), findsOneWidget);
+    // Guarded on emptiness, not on today's `Patch 1`: the next release cut that
+    // resets the patch to 0 makes versionBuildLine() empty in a Dev test run,
+    // and VersionLabel then renders no second line at all.
+    final buildLine = versionBuildLine();
+    expect(find.text(buildLine), buildLine.isEmpty ? findsNothing : findsOneWidget);
     // The caption is its own Text (centered, outside the notes band) — the
     // heading and changes are lines within the same MarkdownBody, so
     // textContaining matches the whole rendered line rather than an exact
@@ -102,10 +173,10 @@ void main() {
       ),
     ));
 
-    // The release name ("August '26") sits above the notes band, over the
-    // bare photo — not covered by the notes' or Continue's own tap targets,
-    // so it must fall through to the view-wide dismiss handler.
-    await tester.tap(find.text("August '26"));
+    // The version name sits above the notes band, over the bare photo — not
+    // covered by the notes' or Continue's own tap targets, so it must fall
+    // through to the view-wide dismiss handler.
+    await tester.tap(find.text(kVersionMainName));
 
     expect(dismissCount, 1);
   });
