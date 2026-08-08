@@ -32,6 +32,7 @@ import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../../i18n/strings.g.dart';
@@ -85,9 +86,11 @@ class WebsitePanel extends StatefulWidget {
   final VoidCallback? onReload;
 
   /// The clock the refresh deadline is measured against, injectable the way
-  /// [CatService.now] is. `DateTime.now()` is NOT advanced by
-  /// `tester.pump(duration)` — only timers are — so a deadline read from it
-  /// directly is untestable, and the deadline is the whole design here.
+  /// [CatService.now] is. The real clock, not the app's: what this measures is
+  /// a wait whose remainder becomes a Timer duration, which developer time
+  /// travel must not jump (docs/design/time.md). A deadline read from a clock
+  /// call directly would also be untestable — `tester.pump(duration)` advances
+  /// timers, not clocks — and the deadline is the whole design here.
   final DateTime Function() now;
 
   /// Overrides the platform probe. A test seam: `InAppWebView` asserts that a
@@ -105,7 +108,7 @@ class WebsitePanel extends StatefulWidget {
     this.autoRefresh,
     this.onReload,
     this.webviewSupported,
-    this.now = DateTime.now,
+    this.now = realNowUtc,
   });
 
   static bool get _refreshesByDefault => kIsWeb || !io.Platform.environment.containsKey('FLUTTER_TEST');
