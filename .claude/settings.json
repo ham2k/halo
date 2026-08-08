@@ -1,8 +1,5 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "worktree": {
-    "baseRef": "fresh"
-  },
   "hooks": {
     "SessionStart": [
       {
@@ -27,6 +24,14 @@
           }
         ]
       }
+    ]
+  },
+  "worktree": {
+    "baseRef": "fresh"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git push origin:*)"
     ]
   }
 }
