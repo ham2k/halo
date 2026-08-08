@@ -25,8 +25,8 @@ export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
 /// [kBuildNumber], into the native per-platform version fields via
 /// [PlatformVersions] — see tool/print_build_versions.dart.
 const kPublicVersionInfo = PublicVersion(
-  main: MainVersion(year: 26, month: 8),
-  patch: 1,
+  main: MainVersion(year: 26, month: 9),
+  patch: 0,
 );
 
 /// The product-wide stage marker carried by every human version name —

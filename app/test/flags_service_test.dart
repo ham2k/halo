@@ -29,6 +29,14 @@ void main() {
     statusBar = StatusBarService(await SharedPreferences.getInstance());
   });
 
+  // A release line strictly newer than whatever this build reports. Derived,
+  // never typed: StalenessService compares `latestRelease` against the
+  // compiled kPublicVersion, not against `env` below, so a hardcoded literal
+  // quietly stops being "newer" the day the app's own version reaches it —
+  // turning every latestRelease test below red on an unrelated version bump.
+  final newerRelease = '${kPublicVersionInfo.main.year + 1}.1';
+  final evenNewerRelease = '${kPublicVersionInfo.main.year + 2}.1';
+
   const env = NoticeEnvironment(
     appVersion: '26.8.0',
     appVersionName: "August '26",
@@ -480,7 +488,7 @@ void main() {
     // env.appVersion is 26.8.0 (see the shared `env` above).
     test('prompts when latestRelease names a newer binary', () async {
       final b = build({
-        'defaults.json': {'latestRelease': '26.9'},
+        'defaults.json': {'latestRelease': newerRelease},
         'entities/k.json': {},
         'ki/ki2d.json': {},
       });
@@ -489,7 +497,7 @@ void main() {
       final notice = statusBar.activeNotices.single;
       expect(notice.key, 'update:version');
       expect(notice.title, 'Update available');
-      expect(notice.text, contains('26.9'));
+      expect(notice.text, contains(newerRelease));
       expect(notice.actions.single.label, 'Get it');
     });
 
@@ -538,7 +546,7 @@ void main() {
             isReleaseBuild: true,
             prefs: prefs,
             fetcher: (location) async =>
-                location == 'defaults.json' ? {'latestRelease': '26.9'} : {},
+                location == 'defaults.json' ? {'latestRelease': newerRelease} : {},
           );
 
       await shipped().refreshForCall('KI2D');
@@ -551,14 +559,15 @@ void main() {
       // Back on the shipped build: same release, still never dismissed by
       // anyone, so it is still worth telling the operator about.
       await shipped().refreshForCall('KI2D');
-      expect(statusBar.activeNotices.single.text, contains('26.9'));
+      expect(statusBar.activeNotices.single.text, contains(newerRelease));
       expect(prefs.getString('update:dismissedVersion'), isNull);
     });
 
     test('stays quiet when latestRelease is the same line or older', () async {
-      // 26.8 is the line 26.8.0 is already on — not a newer binary.
+      // The line this build is already on — announcing it would nag an
+      // operator who is already current.
       final b = build({
-        'defaults.json': {'latestRelease': '26.8'},
+        'defaults.json': {'latestRelease': kPublicVersionInfo.main.label},
         'entities/k.json': {},
         'ki/ki2d.json': {},
       });
@@ -580,7 +589,7 @@ void main() {
           actedAction = action;
         }),
         fetcher: (location) async => location == 'defaults.json'
-            ? {'latestRelease': '26.9', 'latestReleaseUrl': 'https://ham2k.com/halo'}
+            ? {'latestRelease': newerRelease, 'latestReleaseUrl': 'https://ham2k.com/halo'}
             : {},
       );
 
@@ -603,7 +612,7 @@ void main() {
         isReleaseBuild: true,
         staleness: stalenessFor(onNoticeAction: (_, action) => actedAction = action),
         fetcher: (location) async =>
-            location == 'defaults.json' ? {'latestRelease': '26.9'} : {},
+            location == 'defaults.json' ? {'latestRelease': newerRelease} : {},
       );
 
       await service.refreshForCall('KI2D');
@@ -612,7 +621,7 @@ void main() {
     });
 
     test('a newer release replaces the notice instead of stacking a second', () async {
-      var latest = '26.9';
+      var latest = newerRelease;
       final service = FlagsService(
         statusBar: statusBar,
         baseUrl: 'https://example.test/flags',
@@ -625,20 +634,20 @@ void main() {
       );
 
       await service.refreshForCall('KI2D');
-      expect(statusBar.activeNotices.single.text, contains('26.9'));
+      expect(statusBar.activeNotices.single.text, contains(newerRelease));
 
-      latest = '26.10';
+      latest = evenNewerRelease;
       await service.refreshForCall('KI2D', force: true);
 
       // One notice, updated in place — not two stacked.
       expect(statusBar.activeNotices, hasLength(1));
-      expect(statusBar.activeNotices.single.text, contains('26.10'));
+      expect(statusBar.activeNotices.single.text, contains(evenNewerRelease));
     });
 
     test('a dismissal persists in prefs, and only a newer release re-notifies', () async {
       // statusBar (from setUp) and the service share this same mock prefs.
       final prefs = await SharedPreferences.getInstance();
-      var latest = '26.9';
+      var latest = newerRelease;
       final service = FlagsService(
         statusBar: statusBar,
         baseUrl: 'https://example.test/flags',
@@ -658,12 +667,12 @@ void main() {
       // (so it survives the capped status-bar history, unlike before).
       await service.refreshForCall('KI2D', force: true);
       expect(statusBar.activeNotices, isEmpty);
-      expect(prefs.getString('update:dismissedVersion'), '26.9');
+      expect(prefs.getString('update:dismissedVersion'), newerRelease);
 
       // A genuinely newer release breaks through the dismissal.
-      latest = '26.10';
+      latest = evenNewerRelease;
       await service.refreshForCall('KI2D', force: true);
-      expect(statusBar.activeNotices.single.text, contains('26.10'));
+      expect(statusBar.activeNotices.single.text, contains(evenNewerRelease));
     });
   });
 }
