@@ -83,7 +83,7 @@ as a `layoutPolicy` const on the view class:
   too) toggles it from the command bar — `SET LAYOUT` reaches the same
   setting, but the word an operator is told over the air is this one. Currently only the **Operation** view.
   The **`panels` experiment** is a separate switch and stays one: it gates
-  the dashboard PANEL extensions (clock, weather, solar, custom text), which
+  the dashboard PANEL extensions (weather, solar, custom text), which
   declare it in their manifests, and nothing else. It answers to `PANELS` and `PANEL` and
   nothing else: it is what the `layouts` experiment became once the dock
   stopped being a tester's feature, and every dock word now belongs to the
@@ -279,11 +279,28 @@ registry — `PanelService` (`app/lib/services/panel_service.dart`) — not a
 constant in the view. Two sources write into it:
 
 - **Native panels.** The view registers its own (Operation: QSOs, Info,
-  Spots, Map) with their title, description, icon and, where they have any,
-  the settings *target* whose declared settings make up their settings
+  Spots, Map, Clock) with their title, description, icon and, where they have
+  any, the settings *target* whose declared settings make up their settings
   dialog. The service holds identity only: the widget stays with the view
   that builds it, which is what lets the Add a Panel sheet list a panel it
   has no way to build.
+
+  A native panel may also carry `formFields` — the same declarative schema an
+  extension panel's `form` uses, rendered by the same `FormRenderer` and
+  persisted to the same Dart-owned storage, with no extension and no bridge
+  call anywhere in it. Clock is the first, and it is also the first native
+  panel to set `multiple`: an operator places one per zone, so its ids are
+  `clock#1`, `clock#2`, and its config is stored per placement.
+
+  **Clock is native rather than an extension because the extension runtime
+  cannot do either half of it.** QuickJS-NG ships no ECMA-402, so `Intl` is
+  undefined and `toLocaleString(…, {timeZone})` *silently* returns host-local
+  time instead of throwing — real zones are unreachable there, and wrong in a
+  way that is invisible on the developer's own machine. And a panel
+  contributes a document, not widgets: an SVG is compiled to a static
+  instruction list (`<animate>` and `<style>` are dropped outright) and the
+  panel tick floors at five seconds, so nothing an extension can return
+  sweeps a second hand.
 - **Extension panels.** Every `panel` hook contributes its own
   ([hooks.md](../extensions/hooks.md)). An extension panel is a *document* —
   markdown, SVG, or sandboxed HTML — rendered by `PanelContentView`, never

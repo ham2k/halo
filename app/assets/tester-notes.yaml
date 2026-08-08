@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New **Clock** pane — LCD, analog or Swiss railway face, in any time zone"
+
 "130":
   changes:
     - "The Spots panel now shows the current QSO being logged, if present in the spots."

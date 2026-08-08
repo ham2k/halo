@@ -82,7 +82,8 @@
       "info": "INFO",
       "spots": "SPOTS",
       "map": "MAP",
-      "qsosPlain": "QSOs"
+      "qsosPlain": "QSOs",
+      "clock": "Clock"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
@@ -143,7 +144,17 @@
         "loggingDescription": "The log and the entry fields",
         "infoDescription": "What we know about the station being worked",
         "spotsDescription": "Spots from the clusters and activity programs",
-        "mapDescription": "Where the contacts are"
+        "mapDescription": "Where the contacts are",
+        "clockDescription": "A clock face, in any time zone",
+        "clockFace": "Face",
+        "clockFaceLcd": "LCD",
+        "clockFaceAnalog": "Analog",
+        "clockFaceSwiss": "Swiss railway",
+        "clockZone": "Time Zone",
+        "clockZoneUtc": "UTC",
+        "clockZoneDevice": "This device",
+        "clockShowSeconds": "Show seconds",
+        "clockShowDate": "Show the date"
       },
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },

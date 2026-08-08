@@ -148,6 +148,46 @@ void main() {
       expect(instance.id, 'ext:notes:text#2');
     });
 
+    PanelService withNative({required bool multiple}) {
+      final service = PanelService(_FakeExtensions(entries: const []));
+      service.registerNative(PanelDefinition(
+        id: 'clock',
+        title: 'Clock',
+        source: PanelSource.native,
+        multiple: multiple,
+        formFields: const [
+          {'type': 'field', 'key': 'zone', 'fieldType': 'select'},
+        ],
+      ));
+      return service;
+    }
+
+    test('a native panel has instances too', () {
+      // The clock is the reason this exists: an operator wants UTC beside
+      // their own local time, which is two placements of one native pane.
+      // Resolving the descriptor against extension panels alone leaves
+      // `clock#2` unexplained, and the view builds a "missing extension"
+      // placeholder — pointing whoever reads it at the extension system for
+      // a pane that has nothing to do with extensions.
+      final service = withNative(multiple: true);
+      final instance = service['clock#2'];
+
+      expect(instance, isNotNull);
+      expect(instance!.id, 'clock#2');
+      expect(instance.source, PanelSource.native);
+      // The form travels to the placement, so the gear opens against the
+      // instance's own stored values rather than the descriptor's.
+      expect(instance.formFields, hasLength(1));
+      expect(instance.hookKey, isNull);
+    });
+
+    test('a native panel that did not opt in has no instances', () {
+      final service = withNative(multiple: false);
+      expect(service['map#2'], isNull);
+      expect(service['clock#2'], isNull);
+      expect(service['clock'], isNotNull);
+    });
+
     test('a panel that did not opt in has no instances', () async {
       final service = await withPanel(multiple: false);
       // A suffix on a panel that is meant to exist once is a layout naming

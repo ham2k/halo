@@ -1115,6 +1115,16 @@ class FormRendererState extends State<FormRenderer> {
       subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
     } else if (desc.isNotEmpty) {
       subtitle = Text(desc, style: TextStyle(color: devModeColor));
+    } else {
+      // A field whose value IS its own explanation — a time zone, a callsign
+      // — has no description to write, and a row with neither says nothing
+      // at all: the operator has to open the dialog to find out what they
+      // picked last time.
+      final options =
+          (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+      final current = options.where((o) => o['value'] == _values[key]).firstOrNull;
+      final shown = current?['label'] as String? ?? el['placeholder'] as String?;
+      if (shown != null && shown.isNotEmpty) subtitle = Text(shown, style: TextStyle(color: devModeColor));
     }
 
     return ListTile(
@@ -1144,20 +1154,16 @@ class FormRendererState extends State<FormRenderer> {
       context: context,
       builder: (dialogContext) => HaloDialog(
         title: Text(label),
-        // Edge to edge, matching SimpleDialog's child layout; the shell
-        // scrolls the list when the options outgrow the dialog.
+        // Edge to edge, matching SimpleDialog's child layout.
         contentPadding: EdgeInsets.zero,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final opt in options)
-              ListTile(
-                title: Text(opt['label'] as String),
-                trailing: opt['value'] == current ? const Icon(MdiIcons.check) : null,
-                onTap: () => Navigator.pop(dialogContext, [opt['value']]),
-                mouseCursor: SystemMouseCursors.click,
-              ),
-          ],
+        // The body scrolls itself; two scrollables on one axis fail to lay
+        // out.
+        scrollable: false,
+        content: _SelectDialogBody(
+          options: options,
+          current: current,
+          searchHint: widget.labels.searchHint,
+          clearLabel: widget.labels.clearLabel,
         ),
       ),
     );
@@ -2220,6 +2226,103 @@ class _CollapsibleMarkdownState extends State<_CollapsibleMarkdown> {
       onExpansionChanged: (open) => setState(() => _expanded = open),
       title: widget.title,
       children: [widget.child],
+    );
+  }
+}
+
+/// The body of a `select` icon-row field's picker dialog: the options, and a
+/// search field once there are too many to browse.
+///
+/// A widget rather than a `StatefulBuilder` because it owns a
+/// [TextEditingController], and that has to outlive the dialog's POP
+/// animation — the field rebuilds all the way through it, so disposing when
+/// `showHaloDialog` returns throws "used after being disposed". An element's
+/// own `dispose` runs at the right moment; nothing shorter-lived does.
+class _SelectDialogBody extends StatefulWidget {
+  final List<Map<String, dynamic>> options;
+  final Object? current;
+  final String searchHint;
+  final String clearLabel;
+
+  const _SelectDialogBody({
+    required this.options,
+    required this.current,
+    required this.searchHint,
+    required this.clearLabel,
+  });
+
+  @override
+  State<_SelectDialogBody> createState() => _SelectDialogBodyState();
+}
+
+class _SelectDialogBodyState extends State<_SelectDialogBody> {
+  /// Past browsing size the list earns a search field, at the same threshold
+  /// [_FormRendererState._openMultiselectEditor] uses. Some vocabularies run
+  /// to hundreds of rows — every IANA zone is 341 — and scrolling one to
+  /// reach a name you already know is not a picker.
+  late final bool _searchable = widget.options.length > 20;
+  late final TextEditingController? _search = _searchable ? TextEditingController() : null;
+
+  @override
+  void dispose() {
+    _search?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _search?.text.trim().toLowerCase() ?? '';
+    final visible = query.isEmpty
+        ? widget.options
+        : [
+            for (final opt in widget.options)
+              if (((opt['label'] as String?) ?? '').toLowerCase().contains(query)) opt,
+          ];
+    final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Flexible(
+          // Lazy, unlike the Column this replaces: a full zone vocabulary
+          // built 341 ListTiles to show ten of them, on every keystroke.
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: visible.length,
+            itemBuilder: (context, i) {
+              final opt = visible[i];
+              return ListTile(
+                title: Text(opt['label'] as String),
+                trailing: opt['value'] == widget.current ? const Icon(MdiIcons.check) : null,
+                onTap: () => Navigator.pop(context, [opt['value']]),
+                mouseCursor: SystemMouseCursors.click,
+              );
+            },
+          ),
+        ),
+        if (_searchable)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.lg).copyWith(top: Space.md),
+            child: TextField(
+              selectAllOnFocus: false,
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                suffixIcon: query.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: Icon(MdiIcons.close, size: 18, semanticLabel: widget.clearLabel),
+                        onPressed: () => setState(() => _search!.clear()),
+                      ),
+                hintText: widget.searchHint,
+                border: searchBorder,
+                focusedBorder: haloFocusedBorder(searchBorder, context),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -214,8 +214,10 @@ with `host.fetch`'s own `timeout` option, which the host enforces, and let
 the host's periodic triggers (a panel's `tick`) be your clock.
 
 Work in UTC and do the arithmetic yourself
-(`extensions/dashboard/clock/src/offsets.ts` is a worked example), or hand
-the raw value to the host and let Dart format it.
+(`utcTime` in `extensions/dashboard/weather/src/index.ts` is a worked
+example), or hand the raw value to the host and let Dart format it. Anything
+that has to be shown in a real zone belongs on the Dart side, which has a
+zone database — the Clock pane is native for exactly this reason.
 
 Cross-extension composition (calling other extensions' hooks *inside* the
 runtime, without a bridge round-trip):

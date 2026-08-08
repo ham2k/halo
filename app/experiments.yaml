@@ -27,7 +27,7 @@ experiments:
   # Not the dock itself — that ships behind Settings → User Interface →
   # Enable Layout Customization (docs/design/layouts.md), which is an
   # operator's choice rather than a tester's. This gates the DASHBOARD PANEL
-  # extensions: their manifests list this key, so Clock/Weather/Solar/Custom
+  # extensions: their manifests list this key, so Weather/Solar/Custom
   # Text stay out of the Extensions panel and out of the runtime until it is
   # on. Rearranging the panes that already ship needs only the setting.
   #
@@ -38,7 +38,7 @@ experiments:
   # EXP PANELS on once.
   - key: panels
     name: Dashboard Panels
-    description: Extra panels to put in a customized layout — clock, weather, solar, custom text.
+    description: Extra panels to put in a customized layout — weather, solar, custom text.
     aliases: [panel]
   # Station equipment and CAT control (docs/design/cat.md). Reveals the
   # Station Configuration settings section, on every platform including web

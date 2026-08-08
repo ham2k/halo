@@ -40,6 +40,14 @@ dependencies:
   # Locale-aware month/weekday names for QSO-list day headers; version left
   # to flutter_localizations' own constraint (it already pins intl).
   intl: any
+  # Real IANA zones with DST for the clock pane. The bundled tzdata is a
+  # snapshot of the PACKAGE release, never of the device, so a zone whose
+  # rules change reads an hour off with nothing thrown and nothing logged —
+  # see docs/maintenance.md. `data/latest.dart` deliberately, not
+  # `data/latest_10y.dart`: the 10y variant carries the same zones but
+  # truncates transitions to a window around the package's own build, and
+  # that window expires while an install sits on a device.
+  timezone: ^0.11.1
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
   # DOM/js interop for the Flutter-web Mapbox backend (mapbox_web_map_view).

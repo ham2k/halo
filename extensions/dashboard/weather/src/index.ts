@@ -124,9 +124,10 @@ function pad(n: number): string {
 
 /// Open-Meteo's `unixtime` values are seconds at the LOCATION's local time
 /// offset, which it returns separately — but this runtime has no zone
-/// support at all (see the clock panel), so sunrise and sunset are shown in
-/// UTC and labelled as such rather than in a local time nothing here can
-/// compute.
+/// support at all: `Intl` is undefined in QuickJS, and
+/// `toLocaleString(…, {timeZone})` silently returns host-local time instead
+/// of throwing. So sunrise and sunset are shown in UTC and labelled as such,
+/// rather than in a local time nothing here can compute.
 function utcTime(unixSeconds: number | undefined): string | null {
   if (typeof unixSeconds !== "number") return null
   const d = new Date(unixSeconds * 1000)

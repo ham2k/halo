@@ -827,6 +827,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get spots => 'SPOTS';
 	@override String get map => 'MAPA';
 	@override String get qsosPlain => 'QSOs';
+	@override String get clock => 'Reloj';
 }
 
 // Path: operation.menu
@@ -1535,6 +1536,16 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get infoDescription => 'Lo que sabemos de la estación contactada';
 	@override String get spotsDescription => 'Spots de los clusters y programas de actividad';
 	@override String get mapDescription => 'Dónde están los contactos';
+	@override String get clockDescription => 'Una esfera de reloj, en cualquier zona horaria';
+	@override String get clockFace => 'Esfera';
+	@override String get clockFaceLcd => 'LCD';
+	@override String get clockFaceAnalog => 'Analógica';
+	@override String get clockFaceSwiss => 'Ferrocarril suizo';
+	@override String get clockZone => 'Zona horaria';
+	@override String get clockZoneUtc => 'UTC';
+	@override String get clockZoneDevice => 'Este dispositivo';
+	@override String get clockShowSeconds => 'Mostrar segundos';
+	@override String get clockShowDate => 'Mostrar la fecha';
 }
 
 // Path: operation.export.compactFileNames
@@ -1960,6 +1971,7 @@ extension on TranslationsEs {
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',
 			'operation.tabs.qsosPlain' => 'QSOs',
+			'operation.tabs.clock' => 'Reloj',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -2016,6 +2028,16 @@ extension on TranslationsEs {
 			'operation.layout.panels.infoDescription' => 'Lo que sabemos de la estación contactada',
 			'operation.layout.panels.spotsDescription' => 'Spots de los clusters y programas de actividad',
 			'operation.layout.panels.mapDescription' => 'Dónde están los contactos',
+			'operation.layout.panels.clockDescription' => 'Una esfera de reloj, en cualquier zona horaria',
+			'operation.layout.panels.clockFace' => 'Esfera',
+			'operation.layout.panels.clockFaceLcd' => 'LCD',
+			'operation.layout.panels.clockFaceAnalog' => 'Analógica',
+			'operation.layout.panels.clockFaceSwiss' => 'Ferrocarril suizo',
+			'operation.layout.panels.clockZone' => 'Zona horaria',
+			'operation.layout.panels.clockZoneUtc' => 'UTC',
+			'operation.layout.panels.clockZoneDevice' => 'Este dispositivo',
+			'operation.layout.panels.clockShowSeconds' => 'Mostrar segundos',
+			'operation.layout.panels.clockShowDate' => 'Mostrar la fecha',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportar',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -2393,6 +2415,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.replaceDialogTitle' => '¿Reemplazar los datos locales?',
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.counts' => 'Datos Sincronizados',
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
@@ -2404,8 +2428,6 @@ extension on TranslationsEs {
 			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
 			'settings.syncPanel.pendingBannerBody' => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).',
 			'settings.syncPanel.combine' => 'Combinar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.authIssueTitle' => 'Sync no puede conectarse',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.',
 			'settings.syncPanel.openSettings' => 'Abrir configuración de Sync',

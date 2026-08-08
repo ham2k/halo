@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
 
 import 'views/command_dialog.dart';
 import 'views/confirm_device_dialog.dart';
@@ -157,6 +158,14 @@ void _mainBody({
   ConnectivityService.start();
   WindowChromeService.init();
   HardwareKeyboardService.init();
+  // No I/O, but not free either: this parses an embedded ~250 KB blob into
+  // ~340 zones and their transition tables, about 19 ms under JIT, on the
+  // main isolate, for every launch whether or not a Clock pane exists. It is
+  // eager anyway because the Operation View reads the zone list while
+  // registering its panels, so deferring only moves the same cost onto the
+  // first operation opened — and a lazy database that loses the race throws
+  // out of a painter instead.
+  tz_data.initializeTimeZones();
   // Web only: undoes the browser's spurious "the view lost focus" reports,
   // which otherwise park every field dead mid-typing. See ViewFocusGuard.
   ViewFocusGuard.install();

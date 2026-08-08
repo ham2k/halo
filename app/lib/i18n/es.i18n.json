@@ -82,7 +82,8 @@
       "info": "INFO",
       "spots": "SPOTS",
       "map": "MAPA",
-      "qsosPlain": "QSOs"
+      "qsosPlain": "QSOs",
+      "clock": "Reloj"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
@@ -143,7 +144,17 @@
         "loggingDescription": "El registro y los campos de entrada",
         "infoDescription": "Lo que sabemos de la estación contactada",
         "spotsDescription": "Spots de los clusters y programas de actividad",
-        "mapDescription": "Dónde están los contactos"
+        "mapDescription": "Dónde están los contactos",
+        "clockDescription": "Una esfera de reloj, en cualquier zona horaria",
+        "clockFace": "Esfera",
+        "clockFaceLcd": "LCD",
+        "clockFaceAnalog": "Analógica",
+        "clockFaceSwiss": "Ferrocarril suizo",
+        "clockZone": "Zona horaria",
+        "clockZoneUtc": "UTC",
+        "clockZoneDevice": "Este dispositivo",
+        "clockShowSeconds": "Mostrar segundos",
+        "clockShowDate": "Mostrar la fecha"
       },
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },

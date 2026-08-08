@@ -295,6 +295,11 @@ class PanelService extends ChangeNotifier {
   /// second registration is a correction, not a conflict.
   void registerNative(PanelDefinition panel) {
     assert(panel.source == PanelSource.native);
+    // `#` separates a descriptor from a placement of it, so a native id
+    // carrying one would resolve as an instance of a descriptor nothing
+    // registered. These ids are ours, so this is a coding error rather than
+    // the data problem `fromExtensionEntry` handles.
+    assert(!panel.id.contains('#'), 'a native panel id may not contain "#"');
     if (_native[panel.id] == panel) return;
     _native[panel.id] = panel;
     notifyListeners();
@@ -309,12 +314,15 @@ class PanelService extends ChangeNotifier {
   /// stored under it, so two Custom Text panes must not share a key.
   /// Everything that routes a call to the extension reads `hookKey` and
   /// `panelKey`, which an instance inherits unchanged.
+  ///
+  /// Instances are not an extension-only idea: the clock is a native panel an
+  /// operator places several of, one per zone.
   PanelDefinition? operator [](String id) {
     final exact = _native[id] ?? _extensionPanels.where((p) => p.id == id).firstOrNull;
     if (exact != null) return exact;
     final descriptorId = PanelDefinition.descriptorIdOf(id);
     if (descriptorId == id) return null;
-    final descriptor = _extensionPanels.where((p) => p.id == descriptorId).firstOrNull;
+    final descriptor = _native[descriptorId] ?? _extensionPanels.where((p) => p.id == descriptorId).firstOrNull;
     // A suffix on a descriptor that does not offer instances is a layout
     // naming something this catalog cannot explain, and the pane says so —
     // better than silently serving the descriptor and letting two placements

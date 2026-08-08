@@ -157,7 +157,10 @@ void main() {
     // that group is still on Spots, and its band names Spots.
     await startEditing(tester);
     await openAddSheet(tester);
-    expect(sheetOf(tester).available, isEmpty, reason: 'every pane is in the view again');
+    // Clock is the one pane that is never "already in the view" — it is
+    // placeable more than once, so its row stays on offer forever.
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock'],
+        reason: 'every single-placement pane is in the view again');
 
     await unmount(tester);
   });
@@ -168,10 +171,10 @@ void main() {
 
     await startEditing(tester);
     await openAddSheet(tester);
-    // Nothing to add with the whole default arrangement in place. The sheet
-    // still renders — one that draws nothing at all reads as one that failed.
-    expect(sheetOf(tester).available, isEmpty);
-    expect(find.text(t.nothingToAdd), findsOneWidget);
+    // With the whole default arrangement in place, only the repeatable pane
+    // is still on offer. (The empty sheet's own rendering is layout_sheet's
+    // to prove — it cannot be reached from this view any more.)
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock']);
     await tester.tap(find.byIcon(MdiIcons.check));
     await tester.pumpAndSettle();
 
@@ -179,10 +182,13 @@ void main() {
     await openAddSheet(tester);
 
     // A pane taken out has to have a way back that isn't Reset Layout.
-    expect(sheetOf(tester).available.map((p) => p.id), ['info']);
+    // Catalog order is registration order, so the repeatable Clock trails the
+    // single-placement panes.
+    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock']);
     sheetOf(tester).onAdd!('info');
     await tester.pumpAndSettle();
-    expect(sheetOf(tester).available, isEmpty, reason: 'and once back, it is no longer on offer');
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock'],
+        reason: 'and once back, it is no longer on offer');
 
     await unmount(tester);
   });
@@ -251,7 +257,14 @@ void main() {
     // again is refused, and an enabled, focusable, announced control that
     // does nothing is worse than one that is not there. Discard and Save are
     // what the operator needs up there.
-    expect(find.widgetWithIcon(IconButton, MdiIcons.plus), findsNothing);
+    //
+    // Scoped to the HEADER rather than to the whole tree: each offered panel
+    // row carries its own plus, so a bare "no plus anywhere" assertion only
+    // held while the sheet happened to list nothing.
+    final plusButtons = find.widgetWithIcon(IconButton, MdiIcons.plus);
+    final plusInSheet = find.descendant(of: find.byType(LayoutSheet), matching: plusButtons);
+    expect(plusButtons.evaluate(), hasLength(plusInSheet.evaluate().length),
+        reason: 'every plus on screen belongs to a row inside the sheet');
     expect(find.text(t.saveLayout), findsOneWidget);
 
     // And the guard behind it still refuses, so no other caller can stack one.

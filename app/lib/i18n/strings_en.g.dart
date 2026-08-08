@@ -1631,6 +1631,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'QSOs'
 	String get qsosPlain => 'QSOs';
+
+	/// en: 'Clock'
+	String get clock => 'Clock';
 }
 
 // Path: operation.menu
@@ -3146,6 +3149,36 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'Where the contacts are'
 	String get mapDescription => 'Where the contacts are';
+
+	/// en: 'A clock face, in any time zone'
+	String get clockDescription => 'A clock face, in any time zone';
+
+	/// en: 'Face'
+	String get clockFace => 'Face';
+
+	/// en: 'LCD'
+	String get clockFaceLcd => 'LCD';
+
+	/// en: 'Analog'
+	String get clockFaceAnalog => 'Analog';
+
+	/// en: 'Swiss railway'
+	String get clockFaceSwiss => 'Swiss railway';
+
+	/// en: 'Time Zone'
+	String get clockZone => 'Time Zone';
+
+	/// en: 'UTC'
+	String get clockZoneUtc => 'UTC';
+
+	/// en: 'This device'
+	String get clockZoneDevice => 'This device';
+
+	/// en: 'Show seconds'
+	String get clockShowSeconds => 'Show seconds';
+
+	/// en: 'Show the date'
+	String get clockShowDate => 'Show the date';
 }
 
 // Path: operation.export.compactFileNames
@@ -3761,6 +3794,7 @@ extension on Translations {
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
 			'operation.tabs.qsosPlain' => 'QSOs',
+			'operation.tabs.clock' => 'Clock',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -3817,6 +3851,16 @@ extension on Translations {
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
+			'operation.layout.panels.clockDescription' => 'A clock face, in any time zone',
+			'operation.layout.panels.clockFace' => 'Face',
+			'operation.layout.panels.clockFaceLcd' => 'LCD',
+			'operation.layout.panels.clockFaceAnalog' => 'Analog',
+			'operation.layout.panels.clockFaceSwiss' => 'Swiss railway',
+			'operation.layout.panels.clockZone' => 'Time Zone',
+			'operation.layout.panels.clockZoneUtc' => 'UTC',
+			'operation.layout.panels.clockZoneDevice' => 'This device',
+			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
+			'operation.layout.panels.clockShowDate' => 'Show the date',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Export',
 			'operation.export.syncedOperation' => 'Operation is synced',
@@ -4194,6 +4238,8 @@ extension on Translations {
 			'settings.syncPanel.replaceDialogTitle' => 'Replace local data?',
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.counts' => 'Synced Data',
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
@@ -4205,8 +4251,6 @@ extension on Translations {
 			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
 			'settings.syncPanel.pendingBannerBody' => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).',
 			'settings.syncPanel.combine' => 'Combine',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.authIssueTitle' => 'Sync can\'t connect',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.',
 			'settings.syncPanel.openSettings' => 'Open Sync settings',

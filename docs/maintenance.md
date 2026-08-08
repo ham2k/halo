@@ -22,7 +22,7 @@ Add to this list whenever something bites; that is what it is for.
 | When | What |
 |---|---|
 | Each release cut | Build expiration dates, Shorebird token, appcast health |
-| Monthly | Reference data files, extension npm deps, Flutter/Dart pin |
+| Monthly | Reference data files, tzdata, extension npm deps, Flutter/Dart pin |
 | Quarterly | quickjs-ng, signing certificates, dependency audit, this document |
 | Whenever CI goes strange | The "silent failure" column below, top to bottom |
 
@@ -204,7 +204,31 @@ would surface as a missing-glyph box one user report at a time.
 *third-party* extensions — those degrade to a puzzle-piece placeholder by
 design and are nobody's bug. Everything in-repo fails loudly in the suite.
 
-## 10. This document
+## 10. tzdata (IANA time zones)
+
+**Check monthly.** The clock pane resolves real zones, with DST, through the
+`timezone` package (`app/pubspec.yaml`). The zone rules it uses are a
+snapshot compiled into that package's release — never the device's own, and
+never fetched. So the app is only as current as the pinned version, and the
+package maintainer sits between IANA and us.
+
+**Check:** compare the tzdata release the pinned `timezone` version carries
+against IANA's current one (<https://www.iana.org/time-zones>). A country
+changing its DST rules — which happens a few times a year, sometimes weeks
+before it takes effect — needs a package bump to reach an operator. The
+release a version carries is named at the top of
+`timezone/lib/data/latest.dart` (`// Timezone data version: …`); `0.11.1`
+carries **2025c**. The package maintainer sits between IANA and us, so a
+fresh tzdata release is not always reachable by bumping.
+
+**Silent failure: total.** A stale database does not throw, log, or degrade.
+It returns a confident, plausible wall time that is an hour wrong, for one
+zone, for part of the year. No self-test can catch it: the only oracle is
+the outside world. The one thing in our control is that an *unknown* zone id
+reads as UTC rather than throwing (`clock_zones.dart`), because a saved
+layout outlives the database that named its zone.
+
+## 11. This document
 
 **Check quarterly.** Update the "Last reviewed" date at the top. Remove
 sections that stop applying — a section covering a dependency we are removing

@@ -29,6 +29,8 @@ import 'extensions_panel.dart';
 import 'operation/adif_import_flow.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
+import 'operation/clock/clock_panel.dart';
+import 'operation/clock/clock_zones.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/layout_sheet.dart';
@@ -1532,6 +1534,59 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       icon: 'map',
       source: PanelSource.native,
     ));
+    service.registerNative(PanelDefinition(
+      id: clockPanelId,
+      title: t.tabs.clock,
+      description: t.layout.panels.clockDescription,
+      icon: 'clock-outline',
+      source: PanelSource.native,
+      // The one native pane an operator plausibly wants several of: a UTC
+      // clock beside the DX's local time is the whole point of it.
+      multiple: true,
+      formFields: [
+        {
+          'type': 'field',
+          'key': clockFaceKey,
+          'fieldType': 'select',
+          'label': t.layout.panels.clockFace,
+          'value': clockFaceLcd,
+          'options': [
+            {'label': t.layout.panels.clockFaceLcd, 'value': clockFaceLcd},
+            {'label': t.layout.panels.clockFaceAnalog, 'value': clockFaceAnalog},
+            {'label': t.layout.panels.clockFaceSwiss, 'value': clockFaceSwiss},
+          ],
+        },
+        {
+          'type': 'field',
+          'key': clockZoneKey,
+          'fieldType': 'select',
+          // `icon` is what puts this behind a full-list dialog rather than an
+          // inline dropdown — 341 zones in a ten-row popup is not a picker.
+          // The dialog searches past twenty options.
+          'icon': 'earth',
+          'label': t.layout.panels.clockZone,
+          'value': utcZoneId,
+          'options': clockZoneOptions(
+            utcLabel: t.layout.panels.clockZoneUtc,
+            deviceLabel: t.layout.panels.clockZoneDevice,
+          ),
+        },
+        {
+          'type': 'field',
+          'key': clockShowSecondsKey,
+          'fieldType': 'checkbox',
+          'label': t.layout.panels.clockShowSeconds,
+          'value': true,
+        },
+        {
+          'type': 'field',
+          'key': clockShowDateKey,
+          'fieldType': 'checkbox',
+          'label': t.layout.panels.clockShowDate,
+          'value': false,
+        },
+      ],
+    ));
   }
 
   Widget _dockLayout({
@@ -1560,7 +1615,23 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           // panel nobody added would cross the bridge for a pane that is never
           // shown.
           for (final id in inLayout)
-            if (widget.services.panels[id]?.source == PanelSource.extension)
+            // Ahead of the extension branch, and ahead of the missing-pane
+            // fallback: an instance id like `clock#2` is in neither the fixed
+            // entries above nor `_dockModuleIds`, so without this the fallback
+            // claims it and the operator is told an extension is missing for a
+            // pane that has nothing to do with extensions.
+            //
+            // One widget per PLACEMENT, not one for the descriptor: the
+            // instance id is the config key, and a single widget handed to two
+            // groups is one element in two places.
+            if (PanelDefinition.descriptorIdOf(id) == clockPanelId)
+              id: ClockPanel(
+                key: ValueKey('panel-$id'),
+                panelId: id,
+                panels: widget.services.panels,
+                onTitle: (title) => _onPanelTitle(id, title),
+              )
+            else if (widget.services.panels[id]?.source == PanelSource.extension)
               id: ExtensionPanel(
                 key: ValueKey('panel-$id'),
                 panel: widget.services.panels[id]!,

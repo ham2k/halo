@@ -2084,4 +2084,123 @@ void main() {
     expect(submitted, isNotNull);
     expect(submitted!['ourPower'], isNull);
   });
+
+  group('a select behind an icon row', () {
+    Widget renderer({required int optionCount, String? description, Object? initial}) => MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    // `icon` is what routes a select to the row-and-dialog
+                    // form instead of an inline dropdown.
+                    'icon': 'earth',
+                    'key': 'zone',
+                    'label': 'Time Zone',
+                    if (description != null) 'description': description,
+                    'options': [
+                      for (var i = 1; i <= optionCount; i++) {'label': 'Zone $i', 'value': 'z$i'},
+                    ],
+                  },
+                ],
+              },
+              initialState: initial == null ? const {} : {'zone': initial},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        );
+
+    testWidgets('the row names the chosen option when there is no description', (tester) async {
+      // A zone is its own explanation, so such a field writes no description
+      // — and a row showing neither the value nor a description tells the
+      // operator nothing about what they picked last time.
+      await tester.pumpWidget(renderer(optionCount: 3, initial: 'z2'));
+      await tester.pumpAndSettle();
+      expect(find.text('Zone 2'), findsOneWidget);
+    });
+
+    testWidgets('a description still wins over the chosen option', (tester) async {
+      // Settings fields write a description that already explains the current
+      // value; showing both would say it twice.
+      await tester.pumpWidget(renderer(optionCount: 3, description: 'Pick one', initial: 'z2'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pick one'), findsOneWidget);
+      expect(find.text('Zone 2'), findsNothing);
+    });
+
+    testWidgets('a long vocabulary gets a search field, a short one does not', (tester) async {
+      await tester.pumpWidget(renderer(optionCount: 8));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Time Zone'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)),
+        findsNothing,
+        reason: 'eight options are browsable; a search box would be clutter',
+      );
+      await tester.tap(find.text('Zone 3'));
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(renderer(optionCount: 40));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Time Zone'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('typing narrows the list, and picking from it commits', (tester) async {
+      // The whole point of the search: the list is longer than the dialog, so
+      // without filtering a known name can only be reached by scrolling. 341
+      // IANA zones is the real case.
+      Map<String, dynamic>? submitted;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'icon': 'earth',
+                  'key': 'zone',
+                  'label': 'Time Zone',
+                  'options': [
+                    for (var i = 1; i <= 30; i++) {'label': 'Alpha $i', 'value': 'a$i'},
+                    {'label': 'Zulu', 'value': 'zulu'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (values) async => submitted = values,
+            onCancel: () {},
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Time Zone'));
+      await tester.pumpAndSettle();
+
+      final search = find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField));
+      // Before filtering, the last option is past the bottom of the list —
+      // this is what makes the search load-bearing rather than a nicety.
+      expect(find.text('Zulu'), findsNothing);
+      await tester.enterText(search, 'zul');
+      await tester.pumpAndSettle();
+      expect(find.text('Zulu'), findsOneWidget);
+      expect(find.text('Alpha 1'), findsNothing);
+
+      await tester.tap(find.text('Zulu'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submitted!['zone'], 'zulu');
+    });
+  });
 }

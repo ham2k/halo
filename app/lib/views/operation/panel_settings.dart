@@ -10,6 +10,7 @@
 // bridge call while the operator types: values are written on commit and
 // handed back to the panel's next render as `args.config`.
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -23,9 +24,17 @@ import '../../tools/form_chrome_labels.dart';
 /// unset checkbox as `false` and an unset text field as `''` — so a plain
 /// `==` reads Save-without-typing as a change to every field the operator
 /// has never touched, and re-renders the panel for nothing.
-bool _sameConfigValue(Object? formValue, Object? stored) {
+///
+/// [declaredDefault] is the field's own `value`, which is what an unstored
+/// field actually READS as. Without it a field defaulting to `true` can never
+/// be turned off: unchecking it produces `false` against an unstored `null`,
+/// which the "unset means falsy" rule below calls unchanged, so nothing is
+/// written and the panel goes on reading its default forever.
+@visibleForTesting
+bool sameConfigValue(Object? formValue, Object? stored, Object? declaredDefault) {
   if (formValue == stored) return true;
   if (stored != null) return false;
+  if (declaredDefault != null) return formValue == declaredDefault;
   return formValue == null || formValue == false || formValue == '';
 }
 
@@ -52,7 +61,7 @@ Future<void> showPanelSettings(
   for (final field in panel.formFields) {
     final key = field['key'] as String?;
     if (key == null) continue;
-    if (_sameConfigValue(result[key], current[key])) continue;
+    if (sameConfigValue(result[key], current[key], field['value'])) continue;
     await services.extensions.commitSettingsFieldValue(
       kind: 'simple',
       hookKey: panel.hookKey ?? panel.id,
