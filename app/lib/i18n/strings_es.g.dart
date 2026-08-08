@@ -830,6 +830,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get map => 'MAPA';
 	@override String get qsosPlain => 'QSOs';
 	@override String get clock => 'Reloj';
+	@override String get website => 'Sitio Web';
 }
 
 // Path: operation.menu
@@ -1548,6 +1549,21 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get clockZoneDevice => 'Este dispositivo';
 	@override String get clockShowSeconds => 'Mostrar segundos';
 	@override String get clockShowDate => 'Mostrar la fecha';
+	@override String get websiteDescription => 'Una página web de tu elección, en un panel';
+	@override String get websiteUrl => 'Dirección';
+	@override String get websiteRefresh => 'Actualizar';
+	@override String get websiteRefreshNever => 'Nunca';
+	@override String get websiteRefresh1 => 'Cada minuto';
+	@override String get websiteRefresh5 => 'Cada 5 minutos';
+	@override String get websiteRefresh15 => 'Cada 15 minutos';
+	@override String get websiteTitle => 'Nombre del panel';
+	@override String get websiteRefreshNow => 'Actualizar ahora';
+	@override String get websiteNoUrl => 'Aún no hay dirección. Abre los ajustes de este panel para elegir una página.';
+	@override String get websiteBadUrl => 'Eso no parece una dirección web. Debe empezar por https://';
+	@override String get websiteNotHttps => 'Aquí solo se pueden mostrar direcciones https://.';
+	@override String get websiteUnsupported => 'En este sistema no se pueden mostrar páginas web en un panel.';
+	@override String get websiteOpenExternally => 'Abrir en el navegador';
+	@override String websiteLoadFailed({required Object reason}) => 'No se pudo cargar la página: ${reason}';
 }
 
 // Path: operation.export.compactFileNames
@@ -1974,6 +1990,7 @@ extension on TranslationsEs {
 			'operation.tabs.map' => 'MAPA',
 			'operation.tabs.qsosPlain' => 'QSOs',
 			'operation.tabs.clock' => 'Reloj',
+			'operation.tabs.website' => 'Sitio Web',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -2040,6 +2057,21 @@ extension on TranslationsEs {
 			'operation.layout.panels.clockZoneDevice' => 'Este dispositivo',
 			'operation.layout.panels.clockShowSeconds' => 'Mostrar segundos',
 			'operation.layout.panels.clockShowDate' => 'Mostrar la fecha',
+			'operation.layout.panels.websiteDescription' => 'Una página web de tu elección, en un panel',
+			'operation.layout.panels.websiteUrl' => 'Dirección',
+			'operation.layout.panels.websiteRefresh' => 'Actualizar',
+			'operation.layout.panels.websiteRefreshNever' => 'Nunca',
+			'operation.layout.panels.websiteRefresh1' => 'Cada minuto',
+			'operation.layout.panels.websiteRefresh5' => 'Cada 5 minutos',
+			'operation.layout.panels.websiteRefresh15' => 'Cada 15 minutos',
+			'operation.layout.panels.websiteTitle' => 'Nombre del panel',
+			'operation.layout.panels.websiteRefreshNow' => 'Actualizar ahora',
+			'operation.layout.panels.websiteNoUrl' => 'Aún no hay dirección. Abre los ajustes de este panel para elegir una página.',
+			'operation.layout.panels.websiteBadUrl' => 'Eso no parece una dirección web. Debe empezar por https://',
+			'operation.layout.panels.websiteNotHttps' => 'Aquí solo se pueden mostrar direcciones https://.',
+			'operation.layout.panels.websiteUnsupported' => 'En este sistema no se pueden mostrar páginas web en un panel.',
+			'operation.layout.panels.websiteOpenExternally' => 'Abrir en el navegador',
+			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'No se pudo cargar la página: ${reason}',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportar',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -2401,6 +2433,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.syncing' => 'Sincronizando',
 			'settings.syncPanel.account' => 'Cuenta',
 			'settings.syncPanel.refresh' => 'Actualizar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',
@@ -2417,8 +2451,6 @@ extension on TranslationsEs {
 			'settings.syncPanel.replaceDialogTitle' => '¿Reemplazar los datos locales?',
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.counts' => 'Datos Sincronizados',
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',

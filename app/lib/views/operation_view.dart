@@ -31,6 +31,7 @@ import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/clock/clock_panel.dart';
 import 'operation/clock/clock_zones.dart';
+import 'operation/website/website_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/layout_sheet.dart';
@@ -1587,6 +1588,57 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         },
       ],
     ));
+    service.registerNative(PanelDefinition(
+      id: websitePanelId,
+      title: t.tabs.website,
+      description: t.layout.panels.websiteDescription,
+      icon: 'web',
+      source: PanelSource.native,
+      multiple: true,
+      formFields: [
+        {
+          'type': 'field',
+          'key': websiteUrlKey,
+          // No `url` fieldType exists, and an unknown one renders as nothing
+          // at all — no field, no error, no log.
+          'fieldType': 'text',
+          'label': t.layout.panels.websiteUrl,
+          'placeholder': 'https://…',
+          'value': '',
+        },
+        {
+          'type': 'field',
+          'key': websiteRefreshKey,
+          'fieldType': 'select',
+          'label': t.layout.panels.websiteRefresh,
+          // `0`, not null: a null-valued select cannot tell "dismissed" from
+          // "picked null". Ints survive the config's JSON round-trip as ints,
+          // which is what the dropdown's `value ==` needs.
+          'value': 0,
+          'options': [
+            {'label': t.layout.panels.websiteRefreshNever, 'value': 0},
+            {'label': t.layout.panels.websiteRefresh1, 'value': 1},
+            {'label': t.layout.panels.websiteRefresh5, 'value': 5},
+            {'label': t.layout.panels.websiteRefresh15, 'value': 15},
+          ],
+        },
+        {
+          'type': 'field',
+          'key': websiteTitleKey,
+          'fieldType': 'text',
+          'label': t.layout.panels.websiteTitle,
+          'value': '',
+        },
+        // Live only because `showPanelSettings` passes `onAction`; without
+        // that this button renders disabled.
+        {
+          'type': 'action',
+          'key': 'refreshNow',
+          'label': t.layout.panels.websiteRefreshNow,
+          'method': panelRefreshMethod,
+        },
+      ],
+    ));
   }
 
   Widget _dockLayout({
@@ -1630,6 +1682,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 panelId: id,
                 panels: widget.services.panels,
                 onTitle: (title) => _onPanelTitle(id, title),
+              )
+            else if (PanelDefinition.descriptorIdOf(id) == websitePanelId)
+              id: WebsitePanel(
+                key: ValueKey('panel-$id'),
+                panelId: id,
+                panels: widget.services.panels,
+                onTitle: (title) => _onPanelTitle(id, title),
+                // From `_callInfo`, which this view keeps current
+                // unconditionally — NOT from the QSO draft, which is only
+                // produced when a panel declares `qso` and costs a rebuild
+                // plus a deep compare on every keystroke. A pull-only
+                // question asked once a minute must not put the whole view on
+                // the typing path to answer it.
+                isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
               )
             else if (widget.services.panels[id]?.source == PanelSource.extension)
               id: ExtensionPanel(

@@ -394,6 +394,28 @@ class PanelService extends ChangeNotifier {
     notifyListeners();
   }
 
+  final _refreshRequests = <String, int>{};
+
+  /// Bumped when something asks ONE placement to reload what it is showing —
+  /// the Web Site pane's "Refresh Now" button, which lives in that pane's
+  /// settings sheet.
+  ///
+  /// A counter rather than a callback because the asker is a dialog and the
+  /// answerer is a pane: the dialog has no handle on the pane's web view
+  /// controller, and giving it one would mean the pane registering itself
+  /// somewhere for the dialog to find. This is the same shape
+  /// [configRevision] already uses for the same reason.
+  ///
+  /// Distinct from [configRevision] on purpose: reloading a page is not a
+  /// config change, and folding it into that counter would make every reload
+  /// re-read storage and rebuild the pane rather than reload the page.
+  int refreshRequest(String id) => _refreshRequests[id] ?? 0;
+
+  void requestRefresh(String id) {
+    _refreshRequests[id] = refreshRequest(id) + 1;
+    notifyListeners();
+  }
+
   /// What each PLACEMENT asked for in its last render, on top of what its
   /// descriptor declared (`PanelContent.triggers`).
   final _declaredTriggers = <String, List<String>>{};
@@ -486,6 +508,9 @@ class PanelService extends ChangeNotifier {
     // the previous occupant's `qso` declaration and hold the whole view on
     // the per-keystroke draft path for the session.
     _declaredTriggers.remove(id);
+    // Same reasoning: a stale count left against a reused id makes the next
+    // pane in that slot reload once on arrival, for a button nobody pressed.
+    _refreshRequests.remove(id);
 
     final descriptorId = PanelDefinition.descriptorIdOf(id);
     if (descriptorId == id) return;

@@ -83,7 +83,8 @@
       "spots": "SPOTS",
       "map": "MAPA",
       "qsosPlain": "QSOs",
-      "clock": "Reloj"
+      "clock": "Reloj",
+      "website": "Sitio Web"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
@@ -154,7 +155,22 @@
         "clockZoneUtc": "UTC",
         "clockZoneDevice": "Este dispositivo",
         "clockShowSeconds": "Mostrar segundos",
-        "clockShowDate": "Mostrar la fecha"
+        "clockShowDate": "Mostrar la fecha",
+        "websiteDescription": "Una página web de tu elección, en un panel",
+        "websiteUrl": "Dirección",
+        "websiteRefresh": "Actualizar",
+        "websiteRefreshNever": "Nunca",
+        "websiteRefresh1": "Cada minuto",
+        "websiteRefresh5": "Cada 5 minutos",
+        "websiteRefresh15": "Cada 15 minutos",
+        "websiteTitle": "Nombre del panel",
+        "websiteRefreshNow": "Actualizar ahora",
+        "websiteNoUrl": "Aún no hay dirección. Abre los ajustes de este panel para elegir una página.",
+        "websiteBadUrl": "Eso no parece una dirección web. Debe empezar por https://",
+        "websiteNotHttps": "Aquí solo se pueden mostrar direcciones https://.",
+        "websiteUnsupported": "En este sistema no se pueden mostrar páginas web en un panel.",
+        "websiteOpenExternally": "Abrir en el navegador",
+        "websiteLoadFailed": "No se pudo cargar la página: ${reason}"
       },
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },

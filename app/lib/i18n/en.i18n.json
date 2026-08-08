@@ -83,7 +83,8 @@
       "spots": "SPOTS",
       "map": "MAP",
       "qsosPlain": "QSOs",
-      "clock": "Clock"
+      "clock": "Clock",
+      "website": "Web Site"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
@@ -154,7 +155,22 @@
         "clockZoneUtc": "UTC",
         "clockZoneDevice": "This device",
         "clockShowSeconds": "Show seconds",
-        "clockShowDate": "Show the date"
+        "clockShowDate": "Show the date",
+        "websiteDescription": "A web page of your choosing, in a pane",
+        "websiteUrl": "Address",
+        "websiteRefresh": "Refresh",
+        "websiteRefreshNever": "Never",
+        "websiteRefresh1": "Every minute",
+        "websiteRefresh5": "Every 5 minutes",
+        "websiteRefresh15": "Every 15 minutes",
+        "websiteTitle": "Panel Name",
+        "websiteRefreshNow": "Refresh Now",
+        "websiteNoUrl": "No address yet. Open this panel’s settings to choose a page.",
+        "websiteBadUrl": "That doesn’t look like a web address. It needs to start with https://",
+        "websiteNotHttps": "Only https:// addresses can be shown here.",
+        "websiteUnsupported": "Web pages can’t be shown in a panel on this system.",
+        "websiteOpenExternally": "Open in Browser",
+        "websiteLoadFailed": "Couldn’t load the page: ${reason}"
       },
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },

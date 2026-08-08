@@ -28,6 +28,7 @@ import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHost
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
+import 'website_panel_error.dart' show WebsitePanelError;
 
 /// What the app does with an error, from quietest to loudest. Each tier
 /// includes everything the ones above it do.
@@ -197,6 +198,14 @@ class ErrorPolicy {
           'off-grid activation, not a defect',
       disposition: ErrorDisposition.logOnly,
       matches: _isMapErrorWhileOffline,
+    ),
+    ErrorRule(
+      id: 'website-panel-offline',
+      reason: 'a Web Site pane failed to load while the device was offline; a pane on a refresh '
+          'interval retries on a schedule, so an off-grid activation fails every one of them — '
+          'that is the absence of coverage, not a defect',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isWebsitePanelErrorWhileOffline,
     ),
   ];
 
@@ -404,6 +413,9 @@ class ErrorPolicy {
   /// bug of ours) matches nothing and uploads.
   static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
       error is MapError && error.offline;
+
+  static bool _isWebsitePanelErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
+      error is WebsitePanelError && error.offline;
 
   static final _oncePerSessionLogged = <String>{};
 

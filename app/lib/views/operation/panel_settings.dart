@@ -10,7 +10,6 @@
 // bridge call while the operator types: values are written on commit and
 // handed back to the panel's next render as `args.config`.
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -18,6 +17,10 @@ import '../../i18n/strings.g.dart';
 import '../../main.dart';
 import '../../services/panel_service.dart';
 import '../../tools/form_chrome_labels.dart';
+
+/// The `method` a panel's `type: 'action'` element names to reload whatever
+/// its pane is showing, without closing the sheet or saving anything.
+const String panelRefreshMethod = 'refresh';
 
 /// Whether a form's value is the same as what the config held. A config
 /// omits a field it has never been given, while the form renderer seeds an
@@ -52,6 +55,29 @@ Future<void> showPanelSettings(
     initialState: current,
     labels: formRendererLabelsFor(t),
     developerMode: services.settings.developerMode,
+    // NATIVE panels only, and the narrowness is the point. FormRenderer
+    // disables an action button when `onAction` is null, so supplying one
+    // unconditionally would turn every extension panel's action button from
+    // visibly disabled into visibly enabled and silently inert — a worse
+    // answer than the one it replaced, since the operator now concludes the
+    // extension is broken rather than that the button is unavailable.
+    //
+    // Extension panel actions would have to reach a hook, which nothing here
+    // routes; until they do, those buttons stay disabled.
+    //
+    // A native action reaches its pane through the service rather than a
+    // controller the dialog holds: the asker is a dialog and the answerer is
+    // a pane, and the counter is the seam between them.
+    onAction: panel.source != PanelSource.native
+        ? null
+        : (actionKey, method, state) async {
+            if (method == panelRefreshMethod) {
+              services.panels.requestRefresh(panel.id);
+              return null;
+            }
+            debugPrint('[panels] ${panel.id}: no action named "$method"');
+            return null;
+          },
   );
   if (result == null) return;
   var changed = false;

@@ -1640,6 +1640,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'Clock'
 	String get clock => 'Clock';
+
+	/// en: 'Web Site'
+	String get website => 'Web Site';
 }
 
 // Path: operation.menu
@@ -3185,6 +3188,51 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'Show the date'
 	String get clockShowDate => 'Show the date';
+
+	/// en: 'A web page of your choosing, in a pane'
+	String get websiteDescription => 'A web page of your choosing, in a pane';
+
+	/// en: 'Address'
+	String get websiteUrl => 'Address';
+
+	/// en: 'Refresh'
+	String get websiteRefresh => 'Refresh';
+
+	/// en: 'Never'
+	String get websiteRefreshNever => 'Never';
+
+	/// en: 'Every minute'
+	String get websiteRefresh1 => 'Every minute';
+
+	/// en: 'Every 5 minutes'
+	String get websiteRefresh5 => 'Every 5 minutes';
+
+	/// en: 'Every 15 minutes'
+	String get websiteRefresh15 => 'Every 15 minutes';
+
+	/// en: 'Panel Name'
+	String get websiteTitle => 'Panel Name';
+
+	/// en: 'Refresh Now'
+	String get websiteRefreshNow => 'Refresh Now';
+
+	/// en: 'No address yet. Open this panel’s settings to choose a page.'
+	String get websiteNoUrl => 'No address yet. Open this panel’s settings to choose a page.';
+
+	/// en: 'That doesn’t look like a web address. It needs to start with https://'
+	String get websiteBadUrl => 'That doesn’t look like a web address. It needs to start with https://';
+
+	/// en: 'Only https:// addresses can be shown here.'
+	String get websiteNotHttps => 'Only https:// addresses can be shown here.';
+
+	/// en: 'Web pages can’t be shown in a panel on this system.'
+	String get websiteUnsupported => 'Web pages can’t be shown in a panel on this system.';
+
+	/// en: 'Open in Browser'
+	String get websiteOpenExternally => 'Open in Browser';
+
+	/// en: 'Couldn’t load the page: ${reason}'
+	String websiteLoadFailed({required Object reason}) => 'Couldn’t load the page: ${reason}';
 }
 
 // Path: operation.export.compactFileNames
@@ -3801,6 +3849,7 @@ extension on Translations {
 			'operation.tabs.map' => 'MAP',
 			'operation.tabs.qsosPlain' => 'QSOs',
 			'operation.tabs.clock' => 'Clock',
+			'operation.tabs.website' => 'Web Site',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -3867,6 +3916,21 @@ extension on Translations {
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
 			'operation.layout.panels.clockShowDate' => 'Show the date',
+			'operation.layout.panels.websiteDescription' => 'A web page of your choosing, in a pane',
+			'operation.layout.panels.websiteUrl' => 'Address',
+			'operation.layout.panels.websiteRefresh' => 'Refresh',
+			'operation.layout.panels.websiteRefreshNever' => 'Never',
+			'operation.layout.panels.websiteRefresh1' => 'Every minute',
+			'operation.layout.panels.websiteRefresh5' => 'Every 5 minutes',
+			'operation.layout.panels.websiteRefresh15' => 'Every 15 minutes',
+			'operation.layout.panels.websiteTitle' => 'Panel Name',
+			'operation.layout.panels.websiteRefreshNow' => 'Refresh Now',
+			'operation.layout.panels.websiteNoUrl' => 'No address yet. Open this panel’s settings to choose a page.',
+			'operation.layout.panels.websiteBadUrl' => 'That doesn’t look like a web address. It needs to start with https://',
+			'operation.layout.panels.websiteNotHttps' => 'Only https:// addresses can be shown here.',
+			'operation.layout.panels.websiteUnsupported' => 'Web pages can’t be shown in a panel on this system.',
+			'operation.layout.panels.websiteOpenExternally' => 'Open in Browser',
+			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'Couldn’t load the page: ${reason}',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Export',
 			'operation.export.syncedOperation' => 'Operation is synced',
@@ -4228,6 +4292,8 @@ extension on Translations {
 			'settings.syncPanel.syncing' => 'Syncing',
 			'settings.syncPanel.account' => 'Account',
 			'settings.syncPanel.refresh' => 'Refresh',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
@@ -4244,8 +4310,6 @@ extension on Translations {
 			'settings.syncPanel.replaceDialogTitle' => 'Replace local data?',
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.counts' => 'Synced Data',
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
