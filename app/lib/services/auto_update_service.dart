@@ -70,6 +70,11 @@ class AutoUpdateService {
   /// comment) — public so callers (e.g. the About panel's "Check for
   /// Updates" row) can decide whether to offer this mechanism.
   bool get isSupported {
+    // The kDebugMode guard is load-bearing, not belt-and-braces: unguarded,
+    // any non-test write to the override would short-circuit the web, Dev and
+    // platform gates below in a shipped build, pointing Sparkle at a feed no
+    // such build has (_platform falls through to macos-universal off Windows).
+    if (kDebugMode && debugSupportedOverride != null) return debugSupportedOverride!;
     if (kIsWeb || kDebugMode) return false;
     if (kEdition == Edition.dev) return false; // Dev has no appcast (§2.6).
     return defaultTargetPlatform == TargetPlatform.macOS ||
@@ -96,6 +101,51 @@ class AutoUpdateService {
   /// Ham2K products without collision.
   String get feedUrl => '$_baseUrl/halo-${kEdition.name}/$_platform/appcast.xml';
 
+  /// The in-flight or completed one-and-only configuration call, shared by
+  /// every caller. See [_ensureConfigured].
+  static Future<void>? _configureCall;
+
+  /// Configures the native updater — feed URL and scheduled-check interval —
+  /// **exactly once per process**.
+  ///
+  /// `setFeedURL` is not idempotent on Windows. `auto_updater_windows`
+  /// registers the Flutter event sink inside its `setFeedURL` handler and does
+  /// it by *moving* the plugin's `unique_ptr`, so a second call hands
+  /// WinSparkle a moved-from (null) sink and every later native callback is
+  /// silently dropped — [checkSilently] then times out instead of resolving,
+  /// and the About panel's row reports "up to date" no matter what the appcast
+  /// says. It also re-runs `win_sparkle_init()`, which WinSparkle expects once.
+  /// macOS holds its sink in a plain field and tolerates repeat calls, which is
+  /// why this only ever broke Windows.
+  ///
+  /// A failure is deliberately not memoized: a boot that could not reach the
+  /// updater (offline, plugin not yet up) must not strand every later check.
+  /// The interval is set here rather than in [start] for the same reason —
+  /// left there, a boot that threw would skip it and nothing would ever apply
+  /// it again, leaving the process on the native default for its whole life.
+  Future<void> _ensureConfigured() async {
+    final call = _configureCall ??= () async {
+      await autoUpdater.setFeedURL(feedUrl);
+      await autoUpdater.setScheduledCheckInterval(_checkIntervalSeconds);
+    }();
+    try {
+      await call;
+    } catch (_) {
+      if (identical(_configureCall, call)) _configureCall = null;
+      rethrow;
+    }
+  }
+
+  /// Test seam. [isSupported]'s `kDebugMode` gate makes this service inert in
+  /// every test binary, so without an override the once-per-process contract
+  /// above — the thing whose regression silently breaks Windows — cannot be
+  /// observed by any test at all.
+  @visibleForTesting
+  static bool? debugSupportedOverride;
+
+  @visibleForTesting
+  static void debugResetConfiguration() => _configureCall = null;
+
   /// Point the native updater at this build's feed and enable silent scheduled
   /// checks. Deliberately does NOT run an interactive check here: the startup
   /// check must stay silent — Sparkle/WinSparkle's scheduled checks only surface
@@ -105,8 +155,7 @@ class AutoUpdateService {
   Future<void> start() async {
     if (!isSupported) return;
     try {
-      await autoUpdater.setFeedURL(feedUrl);
-      await autoUpdater.setScheduledCheckInterval(_checkIntervalSeconds);
+      await _ensureConfigured();
     } catch (e, st) {
       // A failed setup must never break startup — just log it.
       debugPrint('[auto-update] setup failed for $feedUrl: $e');
@@ -121,7 +170,7 @@ class AutoUpdateService {
   Future<void> checkForUpdatesInteractively() async {
     if (!isSupported) return;
     try {
-      await autoUpdater.setFeedURL(feedUrl);
+      await _ensureConfigured();
       await autoUpdater.checkForUpdates();
     } catch (e, st) {
       debugPrint('[auto-update] manual check failed for $feedUrl: $e');
@@ -149,7 +198,7 @@ class AutoUpdateService {
     final listener = _SilentCheckListener();
     autoUpdater.addListener(listener);
     try {
-      await autoUpdater.setFeedURL(feedUrl);
+      await _ensureConfigured();
       await autoUpdater.checkForUpdates(inBackground: true);
       // The native updater always fires a terminal event, but don't hang
       // forever on a wedged plugin/offline box.

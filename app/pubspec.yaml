@@ -106,6 +106,10 @@ dev_dependencies:
   # via url_launcher, but imported directly, so declared directly.
   plugin_platform_interface: ^2.1.8
   url_launcher_platform_interface: ^2.3.2
+  # Faking the native updater to pin AutoUpdateService's once-per-process
+  # setFeedURL contract — see auto_update_service_test.dart. Same rule again:
+  # transitive via auto_updater, imported directly, so declared directly.
+  auto_updater_platform_interface: ^1.0.0
 
 flutter:
   # The built-in MaterialIcons font ships ONLY as a safety net for glyphs
