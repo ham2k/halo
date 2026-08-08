@@ -1,0 +1,276 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The Operation Setup sheet's two header rows, which both give ground as the
+// row narrows and must give it in a fixed order:
+//
+//   - the sheet's own top row (operation_view.dart's _SheetHeaderFit): the
+//     title's long form, then its short form, then the Options label, then the
+//     Exports one;
+//   - the operation pills (activities_view.dart's _operationPills): one line
+//     while everything fits, otherwise two — the callsigns and the pencil on
+//     top, the title and notes marker below — shedding the title first, then
+//     the operator callsign, then the notes marker, never the station callsign
+//     or the pencil, and leaving a "…" pill wherever something went.
+//
+// Both decisions are made from measured text widths, so they read differently
+// under the test font than on a device; these tests pin the ORDER and the
+// invariants, never a pixel width, and sweep widths rather than name one.
+
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/activities_view.dart';
+import 'package:ham2k_logger/views/operation_view.dart';
+
+import 'operation_view_layout_test.dart' show ExtensionServiceWithMockHost, MockExtensionHost;
+
+/// Widths from roomy to cramped. The absolute numbers don't matter — what the
+/// tests read is how the header's answer changes ALONG the sweep. It stops at
+/// 380: below that the sheet's BODY overflows, a pre-existing narrow-layout
+/// issue these are not about (see operation_view_layout_test.dart).
+const _widths = [1400.0, 1000.0, 800.0, 620.0, 480.0, 380.0];
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  /// Opens the sheet over an operation carrying every optional pill.
+  ///
+  /// [textScaler] is how these tests reach the ROOMY end of both ladders: the
+  /// test font is far wider per character than any real one, so at scale 1.0
+  /// even a 1400px window cannot show the long title or every pill, and the
+  /// first rung of each ladder would never be exercised. Scaling the text down
+  /// buys that room without pretending a window is wider than it is.
+  Future<void> openSheet(
+    WidgetTester tester, {
+    String stationCall = 'VK9/AB1CDE/P',
+    String operatorCall = 'VE3ABC/VE2',
+    String userTitle = 'A Long Operation Title',
+    double textScaler = 1.0,
+  }) async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    // Otherwise the onboarding flow opens the sheet itself and races the tap.
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final created = await services.operations.create(stationCall: stationCall, userTitle: userTitle);
+    // Every optional pill present, so a sweep starts from the crowded case
+    // rather than from a header that had nothing to shed.
+    final operation = Operation(
+      uuid: created.uuid,
+      data: {...created.data, 'operatorCall': operatorCall, 'notes': 'some notes'},
+    );
+    await services.operations.saveData(operation);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        // Around the navigator, not the home widget: the sheet is a pushed
+        // route, so a MediaQuery inside `home` would never reach it.
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScaler)),
+          child: child!,
+        ),
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining(stationCall));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsOneWidget);
+  }
+
+  Future<void> resize(WidgetTester tester, double width) async {
+    tester.view.physicalSize = Size(width, 900);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the sheet title and the Options/Exports labels give ground in that order', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester);
+
+    final t = TranslationProvider.of(tester.element(find.byType(OperationSheet))).translations.activitiesView;
+    var everWentShort = false;
+    var everDroppedOptions = false;
+
+    for (final width in _widths) {
+      await resize(tester, width);
+      final longTitle = find.text(t.sheetTitle).evaluate().isNotEmpty;
+      final shortTitle = find.text(t.sheetTitleShort).evaluate().isNotEmpty;
+      final optionsLabel = find.text(t.options).evaluate().isNotEmpty;
+      final exportsLabel = find.text(t.exports).evaluate().isNotEmpty;
+      final at = 'at $width logical px';
+
+      expect(longTitle ^ shortTitle, isTrue, reason: 'exactly one form of the title shows, $at');
+      // The rungs' order, stated as what each concession implies about the
+      // ones before it: a label only goes after the title has already given
+      // up its long form, and Exports' label outlives Options'.
+      if (optionsLabel) expect(longTitle || shortTitle, isTrue, reason: 'title present with both labels, $at');
+      if (!optionsLabel) expect(shortTitle, isTrue, reason: 'the title shortens before a label goes, $at');
+      if (exportsLabel == false) expect(optionsLabel, isFalse, reason: 'Options label goes before Exports, $at');
+
+      // A concession, once made, is never taken back as the row narrows
+      // further — the ladder is ordered, not re-shuffled per width.
+      if (shortTitle) everWentShort = true;
+      if (!optionsLabel) everDroppedOptions = true;
+      if (everWentShort) expect(longTitle, isFalse, reason: 'the long title does not come back, $at');
+      if (everDroppedOptions) expect(optionsLabel, isFalse, reason: 'the Options label does not come back, $at');
+
+      // Whatever it decided, it fits: an over-wide trailing row would overflow
+      // the header's Row and paint the debug stripes.
+      expect(tester.takeException(), isNull, reason: 'no overflow, $at');
+    }
+
+    expect(everWentShort, isTrue, reason: 'the sweep reaches a width where the long title cannot fit');
+    expect(everDroppedOptions, isTrue, reason: 'the sweep reaches a width where the Options label cannot fit');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('a roomy row shows the long title and both control labels', (tester) async {
+    // The top rung of the ladder, which the sweep above cannot reach: without
+    // this, "the long title does not come back" and "the title shortens before
+    // a label goes" are both vacuous — every width would already be short.
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester, textScaler: 0.5);
+
+    final t = TranslationProvider.of(tester.element(find.byType(OperationSheet))).translations.activitiesView;
+    expect(find.text(t.sheetTitle), findsOneWidget, reason: 'the long title while it fits');
+    expect(find.text(t.sheetTitleShort), findsNothing);
+    expect(find.text(t.options), findsOneWidget);
+    expect(find.text(t.exports), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('the operation pills keep the callsigns and pencil on the top line, shedding extras below',
+      (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester);
+
+    var everDroppedTitle = false;
+    var everDroppedNotes = false;
+    var everDroppedOperator = false;
+    var everTwoRuns = false;
+
+    for (final width in _widths) {
+      await resize(tester, width);
+      final at = 'at $width logical px';
+      // Scoped to the sheet: the view behind it carries a pencil of its own,
+      // and a bare byIcon would match both.
+      final sheet = find.byType(OperationSheet);
+      final station = find.descendant(of: sheet, matching: find.textContaining('Station: '));
+      final pencil = find.descendant(of: sheet, matching: find.byIcon(MdiIcons.pencil));
+
+      expect(station, findsOneWidget, reason: 'the station callsign never goes, $at');
+      expect(pencil, findsOneWidget, reason: 'the pencil never goes, $at');
+
+      final titleText = find.descendant(of: sheet, matching: find.text('A Long Operation Title'));
+      final notesIcon = find.descendant(of: sheet, matching: find.byIcon(MdiIcons.fileDocument));
+      final operatorText = find.descendant(of: sheet, matching: find.textContaining('Op: '));
+      final titlePill = titleText.evaluate().isNotEmpty;
+      final notesPill = notesIcon.evaluate().isNotEmpty;
+      final operatorPill = operatorText.evaluate().isNotEmpty;
+
+      // Within the extras the title goes before the notes marker, which is the
+      // only place the header admits the notes exist at all.
+      if (titlePill) expect(notesPill, isTrue, reason: 'the title goes before the notes marker, $at');
+
+      // Nothing vanishes silently: a shed pill leaves a marker behind, and a
+      // row with all its pills has no marker to explain.
+      final marker = find.descendant(of: sheet, matching: find.text('…'));
+      final shedSomething = !titlePill || !notesPill || !operatorPill;
+      expect(
+        marker.evaluate().isNotEmpty,
+        shedSomething,
+        reason: shedSomething ? 'a shed pill leaves a "…" behind, $at' : 'no marker with every pill shown, $at',
+      );
+      if (!titlePill) everDroppedTitle = true;
+      if (!notesPill) everDroppedNotes = true;
+      if (!operatorPill) everDroppedOperator = true;
+      if (everDroppedTitle) expect(titlePill, isFalse, reason: 'a dropped pill does not come back, $at');
+      if (everDroppedNotes) expect(notesPill, isFalse, reason: 'a dropped pill does not come back, $at');
+
+      // The identity rides the top line: whatever else the width forces out,
+      // the callsigns and the pencil are the row a reader's eye lands on
+      // first, never pushed under the title and notes.
+      double topOf(Finder pill) =>
+          tester.getTopLeft(find.ancestor(of: pill, matching: find.byType(Container)).first).dy;
+      final identityTop = topOf(station);
+      expect(topOf(pencil), identityTop, reason: 'the pencil shares the station line, $at');
+      if (operatorPill) {
+        expect(topOf(operatorText), identityTop, reason: 'the operator shares the station line, $at');
+      }
+      final tops = {
+        identityTop,
+        if (titlePill) topOf(titleText),
+        if (notesPill) topOf(notesIcon),
+        if (operatorPill) topOf(operatorText),
+      };
+      expect(tops.length, lessThanOrEqualTo(2), reason: 'the pills stay within two runs, $at');
+      if (tops.length == 2) everTwoRuns = true;
+      for (final top in tops) {
+        expect(top, greaterThanOrEqualTo(identityTop), reason: 'the extras never sit above the identity, $at');
+      }
+      expect(tester.takeException(), isNull, reason: 'no overflow, $at');
+    }
+
+    expect(everTwoRuns, isTrue, reason: 'the sweep reaches a width that needs the second run');
+    expect(everDroppedOperator, isTrue, reason: 'the sweep reaches a width where the operator pill cannot fit');
+    expect(everDroppedTitle || everDroppedNotes, isTrue, reason: 'the sweep reaches a width that sheds an extra');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('a roomy row shows every pill on one line, with no marker', (tester) async {
+    // The un-shed case, which the sweep above cannot reach: without it the
+    // marker assertion only ever runs in its positive direction, so a header
+    // that ALWAYS drew a "…" would pass.
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester, stationCall: 'N0CALL', operatorCall: 'W1AW', userTitle: 'Op One', textScaler: 0.5);
+
+    final sheet = find.byType(OperationSheet);
+    final station = find.descendant(of: sheet, matching: find.textContaining('Station: '));
+    expect(station, findsOneWidget);
+    expect(find.descendant(of: sheet, matching: find.textContaining('Op: ')), findsOneWidget);
+    expect(find.descendant(of: sheet, matching: find.text('Op One')), findsOneWidget);
+    expect(find.descendant(of: sheet, matching: find.byIcon(MdiIcons.fileDocument)), findsOneWidget);
+    expect(find.descendant(of: sheet, matching: find.byIcon(MdiIcons.pencil)), findsOneWidget);
+    expect(find.descendant(of: sheet, matching: find.text('…')), findsNothing, reason: 'nothing was shed');
+
+    // One line: every pill shares the station's top edge.
+    double topOf(Finder pill) =>
+        tester.getTopLeft(find.ancestor(of: pill, matching: find.byType(Container)).first).dy;
+    final identityTop = topOf(station);
+    for (final pill in [
+      find.descendant(of: sheet, matching: find.textContaining('Op: ')),
+      find.descendant(of: sheet, matching: find.text('Op One')),
+      find.descendant(of: sheet, matching: find.byIcon(MdiIcons.fileDocument)),
+      find.descendant(of: sheet, matching: find.byIcon(MdiIcons.pencil)),
+    ]) {
+      expect(topOf(pill), identityTop, reason: 'one run while everything fits');
+    }
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+}

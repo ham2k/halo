@@ -305,6 +305,7 @@
   "activitiesView": {
     "title": "Actividades",
     "sheetTitle": "Configuración de la Operación",
+    "sheetTitleShort": "Configuración",
     "activitiesCountZero": "Sin actividades seleccionadas",
     "activitiesCountOne": "1 actividad",
     "activitiesCountOther": "${count} actividades",

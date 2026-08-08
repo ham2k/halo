@@ -409,6 +409,9 @@ class Translations$activitiesView$en {
 	/// en: 'Operation Setup'
 	String get sheetTitle => 'Operation Setup';
 
+	/// en: 'Setup'
+	String get sheetTitleShort => 'Setup';
+
 	/// en: 'No Activities Selected'
 	String get activitiesCountZero => 'No Activities Selected';
 
@@ -4014,6 +4017,7 @@ extension on Translations {
 			'map.globe' => 'Globe',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.sheetTitle' => 'Operation Setup',
+			'activitiesView.sheetTitleShort' => 'Setup',
 			'activitiesView.activitiesCountZero' => 'No Activities Selected',
 			'activitiesView.activitiesCountOne' => '1 Activity',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
@@ -4291,9 +4295,9 @@ extension on Translations {
 			'settings.syncPanel.disabledDescription' => 'Off — your log stays on this device only',
 			'settings.syncPanel.syncing' => 'Syncing',
 			'settings.syncPanel.account' => 'Account',
-			'settings.syncPanel.refresh' => 'Refresh',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.refresh' => 'Refresh',
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',

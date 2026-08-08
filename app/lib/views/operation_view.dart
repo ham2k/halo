@@ -1022,35 +1022,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             onPressed: () => sheetKey.currentState?.saveAndClose(),
           ),
         ),
-        title: Text(context.t.activitiesView.sheetTitle),
-        // Options and Exports for the operation as a whole, right-aligned in
-        // the sheet's top row. The operation's own identity travels with its
+        // The title and the Options/Exports controls share ONE slot — see
+        // _OperationSheetHeader. The operation's own identity travels with its
         // activities instead (activities_view.dart's _operationPills).
-        trailing: Builder(
-          builder: (context) {
-            final onColor = Theme.of(context).colorScheme.onSurface;
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextButton.icon(
-                  onPressed: () => sheetKey.currentState?.showOptions(),
-                  icon: const Icon(MdiIcons.cog, size: 18),
-                  label: Text(context.t.activitiesView.options),
-                  style: TextButton.styleFrom(foregroundColor: onColor),
-                ),
-                Opacity(
-                  opacity: operation.qsoCount == 0 ? 0.8 : 1.0,
-                  child: TextButton.icon(
-                    onPressed: () => _export(_draftOperation ?? operation),
-                    icon: Icon(MdiIcons.fileExportOutline, size: 18),
-                    label: Text(context.t.activitiesView.exports),
-                    style: TextButton.styleFrom(foregroundColor: onColor),
-                  ),
-                ),
-              ],
-            );
-          },
+        title: _OperationSheetHeader(
+          onOptions: () => sheetKey.currentState?.showOptions(),
+          onExport: () => _export(_draftOperation ?? operation),
+          dimExport: operation.qsoCount == 0,
         ),
+        // Explicitly empty rather than absent: an absent trailing gets the
+        // pane's default close button, and this sheet closes through its own
+        // leading accept button.
+        trailing: const SizedBox.shrink(),
         builder: (_) => OperationSheet(
           key: sheetKey,
           services: widget.services,
@@ -3149,4 +3132,139 @@ Map<String, dynamic> zeroBeatSuggestionFor(
     radioConnected: radio1 != null && cat.stateFor(radio1).status == EquipmentStatus.connected,
     rangeHz: settings.zeroBeatRangeHz,
   );
+}
+
+/// How the operation sheet's header row spends [available] width.
+///
+/// Decided in one place because the title and the controls opposite it
+/// compete for the same pixels: the first arrangement that fits wins, so the
+/// row drops the title's leading word before either control's label, and the
+/// Options label before the Exports one. Nothing fits below the last rung —
+/// there [shrinkToFitText] takes over on the title.
+class _SheetHeaderFit {
+  final String title;
+  final bool optionsLabel;
+  final bool exportsLabel;
+
+  const _SheetHeaderFit(this.title, {required this.optionsLabel, required this.exportsLabel});
+
+  /// A labelled control's fixed cost around its text: the icon, the gap
+  /// Material puts between icon and label, and the button's own padding. Not
+  /// scaled by the text scaler, and deliberately so — the icon does not scale
+  /// (nothing here sets `applyTextScaling`) and `ButtonStyleButton.scaledPadding`
+  /// SHRINKS the padding as text grows, so the unscaled figure is the upper
+  /// bound at every scale.
+  static const _labelledChrome = 18.0 + Space.md + 32.0;
+
+  /// What the same control takes with the label gone.
+  static const _iconOnlyWidth = 48.0;
+
+  /// `ButtonStyle.minimumSize`'s width for a labelled control.
+  static const _minButtonWidth = 64.0;
+
+  /// The widths are measured rather than assumed so a translated title or label
+  /// degrades at the width it actually needs, not at one tuned for English.
+  static _SheetHeaderFit of(BuildContext context, double available) {
+    final theme = Theme.of(context);
+    final t = context.t.activitiesView;
+
+    // The title style is the one the header itself installed, which is also
+    // what shrinkToFitText will measure against — hence the empty override.
+    double titleWidth(String title) => textWidth(context, title, const TextStyle());
+    // Material's own minimum: a short label in some locale makes the button
+    // wider than its text plus chrome.
+    double labelled(String label) => math.max(
+          _minButtonWidth,
+          textWidth(context, label, theme.textTheme.labelLarge ?? const TextStyle()) + _labelledChrome,
+        );
+    final withLabels = labelled(t.options) + labelled(t.exports);
+    final optionsDropped = _iconOnlyWidth + labelled(t.exports);
+    final bothDropped = _iconOnlyWidth * 2;
+
+    final rungs = [
+      (_SheetHeaderFit(t.sheetTitle, optionsLabel: true, exportsLabel: true), withLabels),
+      (_SheetHeaderFit(t.sheetTitleShort, optionsLabel: true, exportsLabel: true), withLabels),
+      (_SheetHeaderFit(t.sheetTitleShort, optionsLabel: false, exportsLabel: true), optionsDropped),
+      (_SheetHeaderFit(t.sheetTitleShort, optionsLabel: false, exportsLabel: false), bothDropped),
+    ];
+    for (final (fit, controlsWidth) in rungs) {
+      if (titleWidth(fit.title) + controlsWidth <= available) return fit;
+    }
+    return rungs.last.$1;
+  }
+}
+
+/// The operation sheet's header row: its title and the Options and Exports
+/// controls for the operation as a whole.
+///
+/// Both live in the header's TITLE slot, not one each in title and trailing,
+/// because they compete for the same width and only the title slot has a
+/// finite one to measure against — HaloDialogHeader puts the title in an
+/// Expanded and hands `trailing` unbounded constraints, so nothing over there
+/// can tell how much room is left. Measuring here means the arrangement also
+/// re-decides itself on a resize with no dependency on how the pane computes
+/// its own width.
+class _OperationSheetHeader extends StatelessWidget {
+  final VoidCallback onOptions;
+  final VoidCallback onExport;
+
+  /// An operation with nothing logged yet still exports, just less usefully.
+  final bool dimExport;
+
+  const _OperationSheetHeader({required this.onOptions, required this.onExport, required this.dimExport});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = context.t.activitiesView;
+    final onColor = theme.colorScheme.onSurface;
+
+    // A stripped control keeps its icon and its semantic label, so a screen
+    // reader still names it; the app shows no hover labels
+    // (docs/design/user-interface.md), so there is no tooltip to gain.
+    Widget action({
+      required IconData icon,
+      required String label,
+      required bool labelled,
+      required VoidCallback onPressed,
+    }) =>
+        labelled
+            ? TextButton.icon(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 18),
+                label: Text(label),
+                style: TextButton.styleFrom(foregroundColor: onColor),
+              )
+            : IconButton(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 18, semanticLabel: label),
+                color: onColor,
+              );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fit = _SheetHeaderFit.of(context, constraints.maxWidth);
+        return Row(
+          children: [
+            Expanded(child: shrinkToFitText(Text(fit.title))),
+            action(
+              icon: MdiIcons.cog,
+              label: t.options,
+              labelled: fit.optionsLabel,
+              onPressed: onOptions,
+            ),
+            Opacity(
+              opacity: dimExport ? 0.8 : 1.0,
+              child: action(
+                icon: MdiIcons.fileExportOutline,
+                label: t.exports,
+                labelled: fit.exportsLabel,
+                onPressed: onExport,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

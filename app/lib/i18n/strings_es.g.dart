@@ -246,6 +246,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	// Translations
 	@override String get title => 'Actividades';
 	@override String get sheetTitle => 'Configuración de la Operación';
+	@override String get sheetTitleShort => 'Configuración';
 	@override String get activitiesCountZero => 'Sin actividades seleccionadas';
 	@override String get activitiesCountOne => '1 actividad';
 	@override String activitiesCountOther({required Object count}) => '${count} actividades';
@@ -2155,6 +2156,7 @@ extension on TranslationsEs {
 			'map.globe' => 'Globo',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.sheetTitle' => 'Configuración de la Operación',
+			'activitiesView.sheetTitleShort' => 'Configuración',
 			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
 			'activitiesView.activitiesCountOne' => '1 actividad',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
@@ -2432,9 +2434,9 @@ extension on TranslationsEs {
 			'settings.syncPanel.disabledDescription' => 'Desactivado — tu registro se queda solo en este dispositivo',
 			'settings.syncPanel.syncing' => 'Sincronizando',
 			'settings.syncPanel.account' => 'Cuenta',
-			'settings.syncPanel.refresh' => 'Actualizar',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.refresh' => 'Actualizar',
 			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',
