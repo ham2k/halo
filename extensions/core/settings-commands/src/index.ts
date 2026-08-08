@@ -198,11 +198,57 @@ function visibilityCommand(kind: 'show' | 'hide', pattern: RegExp, describeKey: 
 const ShowCommand = visibilityCommand('show', SHOW_MATCH, 'catalogShow', 'catalogShowParams')
 const HideCommand = visibilityCommand('hide', HIDE_MATCH, 'catalogHide', 'catalogHideParams')
 
+/// LAYOUTS — one setting, one word, no arguments.
+///
+/// `SET LAYOUT` already reaches it: it is an ordinary catalog entry and the
+/// generic verb finds it by name like any other. This exists because it is the
+/// switch that turns a whole way of using the app on and off, and an operator
+/// who has been told about it by another operator will type its name, not the
+/// name of the setting behind it.
+///
+/// The current value comes from the app with the rest of the search result
+/// rather than from anything hard-coded here — the same rule the file's own
+/// header sets out, and what keeps this from becoming the second place that
+/// knows about a setting.
+const LAYOUTS_MATCH = /^(?:LYT|LAYOUTS?)$/i
+
+const LayoutsCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!LAYOUTS_MATCH.test(input.trim())) return null
+    const t = tFor(ctx)
+    const result = await host.searchSettings({ args: 'layoutCustomization', kind: 'set' })
+    // The setting is the app's own and always in the catalog; if it ever is
+    // not, saying nothing is right — this is a command that could not run,
+    // not one that half-ran.
+    // `value` is booleans-only by contract, so a missing one here means the
+    // catalog does not hold this as a checkbox — a toggle would then be
+    // guessing which way to go, and guessing wrong turns a command meant to
+    // switch the feature off into one that only ever switches it on.
+    if (!result.found || !result.key || typeof result.value !== 'boolean') return null
+    const next = !result.value
+    return {
+      describe: next ? t('layoutsOn') : t('layoutsOff'),
+      confirm: next ? t('layoutsOnConfirm') : t('layoutsOffConfirm'),
+      commands: [{ updateSetting: { key: result.key, value: next } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{
+      command: 'LAYOUTS',
+      describe: t('catalogLayouts'),
+      category: t('catalogCategory'),
+    }]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'settings-commands-set', hook: SetCommand, priority: 100 })
     registerHook('command', { key: 'settings-commands-show', hook: ShowCommand, priority: 100 })
     registerHook('command', { key: 'settings-commands-hide', hook: HideCommand, priority: 100 })
+    registerHook('command', { key: 'settings-commands-layouts', hook: LayoutsCommand, priority: 100 })
   },
 })

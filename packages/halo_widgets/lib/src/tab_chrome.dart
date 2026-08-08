@@ -29,6 +29,13 @@ class TabChrome extends StatelessWidget {
   final double indicatorWidth;
   final EdgeInsetsGeometry padding;
 
+  /// Whether a selected tab shows the indicator at all. Off for a caller that
+  /// marks selection some other way and would otherwise get two marks that
+  /// contradict each other — the dock's editing mode outlines the showing tab
+  /// and leaves its BOTTOM open, so a line across exactly there closes the
+  /// one gap the whole shape is built around.
+  final bool showIndicator;
+
   const TabChrome({
     super.key,
     required this.selected,
@@ -37,6 +44,7 @@ class TabChrome extends StatelessWidget {
     required this.builder,
     this.indicatorWidth = defaultIndicatorWidth,
     this.padding = const EdgeInsets.symmetric(horizontal: Space.lg),
+    this.showIndicator = true,
   });
 
   /// The bottom-border selection indicator, on its own so a caller that
@@ -80,7 +88,7 @@ class TabChrome extends StatelessWidget {
           // an already-laid-out child, it costs no height at all. Same idiom
           // and same reason as `qso_list.dart`'s day-header rule.
           foregroundDecoration: indicatorDecoration(
-            selected: selected,
+            selected: selected && showIndicator,
             labelColor: labelColor,
             tabTheme: tabTheme,
             indicatorWidth: indicatorWidth,

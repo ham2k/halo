@@ -161,6 +161,20 @@ class GeneralSettingsGroup extends SettingsGroup {
       ),
       _fontScaleSelect(),
       _layoutDensitySelect(),
+      _toggle(
+        key: 'layoutCustomization',
+        // NOT 'panels': that is the dashboard-panel EXPERIMENT's key, and
+        // experiments are not in this catalog, so nothing here could flag the
+        // ambiguity. An operator told to "turn panels on" would get a
+        // rearrangeable view and still no Clock or Weather.
+        aliases: const ['layout', 'dock'],
+        label: t.settings.layoutCustomization.title,
+        icon: 'view-dashboard',
+        description: settings.layoutCustomization
+            ? t.settings.layoutCustomization.descriptionOn
+            : t.settings.layoutCustomization.descriptionOff,
+        value: settings.layoutCustomization,
+      ),
       _select(
         key: 'distanceUnits',
         aliases: const ['units'],
@@ -241,6 +255,10 @@ class GeneralSettingsGroup extends SettingsGroup {
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
+    if (fieldKey == 'layoutCustomization') {
+      if (value is bool) await settings.setLayoutCustomization(value);
+      return;
+    }
     if (value is! String) return;
     switch (fieldKey) {
       case 'themeMode':

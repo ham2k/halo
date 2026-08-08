@@ -83,6 +83,93 @@ class UiScale extends StatelessWidget {
   }
 }
 
+/// One pane drawn at a different scale from the rest of the app.
+///
+/// [UiScale] is a ROOT primitive and cannot be nested: it sizes its inner box
+/// to the ambient MediaQuery — the WINDOW — and lets `BoxFit.fill` stretch
+/// that box to whatever constraints it is given. At the root those two agree
+/// and the fill factor works out to exactly `scale`. Inside a pane they do
+/// not: the box is still window-shaped while the constraints are pane-shaped,
+/// so the two axes stretch by DIFFERENT factors and text comes out narrower
+/// or wider rather than bigger. Nothing throws; it just looks wrong.
+///
+/// This measures instead — the box is the incoming CONSTRAINTS divided by the
+/// factor, so filling them back is uniform by construction.
+///
+/// [scale] is ABSOLUTE, on the same 1.0-is-normal ladder as the app's own
+/// Font Scale, and the relative factor is worked out here. A caller passing a
+/// pre-divided value would have to know what is already in force, and would
+/// be wrong the moment the app's own scale changed underneath it.
+class SubtreeUiScale extends StatelessWidget {
+  final double scale;
+  final Widget child;
+
+  const SubtreeUiScale({super.key, required this.scale, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final relative = scale / UiScale.of(context);
+    // No early return at identity, tempting as it is. Returning the child
+    // unwrapped changes the widget chain above it, so a pane whose override
+    // is dialled to whatever the app is already at would UNMOUNT its subtree
+    // — a map reloading its tiles, an extension panel re-rendering, a
+    // half-typed field cleared — on the way past. At 1.0 everything below is
+    // the identity anyway.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Nothing to divide. Panes are laid out under tight constraints, so
+        // this is a caller putting one somewhere it was never meant to go —
+        // better unscaled than laid out against infinity, but loud about it:
+        // the override silently doing nothing while its setting stays
+        // checked is indistinguishable from the setting being off.
+        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+          assert(false, 'SubtreeUiScale needs bounded constraints on both axes; got $constraints');
+          return child;
+        }
+        final mq = MediaQuery.of(context);
+        final inverse = 1.0 / relative;
+        // The SUBTREE's idea of the screen still divides the same way the
+        // root's does, so breakpoints inside a rescaled pane answer about the
+        // window like they do everywhere else. Only the box below is measured
+        // from the pane.
+        final scaledMq = mq.copyWith(
+          size: mq.size * inverse,
+          padding: mq.padding * inverse,
+          viewInsets: mq.viewInsets * inverse,
+          viewPadding: mq.viewPadding * inverse,
+          systemGestureInsets: mq.systemGestureInsets * inverse,
+        );
+        return _UiScaleScope(
+          // The ABSOLUTE scale, not the relative factor: this is what
+          // [PixelGrid] multiplies by the device ratio, and what it has to
+          // snap against is the real device grid.
+          scale: scale,
+          // Sized to the measured box, so the FittedBox below is given TIGHT
+          // constraints. It only scales up to the constraints it is given; a
+          // loose ancestor and it shrink-wraps the child instead, and the
+          // whole mechanism degrades silently — the subtree still lays out in
+          // the divided space, so more or less fits on screen, but is never
+          // magnified. Same trap, and same fix, as [UiScale]'s own
+          // SizedBox.expand; a LayoutBuilder passes its incoming constraints
+          // straight through, so measuring them is not the same as tightening
+          // them.
+          child: SizedBox.fromSize(
+            size: constraints.biggest,
+            child: FittedBox(
+              fit: BoxFit.fill,
+              alignment: Alignment.topLeft,
+              child: SizedBox.fromSize(
+                size: constraints.biggest * inverse,
+                child: MediaQuery(data: scaledMq, child: child),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// The DEVICE pixel grid, as seen from inside the scaled coordinate space:
 /// one logical (UiScale-divided) pixel paints as `UiScale × devicePixelRatio`
 /// device pixels.

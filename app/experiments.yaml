@@ -24,10 +24,22 @@ experiments:
     name: Experiments
     description: Show the Experiments list in Developer Settings.
     aliases: [exp]
-  - key: layouts
-    name: Customizable Layouts
-    description: Rearrange the logging view's panes by dragging their tabs into splits and groups.
-    aliases: [layout, dock, docking]
+  # Not the dock itself — that ships behind Settings → User Interface →
+  # Enable Layout Customization (docs/design/layouts.md), which is an
+  # operator's choice rather than a tester's. This gates the DASHBOARD PANEL
+  # extensions: their manifests list this key, so Clock/Weather/Solar/Custom
+  # Text stay out of the Extensions panel and out of the runtime until it is
+  # on. Rearranging the panes that already ship needs only the setting.
+  #
+  # Panel words only. `layouts`, `layout`, `dock` and `docking` all named the
+  # DOCK, which is now the LAYOUTS command's setting — one word reaching two
+  # switches is worth more confusion than it saves typing. State does not
+  # follow a key change either, so anyone who had EXP LAYOUTS on turns
+  # EXP PANELS on once.
+  - key: panels
+    name: Dashboard Panels
+    description: Extra panels to put in a customized layout — clock, weather, solar, custom text.
+    aliases: [panel]
   # Station equipment and CAT control (docs/design/cat.md). Reveals the
   # Station Configuration settings section, on every platform including web
   # (HALO-64: the serial transport works there via the Web Serial API).

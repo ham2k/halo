@@ -76,8 +76,22 @@ Every root view is classified by `ViewLayoutPolicy`
 as a `layoutPolicy` const on the view class:
 
 - **`customizable`** — the view's panes are user-arrangeable via the dock
-  layout (`DockLayoutView`, behind the `layouts` experiment). Currently
-  only the **Operation** view. A dragged tab can land on another group's
+  layout (`DockLayoutView`), behind the operator's own **Enable Layout
+  Customization** setting (Settings → User Interface), off by default: a
+  fixed arrangement is the one an operator can be talked through over the
+  air, so rearranging is opted into. The **LAYOUTS** command (LYT or LAYOUT
+  too) toggles it from the command bar — `SET LAYOUT` reaches the same
+  setting, but the word an operator is told over the air is this one. Currently only the **Operation** view.
+  The **`panels` experiment** is a separate switch and stays one: it gates
+  the dashboard PANEL extensions (clock, weather, solar, custom text), which
+  declare it in their manifests, and nothing else. It answers to `PANELS` and `PANEL` and
+  nothing else: it is what the `layouts` experiment became once the dock
+  stopped being a tester's feature, and every dock word now belongs to the
+  setting's own command. State does not follow a key change either. Rearranging what already
+  ships needs only the setting; the experiment is what adds more to arrange.
+  The setting does not read the experiment either — two features behind one
+  switch is what splitting them was for.
+  A dragged tab can land on another group's
   **tab strip** (joining that group at the position aimed at, which is also
   how tabs reorder), on one of the **four split bands** over a group's body,
   or on a **dock edge** strip. The bands are thirds running the full length
@@ -268,7 +282,7 @@ constant in the view. Two sources write into it:
   Spots, Map) with their title, description, icon and, where they have any,
   the settings *target* whose declared settings make up their settings
   dialog. The service holds identity only: the widget stays with the view
-  that builds it, which is what lets the Layout Setup sheet list a panel it
+  that builds it, which is what lets the Add a Panel sheet list a panel it
   has no way to build.
 - **Extension panels.** Every `panel` hook contributes its own
   ([hooks.md](../extensions/hooks.md)). An extension panel is a *document* —
@@ -280,9 +294,10 @@ constant in the view. Two sources write into it:
 A panel's id disappearing from the catalog — an extension disabled or
 uninstalled — **never costs the operator their arrangement**. The pane stays
 and renders a placeholder (`MissingPanelPane`: a `toy-brick-remove` glyph and
-*Extension "X" is missing*), Layout Setup keeps a row for it so removal is a
-deliberate act, and a panel that was only briefly missing repairs itself when
-its extension answers. Nothing reconciles, and nothing is set aside.
+*Extension "X" is missing*), it can be dragged to the delete target like any
+other pane so removal stays the operator's call, and one that was only
+briefly missing repairs
+itself when its extension answers. Nothing reconciles, and nothing is set aside.
 
 That rule exists because setting an arrangement aside is as destructive as
 deleting from it — the next thing written replaces it — and an extension can
@@ -300,22 +315,278 @@ whole feature cheap. `#` is safe as the separator (neither key may contain
 one), so an arrangement saved before instances existed parses as its own
 descriptor and keeps working.
 
-Three consequences worth knowing. Layout Setup keeps an instanceable panel in
-**Available Panels** once placed, because that row is the only "add another"
-control there is. A render result may carry a **`title`** that replaces the
+Three consequences worth knowing. The Add a Panel sheet keeps an instanceable
+panel listed once placed, because that row is the only "add another" control
+there is. A render result may carry a **`title`** that replaces the
 tab label — without it, three placements of one panel all read the same
 thing, and the operator's own heading beats an ordinal. And **removing an
 instance forgets its config**, because an instance id is an anonymous slot
 that the next placement reuses; a panel placed once is deliberately not
 forgotten, since its settings belong to the panel rather than to that pane.
 
-**Layout Setup offers a panel's own configuration and nothing else.** A
-native panel's `settingsTarget` opens the app's declared settings aimed at
-that pane — the logging panel's tune dialog, reachable from its own tab.
-Those are user settings that happen to concern a pane, and putting them here
-would say the layout and the operator's preferences are the same kind of
-thing. An extension panel's form is the opposite case: it configures that
-pane alone, and this sheet is the only route to it.
+**A panel's own settings and a pane's layout options are different
+questions, and they live in different places.** A panel's settings are a
+control on its TAB, present only while the layout is being used: the logging
+panel's tune dialog, and an extension panel's own config form, which
+configures that pane alone and has nowhere else to go.
+
+The sheet carries a **search** — matching a panel's description as well as
+its name, since a panel is often easier to describe than to name — and beside
+it a button opening the **extensions screen filtered to the ones that
+contribute panels** (`ExtensionsPanel.onlyHook`). The sheet lists what is
+INSTALLED; an operator who cannot find the panel they want needs the other
+screen, and sending them to hunt for it is worse than a button.
+
+**Layout options** are the dock's business rather than the panel's, and every
+pane has them whichever panel is in it. They are reached while editing and
+nowhere else — outside edit mode there is no layout to have options about.
+`PaneLayoutOptions` holds them, keyed by module id under
+`LayoutKeys.operationPaneOptions`:
+
+- **Title** — the operator's own name for the pane, beating both the
+  descriptor's title and whatever the panel's render supplies. Nobody
+  overrules what they typed into that box.
+- **Show header** — whether a pane ALONE in its group draws one. Greyed
+  rather than hidden while it shares a group: the header is the tab strip
+  there, and hiding it would strand every other pane. Also always shown while
+  editing, since the header is the grab handle and the pane's own control.
+- Under a collapsed **Advanced Options**: **font size** and **layout
+  density**, for this pane alone, and a **Reset** in the dialog's footer that
+  asks first. The font size is a `SubtreeUiScale` — the
+  only way to do this that [ui-scaling.md](ui-scaling.md) allows, since
+  everything inside stays in plain logical pixels and simply lives in a space
+  scaled once more. Not a nested `UiScale`, which is a root primitive and
+  stretches a pane's two axes by different factors.
+  Density is the same scope a vertical split already publishes, set
+  explicitly rather than derived from height.
+
+**The VIEW has the same options, one level up** — its own name and its own
+size and density, under `LayoutKeys.operationViewOptions`, reached from a
+second button in the header while editing, under the same glyph a pane's
+carries — the same kind of thing, told apart by where it sits. Its Restore
+Defaults is the whole view: the default arrangement, its own options and
+every pane's. Each level names an ABSOLUTE size
+and the innermost that names one decides: a pane that overrides nothing sits
+inside the view's scope, and the view's own falls back to the app's settings.
+The title is greyed for a built-in view (the Operation view is the app's, so
+its name is too) rather than hidden, so an operator looking for the setting
+is told it does not apply instead of hunting for it. While editing, the
+header shows the view's name in place of the operation's — what is being
+rearranged belongs to the view, and outlives this operation and every other.
+
+All of it is part of the ARRANGEMENT: edited in the same draft, written by
+the same save, restored by the same discard, and a pane's options are
+forgotten when the pane they describe leaves the view.
+
+### Using a layout, and editing one
+
+**A tab's name and its action sit together at the leading edge**, in both
+modes, with the slack after them. The name is a heading and starts where the
+eye already is; the action acts on THAT name, so it follows it rather than
+sitting at the far edge of however wide the tab happens to be. While the dock
+is being used that action is painted **quiet** — darkened toward black
+against the header — and comes up to full strength under the pointer: it is
+not what the tab is for, and one at full contrast beside every name competes
+with the one thing the strip exists to say. It darkens rather than fading out
+so it stays findable at a glance. The recolour is a `ColorFilter`, not a
+colour passed down, because the action is the caller's widget and has already
+chosen a colour for the fixed split's title bar, where it must read against
+that header instead.
+
+**A tab's action is painted quiet, but never below 3:1** against the header
+it sits on (WCAG 1.4.11). It darkens INTO the header rather than fading off
+it, and darkens further if the first step is not yet legible — derived from
+the header colour, since an edition's is not the one this was tuned against.
+A header already too dark to recede into gets the control at full strength:
+a louder header than intended beats a control nobody can find, and there is
+no hover to fall back on when the screen is a touchscreen.
+
+**The squeeze has a floor of its own.** Below the grab handle a tab does not
+shrink, it overflows — the handle is a fixed box, and it lands on the
+neighbouring tab. A strip too narrow even for handles scrolls: the wrong
+answer while rearranging, and the only one left. The showing tab's floor is
+measured from every box between its two edges, the label's own inset
+included; one left out of that sum is a tab that ellipsizes below the three
+letters the floor exists to keep.
+
+**A group of one is a pane, not a tab bar of one.** It renders as a plain
+title bar — the fixed split's idiom, reading from the leading edge — with no
+selection indicator, no tap, and nothing announced to a screen reader as a
+tab. A tab bar of one offers a choice that does not exist. It is still the
+group's grab handle and still takes drops, so a second pane dropped on it
+turns it into a real tab strip.
+
+**Rearranging is a mode, and it is off.** The dock an operator works in all
+day offers exactly one layout gesture: dragging a **divider** to resize.
+Tabs select, each pane keeps its own settings control, and no tab carries a
+grab handle — there is no drag to catch a pointer that was aiming at a tab,
+because the pane a stray drag would rearrange is the one with a half-typed
+QSO in it. `DockLayoutView.editing` off means there is no `Draggable` on a
+tab *at all*, not a disabled one: a refusing `Draggable` still enters the
+gesture arena against the tap.
+
+**The header's layout button** turns the mode on. It is always visible where
+the setting is on — an operator who asked for a customizable layout has asked
+to see the way into it — and pressing it goes straight into editing, with no
+sheet in between: what they want when they reach for it is to move a pane.
+While editing it becomes **Save Layout**, with a **discard** and a **plus**
+to its left. While editing:
+
+- every tab is a grab handle, at full strength, on every tab in a group. The
+  strip stops SCROLLING and starts squeezing: a strip too narrow to divide
+  evenly shrinks the tabs that are not showing, and the showing one stops at
+  a floor of its two slots plus three letters and an ellipsis. Those slots
+  are UNEQUAL while editing — each only as wide as what is in it, rather than
+  the matching chrome-height pair that keeps a label centred and still while
+  the dock is being read. Equal slots would spend the whole floor on a 20pt
+  handle and a 24pt glyph, and the tab would show punctuation where a word
+  would fit. The squeeze is
+  continuous — the others give up exactly what that floor needs and no more,
+  so a strip a few points too narrow costs a few points of label rather than
+  every label at once. The floor is MEASURED, not a constant: a fixed number
+  is a number for one font scale, and the strip would collapse early at
+  Larger and late at Smallest. Scrolling is right while the dock is being
+  used, where the operator is reading tab names; mid-rearrange the tab
+  scrolled out of sight is as likely as not the one being worked on;
+- the view's header goes inert: it names the view, drops the dots, and no
+  longer opens the operation's setup sheet. The operation is not what is being
+  arranged;
+- each pane is **outlined as a folder** in `fabAccentColor` — every tab is a
+  block with a rounded top, and the one that is showing is filled dark blue
+  and leaves its bottom open, so the line runs down into the pane's body and
+  around it; the pane and the tab naming it read as one object to pick up.
+  The pane's own two bottom corners stay square: they sit against the dock's
+  dividers and its outer edge, which are square;
+- each pane's tab action slot holds its **layout options** (below) instead of
+  whatever the panel offers while it is being used. One or the other, never
+  both: they are different questions, and edit mode is when only the second
+  can be answered;
+- **deleting is a drag**, onto a circle flush with the dock's top edge that
+  exists only while something is in the air. Not a button on the pane: a
+  control sitting on every pane is one an operator can hit while doing
+  something else, and what it destroys is a pane they arranged and
+  configured. Reaching this one takes a deliberate journey with the pane
+  already in hand — and against the top edge is where a pane thrown upward
+  runs out of room, which beats a target that has to be aimed at while the
+  pointer is already busy. Whether it arms is decided from where the
+  PRESS landed, before the drag exists: anywhere outside its circle and it is
+  mounted from the first frame, which is every ordinary drag. Only a press
+  that landed ON it waits — the top edge is where the tab strips are, so a
+  press there is already on the target, and a mouse that slips a pixel
+  between press and release would take the pane with it — and then only until
+  the pointer leaves or has travelled a diameter. Deciding it later, from
+  accumulated travel, is worse than the bug: `onDragUpdate` fires after
+  Flutter has hit-tested that move, so a target that appears part-way through
+  a drag can miss the last update and never become the active one, and the
+  pane silently re-docks at the top edge instead of being deleted. The circle
+  is tested as a circle, not as its bounding box: the operator aims at what
+  is painted. It overlaps the middle of the tab strip and wins
+  the drop there, being drawn last; the tabs either side of it are still
+  reachable, and the strip's exact centre is not where anyone aims to join a
+  group. It is absent for the view's last pane, which cannot be removed — an
+  empty dock has no tab left to drag anything back with;
+- **the pane's layout options carry a Remove**, which is the same act by
+  pointer-free means. A drag cannot be made with a keyboard or a screen
+  reader, and without this the only route left would be Restore Defaults —
+  the whole arrangement thrown away to be rid of one pane. It does not ask
+  first, unlike the Restore Defaults beside it: one pane is part of the
+  draft, and discard brings it back with what was in it;
+- pane contents are covered and take no pointer input — while editing they
+  are blocks to arrange, not things to read. The cover carries the showing
+  tab's blue on down into the top of the pane, for the height of the strip
+  itself (that band is where a row of pane controls goes), and then fades
+  over the same distance into a **half-opaque grey**, so the pane's contents
+  come back gradually rather than at a line. The stock tab indicator is
+  suppressed while editing: it would draw a line across exactly the gap the
+  folder shape leaves open;
+- the header carries **Save Layout** and, left of it, a **discard**.
+
+**The pane gives up the room the outline needs.** It gets a little smaller on
+its three free sides while editing, and the line sits in what it gave up
+rather than over anything the pane is showing — at a pane's edge that would
+be a log column or the map's scale. Nothing comes off the *top*: the tab
+strip's own segments are the outline there and the strip has not moved, so no
+pane shifts down when editing begins.
+
+The outline is drawn in **pieces** — each tab paints its own segment, the body
+paints the rest — rather than by one painter over the group. Only a tab knows
+where it is: tabs share the strip evenly until they stop fitting, and then the
+strip scrolls. A painter above them would have to measure, and a measurement
+taken mid-scroll or off-screen is a frame stale. Interior tabs centre their
+side strokes on their own boundaries so each pair draws one line between them
+rather than two; the strip's two outer edges, having no neighbour to share
+with and a scroll viewport that would clip their outer half, inset instead.
+
+Narrowing past the two-pane breakpoint takes the dock away and with it every
+edit control, so as far as the operator can see the edit is over: the draft
+stays in state (widening returns to it), but the focus edit mode took is
+handed back there and then, or they meet a normal-looking logging view that
+swallows every keystroke.
+
+**The edit is a draft.** Nothing an edit does — a drag, a split, a divider,
+an add from the plus or a drag onto the delete target — reaches settings
+until Save Layout;
+that is the whole basis on which discard can promise anything. The two
+buttons are the only ways out and they are exact opposites: Save keeps
+everything, discard restores the arrangement as it was when editing began and
+ends the edit. **Restore Defaults**, in the view's own layout options, is a
+third thing — the app's default layout, not this session's starting point —
+and it is part of the draft like everything else, so discard undoes it.
+
+Restoring or reverting replaces the arrangement WITHOUT emitting: an emit
+reports the new selection through `onStateChanged`, which is not gated on
+edit mode and would write which pane is on top to settings there and then —
+past a discard that cannot take it back.
+
+**Restore Defaults restores everything**: the default arrangement, the view's
+own options, and every pane's. Not two controls. A reset that put the options
+back and left the arrangement alone is not a restore — an operator asking for
+defaults is asking for the view they started with, and having to find a
+second control in another menu to finish is how they end up half-way between
+two layouts. A pane's own Restore Defaults is the same promise one level
+down: its title, header and size, and nothing else in the layout.
+
+An id waiting to be forgotten is not free. A new instance takes the next
+number past it, so a pane added where a removed one stood arrives empty
+rather than holding the last one's notes — and the save, seeing that id back
+in the arrangement, would have spared it.
+
+Two consequences that are easy to get wrong. **Removals defer their forget**:
+dropping a pane normally forgets its config (see instances, above), but a
+discard brings the pane back and it has to come back with what was in it, so
+the forget waits for the save — and a discard forgets, there and then, the
+panes it is *dropping*, which the edit added and nothing outside it ever knew.
+And **selection is not part of the draft** —
+which pane is on top is state, not arrangement (below), and it is saved as
+the operator makes it whether or not they are editing.
+
+Two structural notes. The view's header takes no taps while a modal route is
+up — the route's barrier takes them wherever they land. So the edit controls
+are built once by the view and rendered in *two* places, never both: the
+view's own header while no sheet is up, and the sheet's
+`TopModalPaneRoute.headerTrailing` while one is. A control left in the header
+under an open sheet is visible and dead.
+
+The plus is one of the controls the sheet's own header carries, so it is the
+obvious thing to press while the sheet is already up. It refuses: a second
+route would take over the revision notifier the first sheet's list listens
+to, and closing would clear the open flag under a sheet still on screen —
+putting exactly the dead copy of the controls in the header that the rule
+above exists to prevent.
+
+A sheet outlives the dock it was opened over — a resize past the two-pane
+breakpoint takes the dock down and leaves the route standing — so everything
+it does re-reads `_dockKey.currentState` rather than the one captured when it
+opened. The same goes for the discard: it must work with no dock mounted,
+because turning the setting off mid-edit is exactly when there is none.
+
+**Leaving edit mode from that header takes the sheet with it.** The sheet is
+a control panel for an edit in progress; left open past the exit, its add
+writes straight to settings on the next press, with the discard that was
+beside it gone. And the header dresses for editing only
+where the dock actually IS — the controls are two-pane-only, so a header that
+went on naming the view after the window narrowed would strand the operator
+with no way out. The draft is state, so widening comes back to it.
 
 **The dock's definition and its state are stored apart.** The definition
 (`LayoutKeys.operationDock`) is the tree — splits, weights, which modules sit
@@ -435,7 +706,7 @@ not add it.
 | The panel catalog (native + extension) | `app/lib/services/panel_service.dart` |
 | Extension panel rendering and its HTML sandbox | `app/lib/views/operation/panel_content_view.dart` |
 | A panel's render loop and refresh budget | `app/lib/views/operation/extension_panel.dart` |
-| Layout Setup sheet | `app/lib/views/operation/layout_sheet.dart` |
+| Add a Panel sheet | `app/lib/views/operation/layout_sheet.dart` |
 | The pane a missing extension leaves behind | `app/lib/views/operation/missing_panel_pane.dart` |
 | Dock definition, dock state, and the drop model | `packages/halo_widgets/lib/src/dock_layout.dart` |
 | Shirt sizes, ideal pane width, animation constants | `packages/halo_widgets/lib/src/layout.dart` |

@@ -51,7 +51,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    await settings.setExperimentEnabled('layouts', true);
+    await settings.setLayoutCustomization(true);
     await settings.setLayoutData(
       LayoutKeys.operationDock,
       DockSplit(Axis.horizontal, [
@@ -150,12 +150,17 @@ void main() {
     final services = await servicesWith(
       tester,
       mockHooks: hostResults(on: const <String>[]),
-      layout: const ['logging', 'ext:wx:forecast'],
+      // Three modules, so the second group holds TWO — a group of one renders
+      // as a pane title bar with nothing to tap, and this test is about what
+      // tapping a tab does. The extension panel goes FIRST in that group, so
+      // it is the one showing: an extension pane behind an unselected tab
+      // never renders, and its spinner never lets pumpAndSettle settle.
+      layout: const ['logging', 'ext:wx:forecast', 'info'],
     );
     await pumpOperation(tester, services);
     final before = services.settings.layoutData(LayoutKeys.operationDock);
 
-    await tester.tap(find.text('Forecast'));
+    await tester.tap(find.text(AppLocale.en.buildSync().operation.tabs.info));
     await tester.pumpAndSettle();
 
     // Which pane is on top is STATE, and state has its own key. While it
@@ -165,7 +170,7 @@ void main() {
     expect(services.settings.layoutData(LayoutKeys.operationDock), before);
     expect(
       DockState.fromJson(services.settings.layoutData(LayoutKeys.operationDockState)).selected,
-      contains('ext:wx:forecast'),
+      contains('info'),
       reason: 'the selection went to the state key instead',
     );
 
@@ -177,7 +182,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    await settings.setExperimentEnabled('layouts', true);
+    await settings.setLayoutCustomization(true);
     await settings.setLayoutData(
       LayoutKeys.operationDock,
       DockSplit(Axis.horizontal, [
@@ -284,8 +289,14 @@ void main() {
         'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
       };
 
-  Future<LayoutSheet> openSheet(WidgetTester tester) async {
-    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard), warnIfMissed: false);
+  /// Into edit mode, then the plus that opens Add a Panel. The layout button
+  /// no longer opens a sheet — it IS the way into editing.
+  Future<LayoutSheet> openAddSheet(WidgetTester tester) async {
+    if (find.widgetWithIcon(IconButton, MdiIcons.viewDashboard).evaluate().isNotEmpty) {
+      await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.plus));
     await tester.pumpAndSettle();
     return tester.widget<LayoutSheet>(find.byType(LayoutSheet));
   }
@@ -304,7 +315,7 @@ void main() {
 
     // That row IS the "add another" control, and there is no other — a panel
     // filtered out once placed could never be placed twice.
-    expect((await openSheet(tester)).available.map((p) => p.id), contains('ext:notes:text'));
+    expect((await openAddSheet(tester)).available.map((p) => p.id), contains('ext:notes:text'));
 
     await unmount(tester);
   });
@@ -317,8 +328,12 @@ void main() {
     );
     await pumpOperation(tester, services);
 
-    final sheet = await openSheet(tester);
+    final sheet = await openAddSheet(tester);
     sheet.onAdd!('ext:notes:text');
+    await tester.pumpAndSettle();
+    // An add is a draft like any other edit — it only reaches settings when
+    // the edit is saved, which is what this asserts on.
+    await tester.tap(find.text(AppLocale.en.buildSync().operation.layout.saveLayout));
     await tester.pumpAndSettle();
 
     // Placing the DESCRIPTOR id a second time would put the same module in
@@ -353,15 +368,27 @@ void main() {
         ],
         'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
       },
-      layout: const ['logging', 'ext:notes:text#1'],
+      // 'spots' rather than 'logging' as the other pane: logging carries a
+      // tune button of its own, and two would leave the assertion below
+      // unable to say which pane's it found.
+      layout: const ['spots', 'ext:notes:text#1'],
     );
     await pumpOperation(tester, services);
 
-    // The other side of the rule dropping the logging pane's gear: a panel
-    // whose form configures that pane and nothing else has nowhere else to
-    // be reached from, so this sheet is the only route to it.
-    final sheet = await openSheet(tester);
-    expect(sheet.panels.firstWhere((p) => p.id == 'ext:notes:text#1').openSettings, isNotNull);
+    // A panel whose form configures that pane and nothing else has nowhere
+    // else to be reached from, so its own tab is the only route to it — and
+    // it is a control for USING the panel, not for arranging it, which is
+    // why it lives on the tab rather than beside the layout options.
+    expect(find.widgetWithIcon(IconButton, MdiIcons.tune), findsOneWidget);
+
+    // Gone while editing: the tab is a grab handle then, and a control on one
+    // competes with the drag for the same pointer.
+    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithIcon(IconButton, MdiIcons.tune), findsNothing);
+    // One per pane, plus the VIEW's own in the header — the same glyph at
+    // two scopes, told apart by where it sits.
+    expect(find.widgetWithIcon(IconButton, MdiIcons.viewDashboardEdit), findsNWidgets(3));
 
     await unmount(tester);
   });
@@ -406,7 +433,7 @@ void main() {
 
     // The other half of the rule: `multiple` is opt-in, so an ordinary panel
     // must not start offering itself a second time.
-    expect((await openSheet(tester)).available.map((p) => p.id), isNot(contains('ext:notes:once')));
+    expect((await openAddSheet(tester)).available.map((p) => p.id), isNot(contains('ext:notes:once')));
 
     await unmount(tester);
   });

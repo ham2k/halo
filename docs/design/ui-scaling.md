@@ -111,7 +111,20 @@ webview) are scaled as bitmaps, so they can soften at large scale. If a raster
 asset needs to stay razor-sharp, ship it as SVG or at higher resolution — do
 **not** try to counter-scale it.
 
-**6. Any new top-level AppBar needs window-chrome clearance.** macOS reserves
+**6. One pane at a different scale uses `SubtreeUiScale`, never a nested
+`UiScale`.** A layout-customizable view lets an operator set a font size for
+one pane ([layouts.md](layouts.md)), which is the one legitimate departure
+from "scale once at the root" — and it is still not a hand-multiplied
+dimension: the pane simply lives in a coordinate space scaled once more, with
+everything inside it in plain logical pixels. `UiScale` itself cannot do this.
+It sizes its inner box to the ambient MediaQuery — the WINDOW — and lets
+`BoxFit.fill` stretch that box to the constraints it is given; at the root
+those agree, and inside a pane they do not, so the two axes stretch by
+different factors and a square comes out a rectangle. `SubtreeUiScale`
+measures the incoming constraints instead, and takes the ABSOLUTE level so no
+caller has to know what is already in force.
+
+**7. Any new top-level AppBar needs window-chrome clearance.** macOS reserves
 LEADING space for the native traffic lights; Windows reserves TRAILING space
 for the Flutter-drawn caption buttons. See the next section — this is the one
 place scaling interacts with window chrome.

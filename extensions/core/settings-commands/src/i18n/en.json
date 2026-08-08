@@ -6,7 +6,6 @@
   "catalogShowParams": "<setting>",
   "catalogHide": "Turn a setting off",
   "catalogHideParams": "<setting>",
-
   "noMatch": "No setting matches “{{query}}”",
   "current": "{{label}}: {{value}}",
   "currentIn": "{{label}} ({{section}}): {{value}}",
@@ -15,5 +14,10 @@
   "change": "Change {{label}} to {{value}}?",
   "alreadySet": "{{label}} is already {{value}}",
   "expects": "{{label}} takes {{expects}}",
-  "confirmChanged": "{{label}} set to {{value}}"
+  "confirmChanged": "{{label}} set to {{value}}",
+  "catalogLayouts": "Turn layout customization on or off",
+  "layoutsOn": "Turn on layout customization?",
+  "layoutsOff": "Turn off layout customization?",
+  "layoutsOnConfirm": "Layout customization on",
+  "layoutsOffConfirm": "Layout customization off"
 }

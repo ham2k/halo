@@ -30,7 +30,7 @@ that imports it and calls `defineExtension`:
                                // panel doesn't know falls under "Other"
                                // (app/lib/views/extensions_panel.dart).
   "enabledByDefault": true,
-  "experiments": ["layouts"],  // availability gate: hidden from the panel and
+  "experiments": ["panels"],   // availability gate: hidden from the panel and
                                // never loaded unless EVERY listed experiment
                                // (app/experiments.yaml) is enabled; the user's
                                // enable/disable choice is kept while hidden.

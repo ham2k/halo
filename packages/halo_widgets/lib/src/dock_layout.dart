@@ -3,12 +3,16 @@
 //
 // PROTOTYPE of the module-docking layout of DESIGN.md §7: a tree of splits
 // whose leaves are tab groups of "modules" (the pane subtrees a view already
-// builds — logging panel, map, spots…). Every tab doubles as a grab handle.
-// Dragging one shows where it can land: on another group's TAB STRIP, at the
-// position under the pointer (which both joins a group and reorders within
-// one), on that group's body in a top/bottom/left/right band that splits it,
-// or on a thin strip along the dock's own edge for a new full-length pane.
-// Dividers between siblings drag to resize.
+// builds — logging panel, map, spots…).
+//
+// The dock has two modes, and the split between them is the point (see
+// [DockLayoutView.editing]). Ordinarily it is a viewer: tabs select, dividers
+// between siblings drag to resize, and nothing rearranges. While EDITING,
+// every tab doubles as a grab handle, and dragging one shows where it can
+// land: on another group's TAB STRIP, at the position under the pointer
+// (which both joins a group and reorders within one), on that group's body in
+// a top/bottom/left/right band that splits it, or on a thin strip along the
+// dock's own edge for a new full-length pane.
 //
 // The layout is a plain JSON-serializable tree (see [DockNode.toJson]) so a
 // view can persist it through SettingsService the way divider widths are
@@ -23,7 +27,7 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show setEquals;
+import 'package:flutter/foundation.dart' show setEquals, visibleForTesting;
 import 'package:flutter/material.dart';
 
 import 'density.dart';
@@ -33,6 +37,7 @@ import 'pane_divider.dart';
 import 'spacing.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'tab_chrome.dart';
+import 'theme.dart' show fabAccentColor, textWidth;
 import 'ui_scale.dart';
 
 /// A node in the dock tree: either a [DockSplit] (row/column of children
@@ -90,8 +95,11 @@ class DockGroup extends DockNode {
 
   DockGroup(this.modules, {this.selected = 0});
 
+  /// Copies rather than aliasing the live list: a caller holding a snapshot
+  /// of the arrangement (the layout editor's revert target) would otherwise
+  /// watch it change under them as panes move.
   @override
-  Map<String, dynamic> toJson() => {'type': 'group', 'modules': modules};
+  Map<String, dynamic> toJson() => {'type': 'group', 'modules': List<String>.of(modules)};
 }
 
 /// A row (horizontal) or column (vertical) of children sized by [weights]
@@ -108,7 +116,9 @@ class DockSplit extends DockNode {
     'type': 'split',
     'axis': axis == Axis.vertical ? 'v' : 'h',
     'children': [for (final c in children) c.toJson()],
-    'weights': weights,
+    // Copied, like [DockGroup.toJson]'s modules — and this one is the live
+    // list a divider drag mutates in place.
+    'weights': List<double>.of(weights),
   };
 }
 
@@ -205,6 +215,184 @@ class DockPaneVisibility extends InheritedWidget {
   bool updateShouldNotify(DockPaneVisibility oldWidget) => oldWidget.visible != visible;
 }
 
+// --- the editing frame ------------------------------------------------------
+//
+// While editing, every pane is outlined as a FOLDER: the outline runs up
+// around the tab that is showing, back down, and on around the pane's body,
+// so the pane and the tab that names it read as one object to pick up. The
+// tabs that are not showing sit above the line, behind it.
+//
+// It is drawn in pieces — each tab paints its own segment, the body paints
+// its other three sides — rather than by one painter over the group, because
+// only a tab knows where it is: tabs share the strip evenly until they stop
+// fitting, and then the strip scrolls. A painter above them would have to
+// measure, and a measurement taken mid-scroll or off-screen is exactly the
+// kind that is a frame stale.
+
+/// Thick enough to read as the pane's own outline from across the window
+/// rather than as a hairline somebody left on, which is the whole job: while
+/// editing, the operator is looking at BLOCKS, and the contents are only
+/// there to say which block is which.
+const double _editingFrameWidth = 5.0;
+
+/// Rounds the TABS' top corners only. The pane's bottom corners stay square:
+/// they sit against the dock's own dividers and edges, which are square, and
+/// a rounded corner there reads as a gap somebody forgot to close.
+const double _editingFrameRadius = 8.0;
+
+/// Fills the tab that is showing, so the pane's own tab is picked out of the
+/// strip at a glance while the operator is deciding what to move. A fixed
+/// dark blue rather than a ColorScheme role, for the same reason
+/// [fabAccentColor] is one: the strip is the app's teal chrome in both
+/// brightnesses, so what sits on it has to be chosen against THAT rather than
+/// against a surface.
+const Color _editingSelectedTabColor = Color(0xFF003049);
+
+/// [fabAccentColor], not `colorScheme.primary` like the drop bands: this
+/// frame sits ON pane content in both brightnesses, and that is exactly the
+/// role fabAccentColor exists for — a color that pops against primary chrome
+/// and surfaces alike. Keeping the two apart also keeps them legible
+/// together, since the frames are up while a drag paints its band.
+const Color _editingFrameColor = fabAccentColor;
+
+/// Over the contents of every pane while editing. Heavy, and deliberately
+/// neutral: the panes are blocks to be arranged then, not things to read, and
+/// a half-opaque grey says that about a map's tiles and a log's table alike.
+/// It doubles as the drop regions' wash does — a painted surface is what
+/// routes pointer events over a native platform view back to Flutter.
+const Color _editingScrimColor = Color(0x80808080);
+
+/// The showing tab's fill, bled down into the top of the pane so the two read
+/// as one surface rather than as a coloured tab above a grey pane.
+///
+/// A fade, with no solid band under the header: nothing sits in that space
+/// any more (the pane's editing control moved up into the header itself), so
+/// holding a slab of flat colour there would be reserving room for something
+/// that is not coming.
+class _EditingPaneWash extends StatelessWidget {
+  const _EditingPaneWash();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        if (!height.isFinite || height <= 0) return const ColoredBox(color: _editingScrimColor);
+        // A pane can be shorter than the fade — a three-way vertical split in
+        // a small window, or a large font scale — so it takes at most half of
+        // what there is.
+        final fade = math.min(LayoutDensity.chromeHeightOf(context), height / 2);
+        // One gradient rather than stacked boxes: stacked boxes have to be
+        // told how to give way when the pane is short, and every answer to
+        // that is a way to overflow.
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: const [_editingSelectedTabColor, _editingScrimColor, _editingScrimColor],
+              stops: [0, fade / height, 1],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+Paint get _editingFramePaint => Paint()
+  ..color = _editingFrameColor
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = _editingFrameWidth
+  ..strokeCap = StrokeCap.butt
+  // Mitred, so the pane's two square corners close to a point rather than
+  // leaving the stroke's own width unpainted at each.
+  ..strokeJoin = StrokeJoin.miter;
+
+/// One tab's segment of its pane's outline.
+///
+/// EVERY tab is outlined — each one is a thing that can be picked up, so each
+/// is drawn as a block with a rounded top. The tab that is SHOWING leaves its
+/// bottom open, so the pane's outline runs into it; the rest close theirs,
+/// and those closing lines tile into the pane's top edge exactly, at any tab
+/// width and at any scroll offset.
+class _TabFramePainter extends CustomPainter {
+  final bool selected;
+
+  /// Whether this tab is at an end of the strip. An INTERIOR tab centres its
+  /// side strokes on its own boundaries, so it and its neighbour draw the one
+  /// line between them instead of two 5pt lines 5pt apart. The strip's two
+  /// outer edges have no neighbour to share with and would lose their outer
+  /// half to the scroll viewport's clip, so those are inset instead.
+  final bool isFirst;
+  final bool isLast;
+
+  const _TabFramePainter({required this.selected, required this.isFirst, required this.isLast});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const half = _editingFrameWidth / 2;
+    final left = isFirst ? half : 0.0;
+    final right = isLast ? size.width - half : size.width;
+    // Never more than half the tab, so a narrow tab bows rather than drawing
+    // a corner that has run past the opposite one.
+    final r = math.min(_editingFrameRadius, math.max(0.0, (right - left) / 2));
+    // Quadratic curves through the corner point rather than arcTo: the sweep
+    // direction of an arc between two points has two answers and only one of
+    // them is the corner.
+    final path = Path()
+      ..moveTo(left, size.height)
+      ..lineTo(left, half + r)
+      ..quadraticBezierTo(left, half, left + r, half)
+      ..lineTo(right - r, half)
+      ..quadraticBezierTo(right, half, right, half + r)
+      ..lineTo(right, size.height);
+    if (!selected) {
+      // Edge to edge, not corner to corner: this line IS the pane's top edge
+      // where this tab sits over it, and it has to meet what the tabs either
+      // side of it drew.
+      path
+        ..moveTo(0, size.height - half)
+        ..lineTo(size.width, size.height - half);
+    }
+    canvas.drawPath(path, _editingFramePaint);
+  }
+
+  @override
+  bool shouldRepaint(_TabFramePainter oldDelegate) =>
+      oldDelegate.selected != selected || oldDelegate.isFirst != isFirst || oldDelegate.isLast != isLast;
+}
+
+/// The rest of the outline: the pane body's leading, trailing and bottom
+/// edges, with the bottom corners rounded. No top — the tab strip drew that,
+/// notched around the tab that is showing.
+class _PaneFramePainter extends CustomPainter {
+  const _PaneFramePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const half = _editingFrameWidth / 2;
+    // Starts at y = 0, which is the strip's own bottom edge — the horizontal
+    // segments the tabs drew are centred half a stroke ABOVE that, so the two
+    // overlap rather than meeting at a seam. The pane's content is inset by a
+    // whole stroke on these three sides (see [_buildGroup]), so the line sits
+    // in room the pane gave up rather than over anything it is showing.
+    //
+    // Square corners: these two sit against the dock's own dividers and its
+    // outer edge, both square, and a radius there opens a gap rather than
+    // softening anything.
+    final path = Path()
+      ..moveTo(half, 0)
+      ..lineTo(half, size.height - half)
+      ..lineTo(size.width - half, size.height - half)
+      ..lineTo(size.width - half, 0);
+    canvas.drawPath(path, _editingFramePaint);
+  }
+
+  @override
+  bool shouldRepaint(_PaneFramePainter oldDelegate) => false;
+}
+
 /// Which side of a target group (or of the dock itself) a drag lands on.
 /// Joining a group as a TAB is not a region: it happens on the tab strip and
 /// carries the position within the group, which a region can't say.
@@ -235,9 +423,54 @@ class DockLayoutView extends StatefulWidget {
   /// reads as belonging to the group, not to the one module it acts on.
   final Map<String, WidgetBuilder>? tabActions;
 
+  /// Builds a pane's editing control, at the trailing end of its group's
+  /// header. Given the module id of the pane that group is showing; return an
+  /// empty widget for a pane that wants none.
+  ///
+  /// At the header's end rather than inside the tab, unlike [tabActions] —
+  /// while editing, a tab is a grab handle, and a control riding on one
+  /// competes with the drag for the same pointer. [tabActions] is hidden for
+  /// exactly that reason, and this takes its place.
+  final Widget Function(BuildContext context, String moduleId)? editingPaneControls;
+
+  /// Modules whose group header is hidden — for a pane that is alone in its
+  /// group and whose operator has turned its header off.
+  ///
+  /// Two things always override it. A group holding more than one module
+  /// keeps its header whatever this says: the header IS the tab strip there,
+  /// and hiding it would strand every pane but the showing one. And [editing]
+  /// keeps every header, because the header is the grab handle and the pane's
+  /// own control — a headerless pane in edit mode could not be moved, renamed
+  /// or put back.
+  final Set<String> headerlessModules;
+
+  /// A module the operator dragged onto the delete target, reported AFTER it
+  /// has left the arrangement — the caller's cue to forget whatever else it
+  /// keeps under that id. Not a veto: the dock has already removed it, and
+  /// the arrangement change reaches [onSpecChanged] like any other.
+  final ValueChanged<String>? onModuleDeleted;
+
   /// Fires when the ARRANGEMENT changes — a pane added, removed, moved or
   /// resized. Never for a tab tap: see [onStateChanged].
   final ValueChanged<DockNode>? onSpecChanged;
+
+  /// Whether the ARRANGEMENT is being edited.
+  ///
+  /// Off — the ordinary state — the dock is something you use rather than
+  /// something you arrange: tabs select, dividers resize, and there is no
+  /// grab handle to catch a pointer that was aiming at a tab. Nothing about
+  /// the panes can be moved by accident, which matters because the pane a
+  /// stray drag lands in is the one with a half-typed QSO in it.
+  ///
+  /// On, every tab becomes a handle, each group is framed over its own
+  /// contents, and the panes stop taking pointer input — a drag starting
+  /// inside a pane would otherwise be swallowed by whatever that pane does
+  /// with drags, and the frame would be promising something it can't do.
+  ///
+  /// The dock does not itself decide what "save" means: it reports every
+  /// change through [onSpecChanged] as always, and the view holding the
+  /// editing flag decides whether that reaches storage.
+  final bool editing;
 
   /// The state to open in. Like [initialSpec], read once.
   final DockState initialState;
@@ -253,7 +486,11 @@ class DockLayoutView extends StatefulWidget {
     required this.titles,
     required this.children,
     this.tabActions,
+    this.editingPaneControls,
+    this.headerlessModules = const {},
+    this.onModuleDeleted,
     this.onSpecChanged,
+    this.editing = false,
     this.initialState = DockState.empty,
     this.onStateChanged,
   });
@@ -323,6 +560,63 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
 
   /// The module id being dragged, or null — gates the drop-region overlays.
   String? _dragging;
+
+  /// How far the current drag has travelled, and whether that is yet enough
+  /// to arm the delete target.
+  ///
+  /// The target sits against the dock's top edge, which is where the tab
+  /// strips are: a press on a tab near the middle of the strip lands INSIDE
+  /// it. Mounting a delete under a pointer that never went looking for one
+  /// means a mouse has only to slip a pixel between press and release to take
+  /// a pane with it.
+  ///
+  /// So the answer is decided from where the PRESS landed, before the drag
+  /// exists: anywhere outside the circle and the target is armed and mounted
+  /// from the first frame — which is every ordinary drag. Only a press that
+  /// landed inside waits, and then only until the pointer leaves the circle
+  /// or has travelled a diameter.
+  ///
+  /// Deciding it later — from accumulated travel, say — would be worse than
+  /// the bug it fixes: `onDragUpdate` fires AFTER Flutter has hit-tested that
+  /// move, so a target that appears part-way through a drag can miss the last
+  /// update and never become the active one, and the pane silently re-docks
+  /// at the top edge instead of being deleted. Arming before the drag starts
+  /// has no such frame to lose, and the leave-the-circle case cannot race
+  /// either: coming back to drop takes more moves.
+  double _dragTravel = 0;
+  Offset? _lastDragLocal;
+  Offset? _pressGlobal;
+  bool _deleteArmed = false;
+
+  /// Whether [globalPosition] is on the delete target, in the DOCK's own
+  /// coordinates — which is what the target's size is in too. Drags report
+  /// global positions and the tree may be scaled between the two (Font Scale
+  /// divides the whole window), so they are converted rather than compared.
+  ///
+  /// The circle, not its bounding box: the operator aims at what is painted,
+  /// and a corner of the square is visibly outside it.
+  bool _isOnDeleteTarget(Offset globalPosition) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return false;
+    final local = box.globalToLocal(globalPosition);
+    final radius = _DeleteDropTarget.diameterIn(context) / 2;
+    return (local - Offset(box.size.width / 2, radius)).distance <= radius;
+  }
+
+  void _trackDragTravel(Offset globalPosition) {
+    if (_deleteArmed) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final local = box.globalToLocal(globalPosition);
+    final previous = _lastDragLocal;
+    _lastDragLocal = local;
+    if (previous != null) _dragTravel += (local - previous).distance;
+    // A press that landed inside: armed once the pointer leaves, or once it
+    // has wandered a diameter without leaving (a flick that jumps clean over
+    // the far side in a single frame).
+    if (_isOnDeleteTarget(globalPosition) && _dragTravel < _DeleteDropTarget.diameterIn(context)) return;
+    setState(() => _deleteArmed = true);
+  }
 
   // Dock splits use the shared solid divider (pane_divider.dart) — same
   // header-colored bar as ResizableSplitView's default style.
@@ -566,8 +860,34 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         if (_dragging != null)
           for (final region in const [DockRegion.left, DockRegion.right, DockRegion.top, DockRegion.bottom])
             _positionedEdge(region, _EdgeDropTarget(region: region, onDrop: (id) => _handleEdgeDrop(id, region))),
+        // LAST, so it takes the drop where it overlaps the top edge strip:
+        // a pointer carried to the middle of the top edge is aiming at the
+        // one thing drawn there, not at the strip behind it.
+        //
+        // Absent for the last module in the arrangement, which cannot be
+        // removed — an empty dock has no tab left to drag anything back with,
+        // so the layout would be unrecoverable from inside the view. A target
+        // that refuses on drop would read as a bug.
+        if (_dragging != null && _deleteArmed && _spec.collectModules().length > 1)
+          Positioned(
+            // Against the dock's own top edge, where a pointer carried
+            // upwards runs out of room — the one place reachable by throwing
+            // the pane in a direction rather than aiming at a spot. It
+            // overlaps the middle of the tab strip and takes the drop there
+            // (it is drawn last); the strip's own tabs are still reachable
+            // either side of it, and a pane dropped on the one thing drawn
+            // at the top edge is aiming at that.
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Align(child: _DeleteDropTarget(onDrop: _handleDeleteDrop)),
+          ),
       ],
     );
+  }
+
+  void _handleDeleteDrop(String id) {
+    if (removeModule(id)) widget.onModuleDeleted?.call(id);
   }
 
   Widget _positionedEdge(DockRegion region, Widget child) {
@@ -724,20 +1044,39 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     final id = group.modules[index];
     // A module's action belongs to that module's own tab and shows only
     // while the tab is the active one — a solo module's tab always is. The
-    // builder runs only when its result will be seen; `hasAction` is what
-    // holds the room open on the other tabs, so nothing resizes as the
-    // selection moves.
-    final active = group.modules.length == 1 || index == group.selected;
-    final action = widget.tabActions?[id];
-    return Expanded(
-      child: _TabDropSlot(
+    // builder runs only when its result will be seen.
+    final solo = group.modules.length == 1;
+    final active = solo || index == group.selected;
+    // The slot holds one thing or the other, never both: what a pane offers
+    // while it is being USED, or — while the layout is being edited — its
+    // layout options. They are different questions, and edit mode is when
+    // only the second one can be answered.
+    final action = widget.editing
+        ? (widget.editingPaneControls == null ? null : (ctx) => widget.editingPaneControls!(ctx, id))
+        : widget.tabActions?[id];
+    // Unwrapped: the two strips wrap it differently — see [_buildGroup].
+    return _TabDropSlot(
         index: index,
         onDrop: (dragged, at) => _handleTabDrop(dragged, group, at),
         child: _DockTab(
         title: widget.titles[id] ?? id,
         selected: index == group.selected,
-        showHandle: active,
-        hasAction: action != null,
+        editing: widget.editing,
+        // A group of one is a PANE, not a tab bar of one: it renders as a
+        // plain title bar, like the fixed split's. There is nothing to
+        // select, so nothing should look selectable.
+        solo: solo,
+        isFirst: index == 0,
+        isLast: index == group.modules.length - 1,
+        // Every tab while editing, not just the active one: the handle is
+        // what says a tab can be moved, and a group whose three tabs show one
+        // handle between them reads as one movable pane and two fixed ones.
+        showHandle: widget.editing,
+        // Reserved only where it will be USED while editing. The reservation
+        // exists to keep labels from shifting as the selection moves, and a
+        // tab that can be squeezed to its handle has given that up already —
+        // holding a chrome-height slot open on it would put a floor under the
+        // squeeze at five times the handle's width.
         action: active ? action?.call(context) : null,
         // State, not arrangement: this emits through onStateChanged, and
         // must never reach onSpecChanged. A tab tap that rewrote the saved
@@ -748,10 +1087,22 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
           _emitState();
         },
         moduleId: id,
-          onDragStarted: (id) => setState(() => _dragging = id),
-          onDragEnded: () => setState(() => _dragging = null),
+          onPointerDownAt: (position) => _pressGlobal = position,
+          onDragStarted: (id) => setState(() {
+            _dragging = id;
+            _dragTravel = 0;
+            _lastDragLocal = null;
+            final press = _pressGlobal;
+            _deleteArmed = press == null || !_isOnDeleteTarget(press);
+          }),
+          onDragUpdate: _trackDragTravel,
+          onDragEnded: () => setState(() {
+            _dragging = null;
+            _dragTravel = 0;
+            _lastDragLocal = null;
+            _deleteArmed = false;
+          }),
         ),
-      ),
     );
   }
 
@@ -769,9 +1120,14 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   Widget _buildGroup(DockGroup group) {
     final theme = Theme.of(context);
     final headerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    // See [headerlessModules] for the two overrides.
+    final showHeader = widget.editing ||
+        group.modules.length > 1 ||
+        !widget.headerlessModules.contains(group.modules.first);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (showHeader)
         Material(
           color: headerColor,
           child: SizedBox(
@@ -807,30 +1163,101 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                   // scroll view, which is fine — the strip is primarily
                   // tapped, and it usually fits).
                   child: LayoutBuilder(
-                    builder: (context, constraints) => SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                        child: IntrinsicWidth(
-                          child: Row(
-                            // Stretch, not the default center: centered, a tab
-                            // shrink-wraps its label and paints its
-                            // bottom-border selection indicator at the LABEL's
-                            // bottom edge, well above the strip's — the same
-                            // trap operation_view's _narrowTabBar solves with
-                            // an explicit height. Stretch is what reaches the
-                            // strip's height from here: RenderFlex stretches
-                            // to its incoming maxHeight, and the horizontal
-                            // viewport passes the strip's height through as
-                            // that max.
+                    builder: (context, constraints) {
+                      // Stretch, not the default center, in both strips:
+                      // centered, a tab shrink-wraps its label and paints its
+                      // bottom-border selection indicator at the LABEL's
+                      // bottom edge, well above the strip's — the same trap
+                      // operation_view's _narrowTabBar solves with an explicit
+                      // height. Stretch is what reaches the strip's height
+                      // from here: RenderFlex stretches to its incoming
+                      // maxHeight, and the horizontal viewport passes the
+                      // strip's height through as that max.
+                      if (widget.editing) {
+                        // The editing strip does NOT scroll. Scrolling is the
+                        // right answer while the dock is being used — the
+                        // operator is reading tabs, and a squeezed one reads
+                        // as nothing. Mid-rearrange it is the wrong one: the
+                        // tab scrolled out of sight is as likely as not the
+                        // one being worked on, and the handles are what the
+                        // strip is for. So it squeezes instead, and the tab
+                        // that is SHOWING is the one that keeps its name.
+                        final count = group.modules.length;
+                        final floor = _DockTab.activeMinWidth(context);
+                        // Even shares while they are wide enough to read, and
+                        // only then the showing tab's floor — the squeeze is
+                        // what a narrow strip costs, not a permanent shape.
+                        final squeezing = count > 1 && constraints.maxWidth / count < floor;
+                        if (!squeezing) {
+                          return Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              for (var i = 0; i < group.modules.length; i++) _buildTab(context, group, i),
+                              for (var i = 0; i < count; i++) Expanded(child: _buildTab(context, group, i)),
+                            ],
+                          );
+                        }
+                        // What is left over, shared out. CONTINUOUS rather
+                        // than a step down to the handle: the others give up
+                        // exactly what the showing tab needs and no more, so a
+                        // strip a few points too narrow costs a few points of
+                        // label rather than every label at once — but never
+                        // past the grab handle, which is a fixed box and
+                        // overflows the Row rather than shrinking with it.
+                        final others = math.max(
+                          _DockTab.squeezedMinWidth,
+                          (constraints.maxWidth - floor) / (count - 1),
+                        );
+                        final rest = others * (count - 1);
+                        if (floor + rest <= constraints.maxWidth) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var i = 0; i < count; i++)
+                                if (i == group.selected)
+                                  // Expanded, not the floor: it takes what the
+                                  // others left, which is the floor plus
+                                  // whatever rounding they gave back.
+                                  Expanded(child: _buildTab(context, group, i))
+                                else
+                                  SizedBox(width: others, child: _buildTab(context, group, i)),
+                            ],
+                          );
+                        }
+                        // Not even handles fit. Scrolling is the wrong answer
+                        // while rearranging — see above — but it is the only
+                        // one left that does not paint a tab over its
+                        // neighbour, and a strip this narrow has already lost
+                        // the argument.
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var i = 0; i < count; i++)
+                                SizedBox(
+                                  width: i == group.selected ? floor : others,
+                                  child: _buildTab(context, group, i),
+                                ),
                             ],
                           ),
+                        );
+                      }
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                          child: IntrinsicWidth(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (var i = 0; i < group.modules.length; i++)
+                                  Expanded(child: _buildTab(context, group, i)),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 );
               },
@@ -847,19 +1274,56 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               // established — re-wrapping with a hardcoded value would
               // shadow it (InheritedWidget lookup finds only the nearest
               // ancestor).
-              IndexedStack(
-                // Tight constraints, like a TabBarView page — panes are
-                // designed to fill their pane, not shrink-wrap.
-                sizing: StackFit.expand,
-                index: group.selected,
-                children: [
-                  for (var i = 0; i < group.modules.length; i++)
-                    DockPaneVisibility(
-                      visible: i == group.selected,
-                      child: widget.children[group.modules[i]] ?? _missingPane(group.modules[i]),
+              // While editing, the pane's own contents take no pointer input.
+              // A pane is a block to be moved then, and its insides are a
+              // picture of what the block holds: a drag begun inside the log
+              // would otherwise be taken by the log's own scroll or selection
+              // gestures, and a tap would put the caret in a field the
+              // operator can't see the point of typing into.
+              // ExcludeFocus alongside it, which IgnorePointer does not
+              // imply: whatever held focus when editing began keeps it
+              // otherwise, and in this app that is a logging field — now
+              // under an opaque wash, still taking keystrokes, still
+              // submitting the QSO on Enter. ExcludeSemantics for the same
+              // reason one level up: a screen reader must not land on a
+              // control that is only a picture of itself right now.
+              ExcludeSemantics(
+                excluding: widget.editing,
+                child: ExcludeFocus(
+                  excluding: widget.editing,
+                  child: IgnorePointer(
+                    ignoring: widget.editing,
+                // The pane gives up the room the outline needs rather than
+                // being painted over: while editing it is a little smaller on
+                // its three free sides, and the line sits in what it gave up.
+                // Nothing on the top — the tab strip's own segments are the
+                // outline there, and the strip has not moved.
+                    child: Padding(
+                      padding: widget.editing
+                          ? const EdgeInsets.only(
+                              left: _editingFrameWidth,
+                              right: _editingFrameWidth,
+                              bottom: _editingFrameWidth,
+                            )
+                          : EdgeInsets.zero,
+                      child: IndexedStack(
+                        // Tight constraints, like a TabBarView page — panes
+                        // are designed to fill their pane, not shrink-wrap.
+                        sizing: StackFit.expand,
+                        index: group.selected,
+                        children: [
+                          for (var i = 0; i < group.modules.length; i++)
+                            DockPaneVisibility(
+                              visible: i == group.selected,
+                              child: widget.children[group.modules[i]] ?? _missingPane(group.modules[i]),
+                            ),
+                        ],
+                      ),
                     ),
-                ],
+                  ),
+                ),
               ),
+              if (widget.editing) const IgnorePointer(child: _EditingPaneWash()),
               // Cross-faded rather than mounted outright: bands that appear
               // the instant a drag starts read as a flicker under the
               // pointer, and on drop they would vanish before the layout
@@ -870,6 +1334,11 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                     ? const SizedBox.shrink()
                     : _GroupDropRegions(washAlpha: _hitWashAlpha, onDrop: (id, region) => _handleDrop(id, group, region)),
               ),
+              // Last, so the outline is over the drop bands too — otherwise
+              // the pane being aimed at loses its own edges at the moment it
+              // matters most.
+              if (widget.editing)
+                const Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _PaneFramePainter()))),
             ],
           ),
         ),
@@ -878,16 +1347,111 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   }
 }
 
+/// A tab's action while the dock is being USED, painted quiet and coming up
+/// to full strength under the pointer.
+///
+/// Quiet because it is not what the tab is FOR: the tab is a name to read and
+/// a place to tap, and a control at full contrast beside every name competes
+/// with the one thing the strip exists to say. It has to stay findable
+/// though, so it darkens against the header rather than fading out — visible
+/// at a glance, unmistakable once aimed at.
+///
+/// The recolour is a [ColorFilter], not a colour passed down: the action is
+/// the CALLER's widget and has already chosen its own colour (it is the same
+/// button the fixed split's title bar shows, where it must read against that
+/// header instead). srcIn repaints whatever it is handed.
+class _QuietTabAction extends StatefulWidget {
+  final Widget child;
+
+  const _QuietTabAction({required this.child});
+
+  @override
+  State<_QuietTabAction> createState() => _QuietTabActionState();
+}
+
+class _QuietTabActionState extends State<_QuietTabAction> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final header = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final active = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    final quiet = quietTabActionTone(header, active);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: TweenAnimationBuilder<Color?>(
+        duration: const Duration(milliseconds: 150),
+        tween: ColorTween(end: _hovered ? active : quiet),
+        builder: (context, color, child) => ColorFiltered(
+          colorFilter: ColorFilter.mode(color ?? quiet, BlendMode.srcIn),
+          child: child,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Where a quiet tab action's resting tone starts, as a fraction of the way
+/// from the header toward black.
+const double _quietening = 0.35;
+
+/// The least contrast an interactive control may have against what it sits on
+/// (WCAG 1.4.11). A control the operator cannot find is not quiet, it is
+/// missing — and for an extension panel this button is the only way to its
+/// settings form, with no hover to bring it up on a touch screen.
+const double _minQuietContrast = 3.0;
+
+/// The resting tone for a [_QuietTabAction] on [header]: [_quietening] of the
+/// way to black, and further if that does not clear [_minQuietContrast].
+/// Derived rather than fixed because the header colour is the edition's, and a
+/// constant that reads on one is invisible on another.
+///
+/// Darkening is the whole look — the control recedes INTO its header rather
+/// than fading off it. A header already so dark that nothing below it clears
+/// the floor has no quiet tone to offer, so [active] is used unchanged: a
+/// control at full strength is a worse-looking header than intended, and an
+/// invisible one is a feature the operator cannot reach.
+@visibleForTesting
+Color quietTabActionTone(Color header, Color active) {
+  for (var t = _quietening; t < 1.0; t += 0.05) {
+    final tone = Color.lerp(header, Colors.black, t)!;
+    if (_contrastBetween(tone, header) >= _minQuietContrast) return tone;
+  }
+  return active;
+}
+
+double _contrastBetween(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+}
+
 /// One tab in a group header: tap to select, drag to move the module. The
 /// drag-indicator dots mark it as a handle.
 class _DockTab extends StatelessWidget {
   final String title;
   final bool selected;
-  final bool showHandle;
 
-  /// Whether this module has an action at all — reserves its room whether or
-  /// not [action] is being shown right now.
-  final bool hasAction;
+  /// See [DockLayoutView.editing]. Off, this tab is only a tab — no
+  /// [Draggable] wraps it at all, so there is no drag gesture competing with
+  /// the tap, and no grab cursor promising a move that isn't offered.
+  final bool editing;
+
+  /// Whether this is its group's ONLY module, in which case it is not a tab
+  /// at all: no selection indicator, no tap, not announced as a tab, and its
+  /// title reads from the leading edge like the fixed split's pane title bar.
+  /// A tab bar of one offers a choice that does not exist.
+  final bool solo;
+
+  /// Position in the strip, for the editing outline — see
+  /// [_TabFramePainter.isFirst].
+  final bool isFirst;
+  final bool isLast;
+
+  final bool showHandle;
 
   /// The module's own action (a settings button), shown at the tab's trailing
   /// edge while this tab is the active one.
@@ -895,22 +1459,74 @@ class _DockTab extends StatelessWidget {
 
   final VoidCallback onTap;
   final String moduleId;
+  final ValueChanged<Offset> onPointerDownAt;
   final ValueChanged<String> onDragStarted;
+  final ValueChanged<Offset> onDragUpdate;
   final VoidCallback onDragEnded;
 
   const _DockTab({
     required this.title,
     required this.selected,
+    required this.editing,
+    required this.solo,
+    required this.isFirst,
+    required this.isLast,
     required this.showHandle,
-    required this.hasAction,
     required this.action,
     required this.onTap,
     required this.moduleId,
+    required this.onPointerDownAt,
     required this.onDragStarted,
+    required this.onDragUpdate,
     required this.onDragEnded,
   });
 
-  static const double _handleSize = 16;
+  /// The grab handle exists only while editing ([showHandle] IS `editing`),
+  /// so there is one size and one strength: it is the control the operator
+  /// is there to use, not a hint that a tab could be moved.
+  static const double _editingHandleSize = 20;
+
+  /// The least the SHOWING tab is squeezed to while editing: both slots — its
+  /// grab handle and its options button — and enough between them for three
+  /// letters and an ellipsis. Less than that and the one tab whose name the
+  /// operator still needs is showing nothing but punctuation.
+  ///
+  /// Measured rather than guessed at, so it holds at every font scale: a
+  /// fixed number is a number for one scale, and the strip would collapse
+  /// early at Larger and late at Smallest.
+  static double activeMinWidth(BuildContext context) {
+    // [textWidth], not a bare TextPainter: it folds in the ambient text style
+    // and the current textScaler, so this holds under OS/accessibility text
+    // sizing too. A hand-rolled painter measures the unscaled string and
+    // under-reserves by however much the operator has turned their text up.
+    final width = textWidth(
+      context,
+      'Abc…',
+      Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle(),
+    );
+    // Every box between the tab's two edges: the handle, the action, the
+    // label's own inset either side of it (see [_tabContent]) and the tab's
+    // padding. Leave one out and the floor is that much short — the tab
+    // ellipsizes below the three letters this exists to keep.
+    return _editingHandleSize + _editingActionSize + width + Space.sm * 2 + Space.xxs * 2;
+  }
+
+  /// The least a tab being squeezed can be given: its grab handle and the
+  /// tab's own padding, both fixed boxes. Below this the Row overflows
+  /// instead of shrinking, and the handle paints over the neighbouring tab.
+  static const double squeezedMinWidth = _editingHandleSize + Space.xxs * 2;
+
+  /// What a tab's action is given while editing — its own icon and a little
+  /// around it, rather than the chrome-height tap target it gets while the
+  /// dock is being USED.
+  ///
+  /// The slots are deliberately UNEQUAL here, unlike everywhere else in this
+  /// tab: equal slots keep the label centred and fixed as the selection
+  /// moves, and that is worth two full chrome heights when an operator is
+  /// reading tab names. Mid-rearrange it is not — a squeezed tab spending
+  /// 96pt on a 20pt handle and a 24pt glyph shows "SP…" where it could show
+  /// the word.
+  static const double _editingActionSize = 32;
 
   /// A tab's contents: the grab handle pinned to its leading edge, the
   /// module's action to its trailing edge, and the label centered between
@@ -928,27 +1544,83 @@ class _DockTab extends StatelessWidget {
   /// An action is assumed no wider than one chrome row is tall (the tap
   /// target an icon button in this strip gets) — again as `_narrowTabBar`
   /// assumes for its own trailing button.
+  /// A tab's contents: the grab handle (while editing) at the leading edge,
+  /// then the module's name, then its action — packed together, with the
+  /// slack after them.
+  ///
+  /// They read as ONE thing that way: the name says what the pane is and the
+  /// action acts on it, and a control at the far edge of a wide tab reads as
+  /// the strip's rather than as that pane's. The name is left-aligned for the
+  /// same reason a pane title is — it is a heading, and a heading starts
+  /// where the eye already is.
   Widget _tabContent(BuildContext context, Color labelColor, {required TextStyle? style}) {
-    final slot = hasAction ? math.max(_handleSize, LayoutDensity.chromeHeightOf(context)) : _handleSize;
     return Row(
       children: [
-        SizedBox(
-          width: slot,
-          child: showHandle
-              ? Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Icon(MdiIcons.dragVertical, size: _handleSize, color: labelColor.withValues(alpha: 0.6)),
-                )
-              : null,
-        ),
-        Expanded(child: Center(child: Text(title, style: style?.copyWith(color: labelColor)))),
-        SizedBox(
-          width: slot,
-          child: action == null ? null : Align(alignment: AlignmentDirectional.centerEnd, child: action),
+        if (showHandle)
+          SizedBox(
+            width: _editingHandleSize,
+            child: Icon(MdiIcons.dragVertical, size: _editingHandleSize, color: labelColor),
+          ),
+        Expanded(
+          child: Row(
+            children: [
+              // Flexible, so a squeezed tab's name gives up its width down to
+              // nothing rather than forcing the tab to stay as wide as one
+              // line of text.
+              Flexible(
+                child: Padding(
+                  // A pane heading takes the fixed split's own title-bar
+                  // inset, so a solo dock pane and the split's logging pane
+                  // read as the same kind of thing. A tab with no handle
+                  // starts its name at that same inset — nothing else stands
+                  // between the name and the tab's edge — while a tab being
+                  // rearranged gives it back to the handle already sitting
+                  // there. The trailing side stays tight either way: it is
+                  // the gap to the options button, not an edge.
+                  padding: EdgeInsetsDirectional.only(
+                    start: showHandle ? Space.sm : Space.lg,
+                    end: solo ? Space.lg : Space.sm,
+                  ),
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    // A pane's name is what the operator is arranging BY while
+                    // editing — the tab is otherwise a handle and a border
+                    // with some text between them.
+                    style: (editing ? style?.copyWith(fontWeight: FontWeight.bold) : style)
+                        ?.copyWith(color: labelColor),
+                  ),
+                ),
+              ),
+              if (action != null) _actionSlot(context),
+            ],
+          ),
         ),
       ],
     );
   }
+
+  /// The module's action, sized to what is in it: its glyph while editing
+  /// (see [_editingActionSize]), a full tap target otherwise.
+  Widget _actionSlot(BuildContext context) => SizedBox(
+    width: editing ? _editingActionSize : LayoutDensity.chromeHeightOf(context),
+    child: editing
+        ? IconButtonTheme(
+            // Tightened to its glyph. The tap target shrinks with it, which
+            // is the trade: a control pressed once per rearrange, against
+            // letters in the name of the pane being rearranged.
+            data: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                minimumSize: const Size.square(_editingActionSize),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            child: action!,
+          )
+        : _QuietTabAction(child: action!),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -957,12 +1629,75 @@ class _DockTab extends StatelessWidget {
     // Only used for the drag ghost below — the live tab's own label color
     // comes from TabChrome, which resolves the same way.
     final ghostLabelColor = (selected ? tabTheme.labelColor : tabTheme.unselectedLabelColor) ?? theme.colorScheme.onPrimary;
+    // A group of one is a pane with a title bar, not a tab bar of one: no
+    // TabChrome at all, so there is no selection indicator, no tap, and
+    // nothing announced to a screen reader as a tab. Its colour comes from
+    // the app bar's, like the fixed split's title bar, rather than from the
+    // tab theme's label roles — which are about selected-vs-not, a
+    // distinction this has no second thing to make.
+    final tab = solo
+        ? Semantics(
+            header: true,
+            label: title,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+              child: _tabContent(
+                context,
+                theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+          )
+        : TabChrome(
+            selected: selected,
+            semanticLabel: title,
+            // Far tighter than a stock tab's label padding: the handle and the
+            // action live in this inset, and a grab handle set in from its own
+            // tab's edge reads as decoration next to the label rather than as
+            // the tab's own corner.
+            padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+            onTap: onTap,
+            // While editing, the outline marks the showing tab and its bottom
+            // is deliberately open — the pane runs into it. The stock
+            // indicator sits across exactly that opening.
+            showIndicator: !editing,
+            builder: (context, labelColor) =>
+                _tabContent(context, labelColor, style: Theme.of(context).textTheme.titleSmall),
+          );
+    // Outside edit mode the tab is only a tab. Not a disabled Draggable but
+    // no Draggable at all: one that merely refuses still enters the gesture
+    // arena against the tap, so tabs would answer a click late — or not at
+    // all, once the pointer moved a few pixels first.
+    if (!editing) return tab;
+    // A Material rather than a DecoratedBox: it becomes the nearest one above
+    // the tab's InkWell, so hover and press still land ON the fill instead of
+    // splashing on the strip underneath, out of sight.
+    final filledTab = selected
+        ? Material(
+            color: _editingSelectedTabColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(_editingFrameRadius)),
+            child: tab,
+          )
+        : tab;
+    // A foreground painter, so the outline lands over the tab's own selection
+    // indicator and over the fill, rather than under either.
+    final framedTab = CustomPaint(
+      foregroundPainter: _TabFramePainter(selected: selected, isFirst: isFirst, isLast: isLast),
+      child: filledTab,
+    );
     return MouseRegion(
       cursor: SystemMouseCursors.grab,
-      child: Draggable<String>(
+      // Pointer-down, not drag start: `onDragStarted` carries no position,
+      // and the delete target's arming rule is about where the press LANDED.
+      // Reading it from the first drag update instead would mean the pointer
+      // has already moved, which is the one thing the rule has to tell apart.
+      child: Listener(
+        onPointerDown: (event) => onPointerDownAt(event.position),
+        child: Draggable<String>(
         data: moduleId,
         dragAnchorStrategy: pointerDragAnchorStrategy,
         onDragStarted: () => onDragStarted(moduleId),
+        onDragUpdate: (details) => onDragUpdate(details.globalPosition),
         onDragEnd: (_) => onDragEnded(),
         onDraggableCanceled: (_, _) => onDragEnded(),
         feedback: Material(
@@ -985,17 +1720,7 @@ class _DockTab extends StatelessWidget {
             child: _tabContent(context, ghostLabelColor, style: theme.textTheme.titleSmall),
           ),
         ),
-        child: TabChrome(
-          selected: selected,
-          semanticLabel: title,
-          // Far tighter than a stock tab's label padding: the handle and the
-          // action live in this inset, and a grab handle set in from its own
-          // tab's edge reads as decoration next to the label rather than as
-          // the tab's own corner. The label stays centred regardless — the
-          // slots either side of it are equal.
-          padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
-          onTap: onTap,
-          builder: (context, labelColor) => _tabContent(context, labelColor, style: Theme.of(context).textTheme.titleSmall),
+        child: framedTab,
         ),
       ),
     );
@@ -1224,6 +1949,68 @@ class _TabDropSlotState extends State<_TabDropSlot> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Where a pane goes to be thrown away: a circle at the top of the dock,
+/// live only while something is being dragged.
+///
+/// Deleting is a DRAG destination rather than a button on the pane, and that
+/// is the whole point of it — a control sitting on every pane is one an
+/// operator can hit by accident while doing something else, and the thing it
+/// destroys is a pane they had arranged and configured. Reaching this one
+/// takes a deliberate journey with the pane already in hand — and a second
+/// route, for a pointer that cannot make that journey, lives in the pane's
+/// own layout options.
+///
+/// Bigger than a tap target and flush against the top edge, so a pane thrown
+/// upwards lands on it: mid-drag the pointer is already busy, and a target
+/// with a gap above it has to be aimed at.
+class _DeleteDropTarget extends StatelessWidget {
+  final ValueChanged<String> onDrop;
+
+  const _DeleteDropTarget({required this.onDrop});
+
+  /// Against the header's own height rather than a fixed number: this sits at
+  /// the very top of the dock, right under that header, and the two read as
+  /// one band.
+  static const double _sizeFactor = 1.4;
+
+  /// The circle's diameter in the dock's own coordinates. Shared with the
+  /// arming rule, which is about this exact geometry — a constant beside it
+  /// would be wrong at every density but one.
+  static double diameterIn(BuildContext context) => LayoutDensity.chromeHeightOf(context) * _sizeFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = diameterIn(context);
+    return DragTarget<String>(
+      onAcceptWithDetails: (details) => onDrop(details.data),
+      builder: (context, candidates, _) {
+        final armed = candidates.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          curve: layoutAnimationCurve,
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            // Solid once the pane is over it. Short of that it is a
+            // suggestion, not the loudest thing on a screen the operator is
+            // in the middle of rearranging.
+            color: theme.colorScheme.error.withValues(alpha: armed ? 1.0 : 0.75),
+            border: Border.all(color: theme.colorScheme.onError, width: armed ? 3 : 0),
+          ),
+          child: Icon(
+            MdiIcons.trashCanOutline,
+            color: theme.colorScheme.onError,
+            size: size * 0.5,
+            semanticLabel: MaterialLocalizations.of(context).deleteButtonTooltip,
+          ),
+        );
+      },
     );
   }
 }

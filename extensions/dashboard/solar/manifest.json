@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "description": "Solar flux, A and K indices and sunspot number, from N0NBH's hamqsl.com feed",
   "category": "dashboard",
-  "experiments": ["layouts"],
+  "experiments": ["panels"],
   "enabledByDefault": false,
   "icon": "white-balance-sunny",
   "keywords": ["solar", "propagation", "sfi", "kindex", "dashboard", "panel"],

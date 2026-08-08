@@ -224,6 +224,139 @@ void main() {
       expect(reportedScale, 1.0);
       expect(find.byType(Transform), findsNothing); // no transform inserted
     });
+
+    testWidgets('SubtreeUiScale scales a pane UNIFORMLY, whatever shape the pane is', (tester) async {
+      // The bug this exists to prevent: UiScale sizes its inner box to the
+      // ambient MediaQuery — the WINDOW — and lets BoxFit.fill stretch it to
+      // the constraints it is given. At the root those agree. Nested in a
+      // pane they do not, so the two axes stretch by different factors and a
+      // square comes out a rectangle: on screen, text that went NARROWER
+      // instead of larger. Nothing throws.
+      //
+      // A tall, narrow pane in a wide window makes the two disagree as much
+      // as possible.
+      tester.view.physicalSize = const Size(1000, 500);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      late double reportedScale;
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(1000, 500)),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 200,
+                height: 400,
+                child: SubtreeUiScale(
+                  scale: 2.0,
+                  child: Builder(builder: (context) {
+                    reportedScale = UiScale.of(context);
+                    return const Align(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(key: Key('square'), width: 50, height: 50),
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final painted = tester.getRect(find.byKey(const Key('square')));
+      expect(painted.width, painted.height, reason: 'a square must stay square — this is the whole defect');
+      // And at the factor asked for, not merely uniformly wrong.
+      expect(painted.width, 100);
+      // The ABSOLUTE scale, which is what PixelGrid snaps against.
+      expect(reportedScale, 2.0);
+    });
+
+    testWidgets('SubtreeUiScale magnifies under LOOSE constraints too', (tester) async {
+      // The same trap the root UiScale hit, in the same way: FittedBox only
+      // scales up to the constraints it is GIVEN, and a LayoutBuilder passes
+      // its incoming ones straight through — so measuring them is not the
+      // same as tightening them. Handed loose ones the box shrink-wraps and
+      // the mechanism degrades silently: the subtree lays out in the divided
+      // space (so MORE fits on screen, and the pane looks like it shrank) but
+      // is never magnified.
+      tester.view.physicalSize = const Size(600, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(600, 600)),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            // A Stack hands its non-positioned children loose constraints —
+            // which is exactly what sits above this in the real view.
+            child: Stack(
+              children: [
+                SubtreeUiScale(
+                  scale: 2.0,
+                  child: Builder(
+                    builder: (context) => const Align(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(key: Key('square'), width: 50, height: 50),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.getRect(find.byKey(const Key('square'))).width, 100);
+    });
+
+    testWidgets('SubtreeUiScale at the scale already in force draws the same and keeps its shape', (tester) async {
+      late Size innerSize;
+      Future<void> pumpAt(double subtree) => tester.pumpWidget(
+            MediaQuery(
+              data: const MediaQueryData(size: Size(800, 800)),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: UiScale(
+                  scale: 1.4,
+                  child: SizedBox(
+                    width: 400,
+                    height: 400,
+                    child: SubtreeUiScale(
+                      scale: subtree,
+                      child: Builder(builder: (context) {
+                        innerSize = MediaQuery.sizeOf(context);
+                        return const SizedBox(key: Key('box'), width: 100, height: 100);
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+      // Asking for the level already in effect is a no-op in what it DRAWS —
+      // the relative factor is 1.0, so nothing below is divided or magnified.
+      await pumpAt(1.4);
+      final identitySize = innerSize;
+      final identityBox = tester.getRect(find.byKey(const Key('box')));
+      final atIdentity = find.byType(FittedBox).evaluate().length;
+
+      // But it must not be a no-op in the TREE. Returning the child unwrapped
+      // at 1.0 makes the widget chain a function of the value, so dialling a
+      // pane's override past whatever the app is already at unmounts the
+      // pane's whole subtree on the way through — a map reloading its tiles,
+      // a half-typed field cleared.
+      await pumpAt(1.9);
+      expect(find.byType(FittedBox).evaluate().length, atIdentity);
+      // And it still scales: a level ABOVE the ambient one divides the space
+      // the subtree lays out in, while painting to the same box on screen.
+      expect(innerSize.width, moreOrLessEquals(identitySize.width * 1.4 / 1.9, epsilon: 0.01));
+      expect(tester.getRect(find.byKey(const Key('box'))).width, moreOrLessEquals(identityBox.width, epsilon: 0.01));
+    });
   });
 
   group('Keyboard Shortcuts', () {

@@ -877,6 +877,7 @@ class Translations$settings$en {
 	String get fontScale => 'Font Scale';
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
+	late final Translations$settings$layoutCustomization$en layoutCustomization = Translations$settings$layoutCustomization$en.internal(_root);
 
 	/// en: 'Layout Density'
 	String get layoutDensity => 'Layout Density';
@@ -1676,14 +1677,8 @@ class Translations$operation$layout$en {
 
 	// Translations
 
-	/// en: 'Layout Setup'
-	String get title => 'Layout Setup';
-
-	/// en: 'Layout setup'
-	String get openLabel => 'Layout setup';
-
-	/// en: 'Panels in this view'
-	String get panelsSection => 'Panels in this view';
+	/// en: 'Add a Panel'
+	String get title => 'Add a Panel';
 
 	/// en: 'Available panels'
 	String get availableSection => 'Available panels';
@@ -1691,8 +1686,71 @@ class Translations$operation$layout$en {
 	/// en: '${panel} settings'
 	String panelSettings({required Object panel}) => '${panel} settings';
 
-	/// en: 'Remove ${panel}'
-	String removePanel({required Object panel}) => 'Remove ${panel}';
+	/// en: 'Panel Settings'
+	String get panelSettingsAction => 'Panel Settings';
+
+	/// en: 'Operation View'
+	String get viewName => 'Operation View';
+
+	/// en: 'View layout options'
+	String get viewOptions => 'View layout options';
+
+	/// en: 'This view is one of the app's own, so its name is too'
+	String get viewTitleBuiltIn => 'This view is one of the app\'s own, so its name is too';
+
+	/// en: 'Restore Defaults'
+	String get resetOptions => 'Restore Defaults';
+
+	/// en: 'Remove'
+	String get removePane => 'Remove';
+
+	/// en: 'Restore ${panel} to its defaults?'
+	String resetPaneConfirm({required Object panel}) => 'Restore ${panel} to its defaults?';
+
+	/// en: 'Its title, header and size go back to the defaults. Nothing else in the layout changes.'
+	String get resetPaneConfirmBody => 'Its title, header and size go back to the defaults. Nothing else in the layout changes.';
+
+	/// en: 'Restore this view to its default layout?'
+	String get resetViewConfirm => 'Restore this view to its default layout?';
+
+	/// en: 'The panels go back to their default arrangement, and the view's options and every panel's go back to the defaults.'
+	String get resetViewConfirmBody => 'The panels go back to their default arrangement, and the view\'s options and every panel\'s go back to the defaults.';
+
+	/// en: '${panel} Layout'
+	String paneOptionsTitle({required Object panel}) => '${panel} Layout';
+
+	/// en: 'Title'
+	String get paneTitle => 'Title';
+
+	/// en: 'Your own name for this pane, instead of the panel's'
+	String get paneTitleDescription => 'Your own name for this pane, instead of the panel\'s';
+
+	/// en: 'Show header'
+	String get paneShowHeader => 'Show header';
+
+	/// en: 'Show this pane's title bar'
+	String get paneShowHeaderDescription => 'Show this pane\'s title bar';
+
+	/// en: 'Always shown while this pane shares a group — the header is how the others are reached'
+	String get paneShowHeaderTabset => 'Always shown while this pane shares a group — the header is how the others are reached';
+
+	/// en: 'Advanced Options'
+	String get paneAdvanced => 'Advanced Options';
+
+	/// en: 'Same as the app'
+	String get paneInherit => 'Same as the app';
+
+	/// en: 'For this pane only'
+	String get paneOverrideDescription => 'For this pane only';
+
+	/// en: 'Search panels'
+	String get searchHint => 'Search panels';
+
+	/// en: 'No panel matches your search.'
+	String get noPanelsMatch => 'No panel matches your search.';
+
+	/// en: 'This view already has all possible panels'
+	String get nothingToAdd => 'This view already has all possible panels';
 
 	/// en: 'Add ${panel}'
 	String addPanel({required Object panel}) => 'Add ${panel}';
@@ -1706,14 +1764,14 @@ class Translations$operation$layout$en {
 	/// en: 'This panel's preview image could not be shown.'
 	String get previewUnavailable => 'This panel\'s preview image could not be shown.';
 
-	/// en: 'Layout Options'
-	String get optionsTitle => 'Layout Options';
+	/// en: 'Edit Layout'
+	String get editLayout => 'Edit Layout';
 
-	/// en: 'Options'
-	String get options => 'Options';
+	/// en: 'Save Layout'
+	String get saveLayout => 'Save Layout';
 
-	/// en: 'Reset layout'
-	String get resetLayout => 'Reset layout';
+	/// en: 'Discard layout changes'
+	String get revertLayout => 'Discard layout changes';
 
 	/// en: 'Done'
 	String get done => 'Done';
@@ -2100,6 +2158,24 @@ class Translations$settings$fontScaleOpts$en {
 
 	/// en: 'Largest++'
 	String get largestPlusPlus => 'Largest++';
+}
+
+// Path: settings.layoutCustomization
+class Translations$settings$layoutCustomization$en {
+	Translations$settings$layoutCustomization$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Enable Layout Customization'
+	String get title => 'Enable Layout Customization';
+
+	/// en: 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own'
+	String get descriptionOn => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own';
+
+	/// en: 'The logging view uses its standard arrangement'
+	String get descriptionOff => 'The logging view uses its standard arrangement';
 }
 
 // Path: settings.layoutDensityOpts
@@ -3702,19 +3778,38 @@ extension on Translations {
 			'operation.menu.loggingSettingsTitle' => 'Logging Settings',
 			'operation.menu.actionsSection' => 'Actions',
 			'operation.menu.relevantSettingsSection' => 'Relevant Settings',
-			'operation.layout.title' => 'Layout Setup',
-			'operation.layout.openLabel' => 'Layout setup',
-			'operation.layout.panelsSection' => 'Panels in this view',
+			'operation.layout.title' => 'Add a Panel',
 			'operation.layout.availableSection' => 'Available panels',
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} settings',
-			'operation.layout.removePanel' => ({required Object panel}) => 'Remove ${panel}',
+			'operation.layout.panelSettingsAction' => 'Panel Settings',
+			'operation.layout.viewName' => 'Operation View',
+			'operation.layout.viewOptions' => 'View layout options',
+			'operation.layout.viewTitleBuiltIn' => 'This view is one of the app\'s own, so its name is too',
+			'operation.layout.resetOptions' => 'Restore Defaults',
+			'operation.layout.removePane' => 'Remove',
+			'operation.layout.resetPaneConfirm' => ({required Object panel}) => 'Restore ${panel} to its defaults?',
+			'operation.layout.resetPaneConfirmBody' => 'Its title, header and size go back to the defaults. Nothing else in the layout changes.',
+			'operation.layout.resetViewConfirm' => 'Restore this view to its default layout?',
+			'operation.layout.resetViewConfirmBody' => 'The panels go back to their default arrangement, and the view\'s options and every panel\'s go back to the defaults.',
+			'operation.layout.paneOptionsTitle' => ({required Object panel}) => '${panel} Layout',
+			'operation.layout.paneTitle' => 'Title',
+			'operation.layout.paneTitleDescription' => 'Your own name for this pane, instead of the panel\'s',
+			'operation.layout.paneShowHeader' => 'Show header',
+			'operation.layout.paneShowHeaderDescription' => 'Show this pane\'s title bar',
+			'operation.layout.paneShowHeaderTabset' => 'Always shown while this pane shares a group — the header is how the others are reached',
+			'operation.layout.paneAdvanced' => 'Advanced Options',
+			'operation.layout.paneInherit' => 'Same as the app',
+			'operation.layout.paneOverrideDescription' => 'For this pane only',
+			'operation.layout.searchHint' => 'Search panels',
+			'operation.layout.noPanelsMatch' => 'No panel matches your search.',
+			'operation.layout.nothingToAdd' => 'This view already has all possible panels',
 			'operation.layout.addPanel' => ({required Object panel}) => 'Add ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Preview ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Extension "${name}" is missing',
 			'operation.layout.previewUnavailable' => 'This panel\'s preview image could not be shown.',
-			'operation.layout.optionsTitle' => 'Layout Options',
-			'operation.layout.options' => 'Options',
-			'operation.layout.resetLayout' => 'Reset layout',
+			'operation.layout.editLayout' => 'Edit Layout',
+			'operation.layout.saveLayout' => 'Save Layout',
+			'operation.layout.revertLayout' => 'Discard layout changes',
 			'operation.layout.done' => 'Done',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
 			'operation.layout.panelRenderRetry' => 'Try again',
@@ -3985,6 +4080,9 @@ extension on Translations {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
+			'settings.layoutCustomization.title' => 'Enable Layout Customization',
+			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
+			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
 			'settings.layoutDensity' => 'Layout Density',
 			'settings.layoutDensityOpts.auto' => 'Auto',
 			'settings.layoutDensityOpts.densest' => 'Densest',
@@ -4107,6 +4205,8 @@ extension on Translations {
 			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
 			'settings.syncPanel.pendingBannerBody' => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).',
 			'settings.syncPanel.combine' => 'Combine',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.authIssueTitle' => 'Sync can\'t connect',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.',
 			'settings.syncPanel.openSettings' => 'Open Sync settings',
@@ -4129,8 +4229,6 @@ extension on Translations {
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.',
 			'settings.accounts.copyLoginLink' => 'Copy login link',
 			'settings.accounts.pastedLinkLabel' => 'Paste the link here',

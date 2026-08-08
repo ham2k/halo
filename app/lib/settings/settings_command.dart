@@ -93,6 +93,16 @@ Future<Map<String, dynamic>> searchSettingsForCommand(
     'section': entry.section,
     'fieldType': entry.fieldType,
     'valueLabel': settingValueLabel(entry),
+    // The RAW current value beside its formatted one, for the one shape that
+    // needs it: a hook that TOGGLES a setting has to know which way, and
+    // comparing localized labels to work that out would break in every
+    // language but the one it was written in.
+    //
+    // Booleans and nothing else. This crosses the extension bridge to any
+    // extension with a `command` hook, and a secret's plaintext must not —
+    // [settingValueLabel] masks it for exactly that reason, and a raw value
+    // beside the masked one would hand back what the mask exists to withhold.
+    if (entry.value is bool) 'value': entry.value,
     'simple': entry.isSimple,
     'ambiguous': isAmbiguous,
     // EVERY match, best first — not just the winner and not a capped sample.

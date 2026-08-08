@@ -6,7 +6,6 @@
   "catalogShowParams": "<configuración>",
   "catalogHide": "Desactivar una configuración",
   "catalogHideParams": "<configuración>",
-
   "noMatch": "Ninguna configuración coincide con «{{query}}»",
   "current": "{{label}}: {{value}}",
   "currentIn": "{{label}} ({{section}}): {{value}}",
@@ -15,5 +14,10 @@
   "change": "¿Cambiar {{label}} a {{value}}?",
   "alreadySet": "{{label}} ya está en {{value}}",
   "expects": "{{label}} acepta {{expects}}",
-  "confirmChanged": "{{label}} cambiado a {{value}}"
+  "confirmChanged": "{{label}} cambiado a {{value}}",
+  "catalogLayouts": "Activa o desactiva la personalización de disposición",
+  "layoutsOn": "¿Activar la personalización de disposición?",
+  "layoutsOff": "¿Desactivar la personalización de disposición?",
+  "layoutsOnConfirm": "Personalización de disposición activada",
+  "layoutsOffConfirm": "Personalización de disposición desactivada"
 }

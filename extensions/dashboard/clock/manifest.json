@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "description": "UTC and station time, plus any other clocks you add by UTC offset",
   "category": "dashboard",
-  "experiments": ["layouts"],
+  "experiments": ["panels"],
   "enabledByDefault": false,
   "icon": "clock-outline",
   "keywords": ["clock", "utc", "time", "zulu", "dashboard", "panel"],

@@ -1,12 +1,14 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The layout setup sheet, shown from the header's dashboard button via
-// showTopModalPane (docs/design/layouts.md) — the right-aligned counterpart
-// of the operation setup sheet, and the only place a pane can be taken OUT
-// of a customizable view. Where a pane SITS stays a tab drag; this sheet
-// answers which panes are in the view at all, and how to reach each one's
-// own settings.
+// The Add a Panel sheet, shown from the header's plus button while the layout
+// is being edited (docs/design/layouts.md) — the right-aligned counterpart of
+// the operation setup sheet.
+//
+// It answers ONE question: what else could go in this view. Where a pane sits
+// is a tab drag, and taking one out is a drag onto the delete target — a
+// second list of what is already in the view would be a second place to do
+// that, and the two would disagree the moment one of them was wrong.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -17,8 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../i18n/strings.g.dart';
 
-/// One row of the sheet: a pane in the view, with its own settings control
-/// where it has any.
+/// One row of the sheet: a panel that could be added to the view.
 class LayoutPanelEntry {
   final String id;
   final String title;
@@ -33,18 +34,7 @@ class LayoutPanelEntry {
   /// the panel list into a fetch.
   final String? preview;
 
-  /// Opens this panel's settings, or null when the panel declares none —
-  /// which is most of them today. A row without settings shows no control
-  /// rather than an inert one.
-  final void Function(BuildContext context)? openSettings;
-
-  const LayoutPanelEntry({
-    required this.id,
-    required this.title,
-    this.description,
-    this.preview,
-    this.openSettings,
-  });
+  const LayoutPanelEntry({required this.id, required this.title, this.description, this.preview});
 }
 
 /// A panel's preview image. SVG is drawn directly; a `data:` URI is
@@ -171,64 +161,48 @@ class _PanelPreview extends StatelessWidget {
   }
 }
 
-class LayoutSheet extends StatelessWidget {
-  /// Named so a test can tell "the Available section isn't rendered" from
-  /// "it rendered with nothing in it" — the two look identical from the
-  /// outside and only one of them is correct.
-  static const panelsSectionKey = Key('layoutSection-panels');
+class LayoutSheet extends StatefulWidget {
+  /// Named so a test can tell "the section isn't rendered" from "it rendered
+  /// with nothing in it" — the two look identical from the outside and only
+  /// one of them is correct.
   static const availableSectionKey = Key('layoutSection-available');
 
-  /// The panels the view is currently holding, in the layout's own order.
-  final List<LayoutPanelEntry> panels;
-
-  /// Panels this view knows how to show but that aren't in the layout right
-  /// now — every removal has to have a way back that isn't Reset Layout.
+  /// Panels this view knows how to show. A panel already in the layout is
+  /// listed only if it can be placed more than once, in which case this row
+  /// IS the "add another" control.
   final List<LayoutPanelEntry> available;
-
-  /// Removes a panel from the view. Null for the row that must not be
-  /// removed — the view's last remaining panel, which would leave the dock
-  /// with no tab to drag anything back with.
-  final void Function(String id)? onRemove;
 
   final void Function(String id)? onAdd;
 
-  const LayoutSheet({
-    super.key,
-    required this.panels,
-    this.available = const [],
-    this.onRemove,
-    this.onAdd,
-  });
+  /// Opens the extensions screen, filtered to the ones that contribute
+  /// panels. The list here is only what is INSTALLED; an operator who cannot
+  /// find the panel they want needs the other screen, and sending them to
+  /// hunt for it is worse than a button.
+  final VoidCallback? onManageExtensions;
 
-  /// The sheet's Options menu, opened from the top row's Options button and
-  /// held by the view (which owns the default arrangement this restores).
-  static Future<void> showOptions(BuildContext context, {required VoidCallback onReset}) {
-    final t = context.t.operation.layout;
-    return showHaloDialog<void>(
-      context: context,
-      builder: (dialogContext) => HaloDialog(
-        title: Text(t.optionsTitle),
-        // Same as the operation sheet's own options menu: the rows are the
-        // whole content, so their ListTiles supply the horizontal inset.
-        contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(MdiIcons.backupRestore),
-              title: Text(t.resetLayout),
-              // The menu closes first: the layout underneath rearranges as
-              // this fires, and a dialog left standing over it would be
-              // covering the very thing the user asked to see.
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                onReset();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+  const LayoutSheet({super.key, this.available = const [], this.onAdd, this.onManageExtensions});
+
+  @override
+  State<LayoutSheet> createState() => _LayoutSheetState();
+}
+
+class _LayoutSheetState extends State<LayoutSheet> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Matches a panel's NAME and its description both — a panel is often
+  /// easier to describe than to name ("weather" finds Weather; so does
+  /// "conditions", which is what its own author wrote).
+  bool _matches(LayoutPanelEntry panel, String query) {
+    if (query.isEmpty) return true;
+    final needle = query.toLowerCase();
+    return panel.title.toLowerCase().contains(needle) ||
+        (panel.description?.toLowerCase().contains(needle) ?? false);
   }
 
   /// A section band, in the operation setup sheet's own idiom: the pane's
@@ -320,57 +294,83 @@ class LayoutSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.t.operation.layout;
-    // Removal is refused for a lone panel (see [onRemove]) — the row still
-    // renders, without the control, rather than vanishing.
-    final removable = panels.length > 1;
+    final query = _searchController.text.trim();
+    final available = [for (final panel in widget.available) if (_matches(panel, query)) panel];
     return Material(
       color: haloSheetListBackground(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _sectionHeader(context, t.panelsSection, key: panelsSectionKey),
-          for (final panel in panels)
+          Builder(builder: (context) {
+            final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+            return Padding(
+            padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.md),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    selectAllOnFocus: false,
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                      suffixIcon: query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.common.clear),
+                              onPressed: () => setState(_searchController.clear),
+                            ),
+                      hintText: t.searchHint,
+                      border: searchBorder,
+                      // The theme deliberately leaves `focusedBorder` unset
+                      // (see haloFocusedBorder), so a decoration that builds
+                      // its own border has to pass it through — Material's
+                      // own primary indicator is 2.67:1 on the dark surface.
+                      focusedBorder: haloFocusedBorder(searchBorder, context),
+                    ),
+                  ),
+                ),
+                if (widget.onManageExtensions != null) ...[
+                  const SizedBox(width: Space.md),
+                  IconButton(
+                    icon: Icon(MdiIcons.puzzle, semanticLabel: context.t.activitiesView.manageExtensions),
+                    onPressed: widget.onManageExtensions,
+                  ),
+                ],
+              ],
+            ),
+          );
+          }),
+          _sectionHeader(context, t.availableSection, key: LayoutSheet.availableSectionKey),
+          // A sheet that renders nothing at all reads as one that failed to
+          // load. There IS a way to get here with nothing to add — every
+          // panel placed, none of them instanceable.
+          if (available.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(Space.xl),
+              child: Text(
+                // Two different nothings: a search that found none of the
+                // panels there ARE, and a view that already holds all of them.
+                query.isEmpty ? t.nothingToAdd : t.noPanelsMatch,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ),
+          for (final panel in available)
             _panelRow(
               context,
               panel,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (panel.openSettings case final open?)
-                    Builder(
-                      // A context inside the row, not the sheet's: the
-                      // settings dialog this opens positions itself against
-                      // the control that asked for it.
-                      builder: (rowContext) => IconButton(
-                        icon: Icon(MdiIcons.tune, semanticLabel: t.panelSettings(panel: panel.title)),
-                        onPressed: () => open(rowContext),
-                      ),
+              trailing: widget.onAdd == null
+                  ? null
+                  : IconButton(
+                      icon: Icon(MdiIcons.plus, semanticLabel: t.addPanel(panel: panel.title)),
+                      onPressed: () => widget.onAdd!(panel.id),
                     ),
-                  if (removable && onRemove != null)
-                    IconButton(
-                      icon: Icon(MdiIcons.close, semanticLabel: t.removePanel(panel: panel.title)),
-                      onPressed: () => onRemove!(panel.id),
-                    ),
-                ],
-              ),
             ),
-          // Only once something has actually been taken out — an empty
-          // "Available" heading reads as a feature that failed to load.
-          if (available.isNotEmpty) ...[
-            _sectionHeader(context, t.availableSection, key: availableSectionKey),
-            for (final panel in available)
-              _panelRow(
-                context,
-                panel,
-                trailing: onAdd == null
-                    ? null
-                    : IconButton(
-                        icon: Icon(MdiIcons.plus, semanticLabel: t.addPanel(panel: panel.title)),
-                        onPressed: () => onAdd!(panel.id),
-                      ),
-              ),
-          ],
         ],
       ),
     );

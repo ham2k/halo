@@ -33,8 +33,9 @@ upcoming:
   changes:
     - "Custom Text panels take templates — `{{ op.qsoCount }}`, `{{ now | date: '%H:%M' }}Z`, `{% if %}`"
     - "The Spots panel tints and scrolls to the spot for the call you're entering"
-    - "Dashboard panel extensions stay hidden until the Layouts experiment is on (`EXP LAYOUTS`)"
+    - "Dashboard panel extensions stay hidden until the Panels experiment is on (`EXP PANELS`)"
     - "The Map says so in the panel when it can't load — tell us if you see it wrongly"
+    - "**Enable Layout Customization** in Settings, then rearrange the logging view's panes"
 
 "128":
   changes:

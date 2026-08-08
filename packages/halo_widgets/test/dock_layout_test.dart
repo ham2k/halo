@@ -10,9 +10,27 @@
 // whole point of user-arrangeable panes — a half-typed field must not reset
 // because its pane was docked elsewhere).
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+
+/// What three letters and an ellipsis measure, in the same style the strip's
+/// floor is measured against.
+double _threeLetterWidth(WidgetTester tester) {
+  final context = tester.element(find.byType(DockLayoutView));
+  final painter = TextPainter(
+    text: TextSpan(
+      text: 'Abc…',
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+    ),
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width;
+}
 
 void main() {
   Widget harness({
@@ -22,6 +40,15 @@ void main() {
     DockState initialState = DockState.empty,
     Map<String, Widget>? children,
     Map<String, WidgetBuilder>? tabActions,
+    Widget Function(BuildContext, String)? editingPaneControls,
+    Set<String> headerlessModules = const {},
+    ValueChanged<String>? onModuleDeleted,
+    // Defaults to the widget's own default — OFF — so a test that drags has
+    // to say so. Dragging is not the dock's resting state: outside edit mode
+    // there is no Draggable on a tab at all, and a test that got edit mode
+    // for free would be asserting the drop model against a dock the operator
+    // never sees.
+    bool editing = false,
     // Re-pumping with a different spec but no key changes NOTHING: the view
     // copies initialSpec into its State once and owns it from then on. A
     // test that varies the spec across pumps has to vary this too, or it
@@ -43,6 +70,10 @@ void main() {
                   'c': SizedBox.expand(key: Key('pane-c')),
                 },
             tabActions: tabActions,
+            editingPaneControls: editingPaneControls,
+            headerlessModules: headerlessModules,
+            onModuleDeleted: onModuleDeleted,
+            editing: editing,
             onSpecChanged: onChanged,
           ),
         ),
@@ -146,12 +177,27 @@ void main() {
         reason: 'tabs share the strip like a stock TabBar, not at natural widths');
     expect(bravo.width + charlie.width, moreOrLessEquals(strip.width), reason: 'and between them they fill it');
 
-    // A group of one is still a tab bar of one — it stretches rather than
-    // huddling at the header's left edge.
-    expect(tabRect(tester, 'Alpha').width, moreOrLessEquals(stripAround(tester, 'Alpha').width));
+    // A group of ONE is not a tab bar at all — see the next test.
+    expect(find.ancestor(of: find.text('Alpha'), matching: find.byType(TabChrome)), findsNothing);
   });
 
-  testWidgets("a module's action sits inside its own tab, and the label stays centered around it", (tester) async {
+  testWidgets('a group of one renders as a pane title, not a tab', (tester) async {
+    await tester.pumpWidget(harness(spec: twoGroups()));
+
+    // No TabChrome: no selection indicator, no tap, and nothing announced to
+    // a screen reader as a tab. A tab bar of one offers a choice that does
+    // not exist.
+    expect(find.ancestor(of: find.text('Alpha'), matching: find.byType(TabChrome)), findsNothing);
+    expect(find.ancestor(of: find.text('Bravo'), matching: find.byType(TabChrome)), findsOneWidget);
+
+    // And it reads from the leading edge, like a heading, rather than centred
+    // like a tab.
+    final strip = stripAround(tester, 'Alpha');
+    final label = tester.getRect(find.text('Alpha'));
+    expect(label.left - strip.left, lessThan(strip.width / 4));
+  });
+
+  testWidgets("a module's name and action sit together at the tab's leading edge", (tester) async {
     Widget withAction(int selected, Key key) => harness(
           key: key,
           spec: DockGroup(['b', 'c'], selected: selected),
@@ -160,21 +206,18 @@ void main() {
 
     await tester.pumpWidget(withAction(0, const ValueKey(0)));
     final bravoTab = tabRect(tester, 'Bravo');
+    final label = tester.getRect(find.text('Bravo'));
     final action = tester.getRect(find.byType(IconButton));
-    expect(action.right, lessThanOrEqualTo(bravoTab.right), reason: "the action is the TAB's trailing widget");
-    expect(action.left, greaterThanOrEqualTo(bravoTab.left));
 
-    // Centered on the tab, not merely on what the handle and the action
-    // leave behind: an action reserved on one side only would push every
-    // label of a group off-centre against its neighbours.
-    expect(tester.getRect(find.text('Bravo')).center.dx, moreOrLessEquals(bravoTab.center.dx));
+    expect(action.right, lessThanOrEqualTo(bravoTab.right), reason: "the action is the TAB's, not the strip's");
+    // The name is a heading and starts where the eye already is, and the
+    // action acts on THAT name — so it follows it rather than sitting at the
+    // far edge of however wide the tab happens to be.
+    expect(label.left - bravoTab.left, lessThan(bravoTab.width / 4));
+    expect(action.left - label.right, lessThan(bravoTab.width / 4));
 
-    // ...and still centered on the same spot once the handle and the action
-    // are gone, which is what reserving both slots on both edges buys.
     await tester.pumpWidget(withAction(1, const ValueKey(1)));
     expect(find.byType(IconButton), findsNothing, reason: 'an action shows only while its own tab is selected');
-    expect(tabRect(tester, 'Bravo'), bravoTab);
-    expect(tester.getRect(find.text('Bravo')).center.dx, moreOrLessEquals(bravoTab.center.dx));
   });
 
   testWidgets('tab widths hold still while the selection moves', (tester) async {
@@ -518,7 +561,7 @@ void main() {
 
   testWidgets('dropping a tab on a group side splits it', (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s));
+    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
     // Drag Charlie onto the BOTTOM region of the left (Alpha) group — but
     // clear of the dock's own 20px bottom edge strip, which wins there.
     final alphaPane = tester.getRect(find.byKey(const Key('pane-a')));
@@ -535,7 +578,7 @@ void main() {
 
   testWidgets('a pane dropped on a band takes that band\'s third, and grows into it', (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s));
+    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
     final alphaPane = tester.getRect(find.byKey(const Key('pane-a')));
 
     // Mid-animation: the newcomer is on its way to its share, not already
@@ -569,6 +612,7 @@ void main() {
     await tester.pumpWidget(harness(
       spec: DockSplit(Axis.horizontal, [DockGroup(['a']), DockGroup(['b']), DockGroup(['c'])], [1, 1, 1]),
       onChanged: (s) => reported = s,
+      editing: true,
     ));
     final bravoPane = tester.getRect(find.byKey(const Key('pane-b')));
     await dragTab(tester, 'Charlie', Offset(bravoPane.left + 20, bravoPane.center.dy));
@@ -582,11 +626,17 @@ void main() {
 
   testWidgets("dropping a tab on another group's TAB joins that group, beside it", (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s));
-    final alphaTab = tester.getRect(find.text('Alpha'));
+    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
+    // The whole header, not the label's own rect: Alpha is its group's only
+    // module, so its title reads from the leading edge and its own rect says
+    // nothing about where the header's trailing half is.
+    final alphaTab = stripAround(tester, 'Alpha');
     // Joining a group happens where its tabs are, not in the middle of its
     // body — and which SIDE of the tab decides where in the group it lands.
-    await dragTab(tester, 'Bravo', Offset(alphaTab.right - 2, alphaTab.center.dy));
+    // Not right up against the strip's trailing edge: that is the dock's
+    // horizontal centre, where the delete target sits flush with the top
+    // edge and takes the drop instead.
+    await dragTab(tester, 'Bravo', Offset(alphaTab.right - 60, alphaTab.center.dy));
     final root = reported! as DockSplit;
     expect((root.children[0] as DockGroup).modules, ['a', 'b']);
     expect((root.children[0] as DockGroup).selected, 1, reason: 'the dropped module becomes the selected tab');
@@ -595,7 +645,7 @@ void main() {
 
   testWidgets('dropping on the leading half of a tab lands before it', (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s));
+    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
     final alphaTab = tester.getRect(find.text('Alpha'));
     await dragTab(tester, 'Bravo', Offset(alphaTab.left + 2, alphaTab.center.dy));
     expect(((reported! as DockSplit).children[0] as DockGroup).modules, ['b', 'a']);
@@ -603,7 +653,7 @@ void main() {
 
   testWidgets("a tab dropped within its own group reorders it", (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: DockGroup(['a', 'b', 'c']), onChanged: (s) => reported = s));
+    await tester.pumpWidget(harness(spec: DockGroup(['a', 'b', 'c']), onChanged: (s) => reported = s, editing: true));
     final alphaTab = tester.getRect(find.text('Alpha'));
     // Reordering and joining are the same act seen from two sides, so this
     // goes through the same drop — but the index the operator aimed at
@@ -615,7 +665,7 @@ void main() {
 
   testWidgets('moving the last module out of a group collapses the empty group', (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s));
+    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
     final bravoTab = tester.getRect(find.text('Bravo'));
     await dragTab(tester, 'Alpha', Offset(bravoTab.left + 2, bravoTab.center.dy));
     // The left group emptied out; the single-child root split collapsed.
@@ -625,13 +675,371 @@ void main() {
 
   testWidgets('a drop in the middle of a body does nothing at all', (tester) async {
     DockNode? reported;
-    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s));
+    await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
     final alphaPane = tester.getRect(find.byKey(const Key('pane-a')));
     await dragTab(tester, 'Bravo', alphaPane.center);
     // The middle square belongs to no band: the old center-joins-as-a-tab
     // target moved to the tab strip, and a drop here must be a no-op rather
     // than the nearest guess.
     expect(reported, isNull);
+  });
+
+  group('edit mode', () {
+    testWidgets('a tab cannot be dragged out of place while not editing', (tester) async {
+      DockNode? reported;
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, key: key));
+      final alphaPane = tester.getRect(find.byKey(const Key('pane-a')));
+
+      // The exact gesture that splits a group in edit mode, aimed at the
+      // same band. Outside it the dock is something the operator USES: the
+      // pane a slipped pointer would rearrange is the one with a half-typed
+      // QSO in it.
+      await dragTab(tester, 'Charlie', Offset(alphaPane.center.dx, alphaPane.bottom - 40));
+
+      expect(reported, isNull, reason: 'nothing to persist because nothing moved');
+      expect(key.currentState!.modules, ['a', 'b', 'c']);
+    });
+
+    testWidgets('grab handles appear only while editing', (tester) async {
+      Finder handles() => find.byIcon(MdiIcons.dragVertical);
+      await tester.pumpWidget(harness(spec: twoGroups()));
+      expect(handles(), findsNothing, reason: 'a handle promises a drag that is not on offer');
+
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true));
+      await tester.pumpAndSettle();
+      // One per TAB, not one per group: a group whose three tabs showed a
+      // single handle would read as one movable pane and two fixed ones.
+      expect(handles(), findsNWidgets(3));
+    });
+
+    /// The delete circle only exists mid-drag, so aiming at it is a two-phase
+    /// gesture: start, pump so it mounts, then move onto it.
+    Future<void> dragToDelete(WidgetTester tester, String label) async {
+      final gesture = await tester.startGesture(tester.getCenter(find.text(label).first));
+      // Far enough to arm the target — it does not mount under a pointer
+      // that has barely moved. See the nudge test below.
+      await gesture.moveBy(const Offset(0, 90));
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.byIcon(MdiIcons.trashCanOutline)));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a fumbled click on a tab under the target deletes nothing', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true, key: key));
+
+      // The target sits against the dock's top edge, where the tab strips
+      // are — so a press at the top centre is already INSIDE it. A mouse only
+      // has to slip a pixel between press and release, and the pane would be
+      // gone with no confirmation. A MOUSE deliberately: touch has ~18pt of
+      // slop before a drag even starts, so the hazard is the precise
+      // pointer's.
+      final dock = tester.getRect(find.byType(DockLayoutView));
+      final gesture = await tester.startGesture(
+        Offset(dock.center.dx - 4, dock.top + 8),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(2, 2));
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsNothing);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(key.currentState!.modules, ['a', 'b', 'c'], reason: 'nothing was deleted');
+    });
+
+    testWidgets('an ordinary drag arms the target from its first move', (tester) async {
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true));
+
+      // Everywhere but inside the circle, the target has to be there from the
+      // start: `onDragUpdate` fires AFTER Flutter has hit-tested that move, so
+      // a target that appears part-way through a fast drag can miss the last
+      // update and never become the active one — the pane would silently
+      // re-dock at the top edge instead of being deleted.
+      // 30, not 2: a touch pointer has ~18pt of slop before the drag itself
+      // starts, which is a different threshold from the arming one.
+      final gesture = await tester.startGesture(tester.getCenter(find.text('Charlie').first));
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsOneWidget);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a drag that lands on the target in one jump still finds it', (tester) async {
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true));
+
+      // Arming is decided from where the PRESS landed, not from the first
+      // move: a flick can put the pointer inside the circle in a single frame
+      // with no travel recorded yet, and a rule that read the position
+      // instead would refuse the drop the operator is making right now.
+      final dock = tester.getRect(find.byType(DockLayoutView));
+      final gesture = await tester.startGesture(tester.getCenter(find.text('Charlie').first));
+      await gesture.moveTo(Offset(dock.center.dx, dock.top + 8));
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsOneWidget);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a pane dropped on the delete target leaves the layout', (tester) async {
+      DockNode? reported;
+      final deleted = <String>[];
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: twoGroups(),
+        editing: true,
+        onChanged: (s) => reported = s,
+        onModuleDeleted: deleted.add,
+        key: key,
+      ));
+
+      // Nothing to aim at until something is in the air — deleting is a
+      // journey with the pane already in hand, not a button sitting on every
+      // pane waiting to be hit by accident.
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsNothing);
+      await dragToDelete(tester, 'Charlie');
+
+      expect(key.currentState!.modules, ['a', 'b']);
+      expect(reported!.collectModules(), ['a', 'b'], reason: 'a removal survives the relaunch like any other edit');
+      // Reported AFTER the removal, so the caller can forget whatever else it
+      // keeps under that id.
+      expect(deleted, ['c']);
+    });
+
+    testWidgets('the last pane has no delete target at all', (tester) async {
+      await tester.pumpWidget(harness(spec: DockGroup(['a']), editing: true));
+      final gesture = await tester.startGesture(tester.getCenter(find.text('Alpha')));
+      // Far enough to arm it, so what this proves is the last-pane rule and
+      // not the arming rule the test above already covers.
+      await gesture.moveBy(const Offset(0, 120));
+      await tester.pump();
+
+      // An empty dock has no tab left to drag anything back with, so the
+      // layout would be unrecoverable from inside the view. A target that
+      // refused on drop would read as a bug.
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsNothing);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a headerless pane keeps its header in a group, and always while editing', (tester) async {
+      Widget withHeaderless({required DockNode spec, required bool editing}) =>
+          harness(spec: spec, editing: editing, headerlessModules: const {'a'}, key: UniqueKey());
+
+      await tester.pumpWidget(withHeaderless(spec: DockGroup(['a']), editing: false));
+      expect(find.text('Alpha'), findsNothing, reason: 'alone in its group and asked for no header');
+
+      // The header IS the tab strip once a pane shares a group — hiding it
+      // would strand every pane but the showing one.
+      await tester.pumpWidget(withHeaderless(spec: DockGroup(['a', 'b']), editing: false));
+      expect(find.text('Alpha'), findsOneWidget);
+
+      // And it is the grab handle while editing: a headerless pane could not
+      // be moved, renamed or given its header back.
+      await tester.pumpWidget(withHeaderless(spec: DockGroup(['a']), editing: true));
+      expect(find.text('Alpha'), findsOneWidget);
+    });
+
+    testWidgets('a narrow strip squeezes the tabs that are not showing, and only them', (tester) async {
+      // Three tabs in a strip with nowhere near room for three labels.
+      // Outside edit mode the strip scrolls; while editing it has to squeeze
+      // instead — scrolling away the tab being worked on is exactly what an
+      // operator cannot afford mid-rearrange.
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      Future<(double showing, double other)> widthsAt(double width) async {
+        tester.view.physicalSize = Size(width, 600);
+        await tester.pumpWidget(harness(
+          spec: DockGroup(['a', 'b', 'c']),
+          editing: true,
+          editingPaneControls: (context, id) => const Icon(MdiIcons.tune),
+          key: ValueKey(width),
+        ));
+        await tester.pumpAndSettle();
+        return (tabRect(tester, 'Alpha').width, tabRect(tester, 'Bravo').width);
+      }
+
+      final wide = await widthsAt(300);
+      final narrow = await widthsAt(240);
+
+      // The showing tab stops at a floor — both slots and enough between them
+      // for three letters and an ellipsis — and does NOT keep shrinking with
+      // the strip. It is the one tab whose name is still needed.
+      expect(narrow.$1, moreOrLessEquals(wide.$1, epsilon: 0.5));
+      // The others pay for it, and CONTINUOUSLY: a strip a few points too
+      // narrow costs a few points of label, not every label at once.
+      expect(narrow.$2, lessThan(wide.$2));
+      expect(narrow.$2, lessThan(narrow.$1));
+
+      // And that floor is mostly LETTERS. The slots are unequal while editing
+      // — each only as wide as what is in it — because equal chrome-height
+      // slots would spend the whole floor on a 20pt handle and a 24pt glyph,
+      // leaving the tab showing punctuation where a word would fit.
+      final label = tester.getRect(find.text('Alpha'));
+      expect(label.width, greaterThan(narrow.$1 / 3));
+
+      // Three letters and an ellipsis is what the floor promises, so the
+      // showing tab has to still be showing them. The floor is measured from
+      // the boxes between the tab's two edges, and one left out of that sum
+      // is a tab that ellipsizes below its own minimum — invisible to a test
+      // that only compares widths.
+      expect(label.width, greaterThanOrEqualTo(_threeLetterWidth(tester)));
+    });
+
+    test("a quiet tab action stays legible against whatever header it is on", () {
+      // Quiet is not the same as gone. This button is the only route to an
+      // extension panel's settings form, and on a touch screen there is no
+      // hover to bring it up to full strength — so its RESTING tone is what
+      // has to be findable. 3:1 is WCAG 1.4.11's floor for a control.
+      double contrast(Color a, Color b) {
+        final la = a.computeLuminance(), lb = b.computeLuminance();
+        return ((la > lb ? la : lb) + 0.05) / ((la < lb ? la : lb) + 0.05);
+      }
+
+      // The app's own header, and the extremes an edition could pick —
+      // including one so dark there is no quiet tone left below it, where
+      // the answer is the full-strength colour rather than an invisible one.
+      for (final header in [const Color(0xFF006783), Colors.black, Colors.white, const Color(0xFF3A3A3A)]) {
+        final tone = quietTabActionTone(header, Colors.white);
+        expect(contrast(tone, header), greaterThanOrEqualTo(3.0), reason: 'on $header');
+      }
+
+      // And it IS quiet where it can be: on the app's own header the resting
+      // tone is not simply the active colour.
+      expect(quietTabActionTone(const Color(0xFF006783), Colors.white), isNot(Colors.white));
+    });
+
+    testWidgets('a strip too narrow even for the handles scrolls rather than overflowing', (tester) async {
+      // The squeeze has a floor of its own: the grab handle is a fixed box,
+      // so a share below it does not shrink the tab, it overflows the Row —
+      // yellow stripes over the strip and a framework error on every layout
+      // pass, which a divider drag repeats every frame. Scrolling is the
+      // wrong answer while rearranging, and the only one left down here.
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      for (final width in [200.0, 160.0, 140.0, 120.0, 100.0, 80.0, 60.0]) {
+        tester.view.physicalSize = Size(width, 600);
+        await tester.pumpWidget(harness(
+          spec: DockGroup(['a', 'b', 'c']),
+          editing: true,
+          editingPaneControls: (context, id) => const Icon(MdiIcons.tune),
+          key: ValueKey(width),
+        ));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull, reason: 'at ${width}pt');
+        // The handle is the fixed box the share cannot go below; painted
+        // outside its own tab it lands on the neighbour's.
+        final handles = find.byIcon(MdiIcons.dragVertical);
+        for (var i = 0; i < 3; i++) {
+          final tab = tabRect(tester, ['Alpha', 'Bravo', 'Charlie'][i]);
+          final handle = tester.getRect(handles.at(i));
+          expect(handle.right, lessThanOrEqualTo(tab.right + 0.01), reason: 'tab $i at ${width}pt');
+        }
+      }
+    });
+
+    testWidgets('editing packs handle, name and action together at the leading edge', (tester) async {
+      Widget withAction({required bool editing}) => harness(
+            spec: DockGroup(['a', 'b']),
+            editing: editing,
+            tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
+            editingPaneControls: (context, id) => const Icon(MdiIcons.tune, key: Key('action-a')),
+            key: ValueKey(editing),
+          );
+
+      // Being READ: the name at the leading edge with the action after it.
+      await tester.pumpWidget(withAction(editing: false));
+      final tab = tabRect(tester, 'Alpha');
+      var label = tester.getRect(find.text('Alpha'));
+      var action = tester.getRect(find.byKey(const Key('action-a')));
+      expect(label.left - tab.left, lessThan(tab.width / 4));
+      expect(action.left - label.right, lessThan(tab.width / 4));
+      expect(find.byIcon(MdiIcons.dragVertical), findsNothing, reason: 'nothing to grab while it is being read');
+
+      // Being REARRANGED, the three read as one thing: they sit together, and
+      // what is left over is empty space after them. Centring the name would
+      // put the eye somewhere different on every tab and strand the options
+      // button a pane's width from what it acts on.
+      await tester.pumpWidget(withAction(editing: true));
+      await tester.pumpAndSettle();
+      label = tester.getRect(find.text('Alpha'));
+      action = tester.getRect(find.byKey(const Key('action-a')));
+      final handle = tester.getRect(find.byIcon(MdiIcons.dragVertical).first);
+      expect(label.left - handle.right, lessThanOrEqualTo(8), reason: 'the name follows the handle');
+      expect(action.left - label.right, lessThanOrEqualTo(8), reason: 'and the action follows the name');
+    });
+
+    testWidgets("a pane's controls move off its tab and into its editing band", (tester) async {
+      Widget withBoth({required bool editing}) => harness(
+            spec: twoGroups(),
+            editing: editing,
+            tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
+            editingPaneControls: (context, id) => Text('band-$id'),
+          );
+
+      await tester.pumpWidget(withBoth(editing: false));
+      expect(find.byKey(const Key('action-a')), findsOneWidget);
+      expect(find.text('band-a'), findsNothing, reason: 'the band only exists while editing');
+
+      await tester.pumpWidget(withBoth(editing: true));
+      await tester.pumpAndSettle();
+      // The tab is the grab handle now, and a control riding on one competes
+      // with the drag for the same pointer.
+      expect(find.byKey(const Key('action-a')), findsNothing);
+      // One band per GROUP, naming the pane that group is showing — not one
+      // per pane, since only one of a group's panes is on screen.
+      expect(find.text('band-a'), findsOneWidget);
+      expect(find.text('band-b'), findsOneWidget);
+      expect(find.text('band-c'), findsNothing);
+    });
+
+    testWidgets('the outline comes out of the pane, and only off its three free sides', (tester) async {
+      await tester.pumpWidget(harness(spec: twoGroups()));
+      final before = tester.getRect(find.byKey(const Key('pane-a')));
+
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true));
+      await tester.pumpAndSettle();
+      final after = tester.getRect(find.byKey(const Key('pane-a')));
+
+      // The pane gives up the room the outline needs rather than being
+      // painted over — a line ON the content covers whatever was at the edge,
+      // and at a pane's edge that is a log column or the map's scale.
+      expect(after.left, greaterThan(before.left));
+      expect(after.right, lessThan(before.right));
+      expect(after.bottom, lessThan(before.bottom));
+      // Not the top: the tab strip's own segments are the outline there, and
+      // the strip has not moved. Taking room off the top too would push every
+      // pane down by a hairline the moment editing began.
+      expect(after.top, before.top);
+    });
+
+    testWidgets('toJson hands back a snapshot the live tree cannot move under', (tester) async {
+      // What the layout editor's revert button restores. The dock mutates its
+      // nodes IN PLACE — a divider drag edits a split's weights list — so a
+      // toJson that aliased those lists would hand back a "snapshot" that
+      // tracks every subsequent edit and reverts to nothing.
+      final spec = twoGroups() as DockSplit;
+      final snapshot = spec.toJson();
+      await tester.pumpWidget(harness(spec: spec, editing: true));
+
+      final divider = find.byWidgetPredicate(
+        (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight,
+      );
+      await tester.drag(divider, const Offset(-100, 0));
+      await tester.pumpAndSettle();
+
+      expect(spec.weights[0], lessThan(spec.weights[1]), reason: 'the live tree did move');
+      expect((snapshot['weights'] as List).cast<double>(), [1, 1]);
+      final revived = DockNode.fromJson(snapshot)! as DockSplit;
+      expect(revived.weights, [1, 1]);
+    });
   });
 
   group('split bands', () {
@@ -678,18 +1086,27 @@ void main() {
 
   testWidgets('module State survives being moved to another group', (tester) async {
     final spec = twoGroups();
-    await tester.pumpWidget(harness(
-      spec: spec,
-      children: {
-        // GlobalKey'd like the real panes in OperationView.
-        'a': _Counter(key: GlobalKey(), label: 'count-a'),
-        'b': const SizedBox.expand(key: Key('pane-b')),
-        'c': const SizedBox.expand(key: Key('pane-c')),
-      },
-    ));
+    // Built ONCE and reused across both pumps: rebuilding the map would mint
+    // a fresh GlobalKey, and a new key is a new State — the test would then
+    // pass or fail on its own fixture rather than on the dock.
+    final children = <String, Widget>{
+      // GlobalKey'd like the real panes in OperationView.
+      'a': _Counter(key: GlobalKey(), label: 'count-a'),
+      'b': const SizedBox.expand(key: Key('pane-b')),
+      'c': const SizedBox.expand(key: Key('pane-c')),
+    };
+    await tester.pumpWidget(harness(spec: spec, children: children));
     await tester.tap(find.text('count-a: 0'));
     await tester.pump();
     expect(find.text('count-a: 1'), findsOneWidget);
+
+    // Entering edit mode is itself a rebuild of every pane — with an
+    // IgnorePointer and a scrim inserted above them — and must cost no more
+    // state than the move does.
+    await tester.pumpWidget(harness(spec: spec, children: children, editing: true));
+    await tester.pump();
+    expect(find.text('count-a: 1'), findsOneWidget, reason: 'entering edit mode must not reset a pane');
+
     final bravoPane = tester.getRect(find.byKey(const Key('pane-b')));
     await dragTab(tester, 'Alpha', bravoPane.center);
     expect(find.text('count-a: 1'), findsOneWidget, reason: 'moving a pane must not reset its State');

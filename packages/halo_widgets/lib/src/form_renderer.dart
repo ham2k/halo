@@ -869,6 +869,17 @@ class FormRendererState extends State<FormRenderer> {
         final multiline = fieldType == 'multiline';
         return TextField(
           selectAllOnFocus: false,
+          // See the checkbox's own `disabled` below: greyed rather than
+          // hidden, so a field that does not apply here says so instead of
+          // sending an operator hunting for it.
+          //
+          // `disabled` is honoured HERE and on the checkbox, and nowhere
+          // else — those are the two the app's own forms lock. It is not
+          // documented for extension authors for that reason: a select or a
+          // number field carrying it would render fully editable, which is
+          // worse than the attribute not existing. Implement the type before
+          // documenting it.
+          enabled: el['disabled'] != true,
           controller: _controllers[key],
           focusNode: _focusNodes[key],
           maxLines: multiline ? null : 1,
@@ -986,12 +997,17 @@ class FormRendererState extends State<FormRenderer> {
           ),
         );
       case 'checkbox':
+        // `disabled` shows the row greyed rather than hiding it (which is
+        // what `environment` does): a toggle that vanishes in some states
+        // leaves an operator hunting for a setting they remember, where a
+        // greyed one with a description says why it does not apply here.
+        final disabled = el['disabled'] == true;
         return Focus(
           focusNode: _focusNodes[key],
           child: CheckboxListTile(
             title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
             value: _values[key] == true,
-            onChanged: _isSubmitting
+            onChanged: _isSubmitting || disabled
                 ? null
                 : (val) {
                     final finalVal = val ?? false;

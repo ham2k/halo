@@ -1,10 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The layout setup sheet's contract: it lists the panes that are actually in
-// the view, offers a settings control only where a pane has settings, and
-// refuses to remove the last one — the dock has no tab left to drag a pane
-// back with once it is empty.
+// The Add a Panel sheet's contract: it lists what could go in the view and
+// nothing else, says so when there is nothing left to add, and lets an
+// operator see what a panel looks like before choosing it. What is already
+// in the view is deliberately absent — a pane comes out by being dragged
+// onto the delete target, and a second list would be a second place to
+// disagree.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,85 +16,66 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 
 void main() {
-  Widget harness(
-    List<LayoutPanelEntry> panels, {
-    List<LayoutPanelEntry> available = const [],
-    void Function(String)? onRemove,
-    void Function(String)? onAdd,
-  }) =>
-      TranslationProvider(
+  Widget harness(List<LayoutPanelEntry> available, {void Function(String)? onAdd}) => TranslationProvider(
         child: MaterialApp(
-          home: Scaffold(
-            body: LayoutSheet(panels: panels, available: available, onRemove: onRemove, onAdd: onAdd),
-          ),
+          home: Scaffold(body: LayoutSheet(available: available, onAdd: onAdd)),
         ),
       );
 
-  testWidgets('lists the panes in the view, with settings only where they exist', (tester) async {
-    var openedFor = '';
-    await tester.pumpWidget(harness([
-      LayoutPanelEntry(id: 'logging', title: 'QSOs', openSettings: (_) => openedFor = 'logging'),
-      const LayoutPanelEntry(id: 'map', title: 'Map'),
-    ]));
-
-    expect(find.text('QSOs'), findsOneWidget);
-    expect(find.text('Map'), findsOneWidget);
-    // One tune button, not two: a pane with nothing to configure shows no
-    // control rather than one that opens an empty dialog.
-    expect(find.widgetWithIcon(IconButton, MdiIcons.tune), findsOneWidget);
-
-    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.tune));
-    expect(openedFor, 'logging');
-  });
-
-  testWidgets('removing a pane reports which one', (tester) async {
-    final removed = <String>[];
-    await tester.pumpWidget(harness(
-      const [LayoutPanelEntry(id: 'logging', title: 'QSOs'), LayoutPanelEntry(id: 'map', title: 'Map')],
-      onRemove: removed.add,
-    ));
-
-    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.close).last);
-    expect(removed, ['map']);
-  });
-
-  testWidgets('a removed pane is offered back under Available panels', (tester) async {
+  testWidgets('adding a panel reports which one', (tester) async {
     final added = <String>[];
     await tester.pumpWidget(harness(
-      const [LayoutPanelEntry(id: 'logging', title: 'QSOs')],
-      available: const [LayoutPanelEntry(id: 'spots', title: 'Spots')],
+      const [LayoutPanelEntry(id: 'spots', title: 'Spots'), LayoutPanelEntry(id: 'map', title: 'Map')],
       onAdd: added.add,
     ));
 
-    // Without this section, Reset Layout is the only way back — it would
-    // undo every other arrangement choice along with the removal.
     expect(find.text('Spots'), findsOneWidget);
-    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.plus));
-    expect(added, ['spots']);
+    // Without this sheet, Reset Layout is the only way back from a removal —
+    // it would undo every other arrangement choice along with it.
+    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.plus).last);
+    expect(added, ['map']);
   });
 
-  testWidgets('nothing removed, no Available section', (tester) async {
+  testWidgets('search narrows by name AND by description', (tester) async {
     await tester.pumpWidget(harness(
-      const [LayoutPanelEntry(id: 'logging', title: 'QSOs'), LayoutPanelEntry(id: 'map', title: 'Map')],
+      const [
+        LayoutPanelEntry(id: 'wx', title: 'Weather', description: "Conditions where you're operating"),
+        LayoutPanelEntry(id: 'clock', title: 'Clock', description: 'UTC and a zone or two'),
+      ],
       onAdd: (_) {},
     ));
 
-    // An empty heading reads as a section that failed to load.
-    expect(find.byKey(LayoutSheet.panelsSectionKey), findsOneWidget);
-    expect(find.byKey(LayoutSheet.availableSectionKey), findsNothing);
-    expect(find.widgetWithIcon(IconButton, MdiIcons.plus), findsNothing);
+    await tester.enterText(find.byType(TextField), 'clo');
+    await tester.pump();
+    expect(find.text('Clock'), findsOneWidget);
+    expect(find.text('Weather'), findsNothing);
+
+    // A panel is often easier to describe than to name: an operator hunting
+    // for the weather may well type what it shows rather than what it is
+    // called, and its own author already wrote that line.
+    await tester.enterText(find.byType(TextField), 'conditions');
+    await tester.pump();
+    expect(find.text('Weather'), findsOneWidget);
+    expect(find.text('Clock'), findsNothing);
+
+    // Two different nothings — a search that matched none of the panels there
+    // ARE, and a view that already holds all of them.
+    await tester.enterText(find.byType(TextField), 'zzz');
+    await tester.pump();
+    final t = AppLocale.en.buildSync().operation.layout;
+    expect(find.text(t.noPanelsMatch), findsOneWidget);
+    expect(find.text(t.nothingToAdd), findsNothing);
   });
 
-  testWidgets('the only pane in the view offers no remove control', (tester) async {
-    await tester.pumpWidget(harness(
-      const [LayoutPanelEntry(id: 'logging', title: 'QSOs')],
-      onRemove: (_) => fail('the last pane must not be removable'),
-    ));
+  testWidgets('with nothing left to add, it says so', (tester) async {
+    await tester.pumpWidget(harness(const [], onAdd: (_) {}));
 
-    // The row still renders — it is the view's contents — but without the
-    // control that would empty the dock.
-    expect(find.text('QSOs'), findsOneWidget);
-    expect(find.widgetWithIcon(IconButton, MdiIcons.close), findsNothing);
+    // Reachable in the ordinary case — every panel placed, none of them
+    // instanceable — and a sheet that drew nothing at all would read as one
+    // that failed to load.
+    expect(find.byKey(LayoutSheet.availableSectionKey), findsOneWidget);
+    expect(find.text(AppLocale.en.buildSync().operation.layout.nothingToAdd), findsOneWidget);
+    expect(find.widgetWithIcon(IconButton, MdiIcons.plus), findsNothing);
   });
 
   group('previews', () {
@@ -104,8 +87,7 @@ void main() {
       ));
 
       // 40pt says a panel HAS a preview; it does not say what the panel looks
-      // like, which is the entire question when adding one from Available
-      // Panels.
+      // like, which is the entire question when choosing one to add.
       final thumbnail = tester.getSize(find.byType(SvgPicture));
       expect(thumbnail.width, 40);
 

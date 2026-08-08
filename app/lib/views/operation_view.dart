@@ -11,6 +11,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -24,16 +25,18 @@ import '../services/settings_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'operation_dialogs.dart';
 import 'panel_use_tracker.dart';
+import 'extensions_panel.dart';
 import 'operation/adif_import_flow.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/layout_sheet.dart';
-import 'operation/panel_settings.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/missing_panel_pane.dart';
+import 'operation/panel_settings.dart';
+import 'operation/pane_layout_options.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/spots_panel.dart';
 import '../tools/operation_title.dart';
@@ -42,7 +45,7 @@ import '../i18n/strings.g.dart';
 class OperationView extends StatefulWidget {
   /// The Operation view is the (currently only) layout-customizable view
   /// (docs/design/layouts.md): its panes are dock-arrangeable behind the
-  /// 'layouts' experiment, and ALL its dividers — the fixed split's and the
+  /// Enable Layout Customization setting, and ALL its dividers — the fixed split's and the
   /// dock's — use the solid header-colored style (the default).
   static const layoutPolicy = ViewLayoutPolicy.customizable;
 
@@ -84,11 +87,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   /// Gate for the drag-and-drop dock layout (DESIGN.md §7), replacing the
   /// wide arrangement's fixed split-plus-tabs with a user-arrangeable
-  /// [DockLayoutView]. Narrow layouts are unaffected. Driven by the
-  /// 'layouts' experiment (EXP LAYOUTS, or Settings → Developer →
-  /// Experiments) — [_onSettingsChanged] keeps it live so toggling the
-  /// experiment re-arranges an open operation without a restart.
-  late bool _customLayout = widget.services.settings.experimentEnabled('layouts');
+  /// [DockLayoutView]. Narrow layouts are unaffected. Driven by the operator's
+  /// own Enable Layout Customization setting — [_onSettingsChanged] keeps it
+  /// live, so turning it on re-arranges an open operation without a restart.
+  late bool _customLayout = widget.services.settings.layoutCustomization;
 
   /// Programmatic tab selection inside the dock layout (revealModule) — the
   /// dock-mode counterpart of `_tabController.animateTo`.
@@ -100,6 +102,49 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// build would be pure waste on this hot path. Kept in sync with the
   /// widget's mutations via onSpecChanged.
   DockNode? _dockSpec;
+
+  /// True while the Add a Panel sheet's route is on screen. It is a top modal
+  /// pane, which leaves this view's header uncovered but NOT tappable — so
+  /// while it is up the header's layout controls are drawn by the route
+  /// instead (see [_layoutHeaderControls]).
+  bool _layoutSheetOpen = false;
+
+  /// Whether the arrangement is being edited (see [DockLayoutView.editing]).
+  /// While this is on, the dock's changes are a DRAFT: nothing reaches
+  /// settings until Save Layout.
+  bool _layoutEditing = false;
+
+  /// Per-pane layout options, keyed by module id (see [PaneLayoutOptions]).
+  /// Read once and then owned here, like [_dockSpec] and for the same reason
+  /// — they are edited as part of the same draft and written by the same
+  /// save.
+  late Map<String, PaneLayoutOptions> _paneOptions = PaneLayoutOptions.mapFromJson(
+    widget.services.settings.layoutData(LayoutKeys.operationPaneOptions),
+  );
+
+  /// The VIEW's own layout options — read once and owned here, like
+  /// [_paneOptions], edited in the same draft and written by the same save.
+  late PaneLayoutOptions _viewOptions = PaneLayoutOptions.fromJson(
+    widget.services.settings.layoutData(LayoutKeys.operationViewOptions),
+  );
+
+  /// The arrangement as it was when editing began, as JSON — what the revert
+  /// button restores. JSON rather than the tree itself because the dock
+  /// mutates its nodes IN PLACE (a divider drag edits a split's weights), so
+  /// holding the live objects would hold a snapshot that changes with them.
+  Map<String, dynamic>? _layoutSnapshot;
+
+  /// [_paneOptions] as it was when editing began — the other half of what a
+  /// discard restores. Kept as JSON for the same reason [_layoutSnapshot] is:
+  /// what is edited must not be the same objects the snapshot holds.
+  Map<String, dynamic>? _paneOptionsSnapshot;
+  Map<String, dynamic>? _viewOptionsSnapshot;
+
+  /// Panes dropped while editing, whose contents are forgotten only if the
+  /// edit is SAVED. Forgetting on removal is what makes a re-added pane
+  /// arrive empty rather than holding the last one's notes — but a revert
+  /// brings the pane back, and it has to come back with what was in it.
+  final _pendingForgets = <String>[];
 
   /// The station's own DXCC entity, resolved once per operation load (not
   /// per QSO — the station call essentially never changes DXCC entity
@@ -347,12 +392,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // other index, page 0 wouldn't be inflated and the in-progress QSO
     // entry would be disposed.
     if (_wasTwoPane == true && !isTwoPane) _tabController?.index = 0;
+    // Narrowing takes the dock away, and with it the header's edit controls
+    // — as far as the operator can see, the edit is over. The DRAFT stays
+    // (widening returns to it), but the focus edit mode took has to come
+    // back, or they meet a normal-looking logging view that swallows every
+    // keystroke. Kept, not consumed: the eventual Save or discard hands it
+    // back again if the operator widens and finishes there.
+    if (_wasTwoPane == true && !isTwoPane && _layoutEditing) _restoreFocusAfterEditing(keep: true);
     _wasTwoPane = isTwoPane;
   }
 
   void _onSettingsChanged() {
     final s = widget.services.settings;
-    final enabled = s.experimentEnabled('layouts');
+    final enabled = s.layoutCustomization;
+    // Turning customization off mid-edit takes the dock away, and with it
+    // every control that could have finished the edit. Discard first, so the
+    // draft goes back to what was saved rather than becoming the arrangement
+    // that reappears when they turn it on again.
+    if (!enabled && _layoutEditing) _revertLayout();
     // Local mirrors of the logging panel's own toggles (see
     // _buildLoggingSettingsButton) — flipped from the settings dialog,
     // so this is the only place they follow SettingsService.
@@ -444,7 +501,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   final _panelTitles = <String, String>{};
 
   /// What dropping a pane means, in one place so the remove control and
-  /// Reset Layout cannot disagree: the label goes, and so does whatever the
+  /// Restore Defaults cannot disagree: the label goes, and so does whatever the
   /// operator typed into it.
   ///
   /// Only an INSTANCE forgets its config — see
@@ -452,8 +509,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// forget: nothing here should wait on storage, and a config outliving its
   /// pane costs a stale value rather than a broken layout.
   void _forgetPanes(Iterable<String> ids) {
+    // Held back while editing — a removal that revert can undo must not have
+    // destroyed anything in the meantime. See [_pendingForgets].
+    if (_layoutEditing) {
+      _pendingForgets.addAll(ids);
+      return;
+    }
+    _forgetPanesNow(ids);
+  }
+
+  /// The forget itself, for the two callers that have already decided it is
+  /// due: [_saveLayout], and [_revertLayout] for panes the revert is dropping
+  /// (added during the edit, so nothing outside it ever knew them).
+  void _forgetPanesNow(Iterable<String> ids) {
     for (final id in ids.toList()) {
       _panelTitles.remove(id);
+      // Its layout options go with it — they describe a place in the
+      // arrangement, and that place is gone.
+      _paneOptions.remove(id);
       unawaited(widget.services.panels.forgetInstanceConfig(id));
     }
   }
@@ -1135,7 +1208,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // set explicitly as a semanticLabel, not a tooltip, since the app
         // shows no hover labels (docs/design/user-interface.md).
         icon: Icon(MdiIcons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
-        onPressed: () => showSettingsForTarget(
+        onPressed: () => _openLoggingSettings(buttonContext, qsos),
+      ),
+    );
+  }
+
+  /// The logging pane's own settings dialog, in one place so the tab button
+  /// and the pane's layout options open the SAME thing. The logging panel is
+  /// native and reaches its settings through a target rather than through
+  /// `formFields`, so nothing else here would find it.
+  Future<void> _openLoggingSettings(BuildContext buttonContext, List<Qso> qsos) {
+    final effectiveContext = buttonContext;
+    return showSettingsForTarget(
           buttonContext,
           services: widget.services,
           target: 'logging',
@@ -1159,9 +1243,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               },
             ),
           ],
-        ),
-      ),
-    );
+        );
   }
 
   /// Floor for [_narrowTabBar]'s QSOs-tab padding — shrunk before the tab
@@ -1334,7 +1416,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   static const _dockModuleIds = ['logging', 'info', 'spots', 'map'];
 
   /// Mirrors the fixed wide layout — logging on the left, the rest tabbed on
-  /// the right — and is what Reset Layout restores.
+  /// the right — and is what Restore Defaults puts back.
   DockNode _defaultDockSpec() => DockSplit(Axis.horizontal, [
     DockGroup(['logging']),
     // Selected: Info, matching the fixed wide layout's initial tab.
@@ -1402,9 +1484,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     for (final id in _dockSpec?.collectModules() ?? const <String>[])
       if (!_dockModuleIds.contains(id)) id: widget.services.panels[id]?.title ?? panelKeyOfPanelId(id),
     // A panel may name its own tab, which is what tells two placements of
-    // one panel apart. LAST in the map, so it wins over every fallback
-    // above — the operator's own heading beats a descriptor's title.
+    // one panel apart. LAST but one in the map, so it wins over every
+    // fallback above — a descriptor's title is the panel's guess, this is
+    // what it actually rendered.
     ..._panelTitles,
+    // LAST: the operator's own name for the pane beats everything, including
+    // what the panel calls itself. Nobody else gets to overrule what they
+    // typed into that box.
+    for (final entry in _paneOptions.entries)
+      if (entry.value.title != null) entry.key: entry.value.title!,
   };
 
   /// Registers this view's own panels with the service. Called from
@@ -1462,36 +1550,59 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       initialSpec: _dockSpec!,
       titles: _dockTitles(realQsoCount),
       children: {
-        'logging': loggingPanel,
-        'info': infoPanel,
-        'spots': spotsPanel,
-        'map': mapPanel,
-        // Extension panels are built only for what the arrangement actually
-        // holds: an ExtensionPanel renders on mount, so building one for a
-        // panel nobody added would cross the bridge for a pane that is never
-        // shown.
-        for (final id in inLayout)
-          if (widget.services.panels[id]?.source == PanelSource.extension)
-            id: ExtensionPanel(
-              key: ValueKey('panel-$id'),
-              panel: widget.services.panels[id]!,
-              panels: widget.services.panels,
-              onTitle: (title) => _onPanelTitle(id, title),
-              renderContext: PanelRenderContext(
-                operation: _draftOperation ?? operation,
-                qso: _draftQso,
-                qsoCount: realQsoCount,
-                spotsRevision: _spotsRevision,
-                lookupRevision: _lookupRevision,
-              ),
-            )
-          // A module nothing in the catalog explains — an extension disabled
-          // or uninstalled since this arrangement was saved. It keeps its
-          // pane and says so, rather than costing the operator the layout.
-          else if (!_dockModuleIds.contains(id))
-            id: MissingPanelPane(extensionName: extensionKeyOfPanelId(id) ?? id),
+        for (final entry in {
+          'logging': loggingPanel,
+          'info': infoPanel,
+          'spots': spotsPanel,
+          'map': mapPanel,
+          // Extension panels are built only for what the arrangement actually
+          // holds: an ExtensionPanel renders on mount, so building one for a
+          // panel nobody added would cross the bridge for a pane that is never
+          // shown.
+          for (final id in inLayout)
+            if (widget.services.panels[id]?.source == PanelSource.extension)
+              id: ExtensionPanel(
+                key: ValueKey('panel-$id'),
+                panel: widget.services.panels[id]!,
+                panels: widget.services.panels,
+                onTitle: (title) => _onPanelTitle(id, title),
+                renderContext: PanelRenderContext(
+                  operation: _draftOperation ?? operation,
+                  qso: _draftQso,
+                  qsoCount: realQsoCount,
+                  spotsRevision: _spotsRevision,
+                  lookupRevision: _lookupRevision,
+                ),
+              )
+            // A module nothing in the catalog explains — an extension disabled
+            // or uninstalled since this arrangement was saved. It keeps its
+            // pane and says so, rather than costing the operator the layout.
+            else if (!_dockModuleIds.contains(id))
+              id: MissingPanelPane(extensionName: extensionKeyOfPanelId(id) ?? id),
+        }.entries)
+          entry.key: _withPaneOverrides(entry.key, entry.value),
       },
-      tabActions: {'logging': (context) => _buildLoggingSettingsButton(qsos, context: context)},
+      // What a pane offers while it is being USED. The dock hides all of it
+      // while editing, where a tab is a grab handle — a panel's own settings
+      // are reachable from the panel, and its LAYOUT options from its header
+      // (see [_paneEditControls]); the two are different questions and this
+      // is the one that belongs to the panel.
+      tabActions: {
+        'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
+        for (final id in inLayout)
+          if (widget.services.panels[id]?.formFields.isNotEmpty ?? false)
+            id: (context) => _buildPanelSettingsButton(widget.services.panels[id]!, context: context),
+      },
+      editing: _layoutEditing,
+      editingPaneControls: (paneContext, id) => _paneEditControls(paneContext, id, qsos: qsos),
+      headerlessModules: {
+        for (final entry in _paneOptions.entries)
+          if (!entry.value.showHeader) entry.key,
+      },
+      // Only after the dock has actually dropped it — it refuses for the last
+      // module, and forgetting a pane that is still on screen would wipe what
+      // the operator can see.
+      onModuleDeleted: (id) => _forgetPanes([id]),
       initialState: _dockState,
       onStateChanged: (state) {
         // No setState: which pane is on top changes nothing this build
@@ -1508,11 +1619,180 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // pane added from the layout sheet would otherwise get no widget and
         // render as an empty tab until something unrelated rebuilt the view.
         setState(() => _dockSpec = node);
-        widget.services.settings.setLayoutData(LayoutKeys.operationDock, node.toJson());
+        // While editing, the arrangement is a draft and storage hears nothing
+        // — which is the whole basis on which the revert button can promise
+        // anything. Outside edit mode this is a divider drag, and those save
+        // as they always have.
+        if (!_layoutEditing) {
+          widget.services.settings.setLayoutData(LayoutKeys.operationDock, node.toJson());
+        }
         // The layout sheet, if it is open, is listing this very tree.
         _bumpSheet();
       },
     );
+  }
+
+  /// The one control a pane carries while the layout is being edited, at the
+  /// trailing end of its own header: its LAYOUT options.
+  ///
+  /// Deliberately not the panel's own settings, which are a different kind of
+  /// thing and reachable from the panel while it is being used. These are the
+  /// dock's business — what the pane is called here, whether it shows a
+  /// header, how big it draws — and every pane has them whichever panel is in
+  /// it (see [PaneLayoutOptions]).
+  ///
+  /// Removing a pane is NOT here: it is the drag target at the top of the
+  /// dock. A delete button on every pane is one an operator can hit while
+  /// doing something else, and what it destroys is a pane they arranged and
+  /// configured.
+  Widget _paneEditControls(BuildContext context, String id, {required List<Qso> qsos}) {
+    final theme = Theme.of(context);
+    final panel = widget.services.panels[id];
+    final options = _paneOptions[id] ?? PaneLayoutOptions.none;
+    // What the pane would be called with no override — the placeholder the
+    // dialog shows, so the operator can see what they are replacing.
+    final defaultTitle = _panelTitles[id] ?? panel?.title ?? panelKeyOfPanelId(id);
+    return IconButton(
+      icon: Icon(
+        MdiIcons.viewDashboardEdit,
+        color: theme.colorScheme.onPrimary,
+        semanticLabel: context.t.operation.layout.paneOptionsTitle(panel: options.title ?? defaultTitle),
+      ),
+      onPressed: () => unawaited(showPaneLayoutOptions(
+        context,
+        paneTitle: options.title ?? defaultTitle,
+        defaultTitle: defaultTitle,
+        // The header is the tab strip once a pane shares a group, so hiding
+        // it is not on offer there.
+        inTabset: _groupSizeOf(id) > 1,
+        developerMode: widget.services.settings.developerMode,
+        current: options,
+        resetTitle: context.t.operation.layout.resetPaneConfirm(panel: options.title ?? defaultTitle),
+        resetBody: context.t.operation.layout.resetPaneConfirmBody,
+        onReset: () => setState(() => _paneOptions.remove(id)),
+        // Hiding a pane's header takes the tab action with it, and that is
+        // the only other way to a panel's own settings — for a native pane
+        // reached through a target (the logging panel) as much as for an
+        // extension panel with a form of its own.
+        // The keyboard/screen-reader route to what the delete target does:
+        // a drag cannot be made without a pointer, and Restore Defaults is the
+        // whole arrangement. Absent for the last pane, which the dock
+        // refuses to remove — an empty dock has no tab left to drag anything
+        // back with.
+        onDelete: _paneCount() > 1
+            ? () {
+                final dock = _dockKey.currentState;
+                if (dock == null) return;
+                if (dock.removeModule(id)) _forgetPanes([id]);
+              }
+            : null,
+        onPanelSettings: switch (id) {
+          'logging' => () => unawaited(_openLoggingSettings(context, qsos)),
+          _ when panel != null && panel.formFields.isNotEmpty =>
+            () => unawaited(showPanelSettings(context, services: widget.services, panel: panel)),
+          _ => null,
+        },
+        onChanged: (next) => setState(() {
+          // Dropped rather than stored empty, so a layout carries options
+          // only for the panes that actually have any.
+          if (next.isEmpty) {
+            _paneOptions.remove(id);
+          } else {
+            _paneOptions[id] = next;
+          }
+        }),
+      )),
+    );
+  }
+
+  /// An extension panel's own configuration, on its tab — the counterpart of
+  /// the logging pane's tune button, and the only route to a form whose
+  /// fields configure that pane and nothing else.
+  Widget _buildPanelSettingsButton(PanelDefinition panel, {required BuildContext context}) {
+    final theme = Theme.of(context);
+    return Builder(
+      builder: (buttonContext) => IconButton(
+        icon: Icon(
+          MdiIcons.tune,
+          color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+          semanticLabel: context.t.operation.layout.panelSettings(panel: panel.title),
+        ),
+        onPressed: () => unawaited(showPanelSettings(buttonContext, services: widget.services, panel: panel)),
+      ),
+    );
+  }
+
+  /// A pane's own font-scale and density overrides, applied around the pane's
+  /// widget and nowhere else.
+  ///
+  /// Font scale is a [SubtreeUiScale] rather than a hand-multiplied
+  /// dimension, which is the only way to do this that
+  /// [docs/design/ui-scaling.md]'s rules allow: everything inside stays in
+  /// plain logical pixels, and the pane simply lives in a coordinate space
+  /// scaled once more. NOT a bare [UiScale], which is a root primitive and
+  /// stretches a pane's two axes by different factors — see its doc.
+  ///
+  /// Density is a scope, the same one a vertical split already publishes for
+  /// a shortened pane. Set explicitly here it stops being a function of
+  /// height, which is the point: a pane can be told to stay compact in a
+  /// window with room to spare.
+  /// Each wrapper closes over `inner`, a FINAL copy, never over the `wrapped`
+  /// variable it is about to be assigned to. A builder that reads `wrapped`
+  /// resolves it at BUILD time — by which point it is the builder itself, so
+  /// the builder becomes its own child and the tree mounts forever. It does
+  /// not throw where the mistake is; it blows the stack a thousand mounts
+  /// later, while Flutter is formatting the error.
+  Widget _withPaneOverrides(String id, Widget pane) => _withOverrides(_paneOptions[id], pane);
+
+  /// The same wrapping for the VIEW as a whole. Applied around the dock, so a
+  /// pane that overrides nothing inherits it and one that does wins — each
+  /// level names an ABSOLUTE size, and the innermost that names one decides.
+  Widget _withViewOverrides(Widget dock) => _withOverrides(_viewOptions, dock);
+
+  Widget _withOverrides(PaneLayoutOptions? options, Widget pane) {
+    if (options == null) return pane;
+    var wrapped = pane;
+    if (options.densityValue case final preference?) {
+      final inner = wrapped;
+      wrapped = LayoutBuilder(
+        // Resolved against the PANE's own height, not the window's — the
+        // ceiling `resolve` puts on a roomier pick is about whether the rows
+        // fit, and what they have to fit in here is this pane.
+        builder: (context, constraints) => LayoutDensityScope(
+          density: preference.resolve(constraints.maxHeight),
+          child: inner,
+        ),
+      );
+    }
+    if (options.fontScaleValue case final scale?) {
+      final inner = wrapped;
+      wrapped = SubtreeUiScale(scale: scale.scaleFactor, child: inner);
+    }
+    return wrapped;
+  }
+
+  /// Whether any extension the operator could enable contributes a panel.
+  /// The Extensions list this opens is filtered to the `panel` hook, and a
+  /// gated extension is not in it either.
+  bool get _hasPanelExtensions {
+    final extensions = widget.services.extensions;
+    return extensions.availableExtensions
+        .any((info) => !info.core && info.hooks.contains('panel') && extensions.isExtensionAvailable(info));
+  }
+
+  /// How many panes the whole arrangement holds — panes, not groups: one
+  /// group can hold several. One is the floor the dock enforces, so a
+  /// removal control has nothing to offer there.
+  int _paneCount() => _dockSpec?.collectModules().length ?? 0;
+
+  /// How many modules share [id]'s group, or 1 when nothing in the
+  /// arrangement holds it.
+  int _groupSizeOf(String id) {
+    int? sizeIn(DockNode node) => switch (node) {
+      DockGroup(:final modules) => modules.contains(id) ? modules.length : null,
+      DockSplit(:final children) => children.map(sizeIn).nonNulls.firstOrNull,
+    };
+    return _dockSpec == null ? 1 : sizeIn(_dockSpec!) ?? 1;
   }
 
   /// Bumped on every change an open layout sheet is listing — dock
@@ -1528,25 +1808,223 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   void _bumpSheet() => _sheetRevision?.value++;
 
-  /// The header's layout button — measured, like [_headerTitleLeftInset],
+  /// The header's plus button — measured, like [_headerTitleLeftInset],
   /// rather than derived from theme constants, and as a distance from the
   /// window's RIGHT edge, which is the edge the sheet aligns to.
-  final _layoutButtonKey = GlobalKey();
+  final _addPanelButtonKey = GlobalKey();
 
-  double? get _layoutButtonRightInset {
-    final box = _layoutButtonKey.currentContext?.findRenderObject() as RenderBox?;
+  double? get _addPanelButtonRightInset {
+    final box = _addPanelButtonKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return null;
     final rightEdge = box.localToGlobal(Offset(box.size.width, 0)).dx;
     return math.max(0.0, MediaQuery.sizeOf(context).width - rightEdge);
   }
 
-  Future<void> _openLayoutSheet() async {
+  /// Turns the dock into an editor.
+  ///
+  /// Nothing else about the view changes: the draft IS the live arrangement,
+  /// so what the operator drags is what they are looking at. Only the write
+  /// to settings is held back (see the dock's `onSpecChanged`).
+  void _startLayoutEditing() {
+    // A second press must not re-take the snapshot: discard would then roll
+    // back to the last press rather than to where editing began.
+    if (_layoutEditing) return;
+    // Editing excludes the panes from focus traversal, which unfocuses
+    // whatever was in them — the call field, ordinarily. Nothing puts it
+    // back on the way out: the pane is never remounted, so its autofocus
+    // does not fire again, and the operator returns to a view that looks
+    // ready to log and swallows every keystroke.
+    // The press's capture when there was one (see [_layoutHeaderControls]);
+    // otherwise whatever holds focus now, which is the keyboard-activated
+    // case — no pointer-down, so nothing has been unfocused.
+    _focusBeforeLayoutEditing = _focusAtPress ?? FocusManager.instance.primaryFocus;
+    _focusAtPress = null;
+    final spec = _dockSpec;
+    if (spec == null) {
+      debugPrint('[layout] Edit Layout pressed with no arrangement resolved');
+      return;
+    }
+    setState(() {
+      _layoutSnapshot = spec.toJson();
+      _paneOptionsSnapshot = PaneLayoutOptions.mapToJson(_paneOptions);
+      _viewOptionsSnapshot = _viewOptions.toJson();
+      _layoutEditing = true;
+    });
+    // Entering from the sheet's own header copy: those are the buttons that
+    // change, and the route rebuilds them on the revision, not on setState.
+    _bumpSheet();
+  }
+
+  /// Cancels the edit: the arrangement goes back to where editing found it
+  /// and edit mode ends. The counterpart of [_saveLayout], and the reason
+  /// leaving is safe — every way out of edit mode either keeps everything or
+  /// keeps nothing.
+  ///
+  /// Selection is deliberately NOT reverted: which pane is on top is state,
+  /// not arrangement (see [DockState]), and it is saved as the operator makes
+  /// it whether or not they are editing.
+  void _revertLayout() {
+    final snapshot = _layoutSnapshot;
+    final spec = snapshot == null ? null : DockNode.fromJson(snapshot);
+    if (spec == null) {
+      // Leave anyway. Edit mode left on has no way out from here: the same
+      // bail runs when customization is switched off mid-edit, and that
+      // unmounts the dock and with it every control that could end the edit.
+      debugPrint('[layout] revert pressed with nothing to revert to');
+      setState(() {
+        _pendingForgets.clear();
+        _layoutEditing = false;
+        _layoutSnapshot = null;
+        _paneOptionsSnapshot = null;
+        _viewOptionsSnapshot = null;
+      });
+      // The other two halves of any exit: focus goes back where the edit took
+      // it from, and a sheet still up redraws the controls that just changed.
+      _restoreFocusAfterEditing();
+      _bumpSheet();
+      return;
+    }
+    // NOT required. A narrow window has no dock mounted, and that is exactly
+    // when this runs on its own — turning the setting off mid-edit. Bailing
+    // there leaves the draft live and edit mode stuck on, so the arrangement
+    // that reappears when the setting comes back is the one the operator
+    // discarded. `_dockSpec` below is what a remounting dock reads.
+    final dock = _dockKey.currentState;
+    // Panes this revert is DROPPING: added during the edit, so nothing
+    // outside it ever knew them, and their contents go the way any removed
+    // pane's do. Without this an added-then-reverted `#2` leaves its config
+    // behind for the next `#2` to inherit — the same defect the deferred
+    // forget prevents, running the other way.
+    // Panes this revert is DROPPING: everything the edit brought into being
+    // that the restored arrangement does not hold — those still on screen
+    // (added) AND those already taken out again (added, then removed, so in
+    // `_pendingForgets` and in neither tree). Miss the second set and a
+    // discarded pane's notes wait for the next placement to reuse its id,
+    // which is the leak the deferred forget exists to prevent.
+    final restored = spec.collectModules().toSet();
+    final dropped = {..._pendingForgets, ...?_dockSpec?.collectModules()}.difference(restored);
+    _dockState.applyTo(spec);
+    // emit: false — a revert is the operator UNDOING their own edits, and
+    // reporting it back would be recorded as one more of them.
+    dock?.replaceSpec(spec, emit: false);
+    setState(() {
+      _dockSpec = spec;
+      // The panes the edit's removals took out are back on screen; forgetting
+      // their contents now would empty a pane the operator can see.
+      _pendingForgets.clear();
+      _paneOptions = PaneLayoutOptions.mapFromJson(_paneOptionsSnapshot);
+      _viewOptions = PaneLayoutOptions.fromJson(_viewOptionsSnapshot);
+      _layoutEditing = false;
+      _layoutSnapshot = null;
+      _paneOptionsSnapshot = null;
+      _viewOptionsSnapshot = null;
+    });
+    _forgetPanesNow(dropped);
+    _restoreFocusAfterEditing();
+    _bumpSheet();
+  }
+
+  /// What held focus when editing began, to be handed back when it ends.
+  FocusNode? _focusBeforeLayoutEditing;
+
+  /// What held focus when the Edit Layout button was PRESSED, which is before
+  /// the press itself unfocused it. Claimed by [_startLayoutEditing] if the
+  /// press becomes a tap, and dropped a frame later if it does not.
+  FocusNode? _focusAtPress;
+
+  void _dropPressFocusCapture() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusAtPress = null);
+
+  /// Restores it, a frame later: the panes are still excluded from traversal
+  /// during the build that ends edit mode, and a request made then is
+  /// refused.
+  void _restoreFocusAfterEditing({bool keep = false}) {
+    final node = _focusBeforeLayoutEditing;
+    if (!keep) _focusBeforeLayoutEditing = null;
+    if (node == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Gone with a pane the edit removed, or with the view itself. Asked of
+      // the ELEMENT: `FocusNode.detach` leaves `context` pointing at the dead
+      // one, so a null check here never fires — and `requestFocus` on a
+      // detached node silently latches, stealing focus if that pane is ever
+      // remounted.
+      if (!mounted || node.context?.mounted != true) return;
+      // A scope is what an unfocus leaves behind, and focusing one puts the
+      // caret nowhere — worse than leaving it where it is, since it also
+      // takes focus off whatever did have it.
+      if (node is FocusScopeNode) return;
+      node.requestFocus();
+    });
+  }
+
+  /// Runs one of the two exits, and — pressed from the sheet's own header
+  /// copy — takes the sheet down with it.
+  ///
+  /// The sheet is a control panel for an edit in progress: it lists what can
+  /// be added. Left open past the exit, that add writes straight to settings
+  /// the moment it is pressed — with the Discard that was beside it a second
+  /// ago gone — and the sheet's own header still offers a Save for an edit
+  /// that is already over.
+  void _endEditingFrom(BuildContext context, {required bool inSheet, required VoidCallback exit}) {
+    exit();
+    // Pop AFTER: the exits call `_bumpSheet`, and a route already gone simply
+    // has nothing listening.
+    if (inSheet && Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
+
+  /// Commits the draft and leaves edit mode.
+  void _saveLayout() {
+    final spec = _dockSpec;
+    // Panes this save is DROPPING: removed during the edit and NOT back in
+    // the arrangement being saved. The same set difference the revert takes,
+    // running the other way — a pane dropped and then re-added (or a new
+    // instance handed the freed id, which [PanelService.nextInstanceId]
+    // does on purpose) is a pane the operator can see, and forgetting it
+    // would empty one they just filled in.
+    final kept = spec?.collectModules().toSet() ?? const <String>{};
+    final forgotten = _pendingForgets.toSet().difference(kept);
+    // Before the writes, never after: forgetting drops these panes' entries
+    // from [_paneOptions], and a map serialized first would carry a removed
+    // pane's title and overrides to disk for whatever takes its id next.
+    _forgetPanesNow(forgotten);
+    if (spec != null) widget.services.settings.setLayoutData(LayoutKeys.operationDock, spec.toJson());
+    widget.services.settings.setLayoutData(
+      LayoutKeys.operationPaneOptions,
+      PaneLayoutOptions.mapToJson(_paneOptions),
+    );
+    widget.services.settings.setLayoutData(LayoutKeys.operationViewOptions, _viewOptions.toJson());
+    setState(() {
+      _layoutEditing = false;
+      _layoutSnapshot = null;
+      _paneOptionsSnapshot = null;
+      _viewOptionsSnapshot = null;
+      _pendingForgets.clear();
+    });
+    _restoreFocusAfterEditing();
+    // Saving from the sheet's own header copy has to redraw it: these very
+    // buttons are what changes.
+    _bumpSheet();
+  }
+
+  /// The guard below is not reachable through the UI any more (the sheet's
+  /// header no longer carries a plus), which is exactly why it is worth a
+  /// test: it is what stops a second caller stacking a route over the first.
+  @visibleForTesting
+  Future<void> openAddPanelSheetForTest() => _openAddPanelSheet();
+
+  Future<void> _openAddPanelSheet() async {
+    // The sheet's own header carries this very button (see [headerTrailing]),
+    // so the obvious thing to press while it is up reopens it. A second route
+    // would take over `_sheetRevision` — orphaning the first sheet's list —
+    // and on closing would clear `_layoutSheetOpen` under a sheet still on
+    // screen, putting a dead copy of the controls in the header beneath it.
+    if (_layoutSheetOpen) return;
     final dock = _dockKey.currentState;
     if (dock == null) {
       // The button is only rendered alongside the dock, so this is a bug
       // rather than a state the operator can be in — and a button that does
       // nothing at all is not something they could report.
-      debugPrint('[layout] layout button pressed with no dock mounted');
+      debugPrint('[layout] add-panel button pressed with no dock mounted');
       return;
     }
     // An extension enabled since this view mounted has panels nobody has
@@ -1556,10 +2034,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     unawaited(widget.services.panels.refreshExtensionPanels());
     final revision = _sheetRevision = ValueNotifier<int>(0);
     final t = context.t.operation.layout;
+    setState(() => _layoutSheetOpen = true);
     try {
       await showTopModalPane<void>(
       context,
-      rightInset: _layoutButtonRightInset,
+      rightInset: _addPanelButtonRightInset,
       // Narrower than a form pane: every row here is a panel name and a
       // control or two.
       maxWidth: idealPaneWidth * 0.8,
@@ -1568,30 +2047,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       // panel floating inside it rather than as the pane's own content.
       contentPadding: EdgeInsets.zero,
       closeLabel: context.t.common.close,
+      // The header's layout controls, drawn by the route into the strip of
+      // header it leaves uncovered — the view's own copies are suppressed
+      // while this is up (see [_layoutHeaderControls]). Rebuilt on the same
+      // revision the sheet body is, since Save Layout is one of them and
+      // changes which of them there are.
+      headerTrailing: ValueListenableBuilder<int>(
+        valueListenable: revision,
+        // A context from inside the route, so the buttons resolve their theme
+        // and their locale where they are actually drawn.
+        builder: (headerContext, _, _) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [..._layoutHeaderControls(headerContext, inSheet: true), windowsCaptionSpacer(context)],
+        ),
+      ),
       // A mirror of the operation sheet's top row, because this sheet hangs
       // off the opposite end of the same header: Options where that one puts
       // its accept button, the title against the edge the sheet came from,
       // and the accept button at that edge.
-      leading: Builder(
-        builder: (buttonContext) => TextButton.icon(
-          onPressed: () => LayoutSheet.showOptions(
-            buttonContext,
-            onReset: () {
-              // Reset drops every pane at once, and dropping a pane means
-              // the same thing here as it does on the remove button — a
-              // placement's contents go with it. Without this, resetting and
-              // then adding a Custom Text pane hands back `#1` still holding
-              // the notes that were on screen a moment ago.
-              _forgetPanes(dock.modules);
-              dock.replaceSpec(_defaultDockSpec());
-              setState(() {});
-            },
-          ),
-          icon: const Icon(MdiIcons.cog, size: 18),
-          label: Text(t.options),
-          style: TextButton.styleFrom(foregroundColor: Theme.of(buttonContext).colorScheme.onSurface),
-        ),
-      ),
       // Its own trailing inset: HaloDialogHeader puts the title's Expanded
       // and the accept button flush against each other, and a right-aligned
       // title ends exactly where that button starts.
@@ -1617,77 +2090,74 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       builder: (_) => ValueListenableBuilder<int>(
         valueListenable: revision,
         builder: (context, _, _) {
-          final inLayout = dock.modules;
-          // Everything the sheet shows — name, description, preview, whether
-          // there are settings — comes from the panels service, so a panel
-          // an extension contributed lists exactly like one of ours.
-          LayoutPanelEntry? entry(String id) {
-            final panel = widget.services.panels[id];
-            if (panel == null) {
-              // A module the catalog cannot explain still gets a row. Its
-              // pane says the extension is missing, and this is the only
-              // control that takes it out — without a row here, an operator
-              // whose extension is gone for good has no way to remove the
-              // pane short of resetting the whole arrangement.
-              return LayoutPanelEntry(
-                id: id,
-                title: panelKeyOfPanelId(id),
-                description: t.missingExtension(name: extensionKeyOfPanelId(id) ?? id),
-              );
-            }
-            return LayoutPanelEntry(
-              id: id,
-              // The panel's OWN title where it has one. Three placements of
-              // one panel are otherwise three identical rows, each with a
-              // remove control — and this is the surface where picking the
-              // wrong one destroys something.
-              title: _panelTitles[id] ?? panel.title,
-              description: panel.description,
-              preview: panel.preview,
-              // Only the panel's OWN configuration, never the operator's.
-              //
-              // A native panel's `settingsTarget` opens the app's declared
-              // settings aimed at that pane — the logging panel's tune
-              // dialog, reachable from its own tab. Those are user settings
-              // that happen to concern a pane; this sheet is about the
-              // LAYOUT, and offering them here says the two are the same
-              // kind of thing. An extension panel's form is the other case:
-              // it configures that pane and nothing else, and there is
-              // nowhere else to reach it from.
-              openSettings: panel.formFields.isEmpty
-                  ? null
-                  : (settingsContext) =>
-                      unawaited(showPanelSettings(settingsContext, services: widget.services, panel: panel)),
-            );
-          }
-
+          // Re-read per build: the dock can go out from under an open sheet
+          // (a resize past the two-pane breakpoint), and the list is then
+          // about an arrangement that is not on screen. Falling back to the
+          // draft keeps it describing the same thing the header does.
+          final inLayout = _dockKey.currentState?.modules ?? _dockSpec?.collectModules() ?? const <String>[];
           return LayoutSheet(
-            panels: [for (final id in inLayout) entry(id)].nonNulls.toList(),
-            // Catalog order, not removal order, so a panel returns to the
-            // same place in the list it left from.
+            // Catalog order, not the order things were taken out in, so a
+            // panel returns to the same place in the list it left from.
+            // Everything a row shows — name, description, preview — comes
+            // from the panels service, so a panel an extension contributed
+            // lists exactly like one of ours.
             available: [
               for (final panel in widget.services.panels.catalog)
                 // A panel that may be placed more than once stays offered
                 // however many are already in the layout — that row IS the
                 // "add another" control, and there is no other.
-                if (panel.multiple || !inLayout.contains(panel.id)) entry(panel.id),
-            ].nonNulls.toList(),
-            // Only after the dock agrees to drop it: removeModule refuses
-            // for the last module in the arrangement, and forgetting a pane
-            // that is still on screen would wipe what the operator can see.
-            onRemove: (id) {
-              if (dock.removeModule(id)) _forgetPanes([id]);
-            },
+                if (panel.multiple || !inLayout.contains(panel.id))
+                  LayoutPanelEntry(
+                    id: panel.id,
+                    title: panel.title,
+                    description: panel.description,
+                    preview: panel.preview,
+                  ),
+            ],
             onAdd: (id) {
               // Adding an instanceable panel places a NEW one rather than
               // re-adding the descriptor: its id is what its config is
               // stored under, so two panes sharing one would share their
               // contents too.
+              // Re-read for the same reason the reset above does.
+              final dock = _dockKey.currentState;
+              if (dock == null) return;
               final panel = widget.services.panels[id];
               dock.addModule(
-                panel != null && panel.multiple ? PanelService.nextInstanceId(id, dock.modules) : id,
+                panel != null && panel.multiple
+                    // Ids waiting to be forgotten are NOT free. Their config
+                    // outlives the removal until the save commits it, so
+                    // handing one to a new placement gives the operator a
+                    // pane that arrives holding the last one's notes — and
+                    // the save then spares it, seeing the id back in the
+                    // arrangement.
+                    ? PanelService.nextInstanceId(id, [...dock.modules, ..._pendingForgets])
+                    : id,
               );
             },
+            // Filtered to the extensions that contribute panels — an operator
+            // sent here for more panels should not be handed the whole
+            // catalog. Whatever they enable lands in the catalog behind this
+            // sheet, so the refresh and the bump are what make it appear
+            // without closing anything.
+            // Offered only when it leads somewhere. Panel extensions are
+            // themselves behind the `panels` experiment, so with that off
+            // there are none at all — and a button whose whole purpose is
+            // "find the panel you want" opening an empty list is worse than
+            // no button.
+            onManageExtensions: _hasPanelExtensions
+                ? () => unawaited(() async {
+                    await showModalPane<void>(
+                      context,
+                      title: context.t.activitiesView.manageExtensions,
+                      closeLabel: context.t.common.close,
+                      scrollable: false,
+                      builder: (_) => ExtensionsPanel(services: widget.services, onlyHook: 'panel'),
+                    );
+                    await widget.services.panels.refreshExtensionPanels();
+                    _bumpSheet();
+                  }())
+                : null,
           );
         },
       ),
@@ -1695,52 +2165,157 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     } finally {
       _sheetRevision = null;
       revision.dispose();
+      // The sheet's own close, an Escape and a tap on the barrier all land
+      // here.
+      if (mounted) setState(() => _layoutSheetOpen = false);
     }
   }
 
-  /// The header's layout button: a dashboard glyph that fades in as the
-  /// pointer nears the header's right end, rather than sitting permanently
-  /// over the operation's own title. It keeps its layout space either way,
-  /// so the header doesn't reflow as it appears, and it stays hit-testable
-  /// and announced while faded — a click into the zone reveals it on the way
-  /// in, and a screen reader must be able to find it at all.
+  /// The header's layout controls. Present only where there is an
+  /// arrangement to edit — the dock, which is two-pane and behind the
+  /// operator's own Enable Layout Customization setting.
   ///
-  /// Touch platforms have no hover to reveal it with, so there it simply
-  /// stays visible.
-  Widget _layoutButton() {
+  /// Out of edit mode this is one always-visible button, and pressing it goes
+  /// straight into editing: there is no sheet in the way, because what an
+  /// operator wants when they reach for this is to move a pane.
+  ///
+  /// Built HERE but rendered in two places, never both at once: the view's
+  /// own header while no sheet is up, and the Add a Panel sheet's
+  /// `headerTrailing` while one is — the view's header takes no taps under a
+  /// modal route, so a button left there would be visible and dead.
+  /// [inSheet] for the sheet's own copy. Only the VIEW's copy carries
+  /// [_addPanelButtonKey]: popping the sheet completes its route future — and
+  /// so un-suppresses the view's copy — while the route is still animating
+  /// out, so for those few frames both copies are mounted, and one GlobalKey
+  /// across two of them throws.
+  /// The VIEW's own layout options, beside the title rather than out in the
+  /// actions group: it is about the thing the title names, and the actions
+  /// are about the EDIT — add a panel, discard it, save it. Hidden while the
+  /// Add a Panel sheet is up, like every other control down here, since the
+  /// view's header takes no taps under a modal route.
+  Widget? _viewOptionsButton(BuildContext context, {required bool editing}) {
+    if (!editing || _layoutSheetOpen) return null;
     final theme = Theme.of(context);
-    return MouseRegion(
-      onEnter: (_) => setState(() => _layoutButtonHovered = true),
-      onExit: (_) => setState(() => _layoutButtonHovered = false),
-      child: SizedBox(
-        // Wider than the button: the reveal is meant to trigger on
-        // approaching that end of the header, not on finding a control that
-        // isn't visible yet.
-        width: LayoutDensity.chromeHeightOf(context) * 2.5,
-        child: Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: AnimatedOpacity(
-            opacity: (_layoutButtonHovered || isMobilePlatform) ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: IconButton(
-              key: _layoutButtonKey,
-              // The app shows no hover tooltips
-              // (docs/design/user-interface.md), so the accessible name is
-              // the only place this button is named.
-              icon: Icon(
-                MdiIcons.viewDashboard,
-                color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-                semanticLabel: context.t.operation.layout.openLabel,
-              ),
-              onPressed: _openLayoutSheet,
-            ),
-          ),
-        ),
+    final t = context.t.operation.layout;
+    return IconButton(
+      // The same glyph a pane's options carry, because it is the same kind of
+      // thing one level up. What tells them apart is where they are.
+      icon: Icon(
+        MdiIcons.viewDashboardEdit,
+        color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+        semanticLabel: t.viewOptions,
       ),
+      onPressed: () => unawaited(showPaneLayoutOptions(
+        context,
+        paneTitle: _viewOptions.title ?? t.viewName,
+        defaultTitle: t.viewName,
+        inTabset: false,
+        // A view has no header of its own to hide, and this one is the app's,
+        // so its name is not the operator's to change.
+        showHeaderField: false,
+        titleEnabled: false,
+        developerMode: widget.services.settings.developerMode,
+        current: _viewOptions,
+        onChanged: (next) => setState(() => _viewOptions = next),
+        resetTitle: t.resetViewConfirm,
+        resetBody: t.resetViewConfirmBody,
+        onReset: _restoreLayoutDefaults,
+      )),
     );
   }
 
-  bool _layoutButtonHovered = false;
+  /// Everything about this view's layout, back to how it ships: the default
+  /// arrangement, the view's own options, and every pane's.
+  ///
+  /// One control rather than two. A reset that put the options back but left
+  /// the arrangement alone is not a restore — the operator asking for
+  /// defaults is asking for the view they started with, and having to find a
+  /// second control in another menu to finish the job is how they end up
+  /// half-way between two layouts.
+  ///
+  /// Part of the DRAFT like everything else in edit mode, so discard undoes
+  /// it and the panes come back with what was in them.
+  void _restoreLayoutDefaults() {
+    // Re-read, never a captured reference: a resize past the two-pane
+    // breakpoint takes the dock down while a dialog over it stays up, and a
+    // call on the disposed State is a setState-after-dispose.
+    final dock = _dockKey.currentState;
+    // Dropping a pane means the same thing here as it does anywhere else —
+    // a placement's contents go with it. Without this, restoring and then
+    // adding a Custom Text pane hands back `#1` still holding the notes that
+    // were on screen a moment ago.
+    _forgetPanes(dock?.modules ?? _dockSpec?.collectModules() ?? const []);
+    final defaults = _defaultDockSpec();
+    // emit: false, like the revert. An emit reports the new arrangement's
+    // SELECTION through `onStateChanged`, which is not gated on edit mode —
+    // it would write which pane is on top to settings there and then, and a
+    // discard could not take it back.
+    dock?.replaceSpec(defaults, emit: false);
+    setState(() {
+      _dockSpec = defaults;
+      _viewOptions = PaneLayoutOptions.none;
+      _paneOptions.clear();
+    });
+  }
+
+  List<Widget> _layoutHeaderControls(BuildContext context, {bool inSheet = false}) {
+    final theme = Theme.of(context);
+    final t = context.t.operation.layout;
+    // The app shows no hover tooltips (docs/design/user-interface.md), so an
+    // icon button's accessible name is the only place it is named.
+    final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    if (!_layoutEditing) {
+      return [
+        Listener(
+          // Pointer-down, not `onPressed`. A click anywhere outside a text
+          // field unfocuses it first — TextField's own tap-outside — and that
+          // unfocus clears the scope's memory of WHICH child had it. By the
+          // time the callback runs, `primaryFocus` is the scope, and handing
+          // that back at the end of the edit focuses nothing.
+          onPointerDown: (_) => _focusAtPress = FocusManager.instance.primaryFocus,
+          // Dropped again once the press is over. A press dragged off the
+          // button never becomes a tap, and a capture left behind is one a
+          // LATER keyboard-activated entry would restore instead of what was
+          // actually focused then — putting the operator's next keystrokes
+          // in a field they left minutes ago. The post-frame is what lets
+          // `_startLayoutEditing` claim it first on a real tap.
+          onPointerUp: (_) => _dropPressFocusCapture(),
+          onPointerCancel: (_) => _dropPressFocusCapture(),
+          child: IconButton(
+            icon: Icon(MdiIcons.viewDashboard, color: onHeader, semanticLabel: t.editLayout),
+            onPressed: _startLayoutEditing,
+          ),
+        ),
+      ];
+    }
+    return [
+      // Not in the sheet's own copy: this is the button that OPENED it, and
+      // pressing it again is refused (see [_openAddPanelSheet]). An enabled,
+      // focusable, screen-reader-announced control that does nothing is worse
+      // than one that is not there — the sheet in front of the operator is
+      // already the answer.
+      if (!inSheet)
+        IconButton(
+          key: _addPanelButtonKey,
+          icon: Icon(MdiIcons.plus, color: onHeader, semanticLabel: t.title),
+          onPressed: () => unawaited(_openAddPanelSheet()),
+        ),
+      IconButton(
+        // Left of Save, and an icon rather than a second labelled button:
+        // saving is what the operator came here to do, and discarding is the
+        // way back out from a rearrangement they thought better of.
+        icon: Icon(MdiIcons.undoVariant, semanticLabel: t.revertLayout),
+        color: onHeader,
+        onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: _revertLayout),
+      ),
+      TextButton.icon(
+        onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: _saveLayout),
+        icon: const Icon(MdiIcons.contentSave, size: 18),
+        label: Text(t.saveLayout),
+        style: TextButton.styleFrom(foregroundColor: onHeader),
+      ),
+    ];
+  }
 
   /// Bakes [fragments] into [operation]'s own `localData['titleSuggestion']`
   /// — the same shape `OperationTitleService` persists, and the one
@@ -1801,6 +2376,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
 
         final isTwoPane = ShirtSize.of(context).isTwoPane;
+
+        // Edit mode as the HEADER sees it. `_layoutEditing` alone is not
+        // enough: Save and Discard are only emitted where there is an
+        // arrangement to edit, so a header that dresses itself for editing on
+        // any wider condition strands the operator the moment the window
+        // narrows — the dock gone, the operation's own title and setup route
+        // replaced by a view name, and nothing on screen to end the edit
+        // with. The draft survives in state, so widening returns to it.
+        final layoutEditing = _layoutEditing && isTwoPane && _customLayout;
 
         // The pane subtrees, built once and placed by whichever arrangement
         // is active (their GlobalKeys carry the State across a flip).
@@ -2008,7 +2592,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           appBar: AppBar(
               flexibleSpace: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => _editActivities(operation),
+                // Inert while editing, for the same reason the title above it
+                // is: the operation's own setup is not what is being
+                // arranged. Gating one and not the other leaves the empty
+                // header between them opening the very sheet the other
+                // refuses.
+                onTap: layoutEditing ? null : () => _editActivities(operation),
                 child: Stack(
                   children: [
                     if (windowHeaderGestureArea() != null)
@@ -2033,19 +2622,30 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // an arrangement to edit: the dock layout, which is two-pane
               // and experiment-gated.
               actions: [
-                if (isTwoPane && _customLayout) _layoutButton(),
+                if (isTwoPane && _customLayout) ...[
+                  // The sheet draws its own copy over this header while it
+                  // is up; two would be one too many, and the one down here
+                  // would be the unreachable one.
+                  if (!_layoutSheetOpen) ..._layoutHeaderControls(context),
+                ],
                 windowsCaptionSpacer(context),
               ],
               title: InkWell(
                 key: _headerTitleKey,
-                onTap: () {
-                  final progress = _sheetAnimation?.value ?? 0.0;
-                  if (progress > 0.5) {
-                    _activeSheetKey?.currentState?.saveAndClose();
-                  } else {
-                    _editActivities(operation);
-                  }
-                },
+                // Inert while editing: the operation's own setup is not what
+                // is being arranged, and the dots that hand off to its sheet
+                // would be offering a second thing to do with a header that
+                // has just become part of the layout editor.
+                onTap: layoutEditing
+                    ? null
+                    : () {
+                        final progress = _sheetAnimation?.value ?? 0.0;
+                        if (progress > 0.5) {
+                          _activeSheetKey?.currentState?.saveAndClose();
+                        } else {
+                          _editActivities(operation);
+                        }
+                      },
                 mouseCursor: SystemMouseCursors.click,
                 borderRadius: BorderRadius.circular(8),
                 // Default M3 hover/pressed overlays are tuned for a surface-
@@ -2072,10 +2672,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _HeaderDotsControl(
-                        progress: _sheetAnimation?.value ?? 0.0,
-                      ),
-                      const SizedBox(width: Space.xs),
+                      if (!layoutEditing) ...[
+                        _HeaderDotsControl(
+                          progress: _sheetAnimation?.value ?? 0.0,
+                        ),
+                        const SizedBox(width: Space.xs),
+                      ],
                       // Flexible (loose), not Expanded (tight): Expanded
                       // forces this Column — and so the InkWell's whole
                       // tap/hover area above — to stretch to the AppBar's
@@ -2098,10 +2700,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                             // past which the line ellipsizes instead. The
                             // description tries Roboto's condensed glyph width
                             // first, before shrinking its font size at all.
+                            // While editing, the header names the VIEW rather
+                            // than the operation in it: what is being
+                            // rearranged belongs to the view, and it outlives
+                            // this operation and every other one.
                             shrinkToFitText(
-                              Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
+                              Text(
+                                layoutEditing
+                                    ? (_viewOptions.title ?? context.t.operation.layout.viewName)
+                                    : '${operation.stationCall} ${displayTitleFor(context, operation)}',
+                              ),
                             ),
-                            if (refsLine.isNotEmpty)
+                            if (!layoutEditing && refsLine.isNotEmpty)
                               shrinkToFitText(
                                 Text(
                                   refsLine,
@@ -2114,6 +2724,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                           ],
                         ),
                       ),
+                      ?_viewOptionsButton(context, editing: layoutEditing),
                     ],
                   ),
                 ),
@@ -2143,7 +2754,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // in from here; PaneSafeArea's own
             // divider-clearance role composes with it further down.
             child: isTwoPane && _customLayout
-                ? _dockLayout(
+                ? _withViewOverrides(_dockLayout(
                     loggingPanel: loggingPanel,
                     infoPanel: infoPanel,
                     spotsPanel: spotsPanel,
@@ -2151,7 +2762,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     realQsoCount: realQsoCount,
                     qsos: qsos,
                     operation: operation,
-                  )
+                  ))
                 : isTwoPane
                 ? ResizableSplitView(
                     // Null when never dragged → the split's own 2/3-capped-

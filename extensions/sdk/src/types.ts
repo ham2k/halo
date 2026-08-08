@@ -1100,6 +1100,15 @@ export interface SettingsSearchResult {
   fieldType?: string
   /// The setting's CURRENT value, formatted for display.
   valueLabel?: string
+  /// The setting's CURRENT value, raw — for a hook that has to READ it (one
+  /// that toggles, say) rather than show it. Comparing [valueLabel] to decide
+  /// that would work in one language and no others.
+  ///
+  /// BOOLEANS ONLY, and absent for everything else. This crosses the bridge
+  /// to any extension that registers a `command` hook, and a secret's
+  /// plaintext must not: `valueLabel` says "Set"/"Not set" for those on
+  /// purpose. Read `valueLabel` for anything that is not a toggle.
+  value?: boolean
   /// Whether a value can be typed on one line at all. False for multiselect,
   /// account and secret settings, which have to be edited in the dialog.
   simple?: boolean

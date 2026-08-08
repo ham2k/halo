@@ -43,6 +43,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _developerModeKey = 'developerMode';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
+  static const _layoutCustomizationKey = 'layoutCustomization';
   static const _layoutDensityKey = 'layoutDensity';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
@@ -634,6 +635,25 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   @override
   Future<void> setState(Map<String, dynamic> state) => setSyncState(state);
 
+  /// Whether a view that CAN be rearranged is (docs/design/layouts.md). Off,
+  /// the Operation View uses its fixed two-pane split and there is no layout
+  /// button in the header at all; on, it uses the dock and the header carries
+  /// the way into edit mode.
+  ///
+  /// Two-pane only, and off by default: a fixed arrangement is the one an
+  /// operator can be talked through over the air, so rearranging is something
+  /// they opt into.
+  /// Deliberately NOT inherited from the `panels` experiment, which gates
+  /// the dashboard PANEL extensions rather than the dock (see
+  /// app/experiments.yaml). Reading it here would mean that
+  /// switching those panels on quietly rearranged the operator's view as
+  /// well — two features behind one switch, which is what splitting them
+  /// was for.
+  bool get layoutCustomization => (settingValue(generalGroup, _layoutCustomizationKey) as bool?) ?? false;
+
+  Future<void> setLayoutCustomization(bool value) =>
+      setSettingValue(generalGroup, _layoutCustomizationKey, value);
+
   String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? 'en';
 
   Future<void> setLocale(String localeCode) async {
@@ -1004,6 +1024,19 @@ abstract final class LayoutKeys {
   /// Sharing one key would make a tab tap a write to the arrangement, which
   /// is how looking at a pane came to be able to replace a saved layout.
   static const operationDockState = 'operation.dockState';
+
+  /// Per-pane layout options (title, header, scale and density overrides),
+  /// keyed by module id. Part of the ARRANGEMENT, not its state: they are
+  /// edited and saved with it, and a pane taken out of the layout takes them
+  /// with it. Their own key rather than a branch of the dock tree so the tree
+  /// stays what it is — splits, weights and module ids and nothing else.
+  static const operationPaneOptions = 'operation.paneOptions';
+
+  /// The VIEW's own layout options — its name, and scale/density for
+  /// everything in it. The same shape as a pane's, one level up: a pane that
+  /// overrides nothing inherits these, and these in turn fall back to the
+  /// app's own settings.
+  static const operationViewOptions = 'operation.viewOptions';
 }
 
 /// Flow ids for [SettingsService.onboardingShownCount] /

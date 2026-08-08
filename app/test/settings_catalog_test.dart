@@ -421,6 +421,26 @@ void main() {
       expect(shown['newValue'], isFalse, reason: 'SHOW DUPES means hideDupes = false');
     });
 
+    test('a search result carries a checkbox\'s raw value, and never a secret\'s', () async {
+      final services = await servicesWith([
+        hideDupes,
+        {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'Api Key', 'value': 'hunter2'},
+      ]);
+
+      // A hook that TOGGLES has to read which way, and comparing localized
+      // labels to work that out would break in every language but English.
+      final toggle = await searchSettingsForCommand(services, args: 'HIDE DUPES');
+      expect(toggle['value'], isFalse);
+
+      // Every one of these crosses the bridge to any extension with a command
+      // hook. `valueLabel` masks a secret on purpose; a raw value beside it
+      // would hand back exactly what the mask withholds.
+      final secret = await searchSettingsForCommand(services, args: 'API KEY');
+      expect(secret['key'], 'apiKey');
+      expect(secret.containsKey('value'), isFalse);
+      expect(secret.toString(), isNot(contains('hunter2')));
+    });
+
     test('a multi-word setting name is read as a name, not as a name plus a value', () async {
       // The split is app-side precisely because "AVOID ZERO BEAT N" and
       // "THEME DARK" are the same shape — only the catalog can say that the

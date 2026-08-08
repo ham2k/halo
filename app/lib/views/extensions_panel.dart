@@ -23,7 +23,12 @@ const _categoryOrder = ['activity', 'contest', 'lookup', 'spots', 'dashboard'];
 class ExtensionsPanel extends StatefulWidget {
   final HaLoServices services;
 
-  const ExtensionsPanel({super.key, required this.services});
+  /// Restricts the list to extensions whose manifest declares this hook —
+  /// what the Add a Panel sheet opens, so an operator sent there looking for
+  /// more panels is not handed the whole catalog to search through.
+  final String? onlyHook;
+
+  const ExtensionsPanel({super.key, required this.services, this.onlyHook});
 
   @override
   State<ExtensionsPanel> createState() => ExtensionsPanelState();
@@ -98,6 +103,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         final extensionService = widget.services.extensions;
         final listed = extensionService.availableExtensions
             .where((info) => !info.core && extensionService.isExtensionAvailable(info))
+            .where((info) => widget.onlyHook == null || info.hooks.contains(widget.onlyHook))
             .toList();
         final locale = LocaleSettings.currentLocale.languageCode;
         // Search matches both the localized and the English name/description,

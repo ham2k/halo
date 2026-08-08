@@ -361,10 +361,12 @@ Future<T?> showTopModalPane<T>(
   double? maxWidth,
   EdgeInsetsGeometry? contentPadding,
   VoidCallback? onDismiss,
+  Widget? headerTrailing,
 }) {
   assert(leftInset == null || rightInset == null, 'a top pane aligns to one edge or the other, not both');
   final route = TopModalPaneRoute<T>(
     maxWidth: maxWidth,
+    headerTrailing: headerTrailing,
     contentPadding: contentPadding,
     builder: builder,
     title: title,
@@ -420,6 +422,20 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// Called when tapping outside the sheet (barrier below or header above).
   final VoidCallback? onDismiss;
 
+  /// Controls drawn at the trailing edge of the strip of view header this
+  /// pane leaves uncovered.
+  ///
+  /// They belong to the VIEW, not to this pane — but the view's own header is
+  /// not reachable while a modal route is up: the route's barrier takes the
+  /// tap wherever it lands, and the dismiss gesture over the header takes
+  /// what's left. A control rendered down there can be seen and never
+  /// pressed. Rendered here it sits above both and gets its own taps, while
+  /// looking like what it is: part of the header, above the sheet.
+  ///
+  /// Wide layouts only — a narrow one covers the header completely, so there
+  /// is no strip to put anything in.
+  final Widget? headerTrailing;
+
   final _bodyKey = GlobalKey();
 
   TopModalPaneRoute({
@@ -435,6 +451,7 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.maxWidth,
     this.contentPadding,
     this.onDismiss,
+    this.headerTrailing,
   }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
@@ -686,6 +703,18 @@ class _TopModalPaneScaffold extends StatelessWidget {
               ),
               ),
             ),
+            // LAST in the stack, so it takes its own taps: everything above
+            // it in this list — the header's dismiss gesture included — is
+            // behind it for hit testing. See [TopModalPaneRoute.headerTrailing]
+            // for why the view cannot host these controls itself.
+            if (!isNarrow && route.headerTrailing != null)
+              Positioned(
+                top: MediaQuery.of(context).padding.top,
+                left: 0,
+                right: 0,
+                height: headerHeight,
+                child: Align(alignment: AlignmentDirectional.centerEnd, child: route.headerTrailing!),
+              ),
           ],
         ),
       ),

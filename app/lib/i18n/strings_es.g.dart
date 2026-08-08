@@ -446,6 +446,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
+	@override late final _Translations$settings$layoutCustomization$es layoutCustomization = _Translations$settings$layoutCustomization$es._(_root);
 	@override String get layoutDensity => 'Densidad del Diseño';
 	@override late final _Translations$settings$layoutDensityOpts$es layoutDensityOpts = _Translations$settings$layoutDensityOpts$es._(_root);
 	@override late final _Translations$settings$layoutDensityDescription$es layoutDensityDescription = _Translations$settings$layoutDensityDescription$es._(_root);
@@ -853,19 +854,38 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Configurar Disposición';
-	@override String get openLabel => 'Configurar disposición';
-	@override String get panelsSection => 'Paneles en esta vista';
+	@override String get title => 'Añadir un Panel';
 	@override String get availableSection => 'Paneles disponibles';
 	@override String panelSettings({required Object panel}) => 'Configuración de ${panel}';
-	@override String removePanel({required Object panel}) => 'Quitar ${panel}';
+	@override String get panelSettingsAction => 'Ajustes del panel';
+	@override String get viewName => 'Vista de Operación';
+	@override String get viewOptions => 'Opciones de disposición de la vista';
+	@override String get viewTitleBuiltIn => 'Esta vista es una de las propias de la app, y su nombre también';
+	@override String get resetOptions => 'Restaurar Predeterminados';
+	@override String get removePane => 'Quitar';
+	@override String resetPaneConfirm({required Object panel}) => '¿Restaurar ${panel} a sus valores predeterminados?';
+	@override String get resetPaneConfirmBody => 'Su título, encabezado y tamaño vuelven a los valores predeterminados. Nada más en la disposición cambia.';
+	@override String get resetViewConfirm => '¿Restaurar la disposición predeterminada de esta vista?';
+	@override String get resetViewConfirmBody => 'Los paneles vuelven a su disposición predeterminada, y las opciones de la vista y las de cada panel vuelven a sus valores predeterminados.';
+	@override String paneOptionsTitle({required Object panel}) => 'Disposición de ${panel}';
+	@override String get paneTitle => 'Título';
+	@override String get paneTitleDescription => 'Tu propio nombre para este panel, en vez del suyo';
+	@override String get paneShowHeader => 'Mostrar encabezado';
+	@override String get paneShowHeaderDescription => 'Muestra la barra de título de este panel';
+	@override String get paneShowHeaderTabset => 'Siempre visible mientras este panel comparte un grupo — el encabezado es como se llega a los demás';
+	@override String get paneAdvanced => 'Opciones Avanzadas';
+	@override String get paneInherit => 'Igual que la app';
+	@override String get paneOverrideDescription => 'Solo para este panel';
+	@override String get searchHint => 'Buscar paneles';
+	@override String get noPanelsMatch => 'Ningún panel coincide con tu búsqueda.';
+	@override String get nothingToAdd => 'Esta vista ya tiene todos los paneles posibles';
 	@override String addPanel({required Object panel}) => 'Añadir ${panel}';
 	@override String showPreview({required Object panel}) => 'Vista previa de ${panel}';
 	@override String missingExtension({required Object name}) => 'Falta la extensión "${name}"';
 	@override String get previewUnavailable => 'No se pudo mostrar la imagen de vista previa de este panel.';
-	@override String get optionsTitle => 'Opciones de Disposición';
-	@override String get options => 'Opciones';
-	@override String get resetLayout => 'Restablecer disposición';
+	@override String get editLayout => 'Editar Disposición';
+	@override String get saveLayout => 'Guardar Disposición';
+	@override String get revertLayout => 'Descartar los cambios de disposición';
 	@override String get done => 'Listo';
 	@override String panelRenderFailed({required Object panel}) => 'No se pudo mostrar ${panel}';
 	@override String get panelRenderRetry => 'Reintentar';
@@ -1055,6 +1075,18 @@ class _Translations$settings$fontScaleOpts$es extends Translations$settings$font
 	@override String get largest => 'Más grande';
 	@override String get largestPlus => 'Más grande+';
 	@override String get largestPlusPlus => 'Más grande++';
+}
+
+// Path: settings.layoutCustomization
+class _Translations$settings$layoutCustomization$es extends Translations$settings$layoutCustomization$en {
+	_Translations$settings$layoutCustomization$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Personalización de Disposición';
+	@override String get descriptionOn => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles';
+	@override String get descriptionOff => 'La vista de registro usa su disposición estándar';
 }
 
 // Path: settings.layoutDensityOpts
@@ -1945,19 +1977,38 @@ extension on TranslationsEs {
 			'operation.menu.loggingSettingsTitle' => 'Configuración de Registro',
 			'operation.menu.actionsSection' => 'Acciones',
 			'operation.menu.relevantSettingsSection' => 'Ajustes Relevantes',
-			'operation.layout.title' => 'Configurar Disposición',
-			'operation.layout.openLabel' => 'Configurar disposición',
-			'operation.layout.panelsSection' => 'Paneles en esta vista',
+			'operation.layout.title' => 'Añadir un Panel',
 			'operation.layout.availableSection' => 'Paneles disponibles',
 			'operation.layout.panelSettings' => ({required Object panel}) => 'Configuración de ${panel}',
-			'operation.layout.removePanel' => ({required Object panel}) => 'Quitar ${panel}',
+			'operation.layout.panelSettingsAction' => 'Ajustes del panel',
+			'operation.layout.viewName' => 'Vista de Operación',
+			'operation.layout.viewOptions' => 'Opciones de disposición de la vista',
+			'operation.layout.viewTitleBuiltIn' => 'Esta vista es una de las propias de la app, y su nombre también',
+			'operation.layout.resetOptions' => 'Restaurar Predeterminados',
+			'operation.layout.removePane' => 'Quitar',
+			'operation.layout.resetPaneConfirm' => ({required Object panel}) => '¿Restaurar ${panel} a sus valores predeterminados?',
+			'operation.layout.resetPaneConfirmBody' => 'Su título, encabezado y tamaño vuelven a los valores predeterminados. Nada más en la disposición cambia.',
+			'operation.layout.resetViewConfirm' => '¿Restaurar la disposición predeterminada de esta vista?',
+			'operation.layout.resetViewConfirmBody' => 'Los paneles vuelven a su disposición predeterminada, y las opciones de la vista y las de cada panel vuelven a sus valores predeterminados.',
+			'operation.layout.paneOptionsTitle' => ({required Object panel}) => 'Disposición de ${panel}',
+			'operation.layout.paneTitle' => 'Título',
+			'operation.layout.paneTitleDescription' => 'Tu propio nombre para este panel, en vez del suyo',
+			'operation.layout.paneShowHeader' => 'Mostrar encabezado',
+			'operation.layout.paneShowHeaderDescription' => 'Muestra la barra de título de este panel',
+			'operation.layout.paneShowHeaderTabset' => 'Siempre visible mientras este panel comparte un grupo — el encabezado es como se llega a los demás',
+			'operation.layout.paneAdvanced' => 'Opciones Avanzadas',
+			'operation.layout.paneInherit' => 'Igual que la app',
+			'operation.layout.paneOverrideDescription' => 'Solo para este panel',
+			'operation.layout.searchHint' => 'Buscar paneles',
+			'operation.layout.noPanelsMatch' => 'Ningún panel coincide con tu búsqueda.',
+			'operation.layout.nothingToAdd' => 'Esta vista ya tiene todos los paneles posibles',
 			'operation.layout.addPanel' => ({required Object panel}) => 'Añadir ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Vista previa de ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Falta la extensión "${name}"',
 			'operation.layout.previewUnavailable' => 'No se pudo mostrar la imagen de vista previa de este panel.',
-			'operation.layout.optionsTitle' => 'Opciones de Disposición',
-			'operation.layout.options' => 'Opciones',
-			'operation.layout.resetLayout' => 'Restablecer disposición',
+			'operation.layout.editLayout' => 'Editar Disposición',
+			'operation.layout.saveLayout' => 'Guardar Disposición',
+			'operation.layout.revertLayout' => 'Descartar los cambios de disposición',
 			'operation.layout.done' => 'Listo',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => 'No se pudo mostrar ${panel}',
 			'operation.layout.panelRenderRetry' => 'Reintentar',
@@ -2228,6 +2279,9 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
+			'settings.layoutCustomization.title' => 'Personalización de Disposición',
+			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
+			'settings.layoutCustomization.descriptionOff' => 'La vista de registro usa su disposición estándar',
 			'settings.layoutDensity' => 'Densidad del Diseño',
 			'settings.layoutDensityOpts.auto' => 'Automática',
 			'settings.layoutDensityOpts.densest' => 'Muy compacta',
@@ -2350,6 +2404,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
 			'settings.syncPanel.pendingBannerBody' => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).',
 			'settings.syncPanel.combine' => 'Combinar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.authIssueTitle' => 'Sync no puede conectarse',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.',
 			'settings.syncPanel.openSettings' => 'Abrir configuración de Sync',
@@ -2372,8 +2428,6 @@ extension on TranslationsEs {
 			'settings.accounts.lookupFailed' => 'Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento',
 			'settings.accounts.browserLoginTitle' => 'Termina de iniciar sesión con tu navegador',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Cuando termines, el navegador intentará abrir un enlace que empieza con "${prefix}". Es muy probable que tu escritorio no tenga nada registrado para abrirlo, así que copia ese enlace — de la barra de direcciones o de la página de error del navegador — y pégalo aquí.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con "${prefix}" — y pégalo aquí.',
 			'settings.accounts.copyLoginLink' => 'Copiar enlace de inicio de sesión',
 			'settings.accounts.pastedLinkLabel' => 'Pega el enlace aquí',
