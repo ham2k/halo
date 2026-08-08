@@ -1214,6 +1214,12 @@ class Translations$updates$en {
 
 	/// en: 'Up to date'
 	String get upToDate => 'Up to date';
+
+	/// en: 'Check automatically'
+	String get automaticChecks => 'Check automatically';
+
+	/// en: 'Look for new versions in the background, from the next time you start the app'
+	String get automaticChecksDescription => 'Look for new versions in the background, from the next time you start the app';
 }
 
 // Path: extensionService
@@ -4534,6 +4540,8 @@ extension on Translations {
 			'updates.checkForUpdates' => 'Check for Updates',
 			'updates.checkingForUpdates' => 'Checking for updates…',
 			'updates.upToDate' => 'Up to date',
+			'updates.automaticChecks' => 'Check automatically',
+			'updates.automaticChecksDescription' => 'Look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
 			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',

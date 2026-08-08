@@ -30,6 +30,7 @@ import 'winsparkle_config.dart';
 typedef WinSparkleConfigurator = bool Function({
   required String buildVersion,
   required int checkIntervalSeconds,
+  required bool automaticChecks,
 });
 
 /// Outcome of a [AutoUpdateService.checkSilently] call.
@@ -113,6 +114,23 @@ class AutoUpdateService {
   /// every caller. See [_ensureConfigured].
   static Future<void>? _configureCall;
 
+  /// The operator's [SettingsService.automaticUpdateChecks], handed over by
+  /// [start] at boot.
+  ///
+  /// Held rather than passed because the configuration runs once per process
+  /// and any caller may be the one to trigger it, while only [start] — which
+  /// runs first, unconditionally, from bootstrap — has the settings in hand.
+  /// The default matches the setting's own: an operator who never opens
+  /// Settings still hears about a release.
+  static bool _automaticChecks = true;
+
+  /// Whether the automatic-check preference is ours to honour on this
+  /// platform, so the About panel knows whether to offer the switch at all.
+  /// Windows only: macOS has no binding for it here and Sparkle asks the user
+  /// directly, so a switch there would be a control that changes nothing.
+  bool get ownsAutomaticCheckSetting =>
+      isSupported && defaultTargetPlatform == TargetPlatform.windows;
+
   /// Configures the native updater — the Windows-only settings the plugin
   /// exposes no channel for, the feed URL, and the scheduled-check interval —
   /// **exactly once per process**.
@@ -142,6 +160,7 @@ class AutoUpdateService {
       final configured = configure(
         buildVersion: kBuildNumber.toString(),
         checkIntervalSeconds: _checkIntervalSeconds,
+        automaticChecks: _automaticChecks,
       );
 
       await autoUpdater.setFeedURL(feedUrl);
@@ -177,15 +196,22 @@ class AutoUpdateService {
   static WinSparkleConfigurator? debugConfigureWinSparkle;
 
   @visibleForTesting
-  static void debugResetConfiguration() => _configureCall = null;
+  static void debugResetConfiguration() {
+    _configureCall = null;
+    _automaticChecks = true;
+  }
 
-  /// Point the native updater at this build's feed and enable silent scheduled
-  /// checks. Deliberately does NOT run an interactive check here: the startup
-  /// check must stay silent — Sparkle/WinSparkle's scheduled checks only surface
-  /// UI when an update is actually available, never a "you're up to date"
+  /// Point the native updater at this build's feed and hand it the operator's
+  /// scheduled-check preference — [automaticChecks], which turns those checks
+  /// off as readily as on.
+  ///
+  /// Deliberately does NOT run an interactive check here: the startup check
+  /// must stay silent — Sparkle/WinSparkle's scheduled checks only surface UI
+  /// when an update is actually available, never a "you're up to date"
   /// dialog. For an explicit, user-asked check (the "Check for Updates…" menu
   /// item) use [checkForUpdatesInteractively].
-  Future<void> start() async {
+  Future<void> start({bool automaticChecks = true}) async {
+    _automaticChecks = automaticChecks;
     if (!isSupported) return;
     try {
       await _ensureConfigured();

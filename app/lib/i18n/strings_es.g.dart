@@ -614,6 +614,8 @@ class _Translations$updates$es extends Translations$updates$en {
 	@override String get checkForUpdates => 'Buscar actualizaciones';
 	@override String get checkingForUpdates => 'Buscando actualizaciones…';
 	@override String get upToDate => 'Actualizado';
+	@override String get automaticChecks => 'Buscar automáticamente';
+	@override String get automaticChecksDescription => 'Buscar nuevas versiones en segundo plano, a partir del próximo inicio';
 }
 
 // Path: extensionService
@@ -2711,6 +2713,8 @@ extension on TranslationsEs {
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
 			'updates.upToDate' => 'Actualizado',
+			'updates.automaticChecks' => 'Buscar automáticamente',
+			'updates.automaticChecksDescription' => 'Buscar nuevas versiones en segundo plano, a partir del próximo inicio',
 			'extensionService.runtimeNotReady' => 'El motor de extensiones aún no está listo.',
 			'extensionService.testFailed' => ({required Object error}) => 'Prueba fallida: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Conectado como ${identity}',

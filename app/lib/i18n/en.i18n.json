@@ -1012,7 +1012,9 @@
     "reloadNow": "Reload now",
     "checkForUpdates": "Check for Updates",
     "checkingForUpdates": "Checking for updates…",
-    "upToDate": "Up to date"
+    "upToDate": "Up to date",
+    "automaticChecks": "Check automatically",
+    "automaticChecksDescription": "Look for new versions in the background, from the next time you start the app"
   },
   "extensionService": {
     "runtimeNotReady": "Extension runtime not ready.",

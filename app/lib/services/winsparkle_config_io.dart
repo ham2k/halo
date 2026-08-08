@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// WinSparkle settings the `auto_updater` plugin declares no method channel
-// for, bound straight to the DLL it already bundles beside the exe
+// Three WinSparkle settings the `auto_updater` plugin declares no method
+// channel for, bound straight to the DLL it already bundles beside the exe
 // (its CMakeLists links WinSparkle.lib and copies WinSparkle.dll into the
 // build), so this needs no fork of the plugin and no second copy of the
 // library.
@@ -20,6 +20,18 @@
 //     strand a fleet again. The appcast must then carry the build number in
 //     `sparkle:version` and the display string in `sparkle:shortVersionString`
 //     — app_dist/ci/build-windows.ps1 emits both.
+//
+//   win_sparkle_set_automatic_check_for_updates
+//     Defaults to 0 "when not yet configured (as happens on first start)",
+//     per winsparkle.h. Nothing else in the app or the installer ever sets it,
+//     so scheduled checks never ran on Windows at all and an install only
+//     learned about a release if the operator opened the About panel.
+//
+//     This writes a PERSISTED setting, so it carries the operator's own choice
+//     (SettingsService.automaticUpdateChecks) rather than a hardcoded 1.
+//     WinSparkle asks about this once, at first run, and offers no way back
+//     afterwards — so a build that forced it on every launch would override a
+//     "no" the operator could then never restate.
 //
 //   win_sparkle_set_update_check_interval
 //     The plugin DOES expose this one, but calls it after its setFeedURL —
@@ -56,6 +68,7 @@ typedef _SetInt = void Function(int);
 bool configureWinSparkleBeforeInit({
   required String buildVersion,
   required int checkIntervalSeconds,
+  required bool automaticChecks,
 }) {
   if (!Platform.isWindows) return false;
 
@@ -68,6 +81,8 @@ bool configureWinSparkleBeforeInit({
 
     final setAppBuildVersion =
         lib.lookupFunction<_SetAppBuildVersionNative, _SetAppBuildVersion>('win_sparkle_set_app_build_version');
+    final setAutomaticChecks =
+        lib.lookupFunction<_SetIntNative, _SetInt>('win_sparkle_set_automatic_check_for_updates');
     final setCheckInterval =
         lib.lookupFunction<_SetIntNative, _SetInt>('win_sparkle_set_update_check_interval');
 
@@ -83,6 +98,7 @@ bool configureWinSparkleBeforeInit({
       malloc.free(build);
     }
 
+    setAutomaticChecks(automaticChecks ? 1 : 0);
     setCheckInterval(checkIntervalSeconds);
     return true;
   } catch (e, st) {

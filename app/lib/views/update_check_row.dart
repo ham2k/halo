@@ -8,11 +8,14 @@
 // build, a web build-SHA freshness check for the OSS default). Checks
 // automatically on first show, and again whenever the row itself is tapped.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart' show HaLoServices;
+import '../services/auto_update_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/update_check_service.dart';
 
@@ -99,6 +102,43 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
           : const Icon(MdiIcons.refresh),
       onTap: _checking ? null : _check,
       mouseCursor: SystemMouseCursors.click,
+    );
+  }
+}
+
+/// Whether [AutomaticUpdateCheckRow] shows anything — public for the same
+/// reason as [updateCheckAppliesTo]: the About panel decides on its dividers
+/// before it builds the row.
+bool get automaticUpdateCheckApplies => const AutoUpdateService().ownsAutomaticCheckSetting;
+
+/// The operator's "check automatically" preference.
+///
+/// Only shown where honouring it is actually ours (Windows). WinSparkle asks
+/// about this once, at first run, and offers no way back — so without this
+/// switch an operator who declined has no way to change their mind, and one
+/// who accepted has no way to stop.
+///
+/// The new value reaches the native updater at the next launch, not now: every
+/// setting it governs is applied before `win_sparkle_init()`, and a running
+/// scheduler cannot be re-armed. Storing it is therefore the whole job here.
+class AutomaticUpdateCheckRow extends StatelessWidget {
+  final HaLoServices services;
+
+  const AutomaticUpdateCheckRow({super.key, required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!automaticUpdateCheckApplies) return const SizedBox.shrink();
+
+    return ListenableBuilder(
+      listenable: services.settings,
+      builder: (context, _) => SwitchListTile(
+        secondary: const Icon(MdiIcons.autorenew),
+        title: Text(context.t.updates.automaticChecks),
+        subtitle: Text(context.t.updates.automaticChecksDescription),
+        value: services.settings.automaticUpdateChecks,
+        onChanged: (value) => unawaited(services.settings.setAutomaticUpdateChecks(value)),
+      ),
     );
   }
 }

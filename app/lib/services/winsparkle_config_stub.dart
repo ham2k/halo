@@ -9,5 +9,6 @@
 bool configureWinSparkleBeforeInit({
   required String buildVersion,
   required int checkIntervalSeconds,
+  required bool automaticChecks,
 }) =>
     false;

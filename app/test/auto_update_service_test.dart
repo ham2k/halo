@@ -12,6 +12,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:auto_updater_platform_interface/auto_updater_platform_interface.dart';
@@ -82,17 +83,23 @@ void main() {
   final platform = _FakeAutoUpdaterPlatform();
   AutoUpdaterPlatform.instance = platform;
 
-  List<String> installShimStub({required bool applied}) {
+  /// Stands in for the Windows-only FFI shim, logging into the same ordered
+  /// event list as the fake plugin. [applied] is what the real one returns:
+  /// true on Windows, false everywhere else.
+  ({List<String> builds, List<bool> automatic}) installShimStub({required bool applied}) {
     final builds = <String>[];
+    final automatic = <bool>[];
     AutoUpdateService.debugConfigureWinSparkle = ({
       required String buildVersion,
       required int checkIntervalSeconds,
+      required bool automaticChecks,
     }) {
       builds.add(buildVersion);
+      automatic.add(automaticChecks);
       platform.events.add('winSparkleConfig');
       return applied;
     };
-    return builds;
+    return (builds: builds, automatic: automatic);
   }
 
   setUp(() {
@@ -181,6 +188,34 @@ void main() {
       expect(const AutoUpdateService().isSupported, isFalse);
     });
 
+    test('the automatic-check setting is ours on Windows', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      expect(const AutoUpdateService().ownsAutomaticCheckSetting, isTrue);
+    });
+
+    test('the automatic-check setting is NOT ours on macOS', () {
+      // Sparkle asks the operator directly and we bind nothing for it there,
+      // so showing the switch would be showing a control that changes
+      // nothing. Inverting this check is otherwise invisible: the row simply
+      // starts appearing on a platform where it does not work.
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      expect(const AutoUpdateService().ownsAutomaticCheckSetting, isFalse);
+    });
+
+    test('nothing is ours on a build with no self-update at all', () {
+      // The isSupported conjunct: a Windows debug/Dev build has no appcast, so
+      // offering the switch would promise checks that can never run.
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      AutoUpdateService.debugSupportedOverride = false;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      expect(const AutoUpdateService().ownsAutomaticCheckSetting, isFalse);
+    });
+
     test('names the exact appcast path this build polls', () {
       // Spelled out in full deliberately. Every installed app polls the URL
       // baked into it, so renaming a segment here strands every existing
@@ -219,7 +254,7 @@ void main() {
     });
 
     test('carry the build number, not the display version', () async {
-      final builds = installShimStub(applied: true);
+      final recorded = installShimStub(applied: true);
 
       await const AutoUpdateService().start();
 
@@ -227,7 +262,7 @@ void main() {
       // comparison; handing it a display string like "26.9.0" would put it
       // straight back on the string comparison that stranded the pre-127
       // fleet.
-      expect(builds, [kBuildNumber.toString()]);
+      expect(recorded.builds, [kBuildNumber.toString()]);
     });
 
     test('take ownership of the check interval when they applied', () async {
@@ -249,6 +284,27 @@ void main() {
       // Off Windows, and on a Windows box where the DLL or a symbol did not
       // resolve, the plugin remains the only way to set this at all.
       expect(platform.intervals, [3600]);
+    });
+
+    test('carry the operator\'s automatic-check preference, not a hardcoded yes', () async {
+      final recorded = installShimStub(applied: true);
+
+      await const AutoUpdateService().start(automaticChecks: false);
+
+      // WinSparkle asks about this once, at first run, and offers no way back.
+      // Forcing 1 here would override a "no" the operator could then never
+      // restate, since the switch in the About panel is the only way back.
+      expect(recorded.automatic, [false]);
+    });
+
+    test('default to checking when nobody has expressed a preference', () async {
+      final recorded = installShimStub(applied: true);
+
+      await const AutoUpdateService().start();
+
+      // Matches SettingsService.automaticUpdateChecks' own default: an
+      // operator who never opens Settings still hears about a release.
+      expect(recorded.automatic, [true]);
     });
 
     test('are applied once per process, like the rest of the configuration', () async {

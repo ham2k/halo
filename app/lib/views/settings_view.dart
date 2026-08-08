@@ -2962,6 +2962,10 @@ class _AboutPanel extends StatelessWidget {
             // capped to idealPaneWidth along with the row.
             if (updateCheckAppliesTo(services)) const SliverToBoxAdapter(child: Divider(height: 1)),
             SliverToBoxAdapter(child: centered(UpdateCheckRow(services: services))),
+            // Same conditional-divider reasoning as above: this row hides
+            // itself where the preference is not ours to honour.
+            if (automaticUpdateCheckApplies) const SliverToBoxAdapter(child: Divider(height: 1)),
+            SliverToBoxAdapter(child: centered(AutomaticUpdateCheckRow(services: services))),
             const SliverToBoxAdapter(child: Divider(height: 1)),
             // Notices & Messages sits here, between the version and the
             // release notes, as an entry point into the history view.

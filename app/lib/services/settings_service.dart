@@ -41,6 +41,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _syncDeviceKeyKey = 'syncDeviceKey';
   static const _syncStateKey = 'syncState';
   static const _developerModeKey = 'developerMode';
+  static const _automaticUpdateChecksKey = 'automaticUpdateChecks';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
   static const _layoutCustomizationKey = 'layoutCustomization';
@@ -290,6 +291,21 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
         },
       }),
     );
+    notifyListeners();
+  }
+
+  /// Whether the native updater looks for new versions on its own. Defaults
+  /// ON: an operator who never opens Settings should still hear about a
+  /// release, which on Windows they otherwise never would.
+  ///
+  /// Read at boot and pushed into the updater BEFORE it initializes (see
+  /// AutoUpdateService), so a change here reaches the updater at the next
+  /// launch rather than mid-session — its scheduler cannot be re-armed once
+  /// running.
+  bool get automaticUpdateChecks => _prefs.getBool(_automaticUpdateChecksKey) ?? true;
+
+  Future<void> setAutomaticUpdateChecks(bool enabled) async {
+    await _prefs.setBool(_automaticUpdateChecksKey, enabled);
     notifyListeners();
   }
 

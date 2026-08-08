@@ -1012,7 +1012,9 @@
     "reloadNow": "Recargar ahora",
     "checkForUpdates": "Buscar actualizaciones",
     "checkingForUpdates": "Buscando actualizaciones…",
-    "upToDate": "Actualizado"
+    "upToDate": "Actualizado",
+    "automaticChecks": "Buscar automáticamente",
+    "automaticChecksDescription": "Buscar nuevas versiones en segundo plano, a partir del próximo inicio"
   },
   "extensionService": {
     "runtimeNotReady": "El motor de extensiones aún no está listo.",

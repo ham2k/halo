@@ -267,7 +267,11 @@ void _mainBody({
     // Desktop binary self-update: point Sparkle/WinSparkle at this build's
     // per-edition appcast and run a background check (docs/releases.md §3.2).
     // Fire-and-forget; no-op off desktop / in debug / for the Dev edition.
-    unawaited(const AutoUpdateService().start());
+    // The preference reaches the updater HERE or not at all: everything it
+    // configures is before-init only, and start() is what runs first.
+    unawaited(const AutoUpdateService().start(
+      automaticChecks: services.settings.automaticUpdateChecks,
+    ));
 
     _listenForLinkClientDeepLinks(services);
 
