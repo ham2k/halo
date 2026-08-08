@@ -44,6 +44,23 @@ jobs:
   # makes these caps the mechanism and not a formality. Each is roughly 3x the
   # job's observed time, so a slow runner never trips one.
 
+  # Everything else here re-implements a step of scripts/test.sh; this one
+  # INVOKES it, and is where a check that lives only in the script belongs.
+  # Source scans cost a fraction of a second and need no toolchain, so they get
+  # their own job rather than a slot inside one that first spends minutes on
+  # npm ci and a Flutter install — a one-line fix should be reported in
+  # seconds. Without this the clock-discipline rule was local-only, and a
+  # violation reached `main` with CI green (website_panel.dart's refresh
+  # deadline).
+  guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Source-scanning guards
+        run: ./scripts/test.sh --guards
+
   # The root job: `dart`, `app-test` and `dist` all consume the bundle
   # artifact this builds, and their plain `needs:` skips them if it fails.
   extensions:
@@ -230,3 +247,33 @@ jobs:
         run: |
           cd app
           flutter test --total-shards="$TOTAL_SHARDS" --shard-index=${{ matrix.shard }}
+
+  # The other half of what only scripts/test.sh had: a handful of tests must
+  # run in a real browser, because Dart's web numbers are JS doubles and its
+  # bitwise operators 32-bit unsigned, so `flutter test` on the host VM cannot
+  # see a web-only defect (scripts/test.sh's run_browser_tests says which, and
+  # why). BROWSER_REQUIRED makes a missing Chrome fail the job: a CI run that
+  # quietly skipped the only web coverage there is would be worse than no job
+  # at all. GitHub's ubuntu runners ship Chrome preinstalled.
+  browser:
+    needs: extensions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-bundles
+          path: app/assets/extensions
+
+      - name: Browser-platform tests
+        env:
+          CHROME_EXECUTABLE: /usr/bin/google-chrome
+        # Invoked through the script so the test list, the Chrome probe and the
+        # secrets/bundles setup stay in one place — the local gate runs exactly
+        # this function.
+        run: ./scripts/test.sh --browser

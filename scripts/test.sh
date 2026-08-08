@@ -27,6 +27,11 @@
 #                            merge-base with origin/main (committed +
 #                            uncommitted + untracked).
 #   test.sh --list [group]   list the groups, or one group's files.
+#   test.sh --guards         the source-scanning guards alone (no toolchain,
+#                            no build) — what CI runs so a rule enforced only
+#                            by this script still reaches `main`.
+#   test.sh --browser        the browser-platform tests alone, fatal rather
+#                            than skipped when no Chrome is present. Also CI's.
 #
 # Subset runs trade coverage for speed on purpose: they do not run analyze,
 # do not run dependent packages (a halo_core change can break app tests that
@@ -270,6 +275,43 @@ ensure_pub() {
   if [[ ! -f "$ROOT_DIR/$1/.dart_tool/package_config.json" ]]; then
     echo "▶ $1: pub get (fresh package)"
     (cd "$ROOT_DIR/$1" && flutter pub get)
+  fi
+}
+
+# A few tests have to run in a BROWSER, not the host VM, because Dart's web
+# numbers are JS doubles and its bitwise operators are 32-bit unsigned — so
+# code that is arithmetically correct natively can be silently wrong on web,
+# and `flutter test` cannot see it. The settings fuzzy matcher shipped exactly
+# that bug: its "negative infinity" sentinel was built with `-1 << 30`, which
+# is POSITIVE on web, so every settings search answered "nothing matches"
+# while the whole native suite stayed green.
+#
+# Keep this list to genuinely platform-sensitive, dependency-free tests —
+# anything touching drift or dart:io cannot run here at all.
+#
+# Missing Chrome is a loud skip locally and a failure under [BROWSER_REQUIRED]
+# (CI): a developer machine without Chrome must still be able to finish the
+# gate rather than being pushed to `--quick`, which runs no tests at all, but a
+# CI job that quietly skipped the only web coverage there is would be worse
+# than not having the job.
+run_browser_tests() {
+  # `-x`, not just `-n`: a CHROME_EXECUTABLE left over from an uninstall
+  # would otherwise read as "Chrome present" and skip (or fail) for the wrong
+  # reason.
+  if [[ -x "${CHROME_EXECUTABLE:-}" ]] \
+    || command -v google-chrome >/dev/null 2>&1 \
+    || command -v chromium >/dev/null 2>&1 \
+    || command -v chromium-browser >/dev/null 2>&1 \
+    || [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
+    echo "▶ app: browser-platform tests (web number semantics)"
+    (cd "$ROOT_DIR/app" && flutter test --platform chrome test/settings_fuzzy_test.dart)
+  elif [[ "${BROWSER_REQUIRED:-0}" -eq 1 ]]; then
+    echo "❌ browser-platform tests: no Chrome found, and this run requires one." >&2
+    exit 1
+  else
+    echo "⚠️  SKIPPED: browser-platform tests — no Chrome found."
+    echo "⚠️  Web-only defects (see the comment above) are NOT covered by this run."
+    echo "⚠️  Install Chrome or set CHROME_EXECUTABLE before trusting this as the merge gate."
   fi
 }
 
@@ -572,6 +614,24 @@ case "${1:-}" in
     fi
     exit 0
     ;;
+  --guards | -g)
+    if [[ $# -gt 1 ]]; then
+      echo "--guards takes no further arguments" >&2; exit 2
+    fi
+    check_clock_discipline
+    echo "✅ guards passed"
+    exit 0
+    ;;
+  --browser | -b)
+    if [[ $# -gt 1 ]]; then
+      echo "--browser takes no further arguments" >&2; exit 2
+    fi
+    ensure_secrets
+    ensure_bundles
+    ensure_pub app
+    BROWSER_REQUIRED=1 run_browser_tests
+    exit 0
+    ;;
   --changed | -c)
     if [[ $# -gt 1 ]]; then
       echo "--changed takes no further arguments" >&2; exit 2
@@ -580,11 +640,11 @@ case "${1:-}" in
     exit 0
     ;;
   --help | -h)
-    echo "usage: scripts/test.sh [--quick | --changed | --list [group] | <group>...]"
+    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --list [group] | <group>...]"
     exit 0
     ;;
   -*)
-    echo "usage: scripts/test.sh [--quick | --changed | --list [group] | <group>...]" >&2
+    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --list [group] | <group>...]" >&2
     exit 2
     ;;
   "") ;;
@@ -667,43 +727,8 @@ for pkg in "${PACKAGES[@]}"; do
   fi
 done
 
-# A few tests have to run in a BROWSER, not the host VM, because Dart's web
-# numbers are JS doubles and its bitwise operators are 32-bit unsigned — so
-# code that is arithmetically correct natively can be silently wrong on web,
-# and `flutter test` cannot see it. The settings fuzzy matcher shipped exactly
-# that bug: its "negative infinity" sentinel was built with `-1 << 30`, which
-# is POSITIVE on web, so every settings search answered "nothing matches"
-# while the whole native suite stayed green.
-#
-# Keep this list to genuinely platform-sensitive, dependency-free tests —
-# anything touching drift or dart:io cannot run here at all.
-#
-# This step is part of the LOCAL gate only: .github/workflows/ci.yml shards
-# `flutter test` directly rather than invoking this script, so nothing on
-# `main` re-runs it. That matches the repo's "the local run before merging IS
-# the gate" policy, but it does mean skipping this script skips the only web
-# coverage there is.
-#
-# Skipped loudly, not fatally, where no browser exists: this is the only gate
-# the repo has, so a machine without Chrome must still be able to complete it
-# rather than being pushed to `--quick`, which runs no tests at all.
 if [[ "$QUICK" -eq 0 ]]; then
-  # `-x`, not just `-n`: a CHROME_EXECUTABLE left over from an uninstall
-  # would otherwise read as "Chrome present" and fail the whole gate instead
-  # of taking the loud-skip branch below.
-  if [[ -x "${CHROME_EXECUTABLE:-}" ]] \
-    || command -v google-chrome >/dev/null 2>&1 \
-    || command -v chromium >/dev/null 2>&1 \
-    || command -v chromium-browser >/dev/null 2>&1 \
-    || [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
-    echo "▶ app: browser-platform tests (web number semantics)"
-    cd "$ROOT_DIR/app"
-    flutter test --platform chrome test/settings_fuzzy_test.dart
-  else
-    echo "⚠️  SKIPPED: browser-platform tests — no Chrome found."
-    echo "⚠️  Web-only defects (see the comment above) are NOT covered by this run."
-    echo "⚠️  Install Chrome or set CHROME_EXECUTABLE before trusting this as the merge gate."
-  fi
+  run_browser_tests
 fi
 
 if [[ "$QUICK" -eq 1 ]]; then

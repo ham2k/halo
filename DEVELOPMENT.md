@@ -125,10 +125,18 @@ wires all of this up. The public version number lives in
 
 ## Tests & checks
 
-The single source of truth is **`./scripts/test.sh`** (or `mise run test`),
-which mirrors CI: it typechecks + tests the extensions, **rebuilds the bundles**
-(Dart integration tests load them), copies the mapbox token template if missing,
-then runs `flutter analyze` + `flutter test` for every package and the app.
+The single source of truth is **`./scripts/test.sh`** (or `mise run test`): it
+typechecks + tests the extensions, **rebuilds the bundles** (Dart integration
+tests load them), copies the mapbox token template if missing, then runs
+`flutter analyze` + `flutter test` for every package and the app.
+
+CI splits that work across parallel jobs rather than running the script
+end-to-end, so anything the script does that no job re-implements would be
+local-only. Two modes exist for exactly those parts, and CI invokes the script
+for both — `--guards` (the source-scanning rules, seconds, no toolchain) and
+`--browser` (the browser-platform tests, which fail rather than skip when
+`BROWSER_REQUIRED=1`). A new rule of that shape belongs in one of them, not in
+a hand-written workflow step.
 
 For the inner loop, the same script runs **subsets** — it handles the
 stale-bundle problem itself (rebuilding only when `extensions/` is newer than
