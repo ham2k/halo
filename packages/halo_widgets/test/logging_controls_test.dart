@@ -7865,11 +7865,19 @@ void main() {
       );
     });
 
+    // A manual time that can never read as the wall clock: with a hard-coded
+    // literal, `isNot(literal)` fails for the one minute a day when real UTC
+    // happens to be exactly that, and enterText of the literal is a no-op
+    // (no override fires) when the reseeded field already holds it.
+    final manualDt = DateTime.now().toUtc().add(const Duration(hours: 6));
+    final manualTime =
+        '${manualDt.hour.toString().padLeft(2, '0')}:${manualDt.minute.toString().padLeft(2, '0')}';
+
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
-      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manualTime);
       await tester.enterText(find.widgetWithText(TextField, 'Date'), '2026-01-02');
       await tester.pump();
 
@@ -7880,21 +7888,21 @@ void main() {
       final logged = await waitForQsos(tester, 1);
       expect(
         DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true),
-        DateTime.utc(2026, 1, 2, 3, 15),
+        DateTime.utc(2026, 1, 2, manualDt.hour, manualDt.minute),
       );
 
       // Wipe resets to automatic timestamping for the next QSO.
       await openControl(tester, MdiIcons.clockOutline);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
-      expect(timeField.controller!.text, isNot('03:15'));
+      expect(timeField.controller!.text, isNot(manualTime));
     });
 
     testWidgets('Now button clears a manual time override', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
-      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manualTime);
       await tester.pump();
       expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget); // chip still rendered
 
@@ -7902,7 +7910,7 @@ void main() {
       await tester.pump();
 
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
-      expect(timeField.controller!.text, isNot('03:15'));
+      expect(timeField.controller!.text, isNot(manualTime));
     });
 
     testWidgets('Now actually restores automatic timestamping — the reseed must not re-freeze it', (tester) async {
@@ -7974,7 +7982,7 @@ void main() {
 
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
 
-      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manualTime);
       await tester.pump();
 
       expect(find.widgetWithText(TextButton, 'Now'), findsOneWidget);
