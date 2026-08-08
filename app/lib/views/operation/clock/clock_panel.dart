@@ -13,6 +13,7 @@ import 'dart:io' as io;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../../i18n/strings.g.dart';
@@ -71,10 +72,10 @@ class ClockPanel extends StatefulWidget {
 }
 
 class _ClockPanelState extends State<ClockPanel> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  /// A frame pump, not a value. Everything drawn is derived from
-  /// `DateTime.now()` read inside the builder, so a dropped frame, a stop, or
-  /// a restart mid-cycle shows the true time instead of resuming a stale
-  /// phase. Nothing may read `_sweep.value`.
+  /// A frame pump, not a value. Everything drawn is derived from the app clock
+  /// read inside the builder, so a dropped frame, a stop, or a restart
+  /// mid-cycle shows the true time instead of resuming a stale phase. Nothing
+  /// may read `_sweep.value`.
   late final AnimationController _sweep =
       AnimationController(vsync: this, duration: const Duration(seconds: 1));
 
@@ -231,7 +232,11 @@ class _ClockPanelState extends State<ClockPanel> with SingleTickerProviderStateM
           return _sweeps
               ? AnimatedBuilder(
                   animation: _sweep,
-                  builder: (context, _) => _readout(box, palette, DateTime.now().toUtc()),
+                  // The app clock, like the OncePerSecond branch below: a clock
+                  // FACE showing something other than what the Time chip beside
+                  // it reads is the exact contradiction docs/design/time.md
+                  // exists to prevent.
+                  builder: (context, _) => _readout(box, palette, nowUtc()),
                 )
               : OncePerSecond(builder: (context, nowUtc) => _readout(box, palette, nowUtc));
         },

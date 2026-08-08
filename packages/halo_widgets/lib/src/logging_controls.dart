@@ -3495,7 +3495,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final millis = _effectiveStartAtMillis;
     final dt = millis != null
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
-        : DateTime.now().toUtc();
+        : nowUtc();
     // Display-only refresh: without the _populating guard, these programmatic
     // sets fire _onTimeOrDateFieldChanged, which would read the seeded value
     // back as a manual override — freezing auto-timestamping just for opening
@@ -3561,7 +3561,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   String get _timeSummary {
     final millis = _effectiveStartAtMillis;
-    final dt = millis == null ? DateTime.now().toUtc() : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+    final dt = millis == null ? nowUtc() : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
     // Always shows seconds, even when they're not meaningful (a manually
     // entered/edited time has none — it comes from a plain HH:MM field —
     // so it's always :00 rather than the pill silently switching formats).
@@ -4237,7 +4237,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (editingQso != null) {
       final call = (editingQso.data['their'] as Map?)?['call'] as String? ?? '?';
       final ageMillis =
-          editingQso.startAtMillis == null ? null : DateTime.now().millisecondsSinceEpoch - editingQso.startAtMillis!;
+          editingQso.startAtMillis == null ? null : nowMillis() - editingQso.startAtMillis!;
       final tooOld = ageMillis == null || ageMillis > _spotStaleAfter.inMilliseconds;
       final summary = widget.spottingLabel ?? 'Spotting';
       if (tooOld) {
@@ -5321,6 +5321,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.onCommandAction?.call('devOnboard');
       } else if (map['devTester'] is Map) {
         await widget.onCommandAction?.call('devTester');
+      } else if (map['devTimeTravel'] is Map) {
+        await widget.onCommandAction?.call('devTimeTravel', (map['devTimeTravel'] as Map).cast<String, dynamic>());
       } else if (map['reloadDataFiles'] is Map) {
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else if (map['toggleExperiment'] is Map) {
@@ -5466,7 +5468,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final millis = _effectiveStartAtMillis;
     final dt = millis != null
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
-        : DateTime.now().toUtc();
+        : nowUtc();
     // Captured so the Save handler below can tell "the user actually edited
     // Grid/State in this pane" from "the pane merely displayed whatever
     // was already there" — the latter must not turn a passive lookup guess
@@ -6443,7 +6445,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final isList = calls.length > 1;
       final baseData = _getCurrentQsoData();
       final baseStartAtMillis =
-          (baseData['startAtMillis'] as int?) ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+          (baseData['startAtMillis'] as int?) ?? nowMillis();
 
       // The record being edited (index 0, when editing) survives untouched
       // even once more calls are added to its list — same as an ordinary

@@ -14,6 +14,7 @@
 // looking at.
 
 import 'package:halo_build_tools/halo_build_tools.dart';
+import 'package:halo_core/halo_core.dart';
 
 // Re-exported so the app's single version entry point also carries the build
 // edition (Dev/Next/Regular — docs/releases.md §2.6). Set at build time via
@@ -77,7 +78,7 @@ final DateTime? kBuildExpiration = switch (kEdition) {
 bool isBuildExpired({DateTime? now}) {
   final expiration = kBuildExpiration;
   if (expiration == null) return false;
-  return expirationHasPassed(expiration, (now ?? DateTime.now()).toUtc());
+  return expirationHasPassed(expiration, (now ?? nowLocal()).toUtc());
 }
 
 /// e.g. `26.8.1`, or `26.8.1-pre2` once a pre-release is cut.

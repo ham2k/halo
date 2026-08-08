@@ -45,7 +45,7 @@ class ExportService {
       option['hookKey'] == _qsonHookKey && option['exportType'] == _qsonExportType;
 
   Map<String, dynamic> _qsonOptionFor(Operation operation) {
-    final date = (operation.startAtMax ?? DateTime.now().toUtc()).toIso8601String().substring(0, 10);
+    final date = (operation.startAtMax ?? nowUtc()).toIso8601String().substring(0, 10);
     // The FIRST call, not the raw `stationCall` field: a multi-operator
     // operation holds "N0CALL, W1AW" there, and the comma and space would
     // land verbatim in the filename.
@@ -295,10 +295,10 @@ class ExportService {
         final refs = [...?(args['operation'] as Map<String, dynamic>)['refs'] as List?];
         final present = {
           for (final ref in refs)
-            if (ref is Map) '${ref['type']} ${ref['ref']}',
+            if (ref is Map) '${ref['type']}\u0000${ref['ref']}',
         };
         for (final ref in log.segmented.allRefs.where((r) => r['type'] == optionRefType)) {
-          if (present.add('${ref['type']} ${ref['ref']}')) refs.add(ref);
+          if (present.add('${ref['type']}\u0000${ref['ref']}')) refs.add(ref);
         }
         (args['operation'] as Map<String, dynamic>)['refs'] = refs;
       }

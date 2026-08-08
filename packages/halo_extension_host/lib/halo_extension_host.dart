@@ -30,7 +30,8 @@ import 'package:meta/meta.dart' show visibleForTesting;
 
 import 'src/js_engine.dart';
 
-export 'src/engine_runtime.dart' show ExtensionBundle, ExtensionHostException, HookTimeoutException;
+export 'src/engine_runtime.dart'
+    show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
 
@@ -210,6 +211,10 @@ class ExtensionHost {
     Map<String, List<String>> fetchAllowlists = const {},
     String? userAgent,
     Set<String> userAgentOverrides = const {},
+    /// The app clock's travel state at boot. Passed in rather than pushed
+    /// afterwards so extensions ACTIVATE on the app's clock — see
+    /// [ClockTravelState] and [setClockTravel].
+    ClockTravelState clock = const ClockTravelState.real(),
   }) async {
     // On web there are no Dart isolates — the "in-process" core runs a Web
     // Worker anyway, so extension work is still off the UI thread. Branching
@@ -220,23 +225,23 @@ class ExtensionHost {
     // silently ignoring it would leave them hitting the real one.
     if (useIsolate && !runningOnWeb && httpClient == null) {
       try {
-        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets);
+        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock);
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
         final host = await _startInProcess(
-            kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, httpClient);
+            kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
     return _startInProcess(
-        kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, httpClient);
+        kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
   }
 
   static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
       Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides,
-      Map<String, Map<String, String>> secrets) async {
+      Map<String, Map<String, String>> secrets, ClockTravelState clock) async {
     final fromIsolate = ReceivePort();
     final onError = ReceivePort();
     final onExit = ReceivePort();
@@ -277,6 +282,9 @@ class ExtensionHost {
         secrets: secrets,
         userAgent: userAgent,
         userAgentOverrides: userAgentOverrides,
+        clockAnchorRealMillis: clock.anchorRealMillis,
+        clockAnchorVirtualMillis: clock.anchorVirtualMillis,
+        clockSpeed: clock.speed,
       ),
       errorsAreFatal: true,
       onError: onError.sendPort,
@@ -329,7 +337,7 @@ class ExtensionHost {
 
   static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
       Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides,
-      Map<String, Map<String, String>> secrets, [http.Client? httpClient]) async {
+      Map<String, Map<String, String>> secrets, ClockTravelState clock, [http.Client? httpClient]) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
     final core = _HostCore(
@@ -345,7 +353,7 @@ class ExtensionHost {
             host._onCoreMessage(msg);
           }
         });
-    final loadMillis = await core.init(kernelSource, extensions);
+    final loadMillis = await core.init(kernelSource, extensions, clock: clock);
     host = ExtensionHost._(
       runningInIsolate: false, 
       engine: core.engineDescription, 
@@ -471,6 +479,25 @@ class ExtensionHost {
   /// values instead of waiting out the kernel-side cache TTL.
   void invalidateHookContext() {
     _dispatch(const {'type': 'invalidateContext'});
+  }
+
+  /// Points the sandbox's `Date` at the app clock (docs/design/time.md).
+  ///
+  /// The travel state is main-isolate state, and the runtime may live in
+  /// another isolate or a worker, so it has to be PUSHED: send it whenever it
+  /// changes and again whenever a runtime boots or is replaced, or a restarted
+  /// engine silently reverts every extension to real time.
+  void setClockTravel({
+    required int anchorRealMillis,
+    required int anchorVirtualMillis,
+    required double speed,
+  }) {
+    _dispatch({
+      'type': 'setClockTravel',
+      'anchorRealMillis': anchorRealMillis,
+      'anchorVirtualMillis': anchorVirtualMillis,
+      'speed': speed,
+    });
   }
 
   void _onCoreMessage(Map<String, dynamic> msg) {
@@ -672,6 +699,13 @@ class _HostIsolateInit {
   final String? userAgent;
   final Set<String> userAgentOverrides;
 
+  /// The app clock's travel state, as three sendable primitives — the isolate
+  /// has its OWN memory, so nothing about the app's clock is visible there
+  /// unless it crosses in this payload (docs/design/time.md §6).
+  final int clockAnchorRealMillis;
+  final int clockAnchorVirtualMillis;
+  final double clockSpeed;
+
   const _HostIsolateInit({
     required this.mainPort,
     required this.kernelSource,
@@ -680,6 +714,9 @@ class _HostIsolateInit {
     required this.secrets,
     required this.userAgent,
     required this.userAgentOverrides,
+    required this.clockAnchorRealMillis,
+    required this.clockAnchorVirtualMillis,
+    required this.clockSpeed,
   });
 }
 
@@ -697,6 +734,11 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
     final loadMillis = await core.init(
       init.kernelSource,
       [for (final b in init.bundles) ExtensionBundle(key: b[0], source: b[1])],
+      clock: ClockTravelState(
+        anchorRealMillis: init.clockAnchorRealMillis,
+        anchorVirtualMillis: init.clockAnchorVirtualMillis,
+        speed: init.clockSpeed,
+      ),
     );
     init.mainPort.send({'type': 'ready', 'loadMillis': loadMillis, 'engine': core.engineDescription});
   } catch (e, st) {
@@ -773,13 +815,14 @@ class _HostCore {
 
   String get engineDescription => _js.engineDescription;
 
-  Future<int> init(String kernelSource, List<ExtensionBundle> bundles) async {
+  Future<int> init(String kernelSource, List<ExtensionBundle> bundles,
+      {ClockTravelState clock = const ClockTravelState.real()}) async {
     final stopwatch = Stopwatch()..start();
     _js = createEngineRuntime();
     _js.onMessage(_onPoloMessage);
     _js.onFatalError(_onFatalError);
     try {
-      await _js.load(kernelSource, bundles);
+      await _js.load(kernelSource, bundles, clock: clock);
     } catch (e) {
       _js.dispose();
       rethrow;
@@ -816,6 +859,24 @@ class _HostCore {
           _js.invalidateContext();
         } catch (e) {
           emit({'type': 'log', 'message': 'ERROR invalidating hook context: $e'});
+        }
+      case 'setClockTravel':
+        try {
+          _js.setClockTravel(
+            msg['anchorRealMillis'] as int,
+            msg['anchorVirtualMillis'] as int,
+            (msg['speed'] as num).toDouble(),
+          );
+        } catch (e) {
+          // Reported as FATAL, not merely logged: unlike every other message
+          // here, a failure means the app and its extensions now disagree about
+          // what time it is, for the life of this runtime, and the symptom
+          // (spot ages, ADIF stamps, clock panels contradicting the clock chip)
+          // reads as an extension bug. The owner replaces a runtime on a fatal,
+          // which is the only thing that repairs this — a fresh one is handed
+          // the clock as part of its boot.
+          emit({'type': 'log', 'message': 'ERROR setting clock travel: $e'});
+          emit({'type': 'fatalError', 'error': 'could not set the sandbox clock: $e'});
         }
     }
   }

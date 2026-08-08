@@ -318,7 +318,7 @@ List<String> spotsFilterSourceList({
     {...withSpots, ...unavailable, ...failed}.toList()..sort();
 
 String _timeAgo(int millis) {
-  final seconds = (DateTime.now().millisecondsSinceEpoch - millis) ~/ 1000;
+  final seconds = (nowMillis() - millis) ~/ 1000;
   if (seconds < 60) return '${seconds}s ago';
   final minutes = seconds ~/ 60;
   if (minutes < 60) return '${minutes}m ago';
@@ -952,7 +952,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     try {
       do {
         _spotScoresStale = false;
-        final now = DateTime.now().millisecondsSinceEpoch;
+        final now = nowMillis();
         final candidates = <String, Map<String, dynamic>>{};
         for (final spot in _mergedRawSpots) {
           for (final call in _callsIn(_callOf(spot))) {
@@ -1117,7 +1117,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       spots = spots.where((s) => superModeForMode(_modeOf(s)) == superMode).toList();
     }
     if (_ageMinutes != null) {
-      final cutoff = DateTime.now().millisecondsSinceEpoch - _ageMinutes! * 60000;
+      final cutoff = nowMillis() - _ageMinutes! * 60000;
       spots = spots.where((s) => _timeOf(s) >= cutoff).toList();
     }
     if (_disabledContinents.isNotEmpty) {
@@ -1181,7 +1181,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   }
 
   Map<int, int> _ageSpotCountsOf(List<Map<String, dynamic>> merged) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = nowMillis();
     return {
       for (final minutes in _ageOptionsInMinutes)
         minutes: merged.where((s) => now - _timeOf(s) <= minutes * 60000).length,

@@ -30,6 +30,7 @@ installNumberFormatPolyfill()
 
 import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot } from "./types"
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels"
+import { installAppClock } from "./appClock.ts"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
 import * as libCountryFiles from "@ham2k/lib-country-files"
@@ -91,6 +92,18 @@ if (typeof (globalThis as Record<string, unknown>).sendMessage === 'function') {
     // both delete and assignment blocked: nothing more we can do here
   }
 }
+
+// ---------------------------------------------------------------------------
+// The app clock inside the sandbox (docs/design/time.md §6)
+//
+// appClock.ts replaces `globalThis.Date` so every extension's Date.now() and
+// new Date() follow the app's clock without knowing this happened. Installed
+// here, before any bundle evaluates, same as the raw message channel above.
+//
+// `realNow` is the clock captured BEFORE that swap, and the kernel's own
+// timings and cache TTLs use it deliberately: they measure real elapsed work,
+// and a speed factor would silently scale them.
+const { realNow, setClockTravel } = installAppClock()
 
 interface HookRecord {
   category: string
@@ -241,7 +254,7 @@ function invalidateContext() {
 }
 
 function getSettingsContext(): Promise<unknown> {
-  if (cachedSettings && Date.now() - cachedSettings.at < CONTEXT_CACHE_TTL_MILLIS) return cachedSettings.value
+  if (cachedSettings && realNow() - cachedSettings.at < CONTEXT_CACHE_TTL_MILLIS) return cachedSettings.value
   const value = (async () => {
     try {
       return await dispatchHostCall('getSettings', {})
@@ -249,7 +262,7 @@ function getSettingsContext(): Promise<unknown> {
       return undefined
     }
   })()
-  cachedSettings = { value, at: Date.now() }
+  cachedSettings = { value, at: realNow() }
   return value
 }
 
@@ -257,7 +270,7 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
   const accountHookRecord = hooks.find((h) => h.category === 'account' && h.extensionKey === extensionKey)
   if (!accountHookRecord) return Promise.resolve(undefined)
   const cached = cachedAccounts.get(extensionKey)
-  if (cached && Date.now() - cached.at < CONTEXT_CACHE_TTL_MILLIS) return cached.value
+  if (cached && realNow() - cached.at < CONTEXT_CACHE_TTL_MILLIS) return cached.value
   const kvKey = accountHookRecord.hook.kvKey || accountHookRecord.key || extensionKey
   const value = (async () => {
     try {
@@ -268,7 +281,7 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
       return undefined
     }
   })()
-  cachedAccounts.set(extensionKey, { value, at: Date.now() })
+  cachedAccounts.set(extensionKey, { value, at: realNow() })
   return value
 }
 
@@ -454,7 +467,7 @@ const kernel = {
   },
 
   invokeHook(id: number, category: string, key: string | null, method: string, argsJson: string) {
-    const startedAt = Date.now()
+    const startedAt = realNow()
     void (async () => {
       try {
         const record = hooksFor(category, key)[0]
@@ -466,20 +479,20 @@ const kernel = {
         // getDefinition/validateField/transformField/onChangeField, and any
         // action method on either tier) goes through the generic path below.
         if (category === 'settingsPanel' && method === 'getDefinition' && record.hook.kind === 'simple') {
-          post({ type: 'result', id, ok: true, value: tier1FormDefinition(record.hook), jsMillis: Date.now() - startedAt })
+          post({ type: 'result', id, ok: true, value: tier1FormDefinition(record.hook), jsMillis: realNow() - startedAt })
           return
         }
         const online = typeof args?.online === 'boolean' ? args.online : true
         const result = await callHookMethod(record, method, args, online)
-        post({ type: 'result', id, ok: true, value: result ?? null, jsMillis: Date.now() - startedAt })
+        post({ type: 'result', id, ok: true, value: result ?? null, jsMillis: realNow() - startedAt })
       } catch (e) {
-        post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: Date.now() - startedAt })
+        post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: realNow() - startedAt })
       }
     })()
   },
 
   invokeHookAll(id: number, category: string, method: string, argsJson: string, wantsPartials = false) {
-    const startedAt = Date.now()
+    const startedAt = realNow()
     void (async () => {
       // Same whole-body containment as invokeHook: anything thrown outside
       // the per-record try/catches below (malformed argsJson, a special-case
@@ -525,7 +538,7 @@ const kernel = {
             return { key: record.key, ok: false, error: describeError(e) }
           }
         }))
-        post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+        post({ type: 'result', id, ok: true, value: entries, jsMillis: realNow() - startedAt })
         return
       }
       // One `settingsPanel` registration can surface more than one panel —
@@ -571,7 +584,7 @@ const kernel = {
             entries.push({ key: result.key, ok: false, error: result.error })
           }
         }
-        post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+        post({ type: 'result', id, ok: true, value: entries, jsMillis: realNow() - startedAt })
         return
       }
       if (category === 'dataFile' && method === 'getDefinition') {
@@ -608,7 +621,7 @@ const kernel = {
             return { key: record.key, ok: false, error: describeError(e) }
           }
         }))
-        post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+        post({ type: 'result', id, ok: true, value: entries, jsMillis: realNow() - startedAt })
         return
       }
       const online = typeof args?.online === 'boolean' ? args.online : true
@@ -643,9 +656,9 @@ const kernel = {
           return entry
         }),
       )
-      post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+      post({ type: 'result', id, ok: true, value: entries, jsMillis: realNow() - startedAt })
       } catch (e) {
-        post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: Date.now() - startedAt })
+        post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: realNow() - startedAt })
       }
     })()
   },
@@ -708,6 +721,14 @@ const kernel = {
   /// Called by the host after it writes settings or account credentials, so
   /// the next hook call sees them immediately instead of after the TTL.
   invalidateContext,
+
+  /// Points the sandbox's `Date` at the host's app clock (docs/design/time.md).
+  /// The host sends its ANCHOR PAIR rather than an offset, so both sides
+  /// compute the same virtual time from the same formula — an offset would be
+  /// stale by however long the message took, and under a speed factor that
+  /// error would keep growing. Re-sent whenever travel changes and whenever an
+  /// engine boots; `anchorRealMillis: 0` means real time.
+  setClockTravel,
 
   hostResponse(callId: number, ok: boolean, resultJson: string) {
     const pending = pendingHostCalls.get(callId)

@@ -13,6 +13,8 @@
 // Sentry wiring. RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
+// DEVTT moves the app clock, for testing anything that turns on the date or on
+// elapsed time (see timetravel.ts and docs/design/time.md).
 // SEED fills the current log with generated QSOs for exercising list/
 // scoring/map UI against realistic data (ported from app-polo's
 // DebuggingCommands). EXP toggles experimental features from
@@ -38,6 +40,8 @@ import {
   seedableCallsFrom,
 } from "./seed.ts"
 import type { ExistingQsoStats } from "./seed.ts"
+
+import { describeTimeTravel, parseTimeTravelCommand } from "./timetravel.ts"
 
 import { PanelContextPanel } from "./panel.ts"
 
@@ -457,6 +461,44 @@ const ExpCommand = {
   catalog: devCatalog('EXP', 'Toggle an experimental feature', { params: '<name>', expectsParams: true }),
 }
 
+// DEVTT / DEVTIMETRAVEL move the app clock (docs/design/time.md): "DEVTT +3h",
+// "DEVTT -1d", "DEVTT 2x", "DEVTT +1d 10x", and bare "DEVTT" back to real time.
+// Offsets are cumulative, so the command steps.
+//
+// DELIBERATELY has no `catalog` — not even a developer-mode one. Every other
+// command here can be found in the palette once developer mode is on; this one
+// can only be typed, because the palette and the empty-field samples are
+// discovery surfaces and a clock that silently disagrees with the operator's
+// wristwatch is not something to discover by accident. `interpret` returning
+// null outside developer mode makes it not exist there at all, and turning
+// developer mode off puts the clock back (see the app's `devTimeTravel`
+// action), so this can't be a trap door out of the gate.
+//
+// No `confirm`: only the app knows what time it ends up at, and it reports
+// that itself — the EXP pattern. Same reason the sync-account and
+// developer-mode gates live app-side: neither is visible from here.
+const DevTimeTravelCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!ctx.developerMode) return null
+    const request = parseTimeTravelCommand(input)
+    if (!request) return null
+
+    // mixedCase for the SEED reason: it keeps Space a literal character, so a
+    // complete "DEVTT" can still be extended to "DEVTT +3h".
+    if (request.kind === 'error') return { mixedCase: true, error: request.error }
+
+    return {
+      mixedCase: true,
+      describe: describeTimeTravel(request),
+      commands: [{
+        devTimeTravel: request.kind === 'reset'
+          ? { reset: true }
+          : { deltaMillis: request.deltaMillis, ...(request.speed === null ? {} : { speed: request.speed }) },
+      }],
+    }
+  },
+}
+
 function shuffled(list: string[]): string[] {
   const copy = [...list]
   for (let i = copy.length - 1; i > 0; i--) {
@@ -481,6 +523,7 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-exp', hook: ExpCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devtimetravel', hook: DevTimeTravelCommand, priority: 100 })
     registerHook('panel', { key: 'dev-commands', hook: PanelContextPanel })
   },
 })

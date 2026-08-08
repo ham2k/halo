@@ -21,6 +21,8 @@
 // user whose value isn't in the list. `countries`/`ituRegions` match for
 // real — see [countryCode]/[ituRegion] below.
 
+import 'package:halo_core/halo_core.dart';
+
 /// The operator + app facts the notice rules are evaluated against. Mirrors
 /// app-polo's `templateData.operator`/`app` plus the callsign-derived filter
 /// inputs. Geo fields come from the callsign-annotation guess (bundled
@@ -90,7 +92,7 @@ class NoticeContext {
   /// Notice keys the user has already dismissed — those are skipped.
   final Set<String> dismissedKeys;
 
-  /// Evaluation clock; injectable for tests. Defaults to [DateTime.now] at
+  /// Evaluation clock; injectable for tests. Defaults to [nowLocal] at
   /// call time when null.
   final DateTime? now;
 
@@ -154,7 +156,7 @@ const _knownPlatforms = {'ios', 'android', 'macos', 'windows', 'linux', 'web'};
 ///    (lower first; notices without a priority rank last), with the original
 ///    array order as the tiebreaker.
 List<EvaluatedNotice> evaluateNotices(List<dynamic> rawNotices, NoticeContext context) {
-  final now = context.now ?? DateTime.now();
+  final now = context.now ?? nowLocal();
   final segment = calculateCallSegment(context.baseCall);
   final seenUnique = <String>{};
   final seenKeys = <String>{};

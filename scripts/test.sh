@@ -147,6 +147,70 @@ list_groups() {
 }
 
 # ---------------------------------------------------------------------------
+# Clock discipline
+#
+# Every "now" in app code goes through AppClock's nowUtc()/nowLocal()/
+# nowMillis() (docs/design/time.md), so that developer time travel moves the
+# WHOLE app. A clock only some of the app reads is worse than no override at
+# all: a QSO stamped on the travelled clock next to a duplicate check run on
+# the real one fails in ways that look like logic bugs.
+#
+# This is a grep rather than a custom lint because the repo has no custom_lint
+# infrastructure, and a grep catches the same thing for none of the cost.
+#
+# A read that genuinely must NOT travel — a sync revision stamp, a protocol
+# timeout, a duration handed to a real Timer — calls the explicit
+# `realNowUtc()` / `realNowMillis()` instead, whose doc comment is the contract
+# (docs/design/time.md §1). `clock:allow <reason>` on the line remains as a
+# last-resort escape hatch for the clock's own implementation.
+#
+# Runs on SUBSET invocations too, not just the full gate: it costs a fraction of
+# a second, and the subset runs are the ones anyone actually does while editing —
+# branches see no CI, so a violation that only the merge gate catches has already
+# been written, tested green and reviewed by then.
+#
+# Scope is app code only, and Dart only: `halo_dist_tools` and other release/CLI
+# tooling are not the app and never travel, and inside `extensions/**` a
+# `Date.now()` is the CORRECT travelling call (the kernel replaces `Date`), so
+# there is nothing there for this to forbid.
+# ---------------------------------------------------------------------------
+
+check_clock_discipline() {
+  echo "▶ clock discipline: every 'now' goes through AppClock (docs/design/time.md)"
+  local dirs=("$ROOT_DIR/app/lib")
+  local d
+  for d in "$ROOT_DIR"/packages/*/lib; do
+    [[ -d "$d" ]] && dirs+=("$d")
+  done
+  [[ -d "$ROOT_DIR/app_dist/lib" ]] && dirs+=("$ROOT_DIR/app_dist/lib")
+
+  # Comment lines are skipped so the rule can be WRITTEN ABOUT (this whole
+  # feature is documented in comments that name the banned call) — matching on
+  # `path:line:` first keeps a `//` inside a string from counting as one.
+  # -a is load-bearing: without it, one stray NUL byte anywhere in a .dart file
+  # makes grep treat the whole file as binary, and a DateTime.now() in it becomes
+  # INVISIBLE to this check (verified: no output, exit 1). That is the same
+  # hazard that hid a clock read in export_service.dart, so the guard against it
+  # must not be defeated by it. Under GNU/BSD grep the binary case instead emits
+  # a "Binary file … matches" line with no line number, which the comment filter
+  # below would pass straight through and fail the gate naming nothing useful.
+  local offenders
+  offenders=$(grep -ran --include='*.dart' -E 'DateTime\.(now|timestamp)\b' "${dirs[@]}" 2>/dev/null \
+    | grep -v 'clock:allow' \
+    | grep -vE '^[^:]+:[0-9]+: *//' || true)
+  if [[ -n "$offenders" ]]; then
+    echo "$offenders" | sed "s|^$ROOT_DIR/||"
+    echo
+    echo "❌ the lines above read the real clock directly." >&2
+    echo "   Use nowUtc() / nowLocal() / nowMillis() from halo_core, or — if the value" >&2
+    echo "   genuinely must not travel (a sync revision stamp, a protocol timeout, a" >&2
+    echo "   duration handed to a Timer) — realNowUtc() / realNowMillis()." >&2
+    echo "   See docs/design/time.md §1 for which one you want." >&2
+    exit 1
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Incremental prerequisites for subset runs
 # ---------------------------------------------------------------------------
 
@@ -288,6 +352,10 @@ $files"
     app_files="$app_files
 $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
   fi
+
+  # Every subset run, whatever it selected — a package-only subset can introduce
+  # a violation just as easily as an app one.
+  check_clock_discipline
 
   [[ "$need_bundles" == "1" ]] && ensure_bundles
   [[ "$need_hostlib" == "1" ]] && ensure_hostlib
@@ -539,6 +607,10 @@ esac
 # ---------------------------------------------------------------------------
 # Full gate (and --quick), exactly as CI mirrors it
 # ---------------------------------------------------------------------------
+
+# First, because it costs a fraction of a second and its failure is a one-line
+# fix — nobody should wait out npm ci and a full analyze to be told about it.
+check_clock_discipline
 
 if [[ "$QUICK" -eq 1 ]]; then
   echo "▶ extensions: install, typecheck (quick mode: no tests)"

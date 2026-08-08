@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
 
 /// One fan-out across every spot source: the spots that came back, the hook
 /// keys of the sources nothing came back from, and the keys of those that
@@ -168,7 +169,7 @@ class SpotsService extends ChangeNotifier {
   List<Map<String, dynamic>> spotsForCall(String call, {required Duration maxAge}) {
     final spots = _byCall[call.trim().toUpperCase()];
     if (spots == null) return const [];
-    final cutoff = DateTime.now().millisecondsSinceEpoch - maxAge.inMilliseconds;
+    final cutoff = nowMillis() - maxAge.inMilliseconds;
     final fresh = [
       for (final spot in spots)
         if ((timeOfSpot(spot) ?? 0) >= cutoff) spot,

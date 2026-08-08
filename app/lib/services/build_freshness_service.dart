@@ -15,6 +15,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/widgets.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/build_reload.dart';
@@ -50,7 +51,7 @@ class BuildFreshnessService with WidgetsBindingObserver {
     String? currentSha,
   })  : _client = client ?? http.Client(),
         _urlBuilder = urlBuilder ??
-            (() => Uri.base.resolve('build_sha.txt?_=${DateTime.now().millisecondsSinceEpoch}')),
+            (() => Uri.base.resolve('build_sha.txt?_=${nowMillis()}')),
         _currentSha = currentSha ?? kGitSha;
 
   /// No-op off the web (every other platform updates through its own

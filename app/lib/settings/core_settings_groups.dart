@@ -838,7 +838,10 @@ class SyncSettingsGroup extends SettingsGroup {
   int get order => 30;
 
   @override
-  Listenable? get listenable => settings;
+  // Also the clock: this group renders whether time travel is holding sync off,
+  // and ending travel writes no setting — so a group listening only to settings
+  // would keep saying "unavailable" over a control that works again.
+  Listenable? get listenable => Listenable.merge([settings, ClockTravel.instance]);
 
   @override
   Future<List<Map<String, dynamic>>> buildElements() async {
@@ -846,12 +849,19 @@ class SyncSettingsGroup extends SettingsGroup {
     if (settings.syncEnabled) {
       account = syncAccountLabel(settings.syncState['accountData']);
     }
+    // Developer-only and in English, like the DEVTT command it describes: the
+    // form system has no "disabled" flag, so what makes sync unavailable while
+    // the clock is travelled is HaLoServices.setSyncEnabled refusing it — this
+    // row only says so (docs/design/time.md).
+    final travelLabel = AppClock.instance.travelLabel;
     return [
       _toggle(
         key: 'enabled',
         label: t.settings.sync.enable,
         icon: 'cloud-sync',
-        description: account.isEmpty ? null : account,
+        description: travelLabel != null
+            ? 'Unavailable while time travelling ($travelLabel)'
+            : (account.isEmpty ? null : account),
         value: settings.syncEnabled,
       ),
     ];

@@ -72,6 +72,71 @@ void main() {
     await db.close();
   });
 
+  // Sync must not reach the server while the app clock is time-travelled
+  // (docs/design/time.md §4). Asserted against the ENGINE, on the transport it
+  // would use — an assertion on `AppClock.isTravelling` would only restate the
+  // clock's own state and would still pass if `_mayRun` were simplified back to
+  // `settings.enabled`, or if a new entry point checked `enabled` directly.
+  group('time travel bars sync', () {
+    tearDown(AppClock.instance.reset);
+
+    Future<void> dirtyRow() async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    }
+
+    test('no round reaches the transport while travelled', () async {
+      await dirtyRow();
+      AppClock.instance.travel(delta: const Duration(days: 3));
+
+      await engine.runOneRound(smallBatch: false);
+      engine.start();
+      engine.notifyChanged();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(transport.calls, isEmpty, reason: 'a travelled clock must never reach the server');
+    });
+
+    test('and a round runs again once the clock is back', () async {
+      await dirtyRow();
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      await engine.runOneRound(smallBatch: false);
+      expect(transport.calls, isEmpty, reason: 'sanity: refused while travelled');
+
+      AppClock.instance.reset();
+      await engine.runOneRound(smallBatch: false);
+      expect(transport.calls, isNotEmpty, reason: 'the bar lifts with the clock');
+    });
+
+    // The destructive pair have to refuse BEFORE they act: each wipes local data
+    // into the backup tables and relies on the round it schedules to refill it,
+    // and that round is exactly what the bar above stops. Refusing late leaves
+    // the live tables empty with nothing that would ever refill them.
+    test('forceFullResync refuses without wiping anything', () async {
+      await dirtyRow();
+      final before = (await operations.syncCounts()).total;
+      expect(before, 1, reason: 'sanity: there is something to lose');
+      AppClock.instance.travel(delta: const Duration(days: 3));
+
+      expect(await engine.forceFullResync(), isFalse);
+      expect((await operations.syncCounts()).total, before, reason: 'the log must still be there');
+      expect((await qsos.syncCounts()).total, 1);
+      expect(settings.state['completedFullSync'], isTrue, reason: 'and its bookkeeping untouched');
+    });
+
+    test('resolveAccountChange refuses without reconciling anything', () async {
+      await dirtyRow();
+      settings.state = {...settings.state, 'pendingAccountUUID': 'acct-2'};
+      AppClock.instance.travel(delta: const Duration(days: 3));
+
+      expect(await engine.resolveAccountChange(SyncAccountChoice.replace), isFalse);
+      expect((await qsos.syncCounts()).total, 1, reason: 'replace must not have wiped');
+      expect(settings.state['pendingAccountUUID'], 'acct-2',
+          reason: 'and the question must still be pending, not silently answered');
+    });
+
+  });
+
   test('selectBatch is empty when nothing is dirty', () async {
     final batch = await engine.selectBatch(qsoBatchSize: 10, operationBatchSize: 10);
     expect(batch.isEmpty, isTrue);

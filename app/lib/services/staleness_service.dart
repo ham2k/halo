@@ -13,6 +13,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/version.dart';
@@ -45,7 +46,7 @@ class StalenessService with WidgetsBindingObserver {
         _buildExpired = buildExpired ?? isBuildExpired,
         _updates = updates,
         _isReleaseBuild = isReleaseBuild,
-        _now = now ?? DateTime.now,
+        _now = now ?? nowLocal,
         _onNoticeAction = onNoticeAction;
 
   final StatusBarService statusBar;

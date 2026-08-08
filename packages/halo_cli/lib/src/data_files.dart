@@ -254,7 +254,7 @@ class DataFileSync {
   }) async {
     // Stamps every row this run touches, so the sweep below can delete
     // exactly what the source dropped.
-    final updatedFlag = DateTime.now().millisecondsSinceEpoch;
+    final updatedFlag = nowMillis();
     var imported = 0;
 
     for (var start = 0; start < items.length; start += chunkSize) {

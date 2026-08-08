@@ -25,6 +25,23 @@ void main() {
         ),
       );
 
+  testWidgets('the COLLAPSED footer shows an item\'s title and never its text', (tester) async {
+    // The contract a caller has to write to: the collapsed footer is the
+    // always-visible surface and it renders `title ?? text`, so anything a
+    // caller puts in `text` alone is invisible until the bar is expanded. A
+    // fixed title with the changing part in `text` therefore reads as a static
+    // label — see HaLoServices._refreshTimeTravelStatus, which puts a whole
+    // one-line message in the title for exactly this reason. If this behaviour
+    // is ever changed to show both, that caller can be simplified.
+    await tester.pumpWidget(host([
+      const StatusBarItemData(key: 'k', title: 'The title', text: 'the detail'),
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The title'), findsOneWidget);
+    expect(find.text('the detail'), findsNothing);
+  });
+
   testWidgets(
     'collapsed AnimatedSwitcher survives the item count oscillating within '
     'one transition window (e.g. two overlapping data-file syncs)',

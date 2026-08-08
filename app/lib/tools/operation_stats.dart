@@ -18,7 +18,7 @@ List<String> operationStatsLines(BuildContext context, List<Qso> qsos) {
   final count = contacts.length;
   final firstMs = contacts.first.startAtMillis;
   final lastMs = contacts.last.startAtMillis;
-  final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+  final nowMs = nowMillis();
 
   final countText = count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count);
   final line1 = <String>[

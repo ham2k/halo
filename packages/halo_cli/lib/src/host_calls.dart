@@ -15,6 +15,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:halo_core/halo_core.dart';
+
 import 'bundles.dart';
 import 'config.dart';
 import 'lookup_store.dart';
@@ -197,7 +199,7 @@ class CliHostCalls {
         final call = (params['call'] as String?)?.toUpperCase();
         if (call == null) return const <Map<String, Object?>>[];
         final maxAge = params['maxAgeMinutes'];
-        final cutoff = DateTime.now().millisecondsSinceEpoch -
+        final cutoff = nowMillis() -
             (maxAge is num ? maxAge.toInt() : 30) * Duration.millisecondsPerMinute;
         return [
           for (final spot in log.spots)

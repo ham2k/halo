@@ -21,6 +21,7 @@
 
 import 'dart:async';
 
+import '../app_clock.dart';
 import '../models/models.dart';
 import '../repo/repositories.dart';
 
@@ -207,8 +208,26 @@ class SyncEngine {
     this.onAuthError,
   });
 
+  /// Whether sync may run at all right now.
+  ///
+  /// `settings.enabled` AND a real clock: a travelled clock must never reach
+  /// the server (docs/design/time.md §4). Deliberately a live check in the one
+  /// place every path already consults, rather than switching the persisted
+  /// `enabled` setting off and back on — a dev tool writing the operator's sync
+  /// preference leaves it wrong for good if the app is quit before travel ends,
+  /// and there is no surface that would explain it.
+  bool get _mayRun => settings.enabled && !travelRefusesSync;
+
+  /// Whether the app clock is time-travelled, which bars sync outright.
+  ///
+  /// Public because the DESTRUCTIVE entry points ([forceFullResync],
+  /// [resolveAccountChange]) have to refuse before they act, not merely fail to
+  /// schedule the round that would repair them — and because a caller that a
+  /// human just asked for a sync owes them an explanation rather than silence.
+  bool get travelRefusesSync => AppClock.instance.isTravelling;
+
   void start() {
-    if (!settings.enabled) return;
+    if (!_mayRun) return;
     _scheduleLoop(Duration.zero);
   }
 
@@ -226,8 +245,10 @@ class SyncEngine {
   /// edits (e.g. typing) coalesces into one round, but never waits more than
   /// [debounceMaxWait] if edits keep arriving back-to-back.
   void notifyChanged() {
-    if (!settings.enabled) return;
-    final now = DateTime.now();
+    if (!_mayRun) return;
+    // Real time: the debounce window is a real wait, and its remainder becomes
+    // a Timer duration (realNowUtc's doc comment, docs/design/time.md §1).
+    final now = realNowUtc();
     _debounceStartedAt ??= now;
     _debounceTimer?.cancel();
 
@@ -245,14 +266,19 @@ class SyncEngine {
   /// The user answered the Settings banner for a new/changed account.
   /// Reconciles local data per [choice], clears the pending state, resets
   /// backfill bookkeeping, and kicks off a round immediately.
-  Future<void> resolveAccountChange(SyncAccountChoice choice) async {
+  /// Returns false without reconciling anything when sync may not run
+  /// ([travelRefusesSync]) — `replace` wipes local data and both choices rely
+  /// on the round scheduled at the end to refill or push, so a half-applied
+  /// reconciliation is worse than a deferred one.
+  Future<bool> resolveAccountChange(SyncAccountChoice choice) async {
+    if (travelRefusesSync) return false;
     // Adopting "no account" is not a reconciliation, it's a de-link: the
     // device forgets which account it belongs to and the next round starts
     // the whole pending-account dance over, discarding whatever the user
     // just answered. Only a caller racing another resolution can get here
     // with nothing pending, and the right move is to let the resolution
     // that already ran stand.
-    if (settings.state['pendingAccountUUID'] == null) return;
+    if (settings.state['pendingAccountUUID'] == null) return false;
 
     _generation++; // invalidate any round whose transport call is in flight
     if (choice == SyncAccountChoice.replace) {
@@ -274,6 +300,7 @@ class SyncEngine {
       'latestQSOSyncedAtMillis': null,
     });
     _scheduleLoop(Duration.zero);
+    return true;
   }
 
   /// Whether a new or changed account can be adopted without asking the
@@ -319,7 +346,15 @@ class SyncEngine {
   /// fresh backfill under whatever account is already linked. Reuses
   /// [SyncAccountChoice.replace]'s mechanism, but there's no account change
   /// here — `lastSyncAccountUUID`/`pendingAccountUUID` are left alone.
-  Future<void> forceFullResync() async {
+  /// Returns false without touching anything when sync may not run
+  /// ([travelRefusesSync]).
+  Future<bool> forceFullResync() async {
+    // BEFORE the wipe, not at the reschedule below. This method deletes every
+    // local operation and QSO into the backup tables and relies on the round it
+    // schedules to pull them back; `_mayRun` refusing that round would leave the
+    // live tables empty with no UI onto the backups and nothing that would ever
+    // refill them.
+    if (travelRefusesSync) return false;
     _generation++; // see resolveAccountChange
     await _backupAndClearAll();
 
@@ -333,6 +368,7 @@ class SyncEngine {
       'latestQSOSyncedAtMillis': null,
     });
     _scheduleLoop(Duration.zero);
+    return true;
   }
 
   /// Backs up and clears operations and QSOs as one transaction — a crash
@@ -340,7 +376,7 @@ class SyncEngine {
   /// gone) yet still counted and eligible for push. Both repositories share
   /// one database; their own inner transactions nest inside this one.
   Future<void> _backupAndClearAll() async {
-    final backupId = DateTime.now().toUtc().toIso8601String();
+    final backupId = nowUtc().toIso8601String();
     await operations.db.transaction(() async {
       await operations.backupAndClearAll(backupId);
       await qsos.backupAndClearAll(backupId);
@@ -386,7 +422,7 @@ class SyncEngine {
   /// changed mid-stream, that response is discarded and the pending-account
   /// flow starts over, the same as a fresh link.
   Future<void> runOneRound({bool smallBatch = false}) async {
-    if (!settings.enabled || _running) return;
+    if (!_mayRun || _running) return;
     _running = true;
     // Snapshot the reconciliation generation: if resolveAccountChange or
     // forceFullResync runs while this round awaits the network, everything
@@ -412,7 +448,15 @@ class SyncEngine {
           // adopting now would overwrite their answer with a guess.
           if (await _canAdoptAccountSilently(response)) {
             if (generation != _generation) return _abandonRound();
-            await resolveAccountChange(SyncAccountChoice.combine);
+            // A silent adoption that gets REFUSED (travel started while this
+            // round was on the network) must not leave `pendingAccountUUID`
+            // behind: the banner it raises asks the operator to choose between
+            // combining and WIPING, for an account this code just determined
+            // needs no question asked. Put the pending state back and let a
+            // later round — on a real clock — adopt it silently as intended.
+            if (!await resolveAccountChange(SyncAccountChoice.combine)) {
+              await settings.setState({...settings.state, 'pendingAccountUUID': null});
+            }
             return;
           }
         }
@@ -479,7 +523,12 @@ class SyncEngine {
           // Same race as the never-linked branch above, and a wider window:
           // this check makes its own network call.
           if (generation != _generation) return _abandonRound();
-          await resolveAccountChange(SyncAccountChoice.combine);
+          // Refused (see the never-linked branch above): don't leave a pending
+          // account behind, or the operator is asked to combine-or-wipe for an
+          // account that needed no question asked.
+          if (!await resolveAccountChange(SyncAccountChoice.combine)) {
+            await settings.setState({...settings.state, 'pendingAccountUUID': null});
+          }
         }
         return;
       }
@@ -553,7 +602,15 @@ class SyncEngine {
     final operationCounts = await operations.syncCounts();
     final qsoCounts = await qsos.syncCounts();
     final state = settings.state;
-    final nowMillis = DateTime.now().millisecondsSinceEpoch;
+    // Real, not travelled: this value LEAVES the app as `syncedUntilMillis`
+    // whenever the state carries no cursor yet (a fresh link, or right after a
+    // forced resync), where the server pages backwards from it. See
+    // realNowMillis's contract — "values compared against someone else's clock".
+    //
+    // Travel bars every round, so the only way a travelled value could get here
+    // is a round that passed `_mayRun` and was still assembling when travel
+    // started. Narrow, and this costs nothing to close.
+    final backfillFrom = realNowMillis();
 
     return {
       if (batch.operations.isNotEmpty)
@@ -588,12 +645,12 @@ class SyncEngine {
           'sync': backfilling
               ? {
                   'operations': {
-                    'syncedUntilMillis': (state['earliestOperationSyncedAtMillis'] as num?)?.toInt() ?? nowMillis,
+                    'syncedUntilMillis': (state['earliestOperationSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
                     'limit': limit,
                     'anyClient': true,
                   },
                   'qsos': {
-                    'syncedUntilMillis': (state['earliestQSOSyncedAtMillis'] as num?)?.toInt() ?? nowMillis,
+                    'syncedUntilMillis': (state['earliestQSOSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
                     'limit': limit,
                     'anyClient': true,
                   },
@@ -774,7 +831,7 @@ class SyncEngine {
   }
 
   void _scheduleLoop(Duration delay) {
-    if (!settings.enabled || _disposed) return;
+    if (!_mayRun || _disposed) return;
     _loopTimer?.cancel();
     _loopTimer = Timer(delay, () => unawaited(runOneRound(smallBatch: false)));
   }

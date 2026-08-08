@@ -13,6 +13,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - The Font Scale setting scales the **whole** UI from one root wrapper ([ui-scaling.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/ui-scaling.md)). Write all dimensions in plain logical pixels and **never multiply a size, padding, or font size by the font scale** — that double-scales it. Read ui-scaling.md before any scaling-, layout-, or macOS-window-related change.
 
+- **Never call `DateTime.now()`.** Every "now" in app code goes through the app clock — `nowUtc()` / `nowLocal()` / `nowMillis()` from `halo_core` — so that developer time travel (`DEVTT`) moves the whole app at once ([time.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/time.md)). `./scripts/test.sh` fails the build on a direct read. A value that must NOT travel calls the explicit `realNowUtc()` / `realNowMillis()` instead — a sync revision stamp (it persists, so it escapes the session), a protocol timeout, anything whose remainder becomes a `Timer` duration. Read time.md before adding a clock read, a staleness check, or anything the extension sandbox reads a date for.
+
 - What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead.
 
 - The extension system and hooks are defined under `docs/extensions/`.

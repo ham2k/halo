@@ -473,7 +473,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       context,
       title: context.t.qsoList.editEventTime,
       initialMillis:
-          qso.startAtMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch,
+          qso.startAtMillis ?? nowMillis(),
     );
     if (newMillis == null) return;
     await widget.services.qsos.update(

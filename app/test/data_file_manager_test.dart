@@ -534,6 +534,49 @@ REF-002,Summit Two,45.56,-122.78
     expect(files[1].updatedAt, isNull, reason: 'never downloaded');
   });
 
+  // A stamp in the FUTURE means this file's freshness cannot be judged, so the
+  // safe answer is to fetch — not to treat it as freshly updated. Read the other
+  // way, the file is frozen for as long as the future stamp stands, which is
+  // forever: nothing ever rewrites it, and Settings › Offline Data cheerfully
+  // reports "updated just now" the whole time. A developer who time-travelled
+  // forward and let a refresh stamp itself is one way to get here; a device whose
+  // clock was wrong when it last synced is another.
+  test('DataFileManager: a future last-updated stamp counts as stale, not as fresh', () async {
+    final host = MockExtensionHost({
+      'dataFile:*:getDefinition': [
+        {
+          'key': 'future-csv',
+          'ok': true,
+          'value': {
+            'key': 'future-csv',
+            'name': 'Future Stamped',
+            'url': 'https://example.com/f.csv',
+            'maxAgeInDays': 30,
+            'fetchType': 'csv',
+            'category': 'future_category',
+            'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+          },
+        },
+      ],
+      'dataFile:future-csv:mapCsvBatch': (args) => [
+            for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
+          ],
+    });
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
+      ..mockDownloadBody = 'ref,name\nF-1,Fetched\n';
+
+    // A year ahead — well inside the 30-day window if the age is read as-is.
+    final future = DateTime.now().add(const Duration(days: 365)).millisecondsSinceEpoch;
+    await prefs.setInt('data_file_updated_future-csv', future);
+
+    await m.syncAllDataFiles();
+
+    expect((await lookups.getLookup('future_category', 'F-1'))?.name, 'Fetched',
+        reason: 'the file must have been re-fetched, not skipped as fresh');
+    expect(prefs.getInt('data_file_updated_future-csv'), lessThan(future),
+        reason: 'and the future stamp must have been replaced');
+  });
+
   test('DataFileManager: refreshDataFile force-fetches one file, stamps its time, and reports unknown keys', () async {
     final host = MockExtensionHost({
       'dataFile:*:getDefinition': [

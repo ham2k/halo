@@ -423,7 +423,7 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
   // the live tables: the same copy-then-delete the sync engine uses when
   // replacing local data. One transaction so a crash mid-clear can't leave
   // orphaned QSOs. The drift streams (watchAll) re-emit, so the UI follows.
-  final backupId = DateTime.now().toUtc().toIso8601String();
+  final backupId = nowUtc().toIso8601String();
   await services.db.transaction(() async {
     await services.operations.backupAndClearAll(backupId);
     await services.qsos.backupAndClearAll(backupId);
@@ -439,7 +439,7 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
   await services.operations
       .saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'grid': fixtureOperationGrid}));
 
-  final seeds = fixtureQsos(DateTime.now().toUtc().millisecondsSinceEpoch);
+  final seeds = fixtureQsos(nowMillis());
   for (final qso in seeds) {
     await services.qsos.add(operation.uuid, qso);
   }
@@ -769,10 +769,12 @@ Future<HaLoServices> bootstrap({
   // been read yet renders as a placeholder, and the catalog re-reads itself
   // the moment the runtime comes up (`runtimeGeneration`). The wait buys a
   // tidier first frame in the ordinary case; it must never buy a slow one.
-  final catalogDeadline = DateTime.now().add(_panelCatalogBootBudget);
+  // Real time on both ends: this is a budget for real boot work, paired with
+  // `timeout` durations that run on the real clock.
+  final catalogDeadline = realNowUtc().add(_panelCatalogBootBudget);
   try {
     await extensions.start().timeout(_panelCatalogBootBudget);
-    final left = catalogDeadline.difference(DateTime.now());
+    final left = catalogDeadline.difference(realNowUtc());
     if (left > Duration.zero) await services.panels.refreshExtensionPanels().timeout(left);
   } catch (e) {
     debugPrint('[boot] panel catalog not ready before first build ($e); panes will fill in');
@@ -1288,9 +1290,11 @@ class HaLoServices {
       await Future<void>.delayed(const Duration(seconds: 1));
       const slots = 4;
       const tick = Duration(milliseconds: 120);
-      final until = DateTime.now().add(Duration(seconds: seconds));
+      // Real time: DEVHAMMER's point is to churn the UI for that many real
+      // seconds while a tester types into it.
+      final until = realNowUtc().add(Duration(seconds: seconds));
       var step = 0;
-      while (DateTime.now().isBefore(until)) {
+      while (realNowUtc().isBefore(until)) {
         final slot = step % slots;
         statusBar.setProgress(
           key: _hammerKey(slot),
@@ -1367,6 +1371,33 @@ class HaLoServices {
     this.extensions.onOpenAccount =
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
     this.extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);
+    // Time travel is developer-mode-only, and this is the ONE place that can
+    // see developer mode go off no matter which surface turned it off (DEVMODE,
+    // the Settings toggle, a settings command). Leaving the clock travelled
+    // after it goes off would strand a non-developer app on a fake clock with
+    // no visible way back.
+    settings.addListener(_enforceTimeTravelGate);
+  }
+
+  void _enforceTimeTravelGate() {
+    if (!AppClock.instance.isTravelling || settings.developerMode) return;
+    // Said out loud: every clock, QSO default and spot age in the app jumps, and
+    // the only visible cause is a developer-mode toggle several screens away.
+    final was = AppClock.instance.travelLabel;
+    statusBar.showNotice(
+      key: 'clock:timeTravelEnded',
+      icon: 'clock-check',
+      title: 'Back to real time',
+      text: 'Leaving developer mode ended time travel${was == null ? '' : ' ($was)'}.',
+      persist: false,
+    );
+    // Guarded, not bare `unawaited`: the clock is reset FIRST inside, so a throw
+    // later in the sequence (the status item, the heartbeat, restarting sync)
+    // would otherwise surface only as an unhandled async error and leave the
+    // chip on screen over a clock that is no longer travelling.
+    unawaited(_endTimeTravel().catchError((Object e, StackTrace stack) {
+      ErrorReportingService.report(e, stack, context: 'clock:end-time-travel');
+    }));
   }
 
   /// The ONE gate for analytics: forwards to
@@ -1405,9 +1436,219 @@ class HaLoServices {
     unawaited(flags.refreshForCall(settings.activeProfile.operatorCall));
   }
 
-  Future<void> setSyncEnabled(bool enabled) async {
+  /// The status bar's key for the time-travel indicator — public so the widget
+  /// test can find the item rather than matching on its text.
+  static const timeTravelStatusKey = 'clock:timeTravel';
+
+  /// True while travel is holding sync off — what the Sync settings disable
+  /// themselves on (see `SyncSettingsGroup`).
+  ///
+  /// Holding it off is [SyncEngine]'s own live check, not a write to the
+  /// operator's `syncEnabled` setting: a dev tool that switches a persisted
+  /// preference off leaves it wrong for good if the app is quit before travel
+  /// ends, and nothing on screen would attribute that to the clock.
+  bool get timeTravelHoldsSyncOff => AppClock.instance.isTravelling;
+
+  /// DEVTT: moves the app clock (docs/design/time.md).
+  ///
+  /// Both gates live here rather than in the command hook, because neither the
+  /// sync account nor developer mode is visible from inside the extension
+  /// sandbox — and because the sync account gate is the one thing in this
+  /// feature that protects real user data, so it belongs where it cannot be
+  /// bypassed by a different caller of the action.
+  Future<CommandActionOutcome?> _travelTime(Map<String, dynamic>? params) async {
+    if (params?['reset'] == true) {
+      if (!AppClock.instance.isTravelling) return (text: 'The clock is already on real time', failed: false);
+      await _endTimeTravel();
+      return (text: 'Back to real time', failed: false);
+    }
+
+    if (!settings.developerMode) {
+      return (text: 'Time travel needs developer mode', failed: true);
+    }
+
+    final refusal = _syncAccountTimeTravelRefusal();
+    if (refusal != null) return (text: refusal, failed: true);
+
+    // Applied BEFORE anything is changed on its behalf: `travel` refuses an
+    // out-of-range offset or speed, and a refusal that had already switched
+    // something off would leave that thing off with no travel to undo.
+    final deltaMillis = (params?['deltaMillis'] as num?)?.toInt() ?? 0;
+    final speed = (params?['speed'] as num?)?.toDouble();
+    ClockListenerException? notFollowed;
+    try {
+      AppClock.instance.travel(delta: Duration(milliseconds: deltaMillis), speed: speed);
+    } on ArgumentError catch (e) {
+      // Validation, which runs before any mutation: nothing moved.
+      return (text: 'Time travel refused: ${e.message}', failed: true);
+    } on ClockListenerException catch (e, stack) {
+      // A listener threw (the sandbox push, the UI heartbeat). The clock HAS
+      // moved — so everything below still has to happen, most of all the status
+      // indicator: a travelled clock nobody can see is the one failure
+      // docs/design/time.md §4 says must not be possible. Only the report at the
+      // end differs.
+      ErrorReportingService.report(e.cause, stack, context: 'clock:travel-listener');
+      notFollowed = e;
+    }
+
+    // Nothing to switch off: SyncEngine's own `_mayRun` check now refuses every
+    // path while the clock is travelled, including a round already on a timer.
+
+    // Subscribing here rather than at construction: WallClock arms no timer
+    // until something listens, so an app that never travels pays nothing.
+    if (!_travelStatusTicking) {
+      _travelStatusTicking = true;
+      WallClock.seconds.addListener(_refreshTimeTravelStatus);
+    }
+    _refreshTimeTravelStatus();
+    final now = 'Clock now ${_utcStamp(nowUtc())}${_travelSuffix()}';
+    if (notFollowed != null) {
+      return (text: '$now — but ${notFollowed.cause}', failed: true);
+    }
+    return (text: now, failed: false);
+  }
+
+  bool _travelStatusTicking = false;
+
+  /// What the status item last said, so an unchanged label costs nothing.
+  String? _travelStatusText;
+
+  /// Keeps the status-bar item showing how far the clock is from real time and
+  /// how fast it is running.
+  ///
+  /// Re-read once per second rather than posted once, because the offset GROWS:
+  /// `DEVTT 100x` sets no offset at all, and a snapshot would sit at "at 100x"
+  /// for the whole session while the clock ran days ahead. Posting only on a
+  /// CHANGE is what keeps that affordable — every post notifies the whole
+  /// status bar, and at 1x with a fixed offset the label never changes, so an
+  /// ordinary travelled session is silent after the first one.
+  void _refreshTimeTravelStatus() {
+    final label = AppClock.instance.liveTravelLabel;
+    if (label == _travelStatusText) return;
+    _travelStatusText = label;
+    if (label == null) {
+      statusBar.clear(timeTravelStatusKey);
+      return;
+    }
+    statusBar.setMessage(
+      key: timeTravelStatusKey,
+      icon: 'clock-fast',
+      // Everything in the TITLE, with no separate `text`. The collapsed footer
+      // — the always-visible one — renders `title ?? text`, so a title of
+      // "Time travel" with the offset in `text` reads as a bare "Time travel"
+      // until someone expands the bar, which is the one place this item must not
+      // need. Phrased to read as one line: "Time travel +5m at 100x",
+      // "Time travel at 100x", "Time travel +2h".
+      title: 'Time travel $label',
+    );
+  }
+
+  /// Returns to real time and undoes everything travel imposed.
+  Future<void> _endTimeTravel() async {
+    try {
+      AppClock.instance.reset();
+    } on ClockListenerException catch (e, stack) {
+      // The clock IS back on real time — reset mutates before notifying — so
+      // everything below still has to run, exactly as on the travel path. Left
+      // to propagate, it would strand the status item on screen over an
+      // untravelled clock and never restart sync.
+      ErrorReportingService.report(e.cause, stack, context: 'clock:end-travel-listener');
+    }
+    if (_travelStatusTicking) {
+      _travelStatusTicking = false;
+      WallClock.seconds.removeListener(_refreshTimeTravelStatus);
+    }
+    _travelStatusText = null;
+    statusBar.clear(timeTravelStatusKey);
+    // The engine stopped rescheduling itself while travelling, so nothing would
+    // pick it up again on its own.
+    syncEngine.start();
+  }
+
+  /// Why this app may not time-travel against its sync account, or null when it
+  /// may.
+  ///
+  /// An account identified by an email address is a REAL account with real logs
+  /// on the server, so a `/TEST` callsign is the deliberate opt-out — an account
+  /// registered for exactly this.
+  ///
+  /// An email-less account is allowed, and that is a JUDGEMENT, not a proof of
+  /// safety: the Switch Accounts QR flow links precisely an anonymous account, so
+  /// one can be shared with another device. What makes it acceptable is that the
+  /// values which would corrupt that device's merge — the revision stamps — are
+  /// on the real clock regardless (`realNowMillis`). What still crosses is a
+  /// travelled `startAtMillis` on QSOs logged while travelled, which is the
+  /// feature working as intended and shows up as future-dated QSOs on the other
+  /// device. See docs/design/time.md §4's residual.
+  ///
+  /// **Fails CLOSED.** This is the check that stands between a dev tool and
+  /// somebody's real log, so it refuses whenever it cannot PROVE the account is
+  /// safe — including when sync is on but the account payload isn't in hand.
+  /// `syncState['accountData']` is a cache of the last successful fetch, so a
+  /// launch that hasn't fetched yet, or one where the server was unreachable,
+  /// leaves it absent (see `settings_view`'s `syncAccountData`) — and "absent"
+  /// read as "anonymous" is the same wrong answer as no check at all. An app
+  /// with sync switched off has no account to protect and is allowed.
+  String? _syncAccountTimeTravelRefusal() {
+    final account = (settings.syncState['accountData'] as Map?)?['current_account'];
+    if (account is! Map) {
+      if (!settings.syncEnabled) return null;
+      return 'Time travel is refused: sync is on but this account has not been read yet,'
+          ' so it cannot be shown to be a test account. Open Settings › Sync, or turn sync off.';
+    }
+    String field(String key) => (account[key] as String?)?.trim() ?? '';
+    final identified = field('email').isNotEmpty || field('pending_email').isNotEmpty;
+    if (!identified) return null;
+    if (_isTestCall(field('call'))) return null;
+    return 'Time travel is refused: the sync account ${field('email').isNotEmpty ? field('email') : field('pending_email')}'
+        ' is a real account. Use an account whose callsign carries /TEST.';
+  }
+
+  /// Whether [call] carries `/TEST` as a whole SEGMENT — `N0DEV/TEST`, not
+  /// `W1AW/TESTER`. A substring match would opt a real callsign in by accident,
+  /// and this is the opt-out for the one guard protecting real logs.
+  static bool _isTestCall(String call) =>
+      call.toUpperCase().split('/').any((segment) => segment == 'TEST');
+
+  String _travelSuffix() {
+    final label = AppClock.instance.travelLabel;
+    return label == null ? '' : ' ($label)';
+  }
+
+  /// `2026-08-11 14:03z` — a UTC stamp to the minute, which is the precision a
+  /// logger's operator thinks in.
+  static String _utcStamp(DateTime utc) => '${utc.toIso8601String().substring(0, 16).replaceFirst('T', ' ')}z';
+
+  /// Returns false when the request was REFUSED — callers must not report or
+  /// record a change that did not happen (see `_toggleSync`, which would
+  /// otherwise fire a `sync_enabled` analytics event and install an account
+  /// watcher for a sync that is off).
+  Future<bool> setSyncEnabled(bool enabled) async {
+    // Sync stays off for as long as the clock is travelled, whichever surface
+    // asks (the Sync panel, the All Settings row, a settings command): a
+    // travelled `updatedAtMillis` would win or lose every conflict against the
+    // server for as long as the offset stands. Refusing HERE rather than
+    // disabling each control is what makes that an invariant instead of a
+    // convention. `_endTimeTravel` resets the clock BEFORE restoring sync, so
+    // it isn't caught by this.
+    if (enabled && AppClock.instance.isTravelling) {
+      statusBar.showNotice(
+        key: 'clock:timeTravelHoldsSync',
+        icon: 'clock-alert',
+        title: 'Sync is off while time travelling',
+        text: 'The clock is set to ${AppClock.instance.travelLabel}. Run DEVTT to return to real time,'
+            ' then turn sync back on.',
+        persist: false,
+      );
+      // The declarative settings form keeps an optimistic value until something
+      // it listens to changes; ClockTravel is in that merge, so this is what
+      // makes the All Settings row snap back to OFF instead of showing a sync
+      // that isn't running.
+      ClockTravel.instance.notifyRefused();
+      return false;
+    }
     await settings.setSyncEnabled(enabled);
-    if (!enabled) return;
+    if (!enabled) return true;
     // Boot skips credential setup when the keyring is locked
     // (ensureSyncDeviceKey returns null), so starting the engine now without a
     // device key would run sync unauthenticated. If boot never established the
@@ -1417,7 +1658,9 @@ class HaLoServices {
       final deviceKey = await settings.ensureSyncDeviceKey();
       if (deviceKey == null) {
         debugPrint('[sync] enabled but secure storage is unavailable — not starting sync');
-        return;
+        // The SETTING is on (written above, and the no-keyring banner explains
+        // itself); only the engine could not start. Not a refusal.
+        return true;
       }
       await extensions.setSyncCredentials(
         deviceKey: deviceKey,
@@ -1426,6 +1669,7 @@ class HaLoServices {
       unawaited(connectLofiRealtime());
     }
     syncEngine.start();
+    return true;
   }
 
   /// Handles a named command action from the call field — `SYNCALL` (see
@@ -1439,7 +1683,13 @@ class HaLoServices {
     switch (action) {
       case 'syncAll':
         if (!settings.syncEnabled) return (text: t.commands.enableSyncFirst, failed: true);
-        await syncEngine.forceFullResync();
+        // A refusal has to be reported: this command backs up and WIPES the
+        // local log before refilling it from the server, so "started" against a
+        // clock that bars sync would be the operator watching their log vanish
+        // with nothing that would refill it (docs/design/time.md §4).
+        if (!await syncEngine.forceFullResync()) {
+          return (text: 'A full resync needs the real clock — run DEVTT first', failed: true);
+        }
         return (text: t.commands.fullResyncStarted, failed: false);
       case 'reloadDataFiles':
         final p = params ?? const {};
@@ -1472,7 +1722,11 @@ class HaLoServices {
         );
       case 'devNotice':
         final p = params ?? const {};
-        final devNoticeKey = p['key'] as String? ?? 'devNotice-${DateTime.now().microsecondsSinceEpoch}';
+        final devNoticeKey = p['key'] as String? ??
+            // Real: a uniqueness token, and a clock moved BACKWARD can hand back
+            // an instant already used — replacing an unrelated notice instead of
+            // adding one, from the command whose job is testing notices.
+            'devNotice-${realNowUtc().microsecondsSinceEpoch}';
         statusBar.showNotice(
           key: 'command:devNotice:$devNoticeKey',
           icon: p['icon'] as String?,
@@ -1519,6 +1773,8 @@ class HaLoServices {
       case 'devTester':
         devTesterTrigger.trigger();
         return null;
+      case 'devTimeTravel':
+        return _travelTime(params);
       case 'devSentry':
         // DEVSENTRY [message]: push a synthetic error through the real
         // reporting pipeline to verify the Sentry wiring end to end.

@@ -3,6 +3,8 @@
 
 import 'dart:convert' show jsonEncode;
 
+import 'app_clock.dart';
+
 /// Dev-only structured, tagged logging. Bakes in the
 /// "instrument + grep the console" pattern instead of sprinkling one-off
 /// `debugPrint`s: [log] emits a stable `[tag] {json}` line to the console (so
@@ -36,7 +38,10 @@ class DevLog {
   void log(String tag, [Map<String, Object?>? data]) {
     if (!enabled) return;
     final entry = <String, Object?>{
-      'ms': DateTime.now().millisecondsSinceEpoch,
+      // Real time: these stamps exist to line log lines up with the operator's
+      // wall clock and with console output from outside the app, which a
+      // travelled clock would silently desynchronize.
+      'ms': realNowMillis(),
       'tag': tag,
       if (data != null) ...data,
     };

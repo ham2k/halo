@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _historyKey = 'statusBarNoticeHistory';
@@ -159,7 +160,7 @@ class StatusBarService extends ChangeNotifier {
   List<StatusBarNotice> get history => _notices.reversed.toList();
 
   void setMessage({required String key, String? icon, String? title, String? text}) {
-    final now = DateTime.now();
+    final now = nowLocal();
     _items[key] = StatusBarItem(
       key: key,
       icon: icon,
@@ -186,7 +187,7 @@ class StatusBarService extends ChangeNotifier {
   /// (`value >= 1.0`) progress item auto-clears itself 5 seconds later,
   /// unless it's been replaced or cleared by then.
   void setProgress({required String key, String? icon, String? title, String? text, double? value}) {
-    final now = DateTime.now();
+    final now = nowLocal();
     _items[key] = StatusBarItem(
       key: key,
       icon: icon,
@@ -229,7 +230,7 @@ class StatusBarService extends ChangeNotifier {
       title: title,
       text: text,
       actions: actions,
-      createdAt: DateTime.now(),
+      createdAt: nowLocal(),
       persist: persist,
     );
     _notices.removeWhere((n) => n.key == key);
@@ -242,7 +243,7 @@ class StatusBarService extends ChangeNotifier {
   void dismissNotice(String key) {
     final index = _notices.indexWhere((n) => n.key == key && n.dismissedAt == null);
     if (index == -1) return;
-    _notices[index] = _notices[index].copyWith(dismissedAt: DateTime.now());
+    _notices[index] = _notices[index].copyWith(dismissedAt: nowLocal());
     unawaited(_persistNotices());
     notifyListeners();
   }

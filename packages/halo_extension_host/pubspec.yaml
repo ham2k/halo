@@ -21,5 +21,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Test-only, and deliberately not a real dependency: this package knows how to
+  # PUSH clock travel into the sandbox (setClockTravel) without knowing where the
+  # numbers come from, which is what keeps the host independent of the app's
+  # clock. sandbox_clock_test drives the real AppClock so it proves the two
+  # actually agree (docs/design/time.md).
+  halo_core:
+    path: ../halo_core
 
 flutter:

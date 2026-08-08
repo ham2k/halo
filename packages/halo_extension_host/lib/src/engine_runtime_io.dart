@@ -94,7 +94,8 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles) async {
+  Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
+      {ClockTravelState clock = const ClockTravelState.real()}) async {
     final js = _createRuntime();
     _js = js;
     js.onSend((channel, message) {
@@ -112,6 +113,10 @@ class _IoEngineRuntime implements EngineRuntime {
     });
 
     _evaluate(kernelSource, name: 'kernel');
+    // Between the kernel and the bundles: the kernel installs the sandbox's
+    // Date, and every bundle (and the activateAll below) must already see the
+    // app's clock through it.
+    if (!clock.isReal) setClockTravel(clock.anchorRealMillis, clock.anchorVirtualMillis, clock.speed);
     for (final bundle in bundles) {
       // The begin/end bracket is what makes extension identity
       // host-declared: the kernel only accepts defineExtension keys matching
@@ -159,6 +164,11 @@ class _IoEngineRuntime implements EngineRuntime {
   @override
   void invalidateContext() {
     _evaluate('__polo.invalidateContext()', name: 'invalidateContext');
+  }
+
+  @override
+  void setClockTravel(int anchorRealMillis, int anchorVirtualMillis, double speed) {
+    _evaluate('__polo.setClockTravel($anchorRealMillis, $anchorVirtualMillis, $speed)', name: 'setClockTravel');
   }
 
   void _evaluate(String code, {required String name}) {

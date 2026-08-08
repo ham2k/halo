@@ -172,7 +172,7 @@ class CatService extends ChangeNotifier {
   /// What stamps each reading for the snapper's speed measurement.
   /// Injectable because how FAST the knob moved is half of what decides the
   /// grid, and a test cannot turn a knob — a `fakeAsync` timer doesn't move
-  /// `DateTime.now()`, so without this a staged burst always measures as
+  /// `nowLocal()`, so without this a staged burst always measures as
   /// instantaneous.
   final DateTime Function() now;
 
@@ -192,7 +192,7 @@ class CatService extends ChangeNotifier {
       RadioService? radio,
       void Function(String event, [Map<String, Object?> properties])? onTrack,
       this.reconnectDelay = _defaultReconnectDelay,
-      this.now = DateTime.now,
+      this.now = realNowUtc,
       this.idleRetryFirst = _idleRetryFirst})
       : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
         registry = registry ?? EquipmentRegistry(),
@@ -854,7 +854,9 @@ class CatService extends ChangeNotifier {
   void _autoReconnectAfterDrop(String uuid) {
     if (_disposed || !isRadio1(uuid)) return;
     final last = _lastAutoReconnect;
-    final now = DateTime.now();
+    // Real time: this cooldown rate-limits real reconnect attempts against a
+    // real radio, so a rescaled clock would let a storm through.
+    final now = realNowUtc();
     if (last != null && now.difference(last) < _autoReconnectCooldown) {
       debugPrint('[cat] auto-reconnect suppressed: last was ${now.difference(last).inSeconds}s ago');
       return;

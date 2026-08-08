@@ -27,6 +27,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -97,7 +98,13 @@ class SwitchAccountsPane extends StatefulWidget {
     this.cancelLabel,
     this.hostHasCloseIcon = false,
     this.pollInterval = const Duration(seconds: 5),
-    this.now = DateTime.now,
+    // REAL time: the only thing this is compared against is the server's
+    // `challenge_expires_at` (see `_pollForLink`), which is category 1 of
+    // realNowUtc's contract — a value measured against someone else's clock.
+    // Travelled forward, every poll tick reads the challenge as expired and
+    // renews it, replacing the QR/code the operator is mid-way through reading
+    // to the other device; travelled backward it is never renewed at all.
+    this.now = realNowUtc,
   });
 
   @override

@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../app_clock.dart';
 import '../db/database.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
@@ -19,7 +20,6 @@ import '../models/models.dart';
 
 const _uuidGenerator = Uuid();
 
-int _nowMillis() => DateTime.now().toUtc().millisecondsSinceEpoch;
 
 /// Whether an inbound sync record should be skipped in favor of the local
 /// row it would overwrite. Both sides carry a revision stamp
@@ -87,20 +87,24 @@ class OperationsRepository {
   OperationsRepository(this.db, {this.onChange});
 
   Future<Operation> create({required String stationCall, String userTitle = ''}) async {
-    final now = _nowMillis();
     final operation = Operation(
       uuid: _uuidGenerator.v4(),
       data: {
         'stationCall': stationCall.toUpperCase(),
         'userTitle': userTitle,
-        'createdAtMillis': now,
-        'updatedAtMillis': now,
+        // The creation DATE is what the operator reads, so it travels; the
+        // revision stamp is what another device compares against, so it does
+        // not (realNowMillis's doc comment, docs/design/time.md §1).
+        'createdAtMillis': nowMillis(),
+        'updatedAtMillis': realNowMillis(),
       },
     );
     await db.into(db.operations).insert(OperationsCompanion.insert(
           uuid: operation.uuid,
           data: Value(jsonEncode(operation.data)),
-          updatedAtMillis: Value(now),
+          // The column mirrors the revision stamp inside `data`, so it reads
+          // the same real clock.
+          updatedAtMillis: Value(operation.data['updatedAtMillis'] as int),
         ));
     onChange?.call();
     return operation;
@@ -147,7 +151,7 @@ class OperationsRepository {
   }
 
   Future<void> saveData(Operation operation) async {
-    final now = _nowMillis();
+    final now = realNowMillis();
     final data = {...operation.data, 'updatedAtMillis': now};
     await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(
       OperationsCompanion(
@@ -163,7 +167,7 @@ class OperationsRepository {
     // Re-stamps `data.updatedAtMillis` too (not just the flags): the delete
     // must sync as a revision newer than the record it tombstones, or other
     // devices' merge comparison would discard it as stale.
-    final now = _nowMillis();
+    final now = realNowMillis();
     final operation = await get(uuid);
     var companion = OperationsCompanion(
       deleted: const Value(true),
@@ -315,7 +319,7 @@ class OperationsRepository {
   /// portable copy-then-delete instead of its SQLite-specific `ALTER TABLE
   /// RENAME` trick.
   Future<void> backupAndClearAll(String backupId) async {
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final now = nowMillis();
     await db.transaction(() async {
       final rows = await db.select(db.operations).get();
       for (final row in rows) {
@@ -435,9 +439,9 @@ class QsosRepository {
     List<SequenceDescriptor> serialSequences = const [],
   }) async {
     final data = Map<String, dynamic>.from(qsoData);
-    data['startAtMillis'] ??= DateTime.now().toUtc().millisecondsSinceEpoch;
+    data['startAtMillis'] ??= nowMillis();
     data['uuid'] ??= _uuidGenerator.v4();
-    data['updatedAtMillis'] = _nowMillis();
+    data['updatedAtMillis'] = realNowMillis();
 
     var qso = Qso(uuid: data['uuid'] as String, operationUuid: operationUuid, data: data);
 
@@ -543,7 +547,6 @@ class QsosRepository {
   }) async {
     if (inserts.isEmpty && updates.isEmpty) return 0;
 
-    final now = _nowMillis();
     final toInsert = <Qso>[];
     for (final data in inserts) {
       // One uuid, used for both the row and the QSON it carries — generating
@@ -561,8 +564,8 @@ class QsosRepository {
           // Coerced, not passed through: a file can carry "1721736000000" as
           // a string, and drift's typed column would throw a cast error
           // partway through the batch rather than rejecting the record.
-          'startAtMillis': _millisOf(data['startAtMillis']) ?? now,
-          'updatedAtMillis': now,
+          'startAtMillis': _millisOf(data['startAtMillis']) ?? nowMillis(),
+          'updatedAtMillis': realNowMillis(),
         },
       ));
     }
@@ -684,7 +687,7 @@ class QsosRepository {
   Qso _restamped(Qso qso) => Qso(
         uuid: qso.uuid,
         operationUuid: qso.operationUuid,
-        data: {...qso.data, 'updatedAtMillis': _nowMillis()},
+        data: {...qso.data, 'updatedAtMillis': realNowMillis()},
         deleted: qso.deleted,
         scoreCache: qso.scoreCache,
       );
@@ -897,7 +900,7 @@ class QsosRepository {
 
   /// See `OperationsRepository.backupAndClearAll`.
   Future<void> backupAndClearAll(String backupId) async {
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final now = nowMillis();
     await db.transaction(() async {
       final rows = await db.select(db.qsos).get();
       for (final row in rows) {

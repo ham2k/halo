@@ -32,6 +32,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
 
 import '../transport.dart';
 import 'icom_network_protocol.dart';
@@ -511,8 +512,10 @@ class _IcomSession {
     sendTracked(buildAuth(
         local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: _authId!));
 
-    final deadline = DateTime.now().add(_handshakeTimeout);
-    while (token == null && DateTime.now().isBefore(deadline)) {
+    // Real time: a protocol timeout measures how long the radio actually took
+    // to answer, which has nothing to do with what time the app thinks it is.
+    final deadline = realNowUtc().add(_handshakeTimeout);
+    while (token == null && realNowUtc().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 25));
     }
     stop();

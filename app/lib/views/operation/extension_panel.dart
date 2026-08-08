@@ -232,7 +232,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
 
   /// Renders no sooner than [panelRenderThrottle] after the last one.
   void _requestRender(String reason) {
-    final since = _lastRenderedAt == null ? null : DateTime.now().difference(_lastRenderedAt!);
+    // Real time on both ends of this throttle: the remainder becomes a Timer
+    // duration, and a Timer fires on real time — pairing it with a rescaled
+    // clock would make the throttle wait the wrong length.
+    final since = _lastRenderedAt == null ? null : realNowUtc().difference(_lastRenderedAt!);
     if (since != null && since < panelRenderThrottle) {
       _throttle?.cancel();
       _throttle = Timer(panelRenderThrottle - since, () => _render(reason));
@@ -249,7 +252,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       return;
     }
     _rendering = true;
-    _lastRenderedAt = DateTime.now();
+    _lastRenderedAt = realNowUtc();
     // Captured, so a render still in flight when the widget is handed a
     // different panel can't paint one panel's content under another's tab —
     // a plausible wrong answer is worse than an error.

@@ -1000,6 +1000,13 @@ export interface CommandAction {
   /// bypassing its edition and last-seen-build gates — see
   /// `app/lib/main.dart`'s `_TesterOverlayGate`.
   devTester?: Record<string, never>
+  /// Developer-only: moves the app clock (DEVTT — see docs/design/time.md).
+  /// `deltaMillis` is CUMULATIVE from wherever the clock already reads, and
+  /// `speed` is virtual seconds per real second; `reset: true` returns to real
+  /// time. The app enforces the gates and reports the resulting time, because
+  /// neither the sync account nor the clock's current reading is visible from
+  /// inside the sandbox.
+  devTimeTravel?: { reset?: boolean; deltaMillis?: number; speed?: number }
   /// Toggles an experimental feature (EXP command). The app resolves
   /// `token` against `app/experiments.yaml`'s keys and aliases and flips
   /// that experiment's persisted state; an unknown token reports an error

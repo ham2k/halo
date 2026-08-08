@@ -1349,7 +1349,7 @@ class DayHeaderRow extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      _dayLabel(dayMillis, now ?? DateTime.now().toUtc(), labels),
+                      _dayLabel(dayMillis, now ?? nowUtc(), labels),
                       style: rowStyle?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.onSurface,

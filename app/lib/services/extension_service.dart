@@ -352,8 +352,17 @@ class ExtensionService implements PanelExtensionSource {
   ExtensionHost? get host => _host;
 
   Future<void> start() {
+    // Attached here rather than in a constructor: the service is built long
+    // before any runtime exists, and this is the one path every start (and
+    // every restart, through _start) goes through.
+    if (!_clockListenerAttached) {
+      _clockListenerAttached = true;
+      AppClock.instance.addListener(_pushClockTravel);
+    }
     return _starting ??= _start();
   }
+
+  bool _clockListenerAttached = false;
 
   /// Every extension-declared account, or null when the extensions could not
   /// be asked at all — no runtime yet, a dead one, or the fan-out failing or
@@ -686,6 +695,42 @@ class ExtensionService implements PanelExtensionSource {
     } catch (e) {
       debugPrint('[extensions] keychain delete $key failed (ignored): $e');
     }
+  }
+
+  /// The app clock's travel state, in the form the sandbox needs
+  /// (docs/design/time.md §6).
+  ClockTravelState _clockTravelState() {
+    final clock = AppClock.instance;
+    return ClockTravelState(
+      anchorRealMillis: clock.anchorRealMillis,
+      anchorVirtualMillis: clock.anchorVirtualMillis,
+      speed: clock.speed,
+    );
+  }
+
+  /// Pushes a CHANGE of travel into a running sandbox. Registered as an
+  /// [AppClock] listener for the life of the service; a runtime that boots
+  /// later gets the state through [ExtensionHost.start] instead, which is the
+  /// only way to be in place before extensions activate.
+  void _pushClockTravel() {
+    final clock = _clockTravelState();
+    final host = _host;
+    if (host == null) {
+      // No runtime to push into — the whole of a boot or a restart, which is
+      // seconds of bundle loading and activation. Swallowing this leaves the
+      // sandbox on a clock the app is not on for the LIFE of that runtime,
+      // because a boot already snapshotted the state it started with and
+      // nothing reconciles the two afterwards. The re-push at the end of
+      // `_start` is what actually closes the window; this says so when it
+      // happens.
+      debugPrint('[extensions] clock travel not pushed: no runtime yet (re-pushed once it boots)');
+      return;
+    }
+    host.setClockTravel(
+      anchorRealMillis: clock.anchorRealMillis,
+      anchorVirtualMillis: clock.anchorVirtualMillis,
+      speed: clock.speed,
+    );
   }
 
   /// Drops the kernel's cached HookContext so the next hook call sees fresh
@@ -1265,6 +1310,12 @@ class ExtensionService implements PanelExtensionSource {
         // not throw here and leave every extension dark.
         userAgent: await ham2kUserAgentOrFallback(),
         userAgentOverrides: userAgentOverrides,
+        // Handed to the boot itself, not pushed after it returns: `start`
+        // evaluates every bundle AND runs their activations, so a clock that
+        // arrives afterwards has already missed them and an extension reading a
+        // date while activating would bake in the real one. Covers restarts too
+        // — _replaceRuntime routes back through here.
+        clock: _clockTravelState(),
       );
       _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
@@ -1306,6 +1357,12 @@ class ExtensionService implements PanelExtensionSource {
           runtimeGeneration.value++;
         }).catchError((_) {}));
       }
+      // Re-pushed unconditionally, after the host is live: the `clock:` argument
+      // above was read BEFORE loading the bundles, so a DEVTT during those
+      // seconds would otherwise be lost (`_pushClockTravel` had no host to push
+      // into) and this runtime would stay on the pre-boot clock for good.
+      // Idempotent and cheap.
+      _pushClockTravel();
       runtimeGeneration.value++;
       // Resolve each account's synchronizable flag; account access blocks on
       // _accountSyncReady (completed below) until this is done, so every
@@ -1425,7 +1482,14 @@ class ExtensionService implements PanelExtensionSource {
   /// own data, but harmless (and simpler) to track for all non-core keys.
   Future<void> _updateDisabledSince(SettingsService settings) async {
     final disabledSince = {...settings.extensionDisabledSince};
-    final now = DateTime.now().millisecondsSinceEpoch;
+    // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
+    // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real
+    // time. Travelled, `DEVTT -30d` then disabling an extension writes a stamp
+    // 30 days old, and the next boot purges its lookup rows and downloaded data
+    // on the spot — deleting inside the 7-day grace window that exists so a
+    // re-enable keeps everything. Testing the purge is done by travelling the
+    // READER forward, which still works.
+    final now = realNowMillis();
     var changed = false;
     for (final info in availableExtensions) {
       if (info.core) continue;

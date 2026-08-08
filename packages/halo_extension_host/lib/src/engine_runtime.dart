@@ -50,7 +50,10 @@ abstract class EngineRuntime {
 
   /// Loads the kernel bundle, then every extension bundle in order, then
   /// activates all extensions. Throws if any step fails.
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles);
+  /// [clock] is applied BEFORE any bundle evaluates, so extensions activate on
+  /// the same clock the app is on (see [ClockTravelState]).
+  Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
+      {ClockTravelState clock = const ClockTravelState.real()});
 
   void invoke(int id, String category, String? key, String method, String argsJson);
   /// [wantsPartials] asks the kernel to narrate the fan-out — a roster and
@@ -65,10 +68,44 @@ abstract class EngineRuntime {
   /// so the next hook call re-fetches — called after the host writes either.
   void invalidateContext();
 
+  /// Points the sandbox's `Date` at the app clock (docs/design/time.md), as the
+  /// anchor pair and speed the kernel needs to reproduce it. `anchorRealMillis`
+  /// of 0 means real time.
+  void setClockTravel(int anchorRealMillis, int anchorVirtualMillis, double speed);
+
   /// Pumps the engine's job queue, for backends (QuickJS) that don't have a
   /// real event loop and need manual pumping to process microtasks/promises.
   /// A no-op for backends (Worker) with a real event loop.
   void pump();
 
   void dispose();
+}
+
+/// The app clock's travel state as the sandbox needs it: the anchor pair and
+/// speed the kernel reproduces the clock from (docs/design/time.md §6).
+///
+/// Passed to [EngineRuntime.load] rather than only pushed afterwards, because
+/// `load` evaluates every bundle AND calls `activateAll` — so a clock that
+/// arrives after it returns has already missed activation, and an extension
+/// that reads a date while activating bakes in the wrong one. This host has no
+/// opinion on where the numbers come from: it never reads a clock itself, which
+/// is what keeps it independent of the app's.
+class ClockTravelState {
+  final int anchorRealMillis;
+  final int anchorVirtualMillis;
+  final double speed;
+
+  const ClockTravelState({
+    required this.anchorRealMillis,
+    required this.anchorVirtualMillis,
+    required this.speed,
+  });
+
+  /// Real time — no travel.
+  const ClockTravelState.real()
+      : anchorRealMillis = 0,
+        anchorVirtualMillis = 0,
+        speed = 1;
+
+  bool get isReal => anchorRealMillis == 0 && speed == 1;
 }

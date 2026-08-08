@@ -565,7 +565,7 @@ interface CommandHook {
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, updateSetting?, openSettings?, setCallField?,
 //   reloadDataFiles?, devNotice?, devStatus?, devProgress?, devHammer?,
-//   devSplash?, devOnboard?, devTester?, toggleExperiment?}
+//   devSplash?, devOnboard?, devTester?, devTimeTravel?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"
@@ -679,7 +679,14 @@ needs the existing log: SEED reads it through `ctx.getQsos`, using the
 `interpret`; EXP toggles an experimental feature via the `toggleExperiment`
 action field — the hook only parses "EXP <key-or-alias>", and the app
 resolves the token against `app/experiments.yaml` and reports the outcome,
-since the catalog and the stored per-experiment state both live app-side),
+since the catalog and the stored per-experiment state both live app-side;
+DEVTT/DEVTIMETRAVEL move the app clock via the `devTimeTravel` action field —
+"DEVTT +3h", "DEVTT -1d", "DEVTT 2x", bare "DEVTT" to return to real time — so
+anything that turns on the date or on elapsed time can be tested without
+waiting for it. The hook only parses, and only while developer mode is on; the
+app applies the offset, refuses it against a real sync account, and reports the
+resulting time. Deliberately the one command here with NO `catalog`, so it can
+never surface in the palette (docs/design/time.md)),
 `annotation-commands` (ham2k/halo-dist#64, ported from
 app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
 add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,

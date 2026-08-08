@@ -49,6 +49,9 @@ self.onmessage = function (e) {
       try {
         self.postMessage = function () { throw new Error('the raw worker channel is kernel-private'); };
       } catch (err) { /* not shadowable: nothing more we can do */ }
+      if (msg.clock) {
+        self.__polo.setClockTravel(msg.clock.anchorRealMillis, msg.clock.anchorVirtualMillis, msg.clock.speed);
+      }
       for (const bundle of msg.bundles) {
         self.__polo.beginBundle(bundle.key);
         (0, eval)(bundle.source);
@@ -75,6 +78,9 @@ self.onmessage = function (e) {
     case 'invalidateContext':
       self.__polo.invalidateContext();
       break;
+    case 'setClockTravel':
+      self.__polo.setClockTravel(msg.anchorRealMillis, msg.anchorVirtualMillis, msg.speed);
+      break;
   }
 };
 ''';
@@ -99,7 +105,8 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   @override
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles) async {
+  Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
+      {ClockTravelState clock = const ClockTravelState.real()}) async {
     final blob = web.Blob(
       [_bootstrapJs.toJS].toJS,
       web.BlobPropertyBag(type: 'application/javascript'),
@@ -138,6 +145,14 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
       'kind': 'load',
       'kernelSource': kernelSource,
       'bundles': [for (final b in bundles) {'key': b.key, 'source': b.source}],
+      // Applied by the bootstrap between the kernel and the bundles, so the
+      // sandbox's Date is already on the app's clock when they evaluate.
+      if (!clock.isReal)
+        'clock': {
+          'anchorRealMillis': clock.anchorRealMillis,
+          'anchorVirtualMillis': clock.anchorVirtualMillis,
+          'speed': clock.speed,
+        },
     });
     // On failure, _HostCore.init disposes us before rethrowing.
     await ready.future.timeout(const Duration(seconds: 30));
@@ -180,6 +195,16 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   @override
   void invalidateContext() {
     _send({'kind': 'invalidateContext'});
+  }
+
+  @override
+  void setClockTravel(int anchorRealMillis, int anchorVirtualMillis, double speed) {
+    _send({
+      'kind': 'setClockTravel',
+      'anchorRealMillis': anchorRealMillis,
+      'anchorVirtualMillis': anchorVirtualMillis,
+      'speed': speed,
+    });
   }
 
   void _send(Map<String, dynamic> payload) {

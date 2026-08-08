@@ -26,6 +26,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:meta/meta.dart';
 
+import '../app_clock.dart';
 import '../db/database.dart';
 import '../models/models.dart';
 
@@ -224,7 +225,7 @@ class SequencesRepository {
             label: Value(request.label),
             nextValue: Value(await _resolveStart(operationUuid, request, start)),
             startValue: Value(start),
-            updatedAtMillis: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+            updatedAtMillis: Value(realNowMillis()),
           ),
         );
   }
@@ -242,7 +243,7 @@ class SequencesRepository {
             label: Value(request.label),
             nextValue: Value(nextValue),
             startValue: Value(request.start),
-            updatedAtMillis: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+            updatedAtMillis: Value(realNowMillis()),
           ),
         );
   }

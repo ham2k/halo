@@ -1355,7 +1355,13 @@ class _SyncPanelState extends State<_SyncPanel> {
   }
 
   Future<void> _toggleSync(bool enabled) async {
-    await widget.services.setSyncEnabled(enabled);
+    // A refusal (time travel bars sync) must not be recorded as a change or
+    // followed by the watcher setup an enabled sync gets — the notice
+    // setSyncEnabled posts is the operator's answer.
+    if (!await widget.services.setSyncEnabled(enabled)) {
+      if (mounted) setState(() {});
+      return;
+    }
     widget.services.track(enabled ? 'sync_enabled' : 'sync_disabled');
     // That await reaches secure storage, which can sit on a keyring prompt.
     // Closing Settings meanwhile already ran dispose(), so starting the
@@ -1382,7 +1388,16 @@ class _SyncPanelState extends State<_SyncPanel> {
       // The server-side account just changed: run a round now so the
       // engine's account-identity gating raises the combine/replace banner
       // immediately instead of on the next loop tick.
-      unawaited(widget.services.syncEngine.runOneRound());
+      //
+      // A round the OPERATOR just asked for owes them an answer when it can't
+      // run: travelled, this returns without a word, so the reconciliation
+      // banner they are waiting to answer simply never appears and the account
+      // looks linked-and-idle.
+      if (widget.services.syncEngine.travelRefusesSync) {
+        _notify(_syncNeedsRealClock);
+      } else {
+        unawaited(widget.services.syncEngine.runOneRound());
+      }
       unawaited(_refreshSyncAccount());
     }
   }
@@ -1482,9 +1497,22 @@ class _SyncPanelState extends State<_SyncPanel> {
   }
 
   Future<void> _combineAccount() async {
+    // The clock is checked BEFORE the call, not inferred from a false return:
+    // `resolveAccountChange` also answers false for "nothing was pending" — a
+    // second tap, or another surface having resolved it first — and that is a
+    // success, not a clock problem. Blaming the clock there would tell an
+    // ordinary operator with a real clock to run a developer command that does
+    // not exist for them.
+    final refusedByClock = widget.services.syncEngine.travelRefusesSync;
     await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.combine);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (refusedByClock) _notify(_syncNeedsRealClock);
+    setState(() {});
   }
+
+  /// Developer-facing and in English, like the DEVTT command it names — this is
+  /// only reachable with developer mode on (docs/design/time.md §4).
+  static const _syncNeedsRealClock = 'Sync is unavailable while time travelling — run DEVTT first';
 
   Future<void> _replaceAccount() async {
     final opCount = (await widget.services.operations.syncCounts()).total;
@@ -1513,8 +1541,11 @@ class _SyncPanelState extends State<_SyncPanel> {
     );
     if (confirmed != true) return;
 
+    final refusedByClock = widget.services.syncEngine.travelRefusesSync;
     await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.replace);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (refusedByClock) _notify(_syncNeedsRealClock);
+    setState(() {});
   }
 
   String get _syncAccountSubtitle {
@@ -2043,7 +2074,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
 /// app-polo's data settings use.
 String _dataFileUpdatedLabel(DateTime? updatedAt) {
   if (updatedAt == null) return t.settings.offlineData.neverDownloaded;
-  final diff = DateTime.now().difference(updatedAt);
+  final diff = nowLocal().difference(updatedAt);
   if (diff.isNegative || diff.inSeconds < 60) return t.settings.offlineData.updatedJustNow;
   final days = diff.inDays;
   if (days > 0) {

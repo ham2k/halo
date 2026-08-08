@@ -524,7 +524,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     final states = experimentStates;
     final entry = {...?(states[key] as Map?)?.cast<String, dynamic>()};
     entry['enabled'] = enabled;
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = nowMillis();
     if (enabled) {
       entry['firstEnabledAtMillis'] ??= now;
     } else {
@@ -552,7 +552,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> recordOnboardingShown(String flow) async {
     final states = onboardingStates;
     final entry = {...?(states[flow] as Map?)?.cast<String, dynamic>()};
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = nowMillis();
     entry['shownCount'] = ((entry['shownCount'] as num?)?.toInt() ?? 0) + 1;
     entry['firstShownAtMillis'] ??= now;
     entry['lastShownAtMillis'] = now;
@@ -569,7 +569,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> seedFirstUseOnboardingForExistingUsers() async {
     if (!defaultProfileCallsignDefined) return;
     if (onboardingShownCount(OnboardingFlows.firstUse) > 0) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = nowMillis();
     await _prefs.setString(
       _onboardingKey,
       jsonEncode({

@@ -65,7 +65,7 @@ class LocationService extends ChangeNotifier {
   static Position _mockPosition(GridLocation location) => Position(
         latitude: location.latitude,
         longitude: location.longitude,
-        timestamp: DateTime.now(),
+        timestamp: nowLocal(),
         accuracy: 0,
         altitude: 0,
         altitudeAccuracy: 0,

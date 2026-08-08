@@ -245,7 +245,10 @@ class DataFileManager {
     for (final def in await _fetchDefinitions()) {
       if (def['key'] != key) continue;
       await processDataFile(key, def, force: true);
-      final now = DateTime.now();
+      // Real, exactly as the bulk sweep stamps it (see syncDataFiles) — the same
+      // pref, so it has to mean the same thing. A travelled stamp here outlives
+      // the travel and makes this file read "updated just now" forever.
+      final now = realNowUtc();
       await prefs.setInt('data_file_updated_$key', now.millisecondsSinceEpoch);
       return now;
     }
@@ -507,12 +510,34 @@ class DataFileManager {
         final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
         final lastUpdateKey = 'data_file_updated_$key';
         final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
-        final age = DateTime.now().millisecondsSinceEpoch - lastUpdateTime;
-        final isStale = age > maxAgeDays * 24 * 60 * 60 * 1000;
+        // Age on the APP clock, so travelling forward makes files look stale
+        // and refetches them — one of the thresholds this feature exists to
+        // test.
+        final age = nowMillis() - lastUpdateTime;
+        // Whether the stamp is in the FUTURE is a question about real time, and
+        // has to be asked on the real clock. A stamp genuinely ahead of real
+        // time cannot be judged (a device whose clock was wrong when it last
+        // synced), so the safe answer is to fetch — otherwise the file is frozen
+        // for as long as that stamp stands, which is forever, while Settings ›
+        // Offline Data reports "updated just now".
+        //
+        // Asking it on the travelled clock instead would make travelling
+        // BACKWARD put every file's real stamp in the future at once: the whole
+        // offline set — parks, summits, country files, tens of megabytes — would
+        // re-download on every sweep, and the fresh real stamp would still be in
+        // the travelled future, so the next sweep would do it again.
+        final unjudgeable = (realNowMillis() - lastUpdateTime).isNegative;
+        final isStale = unjudgeable || age > maxAgeDays * 24 * 60 * 60 * 1000;
 
         if (force || isStale || lastUpdateTime == 0) {
           await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure);
-          await prefs.setInt(lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
+          // Stamped REAL while the age above is judged on the app clock, which
+          // is what makes travel useful here without leaving a mess: travelling
+          // forward makes files look stale and refetches them, and the stamp it
+          // writes is still true once the clock is back. A travelled stamp would
+          // outlive the travel and read as fresh (or as "updated just now") for
+          // as long as it stood.
+          await prefs.setInt(lastUpdateKey, realNowMillis());
         }
       } catch (e, stack) {
         debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
@@ -860,7 +885,7 @@ class DataFileManager {
     Duration grace = const Duration(days: 7),
     DateTime? now,
   }) async {
-    final cutoff = (now ?? DateTime.now()).millisecondsSinceEpoch - grace.inMilliseconds;
+    final cutoff = (now ?? nowLocal()).millisecondsSinceEpoch - grace.inMilliseconds;
     final staleExtensions = {
       for (final e in disabledSince.entries)
         if (e.value <= cutoff) e.key,
@@ -957,7 +982,7 @@ class DataFileManager {
     final host = extensions.host;
     if (host == null) return;
 
-    final updatedFlag = DateTime.now().millisecondsSinceEpoch;
+    final updatedFlag = nowMillis();
     final chunkSize = 5000;
     final statusKey = 'dataFile:$key';
     var imported = 0;
