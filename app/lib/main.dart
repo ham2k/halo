@@ -423,6 +423,8 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
   final operatorCall = services.settings.activeProfile.operatorCall;
   final stationCall = operatorCall.isNotEmpty ? operatorCall : 'N0DEV';
   final operation = await services.operations.create(stationCall: stationCall, userTitle: 'HALO Fixture');
+  await services.operations
+      .saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'grid': fixtureOperationGrid}));
 
   final seeds = fixtureQsos(DateTime.now().toUtc().millisecondsSinceEpoch);
   for (final qso in seeds) {

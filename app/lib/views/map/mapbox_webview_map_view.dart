@@ -1,11 +1,16 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Mapbox backend for desktop (macOS and Windows; Linux waits on a stable
-// flutter_inappwebview_linux — see docs/backlog.md). No official Mapbox
-// Flutter SDK covers desktop, so this loads Mapbox GL JS (which does support
-// globe projection) into a webview, bridged to Dart for marker/line data in
-// and load/error status out via `window.flutter_inappwebview.callHandler`.
+// Browser-engine map backend in a webview, bridged to Dart for marker/line
+// data in and load/error status out via
+// `window.flutter_inappwebview.callHandler`. Two roles:
+//   - Mapbox GL JS on desktop (macOS and Windows; Linux waits on a stable
+//     flutter_inappwebview_linux — see docs/backlog.md), where no official
+//     Mapbox Flutter SDK exists and GL JS is the only globe projection.
+//   - MapLibre GL JS on every webview-capable platform including iOS and
+//     Android, under the MAPLIBRE experiment — MapLibre Native has no globe
+//     projection, so on mobile the experiment trades the native Mapbox SDK
+//     for a webview rather than for MapLibre's own SDK.
 //
 // On Windows the webview is WebView2, whose NavigateToString ignores
 // InAppWebViewInitialData.baseUrl — the page runs from an about:blank-like
@@ -42,12 +47,14 @@ class MapboxWebviewMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
+  final MapGlEngine engine;
 
   const MapboxWebviewMapView({
     super.key,
     required this.markers,
     this.lines = const [],
     required this.projection,
+    required this.engine,
   });
 
   @override
@@ -131,7 +138,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       // the exe (see WindowsWebView).
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
-        data: _html(secrets['MAPBOX_ACCESS_TOKEN'] ?? ''),
+        data: _html(widget.engine, secrets['MAPBOX_ACCESS_TOKEN'] ?? ''),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
@@ -180,18 +187,18 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   // callback crosses on its own 'poloMapEvent' handler rather than riding
   // onConsoleMessage: a console line is a debug print, and these have to
   // reach ErrorPolicy.
-  static String _html(String token) => '''
+  static String _html(MapGlEngine engine, String token) => '''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script>
-    // Installed before anything can fail: an uncaught page error (mapbox-gl.js
-    // missing so create() throws ReferenceError, WebGL init failing) happens
-    // before the map's own error channel exists, and onConsoleMessage never
-    // sees uncaught exceptions. Buffered until the bridge is ready — these
-    // errors tend to fire exactly in the window where it isn't yet.
+    // Installed before anything can fail: an uncaught page error (the engine
+    // script missing so create() throws ReferenceError, WebGL init failing)
+    // happens before the map's own error channel exists, and onConsoleMessage
+    // never sees uncaught exceptions. Buffered until the bridge is ready —
+    // these errors tend to fire exactly in the window where it isn't yet.
     window.__poloPendingErrors = [];
     function __poloPageError(text) {
       if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
@@ -210,20 +217,23 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       pending.forEach(__poloPageError);
     });
   </script>
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="${engine.scriptUrl}"
+    onerror="__poloPageError('failed to load the ${engine.name} script from ${engine.scriptUrl}')"></script>
+  <link href="${engine.cssUrl}" rel="stylesheet" />
   <style>
     body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
-    .mapboxgl-popup-content { padding: 6px 10px; border-radius: 8px; }
+    .mapboxgl-popup-content, .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <script>$mapGlScript</script>
   <script>
-    const handle = window.poloMapGl.create(document.getElementById('map'), '$token', function (kind, message) {
-      window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
-    });
+    const handle = window.poloMapGl.create(
+      document.getElementById('map'), '${engine.name}', '$token', '${engine.styleUrl}',
+      function (kind, message) {
+        window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
+      });
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
     window.poloSetProjection = handle.setProjection;

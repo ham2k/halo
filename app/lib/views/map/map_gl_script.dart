@@ -1,18 +1,23 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Mapbox GL JS side of the map, shared by the two backends that run it
-// in a real browser engine: the desktop webview (mapbox_webview_map_view.dart,
-// which wraps this in its own HTML page) and Flutter web
-// (mapbox_web_map_view.dart, which injects it into the app's own page and
-// drives it through js_interop). One copy of the marker/line/popup/projection
-// logic, so the two can't drift apart.
+// The browser-engine side of the map — Mapbox GL JS or MapLibre GL JS —
+// shared by the two backends that run it in a real browser engine: the
+// webview (mapbox_webview_map_view.dart, which wraps this in its own HTML
+// page) and Flutter web (mapbox_web_map_view.dart, which injects it into the
+// app's own page and drives it through js_interop). One copy of the
+// marker/line/popup/projection logic, so the two can't drift apart.
 //
-// Exposes `window.poloMapGl.create(container, token, onEvent)` returning a
-// handle with `setMarkersJson`, `setLinesJson`, `setProjection`, and
-// `remove`. Data crosses as JSON strings — both callers already have the
-// payload serialized, and strings keep the interop layer trivial on each
-// side.
+// Exposes `window.poloMapGl.create(container, engine, token, style, onEvent)`
+// returning a handle with `setMarkersJson`, `setLinesJson`, `setProjection`,
+// and `remove`. Data crosses as JSON strings — both callers already have the
+// payload serialized, and strings keep the interop layer trivial on each side.
+//
+// `engine` is 'mapbox' or 'maplibre' (MapGlEngine.name) — the two libraries
+// are near-identical descendants of the same codebase, so one script drives
+// either; the engine is a per-call argument rather than sniffed from which
+// global exists, because on Flutter web both libraries can end up loaded in
+// the same page across an experiment toggle.
 //
 // `onEvent(kind, message)` is the host's error channel: every failure this
 // script can observe goes through it, so each backend can route into
@@ -24,19 +29,49 @@
 // 'deferred-update' and 'marker-drift'. Without a callback the script falls
 // back to the console, which is where a bare devtools session still looks.
 
-/// JS that defines `window.poloMapGl`. Requires mapbox-gl.js (v3.x) to be
-/// loaded first. Idempotent — safe to inject more than once.
+/// Which GL library a browser-engine map runs on, and where its pieces come
+/// from. Mapbox needs the access token from secrets; MapLibre + OpenFreeMap
+/// need no token at all (see the MAPLIBRE experiment, experiments.yaml).
+enum MapGlEngine {
+  mapbox(
+    scriptUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js',
+    cssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css',
+    styleUrl: 'mapbox://styles/mapbox/standard',
+  ),
+  maplibre(
+    scriptUrl: 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js',
+    cssUrl: 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css',
+    styleUrl: 'https://tiles.openfreemap.org/styles/liberty',
+  );
+
+  final String scriptUrl;
+  final String cssUrl;
+  final String styleUrl;
+
+  const MapGlEngine({required this.scriptUrl, required this.cssUrl, required this.styleUrl});
+}
+
+/// JS that defines `window.poloMapGl`. Requires mapbox-gl.js (v3.x) or
+/// maplibre-gl.js (v5.x) to be loaded first, matching the `engine` passed to
+/// `create`. Idempotent — safe to inject more than once.
 const mapGlScript = '''
 window.poloMapGl = window.poloMapGl || {
-  create: function (container, token, onEvent) {
-    mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
+  create: function (container, engine, token, style, onEvent) {
+    const gl = engine === 'maplibre' ? maplibregl : mapboxgl;
+    const options = {
       container: container,
-      style: 'mapbox://styles/mapbox/standard',
-      projection: 'mercator',
+      style: style,
       center: [0, 0],
       zoom: 1,
-    });
+    };
+    // MapLibre has no accessToken and takes its projection from the style
+    // (mercator unless the style says otherwise); its setProjection also
+    // wants a spec object where Mapbox takes a bare name — see below.
+    if (engine !== 'maplibre') {
+      gl.accessToken = token;
+      options.projection = 'mercator';
+    }
+    const map = new gl.Map(options);
 
     const EMPTY = { type: 'FeatureCollection', features: [] };
     const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight'];
@@ -57,6 +92,7 @@ window.poloMapGl = window.poloMapGl || {
     // it was queued with would put stale markers back over newer ones.
     let pendingMarkers = null;
     let pendingLines = null;
+    let pendingProjection = null;
     let flushQueued = false;
 
     // Whether the watchdog has declared the style stuck — a later successful
@@ -75,6 +111,13 @@ window.poloMapGl = window.poloMapGl || {
         }
       }
       console.log('map ' + kind + ': ' + message);
+    }
+
+    // Mapbox takes a projection name and queues it itself if the style is
+    // still loading; MapLibre takes a spec object and THROWS until the style
+    // is done, so its call waits in the same latest-wins flush as the data.
+    function applyProjection(name) {
+      map.setProjection(engine === 'maplibre' ? { type: name } : name);
     }
 
     function showPopup(m) {
@@ -98,7 +141,7 @@ window.poloMapGl = window.poloMapGl || {
         detail.appendChild(document.createTextNode(m.popupDetailSuffix));
         root.appendChild(detail);
       }
-      popup = new mapboxgl.Popup({ offset: 12, closeButton: false })
+      popup = new gl.Popup({ offset: 12, closeButton: false })
         .setLngLat([m.longitude, m.latitude])
         .setDOMContent(root)
         .addTo(map);
@@ -184,11 +227,21 @@ window.poloMapGl = window.poloMapGl || {
         flushQueued = false;
         const markers = pendingMarkers;
         const lines = pendingLines;
+        const projection = pendingProjection;
         pendingMarkers = null;
         pendingLines = null;
-        // This runs outside any caller's stack, so an escape reaches neither
+        pendingProjection = null;
+        // These run outside any caller's stack, so an escape reaches neither
         // backend's Dart side — and Mapbox invokes its listeners without a
         // catch, so it would take the rest of this event's listeners with it.
+        // The projection gets its own catch: the payloads were already popped
+        // from the pending slots, so a projection throw sharing their try
+        // would silently cost the map its markers and lines too.
+        try {
+          if (projection) { applyProjection(projection); clearTimeoutState(); }
+        } catch (err) {
+          report('deferred-update', 'deferred projection change failed: ' + ((err && err.message) || err));
+        }
         try {
           if (markers) setMarkers(markers);
           if (lines) setLines(lines);
@@ -203,8 +256,10 @@ window.poloMapGl = window.poloMapGl || {
       map.triggerRepaint();
       setTimeout(function () {
         // Still holding a payload long after the nudge: the style never
-        // finished. Nothing else would say so — the map just stays empty.
-        if (pendingMarkers || pendingLines) {
+        // finished. Nothing else would say so — the map just stays empty
+        // (or, when only a projection waits, the toggle silently does
+        // nothing while the button shows the new state).
+        if (pendingMarkers || pendingLines || pendingProjection) {
           styleTimedOut = true;
           report('style-timeout', 'the style never finished loading; markers and lines are still waiting');
         }
@@ -225,7 +280,7 @@ window.poloMapGl = window.poloMapGl || {
       clearTimeoutState();
       if (popup) { popup.remove(); popup = null; }
       markersById = {};
-      const baseBounds = new mapboxgl.LngLatBounds();
+      const baseBounds = new gl.LngLatBounds();
       const baseSig = [];
       const features = data.map((m) => {
         markersById[m.id] = m;
@@ -288,11 +343,17 @@ window.poloMapGl = window.poloMapGl || {
       if (popup) { popup.remove(); popup = null; }
     });
 
-    // One delegate for both layers, not one per layer: each registration runs
-    // its own queryRenderedFeatures on every mousemove, and their leave/enter
-    // can arrive in an order that leaves the cursor wrong over a live dot.
-    map.on('mouseenter', MARKER_LAYERS, function () { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', MARKER_LAYERS, function () { map.getCanvas().style.cursor = ''; });
+    // One mousemove delegate rather than mouseenter/mouseleave per layer:
+    // per-layer registrations each run their own queryRenderedFeatures per
+    // mousemove anyway, and their leave/enter can arrive in an order that
+    // leaves the cursor wrong over a live dot. The layer-array form of
+    // mouseenter would also tie the script to whichever engines support it —
+    // a plain mousemove works identically on both.
+    map.on('mousemove', function (e) {
+      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight');
+      const hits = ready ? map.queryRenderedFeatures(e.point, { layers: MARKER_LAYERS }) : [];
+      map.getCanvas().style.cursor = hits.length ? 'pointer' : '';
+    });
 
     // Mapbox GL only watches window resizes on its own; when the container
     // is an embedded platform view (Flutter web) it starts out unsized and
@@ -321,7 +382,11 @@ window.poloMapGl = window.poloMapGl || {
       // thing to pass.
       setMarkersJson: function (json) { setMarkers(JSON.parse(json)); },
       setLinesJson: function (json) { setLines(JSON.parse(json)); },
-      setProjection: function (name) { map.setProjection(name); },
+      setProjection: function (name) {
+        if (engine !== 'maplibre' || map.isStyleLoaded()) { applyProjection(name); return; }
+        pendingProjection = name;
+        flushWhenReady();
+      },
       onLoad: function (callback) { map.on('load', callback); },
       resize: function () { map.resize(); },
       remove: function () {
@@ -330,6 +395,7 @@ window.poloMapGl = window.poloMapGl || {
         // about a map that was simply taken down while it was still loading.
         pendingMarkers = null;
         pendingLines = null;
+        pendingProjection = null;
         if (popup) popup.remove();
         map.remove();
       },

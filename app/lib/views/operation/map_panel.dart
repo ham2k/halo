@@ -12,8 +12,11 @@
 //   - Linux, no Mapbox token configured, or Windows where no WebView2
 //     environment can be created: OsmMapView (flutter_map/OSM), the
 //     zero-token fallback every platform can render.
+// The MAPLIBRE experiment reroutes every webview-capable platform — the
+// three GL rows above, iOS/Android through the webview backend — to
+// MapLibre GL JS + OpenFreeMap, token or not (see the build method).
 // Owns the mercator/globe projection toggle — OsmMapView ignores it (no
-// globe support), the Mapbox backends honor it.
+// globe support), the GL backends honor it.
 //
 // QTHs are resolved per QSO (`qso.our.grid`, falling back to the
 // operation's grid) so an operation whose location changed across a break
@@ -32,6 +35,7 @@ import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
 import '../../services/windows_webview.dart';
 import '../../tools/distance_format.dart';
+import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/mapbox_native_map_view.dart';
 import '../map/mapbox_web_map_view.dart';
@@ -141,31 +145,50 @@ class _MapPanelState extends State<MapPanel> {
     }
 
     final Widget map;
-    // No token is a supported state, not a broken build: a fresh checkout, a
+    // The MAPLIBRE experiment (experiments.yaml) routes every webview-capable
+    // platform through MapLibre GL JS + OpenFreeMap, which needs no token —
+    // including iOS/Android, where it replaces the native Mapbox SDK to
+    // evaluate a webview map on mobile (MapLibre's own native SDK has no
+    // globe projection). Off, Mapbox runs wherever a token is configured; no
+    // token is a supported state, not a broken build: a fresh checkout, a
     // fork, and every CI build without one fall back to OpenStreetMap below.
-    var usesMapbox = (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').isNotEmpty;
-    if (usesMapbox && kIsWeb) {
-      // The app already runs in a browser — Mapbox GL JS mounts directly on
-      // a platform-view div, no webview needed.
-      map = MapboxWebMapView(markers: markers, lines: lines, projection: _projection);
-    } else if (usesMapbox && (Platform.isIOS || Platform.isAndroid)) {
-      map = MapboxNativeMapView(markers: markers, lines: lines, projection: _projection);
-    } else if (usesMapbox && (Platform.isMacOS || Platform.isWindows) && _webviewSupported) {
-      map = MapboxWebviewMapView(markers: markers, lines: lines, projection: _projection);
+    final useMapLibre = widget.settings.experimentEnabled('maplibre');
+    final glEngine = useMapLibre
+        ? MapGlEngine.maplibre
+        : ((secrets['MAPBOX_ACCESS_TOKEN'] ?? '').isNotEmpty ? MapGlEngine.mapbox : null);
+    var hasGlobe = glEngine != null;
+    // Keyed on the engine: both engines render through the same widget type
+    // on web and desktop, and those States create their map (or webview page)
+    // once — without the key, toggling the experiment mid-session reuses the
+    // old State and the engine never actually switches.
+    final glKey = ValueKey(glEngine);
+    if (glEngine == null) {
+      map = OsmMapView(markers: markers, lines: lines);
+    } else if (kIsWeb) {
+      // The app already runs in a browser — GL JS mounts directly on a
+      // platform-view div, no webview needed.
+      map = MapboxWebMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine);
+    } else if (Platform.isIOS || Platform.isAndroid) {
+      map = useMapLibre
+          ? MapboxWebviewMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine)
+          : MapboxNativeMapView(markers: markers, lines: lines, projection: _projection);
+    } else if ((Platform.isMacOS || Platform.isWindows) && _webviewSupported) {
+      map = MapboxWebviewMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine);
     } else {
-      // No token — or Linux, where no Mapbox path exists (flutter_inappwebview
-      // ships no Linux implementation and mapbox_maps_flutter is
-      // mobile-only), so the OSM backend is the real Linux map, not a
-      // stopgap. It has markers/lines/callouts, just no globe projection.
-      // Windows without a usable WebView2 environment lands here too.
-      usesMapbox = false;
+      // Linux, where no webview map exists (flutter_inappwebview ships no
+      // Linux implementation and mapbox_maps_flutter is mobile-only), so the
+      // OSM backend is the real Linux map, not a stopgap. It has
+      // markers/lines/callouts, just no globe projection. Windows without a
+      // usable WebView2 environment lands here too.
+      hasGlobe = false;
+      if (useMapLibre) debugPrint('[map] MAPLIBRE experiment is on but no webview map exists here; using OSM');
       map = OsmMapView(markers: markers, lines: lines);
     }
 
     return Stack(
       children: [
         Positioned.fill(child: map),
-        if (usesMapbox)
+        if (hasGlobe)
           Positioned(
             // Clears the device's real top/right insets (notch, camera
             // cutout) so the toggle isn't drawn under them — the map tiles

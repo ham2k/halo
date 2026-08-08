@@ -45,24 +45,29 @@ Map<String, dynamic> stubbedLookupResult(String call) {
 /// The seed QSOs `resetFixture()` inserts into the fresh fixture operation —
 /// a fixed, ordered set (deterministic calls/bands/modes). [baseMillis] anchors
 /// the timestamps to "now" so the rows land under Today; they're spaced a
-/// minute apart, oldest first.
+/// minute apart, oldest first. Each carries a grid so the Map tab has
+/// locations to draw — without one a fixture QSO is invisible there.
 List<Map<String, dynamic>> fixtureQsos(int baseMillis) => [
       {
-        'their': {'call': 'W1AW'},
+        'their': {'call': 'W1AW', 'grid': 'FN31pr'},
         'band': '20m',
         'mode': 'SSB',
         'startAtMillis': baseMillis - 120000,
       },
       {
-        'their': {'call': 'K2HAM'},
+        'their': {'call': 'K2HAM', 'grid': 'DM33xk'},
         'band': '40m',
         'mode': 'CW',
         'startAtMillis': baseMillis - 60000,
       },
       {
-        'their': {'call': 'VE3ABC'},
+        'their': {'call': 'VE3ABC', 'grid': 'FN03hp'},
         'band': '15m',
         'mode': 'FT8',
         'startAtMillis': baseMillis,
       },
     ];
+
+/// The fixture operation's own grid (northern NJ) — gives the Map tab a QTH
+/// circle and great-circle lines, not just unanchored QSO dots.
+const fixtureOperationGrid = 'FN20su';

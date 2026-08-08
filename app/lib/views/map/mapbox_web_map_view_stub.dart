@@ -7,14 +7,17 @@
 
 import 'package:flutter/widgets.dart';
 
+import 'map_gl_script.dart';
 import 'map_marker_data.dart';
 
 class MapboxWebMapView extends StatelessWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
+  final MapGlEngine engine;
 
-  const MapboxWebMapView({super.key, required this.markers, this.lines = const [], required this.projection});
+  const MapboxWebMapView(
+      {super.key, required this.markers, this.lines = const [], required this.projection, required this.engine});
 
   @override
   Widget build(BuildContext context) => throw UnsupportedError('MapboxWebMapView is only available on the web');
