@@ -215,6 +215,8 @@ void _mainBody({
     attachSpotsStatusReporter(
       spots: services.spots,
       statusBar: services.statusBar,
+      disabledSources: () => services.settings.disabledSpotSources,
+      disabledSourcesChanges: services.settings,
       nameFor: (hookKey) async {
         final names = await (spotSourceNames ??= services.extensions.getSpotSourceNames());
         // A fan-out that answered nothing is not an answer worth keeping —

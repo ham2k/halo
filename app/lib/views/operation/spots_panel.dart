@@ -839,7 +839,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _bandFilter = decoded['bandFilter'] as String? ?? _bandFilter;
     _modeFilter = normalizeModeFilter(decoded['modeFilter'] as String? ?? _modeFilter);
     _ageMinutes = decoded['ageMinutes'] as int?;
-    _disabledSources.addAll((decoded['disabledSources'] as List?)?.cast<String>() ?? const []);
+    // Through the typed accessor, not a second read of the raw map: the
+    // status reporter subtracts the same set, and two hand-rolled decodings
+    // of one key drift apart silently.
+    _disabledSources.addAll(widget.services.settings.disabledSpotSources);
     _disabledContinents.addAll((decoded['disabledContinents'] as List?)?.cast<String>() ?? const []);
     _sortBy = decoded['sortBy'] as String? ?? _sortBy;
     _groupByBand = decoded['groupByBand'] as bool? ?? defaultGroupByBand(_sortBy);

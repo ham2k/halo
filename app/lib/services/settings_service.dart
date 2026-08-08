@@ -446,6 +446,25 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
+  /// Hook keys the operator switched off in the Spots Panel's source filter
+  /// — the `disabledSources` slice of [spottingFilters], typed here so
+  /// consumers outside the panel (the spots status reporter) don't each
+  /// re-derive the map's shape.
+  ///
+  /// Tolerant of a wrong-typed slice rather than throwing: a corrupt filter
+  /// pref must not take the outage reporter down with it — its whole
+  /// evaluation, retraction included, runs behind this read. Tolerance is
+  /// still said out loud, because a silently-empty set here un-disables the
+  /// operator's opt-outs.
+  Set<String> get disabledSpotSources {
+    final raw = spottingFilters['disabledSources'];
+    if (raw is! List) {
+      if (raw != null) debugPrint('[settings] ignoring disabledSources of type ${raw.runtimeType}');
+      return const {};
+    }
+    return raw.whereType<String>().toSet();
+  }
+
   /// The station's configured equipment — radios today, eventually antenna
   /// switches and rotators (docs/design/data-model.md § Stations). Shaped
   /// `{version: 1, nodes: {uuid: {...}}}`; see [CatService], which owns the

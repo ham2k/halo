@@ -9,16 +9,25 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/spots_service.dart';
 import 'package:ham2k_logger/services/spots_status_reporter.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Stands in for SettingsService, whose notifyListeners is what the reporter
+/// hears when the panel persists a filter change.
+class _FilterChanges extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 void main() {
   late StatusBarService statusBar;
   late List<String> unavailable;
   late List<String> failed;
+  late Set<String> disabled;
+  late _FilterChanges filterChanges;
   late SpotsService spots;
 
   setUp(() async {
@@ -26,6 +35,8 @@ void main() {
     statusBar = StatusBarService(await SharedPreferences.getInstance());
     unavailable = [];
     failed = [];
+    disabled = {};
+    filterChanges = _FilterChanges();
     spots = SpotsService(
       fetchSpots: () async => (items: const <Map<String, dynamic>>[], unreachable: unavailable, failed: failed),
     );
@@ -58,6 +69,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => const {'sota': 'SOTAWatch'}[key] ?? key,
     );
     addTearDown(detach);
@@ -76,6 +89,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -96,6 +111,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -115,6 +132,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -137,6 +156,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) => gate.future,
     );
 
@@ -158,6 +179,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async {
         if (failing) throw StateError('runtime not up');
         return key;
@@ -181,6 +204,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => const {'sota': 'SOTAWatch', 'pota': 'POTA.app'}[key] ?? key,
     );
     addTearDown(detach);
@@ -199,6 +224,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -218,6 +245,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -243,6 +272,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -263,6 +294,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -282,6 +315,8 @@ void main() {
     final detach = attachSpotsStatusReporter(
       spots: spots,
       statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
       nameFor: (key) async => key,
     );
     addTearDown(detach);
@@ -293,5 +328,124 @@ void main() {
     unavailable = [];
     await refreshAndSettle();
     expect(reported(), isNull, reason: 'a recovered source must not leave the notice behind');
+  });
+
+  test('a source the operator switched off never posts at all', () async {
+    // An operator who turned SOTA off is not waiting on SOTA, so its outage
+    // asks nothing of them. The fetch still ran — only the reporting is
+    // filtered.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    disabled = {'sota'};
+    unavailable = ['sota'];
+    failed = ['sota'];
+    await refreshAndSettle();
+
+    expect(reported(), isNull);
+  });
+
+  test('a disabled source is dropped from a mixed outage, not the whole message', () async {
+    // Per-source subtraction, not an all-or-nothing gate: the enabled feed's
+    // outage is still news.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    disabled = {'sota'};
+    unavailable = ['sota', 'pota'];
+    await refreshAndSettle();
+
+    expect(reported()?.text, 'pota did not respond.');
+  });
+
+  test('disabling a named source retracts the message without waiting for a fetch', () async {
+    // The de-facto dismiss: the next fetch is up to two minutes out, and a
+    // reporter that only re-evaluates on fetch leaves the nag up exactly when
+    // the operator just acted to silence it.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    unavailable = ['sota'];
+    await refreshAndSettle();
+    expect(reported(), isNotNull);
+
+    disabled = {'sota'};
+    filterChanges.notify();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(reported(), isNull);
+  });
+
+  test('an unrelated settings write mid-resolve does not restart the name fan-out', () async {
+    // The settings service notifies for EVERY settings write, and `reported`
+    // cannot advance until the message is up — so without a guard on the
+    // resolve itself, each write during the await supersedes a resolve of
+    // the same sets and fires another fan-out over a runtime already
+    // struggling with the outage; sustained writes starve the post forever.
+    final gate = Completer<String>();
+    var lookups = 0;
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
+      nameFor: (key) {
+        lookups++;
+        return gate.future;
+      },
+    );
+    addTearDown(detach);
+
+    unavailable = ['sota'];
+    await spots.refresh();
+    filterChanges.notify();
+    gate.complete('SOTAWatch');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(reported()?.text, contains('SOTAWatch'));
+    expect(lookups, 1, reason: 'the same outage must not supersede its own resolve');
+  });
+
+  test('re-enabling a still-down source posts again, also without a fetch', () async {
+    // The disabled set must be part of the outage's identity. Compared after
+    // subtraction only on fetch, the sets look unchanged here and the dedupe
+    // would swallow the repost until the feed's next cycle.
+    final detach = attachSpotsStatusReporter(
+      spots: spots,
+      statusBar: statusBar,
+      disabledSources: () => disabled,
+      disabledSourcesChanges: filterChanges,
+      nameFor: (key) async => key,
+    );
+    addTearDown(detach);
+
+    disabled = {'sota'};
+    unavailable = ['sota'];
+    await refreshAndSettle();
+    expect(reported(), isNull);
+
+    disabled = {};
+    filterChanges.notify();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(reported()?.text, 'sota did not respond.');
   });
 }

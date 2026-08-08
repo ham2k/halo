@@ -42,8 +42,31 @@ VoidCallback attachSpotsStatusReporter({
   /// after one attempt leaves every message naming `sota` instead of
   /// SOTAWatch — the exact thing this parameter exists to avoid.
   required Future<String> Function(String hookKey) nameFor,
+  /// Hook keys the operator has switched off in the Spots Panel's source
+  /// filter. An outage in a source they opted out of asks nothing of them,
+  /// so it never reaches the footer — the fetch itself still runs (the
+  /// `spot-history` lookup mines every source's cache), this is reporting
+  /// only.
+  ///
+  /// A getter, read on every evaluation, because the set lives in the
+  /// panel's persisted filter state and changes while an outage is up.
+  required Set<String> Function() disabledSources,
+  /// Fires when [disabledSources] may have changed, so disabling a source
+  /// that is currently named retracts the message right then — the only way
+  /// an operator has to shoo it away — rather than on the next fetch cycle.
+  /// Required alongside the getter: without it, retraction silently degrades
+  /// to "whenever the next fetch lands", up to a whole cycle after the
+  /// operator acted to silence the message.
+  required Listenable disabledSourcesChanges,
 }) {
   ({Set<String> unavailable, Set<String> failed})? reported;
+  // The outage a resolve is currently in flight for. Without it, any
+  // listener firing during the await — the settings service notifies for
+  // every settings write, not just this filter — supersedes a resolve of the
+  // very same sets and starts another name fan-out, over a runtime that is
+  // already struggling with an outage; sustained writes would keep the
+  // message from ever posting.
+  ({Set<String> unavailable, Set<String> failed})? resolving;
   // Discriminates an awaited resolve that is still current from one that a
   // later change — or the detach below — has superseded. Without it a slow
   // name lookup posts a message describing an outage that is already over,
@@ -59,48 +82,76 @@ VoidCallback attachSpotsStatusReporter({
   Future<void> onChange() async {
     // Set equality, not list equality: the same two sources in the other
     // order is the same message, and would otherwise repost.
-    final current = (unavailable: spots.unavailableSources.toSet(), failed: spots.failedSources.toSet());
+    //
+    // Subtracted BEFORE the dedupe, so the disabled set is part of the
+    // identity being compared: re-enabling a still-down source is a change
+    // that must post, and the settings listener re-runs this with the spot
+    // sets untouched.
+    final disabled = disabledSources();
+    final current = (
+      unavailable: spots.unavailableSources.toSet().difference(disabled),
+      failed: spots.failedSources.toSet().difference(disabled),
+    );
     if (reported != null &&
         setEquals(reported!.unavailable, current.unavailable) &&
         setEquals(reported!.failed, current.failed)) {
+      return;
+    }
+    // Checked against `resolving`, not just `reported`: `reported` cannot
+    // advance until the message is up, so during the await only this guard
+    // stops a re-entry over the same sets from superseding its own resolve.
+    if (resolving != null &&
+        setEquals(resolving!.unavailable, current.unavailable) &&
+        setEquals(resolving!.failed, current.failed)) {
       return;
     }
     final mine = ++generation;
 
     if (current.unavailable.isEmpty && current.failed.isEmpty) {
       reported = current;
+      resolving = null;
       statusBar.clear(spotsUnavailableKey);
       return;
     }
-    // Both resolved before the generation check, so a change landing midway
-    // supersedes the whole message rather than half of it.
-    final resolved = await Future.wait([namesOf(current.unavailable), namesOf(current.failed)]);
-    if (mine != generation) return;
+    resolving = current;
+    try {
+      // Both resolved before the generation check, so a change landing midway
+      // supersedes the whole message rather than half of it.
+      final resolved = await Future.wait([namesOf(current.unavailable), namesOf(current.failed)]);
+      if (mine != generation) return;
 
-    // One clause per kind, and only for a kind that has sources: a feed that
-    // never replied and one that replied 503 ask different things of the
-    // operator — wait, versus stop expecting spots — so a single merged list
-    // would point half of them at the wrong problem.
-    final clauses = [
-      if (current.unavailable.isNotEmpty) t.operation.spots.unavailableText(sources: resolved[0]),
-      if (current.failed.isNotEmpty) t.operation.spots.failedText(sources: resolved[1]),
-    ];
-    // The headline follows the same split as the body. A pure-error outage
-    // under an offline cloud reading "Spots unavailable" gives the operator
-    // the opposite advice to the sentence underneath it — the feeds are
-    // reachable, they are refusing. Anything mixed keeps the broader wording,
-    // which is true of both kinds.
-    final errorsOnly = current.unavailable.isEmpty;
-    statusBar.setMessage(
-      key: spotsUnavailableKey,
-      icon: errorsOnly ? 'alert-circle-outline' : 'cloud-off-outline',
-      title: errorsOnly ? t.operation.spots.failedTitle : t.operation.spots.unavailableTitle,
-      text: clauses.join(' '),
-    );
-    // Only once it is actually on screen. Committed before the await, a
-    // `nameFor` that throws would leave this outage marked as reported and
-    // therefore never retried — silent until the set of sources changes.
-    reported = current;
+      // One clause per kind, and only for a kind that has sources: a feed that
+      // never replied and one that replied 503 ask different things of the
+      // operator — wait, versus stop expecting spots — so a single merged list
+      // would point half of them at the wrong problem.
+      final clauses = [
+        if (current.unavailable.isNotEmpty) t.operation.spots.unavailableText(sources: resolved[0]),
+        if (current.failed.isNotEmpty) t.operation.spots.failedText(sources: resolved[1]),
+      ];
+      // The headline follows the same split as the body. A pure-error outage
+      // under an offline cloud reading "Spots unavailable" gives the operator
+      // the opposite advice to the sentence underneath it — the feeds are
+      // reachable, they are refusing. Anything mixed keeps the broader wording,
+      // which is true of both kinds.
+      final errorsOnly = current.unavailable.isEmpty;
+      statusBar.setMessage(
+        key: spotsUnavailableKey,
+        icon: errorsOnly ? 'alert-circle-outline' : 'cloud-off-outline',
+        title: errorsOnly ? t.operation.spots.failedTitle : t.operation.spots.unavailableTitle,
+        text: clauses.join(' '),
+      );
+      // Only once it is actually on screen. Committed before the await, a
+      // `nameFor` that throws would leave this outage marked as reported and
+      // therefore never retried — silent until the set of sources changes.
+      reported = current;
+    } finally {
+      // Cleared only by the evaluation that still owns the generation — a
+      // superseded one clearing it would drop the guard out from under its
+      // successor's own await. A throw lands here with ownership intact, so
+      // the same outage stays retryable (the trap `reported`'s late commit
+      // exists for).
+      if (mine == generation) resolving = null;
+    }
   }
 
   void listener() {
@@ -108,14 +159,16 @@ VoidCallback attachSpotsStatusReporter({
     // escapes this unawaited call to ErrorPolicy, which has no rule for it
     // and defaults to notifying — so a footer line the operator could have
     // ignored becomes an error card instead.
-    unawaited(onChange().catchError((Object e) {
-      debugPrint('[spots] could not report unavailable sources: $e');
+    unawaited(onChange().catchError((Object e, StackTrace s) {
+      debugPrint('[spots] could not report unavailable sources: $e\n$s');
     }));
   }
 
   spots.addListener(listener);
+  disabledSourcesChanges.addListener(listener);
   return () {
     spots.removeListener(listener);
+    disabledSourcesChanges.removeListener(listener);
     // Supersedes any resolve still in flight. Without it, one that lands
     // after this posts a message nothing is left to clear.
     generation++;
