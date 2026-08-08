@@ -6,8 +6,8 @@
 
 upcoming:
   changes:
+    - "Use the `LAYOUT` command to enable layout customization."
     - "New **Clock** pane — LCD, analog or Swiss railway face, in any time zone"
-    - "Windows: new **Check automatically** switch under Settings → About"
     - "New **Web Site** pane — point it at a page, optionally refreshing on a timer"
 
 "130":

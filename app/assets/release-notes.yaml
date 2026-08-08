@@ -2,15 +2,12 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-"26.8.0":
-  name: "August '26"
+"26.9.0":
+  name: "September '26"
   photoCaption: "M1SDH at GB-4724"
   changes:
-    - "Welcome to Ham2K Logger — the first release of the next-generation Portable Logger for amateur radio operators"
-    - "Interactive Map for browsing spots and planning activations"
-    - "Live Spotting and a Spots Panel"
-    - "Switch Accounts: link and swap between operator accounts with QR codes and challenge codes"
-    - "New resizable Layout System with splits and Modal Panes"
-    - "Operation Exports Panel"
-    - "Callsign Notes"
-    - "Faster, more consistent uppercase input across logging fields"
+    - "Welcome to Ham2K Logger — HaLo – the first release of our next-generation logging app for amateur radio operators."
+    - "All the features you love in Ham2K Portable Logger, now available on Windows, macOS, Linux and Web"
+    - "POTA, SOTA, WWFF, LLOTA and dozens of other activities."
+    - "ARRL Field Day, Winter Field Day, QSO Parties, CQ Contests, NAQP, ARRL Contests and many more"
+    - "Coming soon: CAT control and customizable layouts"
