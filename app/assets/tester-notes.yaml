@@ -29,7 +29,7 @@
 # for the next cut. Notes belong to their own task's commit, not the
 # release's.
 
-upcoming:
+"130":
   changes:
     - "New `EXP MAPLIBRE` experiment renders maps with MapLibre/OpenFreeMap instead of Mapbox"
     - "Custom Text panels take templates — `{{ op.qsoCount }}`, `{{ now | date: '%H:%M' }}Z`, `{% if %}`"
