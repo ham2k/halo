@@ -72,6 +72,14 @@ class _Attempt {
   final CatCancelToken cancel;
   final completer = Completer<EquipmentConnection>();
 
+  /// When the service asked for this connection.
+  ///
+  /// Timing assertions read THIS, never the clock at the moment a polling loop
+  /// happens to notice the attempt. The two differ by however long the isolate
+  /// was starved, which on a loaded machine is unbounded and has nothing to do
+  /// with the retry being measured.
+  final at = DateTime.now();
+
   _Attempt(this.target, this.cancel);
 }
 
@@ -215,6 +223,15 @@ EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) 
 
 // ----------------------------------------------------------------- setup
 
+/// The retry floor the tests inject, and the value the tuning deadline is a
+/// multiple of. Raising this without raising [_tuningDeadlineFactor] with it
+/// moves the floor toward the deadline until a healthy shortcut misses it.
+const idleRetryFloor = Duration(milliseconds: 20);
+
+/// How far above the floor a tune must land. Ten times, so an isolate has to
+/// stall for a fifth of a second before a machine hiccup can fail the test.
+const _tuningDeadlineFactor = 10;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -246,7 +263,7 @@ void main() {
       // Short, not zero: the backoff doubles it, and zero doubled is a tight
       // loop. Long enough that a test which does NOT want a retry can pump the
       // queue without tripping one.
-      idleRetryFirst: const Duration(milliseconds: 20),
+      idleRetryFirst: idleRetryFloor,
     );
   }
 
@@ -377,10 +394,10 @@ void main() {
     /// interval was nothing like the guess — one window was wide enough to
     /// catch the backed-off retry it was supposed to rule out, so the test
     /// passed with the feature removed.
-    Future<Duration> timeToNextAttempt({Duration limit = const Duration(seconds: 5)}) async {
+    Future<Duration> timeToNextAttempt({Duration limit = const Duration(seconds: 5), int? seen}) async {
       final start = DateTime.now();
-      final seen = transport.attempts.length;
-      while (transport.attempts.length == seen && DateTime.now().difference(start) < limit) {
+      seen ??= transport.attempts.length;
+      while (transport.attempts.length <= seen && DateTime.now().difference(start) < limit) {
         await Future<void>.delayed(const Duration(milliseconds: 5));
         await pumpEventQueue();
       }
@@ -394,19 +411,66 @@ void main() {
       await pumpEventQueue();
     }
 
-    /// Fails retries until the interval has doubled clear of its floor.
+    /// Fails retries until the wait has doubled clear of its floor.
     ///
-    /// More rounds than the doubling alone needs, because the first few are
-    /// eaten by the drop burst's own attempts rather than by idle-retry ticks —
-    /// with three rounds the interval reached only 45ms against a 20ms floor,
-    /// and the ceiling test below flaked about one run in three on a margin
-    /// that thin.
-    Future<void> backOffUntilLong() async {
-      for (var round = 0; round < 6; round++) {
+    /// [until] is a floor on that wait, not a round count: how many doublings a
+    /// given number of rounds buys depends on how many of them the drop burst's
+    /// own attempts eat, which is not fixed. A caller that needs the wait to be
+    /// comfortably longer than something has to say so, or it is asserting
+    /// against whatever the constants happened to produce that run.
+    Future<void> backOffUntilLong({Duration? until}) async {
+      // Bounded by TIME, not by a round count. A round that finds no attempt
+      // still costs timeToNextAttempt's full limit, so a count bounds only the
+      // rounds and not the wall clock — and the whole test has to finish inside
+      // package:test's 30s.
+      final deadline = DateTime.now().add(const Duration(seconds: 12));
+      var rounds = 0;
+      while (DateTime.now().isBefore(deadline)) {
         await failEveryPendingAttempt();
-        await timeToNextAttempt();
+        final armedAt = DateTime.now();
+        final seen = transport.attempts.length;
+        await timeToNextAttempt(seen: seen);
+        rounds++;
+        // A round where nothing arrived measured nothing. Treating its elapsed
+        // time as a wait would let "the retry is dead" satisfy [until], since a
+        // timeout is longer than any floor a caller would ask for.
+        if (transport.attempts.length == seen) continue;
+        final waited = transport.attempts.last.at.difference(armedAt);
+        if (rounds >= 6 && (until == null || waited > until)) return;
+      }
+      // Only reachable with a floor that was never met: say so here rather than
+      // letting the caller's own assertion fail later and send the reader to
+      // the service's constants, which are not what gave up.
+      if (until != null) {
+        fail('the backoff never grew past ${until.inMilliseconds}ms in $rounds rounds');
       }
     }
+
+    /// Waits for a connect attempt beyond [since], and fails if none comes.
+    ///
+    /// [since] is a count the CALLER takes before whatever should provoke the
+    /// attempt. Taken afterwards it can already include the attempt being
+    /// waited for — the retry fires inside the pump that follows the stimulus
+    /// on a slow machine — and this would then wait out its limit for a second
+    /// one that was never coming, failing a run in which the feature worked.
+    ///
+    /// Failing is the point. Every duration below is the gap between a moment
+    /// the caller chose and an attempt's own stamp; with no new attempt there
+    /// is no second point, and a duration taken anyway is measured against a
+    /// STALE one — negative, and so below any deadline, which passes the
+    /// assertion exactly when the retry is most broken.
+    Future<void> awaitAttemptAfter(int since) async {
+      await timeToNextAttempt(seen: since);
+      expect(transport.attempts.length, greaterThan(since),
+          reason: 'no connect attempt arrived at all — the retry is not running');
+    }
+
+    /// How soon a tune must get the retry moving again — derived from the
+    /// floor rather than written down beside it, so the two cannot drift
+    /// apart. The assertion beside it checks the backed-off wait is still
+    /// comfortably longer than this, which keeps the number honest from the
+    /// other side.
+    final tuningDeadline = idleRetryFloor * _tuningDeadlineFactor;
 
     test('working the VFO of an absent radio pulls the retry off its ceiling', () async {
       // The operator is in the app, tuning, and the radio is not there. Without
@@ -416,23 +480,46 @@ void main() {
       final connection = await connectAndLand(node);
       connection.dropRemotely();
       await pumpEventQueue();
-      await backOffUntilLong();
+      // Back off until the wait is comfortably past the deadline, so the
+      // assertion below is measuring a shortcut rather than a coincidence.
+      await backOffUntilLong(until: tuningDeadline * 2);
 
-      // Time one full backed-off wait, so the assertion below is against what
-      // this machine actually did rather than against the constants.
+      // Time one full backed-off wait, so the deadline below is checked against
+      // what this machine actually did rather than against the constants.
       await failEveryPendingAttempt();
-      final backedOff = await timeToNextAttempt();
+      final beforeBackedOff = transport.attempts.length;
+      final armedAt = DateTime.now();
+      await awaitAttemptAfter(beforeBackedOff);
+      final backedOff = transport.attempts.last.at.difference(armedAt);
 
       // Arm the next wait — longer still, since that attempt just failed.
       await failEveryPendingAttempt();
+      // Counted BEFORE the tune: the shortcut can land its attempt inside the
+      // pump below, and a count taken after would already include it.
+      final beforeTuning = transport.attempts.length;
       // The operator types a frequency.
+      final tunedAt = DateTime.now();
       radio.setVfo('vfoA', freq: 14074.0, mode: 'USB', origin: VfoOrigin.user);
       await pumpEventQueue();
-      final afterTuning = await timeToNextAttempt();
+      await awaitAttemptAfter(beforeTuning);
+      // Measured from the attempt's own stamp, so a starved isolate cannot
+      // inflate it: what is being asserted is when the service tried, not when
+      // this loop got around to looking.
+      final afterTuning = transport.attempts.last.at.difference(tunedAt);
 
-      expect(afterTuning * 2, lessThan(backedOff),
+      // Absolute, not a fraction of [backedOff]. A ratio between two
+      // measurements puts the decision on the smaller of them — tens of
+      // milliseconds — and scheduling noise moves that far more,
+      // proportionally, than it moves the large one.
+      expect(afterTuning, lessThan(tuningDeadline),
           reason: 'tuning an absent radio left the operator waiting out the backoff '
-              '(${afterTuning.inMilliseconds}ms vs ${backedOff.inMilliseconds}ms)');
+              '(${afterTuning.inMilliseconds}ms, deadline ${tuningDeadline.inMilliseconds}ms)');
+      // Without this the deadline could quietly stop meaning anything: if the
+      // backed-off wait ever shrank below it, the test would pass whether or
+      // not tuning shortened a thing.
+      expect(backedOff, greaterThan(tuningDeadline * 2),
+          reason: 'the backoff no longer grows far enough past the deadline for this '
+              'test to be able to fail (${backedOff.inMilliseconds}ms)');
     });
 
     test('tuning continuously does not starve the retry it just shortened', () async {
