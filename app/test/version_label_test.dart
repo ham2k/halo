@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_build_tools/halo_build_tools.dart' show MainVersion;
 import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/services/update_service.dart' show currentCodePush;
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/version_label.dart';
 
 void main() {
@@ -115,7 +116,11 @@ void main() {
 
     final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).map((w) => w.data).toList();
     expect(lines, hasLength(2));
-    expect(lines[0], kEditionVersionName);
+    // The LOCALIZED name with the edition qualifier — the row the operator
+    // reads. kEditionVersionName is the canonical spelling that goes to the
+    // clipboard and to notice matching, and asserting it here would pass in
+    // English while the row silently stopped translating.
+    expect(lines[0], withEdition(localizedVersionName()));
     // The shape, not `versionDetailLine()` — asserting the widget against the
     // function it calls would survive that function regressing.
     expect(lines[1], startsWith('Version $kPublicVersion'));
@@ -152,6 +157,73 @@ void main() {
     expect(lines[0].style?.fontSize, 16);
     expect(lines[1].style?.fontWeight, FontWeight.normal);
     expect(lines[1].style?.fontSize, 14);
+  });
+
+  group('the UI name and the canonical name describe the same version', () {
+    const august = MainVersion(year: 26, month: 8);
+    const versions = [
+      PublicVersion(main: august, patch: 0),
+      PublicVersion(main: august, patch: 3),
+      PublicVersion(main: august, patch: 3, preRelease: 1),
+      PublicVersion(main: august, patch: 0, preRelease: 2, preReleasePatch: 4, preReleaseLabel: 'rc'),
+    ];
+
+    test('localizedVersionName spells the same version displayName does', () {
+      // Asserted through the FUNCTION the About row calls, not a hand-rolled
+      // reconstruction of it: a parallel spelling here would pin the parts
+      // while leaving the row free to drop one.
+      //
+      // Case-folded because the UI capitalizes (`Patch 1` opens a line of its
+      // own) and upper-cases the pre-release token. This holds under `en`,
+      // where the translation is word-for-word the canonical spelling; under
+      // any other locale the two differ on purpose, which is the point of the
+      // split — so this compares spellings, not languages.
+      for (final version in versions) {
+        expect(
+          localizedVersionName(version: version, stageLabel: 'ALPHA').toLowerCase(),
+          version.displayName(stageLabel: 'ALPHA').toLowerCase(),
+        );
+      }
+    });
+
+    test('the splash lines together spell it too', () {
+      // The other rendering of the same name: the header's first line plus the
+      // qualifiers that open its second.
+      for (final version in versions) {
+        final parts = version.displayParts(stageLabel: 'ALPHA');
+        final lines = [
+          parts.mainName,
+          parts.stageLabel,
+          versionQualifiers(version: version, stageLabel: 'ALPHA'),
+        ].where((part) => part.isNotEmpty).join(' ');
+        expect(lines.toLowerCase(), version.displayName(stageLabel: 'ALPHA').toLowerCase());
+      }
+    });
+
+    test('this build spells its own name the same way on both surfaces', () {
+      // The compiled-in constants. Weaker than the fixtures above by nature —
+      // for most of a cycle the shipping version is a patch-0 release with no
+      // qualifiers, and then this asserts only the release line and the stage
+      // marker. It is here for the cells the fixtures cannot reach: the real
+      // kStageLabel and the real MainVersion.
+      expect(localizedVersionName().toLowerCase(), kVersionName.toLowerCase());
+      expect(kVersionMainName, startsWith(kVersionParts.mainName));
+    });
+
+    test('a translation renders the patch NUMBER, not just the word', () async {
+      // Slang builds the method signature from the base locale, so a
+      // translation that drops `${patch}` still compiles — and then a Spanish
+      // operator reads `Parche (build 131)`, a patch marker naming no patch.
+      await LocaleSettings.setLocale(AppLocale.es);
+      addTearDown(() => LocaleSettings.setLocale(AppLocale.en));
+
+      final qualifiers = versionQualifiers(
+        version: const PublicVersion(main: august, patch: 7),
+        stageLabel: 'ALPHA',
+      );
+      expect(qualifiers, contains('7'));
+      expect(qualifiers, isNot(equals('Patch 7')), reason: 'the es string should not be the en one');
+    });
   });
 
   group('versionBuildLine', () {

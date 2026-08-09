@@ -52,4 +52,58 @@ void main() {
       expect(v.releaseTagName(126), 'v26.8.1+126');
     });
   });
+
+  group('PublicVersion.displayParts', () {
+    const august = MainVersion(year: 26, month: 8);
+
+    test('a stable first release carries neither a patch nor a pre-release', () {
+      // Both null, not zero: `patch 0` names a thing that doesn't exist, and a
+      // caller rendering the parts must be able to tell "no patch" from one.
+      final parts = const PublicVersion(main: august, patch: 0).displayParts(stageLabel: 'ALPHA');
+      expect(parts.mainName, "August '26");
+      expect(parts.stageLabel, 'ALPHA');
+      expect(parts.patch, isNull);
+      expect(parts.preRelease, isNull);
+      expect(parts.preReleaseLabel, isNull);
+      expect(parts.preReleaseCounter, isNull);
+    });
+
+    test('a pre-release names its label and counter, patch included', () {
+      final parts = const PublicVersion(
+        main: august,
+        patch: 2,
+        preRelease: 1,
+        preReleasePatch: 3,
+        preReleaseLabel: 'alpha',
+      ).displayParts();
+      expect(parts.patch, 2);
+      expect(parts.preReleaseLabel, 'alpha');
+      // The counter and its patch are one number to a reader — a display that
+      // showed `1` here would name a different build than `1.3`.
+      expect(parts.preReleaseCounter, '1.3');
+      expect(parts.stageLabel, isEmpty);
+    });
+
+    test('displayName spells exactly the parts, so the two cannot drift', () {
+      // The reason displayParts exists: the UI renders the pieces itself (two
+      // lines, translated), and this is what keeps that rendering and the
+      // canonical name describing the same version. Adding a component to one
+      // without the other fails here.
+      for (final version in [
+        const PublicVersion(main: august, patch: 0),
+        const PublicVersion(main: august, patch: 2),
+        const PublicVersion(main: august, patch: 2, preRelease: 1),
+        const PublicVersion(main: august, patch: 0, preRelease: 4, preReleasePatch: 2, preReleaseLabel: 'rc'),
+      ]) {
+        final parts = version.displayParts(stageLabel: 'ALPHA');
+        final spelled = [
+          parts.mainName,
+          parts.stageLabel,
+          if (parts.patch != null) 'patch ${parts.patch}',
+          if (parts.preRelease != null) '${parts.preReleaseLabel} ${parts.preReleaseCounter}',
+        ].where((part) => part.isNotEmpty).join(' ');
+        expect(spelled, version.displayName(stageLabel: 'ALPHA'));
+      }
+    });
+  });
 }

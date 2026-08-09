@@ -144,6 +144,17 @@ Two consequences follow, both of which fail silently if forgotten:
   (§2.6, §4.5) — so `rc1` → `26.9.0` means a fresh Regular binary carrying its
   own build number. There is no operation that renames an existing build.
 
+**The name has one canonical spelling and one translated one.**
+`PublicVersion.displayName` — `September '26 ALPHA patch 1` — is the canonical
+form and stays English wherever it goes: notice rules match on it, the
+extension host is handed it, release tags and commit messages spell it. The UI
+renders the operator's language instead (`Parche 1`), and splits the name
+across two lines on the version splash. Both build from
+`PublicVersion.displayParts()`, which is what keeps them describing the same
+version: add a component to the version and there is one grammar to update, not
+two — a test pins the two spellings together
+(`app/test/version_label_test.dart`).
+
 ### 2.2 Build/release identity — one build number, per-platform encodings
 
 The build number is a single **monotonic integer** — `kBuildNumber` in

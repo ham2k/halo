@@ -19,7 +19,7 @@ import 'package:halo_core/halo_core.dart';
 // Re-exported so the app's single version entry point also carries the build
 // edition (Dev/Next/Regular — docs/releases.md §2.6). Set at build time via
 // `--dart-define=HALO_EDITION=…`; defaults to Dev.
-export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition, PublicVersion;
+export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition, PublicVersion, VersionDisplayParts;
 
 /// The single source of truth for the public version (§2.1/§2.3). Exposed (not
 /// just its derived strings) so CI tooling can project it, together with
@@ -88,13 +88,19 @@ final kPublicVersion = kPublicVersionInfo.value;
 /// `August '26 ALPHA patch 2 pre 1`.
 final kVersionName = kPublicVersionInfo.displayName(stageLabel: kStageLabel);
 
+/// This build's version name in pieces (release line, stage marker, patch,
+/// pre-release) — what the UI renders from, so the splash's two lines and
+/// [kVersionName] can't spell the same version differently.
+final kVersionParts = kPublicVersionInfo.displayParts(stageLabel: kStageLabel);
+
 /// e.g. `August '26 ALPHA` — the release line and stage marker alone, with the
 /// patch and pre-release parts left to `versionBuildLine()`, which puts them on
 /// their own line beneath (views/version_label.dart). This is a display split
 /// of [kVersionName], not a second identity: nothing outside the UI uses it.
-final kVersionMainName = kStageLabel.isEmpty
-    ? kPublicVersionInfo.main.displayName
-    : '${kPublicVersionInfo.main.displayName} $kStageLabel';
+final kVersionMainName = [
+  kVersionParts.mainName,
+  if (kVersionParts.stageLabel.isNotEmpty) kVersionParts.stageLabel,
+].join(' ');
 
 /// [kVersionName] with the edition qualifier appended for the non-stable
 /// editions — `August '26 ALPHA (Dev Edition)`, `… (Next Edition)` — so a
@@ -102,7 +108,15 @@ final kVersionMainName = kStageLabel.isEmpty
 /// for Regular (`kEdition.label` is null). The word "Edition" is spelled out
 /// here rather than in `Edition.label`, which stays the bare token that build
 /// tooling names artifacts and flavors with.
-final kEditionVersionName = kEdition.label == null ? kVersionName : '$kVersionName (${kEdition.label} Edition)';
+final kEditionVersionName = withEdition(kVersionName);
+
+/// [name] with this build's edition qualifier appended — the ONE place that
+/// grammar is spelled, so the About row's translated name and [kVersionName]
+/// can't name the edition two different ways.
+String withEdition(String name) {
+  final label = kEdition.label;
+  return label == null ? name : '$name ($label Edition)';
+}
 
 /// The product-line/build channel in the User-Agent (user_agent.dart), e.g.
 /// `Ham2K Logger/26.8.0 (macos dev 1)`. Derived from [kEdition]

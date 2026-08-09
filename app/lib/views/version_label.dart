@@ -56,11 +56,15 @@ String versionDetailLine() {
   return details.isEmpty ? version : '$version $details';
 }
 
-/// `Patch 1 PRE 1 (build 130)` — everything about this build that isn't in
-/// [kVersionMainName], as the second line of [VersionLabel]'s `nameAndBuild`
-/// mode. Each part drops out when it doesn't apply, so a stable patch-0
-/// release reads as a bare `(build 130)` and a local Dev build of one is
-/// empty (its caller then renders no second line at all).
+/// `Patch 1 PRE 1` — the patch and pre-release qualifiers this version carries,
+/// in the operator's language, empty when it carries neither. Rendered from
+/// [PublicVersion.displayParts] rather than from `patch`/`preRelease` directly,
+/// so a component added to the version reaches this spelling and
+/// [PublicVersion.displayName]'s canonical one together.
+///
+/// Capitalized where displayName is lower-case: this text opens a line of its
+/// own (`Patch 1 PRE 1 (build 130)`) rather than trailing a name, and it is
+/// translated, which the canonical spelling must never be.
 ///
 /// The pre-release label is upper-cased to sit alongside the stage marker on
 /// the line above (`August '26 ALPHA` / `Patch 1 PRE 1`); both are stage
@@ -69,6 +73,46 @@ String versionDetailLine() {
 /// stage — where upper-casing puts the same word on both lines and a reader
 /// can't tell the product's stage from this build's pre-release counter. Case
 /// is what keeps the two apart.
+String versionQualifiers({
+  PublicVersion version = kPublicVersionInfo,
+  String stageLabel = kStageLabel,
+}) {
+  final parts = version.displayParts(stageLabel: stageLabel);
+  final preReleaseLabel = parts.preReleaseLabel;
+  return [
+    if (parts.patch != null) t.versionLabel.patch(patch: parts.patch.toString()),
+    if (preReleaseLabel != null)
+      '${_preReleaseLabel(preReleaseLabel, stageLabel: stageLabel)} ${parts.preReleaseCounter}',
+  ].join(' ');
+}
+
+/// `September '26 ALPHA Parche 1` — the whole version name in the operator's
+/// language, for the surfaces that show one line rather than the splash's two.
+/// [kVersionName] stays canonical English: notice rules match on it, the
+/// extension host is handed it, and release tags spell it.
+///
+/// [version]/[stageLabel] default to this process's values and exist so tests
+/// can reach a version that HAS qualifiers: the shipping constants are a patch-0
+/// release for most of a cycle, and against those this function and the
+/// canonical name are the same string whether or not it renders the qualifiers
+/// at all.
+String localizedVersionName({
+  PublicVersion version = kPublicVersionInfo,
+  String stageLabel = kStageLabel,
+}) {
+  final parts = version.displayParts(stageLabel: stageLabel);
+  return [
+    parts.mainName,
+    parts.stageLabel,
+    versionQualifiers(version: version, stageLabel: stageLabel),
+  ].where((part) => part.isNotEmpty).join(' ');
+}
+
+/// `Patch 1 PRE 1 (build 130)` — everything about this build that isn't in
+/// [kVersionMainName], as the second line of [VersionLabel]'s `nameAndBuild`
+/// mode. Each part drops out when it doesn't apply, so a stable patch-0
+/// release reads as a bare `(build 130)` and a local Dev build of one is
+/// empty (its caller then renders no second line at all).
 ///
 /// [bareBuildNumber] names the BINARY — the build number alone, no code push
 /// and no SHA, on a Dev build too. Only the tester overlay wants this: its
@@ -89,12 +133,8 @@ String versionBuildLine({
   bool bareBuildNumber = false,
   String stageLabel = kStageLabel,
 }) {
-  final preRelease = version.preRelease;
   final parts = <String>[
-    if (version.patch != 0) t.versionLabel.patch(patch: version.patch.toString()),
-    if (preRelease != null)
-      '${_preReleaseLabel(version.preReleaseLabel, stageLabel: stageLabel)} $preRelease'
-          '${version.preReleasePatch == null ? '' : '.${version.preReleasePatch}'}',
+    versionQualifiers(version: version, stageLabel: stageLabel),
     if (bareBuildNumber)
       '(${t.versionLabel.build(build: build.toString())})'
     else
@@ -103,10 +143,13 @@ String versionBuildLine({
   return parts.where((part) => part.isNotEmpty).join(' ');
 }
 
-/// The same two lines [VersionLabel]'s `detailed` mode renders — `August '26
-/// ALPHA patch 1 (Dev Edition)` then `Version 26.8.1 (build 125 - 04e3d1)` —
-/// as plain text, for callers that copy the version details elsewhere (e.g.
-/// the About screen's version row).
+/// `August '26 ALPHA patch 1 (Dev Edition)` then `Version 26.8.1 (build 125 -
+/// 04e3d1)` as plain text, for callers that copy the version details elsewhere
+/// (e.g. the About screen's version row).
+///
+/// CANONICAL English, where `detailed` mode renders the same two lines in the
+/// operator's language: this text is pasted into bug reports and matched
+/// against notice rules, so it must not vary by locale.
 String versionDetailsText() => '$kEditionVersionName\n${versionDetailLine()}';
 
 String _preReleaseLabel(String label, {String stageLabel = kStageLabel}) =>
@@ -185,15 +228,22 @@ class VersionLabel extends StatelessWidget {
         fontWeight: FontWeight.normal,
         fontSize: (base.fontSize ?? 14) - 2,
       );
+      // The name the OPERATOR reads, in their language — the canonical English
+      // spelling still reaches the clipboard (versionDetailsText), notice-rule
+      // matching and the extension host, which must not vary by locale.
+      final name = withEdition(localizedVersionName());
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: crossAxisAlignment,
         children: [
-          SelectableText(kEditionVersionName, style: firstLineStyle, textAlign: textAlign),
+          SelectableText(name, style: firstLineStyle, textAlign: textAlign),
           SelectableText(versionDetailLine(), style: detailStyle, textAlign: textAlign),
         ],
       );
     }
+    // Canonical English, unlike `detailed` above: this is the developer System
+    // Information row, read alongside the version NUMBER and quoted into bug
+    // reports, where a translated name matches nothing.
     final details = buildDetails();
     final version = details.isEmpty ? kPublicVersion : '$kPublicVersion $details';
     return SelectableText('$prefix$kEditionVersionName · $version', style: style);
