@@ -429,10 +429,10 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('walking the log steps over event markers, which are not editable contacts', (tester) async {
-    // A break marker between the two QSOs. Selecting one loads a form with no
-    // callsign or mode; tapping its row opens a time dialog instead, so the
-    // arrow keys have to pass straight over it.
+  testWidgets('walking the log lands on event markers too, loading the inline event editor', (tester) async {
+    // A break marker between the two QSOs. Selecting it swaps the main
+    // fields for the event editor (no callsign field) instead of skipping
+    // straight to the next contact.
     final marker = await services.qsos.add(operation.uuid, {
       'band': 'event',
       'event': {'event': 'break'},
@@ -446,7 +446,13 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
 
-    // One press, one contact — the marker in between never gets selected.
+    // One press, one row — lands on the marker, not the older contact.
+    expect(find.widgetWithText(TextField, 'Their call'), findsNothing);
+    expect(find.text('BREAK'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
     expect(loadedCall(tester), 'W1AW');
     await drainLookupQueueTimer(tester);
   });

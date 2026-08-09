@@ -1,8 +1,6 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
@@ -12,7 +10,6 @@ import 'package:intl/intl.dart';
 
 import '../../config/dev_bridge.dart';
 import '../../main.dart';
-import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
@@ -235,11 +232,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// The rows arrow navigation can land on, and where the current selection
   /// sits among them.
   ///
-  /// Navigable is every QSO the list shows except the event and annotation
-  /// markers (operation start/break/end, NOTE/TODO/SOLAR/WEATHER). Those
-  /// aren't editable contacts — tapping one opens a time dialog rather than
-  /// loading the editor — so walking onto one would put the logging controls
-  /// in a state no keystroke could get out of.
+  /// Every row the list shows is navigable, including event and annotation
+  /// markers (operation start/break/end, NOTE/TODO/SOLAR/WEATHER) — selecting
+  /// one loads `LoggingControls`' inline event editor the same way a tap
+  /// does (`Qso.isEvent`), same as any other row.
   ///
   /// `slot` is the selection's position in `indices`, or -1 when nothing is
   /// selected or the selection has since left the list (deleted, or filtered
@@ -252,7 +248,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     var slot = -1;
     for (var i = 0; i < widget.qsos.length; i++) {
       final qso = widget.qsos[i];
-      if (qso.isEvent) continue;
       if (selectedUuid != null && qso.uuid == selectedUuid) slot = indices.length;
       indices.add(i);
     }
@@ -465,28 +460,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     });
   }
 
-  /// Start/break/end markers aren't real QSOs — tapping one edits its time
-  /// instead of loading it into the QSO editor (which `_handleSelectQso`
-  /// would otherwise do, showing a nonsensical form with no callsign/mode).
-  Future<void> _handleSelectEvent(Qso qso) async {
-    final newMillis = await editTimeDialog(
-      context,
-      title: context.t.qsoList.editEventTime,
-      initialMillis:
-          qso.startAtMillis ?? nowMillis(),
-    );
-    if (newMillis == null) return;
-    await widget.services.qsos.update(
-      Qso(
-        uuid: qso.uuid,
-        operationUuid: qso.operationUuid,
-        data: {...qso.data, 'startAtMillis': newMillis},
-        deleted: qso.deleted,
-        scoreCache: qso.scoreCache,
-      ),
-    );
-  }
-
   void _handleControlsSettingsChanged(List<String> order, Set<String> hidden) {
     setState(() {
       _controlOrder = order;
@@ -575,7 +548,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
       bandOrModeWarningLabel: context.t.qsoList.bandOrModeWarning,
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
-      onSelectEvent: _handleSelectEvent,
       showRSTFields: widget.showRSTFields,
       switchSentRcvd: widget.switchSentRcvd,
       showQsoNumbers: widget.showQsoNumbers,
@@ -737,6 +709,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             freqLabel: context.t.loggingControls.frequency,
             modeLabel: context.t.loggingControls.mode,
             theirCallLabel: context.t.loggingControls.theirCall,
+            noteFieldLabel: context.t.loggingControls.noteField,
+            todoFieldLabel: context.t.loggingControls.todoField,
             sentLabel: context.t.loggingControls.sent,
             rcvdLabel: context.t.loggingControls.rcvd,
             moreLabel: context.t.loggingControls.more,
@@ -748,6 +722,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             undoLabel: context.t.loggingControls.undo,
             pendingDeleteWarning: context.t.loggingControls.pendingDeleteWarning,
             deletedQsoWarning: context.t.loggingControls.deletedQsoWarning,
+            pendingDeleteEventWarning: (kind) =>
+                context.t.loggingControls.pendingDeleteEventWarning(kind: kind),
+            deletedEventWarning: (kind) => context.t.loggingControls.deletedEventWarning(kind: kind),
             qsoEditFormTitle: context.t.qsoEditForm.title,
             theirNameLabel: context.t.qsoEditForm.theirName,
             theirGridLabel: context.t.qsoEditForm.theirGrid,

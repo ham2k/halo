@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "New **Weather** pane — conditions now, over a curve of the next eight hours"
+    - "Tap a NOTE/TODO/BREAK row in the log to edit it inline, with delete/undo"
 
 "131":
   changes:

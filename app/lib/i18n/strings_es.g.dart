@@ -307,6 +307,8 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get frequency => 'Frecuencia';
 	@override String get mode => 'Modo';
 	@override String get theirCall => 'Su indicativo';
+	@override String get noteField => 'Nota';
+	@override String get todoField => 'Tarea';
 	@override String get sent => 'Enviado';
 	@override String get rcvd => 'Recibido';
 	@override String get more => 'Más';
@@ -317,6 +319,8 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get undo => 'Deshacer';
 	@override String get pendingDeleteWarning => 'El QSO se eliminará al guardar';
 	@override String get deletedQsoWarning => 'QSO eliminado';
+	@override String pendingDeleteEventWarning({required Object kind}) => '${kind} se eliminará al guardar';
+	@override String deletedEventWarning({required Object kind}) => '${kind} eliminado';
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
 	@override String get controlSettings => 'Controles de registro';
@@ -387,7 +391,6 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 	// Translations
 	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
 	@override String get bandOrModeWarning => 'Verifica que tu banda y modo sean correctos';
-	@override String get editEventTime => 'Editar hora';
 	@override String get today => 'Hoy';
 	@override String get yesterday => 'Ayer';
 	@override String get tomorrow => 'Mañana';
@@ -2310,6 +2313,8 @@ extension on TranslationsEs {
 			'loggingControls.frequency' => 'Frecuencia',
 			'loggingControls.mode' => 'Modo',
 			'loggingControls.theirCall' => 'Su indicativo',
+			'loggingControls.noteField' => 'Nota',
+			'loggingControls.todoField' => 'Tarea',
 			'loggingControls.sent' => 'Enviado',
 			'loggingControls.rcvd' => 'Recibido',
 			'loggingControls.more' => 'Más',
@@ -2320,6 +2325,8 @@ extension on TranslationsEs {
 			'loggingControls.undo' => 'Deshacer',
 			'loggingControls.pendingDeleteWarning' => 'El QSO se eliminará al guardar',
 			'loggingControls.deletedQsoWarning' => 'QSO eliminado',
+			'loggingControls.pendingDeleteEventWarning' => ({required Object kind}) => '${kind} se eliminará al guardar',
+			'loggingControls.deletedEventWarning' => ({required Object kind}) => '${kind} eliminado',
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Controles de registro',
@@ -2393,7 +2400,6 @@ extension on TranslationsEs {
 			'qsoEditForm.notes' => 'Notas',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
 			'qsoList.bandOrModeWarning' => 'Verifica que tu banda y modo sean correctos',
-			'qsoList.editEventTime' => 'Editar hora',
 			'qsoList.today' => 'Hoy',
 			'qsoList.yesterday' => 'Ayer',
 			'qsoList.tomorrow' => 'Mañana',
@@ -2490,11 +2496,11 @@ extension on TranslationsEs {
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.modes' => 'Modos',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',

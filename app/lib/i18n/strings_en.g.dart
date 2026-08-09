@@ -574,6 +574,12 @@ class Translations$loggingControls$en {
 	/// en: 'Their call'
 	String get theirCall => 'Their call';
 
+	/// en: 'Note'
+	String get noteField => 'Note';
+
+	/// en: 'Todo'
+	String get todoField => 'Todo';
+
 	/// en: 'Sent'
 	String get sent => 'Sent';
 
@@ -603,6 +609,12 @@ class Translations$loggingControls$en {
 
 	/// en: 'Deleted QSO'
 	String get deletedQsoWarning => 'Deleted QSO';
+
+	/// en: '${kind} will be deleted when you save'
+	String pendingDeleteEventWarning({required Object kind}) => '${kind} will be deleted when you save';
+
+	/// en: 'Deleted ${kind}'
+	String deletedEventWarning({required Object kind}) => 'Deleted ${kind}';
 
 	/// en: 'Time'
 	String get timeControl => 'Time';
@@ -758,9 +770,6 @@ class Translations$qsoList$en {
 
 	/// en: 'Please make sure your band and mode are correct'
 	String get bandOrModeWarning => 'Please make sure your band and mode are correct';
-
-	/// en: 'Edit time'
-	String get editEventTime => 'Edit time';
 
 	/// en: 'Today'
 	String get today => 'Today';
@@ -4258,6 +4267,8 @@ extension on Translations {
 			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
 			'loggingControls.theirCall' => 'Their call',
+			'loggingControls.noteField' => 'Note',
+			'loggingControls.todoField' => 'Todo',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
 			'loggingControls.more' => 'More',
@@ -4268,6 +4279,8 @@ extension on Translations {
 			'loggingControls.undo' => 'Undo',
 			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
 			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
+			'loggingControls.pendingDeleteEventWarning' => ({required Object kind}) => '${kind} will be deleted when you save',
+			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Logging Controls',
@@ -4341,7 +4354,6 @@ extension on Translations {
 			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.bandOrModeWarning' => 'Please make sure your band and mode are correct',
-			'qsoList.editEventTime' => 'Edit time',
 			'qsoList.today' => 'Today',
 			'qsoList.yesterday' => 'Yesterday',
 			'qsoList.tomorrow' => 'Tomorrow',
@@ -4438,11 +4450,11 @@ extension on Translations {
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.modes' => 'Modes',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',

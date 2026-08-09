@@ -383,10 +383,14 @@ QSO list  ──▲──  secondary pills  ──▲──  main logging fields
   and the spot comment by falling through to the panel's Enter shortcut. The
   spot comment is a partial exception again now — see the Status section's
   note on the Send button.)
-- **In the QSO list**, Up and Down walk the log, loading each contact into
+- **In the QSO list**, Up and Down walk the log, loading each row into
   the editor **without moving focus**, so the next arrow keeps walking.
-  Event and annotation rows are skipped, since they aren't editable
-  contacts. Enter restores whichever main field the operator was last in
+  Event and annotation rows (operation start/break/end, NOTE/TODO/SOLAR/
+  WEATHER) load too — the main fields swap for that row's inline event
+  editor (a kind field and, for NOTE/TODO, its text) instead of a contact's
+  fields, and every secondary control but Time is disabled — shown, not
+  hidden, so the row's shape stays the same as a contact's. Enter restores
+  whichever main field the operator was last in
   before arrowing up (the callsign field if none is remembered) with that
   contact still loaded — this is "resume editing where I left off," not
   "start fresh," which is what Escape below is for. Down past the newest

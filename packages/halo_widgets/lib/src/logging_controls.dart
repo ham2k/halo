@@ -523,6 +523,8 @@ class LoggingControls extends StatefulWidget {
   final String? freqLabel;
   final String? modeLabel;
   final String? theirCallLabel;
+  final String? noteFieldLabel;
+  final String? todoFieldLabel;
   final String? sentLabel;
   final String? rcvdLabel;
   final String? moreLabel;
@@ -534,6 +536,10 @@ class LoggingControls extends StatefulWidget {
   final String? undoLabel;
   final String? pendingDeleteWarning;
   final String? deletedQsoWarning;
+  // Same warnings, worded for an event row (`kind` is its uppercased
+  // eventKind, e.g. "NOTE"/"BREAK") — "QSO" is wrong for a row that isn't one.
+  final String Function(String kind)? pendingDeleteEventWarning;
+  final String Function(String kind)? deletedEventWarning;
   final String? qsoEditFormTitle;
   final String? theirNameLabel;
   final String? theirGridLabel;
@@ -700,6 +706,8 @@ class LoggingControls extends StatefulWidget {
     this.freqLabel,
     this.modeLabel,
     this.theirCallLabel,
+    this.noteFieldLabel,
+    this.todoFieldLabel,
     this.sentLabel,
     this.rcvdLabel,
     this.moreLabel,
@@ -711,6 +719,8 @@ class LoggingControls extends StatefulWidget {
     this.undoLabel,
     this.pendingDeleteWarning,
     this.deletedQsoWarning,
+    this.pendingDeleteEventWarning,
+    this.deletedEventWarning,
     this.qsoEditFormTitle,
     this.theirNameLabel,
     this.theirGridLabel,
@@ -765,6 +775,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _dateController = TextEditingController();
   final _gridController = TextEditingController();
   final _stateController = TextEditingController();
+  // NOTE/TODO's inline editor — the only event kinds with editable free
+  // text. Populated in `_populateFromEditingQso`, read back in
+  // `_eventDataForSave`.
+  final _eventTextController = TextEditingController();
+  final _eventTextFocus = FocusNode();
+  bool _eventTodoDone = false;
   // The Radio control's Band/Mode dropdown text. Owned here (not left to
   // DropdownMenu's internal controller) so typed text can drive the entry
   // filter and be committed to the first match — see
@@ -1515,6 +1531,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// not `_pendingDelete` alone.
   bool get _fieldsLocked => _pendingDelete || (widget.editingQso?.deleted ?? false);
 
+  /// Editing an event/annotation row (NOTE, TODO, BREAK, …) rather than a
+  /// contact — the main fields swap for [_buildEventFields], built from the
+  /// same field primitives so the row's shape doesn't change, and every
+  /// secondary control but Time is disabled (not hidden — see
+  /// `SecondaryControlSpec.enabled`), since nothing else applies to a
+  /// non-contact row.
+  bool get _editingEvent => widget.editingQso?.isEvent ?? false;
+
   /// Their name override, settable only via the "More" edit pane —
   /// deliberately not a full inline field, to avoid growing the primary
   /// controls' footprint for rarely-edited data. Grid/State have their own
@@ -1661,6 +1685,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // risk of triggering their side effects.
     if (widget.editingQso != null) {
       _applyFieldsFromData(widget.editingQso!.data);
+      if (widget.editingQso!.isEvent) {
+        _applyEventFieldsFromData(widget.editingQso!.data);
+        _seedFromRadioService();
+      }
     } else {
       _seedFromRadioService();
       // Wins over the generic VFO seed above — a suggestion is specific
@@ -2005,6 +2033,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _populateFromEditingQso(Qso qso) {
     _populating = true;
     _applyFieldsFromData(qso.data);
+    if (qso.isEvent) {
+      _applyEventFieldsFromData(qso.data);
+      // An event's own freq/band/mode are sentinels (freq 0, mode the event
+      // kind) — showing them on the Radio control would be meaningless.
+      // Feed it the radio's actual current conditions instead, same as
+      // composing a new QSO; never saved either way (`_eventDataForSave`
+      // never reads these controllers).
+      _seedFromRadioService();
+    }
     _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
     setState(() {});
     _populating = false;
@@ -2180,10 +2217,78 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _commandMessage = null;
   }
 
-  /// Seeds freq/band/mode from the operation's `vfoA` when composing a new
-  /// QSO — the operation's last-known radio state, rather than a hardcoded
-  /// default. Never called while editing an existing QSO, whose own
-  /// recorded freq/band/mode always takes priority (`_applyFieldsFromData`).
+  /// Populates the NOTE/TODO inline editor from an event row's `event` map
+  /// — the only kinds with editable free text. Reads `note` with the same
+  /// `description` fallback [AnnotationRow] displays with, and a TODO's
+  /// `data.done` with the same bare-`done` fallback for older synced logs.
+  void _applyEventFieldsFromData(Map<String, dynamic> data) {
+    final event = data['event'] as Map<String, dynamic>?;
+    // Same `description` before `note` precedence [AnnotationRow] displays
+    // with — `_eventDataForSave` writes back to whichever one this reads,
+    // so a NOTE/TODO synced from elsewhere under `description` keeps
+    // agreeing with what the log shows for it. Deliberately NOT trimmed:
+    // `_eventDataForSave` isn't either (see its own note), so a row loaded
+    // and saved untouched round-trips exactly — trimming just this side
+    // would make selecting a row with incidental whitespace read as
+    // "changed" on its own, with no edit made.
+    _eventTextController.text =
+        (event?['description'] as String?) ?? (event?['note'] as String?) ?? '';
+    final eventData = event?['data'];
+    _eventTodoDone =
+        (eventData is Map && eventData['done'] == true) || event?['done'] == true;
+  }
+
+  /// The `data` to save for an edited event row: the original payload with
+  /// only the Time control's timestamp and, for a NOTE/TODO, the inline
+  /// editor's text/done state overlaid on top. BREAK/START/END/SOLAR/WEATHER
+  /// carry no other editable field yet, so only the timestamp moves for them.
+  Map<String, dynamic> _eventDataForSave(Qso editingQso) {
+    final data = Map<String, dynamic>.from(editingQso.data);
+    final startAtMillis = _effectiveStartAtMillis;
+    if (startAtMillis != null) data['startAtMillis'] = startAtMillis;
+    final kind = editingQso.eventKind;
+    if (kind == 'note' || kind == 'todo') {
+      final event = Map<String, dynamic>.from(editingQso.event ?? const {});
+      // Not trimmed — see `_applyEventFieldsFromData`'s matching note; the
+      // two must read and write the exact same string or an untouched
+      // field falsely reads as edited.
+      final text = _eventTextController.text;
+      // Write back to whichever key `_applyEventFieldsFromData` actually
+      // read this from — a row synced in under `description` must keep
+      // agreeing with what AnnotationRow displays for it, not silently
+      // gain a `note` nothing reads while the old `description` lingers.
+      if (event.containsKey('description')) {
+        event['description'] = text;
+      } else {
+        event['note'] = text;
+      }
+      if (kind == 'todo') {
+        // `is Map`, not a cast — same guard as the sibling reads of this
+        // field (`_applyEventFieldsFromData` above, `AnnotationRow._iconName`
+        // in qso_list.dart): a malformed/cross-client value here must not
+        // crash the panel just because this row got selected.
+        final rawEventData = event['data'];
+        final eventData = Map<String, dynamic>.from(
+          rawEventData is Map ? rawEventData.cast<String, dynamic>() : const {},
+        );
+        eventData['done'] = _eventTodoDone;
+        event['data'] = eventData;
+        // Older synced logs may also carry a bare `event.done` (the fallback
+        // `_applyEventFieldsFromData` reads) — clear it, or a saved
+        // `false` here would keep losing to a stale `true` there forever.
+        event.remove('done');
+      }
+      data['event'] = event;
+    }
+    return data;
+  }
+
+  /// Seeds freq/band/mode from the operation's `vfoA` — the operation's
+  /// last-known radio state, rather than a hardcoded default. Never called
+  /// while editing an existing *contact*, whose own recorded freq/band/mode
+  /// always takes priority (`_applyFieldsFromData`); an event's freq/mode
+  /// are sentinels instead of a record, so `_populateFromEditingQso` calls
+  /// this for one anyway, same as composing.
   /// [skipFrequency] leaves the frequency field (and its band) alone while
   /// taking the mode: a pending edit is the operator's and newer, but only
   /// as far as the field they are actually typing in.
@@ -2212,8 +2317,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _onRadioVfoChanged() {
     if (!mounted) return;
     // An existing QSO's own recorded freq/band/mode always wins; ambient
-    // radio state must not rewrite something already logged.
-    if (widget.editingQso != null) return;
+    // radio state must not rewrite something already logged. An event's
+    // freq/mode are sentinels, not a record — its Radio control keeps
+    // following the live VFO the whole time it's open, same as composing.
+    if (widget.editingQso != null && !widget.editingQso!.isEvent) return;
     final previousBand = _band;
     final previousMode = _mode;
     setState(() {
@@ -2362,6 +2469,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _dateController.dispose();
     _gridController.dispose();
     _stateController.dispose();
+    _eventTextController.dispose();
+    _eventTextFocus.dispose();
     _bandDropdownController.dispose();
     _modeDropdownController.dispose();
     _bandDropdownFocus.dispose();
@@ -2980,6 +3089,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// were hidden) — such a node has no context and would swallow the request
   /// silently.
   void _focusLastPrimaryField() {
+    if (_editingEvent) {
+      // Neither the callsign field nor a remembered primary field exists
+      // while an event is loaded — NOTE/TODO's own text is the only
+      // focusable main field, if this event even has one.
+      if (_eventTextFocus.context != null) _eventTextFocus.requestFocus();
+      return;
+    }
     final remembered = _lastPrimaryFocus;
     ((remembered?.context != null) ? remembered! : _callFocus).requestFocus();
   }
@@ -3184,6 +3300,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   void _onSelectControl(String? key) {
+    // The chip itself already refuses a tap (ChoiceChip.onSelected: null,
+    // see _ControlChip) — this covers the keyboard paths, which call here
+    // directly rather than through the chip.
+    if (_editingEvent && key != null && key != 'time') return;
     if (key == 'more') {
       _openMoreEditor();
       return;
@@ -3636,8 +3756,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   List<SecondaryControlSpec> _buildSecondaryControls(
     ThemeData theme,
-    HaLoColors poloColors,
-  ) {
+    HaLoColors poloColors, {
+    bool Function(String key)? enabledFor,
+  }) {
     final descriptors = _controlDescriptors();
     final byKey = {for (final d in descriptors) d.key: d};
     final specs = <SecondaryControlSpec>[];
@@ -3666,20 +3787,123 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // The strip's keys, for the arrow keys to walk. Recorded from the list
     // actually handed to the row, so the two can't drift apart.
     _pillOrder = [for (final spec in specs) spec.key];
-    return [for (final spec in specs) _withKeyboardNavigation(spec)];
+    return [
+      for (final spec in specs) _withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true),
+    ];
   }
+
+  /// The main-fields row while editing an event/annotation: the kind is
+  /// plain text — not a value the operator edits, so it gets no field
+  /// chrome — baseline-aligned with whatever sits beside it. That's
+  /// NOTE/TODO's real, editable text field; everything else (SOLAR/
+  /// WEATHER's fetched description, or nothing at all for BREAK/START/END,
+  /// whose grid/contest-exchange segment override has no editing UI yet —
+  /// docs/design/contests.md §5.1.3) goes through [_chromelessValueField]
+  /// instead of a plain `Text`, so the row reaches a real field's height by
+  /// construction rather than by approximating it: `TextField` and `Text`
+  /// size themselves through different render objects (`RenderEditable` vs
+  /// `RenderParagraph`), which don't agree to the pixel even given the same
+  /// decoration.
+  Widget _buildEventFields(BuildContext context, ThemeData theme, bool fieldsLocked) {
+    final editingQso = widget.editingQso!;
+    final kind = editingQso.eventKind;
+    final event = editingQso.event;
+    final label = kind?.toUpperCase() ?? 'EVENT';
+    final textStyle = _primaryFieldStyle(context, fontWeight: FontWeight.w500)
+        .copyWith(color: theme.colorScheme.onTertiaryContainer);
+
+    Widget trailing;
+    if (kind == 'note' || kind == 'todo') {
+      final decoration = _primaryFieldDecoration(
+        context,
+        kind == 'todo' ? (widget.todoFieldLabel ?? 'Todo') : (widget.noteFieldLabel ?? 'Note'),
+        horizontalPadding: _materialFilledInputGap,
+      );
+      trailing = TextField(
+        controller: _eventTextController,
+        focusNode: _eventTextFocus,
+        enabled: !fieldsLocked,
+        style: _primaryFieldStyle(context, fontWeight: FontWeight.w400),
+        // The done checkbox rides in the field's own prefixIcon slot rather
+        // than sitting beside it in the row: a Checkbox can't answer the
+        // dry-baseline query `IntrinsicHeight`/`CrossAxisAlignment.baseline`
+        // need (its check mark paints through a `RenderCustomPaint`, which
+        // doesn't implement one) — the decorator already knows how to place
+        // a prefix icon without asking it for a baseline.
+        decoration: kind == 'todo'
+            ? decoration.copyWith(
+                prefixIcon: Checkbox(
+                  value: _eventTodoDone,
+                  onChanged:
+                      fieldsLocked ? null : (value) => setState(() => _eventTodoDone = value ?? false),
+                ),
+              )
+            : decoration,
+        onSubmitted: (_) => _log(),
+      );
+    } else {
+      trailing = _chromelessValueField(
+        context,
+        keySuffix: kind ?? 'event',
+        value: (kind == 'solar' || kind == 'weather') ? (event?['description'] as String?) ?? '' : '',
+        style: textStyle,
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(label, style: textStyle),
+        const SizedBox(width: Space.md),
+        Expanded(child: trailing),
+      ],
+    );
+  }
+
+  /// A read-only, chrome-less field standing in for plain text wherever
+  /// [_buildEventFields] has no editable value: same decoration function
+  /// NOTE/TODO's real field uses (so it claims the identical vertical
+  /// space), with everything that paints stripped off (`filled: false`, no
+  /// border, no label) — a real `TextField` under the hood so its height
+  /// matches one exactly, but nothing on screen betrays that it is one.
+  /// Keyed on its own value: `initialValue` only applies once per State, so
+  /// a field showing a different event's text after a selection change
+  /// (same widget position, new `editingQso`) needs a new key to pick it up.
+  Widget _chromelessValueField(
+    BuildContext context, {
+    required String keySuffix,
+    required String value,
+    required TextStyle style,
+  }) =>
+      TextFormField(
+        key: ValueKey('event-$keySuffix-$value'),
+        initialValue: value,
+        readOnly: true,
+        enabled: false,
+        maxLines: 1,
+        style: style,
+        decoration: _primaryFieldDecoration(context, '', horizontalPadding: _materialFilledInputGap).copyWith(
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      );
 
   /// Adds this panel's keyboard policy to a control spec: a focus node for its
   /// pill, and a non-focusable ancestor over its expanded content that watches
   /// for the keys which close it again. Applied once, over the assembled list,
   /// so a newly added kind of control can't arrive without it.
-  SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec) => SecondaryControlSpec(
+  SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) =>
+      SecondaryControlSpec(
         key: spec.key,
         icon: spec.icon,
         summary: spec.summary,
         liveSummary: spec.liveSummary,
         iconColor: spec.iconColor,
         focusNode: _pillFocusFor(spec.key),
+        enabled: enabled,
         expandedBuilder: (context) => Focus(
           // Not a stop on the way anywhere: it exists only to see key events
           // on their way up from whatever inside the control has focus.
@@ -6164,6 +6388,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool _qsoDataChanged() {
     final editingQso = widget.editingQso;
     if (editingQso == null) return false;
+    if (editingQso.isEvent) return !_deepEquals(_eventDataForSave(editingQso), editingQso.data);
     return !_deepEquals(_getCurrentQsoData(), editingQso.data);
   }
 
@@ -6353,6 +6578,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       try {
         await widget.qsosRepository.softDelete(editingQso);
         widget.onQsoDeleted?.call(editingQso);
+        widget.onEditCanceled?.call();
+      } finally {
+        _isLogging = false;
+      }
+      return;
+    }
+
+    // Events have none of the callsign/band/mode fields the checks below
+    // exist for — save them straight from the inline editor's state.
+    if (editingQso != null && editingQso.isEvent) {
+      _isLogging = true;
+      try {
+        await widget.qsosRepository.update(
+          Qso(
+            uuid: editingQso.uuid,
+            operationUuid: widget.operation.uuid,
+            data: _eventDataForSave(editingQso),
+          ),
+        );
         widget.onEditCanceled?.call();
       } finally {
         _isLogging = false;
@@ -6676,7 +6920,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         child: Opacity(
                           opacity: fieldsLocked ? 0.5 : 1,
                           child: SecondaryControlRow(
-                            controls: _buildSecondaryControls(accentTheme, accentPoloColors),
+                            // Every pill still shows while editing an event —
+                            // just disabled but Time, so the row's shape
+                            // doesn't change between editing a contact and an
+                            // event. A BREAK's grid/contest-exchange segment
+                            // override has no editing UI yet either
+                            // (docs/design/contests.md §5.1.3), so it stays
+                            // disabled along with the rest.
+                            controls: _buildSecondaryControls(
+                              accentTheme,
+                              accentPoloColors,
+                              enabledFor: _editingEvent ? (key) => key == 'time' : null,
+                            ),
                             selectedKey: _selectedControlKey,
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
@@ -6733,7 +6988,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                     key: ValueKey(_infoGeneration),
                                     child: fieldsLocked
                                         ? _buildLockedWarning(theme, deletedQso)
-                                        : (_callInfoActive && widget.onCallInfoTap != null)
+                                        : (_callInfoActive && !_editingEvent && widget.onCallInfoTap != null)
                                             // Tap the call-info area to open the
                                             // detail panel (modal on narrow).
                                             ? GestureDetector(
@@ -6772,7 +7027,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       // Out here it sees exactly the width the Row will get,
                       // which is all `_resolveMainFieldLayout` needs.
                       LayoutBuilder(builder: (context, constraints) {
-                      final trailingFields = _trailingMainFields(context, enabled: !fieldsLocked);
                       // The log button is a circle as tall as the row, so the
                       // height already measured for it is also its width. The
                       // 44 fallback (first frame, before that measurement
@@ -6781,11 +7035,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       // a change in it counts as a re-layout, and those two
                       // must never disagree about which frame's value they saw.
                       final buttonWidth = _editButtonDiameter ?? 44;
-                      final fieldLayout = _resolveMainFieldLayout(
-                          context, trailingFields, constraints.maxWidth, buttonWidth);
-                      final widthDuration =
-                          _mainFieldWidthDuration(constraints.maxWidth, buttonWidth);
-                      final logButtonGap = SizedBox(width: _logButtonGap * fieldLayout.gapScale);
                       // HaLo's big light-blue log button — a circle as
                       // tall as the text fields beside it. (A
                       // LayoutBuilder here to size the icon off the
@@ -6827,7 +7076,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 // accept a command too, matching Enter (a
                                 // command isn't a callsign, so `_canLog` alone
                                 // would leave it disabled — see that getter).
-                                onPressed: (!deletedQso && (_pendingDelete || _canLog || _hasExecutableCommand))
+                                // `_editingEvent` skips both: an event row has
+                                // neither a callsign nor a command to accept.
+                                onPressed: (!deletedQso &&
+                                        (_pendingDelete || _canLog || _hasExecutableCommand || _editingEvent))
                                     ? _log
                                     : null,
                                 style: FilledButton.styleFrom(
@@ -6848,6 +7100,40 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           ),
                         ),
                       );
+
+                      // An event/annotation row has no callsign or exchange —
+                      // just a kind label and, for NOTE/TODO, the text (and
+                      // done state) the annotation commands wrote. Swap the
+                      // whole main-fields row for that instead of running it
+                      // through `_trailingMainFields`/`_resolveMainFieldLayout`,
+                      // which only make sense for a QSO's field set.
+                      if (_editingEvent) {
+                        return IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (widget.leftieMode) ...[
+                                submitButtonWidget,
+                                SizedBox(width: _logButtonGap),
+                              ],
+                              Expanded(
+                                child: _buildEventFields(context, accentTheme, fieldsLocked),
+                              ),
+                              if (!widget.leftieMode) ...[
+                                SizedBox(width: _logButtonGap),
+                                submitButtonWidget,
+                              ],
+                            ],
+                          ),
+                        );
+                      }
+
+                      final trailingFields = _trailingMainFields(context, enabled: !fieldsLocked);
+                      final fieldLayout = _resolveMainFieldLayout(
+                          context, trailingFields, constraints.maxWidth, buttonWidth);
+                      final widthDuration =
+                          _mainFieldWidthDuration(constraints.maxWidth, buttonWidth);
+                      final logButtonGap = SizedBox(width: _logButtonGap * fieldLayout.gapScale);
 
                       // IntrinsicHeight + stretch, rather than a guessed
                       // pixel height, so the submit button (an AspectRatio
@@ -7134,7 +7420,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       );
     }
 
-    if (_callInfoActive) return _buildCallInfo(theme);
+    // An event's `their.call` (e.g. "NOTE") is a sentinel, not a real
+    // callsign — the operation stats are the only sensible default here,
+    // same as with nothing typed yet.
+    if (_callInfoActive && !_editingEvent) return _buildCallInfo(theme);
     return _buildOperationStats(theme);
   }
 
@@ -7305,15 +7594,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The read-only warning shown in place of the info area for a staged-delete
   /// or already-deleted QSO (ham2k/halo-dist#59).
   Widget _buildLockedWarning(ThemeData theme, bool deletedQso) {
+    final kind = widget.editingQso?.eventKind?.toUpperCase();
+    final warning = (kind != null)
+        ? (deletedQso
+            ? (widget.deletedEventWarning?.call(kind) ?? 'Deleted $kind')
+            : (widget.pendingDeleteEventWarning?.call(kind) ?? '$kind will be deleted when you save'))
+        : (deletedQso
+            ? (widget.deletedQsoWarning ?? 'Deleted QSO')
+            : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'));
     return Row(
       children: [
         Icon(MdiIcons.alert, size: 16, color: theme.colorScheme.error),
         const SizedBox(width: Space.xs),
         Expanded(
           child: Text(
-            deletedQso
-                ? (widget.deletedQsoWarning ?? 'Deleted QSO')
-                : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'),
+            warning,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyMedium?.copyWith(

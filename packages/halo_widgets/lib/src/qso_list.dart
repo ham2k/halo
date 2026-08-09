@@ -252,8 +252,10 @@ class QsoList extends StatefulWidget {
   /// itself, so a single delete flow can't be bypassed mid-edit.
   final void Function(Qso qso) onSelect;
 
-  /// Tap an event marker row (start/break/end — see `Qso.isEvent`) to edit
-  /// its time. Falls back to [onSelect] when omitted.
+  /// Tap an event or annotation row (start/break/end, NOTE/TODO/SOLAR/
+  /// WEATHER — see `Qso.isEvent`) to select it, distinctly from [onSelect]'s
+  /// callsign-row taps. Falls back to [onSelect] when omitted — both load
+  /// the same row into the editor either way.
   final void Function(Qso qso)? onSelectEvent;
 
   /// Whether to show the RST column (ham2k/halo-dist#1's logging-view
@@ -1381,7 +1383,9 @@ class DayHeaderRow extends StatelessWidget {
 
 /// A start/break/end marker row in [QsoList], visually distinct from a QSO
 /// row (centered label instead of data columns) since it isn't a contact —
-/// tapping it opens time editing rather than the logging panel.
+/// tapping it loads `LoggingControls`' inline event editor, same as an
+/// [AnnotationRow] (`Qso.isEvent`), just with a centered summary here
+/// instead of the timeline layout below.
 class EventRow extends StatelessWidget {
   final Qso qso;
   final bool selected;

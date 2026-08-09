@@ -65,6 +65,13 @@ class SecondaryControlSpec {
   /// policy stays in one place next to the rest of the panel's.
   final FocusNode? focusNode;
 
+  /// Whether the chip can be tapped/opened. False renders it in Material's
+  /// disabled state (dimmed, no interaction) rather than removing it from
+  /// the row — used while editing an event/annotation row, where every
+  /// control but Time is disabled instead of hidden, so the row's shape
+  /// doesn't change between editing a contact and an event.
+  final bool enabled;
+
   const SecondaryControlSpec({
     required this.key,
     required this.icon,
@@ -73,6 +80,7 @@ class SecondaryControlSpec {
     this.liveSummary,
     this.iconColor,
     this.focusNode,
+    this.enabled = true,
   });
 }
 
@@ -795,9 +803,19 @@ class _ControlChip extends StatelessWidget {
     // onTertiary (near-white) text/icon. A rounded-rectangle shape, not
     // Flutter's default full-pill chip — app-polo's chips (react-native-paper
     // Chip, flat mode) are boxy with a modest corner radius.
-    final foreground = selected
-        ? theme.colorScheme.onTertiary
-        : theme.colorScheme.onTertiaryContainer;
+    var foreground = selected ? theme.colorScheme.onTertiary : theme.colorScheme.onTertiaryContainer;
+    var background = poloColors.tertiaryLight;
+    var selectedColor = theme.colorScheme.tertiary;
+    // Every color here is pinned explicitly (below), which bypasses
+    // ChoiceChip's own built-in disabled treatment — fade everything by
+    // hand instead, or a disabled pill (editing an event — see
+    // `SecondaryControlSpec.enabled`) would look indistinguishable from a
+    // live one.
+    if (!control.enabled) {
+      foreground = foreground.withValues(alpha: 0.5);
+      background = background.withValues(alpha: 0.5);
+      selectedColor = selectedColor.withValues(alpha: 0.5);
+    }
 
     return ChoiceChip(
       focusNode: control.focusNode,
@@ -811,7 +829,7 @@ class _ControlChip extends StatelessWidget {
         // _activityControlSpec). Contrast against the selected fill isn't
         // guaranteed for an arbitrary extension color, but that's on the
         // extension to pick a color that works — same as the unselected case.
-        color: control.iconColor ?? foreground,
+        color: control.enabled ? (control.iconColor ?? foreground) : foreground,
       ),
       label: control.liveSummary != null
           ? OncePerSecond(builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)))
@@ -820,13 +838,13 @@ class _ControlChip extends StatelessWidget {
       showCheckmark: false,
       visualDensity: LayoutDensity.of(context).chipVisualDensity,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      backgroundColor: poloColors.tertiaryLight,
-      selectedColor: theme.colorScheme.tertiary,
+      backgroundColor: background,
+      selectedColor: selectedColor,
       // Material3's ChoiceChip draws a default outline when side is null;
       // app-polo's LoggerChip has none.
       side: BorderSide.none,
-      onSelected: (_) => onTap(),
-      mouseCursor: SystemMouseCursors.click,
+      onSelected: control.enabled ? (_) => onTap() : null,
+      mouseCursor: control.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
     );
   }
 }
