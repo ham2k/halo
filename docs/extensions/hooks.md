@@ -936,10 +936,22 @@ these caveats, which is the other reason to prefer it.
 
 **`on`** is a refresh budget, not a subscription: `'operation'`,
 `'qsoLogged'`, `'spots'`, `'lookup'`, `'qso'`, or `` `tick:<seconds>` ``
-(floored at 5). The host throttles renders to one per 750ms, and renders
-nothing at all while the panel is behind another tab — an unselected dock
-tab stays mounted, so without that a four-panel layout would pay for the
-three nobody is looking at. A trigger name outside this list is dropped when
+(one second is the fastest; anything below it is not a recognized trigger and
+is dropped with a line in the console, so the panel gets no tick at all). The host
+keeps at least 750ms of idle between one render FINISHING and the next
+starting — a gap, not a period, so a slow panel simply runs less often
+instead of monopolising a single-threaded runtime. A tick that arrives while
+a render is already coming is DROPPED rather than queued: another is aimed at
+the next boundary, and the render that is coming reads fresh context anyway.
+Everything else waits instead of being dropped. Ticks are aimed at wall-clock
+boundaries, so panels sharing a period render in the same frame. The host
+renders nothing while the panel is behind another dock tab, or while the whole
+app is hidden — an unselected tab stays mounted, so without that a four-panel
+layout would pay for the three nobody is looking at. A trigger that arrives
+while the panel is away is remembered, and the panel renders once when it
+comes back. Do not treat the first render as something that happens at mount:
+a panel placed on a tab nobody has selected is not rendered until that tab is,
+so one-time setup belongs in the hook's own initialization, not in a render. A trigger name outside this list is dropped when
 the panel is read, with a line in the console: it would otherwise sit in the
 descriptor looking live and never fire. A descriptor with no `on` renders once when it
 appears. Omitting it is the right default: a trigger costs a bridge call

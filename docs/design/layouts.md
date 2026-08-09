@@ -317,15 +317,16 @@ constant in the view. Two sources write into it:
   time instead of throwing — real zones are unreachable there, and wrong in a
   way that is invisible on the developer's own machine. And a panel
   contributes a document, not widgets: an SVG is compiled to a static
-  instruction list (`<animate>` and `<style>` are dropped outright) and the
-  panel tick floors at five seconds, so nothing an extension can return
-  sweeps a second hand.
+  instruction list (`<animate>` and `<style>` are dropped outright), so
+  nothing an extension can return sweeps a second hand. The tick floor is one
+  second and no longer the reason: a panel CAN be asked to re-render every
+  second, it just cannot hand back anything that moves between two of them.
 
   **Weather is native for the second of those two reasons.** Its eight-hour
   temperature curve is fitted to whatever was fetched, and a hook that
   contributes a document has no way to hand back a shape — as a `panel` hook
   it can only be a table of numbers. Its fetch, cache and refresh are
-  ordinary Dart besides: no bridge call per render, and no five-second floor.
+  ordinary Dart besides: no bridge call per render, and no tick floor at all.
 - **Extension panels.** Every `panel` hook contributes its own
   ([hooks.md](../extensions/hooks.md)). An extension panel is a *document* —
   markdown, SVG, or sandboxed HTML — rendered by `PanelContentView`, never

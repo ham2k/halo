@@ -13,7 +13,6 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
@@ -78,7 +77,11 @@ class WallClock extends ChangeNotifier {
   /// produces depends on where the real clock happened to sit when the test ran.
   /// A test that counts ticks is therefore both flaky and able to pass for the
   /// wrong reason; one that checks this arithmetic is neither.
-  @visibleForTesting
+  ///
+  /// Public, not test-only: extension panel ticks aim at the same boundaries
+  /// through this, so that a panel and a per-second widget sharing a period
+  /// land in one frame rather than two. A second copy of the arithmetic would
+  /// be a second place for the speed factor and the floor to drift.
   static int delayToBoundary({required int periodMs, required int nowMillis, required double speed}) {
     final untilBoundaryMs = periodMs - nowMillis % periodMs;
     final scaled = (untilBoundaryMs / speed).ceil();

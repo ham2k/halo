@@ -2008,7 +2008,7 @@ export interface StatusBarNoticeParams {
 ///   'qsoLogged'  a QSO was logged, deleted or edited
 ///   'lookup'     a callsign lookup resolved
 ///   'spots'      the spot list was refreshed
-///   'tick:<n>'   every <n> seconds while the panel is visible (min 5)
+///   'tick:<n>'   every <n> seconds while the panel is visible (min 1)
 ///
 /// A panel with no triggers renders once when it appears, and again only
 /// when its own config form changes — right for a panel showing static

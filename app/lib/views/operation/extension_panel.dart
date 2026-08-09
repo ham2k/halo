@@ -7,11 +7,13 @@
 //
 // The trigger list is a budget, not a subscription. Every render crosses the
 // JS bridge, so a panel is re-rendered only for what it asked for, never
-// more often than `panelRenderThrottle`, and never at all while it is behind
-// another tab — an unselected dock tab stays MOUNTED (IndexedStack), which
-// the dock publishes through DockPaneVisibility; without that last rule a
-// four-panel layout would keep paying for the three panels nobody is looking
-// at.
+// more often than `panelRenderThrottle`, and — after its first render —
+// never at all while nobody can see it. Unwatched is two independent things:
+// behind another dock tab, since an unselected tab stays MOUNTED
+// (IndexedStack) and the dock publishes that through DockPaneVisibility; and
+// the whole app hidden, which the dock knows nothing about. Without either
+// rule a four-panel layout in a minimized window keeps paying for four
+// panels nobody is looking at.
 //
 // The budget has two halves: what the panel's DESCRIPTOR declared, paid by
 // every placement of that panel, and what THIS placement's last render asked
@@ -85,7 +87,7 @@ class ExtensionPanel extends StatefulWidget {
   State<ExtensionPanel> createState() => _ExtensionPanelState();
 }
 
-class _ExtensionPanelState extends State<ExtensionPanel> {
+class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObserver {
   PanelContent? _content;
   String? _error;
 
@@ -95,12 +97,32 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
   /// is on top.
   bool _visible = true;
 
+  /// False only while every view is hidden — minimized, a background browser
+  /// tab, a paused mobile app. Deliberately not `inactive`: on desktop that
+  /// means the window merely lost focus while still on screen, and a panel
+  /// that stopped updating there would look broken.
+  ///
+  /// ANDed with [_visible] as [_awake]. The dock's answer alone is not
+  /// enough at a fast tick: a front-tab panel in a minimized window is
+  /// `DockPaneVisibility.of(context) == true` and still crossing the bridge
+  /// once a second for nobody.
+  bool _appVisible = true;
+
+  /// Whether anyone can actually see this pane right now.
+  bool get _awake => _visible && _appVisible;
+
   /// Set while a render is in flight, so a burst of triggers coalesces into
   /// one follow-up call instead of stacking calls the bridge will run in
   /// order anyway.
   bool _rendering = false;
   bool _pending = false;
-  DateTime? _lastRenderedAt;
+
+  /// When the last render FINISHED. The throttle is a minimum idle GAP, not a
+  /// minimum period: the runtime is single-threaded, so a panel whose render
+  /// costs more than the window would otherwise re-request the moment it
+  /// returns and hold the bridge at a 100% duty cycle, starving every other
+  /// hook. Measured from the end, a slow panel simply runs less often.
+  DateTime? _lastRenderEndedAt;
   Timer? _throttle;
   Timer? _tick;
 
@@ -128,16 +150,28 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       // tab has not had its first render yet, and marking it done here would
       // leave it blank forever — it isn't "coming back" when it is first
       // looked at, so nothing else would ask.
+      //
+      // The DOCK's answer alone, not `_awake`: a pane on the front tab of a
+      // minimized window has no content at all, and one render now is what
+      // makes it non-blank when the operator returns. Only repeat renders are
+      // worth withholding from a hidden app.
       if (!_visible) return;
       _rendered = true;
+      // Cleared with the render, not left standing: a tick fires while a pane
+      // waits behind a tab, and at a one-second floor it will have. Carrying
+      // the flag out of the FIRST reveal buys a spurious catch-up render on
+      // the next one, which is the cost the flag exists to avoid.
+      _missedWhileHidden = false;
       // Straight to the bridge, not through the throttle: the operator is
       // looking at an empty pane until this answers.
       _render('initial');
       return;
     }
     // Coming back to the top: ask again only if something it cares about
-    // happened while nobody was looking.
-    if (becameVisible && _missedWhileHidden) {
+    // happened while nobody was looking — and only if anyone can see it. A
+    // pane revealed while the whole app is hidden is still hidden, and the
+    // flag keeps until it isn't.
+    if (becameVisible && _missedWhileHidden && _appVisible) {
       _missedWhileHidden = false;
       _requestRender('visible');
     }
@@ -146,8 +180,33 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
   @override
   void initState() {
     super.initState();
+    // Null before the first platform message, which is not evidence of being
+    // hidden.
+    final state = WidgetsBinding.instance.lifecycleState;
+    _appVisible = state == null || appIsVisibleIn(state);
+    WidgetsBinding.instance.addObserver(this);
+    // Travel moves the boundary a pending tick was aimed at, and changes how
+    // long the wait to the next one should be. Without this the panel sits
+    // out its stale delay while every WallClock subscriber has already
+    // re-aimed — the panel and the widgets it is supposed to share a frame
+    // with drift apart, which is the whole reason it borrows their helper.
+    AppClock.instance.addListener(_onClockTravel);
     widget.panels.addListener(_onCatalogChanged);
     _startTicker();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final visible = appIsVisibleIn(state);
+    if (visible == _appVisible) return;
+    _appVisible = visible;
+    // Coming back is the interesting half: a tick that fired while the app was
+    // away is remembered the same way one behind a tab is, so the pane catches
+    // up on return rather than waiting out another period.
+    if (_appVisible && _missedWhileHidden && _visible) {
+      _missedWhileHidden = false;
+      _requestRender('visible');
+    }
   }
 
   /// Everything this pane re-renders for: the triggers of the definition it
@@ -168,7 +227,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
     final revision = widget.panels.configRevision(widget.panel.id);
     if (revision == _configRevision) return;
     _configRevision = revision;
-    if (!_visible) {
+    if (!_awake) {
       _missedWhileHidden = true;
       return;
     }
@@ -201,7 +260,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
     // Read fresh, not from `_visible`: this method runs before
     // didChangeDependencies, so a pane hidden in the same pump that fired
     // the trigger still has last frame's answer cached.
-    if (!DockPaneVisibility.readOf(context)) {
+    if (!DockPaneVisibility.readOf(context) || !_appVisible) {
       // Behind a tab: remembered, not rendered. The pane is still mounted,
       // so it would otherwise pay for every trigger nobody is watching.
       _missedWhileHidden = true;
@@ -212,22 +271,74 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
 
   void _startTicker() {
     _tick?.cancel();
-    final seconds = _triggers
-        .map((t) => t.startsWith('tick:') ? int.tryParse(t.substring(5)) : null)
-        .nonNulls
-        .fold<int?>(null, (best, s) => best == null ? s : (s < best ? s : best));
-    if (seconds == null) return;
-    // Floored rather than rejected: a panel asking for one-second updates
-    // has misjudged what a bridge call costs, and dropping its panel over
-    // that would be a worse answer than slowing it down.
-    final period = Duration(seconds: seconds < minPanelTickSeconds ? minPanelTickSeconds : seconds);
-    _tick = Timer.periodic(period, (_) {
-      if (_visible) {
-        _requestRender('tick');
-      } else {
-        _missedWhileHidden = true;
-      }
-    });
+    _tick = null;
+    _tickPeriod = panelTickPeriod(_triggers);
+    _armTick();
+  }
+
+  Duration? _tickPeriod;
+
+  /// Travel moves the boundary the pending tick was aimed at, so the wait it
+  /// was armed with is no longer the wait to the next one. Re-aiming is what
+  /// keeps this pane in the same frame as the `WallClock` widgets it is
+  /// borrowing the boundary from.
+  void _onClockTravel() {
+    if (!mounted) return;
+    _tick?.cancel();
+    _tick = null;
+    _armTick();
+    // Travel changes the ANSWER, not just the schedule. `WallClock` notifies
+    // its subscribers in the same frame, so a panel that only re-aimed its
+    // timer would paint pre-travel time beside a clock chip that had already
+    // jumped — until its next tick, which for the shipped solar dashboard's
+    // `tick:600` is ten minutes. Not labelled a tick: a sample is droppable
+    // and this is not.
+    if (_awake) _requestRender('clock');
+  }
+
+  /// A chain of one-shot timers re-aimed at each wall-clock boundary, rather
+  /// than one `Timer.periodic`.
+  ///
+  /// A periodic timer keeps only its own cadence, phased to whenever the pane
+  /// mounted — so a `tick:1` panel showing a time flips its second at an
+  /// arbitrary fraction of the real one and stays there. Aiming at the
+  /// boundary also makes panels sharing a period fire in the SAME frame
+  /// instead of several out of phase, which is the same trade `WallClock`
+  /// makes for the app's per-second widgets.
+  void _armTick() {
+    final period = _tickPeriod;
+    if (period == null || _tick != null) return;
+    _tick = Timer(
+      Duration(
+        milliseconds: panelTickDelayMillis(
+          periodMs: period.inMilliseconds,
+          nowMillis: nowMillis(),
+          speed: AppClock.instance.speed,
+        ),
+      ),
+      () {
+        _tick = null;
+        // Re-armed in a `finally`: "a period is set" has to imply "a timer
+        // exists", and nothing in this widget would notice if the chain broke.
+        // `_startTicker` runs only on mount, a panel-id change and a CHANGE of
+        // declared triggers, so a panel with settled triggers would simply
+        // stop ticking for the rest of the session.
+        try {
+          if (!mounted) return;
+          if (_awake) {
+            _requestRender('tick');
+          } else {
+            // Still ticking while nobody is looking, deliberately: this flag is
+            // how a reveal knows there is something to catch up on. Stopping
+            // the chain here would need a matching re-arm on every path back to
+            // visible, and missing one freezes the pane for good.
+            _missedWhileHidden = true;
+          }
+        } finally {
+          if (mounted) _armTick();
+        }
+      },
+    );
   }
 
   /// Renders no sooner than [panelRenderThrottle] after the last one.
@@ -235,13 +346,33 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
     // Real time on both ends of this throttle: the remainder becomes a Timer
     // duration, and a Timer fires on real time — pairing it with a rescaled
     // clock would make the throttle wait the wrong length.
-    final since = _lastRenderedAt == null ? null : realNowUtc().difference(_lastRenderedAt!);
-    if (since != null && since < panelRenderThrottle) {
-      _throttle?.cancel();
-      _throttle = Timer(panelRenderThrottle - since, () => _render(reason));
-      return;
+    final wait = panelRenderDelay(lastEndedAt: _lastRenderEndedAt, now: realNowUtc());
+    switch (panelRenderRequest(
+      reason: reason,
+      rendering: _rendering,
+      scheduled: _throttle != null,
+      wait: wait,
+    )) {
+      case PanelRenderRequest.drop:
+        return;
+      case PanelRenderRequest.coalesce:
+        // Owed, not timed: the render in flight re-requests when it finishes,
+        // by which point the gap can be measured against an end that exists.
+        _pending = true;
+      case PanelRenderRequest.defer:
+        _throttle?.cancel();
+        _throttle = Timer(wait, () {
+          _throttle = null;
+          if (mounted) _render(reason);
+        });
+      case PanelRenderRequest.now:
+        // A timer can still be armed here: it is due but has not run yet, and
+        // the gap it was waiting out has already elapsed. Letting it stand
+        // spends a second render on the moment this one covers.
+        _throttle?.cancel();
+        _throttle = null;
+        _render(reason);
     }
-    _render(reason);
   }
 
   Future<void> _render(String reason) async {
@@ -252,7 +383,6 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       return;
     }
     _rendering = true;
-    _lastRenderedAt = realNowUtc();
     // Captured, so a render still in flight when the widget is handed a
     // different panel can't paint one panel's content under another's tab —
     // a plausible wrong answer is worse than an error.
@@ -265,9 +395,18 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       // the wrong component. An unreadable config renders as an empty one.
       Map<String, dynamic> config;
       try {
-        config = await widget.panels.configFor(panel);
+        // Bounded, unlike the render leg which `invokeHook` already times out.
+        // A config with a secret field reaches the platform keychain, and a
+        // keychain call has no timeout of its own — if it never returns,
+        // `_rendering` never clears, and from then on every tick is DROPPED
+        // and every event coalesced into a render that will never run. The
+        // pane would sit on its last document, with no error and so no Retry,
+        // and nothing anywhere would say why.
+        config = await widget.panels.configFor(panel).timeout(const Duration(seconds: 5));
+        ErrorReportingService.recordSuccess('panel:config:${panel.id}');
       } catch (e, stack) {
-        ErrorReportingService.report(e, stack, context: 'panel:config:${panel.id}');
+        ErrorReportingService.reportIfRepeated(
+          'panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
         config = const {};
       }
       final result = await widget.panels.render(panel, {
@@ -294,14 +433,28 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       // that throws has said nothing about what it needs, and dropping its
       // triggers would strand it on the error it just produced.
       if (content != null && widget.panels.declareTriggers(panel.id, content.triggers)) _startTicker();
-      setState(() {
-        _content = content;
-        _error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
-      });
+      final error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
+      // Only when something actually changed. A panel on a tick re-renders the
+      // same document most of the time — a band plan, a reference table — and
+      // `setState` on an identical answer rebuilds the pane's subtree for
+      // nothing, once per tick, for as long as it is on screen.
+      if (content != _content || error != _error) {
+        setState(() {
+          _content = content;
+          _error = error;
+        });
+      }
       // After the setState, not inside it: this reaches the VIEW's state, and
       // a panel is free to return the same title on every render, so the
       // listener has to be the one that drops a repeat.
       widget.onTitle?.call(content?.title);
+      // LAST, and only for a render that produced a document. Everything above
+      // can throw into the catch below, and clearing the streak before that
+      // point would let a panel failing after the bridge call reset its own
+      // evidence on every attempt — the streak would never leave 1 and the
+      // failure would never be reported at all. A null document is a failed
+      // render too, so it must not clear the streak either.
+      if (content != null) ErrorReportingService.recordSuccess('panel:render:${panel.id}');
     } catch (e, stack) {
       // Through ErrorPolicy like everything else (docs/design/error-reporting.md):
       // a panel that throws for every operator is exactly the thing that has
@@ -309,11 +462,23 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
       // it local is the pattern that policy exists to prevent. What the
       // OPERATOR sees is a sentence naming the panel — an exception's
       // toString is not a user-facing string.
-      ErrorReportingService.report(e, stack, context: 'panel:render:${panel.id}');
+      //
+      // The FIRST failure of a streak, then silence until one succeeds. A
+      // ticking panel fails on a TIMER — one broken at `tick:1` would upload
+      // once a second for as long as its pane is open, burying the crashes
+      // policy exists to surface — but a threshold above one would lose the
+      // panel that renders ONCE, which is the default and the case least
+      // likely to reach us any other way.
+      ErrorReportingService.reportIfRepeated(
+        'panel:render:${panel.id}', e, stack, context: 'panel:render:${panel.id}', threshold: 1);
       if (!mounted || panel.id != widget.panel.id) return;
       setState(() => _error = context.t.operation.layout.panelRenderFailed(panel: panel.title));
     } finally {
       _rendering = false;
+      // Stamped HERE, not at the start: see [_lastRenderEndedAt]. Set even
+      // when the render threw — a panel failing in a tight loop is the case
+      // that most needs the gap.
+      _lastRenderEndedAt = realNowUtc();
       if (_pending && mounted) {
         _pending = false;
         _requestRender('coalesced');
@@ -324,6 +489,8 @@ class _ExtensionPanelState extends State<ExtensionPanel> {
   @override
   void dispose() {
     widget.panels.removeListener(_onCatalogChanged);
+    AppClock.instance.removeListener(_onClockTravel);
+    WidgetsBinding.instance.removeObserver(this);
     _throttle?.cancel();
     _tick?.cancel();
     super.dispose();

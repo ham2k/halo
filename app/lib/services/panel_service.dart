@@ -15,6 +15,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
+import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 
 /// Where a panel comes from, which decides how the view gets its content.
 enum PanelSource { native, extension }
@@ -209,15 +211,132 @@ bool isKnownPanelTrigger(String trigger) {
   return seconds != null && seconds > 0;
 }
 
-/// How often a panel may be re-rendered, however often its triggers fire.
-/// A trigger is a hint that something changed, not a demand for a frame:
-/// 'qso' fires as fast as the operator types, and every render crosses the
-/// JS bridge.
+/// The minimum idle GAP between one render finishing and the next starting,
+/// however often a panel's triggers fire. A trigger is a hint that something
+/// changed, not a demand for a frame: 'qso' fires as fast as the operator
+/// types, and every render crosses the JS bridge.
+///
+/// A gap rather than a period, because the runtime is single-threaded: a
+/// panel whose render costs more than this would otherwise be allowed to
+/// start the next one the instant it returned, holding the bridge and
+/// starving every other hook.
 const panelRenderThrottle = Duration(milliseconds: 750);
 
-/// The shortest `tick:<seconds>` a panel may ask for. A panel wanting to be
-/// live to the second wants a native panel, not a bridge call a second.
-const minPanelTickSeconds = 5;
+/// Whether the app is on screen enough for a panel to be worth rendering.
+///
+/// `inactive` counts as visible: on desktop it means the window merely lost
+/// focus while still fully on screen, and a panel that stopped updating there
+/// would read as broken. Only `hidden`, `paused` and `detached` — minimized, a
+/// background browser tab, a suspended mobile app — mean nobody can see it.
+///
+/// Pure, because the wiring around it cannot be tested here: the test binding
+/// restores `resumed` on the next pump, so a lifecycle state set in a widget
+/// test does not survive to the moment a trigger arrives.
+bool appIsVisibleIn(AppLifecycleState state) =>
+    state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+
+/// How long a render must wait, given when the last one FINISHED.
+///
+/// Pure, and separate from the panel, because a widget test cannot see the
+/// difference: the throttle runs on the real clock (a Timer does), while
+/// `tester.pump` advances only the fake one — so measuring from the START of
+/// a render looks identical there. The arithmetic is checkable here; which
+/// stamp the call site passes is held by `_lastRenderEndedAt`'s comment.
+Duration panelRenderDelay({required DateTime? lastEndedAt, required DateTime now}) {
+  if (lastEndedAt == null) return Duration.zero;
+  final since = now.difference(lastEndedAt);
+  if (since.isNegative) return panelRenderThrottle;
+  return since >= panelRenderThrottle ? Duration.zero : panelRenderThrottle - since;
+}
+
+/// What to do with a render request that arrived while the panel is busy —
+/// mid-render, or inside the idle gap after one.
+enum PanelRenderRequest { now, defer, coalesce, drop }
+
+/// A tick is a SAMPLE; every other reason is an EVENT.
+///
+/// A tick is dropped whenever a render is already coming — one in flight, or
+/// one already scheduled by the throttle. Another tick is aimed at the next
+/// boundary, and the render that is coming reads fresh context anyway, so the
+/// only thing keeping this one achieves is harm: it lands late, off the
+/// boundary it existed to hit, and it RELABELS the pending render, telling
+/// the panel it is rendering for a tick when a QSO was logged.
+///
+/// An event has nothing coming to bring it back. Mid-render it coalesces —
+/// the render in flight owes one more when it finishes — and inside the idle
+/// gap it waits out the remainder.
+///
+/// [coalesce] and [defer] are distinct because arming a timer for a render
+/// that is still running is how the idle gap gets defeated: the gap is
+/// measured from the LAST render's end, so mid-render it has usually already
+/// elapsed and the timer would be armed for zero.
+PanelRenderRequest panelRenderRequest({
+  required String reason,
+  required bool rendering,
+  required bool scheduled,
+  required Duration wait,
+}) {
+  final coming = rendering || scheduled;
+  if (reason == 'tick') return coming ? PanelRenderRequest.drop : _waitOrNow(wait);
+  if (rendering) return PanelRenderRequest.coalesce;
+  return _waitOrNow(wait);
+}
+
+PanelRenderRequest _waitOrNow(Duration wait) =>
+    wait > Duration.zero ? PanelRenderRequest.defer : PanelRenderRequest.now;
+
+/// The period a panel ticks at, given everything it declared — the shortest
+/// of them, floored at [minPanelTickSeconds]. Null when it asked for none.
+///
+/// Pure so that "the declared period is what runs" can be checked at all: the
+/// rate itself is not observable in a widget test, because the boundary a
+/// tick is aimed at comes from the real clock while the timer runs on the
+/// test's fake one.
+Duration? panelTickPeriod(Iterable<String> triggers) {
+  final seconds = triggers
+      .map((t) => t.startsWith('tick:') ? int.tryParse(t.substring(5)) : null)
+      .nonNulls
+      .fold<int?>(null, (best, s) => best == null ? s : (s < best ? s : best));
+  if (seconds == null) return null;
+  return Duration(seconds: seconds < minPanelTickSeconds ? minPanelTickSeconds : seconds);
+}
+
+/// The shortest REAL interval between two ticks of the same panel, whatever
+/// the app clock is doing. [minPanelTickSeconds] is what an author may ask
+/// for; this is what a travelled clock cannot get under.
+const minPanelTickMillis = 1000;
+
+/// The real milliseconds to wait for [periodMs]'s next boundary.
+///
+/// The floor widens the PERIOD rather than clamping the wait, and the
+/// difference is the whole behaviour: the wait to the next boundary of a
+/// one-second period is under a second by definition, so clamping the wait to
+/// a second replaces every aligned wait with a flat one, and the panel ticks
+/// a second after whenever it mounted for the rest of the session — losing
+/// exactly the alignment the boundary aim exists for. Widening keeps the aim
+/// and moves the boundary instead.
+///
+/// So the floor bounds the interval between CONSECUTIVE ticks, which is the
+/// rate that costs anything. The single partial wait from arming to the first
+/// boundary is whatever the phase makes it, and can be shorter.
+int panelTickDelayMillis({required int periodMs, required int nowMillis, required double speed}) {
+  // Both arguments to `delayToBoundary` are on the APP clock and its answer is
+  // in real time, so the floor has to be converted before it can be compared.
+  final virtualFloor = (minPanelTickMillis * speed).ceil();
+  final effective = periodMs > virtualFloor ? periodMs : virtualFloor;
+  return WallClock.delayToBoundary(periodMs: effective, nowMillis: nowMillis, speed: speed);
+}
+
+/// The shortest `tick:<seconds>` a panel may ask for.
+///
+/// A warm render round-trip measures ~0.3 ms including the config read, so a
+/// per-second panel costs about 0.03% of a core and four of them land inside
+/// a frame's budget once a second.
+///
+/// It is still a floor. Below a second the wait stops being meaningfully
+/// longer than the work, and a panel wanting smooth motion wants a native
+/// pane — which owns its own ticker and never comes through here.
+const minPanelTickSeconds = 1;
 
 /// The narrow slice of [ExtensionService] the catalog uses. Named so the
 /// catalog's own rules — what a failed read means, what a malformed
