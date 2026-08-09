@@ -453,11 +453,37 @@ Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = fals
     final data = text.data ?? text.textSpan?.toPlainText() ?? '';
     final direction = text.textDirection ?? Directionality.of(context);
 
-    double widthOf(TextStyle s) =>
-        (TextPainter(text: TextSpan(text: data, style: s), textDirection: direction)..layout()).width;
+    // Measured through the ambient text scaler, because that is what the
+    // Text below paints through: measuring unscaled would call a title that
+    // only overflows under OS/accessibility scaling a fit, and it would then
+    // neither shrink nor ellipsize. [minScale] stays relative to the SCALED
+    // size — at a 2x system font a line gives back at most a quarter of it,
+    // rather than undoing the reader's setting to buy room.
+    // theme.dart's textWidth does the same job and is the house measurer, but
+    // it fixes textDirection at LTR; this one honours the Text's own.
+    // The Text's own scaler when it has one, so measurement and paint can
+    // never disagree about which scaler applies.
+    final textScaler = text.textScaler ?? MediaQuery.textScalerOf(context);
+    double widthOf(TextStyle s) {
+      final painter = TextPainter(
+        text: TextSpan(text: data, style: s),
+        textDirection: direction,
+        textScaler: textScaler,
+      );
+      try {
+        painter.layout();
+        return painter.width;
+      } finally {
+        // Frees the native paragraph rather than leaving it to a GC finalizer:
+        // an animating header rebuilds its titles every frame.
+        painter.dispose();
+      }
+    }
 
     var effectiveStyle = style;
     var scale = 1.0;
+    final baseFontSize = style.fontSize ?? 14;
+    TextStyle styleAt(double s) => effectiveStyle.copyWith(fontSize: baseFontSize * s);
     if (constraints.maxWidth.isFinite) {
       var width = widthOf(effectiveStyle);
       if (condensed && width > constraints.maxWidth) {
@@ -470,11 +496,36 @@ Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = fals
       }
       if (width > constraints.maxWidth) {
         scale = (constraints.maxWidth / width).clamp(minScale, 1.0);
+        // That ratio is exact only for a LINEAR scaler, where
+        // scale(F·s) == s·scale(F). Android 14+ curves system font scaling —
+        // the amplification tapers as the size grows — and there the ratio
+        // lands short: iterating it converges on the answer from ABOVE and
+        // never reaches it, so the line would ellipsize while claiming to have
+        // been fitted. Verify the chosen size, and only when it doesn't fit,
+        // bisect down to one that does. The check costs one measurement in the
+        // linear case, where the ratio is already exact.
+        if (scale > minScale && widthOf(styleAt(scale)) > constraints.maxWidth) {
+          var tooWide = scale;
+          scale = minScale;
+          for (var i = 0; i < 4; i++) {
+            final mid = (scale + tooWide) / 2;
+            if (widthOf(styleAt(mid)) <= constraints.maxWidth) {
+              scale = mid;
+            } else {
+              tooWide = mid;
+            }
+          }
+        }
       }
     }
     return Text(
       data,
-      style: effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 14) * scale),
+      style: styleAt(scale),
+      // Carried through, not dropped: measuring in one direction (or scaler)
+      // and painting in another is the drift this whole function exists to
+      // avoid.
+      textDirection: text.textDirection,
+      textScaler: text.textScaler,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );

@@ -473,6 +473,150 @@ void main() {
       expect(renderedWidth, lessThanOrEqualTo(width + 0.5));
     });
 
+    // The measurement has to go through the ambient text scaler, because the
+    // Text it decides for paints through it: measuring unscaled calls a line
+    // that only overflows under OS/accessibility scaling a fit, so it neither
+    // shrinks nor ellipsizes and the title runs off the row instead.
+    //
+    // A SHORT title, sized so the box is comfortable unscaled and impossible
+    // at 2x — the long one's natural width already exceeds the 800pt test
+    // surface, so its box gets clipped to the surface and the floor is hit
+    // whatever the scaler does, which would make this pass either way.
+    testWidgets('shrinks a line that only overflows because the OS text scale is large', (tester) async {
+      const shortTitle = 'KI2D Field Day';
+      final natural = (TextPainter(
+        text: const TextSpan(text: shortTitle, style: style),
+        textDirection: TextDirection.ltr,
+      )..layout())
+          .width;
+      expect(natural * 1.2, lessThan(760), reason: 'the box must fit the test surface, or the surface decides the result');
+
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2.0)),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: natural * 1.2,
+                  child: shrinkToFitText(const Text(shortTitle, style: style)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final rendered = tester.widget<Text>(find.text(shortTitle));
+      // The floor is 75% of the SCALED size, not of the unscaled one: a
+      // reader who asked for a 2x font keeps most of it.
+      expect(
+        rendered.style!.fontSize,
+        style.fontSize! * 0.75,
+        reason: 'measuring unscaled would see a fit and leave the size at 18',
+      );
+      // And at that floor it STILL doesn't fit — 2x is more than this box can
+      // hold at any size the floor allows, so the line is shrunk AND
+      // ellipsized. That is the accepted outcome, not an oversight: the
+      // alternative is undoing the reader's font setting.
+      expect(rendered.overflow, TextOverflow.ellipsis);
+      expect(tester.getSize(find.text(shortTitle)).width, lessThanOrEqualTo(natural * 1.2 + 0.5));
+    });
+
+    // The scaler tests above and below both land ON the 0.75 clamp, where a
+    // wrong ratio — a scaler applied twice, say — clamps to the same 13.5 and
+    // passes. This one sits strictly inside the range, so the number it
+    // asserts is the ratio itself.
+    testWidgets('picks the ratio, not the floor, when the scaled overflow is mild', (tester) async {
+      const shortTitle = 'KI2D Field Day';
+      const scaler = TextScaler.linear(2.0);
+      final scaled = (TextPainter(
+        text: const TextSpan(text: shortTitle, style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout())
+          .width;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: scaler),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: scaled * 0.9,
+                  child: shrinkToFitText(const Text(shortTitle, style: style)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      final rendered = tester.widget<Text>(find.text(shortTitle));
+      // Near the ratio, not exactly it: glyph advances don't scale perfectly
+      // linearly with font size, so the verification pass can shave a little
+      // off. What must hold is that the size came from the ratio rather than
+      // the clamp, and that it actually fits.
+      expect(rendered.style!.fontSize, closeTo(style.fontSize! * 0.9, 0.5));
+      expect(rendered.style!.fontSize, greaterThan(style.fontSize! * 0.75));
+      final fittedWidth = (TextPainter(
+        text: TextSpan(text: shortTitle, style: rendered.style),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout())
+          .width;
+      expect(fittedWidth, lessThanOrEqualTo(scaled * 0.9 + 0.5));
+    });
+
+    // A non-linear scaler (Android 14+ curves system font scaling: the
+    // amplification tapers as the size grows) breaks the identity a single
+    // ratio relies on — scale(F·s) == s·scale(F) — so the size picked from one
+    // measurement can still overflow. What the helper promises is a line that
+    // FITS, so the check is on the width the chosen style actually paints at.
+    testWidgets('fits under a non-linear scaler, where one ratio is not enough', (tester) async {
+      const shortTitle = 'KI2D Field Day';
+      const scaler = _TaperingScaler();
+      double widthAt(TextStyle s) => (TextPainter(
+            text: TextSpan(text: shortTitle, style: s),
+            textDirection: TextDirection.ltr,
+            textScaler: scaler,
+          )..layout())
+              .width;
+
+      final scaled = widthAt(style);
+      // Wide enough that the floor is not what saves it: the fit has to come
+      // from the size the helper chose.
+      final boxWidth = scaled * 0.85;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: scaler),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(width: boxWidth, child: shrinkToFitText(const Text(shortTitle, style: style))),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      final rendered = tester.widget<Text>(find.text(shortTitle));
+      expect(rendered.style!.fontSize, greaterThan(style.fontSize! * 0.75), reason: 'the floor must not be what fits it');
+      expect(widthAt(rendered.style!), lessThanOrEqualTo(boxWidth + 0.5));
+    });
+
     testWidgets('condensed defaults to false — a title never gets the width-axis treatment', (tester) async {
       final natural = naturalWidth(tester);
       await tester.pumpWidget(host(natural * 0.2)); // needs the floor regardless
@@ -567,4 +711,17 @@ double _naturalTextWidth(WidgetTester tester, Finder finder) {
     textDirection: TextDirection.ltr,
   )..layout();
   return painter.width;
+}
+
+/// A scaler whose amplification TAPERS with size, the way Android 14+'s
+/// system font scaling curves: `scale(F·s) != s·scale(F)`, which is the
+/// identity a single fit-ratio would rely on.
+class _TaperingScaler extends TextScaler {
+  const _TaperingScaler();
+
+  @override
+  double scale(double fontSize) => fontSize <= 10 ? fontSize * 2 : 20 + (fontSize - 10) * 1.1;
+
+  @override
+  double get textScaleFactor => 2;
 }
