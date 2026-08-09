@@ -27,12 +27,32 @@ String buildGeneratedTitle(Translations t, OperationTitleFragments fragments) {
   ].join(' ');
 }
 
-/// The ref-derived part of [operation]'s title, live-computed from its
-/// currently cached [Operation.titleFragments] — used for preview ahead of
-/// whatever's persisted in `data['title']` (e.g. mid-edit, before the next
-/// save).
-String generatedTitleFor(BuildContext context, Operation operation) =>
-    buildGeneratedTitle(context.t, operation.titleFragments);
+/// The ref-derived part of [operation]'s title: the live preview from this
+/// device's cached [Operation.titleFragments] when it has one, otherwise the
+/// synced [Operation.title] persisted by an earlier save (on this or another
+/// device) — a newly-synced operation has no local cache at all, and an
+/// extension hook that's still booting, times out, or throws leaves this
+/// device's own cache just as empty; either way this is the only source of a
+/// generated title until this device computes its own successfully.
+///
+/// Gated on [operation] actually having refs, not on whether a local cache
+/// exists: a ref-less operation can never have a legitimate ref-derived
+/// title, but PoLo writes its own placeholder text straight into the synced
+/// `title` field for one — a localized "General Operation"
+/// (`setOperationData.js`) or the literal, unlocalized "New Operation"
+/// (`operationsDB.js`) — which must not render here as though HaLo had
+/// generated it.
+///
+/// Checks the cached fragments themselves, not [buildGeneratedTitle]'s
+/// rendered string: a suggestion that's only a [OperationTitleFragments.
+/// subtitle] (no title/for/at) is a live, legitimate cache entry, but
+/// renders as `''` — treating that as "nothing cached" would fall through
+/// to a possibly-stale synced title instead of correctly showing none.
+String generatedTitleFor(BuildContext context, Operation operation) {
+  final fragments = operation.titleFragments;
+  if (!fragments.isEmpty) return buildGeneratedTitle(context.t, fragments);
+  return operation.refs.isEmpty ? '' : operation.title;
+}
 
 /// The operation's display title: the user's own title (set via the
 /// operation dialog), if any, followed by the ref-derived suggestion ("for X
