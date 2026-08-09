@@ -213,11 +213,13 @@ fail to fire, it throws `ReferenceError` out of your hook. Bound a request
 with `host.fetch`'s own `timeout` option, which the host enforces, and let
 the host's periodic triggers (a panel's `tick`) be your clock.
 
-Work in UTC and do the arithmetic yourself
-(`utcTime` in `extensions/dashboard/weather/src/index.ts` is a worked
-example), or hand the raw value to the host and let Dart format it. Anything
-that has to be shown in a real zone belongs on the Dart side, which has a
-zone database — the Clock pane is native for exactly this reason.
+Work in UTC and do the arithmetic yourself (`extensions/sdk/src/
+templateContext.ts` slices `toISOString()` for its date and time values — a
+worked example), or hand the raw value to the host and let Dart format it.
+Anything that has to be shown in a real zone belongs on the Dart side, which
+has a zone database — the Clock pane is native for exactly this reason. (The
+Weather pane is native for a different one, and needs no zone database: it
+labels its hours from the offset the forecast reports.)
 
 Cross-extension composition (calling other extensions' hooks *inside* the
 runtime, without a bridge round-trip):

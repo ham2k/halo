@@ -831,6 +831,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get map => 'MAPA';
 	@override String get qsosPlain => 'QSOs';
 	@override String get clock => 'Reloj';
+	@override String get weather => 'El Tiempo';
 	@override String get website => 'Sitio Web';
 }
 
@@ -1550,6 +1551,24 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get clockZoneDevice => 'Este dispositivo';
 	@override String get clockShowSeconds => 'Mostrar segundos';
 	@override String get clockShowDate => 'Mostrar la fecha';
+	@override String get weatherDescription => 'El tiempo ahora y durante las próximas ocho horas, donde estás operando';
+	@override String get weatherLocation => 'Ubicación';
+	@override String get weatherLocationDescription => 'Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.';
+	@override String get weatherNoLocation => 'Esta operación todavía no tiene ubicación. Ponle una a la operación, o dale una a este panel en sus ajustes.';
+	@override String weatherBadLocation({required Object location}) => 'No se pudo leer la ubicación ${location}. Usa un cuadrante como FN31pr, o 42.36,-71.06.';
+	@override String get weatherUnreachable => 'No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.';
+	@override String get weatherUnreadable => 'Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.';
+	@override String weatherGusts({required Object speed}) => 'rachas ${speed}';
+	@override String get weatherAgeNow => 'ahora mismo';
+	@override String weatherAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'hace ${count} min',
+		other: 'hace ${count} min',
+	);
+	@override String weatherAgeHours({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'hace ${count} h',
+		other: 'hace ${count} h',
+	);
+	@override late final _Translations$operation$layout$panels$weatherConditions$es weatherConditions = _Translations$operation$layout$panels$weatherConditions$es._(_root);
 	@override String get websiteDescription => 'Una página web de tu elección, en un panel';
 	@override String get websiteUrl => 'Dirección';
 	@override String get websiteRefresh => 'Actualizar';
@@ -1914,6 +1933,46 @@ class _Translations$settings$station$transports$es extends Translations$settings
 	@override String get wifi => 'WiFi';
 }
 
+// Path: operation.layout.panels.weatherConditions
+class _Translations$operation$layout$panels$weatherConditions$es extends Translations$operation$layout$panels$weatherConditions$en {
+	_Translations$operation$layout$panels$weatherConditions$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get unknown => 'Desconocido';
+	@override String get sunny => 'Soleado';
+	@override String get clear => 'Despejado';
+	@override String get mainlySunny => 'Mayormente Soleado';
+	@override String get mainlyClear => 'Mayormente Despejado';
+	@override String get partlyCloudy => 'Parcialmente Nublado';
+	@override String get cloudy => 'Nublado';
+	@override String get foggy => 'Niebla';
+	@override String get rimeFog => 'Niebla Helada';
+	@override String get lightDrizzle => 'Llovizna Ligera';
+	@override String get drizzle => 'Llovizna';
+	@override String get heavyDrizzle => 'Llovizna Intensa';
+	@override String get lightFreezingDrizzle => 'Llovizna Helada Ligera';
+	@override String get freezingDrizzle => 'Llovizna Helada';
+	@override String get lightRain => 'Lluvia Ligera';
+	@override String get rain => 'Lluvia';
+	@override String get heavyRain => 'Lluvia Intensa';
+	@override String get lightFreezingRain => 'Lluvia Helada Ligera';
+	@override String get freezingRain => 'Lluvia Helada';
+	@override String get lightSnow => 'Nieve Ligera';
+	@override String get snow => 'Nieve';
+	@override String get heavySnow => 'Nieve Intensa';
+	@override String get snowGrains => 'Granos de Nieve';
+	@override String get lightShowers => 'Chubascos Ligeros';
+	@override String get showers => 'Chubascos';
+	@override String get heavyShowers => 'Chubascos Intensos';
+	@override String get lightSnowShowers => 'Chubascos de Nieve Ligeros';
+	@override String get snowShowers => 'Chubascos de Nieve';
+	@override String get thunderstorm => 'Tormenta';
+	@override String get lightThunderstormsWithHail => 'Tormentas Ligeras con Granizo';
+	@override String get thunderstormWithHail => 'Tormenta con Granizo';
+}
+
 /// The flat map containing all translations for locale <es>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -1990,6 +2049,7 @@ extension on TranslationsEs {
 			'operation.tabs.map' => 'MAPA',
 			'operation.tabs.qsosPlain' => 'QSOs',
 			'operation.tabs.clock' => 'Reloj',
+			'operation.tabs.weather' => 'El Tiempo',
 			'operation.tabs.website' => 'Sitio Web',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
@@ -2057,6 +2117,48 @@ extension on TranslationsEs {
 			'operation.layout.panels.clockZoneDevice' => 'Este dispositivo',
 			'operation.layout.panels.clockShowSeconds' => 'Mostrar segundos',
 			'operation.layout.panels.clockShowDate' => 'Mostrar la fecha',
+			'operation.layout.panels.weatherDescription' => 'El tiempo ahora y durante las próximas ocho horas, donde estás operando',
+			'operation.layout.panels.weatherLocation' => 'Ubicación',
+			'operation.layout.panels.weatherLocationDescription' => 'Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.',
+			'operation.layout.panels.weatherNoLocation' => 'Esta operación todavía no tiene ubicación. Ponle una a la operación, o dale una a este panel en sus ajustes.',
+			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'No se pudo leer la ubicación ${location}. Usa un cuadrante como FN31pr, o 42.36,-71.06.',
+			'operation.layout.panels.weatherUnreachable' => 'No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.',
+			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.',
+			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'rachas ${speed}',
+			'operation.layout.panels.weatherAgeNow' => 'ahora mismo',
+			'operation.layout.panels.weatherAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'hace ${count} min', other: 'hace ${count} min', ), 
+			'operation.layout.panels.weatherAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'hace ${count} h', other: 'hace ${count} h', ), 
+			'operation.layout.panels.weatherConditions.unknown' => 'Desconocido',
+			'operation.layout.panels.weatherConditions.sunny' => 'Soleado',
+			'operation.layout.panels.weatherConditions.clear' => 'Despejado',
+			'operation.layout.panels.weatherConditions.mainlySunny' => 'Mayormente Soleado',
+			'operation.layout.panels.weatherConditions.mainlyClear' => 'Mayormente Despejado',
+			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Parcialmente Nublado',
+			'operation.layout.panels.weatherConditions.cloudy' => 'Nublado',
+			'operation.layout.panels.weatherConditions.foggy' => 'Niebla',
+			'operation.layout.panels.weatherConditions.rimeFog' => 'Niebla Helada',
+			'operation.layout.panels.weatherConditions.lightDrizzle' => 'Llovizna Ligera',
+			'operation.layout.panels.weatherConditions.drizzle' => 'Llovizna',
+			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'Llovizna Intensa',
+			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'Llovizna Helada Ligera',
+			'operation.layout.panels.weatherConditions.freezingDrizzle' => 'Llovizna Helada',
+			'operation.layout.panels.weatherConditions.lightRain' => 'Lluvia Ligera',
+			'operation.layout.panels.weatherConditions.rain' => 'Lluvia',
+			'operation.layout.panels.weatherConditions.heavyRain' => 'Lluvia Intensa',
+			'operation.layout.panels.weatherConditions.lightFreezingRain' => 'Lluvia Helada Ligera',
+			'operation.layout.panels.weatherConditions.freezingRain' => 'Lluvia Helada',
+			'operation.layout.panels.weatherConditions.lightSnow' => 'Nieve Ligera',
+			'operation.layout.panels.weatherConditions.snow' => 'Nieve',
+			'operation.layout.panels.weatherConditions.heavySnow' => 'Nieve Intensa',
+			'operation.layout.panels.weatherConditions.snowGrains' => 'Granos de Nieve',
+			'operation.layout.panels.weatherConditions.lightShowers' => 'Chubascos Ligeros',
+			'operation.layout.panels.weatherConditions.showers' => 'Chubascos',
+			'operation.layout.panels.weatherConditions.heavyShowers' => 'Chubascos Intensos',
+			'operation.layout.panels.weatherConditions.lightSnowShowers' => 'Chubascos de Nieve Ligeros',
+			'operation.layout.panels.weatherConditions.snowShowers' => 'Chubascos de Nieve',
+			'operation.layout.panels.weatherConditions.thunderstorm' => 'Tormenta',
+			'operation.layout.panels.weatherConditions.lightThunderstormsWithHail' => 'Tormentas Ligeras con Granizo',
+			'operation.layout.panels.weatherConditions.thunderstormWithHail' => 'Tormenta con Granizo',
 			'operation.layout.panels.websiteDescription' => 'Una página web de tu elección, en un panel',
 			'operation.layout.panels.websiteUrl' => 'Dirección',
 			'operation.layout.panels.websiteRefresh' => 'Actualizar',
@@ -2391,6 +2493,8 @@ extension on TranslationsEs {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.modes' => 'Modos',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',
@@ -2434,8 +2538,6 @@ extension on TranslationsEs {
 			'settings.syncPanel.syncing' => 'Sincronizando',
 			'settings.syncPanel.account' => 'Cuenta',
 			'settings.syncPanel.refresh' => 'Actualizar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',

@@ -31,6 +31,7 @@ import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/clock/clock_panel.dart';
 import 'operation/clock/clock_zones.dart';
+import 'operation/weather/weather_panel.dart';
 import 'operation/website/website_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
@@ -1572,6 +1573,26 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       ],
     ));
     service.registerNative(PanelDefinition(
+      id: weatherPanelId,
+      title: t.tabs.weather,
+      description: t.layout.panels.weatherDescription,
+      icon: 'weather-partly-cloudy',
+      source: PanelSource.native,
+      // Placed once, deliberately, and so its location survives the pane
+      // being removed and put back — see `forgetInstanceConfig`, which names
+      // this panel as the case that distinction exists for.
+      formFields: [
+        {
+          'type': 'field',
+          'key': weatherLocationKey,
+          'fieldType': 'text',
+          'label': t.layout.panels.weatherLocation,
+          'description': t.layout.panels.weatherLocationDescription,
+          'value': '',
+        },
+      ],
+    ));
+    service.registerNative(PanelDefinition(
       id: websitePanelId,
       title: t.tabs.website,
       description: t.layout.panels.websiteDescription,
@@ -1664,6 +1685,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 key: ValueKey('panel-$id'),
                 panelId: id,
                 panels: widget.services.panels,
+                onTitle: (title) => _onPanelTitle(id, title),
+              )
+            else if (id == weatherPanelId)
+              id: WeatherPanel(
+                key: const ValueKey('panel-$weatherPanelId'),
+                panelId: id,
+                panels: widget.services.panels,
+                settings: widget.services.settings,
+                // The saved operation's grid, not the draft's: the pane
+                // refetches when this changes, and a half-typed grid square
+                // would send a request per keystroke.
+                operationGrid: operation.grid,
                 onTitle: (title) => _onPanelTitle(id, title),
               )
             else if (PanelDefinition.descriptorIdOf(id) == websitePanelId)

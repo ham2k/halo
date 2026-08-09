@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New **Weather** pane — conditions now, over a curve of the next eight hours"
+
 "131":
   changes:
     - "Use the `LAYOUT` command to enable layout customization."

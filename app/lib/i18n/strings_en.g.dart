@@ -1644,6 +1644,9 @@ class Translations$operation$tabs$en {
 	/// en: 'Clock'
 	String get clock => 'Clock';
 
+	/// en: 'Weather'
+	String get weather => 'Weather';
+
 	/// en: 'Web Site'
 	String get website => 'Web Site';
 }
@@ -3192,6 +3195,47 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Show the date'
 	String get clockShowDate => 'Show the date';
 
+	/// en: 'Conditions now and for the next eight hours, where you're operating'
+	String get weatherDescription => 'Conditions now and for the next eight hours, where you\'re operating';
+
+	/// en: 'Location'
+	String get weatherLocation => 'Location';
+
+	/// en: 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation's own location.'
+	String get weatherLocationDescription => 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation\'s own location.';
+
+	/// en: 'This operation has no location yet. Set one on the operation, or give this panel a location in its settings.'
+	String get weatherNoLocation => 'This operation has no location yet. Set one on the operation, or give this panel a location in its settings.';
+
+	/// en: 'Couldn't read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.'
+	String weatherBadLocation({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.';
+
+	/// en: 'Couldn't reach Open-Meteo — no network? Will try again shortly.'
+	String get weatherUnreachable => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.';
+
+	/// en: 'Open-Meteo answered, but not with anything readable. Will try again shortly.'
+	String get weatherUnreadable => 'Open-Meteo answered, but not with anything readable. Will try again shortly.';
+
+	/// en: 'gusts ${speed}'
+	String weatherGusts({required Object speed}) => 'gusts ${speed}';
+
+	/// en: 'just now'
+	String get weatherAgeNow => 'just now';
+
+	/// en: '(one) {${count} min ago} (other) {${count} min ago}'
+	String weatherAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} min ago',
+		other: '${count} min ago',
+	);
+
+	/// en: '(one) {${count} hr ago} (other) {${count} hrs ago}'
+	String weatherAgeHours({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} hr ago',
+		other: '${count} hrs ago',
+	);
+
+	late final Translations$operation$layout$panels$weatherConditions$en weatherConditions = Translations$operation$layout$panels$weatherConditions$en.internal(_root);
+
 	/// en: 'A web page of your choosing, in a pane'
 	String get websiteDescription => 'A web page of your choosing, in a pane';
 
@@ -3775,6 +3819,108 @@ class Translations$settings$station$transports$en {
 	String get wifi => 'WiFi';
 }
 
+// Path: operation.layout.panels.weatherConditions
+class Translations$operation$layout$panels$weatherConditions$en {
+	Translations$operation$layout$panels$weatherConditions$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Unknown'
+	String get unknown => 'Unknown';
+
+	/// en: 'Sunny'
+	String get sunny => 'Sunny';
+
+	/// en: 'Clear'
+	String get clear => 'Clear';
+
+	/// en: 'Mainly Sunny'
+	String get mainlySunny => 'Mainly Sunny';
+
+	/// en: 'Mainly Clear'
+	String get mainlyClear => 'Mainly Clear';
+
+	/// en: 'Partly Cloudy'
+	String get partlyCloudy => 'Partly Cloudy';
+
+	/// en: 'Cloudy'
+	String get cloudy => 'Cloudy';
+
+	/// en: 'Foggy'
+	String get foggy => 'Foggy';
+
+	/// en: 'Rime Fog'
+	String get rimeFog => 'Rime Fog';
+
+	/// en: 'Light Drizzle'
+	String get lightDrizzle => 'Light Drizzle';
+
+	/// en: 'Drizzle'
+	String get drizzle => 'Drizzle';
+
+	/// en: 'Heavy Drizzle'
+	String get heavyDrizzle => 'Heavy Drizzle';
+
+	/// en: 'Light Freezing Drizzle'
+	String get lightFreezingDrizzle => 'Light Freezing Drizzle';
+
+	/// en: 'Freezing Drizzle'
+	String get freezingDrizzle => 'Freezing Drizzle';
+
+	/// en: 'Light Rain'
+	String get lightRain => 'Light Rain';
+
+	/// en: 'Rain'
+	String get rain => 'Rain';
+
+	/// en: 'Heavy Rain'
+	String get heavyRain => 'Heavy Rain';
+
+	/// en: 'Light Freezing Rain'
+	String get lightFreezingRain => 'Light Freezing Rain';
+
+	/// en: 'Freezing Rain'
+	String get freezingRain => 'Freezing Rain';
+
+	/// en: 'Light Snow'
+	String get lightSnow => 'Light Snow';
+
+	/// en: 'Snow'
+	String get snow => 'Snow';
+
+	/// en: 'Heavy Snow'
+	String get heavySnow => 'Heavy Snow';
+
+	/// en: 'Snow Grains'
+	String get snowGrains => 'Snow Grains';
+
+	/// en: 'Light Showers'
+	String get lightShowers => 'Light Showers';
+
+	/// en: 'Showers'
+	String get showers => 'Showers';
+
+	/// en: 'Heavy Showers'
+	String get heavyShowers => 'Heavy Showers';
+
+	/// en: 'Light Snow Showers'
+	String get lightSnowShowers => 'Light Snow Showers';
+
+	/// en: 'Snow Showers'
+	String get snowShowers => 'Snow Showers';
+
+	/// en: 'Thunderstorm'
+	String get thunderstorm => 'Thunderstorm';
+
+	/// en: 'Light Thunderstorms With Hail'
+	String get lightThunderstormsWithHail => 'Light Thunderstorms With Hail';
+
+	/// en: 'Thunderstorm With Hail'
+	String get thunderstormWithHail => 'Thunderstorm With Hail';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3851,6 +3997,7 @@ extension on Translations {
 			'operation.tabs.map' => 'MAP',
 			'operation.tabs.qsosPlain' => 'QSOs',
 			'operation.tabs.clock' => 'Clock',
+			'operation.tabs.weather' => 'Weather',
 			'operation.tabs.website' => 'Web Site',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
@@ -3918,6 +4065,48 @@ extension on Translations {
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
 			'operation.layout.panels.clockShowDate' => 'Show the date',
+			'operation.layout.panels.weatherDescription' => 'Conditions now and for the next eight hours, where you\'re operating',
+			'operation.layout.panels.weatherLocation' => 'Location',
+			'operation.layout.panels.weatherLocationDescription' => 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation\'s own location.',
+			'operation.layout.panels.weatherNoLocation' => 'This operation has no location yet. Set one on the operation, or give this panel a location in its settings.',
+			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.',
+			'operation.layout.panels.weatherUnreachable' => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.',
+			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo answered, but not with anything readable. Will try again shortly.',
+			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'gusts ${speed}',
+			'operation.layout.panels.weatherAgeNow' => 'just now',
+			'operation.layout.panels.weatherAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} min ago', other: '${count} min ago', ), 
+			'operation.layout.panels.weatherAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} hr ago', other: '${count} hrs ago', ), 
+			'operation.layout.panels.weatherConditions.unknown' => 'Unknown',
+			'operation.layout.panels.weatherConditions.sunny' => 'Sunny',
+			'operation.layout.panels.weatherConditions.clear' => 'Clear',
+			'operation.layout.panels.weatherConditions.mainlySunny' => 'Mainly Sunny',
+			'operation.layout.panels.weatherConditions.mainlyClear' => 'Mainly Clear',
+			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Partly Cloudy',
+			'operation.layout.panels.weatherConditions.cloudy' => 'Cloudy',
+			'operation.layout.panels.weatherConditions.foggy' => 'Foggy',
+			'operation.layout.panels.weatherConditions.rimeFog' => 'Rime Fog',
+			'operation.layout.panels.weatherConditions.lightDrizzle' => 'Light Drizzle',
+			'operation.layout.panels.weatherConditions.drizzle' => 'Drizzle',
+			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'Heavy Drizzle',
+			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'Light Freezing Drizzle',
+			'operation.layout.panels.weatherConditions.freezingDrizzle' => 'Freezing Drizzle',
+			'operation.layout.panels.weatherConditions.lightRain' => 'Light Rain',
+			'operation.layout.panels.weatherConditions.rain' => 'Rain',
+			'operation.layout.panels.weatherConditions.heavyRain' => 'Heavy Rain',
+			'operation.layout.panels.weatherConditions.lightFreezingRain' => 'Light Freezing Rain',
+			'operation.layout.panels.weatherConditions.freezingRain' => 'Freezing Rain',
+			'operation.layout.panels.weatherConditions.lightSnow' => 'Light Snow',
+			'operation.layout.panels.weatherConditions.snow' => 'Snow',
+			'operation.layout.panels.weatherConditions.heavySnow' => 'Heavy Snow',
+			'operation.layout.panels.weatherConditions.snowGrains' => 'Snow Grains',
+			'operation.layout.panels.weatherConditions.lightShowers' => 'Light Showers',
+			'operation.layout.panels.weatherConditions.showers' => 'Showers',
+			'operation.layout.panels.weatherConditions.heavyShowers' => 'Heavy Showers',
+			'operation.layout.panels.weatherConditions.lightSnowShowers' => 'Light Snow Showers',
+			'operation.layout.panels.weatherConditions.snowShowers' => 'Snow Showers',
+			'operation.layout.panels.weatherConditions.thunderstorm' => 'Thunderstorm',
+			'operation.layout.panels.weatherConditions.lightThunderstormsWithHail' => 'Light Thunderstorms With Hail',
+			'operation.layout.panels.weatherConditions.thunderstormWithHail' => 'Thunderstorm With Hail',
 			'operation.layout.panels.websiteDescription' => 'A web page of your choosing, in a pane',
 			'operation.layout.panels.websiteUrl' => 'Address',
 			'operation.layout.panels.websiteRefresh' => 'Refresh',
@@ -4252,6 +4441,8 @@ extension on Translations {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.modes' => 'Modes',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',
@@ -4295,8 +4486,6 @@ extension on Translations {
 			'settings.syncPanel.syncing' => 'Syncing',
 			'settings.syncPanel.account' => 'Account',
 			'settings.syncPanel.refresh' => 'Refresh',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',

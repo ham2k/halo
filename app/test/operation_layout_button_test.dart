@@ -157,10 +157,11 @@ void main() {
     // that group is still on Spots, and its band names Spots.
     await startEditing(tester);
     await openAddSheet(tester);
-    // Clock and Web Site are the panes that are never "already in the
-    // view" — both are placeable more than once, so their rows stay on
-    // offer forever.
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'website'],
+    // What stays on offer is everything not already placed: Clock and Web
+    // Site because they are placeable more than once, Weather because it
+    // ships outside the default arrangement. Every pane the discard restored
+    // is gone from this list, which is what it is asserting.
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website'],
         reason: 'every single-placement pane is in the view again');
 
     await unmount(tester);
@@ -172,10 +173,11 @@ void main() {
 
     await startEditing(tester);
     await openAddSheet(tester);
-    // With the whole default arrangement in place, only the repeatable panes
-    // are still on offer. (The empty sheet's own rendering is layout_sheet's
-    // to prove — it cannot be reached from this view any more.)
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'website']);
+    // With the whole default arrangement in place, what is left on offer is
+    // the repeatable panes plus the ones that ship outside it. (The empty
+    // sheet's own rendering is layout_sheet's to prove — it cannot be
+    // reached from this view any more.)
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website']);
     await tester.tap(find.byIcon(MdiIcons.check));
     await tester.pumpAndSettle();
 
@@ -185,10 +187,10 @@ void main() {
     // A pane taken out has to have a way back that isn't Reset Layout.
     // Catalog order is registration order, so the repeatable Clock trails the
     // single-placement panes.
-    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'website']);
+    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'weather', 'website']);
     sheetOf(tester).onAdd!('info');
     await tester.pumpAndSettle();
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'website'],
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website'],
         reason: 'and once back, it is no longer on offer');
 
     await unmount(tester);

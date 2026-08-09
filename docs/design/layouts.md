@@ -297,7 +297,8 @@ registry — `PanelService` (`app/lib/services/panel_service.dart`) — not a
 constant in the view. Two sources write into it:
 
 - **Native panels.** The view registers its own (Operation: QSOs, Info,
-  Spots, Map, Clock) with their title, description, icon and, where they have
+  Spots, Map, Clock, Weather, Web Site) with their title, description, icon
+  and, where they have
   any, the settings *target* whose declared settings make up their settings
   dialog. The service holds identity only: the widget stays with the view
   that builds it, which is what lets the Add a Panel sheet list a panel it
@@ -319,6 +320,12 @@ constant in the view. Two sources write into it:
   instruction list (`<animate>` and `<style>` are dropped outright) and the
   panel tick floors at five seconds, so nothing an extension can return
   sweeps a second hand.
+
+  **Weather is native for the second of those two reasons.** Its eight-hour
+  temperature curve is fitted to whatever was fetched, and a hook that
+  contributes a document has no way to hand back a shape — as a `panel` hook
+  it can only be a table of numbers. Its fetch, cache and refresh are
+  ordinary Dart besides: no bridge call per render, and no five-second floor.
 - **Extension panels.** Every `panel` hook contributes its own
   ([hooks.md](../extensions/hooks.md)). An extension panel is a *document* —
   markdown, SVG, or sandboxed HTML — rendered by `PanelContentView`, never
