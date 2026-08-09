@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# What lands on `main` must be the tree you have.
+#
+# `main` takes one squash commit per task, built with
+# `git commit-tree "HEAD^{tree}"` — the tree of the last COMMIT. The test suite
+# that gates the merge runs against the WORKING tree. Those are the same tree
+# only while nothing is uncommitted, and when they diverge the suite proves one
+# thing and the push ships another: a clean fast-forward, no conflict, no
+# warning, and CI going red on `main` for a defect that had just passed
+# locally.
+#
+# Two conditions, both about the same invariant:
+#   - the working tree is clean, so it IS `HEAD^{tree}`;
+#   - the commit being pushed carries that same tree.
+#
+# The second is what makes this more than a tidiness check: it refuses a commit
+# built from anywhere other than the branch tip in front of you, however it was
+# assembled.
+#
+# UNTRACKED FILES COUNT. A new test file that is not yet added runs in the
+# suite and is absent from the tree — the same divergence, in the direction
+# that flatters the run.
+#
+# Only `refs/heads/main`. Every other branch is a backup or a share; nothing is
+# built on it and CI does not validate it.
+#
+# Two ways past, for the case where the tree deliberately is not the branch tip
+# (importing a commit built elsewhere, a revert of a known-good older tree):
+#   HALO_ALLOW_UNTESTED_MERGE=1 git push …
+#   git push --no-verify …
+set -uo pipefail
+
+PROTECTED_REF="refs/heads/main"
+EMPTY_SHA="$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')"
+
+[ "${HALO_ALLOW_UNTESTED_MERGE:-}" = "1" ] && exit 0
+
+# Resolved once, outside the loop: a push can carry several refs, and these
+# describe the pushing worktree, not any one of them.
+WORKTREE_STATUS="$(git status --porcelain 2>/dev/null)"
+HEAD_TREE="$(git rev-parse --verify --quiet 'HEAD^{tree}' 2>/dev/null || true)"
+
+fail() {
+  printf '\n  REFUSING to push to %s — %s\n\n' "$PROTECTED_REF" "$1" >&2
+  printf '  %s\n\n' "$2" >&2
+  printf '  Deliberate? HALO_ALLOW_UNTESTED_MERGE=1 git push …   (or --no-verify)\n\n' >&2
+  exit 1
+}
+
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  [ "$remote_ref" = "$PROTECTED_REF" ] || continue
+  # An all-zero local sha is a branch DELETE, which carries no tree.
+  [ "$local_sha" = "$EMPTY_SHA" ] && continue
+
+  if [ -n "$WORKTREE_STATUS" ]; then
+    COUNT="$(printf '%s\n' "$WORKTREE_STATUS" | wc -l | tr -d ' ')"
+    fail "the working tree has $COUNT uncommitted change(s), so it is not what was tested:
+$(printf '%s\n' "$WORKTREE_STATUS" | head -5 | sed 's/^/    /')" \
+      "Commit, remove or ignore them — then run the suite again, because the tree
+  it last passed on is no longer the tree you are shipping."
+  fi
+
+  PUSHED_TREE="$(git rev-parse --verify --quiet "${local_sha}^{tree}" 2>/dev/null || true)"
+  if [ -n "$HEAD_TREE" ] && [ -n "$PUSHED_TREE" ] && [ "$PUSHED_TREE" != "$HEAD_TREE" ]; then
+    fail "the commit being pushed does not carry this worktree's tree" \
+      "pushed  $PUSHED_TREE
+  HEAD    $HEAD_TREE
+  Whatever was tested here, it is not what this commit would land."
+  fi
+done
+
+exit 0
