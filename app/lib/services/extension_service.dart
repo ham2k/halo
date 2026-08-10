@@ -100,10 +100,14 @@ const HookPartition emptyHookPartition = (
 /// legitimately throws its own message mentioning a timeout must not be
 /// mistaken for the transport dropping under it. `host.fetch` rejections
 /// cross the bridge stringified and unwrapped, so a dead network arrives here
-/// as `ClientException: Failed host lookup: '<host>'`.
+/// as `ClientException: Failed host lookup: '<host>'` — or, from IOClient's
+/// own socket-wrapping subclass, `ClientException with Failed host lookup:
+/// '<host>', uri=<uri>` — so both prefixes need matching, same as the
+/// ErrorPolicy rule this mirrors.
 bool isTransportFailure(String? error) {
   if (error == null) return false;
   return error.startsWith('ClientException:') ||
+      error.startsWith('ClientException with ') ||
       error.startsWith('SocketException:') ||
       error.startsWith('TimeoutException');
 }

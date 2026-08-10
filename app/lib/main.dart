@@ -349,7 +349,7 @@ void _listenForLinkClientDeepLinks(HaLoServices services) {
       return;
     }
     _openConfirmDevicePane(services, request);
-  });
+  }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:link-client'));
 }
 
 /// Opens the pane once there is a navigator to open it onto.

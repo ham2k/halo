@@ -62,6 +62,26 @@ void main() {
         reason: 'a service that answered badly is not the network');
   });
 
+  test('IOClient\'s socket-wrapping ClientException shape is still unreachable', () {
+    // http's IOClient wraps a DNS/connection failure in a subclass whose
+    // toString() reads "ClientException with $cause, uri=$uri" rather than
+    // plain ClientException's "ClientException: $message" — the same shape
+    // ErrorPolicy._isFetchTransportTransient matches. Missing this prefix
+    // here would route a native app's own dead-network hook into `failed`
+    // instead of `unreachable`, telling the operator to stop expecting spots
+    // from a source that never got a chance to answer.
+    final parts = partitionHookEntries([
+      {
+        'key': 'pota',
+        'ok': false,
+        'error': "ClientException with SocketException: Failed host lookup: 'api.pota.app', uri=https://api.pota.app/spots",
+      },
+    ]);
+
+    expect(parts.unreachable, ['pota']);
+    expect(parts.failed, isEmpty);
+  });
+
   test('a transport failure is not counted as a service error for reporting', () {
     // Only `failed` feeds the failure streak. Counting a dead network would
     // upload one report per source every time an operator drives out of

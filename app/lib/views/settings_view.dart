@@ -31,6 +31,7 @@ import 'panel_use_tracker.dart';
 import '../services/app_storage.dart';
 import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
+import '../services/error_reporting_service.dart';
 import '../services/extension_service.dart';
 import '../services/link_opener.dart';
 import '../services/pusher_service.dart';
@@ -3513,7 +3514,7 @@ class _AccountPaneState extends State<_AccountPane> {
           if (uri.queryParameters['state'] != state) return;
           authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
           navigator.pop(uri.queryParameters['code']);
-        });
+        }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:auth-callback'));
 
         InAppWebViewController? webViewController;
         code = await navigator.push<String>(

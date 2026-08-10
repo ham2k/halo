@@ -24,6 +24,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+import 'package:http/http.dart' show ClientException;
 
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
@@ -190,6 +191,15 @@ class ErrorPolicy {
           'in aggregate, not worth an operator notice for a TCP blip the caller already retries',
       disposition: ErrorDisposition.report,
       matches: _isFetchTransportTransient,
+    ),
+    ErrorRule(
+      id: 'http-client-connection-transient',
+      reason: 'a direct package:http call (DataFileManager and its siblings, not hostFetch) '
+          'failed at the connection layer (DNS, refused, reset) rather than anything our code '
+          'did; worth seeing in aggregate, not worth an operator notice for a caller that '
+          'retries on its own schedule',
+      disposition: ErrorDisposition.report,
+      matches: _isHttpClientConnectionTransient,
     ),
     ErrorRule(
       id: 'map-offline',
@@ -393,16 +403,47 @@ class ErrorPolicy {
   /// after its body may already be in flight — everything else surfaces
   /// here instead, where the caller (SyncEngine's backoff loop, or
   /// whatever else called host.fetch) already tolerates it. An operator
-  /// can't act on a TCP reset, and it isn't a bug of ours.
+  /// can't act on a TCP reset or a DNS lookup failure, and neither is a bug
+  /// of ours.
   ///
   /// Matched by prefix on the wrapped exception's own class name, not by
   /// scanning for a substring anywhere in the message — a hook that
   /// legitimately throws its own "timed out" message (the sibling test in
-  /// `_isExtensionRuntimeDead`'s group) must stay loud.
+  /// `_isExtensionRuntimeDead`'s group) must stay loud. Two prefixes cover
+  /// `ClientException`: `package:http`'s `IOClient` wraps a socket-layer
+  /// failure (DNS, connection refused mid-send) in its own subclass whose
+  /// `toString()` reads `'ClientException with $cause, uri=$uri'` — a plain
+  /// `http.ClientException` reads `'ClientException: $message'` — so both
+  /// forms need matching or a "Failed host lookup" falls through to notify.
   static bool _isFetchTransportTransient(Object error, FlutterErrorDetails? details) {
     if (error is! ExtensionHostException) return false;
-    return error.message.startsWith('ClientException:') || error.message.startsWith('TimeoutException');
+    return error.message.startsWith('ClientException:') ||
+        error.message.startsWith('ClientException with ') ||
+        error.message.startsWith('TimeoutException');
   }
+
+  /// Any direct `package:http` caller's own `Client.send()` failing below
+  /// the application layer — `DataFileManager.downloadFile` is the one that
+  /// reaches this app's global handling today (the others all catch their
+  /// own failures locally); unlike `hostFetch`, which never reaches this app
+  /// as anything but an [ExtensionHostException]. The type alone is narrow
+  /// enough to match on — no message to go stale against, unlike
+  /// [_isFetchTransportTransient] — because `http.ClientException` is never
+  /// thrown for any reason OTHER than a failure sending or receiving the
+  /// request; on web that includes a cross-origin block alongside a plain
+  /// outage (see the doc comment on `friendlyDownloadError`), which is
+  /// exactly why this app already shows the operator one hint covering both
+  /// rather than trying to tell them apart — so `report`, not `logOnly`, to
+  /// keep whichever one it was visible in aggregate.
+  ///
+  /// Deliberately NOT `TimeoutException`: `_fetchAndDecode`'s two
+  /// `.timeout()`s (headers, body) throw that bare, with nothing to scope it
+  /// to a data-file download — and it still has to reach
+  /// `friendlyDownloadError` (which gives it its own translated message) and
+  /// `downloadFile`'s own `on http.ClientException` retry (which reads any
+  /// ClientException there as a rejected CORS preflight, worth a same-call
+  /// retry; a timeout is neither of those things).
+  static bool _isHttpClientConnectionTransient(Object error, FlutterErrorDetails? details) => error is ClientException;
 
   /// A [MapError] stamped offline at arrival. The stamp is the whole match:
   /// with no network there is nothing a map backend can fetch, so every

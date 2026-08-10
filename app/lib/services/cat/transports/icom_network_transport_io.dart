@@ -138,7 +138,9 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       // Both sockets must exist before the request that names their ports.
       serial = await _IcomSession.open(address, icomSerialPort, 'serial');
       audio = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      audio.listen((_) => audio?.receive());
+      // Bound and never read (see the file header) — an error here has no
+      // connection to tear down, only a socket to stop draining.
+      audio.listen((_) => audio?.receive(), onError: (Object e) => debugPrint('[cat] icom audio socket error: $e'));
 
       if (cancel.isCancelled) throw const CatCancelledException();
 
@@ -259,7 +261,11 @@ class _IcomSession {
   static Future<_IcomSession> open(InternetAddress address, int port, String label) async {
     final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
     final session = _IcomSession._(socket, address, port, label);
-    socket.listen(session._onEvent);
+    // Without onError, an async socket-level failure (an ICMP "no route to
+    // host" delivered on the stream rather than thrown from send()) escapes
+    // this listen() raw and unclassified instead of reading as the radio
+    // going quiet, which is what onLost already exists to report.
+    socket.listen(session._onEvent, onError: session._onSocketError);
     // From the local PORT alone, little-endian in the top half — a capture
     // settled this; polo derived it from the IP and got intermittency.
     session.localSid =
@@ -311,15 +317,37 @@ class _IcomSession {
     _pingTimer = Timer.periodic(_pingInterval, (_) {
       if (_closed) return;
       if (_pingsUnanswered >= _maxPingsUnanswered) {
-        final lost = onLost;
-        onLost = null;
-        lost?.call();
+        _declareLost();
         return;
       }
       _pingsUnanswered++;
       final seq = _pingSeq++;
       _send(buildPing(localSid, remoteSid, seq, [seq & 0xFF, 0, 0, 0]));
     });
+  }
+
+  /// A pending handshake step (pkt3/pkt4/pkt6, login, stream request,
+  /// stream token, or logout's own ack) fails right away with the real
+  /// cause — an ICMP "no route to host" reaching this listener means the OS
+  /// already knows the answer, and waiting out _handshakeTimeout to report
+  /// it as a generic silence would throw the diagnosis away. Once nothing
+  /// is pending — the session is up and idling between calls — this reads
+  /// exactly like the radio going quiet, which is what onLost (ping-timeout's
+  /// own path) is for.
+  void _onSocketError(Object error) {
+    debugPrint('[cat] icom $_label socket error: $error');
+    final fail = _failPending;
+    if (fail != null) {
+      fail(error);
+      return;
+    }
+    _declareLost();
+  }
+
+  void _declareLost() {
+    final lost = onLost;
+    onLost = null;
+    lost?.call();
   }
 
   void _onEvent(RawSocketEvent event) {
@@ -421,6 +449,14 @@ class _IcomSession {
     return () => _listeners.remove(callback);
   }
 
+  /// Set by whichever handshake step is currently waiting — `_expect` below,
+  /// or `awaitStreamToken`'s own poll loop. `_onSocketError` calls this
+  /// immediately instead of waiting out the full handshake timeout for a
+  /// cause the OS already reported — onLost, which onSocketError falls back
+  /// to otherwise, isn't wired up until a session this young has actually
+  /// connected.
+  void Function(Object error)? _failPending;
+
   Future<List<int>> _expect(String what, bool Function(List<int>) matches, {Duration? timeout}) {
     final completer = Completer<List<int>>();
     late void Function() stop;
@@ -436,6 +472,9 @@ class _IcomSession {
       stop();
       if (!completer.isCompleted) completer.complete(bytes);
     });
+    _failPending = (error) {
+      if (!completer.isCompleted) completer.completeError(error);
+    };
     return completer.future;
   }
 
@@ -506,19 +545,22 @@ class _IcomSession {
   /// The 16-byte token from the radio's unsolicited 0xa8, at offset 66.
   Future<List<int>> awaitStreamToken() async {
     List<int>? token;
+    Object? socketError;
     final stop = onMessage((b) {
       if (b.length == 168 && icomPrefixIs(b, [0xa8, 0, 0, 0, 0, 0])) token = b.sublist(66, 82);
     });
+    _failPending = (error) => socketError = error;
     sendTracked(buildAuth(
         local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: _authId!));
 
     // Real time: a protocol timeout measures how long the radio actually took
     // to answer, which has nothing to do with what time the app thinks it is.
     final deadline = realNowUtc().add(_handshakeTimeout);
-    while (token == null && realNowUtc().isBefore(deadline)) {
+    while (token == null && socketError == null && realNowUtc().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 25));
     }
     stop();
+    if (socketError != null) throw socketError!;
     if (token == null) throw TimeoutException('the radio never sent its stream token');
     return token!;
   }
@@ -594,10 +636,14 @@ class _IcomSession {
         local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x01, authId: authId));
     try {
       await ack;
-    } on TimeoutException {
+    } catch (e) {
+      // ANY failure to get the ack — a timeout or a socket error alike —
+      // leaves the radio in the same state, and this is the caller's last
+      // step before closing the socket: nothing upstream can retry it.
+      //
       // Worth saying out loud: this is the state in which the next connect
       // is likely to be refused, and it is otherwise invisible.
-      debugPrint('[cat] icom: no logout acknowledgement — the radio may still hold the login');
+      debugPrint('[cat] icom: no logout acknowledgement ($e) — the radio may still hold the login');
     }
   }
 

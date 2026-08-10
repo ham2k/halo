@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
 // The io implementations directly, as cat_ic705_network_test.dart does: the
@@ -375,6 +376,20 @@ void main() {
       );
     });
 
+    test('a DNS lookup failure wrapped by http.IOClient is reported, not noticed', () {
+      // http's IOClient wraps a socket-layer failure in its OWN subclass,
+      // whose toString() reads "ClientException with $cause, ..." rather
+      // than plain ClientException's "ClientException: $message" — a
+      // format the prefix check must match too, or every DNS blip on a
+      // captive portal or dead WiFi notifies the operator.
+      expect(
+        dispositionFor(ExtensionHostException("ClientException with SocketException: Failed host lookup: "
+            "'lofi.ham2k.net' (OS Error: No address associated with hostname, errno = 7), "
+            "uri=https://lofi.ham2k.net/v1/sync")),
+        ErrorDisposition.report,
+      );
+    });
+
     test('a hook call timing out on its own is NOT swallowed', () {
       // Distinct from _hostFetch's transport timeout: a hook that simply
       // takes too long (spots.fetchSpots, say) throws its own message,
@@ -390,6 +405,33 @@ void main() {
       // Only the host's own exception type is exempt.
       expect(
         dispositionFor(StateError('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')),
+        ErrorDisposition.notify,
+      );
+    });
+  });
+
+  group('http client connection transience', () {
+    // DataFileManager talks to package:http directly rather than through
+    // hostFetch, so its connection failures reach the policy as a raw
+    // ClientException, not an ExtensionHostException — a different rule
+    // from fetch-transport-transient, matched on type alone since
+    // ClientException has no other cause.
+    test('a connection failure is reported, not noticed', () {
+      expect(
+        dispositionFor(ClientException('Connection reset by peer')),
+        ErrorDisposition.report,
+      );
+    });
+
+    test('a bare TimeoutException is NOT swallowed', () {
+      // Deliberately excluded: _fetchAndDecode's headers/body timeouts throw
+      // this bare, and it still has to reach friendlyDownloadError's own
+      // translated message and downloadFile's CORS-preflight retry, both of
+      // which only trigger on ClientException. TimeoutException is also too
+      // generic a type to match on its own app-wide — see the sibling test
+      // in the fetch-transport-transience group.
+      expect(
+        dispositionFor(TimeoutException('the radio did not answer: pkt4')),
         ErrorDisposition.notify,
       );
     });
