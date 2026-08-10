@@ -84,10 +84,24 @@ const _reauthInterval = Duration(seconds: 30);
 /// which is far longer than the radio waits before giving up on a packet.
 const _sentBufferSize = 128;
 
+Future<RawDatagramSocket> _bindSocket(InternetAddress address, int port) {
+  final binder = IcomNetworkTransport.debugSocketBinder;
+  return binder != null ? binder(address, port) : RawDatagramSocket.bind(address, port);
+}
+
 class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportConfig {
   const IcomNetworkTransport();
 
   static const transportKey = 'icom-network';
+
+  /// Test seam: overrides every `RawDatagramSocket.bind` this transport
+  /// makes (control, serial, audio, always `(InternetAddress.anyIPv4, 0)` —
+  /// the three sockets are indistinguishable by bind arguments, so a test
+  /// double dispenses them by the fixed call order `_attempt` and
+  /// `_IcomSession.open` already use: control, then serial, then audio).
+  /// Null in production.
+  @visibleForTesting
+  static Future<RawDatagramSocket> Function(InternetAddress address, int port)? debugSocketBinder;
 
   @override
   String get key => transportKey;
@@ -125,37 +139,83 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
     _IcomSession? serial;
     RawDatagramSocket? audio;
 
+    // A session's own _failPending only fails the ONE step it's actively
+    // waiting on — every gap between steps (opening the other session,
+    // binding audio, the moment between one await returning and the next
+    // starting) has nothing pending and no onLost yet either (that's wired
+    // by _IcomConnection, which doesn't exist until this whole function
+    // returns). `lost` is what a session's onSetupLost (see _onSocketError)
+    // reports into instead, and racing every step against it below is what
+    // turns a socket error ANYWHERE in this setup into an immediate failure
+    // with its real cause, rather than riding out whatever step happens to
+    // be in flight next until IT times out with a generic message.
+    final lost = Completer<Never>();
+    Future<T> raceLost<T>(Future<T> step) => Future.any<T>([step, lost.future]);
+    void onSetupLost(_IcomSession session) {
+      session.onSetupLost = (error) {
+        if (!lost.isCompleted) lost.completeError(error);
+      };
+    }
+    // For the two steps below that can't be raced (see their own comment):
+    // if the step ALSO fails on its own — the same outage that killed the
+    // other session plausibly kills this one's handshake too — prefer
+    // `lost`'s cause over whatever generic error the doomed step produced.
+    // It is the earlier, more specific one; without this, a real captured
+    // SocketException would be silently replaced by a plain handshake
+    // TimeoutException from a session that never had a chance.
+    Future<T> preferLostCause<T>(Future<T> Function() step) async {
+      try {
+        return await step();
+      } catch (_) {
+        if (lost.isCompleted) await lost.future;
+        rethrow;
+      }
+    }
+
     try {
       control = await _IcomSession.open(address, icomControlPort, 'control');
+      onSetupLost(control);
       if (cancel.isCancelled) throw const CatCancelledException();
 
       // The radio volunteers a 0x90 during login; it is informational, and
       // taking it instead of sending our own is what left polo's radio
       // never told where to send CI-V.
-      final authId = await control.login(username: username, password: password);
-      final token = await control.awaitStreamToken();
+      final authId = await raceLost(control.login(username: username, password: password));
+      final token = await raceLost(control.awaitStreamToken());
 
       // Both sockets must exist before the request that names their ports.
-      serial = await _IcomSession.open(address, icomSerialPort, 'serial');
-      audio = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      // Not raced: assigning through a generic wrapper's return type loses
+      // the flow-analysis promotion `serial`/`audio` need for every later
+      // use, hence the plain locals below instead. preferLostCause is what
+      // still surfaces a control failure from during either wait, in place
+      // of whatever these two produce on their own if the same outage
+      // takes them down too.
+      final serialSession = await preferLostCause(() => _IcomSession.open(address, icomSerialPort, 'serial'));
+      serial = serialSession;
+      onSetupLost(serialSession);
+      final audioSocket = await preferLostCause(() => _bindSocket(InternetAddress.anyIPv4, 0));
+      audio = audioSocket;
       // Bound and never read (see the file header) — an error here has no
       // connection to tear down, only a socket to stop draining.
-      audio.listen((_) => audio?.receive(), onError: (Object e) => debugPrint('[cat] icom audio socket error: $e'));
+      audioSocket.listen(
+          (_) => audioSocket.receive(), onError: (Object e) => debugPrint('[cat] icom audio socket error: $e'));
 
       if (cancel.isCancelled) throw const CatCancelledException();
 
-      await control.requestStreams(
+      await raceLost(control.requestStreams(
         authId: authId,
         token: token,
         username: username,
-        serialPort: serial.localPort,
-        audioPort: audio.port,
-      );
+        serialPort: serialSession.localPort,
+        audioPort: audioSocket.port,
+      ));
 
-      serial.sendTracked(buildSerialOpen(serial.localSid, serial.remoteSid, 0,
-          magic: icomSerialOpenMagic));
+      serialSession.sendTracked(
+          buildSerialOpen(serialSession.localSid, serialSession.remoteSid, 0, magic: icomSerialOpenMagic));
 
-      return _IcomConnection(control: control, serial: serial, audio: audio, authId: authId);
+      control.onSetupLost = null;
+      serialSession.onSetupLost = null;
+      return _IcomConnection(control: control, serial: serialSession, audio: audioSocket, authId: authId);
     } catch (e) {
       // Log out on the way out too — a half-built session the radio still
       // holds is what makes the NEXT connect fail.
@@ -251,15 +311,26 @@ class _IcomSession {
   /// rather than trusting a stale frequency into a logged QSO.
   static const _maxPingsUnanswered = 3;
 
-  /// Fires once when the radio has gone quiet for too long.
+  /// Fires once when the radio has gone quiet for too long. Set only once
+  /// this session is part of a live [_IcomConnection] — before that,
+  /// [onSetupLost] is what a socket error still in _attempt's setup phase
+  /// reaches instead.
   void Function()? onLost;
+
+  /// Fires once, with the real cause, for a socket error that arrives after
+  /// this session's own handshake is done but before _attempt has built an
+  /// [_IcomConnection] to hand it to [onLost]. A gap [onLost] can't cover:
+  /// _attempt sets this immediately once the session opens, and clears it
+  /// (setting the real onLost instead) once the connection exists — see
+  /// _attempt's own use of it for why every await in between needs it.
+  void Function(Object error)? onSetupLost;
 
   _IcomSession._(this._socket, this._address, this._port, this._label);
 
   int get localPort => _socket.port;
 
   static Future<_IcomSession> open(InternetAddress address, int port, String label) async {
-    final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+    final socket = await _bindSocket(InternetAddress.anyIPv4, 0);
     final session = _IcomSession._(socket, address, port, label);
     // Without onError, an async socket-level failure (an ICMP "no route to
     // host" delivered on the stream rather than thrown from send()) escapes
@@ -331,14 +402,24 @@ class _IcomSession {
   /// cause — an ICMP "no route to host" reaching this listener means the OS
   /// already knows the answer, and waiting out _handshakeTimeout to report
   /// it as a generic silence would throw the diagnosis away. Once nothing
-  /// is pending — the session is up and idling between calls — this reads
-  /// exactly like the radio going quiet, which is what onLost (ping-timeout's
-  /// own path) is for.
+  /// is pending, this reads exactly like the radio going quiet: onSetupLost
+  /// while _attempt is still assembling the connection, onLost afterwards
+  /// (ping-timeout's own path).
   void _onSocketError(Object error) {
     debugPrint('[cat] icom $_label socket error: $error');
+    // Same fire-once-then-forget shape as _declareLost/onLost below: the
+    // step that owns _failPending clears it back to null the moment it
+    // resolves on its own (see _expect and awaitStreamToken), so non-null
+    // here always means genuinely still pending, never a stale leftover.
     final fail = _failPending;
+    _failPending = null;
     if (fail != null) {
       fail(error);
+      return;
+    }
+    final setupLost = onSetupLost;
+    if (setupLost != null) {
+      setupLost(error);
       return;
     }
     _declareLost();
@@ -450,26 +531,43 @@ class _IcomSession {
   }
 
   /// Set by whichever handshake step is currently waiting — `_expect` below,
-  /// or `awaitStreamToken`'s own poll loop. `_onSocketError` calls this
-  /// immediately instead of waiting out the full handshake timeout for a
-  /// cause the OS already reported — onLost, which onSocketError falls back
-  /// to otherwise, isn't wired up until a session this young has actually
-  /// connected.
+  /// or `awaitStreamToken`'s own poll loop — and cleared back to null the
+  /// moment that step resolves on its own, same as `onLost` is for
+  /// `_declareLost`. `_onSocketError` calls this immediately instead of
+  /// waiting out the full handshake timeout for a cause the OS already
+  /// reported — onLost/onSetupLost, which onSocketError falls back to
+  /// otherwise, aren't wired up until later in a session's life.
   void Function(Object error)? _failPending;
+
+  /// Every `_expect` Timer still running, so `close` can cancel them all.
+  /// `Future.any` in `_attempt`'s `raceLost` doesn't cancel a losing step —
+  /// this session may keep waiting on its own request for up to
+  /// `_handshakeTimeout` after the caller has already moved on — and a
+  /// SET, not a single slot, is what a losing step's timer needs: `close`
+  /// itself calls `logout`, whose own `_expect` starts a second one before
+  /// the abandoned first has fired, and a single slot would just lose the
+  /// reference to it rather than cancel it.
+  final _pendingExpectTimers = <Timer>{};
 
   Future<List<int>> _expect(String what, bool Function(List<int>) matches, {Duration? timeout}) {
     final completer = Completer<List<int>>();
     late void Function() stop;
-    final timer = Timer(timeout ?? _handshakeTimeout, () {
+    late Timer timer;
+    timer = Timer(timeout ?? _handshakeTimeout, () {
+      _pendingExpectTimers.remove(timer);
       stop();
+      _failPending = null;
       if (!completer.isCompleted) {
         completer.completeError(TimeoutException('the radio did not answer: $what'));
       }
     });
+    _pendingExpectTimers.add(timer);
     stop = onMessage((bytes) {
       if (!matches(bytes)) return;
+      _pendingExpectTimers.remove(timer);
       timer.cancel();
       stop();
+      _failPending = null;
       if (!completer.isCompleted) completer.complete(bytes);
     });
     _failPending = (error) {
@@ -560,8 +658,14 @@ class _IcomSession {
       await Future<void>.delayed(const Duration(milliseconds: 25));
     }
     stop();
+    // Marks this step resolved for _failPending too, same as _expect's own
+    // Timer always completing its completer — without this, a plain timeout
+    // here (no error, no token) leaves the hook non-null, misreading as
+    // still pending to any later caller, which is the exact trap this whole
+    // mechanism exists to close.
+    _failPending = null;
+    socketError ??= token == null ? TimeoutException('the radio never sent its stream token') : null;
     if (socketError != null) throw socketError!;
-    if (token == null) throw TimeoutException('the radio never sent its stream token');
     return token!;
   }
 
@@ -653,6 +757,10 @@ class _IcomSession {
     _idleTimer?.cancel();
     _pingTimer?.cancel();
     _reauthTimer?.cancel();
+    for (final timer in _pendingExpectTimers) {
+      timer.cancel();
+    }
+    _pendingExpectTimers.clear();
     if (serialStream) {
       // sendTracked, not _send: it stamps the outer sequence number, which a
       // working client fills in here rather than leaving at zero.
