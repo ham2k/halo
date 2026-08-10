@@ -138,12 +138,13 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
   /// means the window merely lost focus while still on screen.
   bool _appVisible = true;
 
-  /// Whether this platform can host a web view at all. Pessimistic until the
-  /// Windows probe answers — and the probe is the point: reading
-  /// `WindowsWebView.resolved` without ever calling `isAvailable()` is why
-  /// HTML extension panels report "unsupported" on Windows until the Map pane
-  /// or a login happens to have run first.
-  bool _webviewSupported = kIsWeb;
+  /// Whether this platform can host a web view at all. Asking is the point:
+  /// `WindowsWebView.resolved` is null until something calls `isAvailable()`,
+  /// so a pane that only reads it says "unsupported" on a perfectly capable
+  /// Windows machine for as long as nothing else in the session happens to
+  /// ask. Starts [WebviewSupport.pending] rather than guessing — see
+  /// [probeWebviewSupport].
+  WebviewSupport _webviewSupported = WebviewSupport.pending;
 
   Map<String, dynamic> _config = const {};
   int _configRevision = 0;
@@ -177,28 +178,18 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     unawaited(_loadConfig());
   }
 
-  /// Web has an iframe, Linux has nothing, and Windows has to be asked. The
-  /// answer costs a cold browser-process spawn the first time in a session,
-  /// so it arrives late and must reach `setState` rather than leaving the
-  /// pane on its pessimistic default.
+  /// The shared rule, plus this pane's own test seam. The answer costs a cold
+  /// browser-process spawn the first time in a session, so it arrives late and
+  /// must reach `setState` rather than leaving the pane on whatever it guessed.
   void _probeWebview() {
     final forced = widget.webviewSupported;
     if (forced != null) {
-      _webviewSupported = forced;
+      _webviewSupported = forced ? WebviewSupport.yes : WebviewSupport.no;
       return;
     }
-    if (kIsWeb) return;
-    if (defaultTargetPlatform == TargetPlatform.linux) return;
-    if (defaultTargetPlatform != TargetPlatform.windows) {
-      _webviewSupported = true;
-      return;
-    }
-    _webviewSupported = WindowsWebView.resolved ?? false;
-    if (WindowsWebView.resolved == null) {
-      WindowsWebView.isAvailable().then((ok) {
-        if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
-      });
-    }
+    _webviewSupported = probeWebviewSupport((ok) {
+      if (mounted) setState(() => _webviewSupported = ok ? WebviewSupport.yes : WebviewSupport.no);
+    });
   }
 
   static bool _visibleIn(AppLifecycleState state) =>
@@ -376,7 +367,13 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
       );
     }
 
-    if (!_webviewSupported) {
+    if (_webviewSupported == WebviewSupport.pending) {
+      // Nothing to say yet. The refusal below reads as a verdict, and on
+      // Windows the real answer can be half a minute away.
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_webviewSupported == WebviewSupport.no) {
       // The layout keeps its pane and the operator still reaches the site.
       return _message(t.websiteUnsupported, url: uri.toString());
     }

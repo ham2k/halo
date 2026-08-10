@@ -3,10 +3,13 @@
 //
 // The OAuth login leg for platforms that can't catch a custom-scheme
 // redirect at all: Web (a browser tab navigating to a non-http(s)
-// scheme just fails) and Linux (`flutter_inappwebview` ships no Linux
-// implementation, and nothing in the app's `.desktop`/GTK setup can receive
-// the scheme as a deep link either — see the git history of the now-deleted
-// oauth_browser_login.dart for the full rationale). Everywhere else
+// scheme just fails) and Linux (no web view — the endorsed Linux
+// implementation needs WPE WebKit and is overridden away in
+// `app/pubspec.yaml`, see [quirks.md](../../../docs/quirks.md) — and nothing
+// in the app's `.desktop`/GTK setup can receive the scheme as a deep link
+// either, so a web view alone would not retire this leg; see the git history
+// of the now-deleted oauth_browser_login.dart for that rationale).
+// Everywhere else
 // (macOS/Windows/Android/iOS) `_doOAuth` (settings_view.dart) still uses the
 // original in-app webview + `DeepLinkService` interception, unchanged —
 // `oauthUsesWebhookRelay` below is what picks between the two.

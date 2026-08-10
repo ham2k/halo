@@ -4,33 +4,112 @@ Workarounds we carry for upstream or platform bugs. Each entry records what
 breaks, why, and where the fix lives — so nobody later "cleans up" a
 load-bearing workaround without knowing what it protects.
 
-## `flutter_inappwebview` has no Linux implementation
+## `flutter_inappwebview_macos` does not compile under Swift Package Manager
 
-**Breaks:** anything that builds an `InAppWebView` crashes on Linux — an
-assertion in debug, a `TypeError` in release, at widget build time. The plugin
-declares `android/ios/macos/web/windows` (6.1.5) and is absent from
-`app/linux/flutter/generated_plugin_registrant.cc`; `codemagic.yaml` excludes it
-from the Linux build deliberately. It compiles; it dies when the route builds.
+**Breaks:** `flutter build macos` fails outright — not a test failure, so the
+Dart suite passes clean while the app cannot be built.
+
+> error: protocol 'ASWebAuthenticationPresentationContextProviding' requires
+> 'presentationAnchor(for:)' to be available in macOS 10.14 and newer
+
+The plugin's `Package.swift` declares `.macOS("10.14")`, but its own
+`presentationAnchor(for:)` — the witness for that protocol — is annotated
+`@available(macOS 10.15, *)`, and Swift requires a witness to be available at
+the conformance's minimum. Under CocoaPods this never bit, because Flutter's
+podhelper raises every pod's `MACOSX_DEPLOYMENT_TARGET` to the app's (10.15);
+SPM honours the package's own declaration and an app cannot raise it. 6.2 is
+the first version to ship an SPM manifest, so the bug arrives with it. iOS is
+unaffected — there the same witness is annotated `@available(iOS 12.0, *)`,
+matching its declared `.iOS("12.0")`.
+
+**Carried for it:** `packages/flutter_inappwebview_macos_patched`, a copy of
+the published package that is byte-identical apart from that one line, wired
+in through `dependency_overrides`. Its `PATCH.md` holds the verification and
+re-vendoring commands.
+
+**Rejected alternatives**, both tested rather than assumed:
+
+- Holding `flutter_inappwebview_macos` at 1.1.2 while the rest takes the beta.
+  Resolves, and `flutter analyze` passes — then the kernel snapshot fails,
+  because the old implementation reads
+  `PlatformPrintJobControllerCreationParams.onComplete`, which the beta's
+  platform interface no longer has. **Analyze does not validate a dependency
+  override; only a build does.**
+- `flutter: config: enable-swift-package-manager: false` in `app/pubspec.yaml`
+  — a genuine project-scoped switch that beats global config, but it moves
+  *every* Apple plugin back to CocoaPods (mapbox, sentry, sqlite3 included),
+  needs a `pod repo update` locally and in CI, and runs against Flutter's own
+  push to deintegrate CocoaPods.
+
+**When to revisit:** when an upstream release declares `.macOS("10.15")` or
+later. Upstream has not committed since 2026-02-10.
+
+## Linux has no web view, and the override in `app/pubspec.yaml` keeps it that way
+
+**Breaks:** anything that builds an `InAppWebView` dies on Linux at widget
+build time — an assertion in debug, a `TypeError` in release.
+
+`flutter_inappwebview` 6.2 endorses a Linux implementation, so the absence is
+now deliberate rather than incidental. That implementation is backed by WPE
+WebKit, and `flutter_inappwebview_linux`'s CMake is a `FATAL_ERROR` when WPE
+is missing. No Ubuntu after 22.04 ships WPE in any form — Launchpad #1981592
+removed it as an "unmaintained web engine" **and** blacklisted Debian syncs —
+and that includes the noble image `linux-x64-next-release` and
+`linux-arm64-next-release` build on. Taking the real package fails the
+AppImage builds at CMake configure time.
+
+So `app/pubspec.yaml` carries a `dependency_overrides` entry pointing
+`flutter_inappwebview_linux` at `packages/flutter_inappwebview_linux_stub`,
+a package of the same name whose Linux plugin declaration is Dart-only
+(`dartPluginClass`, no `pluginClass`) and whose `registerWith` deliberately
+registers nothing. Result: `native_build: false`, no CMake on the Linux
+builders, and `InAppWebViewPlatform.instance` unset exactly as before.
+
+**Do not "fix" this by deleting the override.** It is what keeps both Linux
+release workflows building — and `app_dist/pubspec.yaml` carries the same
+block, because `dependency_overrides` apply only in the package being
+resolved as root and do not reach a package that path-depends on `app`.
+Keep the two lists identical.
+
+`app/test/webview_plugin_overrides_test.dart` enforces all of this, so the
+warning above is not the only thing standing between a tidy-up and a broken
+release. It asserts against the generated `.flutter-plugins-dependencies`
+that Linux still resolves to the stub with `native_build: false`, that macOS
+still resolves to the patched copy, and — by calling it — that the stub's
+`registerWith` leaves `InAppWebViewPlatform.instance` untouched. Removing
+the override fails all three tests in its `the Linux web view stays absent`
+group; the published package's own `registerWith` registers a real instance,
+which is what the last of the three catches.
+
+It cannot catch the native half. Nothing in the Dart suite compiles Swift or
+configures CMake, so a re-vendored macOS package missing its one patched
+line passes everything and breaks `flutter build macos`.
 
 **Carried for it:**
 
-- **OAuth login** (`app/lib/views/oauth_browser_login.dart`, #430/#431). On
-  platforms with no webview the login runs in the system browser and the
-  provider's redirect comes back as a link the operator PASTES. Paste is the
-  only working return path on Linux, not a fallback: the `.desktop` file
-  registers no scheme handler and has no `%u` (#260), `app_links` there is fed
-  only by gtk `command-line`/`open` signals our runner never emits (it overrides
-  `local_command_line` and calls `g_application_activate`), and the runner is
-  `G_APPLICATION_NON_UNIQUE`. Fixing that needs #260 **plus** the runner.
+- **OAuth login** (`app/lib/views/oauth_relay_login.dart`). Linux and Web both
+  route through LoFi's webhook relay instead of the in-app webview, picked by
+  `oauthUsesWebhookRelay`. On Linux a custom-scheme redirect has no way home
+  even with a webview: the `.desktop` file registers no scheme handler and has
+  no `%u`, `app_links` is fed only by gtk `command-line`/`open` signals our
+  runner never emits (it overrides `local_command_line` and calls
+  `g_application_activate`), and the runner is `G_APPLICATION_NON_UNIQUE`. A
+  web view alone would not retire this.
 - **Maps** (`app/lib/views/operation/map_panel.dart`). Linux falls through to the
   OSM backend rather than the Mapbox webview one — see the Linux entry in
   [backlog.md](backlog.md).
+- **HTML extension panels** (`app/lib/views/operation/panel_content_view.dart`).
+  The pane's own probe returns early for Linux, so it stays on the
+  `htmlPanelUnsupported` message and never constructs a web view.
+- **The Web Site panel** (`app/lib/views/operation/website/website_panel.dart`).
+  Its probe returns early for Linux, so the pane shows `websiteUnsupported`
+  and offers the site to the OS browser instead of showing a page. This is the
+  only entry here an operator can add deliberately and then find inert, so it
+  is the one most likely to be reported as a bug.
 
-**When to revisit:** the same trigger the map entry already carries — when
-`flutter_inappwebview` 6.2 goes stable, since 6.2.0-beta.3 endorses a WPE WebKit
-Linux implementation ([backlog.md](backlog.md)). BOTH of the above want
-revisiting together: they are one gap, and whoever bumps the plugin for the map
-has no reason to discover the login page.
+**When to revisit:** HALO-220 holds the engine evaluation and the triggers.
+"When 6.2 goes stable" is retired as a trigger — we took the beta, and it did
+not help.
 
 ## `flutter_secure_storage` on Linux needs libsecret AND a Secret Service
 

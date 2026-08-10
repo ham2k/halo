@@ -1,0 +1,73 @@
+# Deliberately named `flutter_inappwebview_linux`: this package REPLACES the
+# published one through `dependency_overrides` in app/pubspec.yaml, so the
+# name must match what `flutter_inappwebview` endorses. The directory carries
+# the `_stub` suffix so `packages/` doesn't read as a vendored copy.
+#
+# `flutter_inappwebview` declares `linux: default_package:
+# flutter_inappwebview_linux` unconditionally, and the real implementation's
+# CMakeLists is a FATAL_ERROR when WPE WebKit is absent. WPE is in no Ubuntu
+# release after 22.04 (Launchpad #1981592 removed it AND blacklisted Debian
+# syncs), so with the real package both AppImage builds fail to configure.
+#
+# The plugin block below declares `dartPluginClass` and NOT `pluginClass`,
+# which is what makes this a Dart-only implementation: Flutter accepts it as
+# the endorsed Linux package — without it every `pub get` warns four times
+# that the default package "is not a plugin package" — while building no
+# native code, so nothing new has to compile on the AppImage builders. The
+# registrant then calls a `registerWith` that deliberately registers nothing,
+# leaving `InAppWebViewPlatform.instance` unset on Linux exactly as it is with
+# no implementation at all.
+#
+# FIVE files reach into this plugin, and each is kept off Linux by a guard
+# that does not have to live in the same file as the call it protects. None of
+# the guards consults `canUseWebView` — that is `WindowsWebView.isAvailable()`,
+# which returns TRUE off Windows:
+#
+#   - app/lib/views/settings_view.dart, the OAuth login page — guarded from
+#     app/lib/views/oauth_relay_login.dart, whose `oauthUsesWebhookRelay`
+#     diverts Linux to the webhook relay before the page can build one.
+#   - app/lib/views/operation/panel_content_view.dart, the HTML extension
+#     panel — guarded in place: the pane's own probe returns early for Linux,
+#     leaving it on the `htmlPanelUnsupported` message and never constructing
+#     a view.
+#   - app/lib/views/operation/website/website_panel.dart, the Web Site pane —
+#     guarded in place: the probe returns early for Linux, so the pane shows
+#     `websiteUnsupported` and offers the site to the OS browser instead.
+#   - app/lib/views/map/mapbox_webview_map_view.dart, the Mapbox map backend —
+#     guarded from app/lib/views/operation/map_panel.dart, which takes the
+#     webview branch only on macOS/Windows, so Linux reaches OSM instead.
+#   - app/lib/services/windows_webview.dart — the odd one out: it creates the
+#     WebView2 environment rather than a view, and is guarded by being
+#     Windows-only, so Linux never reaches the call.
+#
+# app/test/webview_call_sites_test.dart asserts that those five files are
+# exactly the set reaching a plugin entry point that needs a registered
+# platform implementation, so a sixth fails the suite rather than quietly
+# joining a list here that no longer matches.
+#
+# Retiring this stub means revisiting all five. Miss one and it keeps
+# refusing a web view that now exists, silently: the Web Site pane in
+# particular would go on saying "unsupported" with nothing logged.
+#
+# Retire this when Linux gets a web view we can actually ship (HALO-220): the
+# override slot is where that implementation plugs in.
+name: flutter_inappwebview_linux
+description: "Stands in for the WPE-backed flutter_inappwebview_linux, which cannot build on the distros we ship."
+version: 0.1.0-beta.1
+publish_to: 'none'
+homepage:
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    implements: flutter_inappwebview
+    platforms:
+      linux:
+        dartPluginClass: LinuxInAppWebViewPlatform

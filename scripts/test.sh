@@ -183,9 +183,23 @@ list_groups() {
 check_clock_discipline() {
   echo "▶ clock discipline: every 'now' goes through AppClock (docs/design/time.md)"
   local dirs=("$ROOT_DIR/app/lib")
-  local d
+  # A vendored copy of a third-party package is not ours to hold to this rule:
+  # its whole value is being byte-identical to what pub.dev published, so the
+  # advice this check prints — rewrite the call against halo_core — cannot be
+  # followed without destroying that.
+  #
+  # The exemption is this list and nothing else. Inferring it from something
+  # the package carries (a PATCH.md, a pubspec field) would let a package leave
+  # the guard as a side effect of documenting itself, with no diff here for a
+  # reviewer to object to; leaving the guard has to cost a visible edit to the
+  # gate.
+  local exempt=(flutter_inappwebview_macos_patched)
+  local d name
   for d in "$ROOT_DIR"/packages/*/lib; do
-    [[ -d "$d" ]] && dirs+=("$d")
+    [[ -d "$d" ]] || continue
+    name=$(basename "${d%/lib}")
+    [[ " ${exempt[*]} " == *" $name "* ]] && continue
+    dirs+=("$d")
   done
   [[ -d "$ROOT_DIR/app_dist/lib" ]] && dirs+=("$ROOT_DIR/app_dist/lib")
 
@@ -508,6 +522,15 @@ changed_subset() {
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
       packages/halo_widgets/*) groups="$groups widgets" ;;
       packages/halo_cli/*) groups="$groups cli" ;;
+      # Neither has tests of its own; app/test/webview_plugin_overrides_test
+      # is what covers them, so `app` is the right group: that the overrides
+      # still resolve where they should, that the stub still registers
+      # nothing, and that the vendored macOS Package.swift still carries the
+      # .macOS("10.15") line without which `flutter build macos` fails.
+      # Nothing here compiles Swift or configures CMake, so that last one is a
+      # check on the SOURCE LINE — the build itself is never exercised.
+      packages/flutter_inappwebview_linux_stub/*) groups="$groups app" ;;
+      packages/flutter_inappwebview_macos_patched/*) groups="$groups app" ;;
       # A package this mapping doesn't know (new or renamed) must not fall
       # into the silent catch-all and read as "docs".
       packages/*)
@@ -538,6 +561,13 @@ changed_subset() {
           whole_app=1
         fi
         ;;
+      # The `dependency_overrides` block here and the one in
+      # app_dist/pubspec.yaml must stay identical, and the test that asserts
+      # that lives in app_dist's suite — each root is only checked by the
+      # other side's tests, so an override dropped from the app side goes
+      # uncaught unless `dist` runs too. whole_app as well: a dependency
+      # change can reach any app test.
+      app/pubspec.yaml | app/pubspec.lock) groups="$groups dist"; whole_app=1 ;;
       app/*) whole_app=1 ;;
       workers/* | assets/*) ;;
       *) ;;

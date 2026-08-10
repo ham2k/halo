@@ -2,46 +2,36 @@ PODS:
   - auto_updater_macos (0.0.1):
     - FlutterMacOS
     - Sparkle
-  - flutter_inappwebview_macos (0.0.1):
-    - FlutterMacOS
-    - OrderedSet (~> 6.0.3)
   - flutter_libserialport (0.0.1):
     - FlutterMacOS
     - libserialport
   - FlutterMacOS (1.0.0)
   - libserialport (0.1.1)
-  - OrderedSet (6.0.3)
   - Sparkle (2.9.3)
 
 DEPENDENCIES:
   - auto_updater_macos (from `Flutter/ephemeral/.symlinks/plugins/auto_updater_macos/macos`)
-  - flutter_inappwebview_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_inappwebview_macos/macos`)
   - flutter_libserialport (from `Flutter/ephemeral/.symlinks/plugins/flutter_libserialport/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
 
 SPEC REPOS:
   trunk:
     - libserialport
-    - OrderedSet
     - Sparkle
 
 EXTERNAL SOURCES:
   auto_updater_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/auto_updater_macos/macos
-  flutter_inappwebview_macos:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_inappwebview_macos/macos
   flutter_libserialport:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_libserialport/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
 
 SPEC CHECKSUMS:
-  auto_updater_macos: 3e3462c418fe4e731917eacd8d28eef7af84086d
-  flutter_inappwebview_macos: bdf207b8f4ebd58e86ae06cd96b147de99a67c9b
-  flutter_libserialport: d1a505fd4b05785f7b50cc7c93b361937ea1c5bd
+  auto_updater_macos: 3a42f1a06be6981f1a18be37e6e7bf86aa732118
+  flutter_libserialport: 2c523cb8d8203fc6d1b0da88190da31ac970eb93
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   libserialport: 1cb25e66ef3c92a8e59c2ea3820302c3fa2268cd
-  OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   Sparkle: 39dbdf28637f6056fbf5ee6494bdbfae54f49f41
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009

@@ -11,7 +11,7 @@
 // web view. SVG is a vector image, drawn with the app's own painter. HTML is
 // the escape hatch, and it runs under the sandbox below.
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, listEquals;
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -81,25 +81,6 @@ class PanelContent {
   int get hashCode => Object.hash(kind, content, title, Object.hashAll(triggers));
 }
 
-/// Whether an HTML panel can be shown here at all. Linux has no webview
-/// implementation; Windows needs a WebView2 environment, which
-/// [WindowsWebView] creates once and caches for the whole session — read
-/// here rather than probed again, and pessimistic until it has answered.
-/// `defaultTargetPlatform`, not `dart:io`'s Platform: this file is compiled
-/// into the web build too, and the platform check that works on every
-/// target is the one that doesn't ask the host OS.
-bool get _htmlPanelsSupported {
-  if (kIsWeb) return true;
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.linux:
-      return false;
-    case TargetPlatform.windows:
-      return WindowsWebView.resolved ?? false;
-    default:
-      return true;
-  }
-}
-
 class PanelContentView extends StatelessWidget {
   /// Null while the first render is still in flight — a panel that has never
   /// answered shows a spinner, not an empty pane.
@@ -152,45 +133,104 @@ class PanelContentView extends StatelessWidget {
           ),
         );
       case 'html':
-        // Every other webview in this app checks first, and for two
-        // different reasons: flutter_inappwebview ships no Linux
-        // implementation at all (the platform view would throw a
-        // MissingPluginException out of build), and a Windows machine that
-        // cannot create a WebView2 environment renders a permanently blank
-        // one — see map_panel.dart, which keeps a fallback map for exactly
-        // that. A panel has no fallback, so it says so instead.
-        if (!_htmlPanelsSupported) {
-          return _message(context, context.t.operation.layout.htmlPanelUnsupported);
-        }
-        return _SandboxedHtmlView(html: content.content);
+        // Behind a platform gate, and a stateful one because the Windows half
+        // of the answer arrives late — see [_HtmlPanelView].
+        return _HtmlPanelView(html: content.content);
       default:
         return _message(context, 'Unsupported panel content: ${content.kind}', isError: true);
     }
   }
+}
 
-  Widget _message(BuildContext context, String text, {bool isError = false, VoidCallback? onRetry}) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(Space.xl),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isError ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
-              ),
+/// The pane's plain-text fallback: a failure, a retry offer, or the reason
+/// there is no document to draw. Top-level rather than a method, because the
+/// platform gate below says its piece from a widget of its own and the two
+/// must render identically.
+Widget _message(BuildContext context, String text, {bool isError = false, VoidCallback? onRetry}) {
+  final theme = Theme.of(context);
+  return Padding(
+    padding: const EdgeInsets.all(Space.xl),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isError ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
             ),
-            if (onRetry != null) ...[
-              const SizedBox(height: Space.md),
-              TextButton(onPressed: onRetry, child: Text(context.t.operation.layout.panelRenderRetry)),
-            ],
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: Space.md),
+            TextButton(onPressed: onRetry, child: Text(context.t.operation.layout.panelRenderRetry)),
           ],
-        ),
+        ],
       ),
-    );
+    ),
+  );
+}
+
+/// An extension's HTML, or the reason this machine cannot show it.
+///
+/// Every other webview in this app checks first, and for two different
+/// reasons: Linux registers no web view implementation at all, so
+/// `InAppWebViewPlatform.instance` is null and building the widget dies on its
+/// null check — an assertion in debug, a `TypeError` in release, never a
+/// MissingPluginException, because no method channel is reached (see
+/// docs/quirks.md). And a Windows machine that cannot create a WebView2
+/// environment renders a permanently blank one — see map_panel.dart, which
+/// keeps a fallback map for exactly that. A panel has no fallback, so it says
+/// so instead.
+///
+/// Stateful for Windows alone: [WindowsWebView] resolves once per session and
+/// the first answer costs a cold browser-process spawn, so it lands after this
+/// pane is on screen and has to reach `setState`. Reading
+/// `WindowsWebView.resolved` without ever asking [WindowsWebView.isAvailable]
+/// leaves a panel claiming "unsupported" on a machine WebView2 runs fine on,
+/// for as long as no map pane and no login happen to ask first.
+///
+/// `defaultTargetPlatform`, not `dart:io`'s Platform: this file is compiled
+/// into the web build too, and the platform check that works on every target
+/// is the one that doesn't ask the host OS.
+class _HtmlPanelView extends StatefulWidget {
+  final String html;
+
+  const _HtmlPanelView({required this.html});
+
+  @override
+  State<_HtmlPanelView> createState() => _HtmlPanelViewState();
+}
+
+class _HtmlPanelViewState extends State<_HtmlPanelView> {
+  /// Whether this platform can host a web view at all. Never optimistic: a web
+  /// view built where the platform cannot host one takes the pane — and on
+  /// Linux the app — down, so [WebviewSupport.pending] waits rather than
+  /// guessing in either direction.
+  WebviewSupport _support = WebviewSupport.pending;
+
+  @override
+  void initState() {
+    super.initState();
+    _support = probeWebviewSupport((ok) {
+      if (mounted) setState(() => _support = ok ? WebviewSupport.yes : WebviewSupport.no);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    switch (_support) {
+      // The same spinner an unanswered panel shows, and for the same reason:
+      // the pane has nothing to say yet. Saying "unsupported" here instead
+      // would be a verdict delivered before the question was answered, and on
+      // Windows the answer can be half a minute away.
+      case WebviewSupport.pending:
+        return const Center(child: CircularProgressIndicator());
+      case WebviewSupport.no:
+        return _message(context, context.t.operation.layout.htmlPanelUnsupported);
+      case WebviewSupport.yes:
+        return _SandboxedHtmlView(html: widget.html);
+    }
   }
 }
 

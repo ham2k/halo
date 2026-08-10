@@ -4,9 +4,9 @@
 // Browser-engine map backend in a webview, bridged to Dart for marker/line
 // data in and load/error status out via
 // `window.flutter_inappwebview.callHandler`. Two roles:
-//   - Mapbox GL JS on desktop (macOS and Windows; Linux waits on a stable
-//     flutter_inappwebview_linux — see docs/backlog.md), where no official
-//     Mapbox Flutter SDK exists and GL JS is the only globe projection.
+//   - Mapbox GL JS on desktop (macOS and Windows; Linux has no web view to
+//     run it in — see docs/quirks.md), where no official Mapbox Flutter SDK
+//     exists and GL JS is the only globe projection.
 //   - MapLibre GL JS on every webview-capable platform including iOS and
 //     Android, under the MAPLIBRE experiment — MapLibre Native has no globe
 //     projection, so on mobile the experiment trades the native Mapbox SDK

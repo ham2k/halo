@@ -17,6 +17,14 @@ The Map tab routes Windows to the `flutter_inappwebview` Mapbox backend
 `onConsoleMessage`, `transparentBackground` and `initialData` all have
 Windows implementations, and the routing falls back to OSM when no WebView2
 environment can be created) but still never run on a Windows machine.
+Windows now runs `flutter_inappwebview_windows` 0.7.0-beta.3, on WebView2 SDK
+1.0.3650.58, and the webview map backend **has** been run there since: a
+Codemagic Windows build renders the Mapbox/MapLibre pane, which exercises the
+app's own WebView2 environment, `initialData` and `evaluateJavascript` on the
+new SDK. What remains unexercised is the rest of the bridge — `onConsoleMessage`,
+`transparentBackground`, and the fallback path when no WebView2 environment
+can be created (which by definition does not arise on a machine where one
+can).
 Three Windows-only caveats, also noted in the backend's header: every
 `InAppWebView` must be given the app's own WebView2 environment
 (`app/lib/services/windows_webview.dart`), because the plugin's own is
@@ -28,21 +36,28 @@ alone; and `NavigateToString` caps the document at 2MB (the page is ~10KB,
 nowhere close).
 
 Linux is routed to the OSM/`flutter_map` backend (markers/lines/callouts,
-no globe) because the `flutter_inappwebview` we pin (6.1.5, latest stable)
-ships no Linux implementation and `mapbox_maps_flutter` is mobile-only.
-**Trigger to revisit (decided 2026-07-15): when `flutter_inappwebview` 6.2
-goes stable.** 6.2.0-beta.3 endorses a WPE WebKit Linux implementation
-(`flutter_inappwebview_linux`), so the fix is a version bump plus adding
-`Platform.isLinux` to the webview branch of `map_panel.dart`'s routing —
-the shared `map_gl_script.dart` means Linux then gets the exact same
-markers/lines/popups/globe as macOS/Windows/web. **That bump also retires the
-OTHER workaround for this same gap** — the paste-the-link OAuth login at
-`app/lib/views/oauth_browser_login.dart` (see [quirks.md](quirks.md)); revisit
-the two together. Needs WPE WebKit 2.0
-system libraries and a Linux machine to verify; adopting the beta early
-was rejected to avoid moving the verified macOS webview onto a beta.
-(CEF-based alternatives were considered and rejected: ~100MB+ payload and
-a third parallel backend.)
+no globe) because it has no web view at all, and `mapbox_maps_flutter` is
+mobile-only.
+
+We are on `flutter_inappwebview` 6.2.0-beta.3, which *does* endorse a Linux
+implementation — and `app/pubspec.yaml` overrides it away, because that
+implementation needs WPE WebKit and its CMake is a `FATAL_ERROR` without it.
+No Ubuntu after 22.04 ships WPE in any form (Launchpad #1981592 removed it
+and blacklisted Debian syncs), including the noble image both AppImage
+workflows build on, so taking the real package breaks the Linux release.
+**Letting Linux into `map_panel.dart`'s webview branch would therefore not
+give Linux a map — it would give it a blank pane**, since no implementation is
+registered there. Two guards hold it out and both would have to go: the branch
+names macOS and Windows, and `_webviewSupported` is only ever set for those
+two, so widening the branch alone changes nothing.
+`panel_html_platform_gate_test.dart` asserts the outcome rather than either
+guard, and stays green until both move.
+
+The engine evaluation, the routes that could actually work, and the revisit
+triggers live on HALO-220 — the short version is that Ubuntu's only
+security-supported engine is WebKitGTK, which exports the same DMA-BUF
+buffers WPE does but publishes no API to reach them, so any Linux web view
+is a build rather than a dependency.
 
 ## Web map backend needs a real-deployment shakeout
 

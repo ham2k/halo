@@ -23,8 +23,6 @@
 // gets one QTH circle per spot, each QSO tethered to the right one —
 // today HaLo never writes `our.grid`, so this collapses to a single QTH.
 
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -76,8 +74,10 @@ class _MapPanelState extends State<MapPanel> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb || !(Platform.isMacOS || Platform.isWindows)) return;
-    _webviewSupported = WindowsWebView.resolved ?? !Platform.isWindows;
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
+      return;
+    }
+    _webviewSupported = WindowsWebView.resolved ?? defaultTargetPlatform != TargetPlatform.windows;
     if (WindowsWebView.resolved == null) {
       WindowsWebView.isAvailable().then((ok) {
         if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
@@ -168,16 +168,22 @@ class _MapPanelState extends State<MapPanel> {
       // The app already runs in a browser — GL JS mounts directly on a
       // platform-view div, no webview needed.
       map = MapboxWebMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine);
-    } else if (Platform.isIOS || Platform.isAndroid) {
+    } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
       map = useMapLibre
           ? MapboxWebviewMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine)
           : MapboxNativeMapView(markers: markers, lines: lines, projection: _projection);
-    } else if ((Platform.isMacOS || Platform.isWindows) && _webviewSupported) {
+    } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
+        _webviewSupported) {
+      // Named platform by platform, and through `defaultTargetPlatform` rather
+      // than `dart:io`'s `Platform` (which no test can override), so that the
+      // Linux exclusion is a rule a test holds down. Widening this branch to
+      // Linux gives Linux a blank pane, not a map: no webview implementation
+      // is registered there.
       map = MapboxWebviewMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine);
     } else {
-      // Linux, where no webview map exists (flutter_inappwebview ships no
-      // Linux implementation and mapbox_maps_flutter is mobile-only), so the
-      // OSM backend is the real Linux map, not a stopgap. It has
+      // Linux, where no webview map exists (no web view implementation is
+      // registered there — see docs/quirks.md — and mapbox_maps_flutter is
+      // mobile-only), so the OSM backend is the real Linux map. It has
       // markers/lines/callouts, just no globe projection. Windows without a
       // usable WebView2 environment lands here too.
       hasGlobe = false;

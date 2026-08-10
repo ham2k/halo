@@ -32,7 +32,12 @@ runtime — so **the extensions must be built before the app will run**.
     automake libtool`" and the app won't build at all
   - Android → Android SDK/NDK (see the Windows/README notes for a full list)
   - Windows → Visual Studio 2026 with "C++ Desktop development" (see
-    [README.md](README.md#windows))
+    [README.md](README.md#windows)), **and a JDK on `JAVA_HOME`** even though
+    nothing here is Java: `sentry_flutter` depends on `jni`, which declares
+    `windows: ffiPlugin: true`, so every Windows build configures it and its
+    CMake stops at `Could NOT find JNI (missing: JAVA_INCLUDE_PATH
+    JAVA_INCLUDE_PATH2 JVM)`. Android Studio's bundled JBR is a full JDK and
+    works. CI images carry one already, so this bites local builds only.
   - Linux → the usual Flutter Linux desktop deps (plus a
     [quirks](docs/quirks.md))
 

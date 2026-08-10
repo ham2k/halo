@@ -144,3 +144,35 @@ class WindowsWebView {
     debugCreateEnvironment = null;
   }
 }
+
+/// Whether a pane may build an `InAppWebView` yet.
+///
+/// Three states rather than two, because "nobody has asked yet" is visibly
+/// different from "no". The first Windows probe of a session spawns a browser
+/// process and is allowed up to [WindowsWebView._deadline]; a pane that
+/// renders a definite "not supported here" for that long is read as a verdict,
+/// and the operator closes it rather than waiting out an answer that was going
+/// to be yes.
+enum WebviewSupport { pending, yes, no }
+
+/// The platform rule every pane with no fallback of its own follows: the web
+/// has an iframe, Linux has nothing, everything else but Windows is fine, and
+/// Windows has to be asked.
+///
+/// Returns the answer available synchronously. [onResolved] fires later ONLY
+/// when that answer is [WebviewSupport.pending] — a caller must still check
+/// `mounted`, since a pane can be disposed while the browser process comes up.
+///
+/// Deliberately not used by the Map tab, which has a real fallback map and so
+/// answers a different question: OSM is a worse map, not an absent one, and
+/// showing it while the probe runs beats showing a spinner over a map the
+/// operator could already be reading.
+WebviewSupport probeWebviewSupport(void Function(bool) onResolved) {
+  if (kIsWeb) return WebviewSupport.yes;
+  if (defaultTargetPlatform == TargetPlatform.linux) return WebviewSupport.no;
+  if (defaultTargetPlatform != TargetPlatform.windows) return WebviewSupport.yes;
+  final resolved = WindowsWebView.resolved;
+  if (resolved != null) return resolved ? WebviewSupport.yes : WebviewSupport.no;
+  WindowsWebView.isAvailable().then(onResolved);
+  return WebviewSupport.pending;
+}

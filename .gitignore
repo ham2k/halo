@@ -9,6 +9,10 @@ node_modules/
 build/
 *.iml
 .idea/
+# Xcode writes these into whatever package it builds, including the vendored
+# copies under packages/, whose whole value is being byte-identical to what
+# pub.dev published (see their PATCH.md).
+.swiftpm/
 
 # Generated plugin bundles (built from plugins/ by `npm run build`)
 app/assets/extensions/
