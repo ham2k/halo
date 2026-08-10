@@ -3226,9 +3226,6 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Show seconds'
 	String get clockShowSeconds => 'Show seconds';
 
-	/// en: 'Show the date'
-	String get clockShowDate => 'Show the date';
-
 	/// en: 'Conditions now and for the next eight hours, where you're operating'
 	String get weatherDescription => 'Conditions now and for the next eight hours, where you\'re operating';
 
@@ -4141,7 +4138,6 @@ extension on Translations {
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
-			'operation.layout.panels.clockShowDate' => 'Show the date',
 			'operation.layout.panels.weatherDescription' => 'Conditions now and for the next eight hours, where you\'re operating',
 			'operation.layout.panels.weatherLocation' => 'Location',
 			'operation.layout.panels.weatherLocationDescription' => 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation\'s own location.',
@@ -4517,9 +4513,9 @@ extension on Translations {
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
+			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			_ => null,
 		} ?? switch (path) {
-			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',

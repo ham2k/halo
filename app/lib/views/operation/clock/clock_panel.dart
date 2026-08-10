@@ -32,7 +32,6 @@ const String clockPanelId = 'clock';
 const String clockFaceKey = 'face';
 const String clockZoneKey = 'zone';
 const String clockShowSecondsKey = 'showSeconds';
-const String clockShowDateKey = 'showDate';
 
 const String clockFaceLcd = 'lcd';
 const String clockFaceAnalog = 'analog';
@@ -185,7 +184,6 @@ class _ClockPanelState extends State<ClockPanel> with SingleTickerProviderStateM
         : clockFaceLcd;
   }
   bool get _showSeconds => _config[clockShowSecondsKey] as bool? ?? true;
-  bool get _showDate => _config[clockShowDateKey] as bool? ?? false;
 
   /// Whether this pane is drawn from the sweep rather than from the shared
   /// per-second heartbeat. Independent of whether the controller is running
@@ -216,32 +214,37 @@ class _ClockPanelState extends State<ClockPanel> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final palette = clockPaletteFor(context, _face);
-    return Padding(
-      padding: EdgeInsets.all(Space.xl).add(PaneSafeArea.paddingOf(context)),
+    final content = Padding(
+      padding: EdgeInsets.all(Space.md).add(PaneSafeArea.paddingOf(context)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final box = constraints.biggest;
           // Driven by whether the sweep is actually the clock here, NOT by
-          // which face is showing: a Swiss face with its second hand off has
-          // no controller running (see [_syncSweep]) and nothing else would
-          // ever rebuild it, so it would paint the mount-time minute and hold
-          // it for the session.
+          // which face is showing: a Swiss face with its second hand off
+          // has no controller running (see [_syncSweep]) and nothing else
+          // would ever rebuild it, so it would paint the mount-time minute
+          // and hold it for the session.
           //
-          // Either way the per-frame or per-second rebuild stops here, at the
-          // painted leaf, rather than running the pane's whole subtree.
+          // Either way the per-frame or per-second rebuild stops here, at
+          // the painted leaf, rather than running the pane's whole subtree.
           return _sweeps
               ? AnimatedBuilder(
                   animation: _sweep,
-                  // The app clock, like the OncePerSecond branch below: a clock
-                  // FACE showing something other than what the Time chip beside
-                  // it reads is the exact contradiction docs/design/time.md
-                  // exists to prevent.
+                  // The app clock, like the OncePerSecond branch below: a
+                  // clock FACE showing something other than what the Time
+                  // chip beside it reads is the exact contradiction
+                  // docs/design/time.md exists to prevent.
                   builder: (context, _) => _readout(box, palette, nowUtc()),
                 )
               : OncePerSecond(builder: (context, nowUtc) => _readout(box, palette, nowUtc));
         },
       ),
     );
+    // Only the LCD's glass fills the whole panel — it IS the panel's
+    // background. The round faces paint their disc in this same colour
+    // (clockPaletteFor), so a shared ColoredBox here would erase their rim
+    // and leave the hands floating with no dial underneath them.
+    return _face == clockFaceLcd ? ColoredBox(color: palette.face, child: content) : content;
   }
 
   Widget _readout(Size box, ClockPalette palette, DateTime nowUtc) {
@@ -252,55 +255,16 @@ class _ClockPanelState extends State<ClockPanel> with SingleTickerProviderStateM
     final label = '${_two(wall.hour)}:${_two(wall.minute)}'
         '${_showSeconds ? ':${_two(wall.second)}' : ''} $zoneText';
 
-    final caption = <String>[
-      if (_showDate) '${wall.year}-${_two(wall.month)}-${_two(wall.day)}',
-      zoneText,
-    ].join('  ');
-
-    // Taken out of the box BEFORE the face is sized. The face is painted at
-    // whatever Size it is handed, so leaving the two to share a Column means
-    // a full-height face and an overflow stripe under it.
-    final captionHeight = box.height >= _captionFloor ? _captionHeight + Space.sm : 0.0;
-    final faceBox = Size(box.width, box.height - captionHeight);
-    final form = clockFormFor(faceBox, round: round, showSeconds: _showSeconds);
+    final form = clockFormFor(box, round: round, showSeconds: _showSeconds);
 
     return Semantics(
       label: label,
       // Not a liveRegion: a clock that announced itself every second would
       // make a screen reader unusable for everything else in the view.
       excludeSemantics: true,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: faceBox.width,
-            height: faceBox.height,
-            child: Center(child: _drawing(faceBox, palette, wall, form, round)),
-          ),
-          if (captionHeight > 0)
-            SizedBox(
-              height: captionHeight,
-              child: Center(
-                child: Text(
-                  caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      child: Center(child: _drawing(box, palette, wall, form, round)),
     );
   }
-
-  /// The caption's own line box, and the pane height below which there is no
-  /// room to spend on it.
-  static const double _captionHeight = 16;
-  static const double _captionFloor = 90;
 
   Widget _drawing(Size box, ClockPalette palette, DateTime wall, ClockForm form, bool round) {
     if (form == ClockForm.compact) {

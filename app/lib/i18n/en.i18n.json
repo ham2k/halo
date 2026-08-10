@@ -156,7 +156,6 @@
         "clockZoneUtc": "UTC",
         "clockZoneDevice": "This device",
         "clockShowSeconds": "Show seconds",
-        "clockShowDate": "Show the date",
         "weatherDescription": "Conditions now and for the next eight hours, where you're operating",
         "weatherLocation": "Location",
         "weatherLocationDescription": "A grid square (FN31pr) or lat,lon. Leave empty to follow the operation's own location.",

@@ -1569,7 +1569,6 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get clockZoneUtc => 'UTC';
 	@override String get clockZoneDevice => 'Este dispositivo';
 	@override String get clockShowSeconds => 'Mostrar segundos';
-	@override String get clockShowDate => 'Mostrar la fecha';
 	@override String get weatherDescription => 'El tiempo ahora y durante las próximas ocho horas, donde estás operando';
 	@override String get weatherLocation => 'Ubicación';
 	@override String get weatherLocationDescription => 'Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.';
@@ -2162,7 +2161,6 @@ extension on TranslationsEs {
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'Este dispositivo',
 			'operation.layout.panels.clockShowSeconds' => 'Mostrar segundos',
-			'operation.layout.panels.clockShowDate' => 'Mostrar la fecha',
 			'operation.layout.panels.weatherDescription' => 'El tiempo ahora y durante las próximas ocho horas, donde estás operando',
 			'operation.layout.panels.weatherLocation' => 'Ubicación',
 			'operation.layout.panels.weatherLocationDescription' => 'Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.',
@@ -2538,9 +2536,9 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
+			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			_ => null,
 		} ?? switch (path) {
-			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',

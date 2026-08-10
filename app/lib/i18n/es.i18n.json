@@ -156,7 +156,6 @@
         "clockZoneUtc": "UTC",
         "clockZoneDevice": "Este dispositivo",
         "clockShowSeconds": "Mostrar segundos",
-        "clockShowDate": "Mostrar la fecha",
         "weatherDescription": "El tiempo ahora y durante las próximas ocho horas, donde estás operando",
         "weatherLocation": "Ubicación",
         "weatherLocationDescription": "Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.",

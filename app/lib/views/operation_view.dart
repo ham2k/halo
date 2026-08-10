@@ -1586,13 +1586,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           'label': t.layout.panels.clockShowSeconds,
           'value': true,
         },
-        {
-          'type': 'field',
-          'key': clockShowDateKey,
-          'fieldType': 'checkbox',
-          'label': t.layout.panels.clockShowDate,
-          'value': false,
-        },
       ],
     ));
     service.registerNative(PanelDefinition(
