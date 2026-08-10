@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The three clock faces, as painters.
+// The clock faces, as painters.
 //
 // Each takes already-resolved Colors and no BuildContext: a painter that both
 // pins a palette and reads a theme is silently wrong in one brightness, and
@@ -208,89 +208,6 @@ class AnalogFacePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(AnalogFacePainter old) =>
-      old.hourAngle != hourAngle ||
-      old.minuteAngle != minuteAngle ||
-      old.secondAngle != secondAngle ||
-      old.showSeconds != showSeconds ||
-      old.palette.ink != palette.ink;
-}
-
-/// The SBB station clock (Hilfiker, 1944).
-///
-/// Deliberately bare: no numerals, no date, no lettering. Every addition is
-/// what makes a replica of this face look wrong, and the proportions below
-/// are the whole of its identity.
-class SwissFacePainter extends CustomPainter {
-  /// Degrees clockwise from 12.
-  final double hourAngle;
-  final double minuteAngle;
-  final double secondAngle;
-  final bool showSeconds;
-  final ClockPalette palette;
-
-  const SwissFacePainter({
-    required this.hourAngle,
-    required this.minuteAngle,
-    required this.secondAngle,
-    required this.showSeconds,
-    required this.palette,
-  });
-
-  /// SBB red. Fixed in both brightnesses — it is the one colour on this face
-  /// that is not a shade, and a "dark mode red" would be a different clock.
-  static const sbbRed = Color(0xFFEB0000);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = math.min(size.width, size.height) / 2;
-    // The drawing this is scaled from, so the SBB numbers below read as
-    // themselves rather than as ratios.
-    final k = r / 52.5;
-
-    canvas.save();
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.drawCircle(Offset.zero, r, Paint()..color = palette.face);
-    canvas.drawPath(swissMarksPath(r), Paint()..color = palette.ink);
-
-    /// The hands are wedges — wider at the pivot than at the tip. Drawn at 12
-    /// and rotated, which is four transforms a frame rather than one per
-    /// vertex.
-    void wedge(double degrees, double tail, double tip, double wTail, double wTip, Color color) {
-      canvas.save();
-      canvas.rotate(degrees * math.pi / 180);
-      final path = Path()
-        ..moveTo(-wTail * k / 2, tail * k)
-        ..lineTo(-wTip * k / 2, -tip * k)
-        ..lineTo(wTip * k / 2, -tip * k)
-        ..lineTo(wTail * k / 2, tail * k)
-        ..close();
-      canvas.drawPath(path, Paint()..color = color);
-      canvas.restore();
-    }
-
-    wedge(hourAngle, 12, 32, 6.4, 5.2, palette.ink);
-    wedge(minuteAngle, 12, 46, 5.2, 3.6, palette.ink);
-
-    if (showSeconds) {
-      canvas.save();
-      canvas.rotate(secondAngle * math.pi / 180);
-      final stem = Paint()..color = sbbRed;
-      canvas.drawRect(
-        Rect.fromLTRB(-0.75 * k, -31.2 * k, 0.75 * k, 16.5 * k),
-        stem,
-      );
-      // The "Kelle" — the paddle the hand carries instead of a pointed tip.
-      // It is the single most recognizable thing on the face.
-      canvas.drawCircle(Offset(0, -31.2 * k), 5.25 * k, stem);
-      canvas.restore();
-    }
-    // No centre cap: the hands meet bare, and a boss over them is the usual
-    // tell of a copy.
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(SwissFacePainter old) =>
       old.hourAngle != hourAngle ||
       old.minuteAngle != minuteAngle ||
       old.secondAngle != secondAngle ||

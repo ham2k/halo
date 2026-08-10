@@ -3211,9 +3211,6 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Analog'
 	String get clockFaceAnalog => 'Analog';
 
-	/// en: 'Swiss railway'
-	String get clockFaceSwiss => 'Swiss railway';
-
 	/// en: 'Time Zone'
 	String get clockZone => 'Time Zone';
 
@@ -4133,7 +4130,6 @@ extension on Translations {
 			'operation.layout.panels.clockFace' => 'Face',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'Analog',
-			'operation.layout.panels.clockFaceSwiss' => 'Swiss railway',
 			'operation.layout.panels.clockZone' => 'Time Zone',
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'This device',
@@ -4514,9 +4510,9 @@ extension on Translations {
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
+			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			_ => null,
 		} ?? switch (path) {
-			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',

@@ -1564,7 +1564,6 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get clockFace => 'Esfera';
 	@override String get clockFaceLcd => 'LCD';
 	@override String get clockFaceAnalog => 'Analógica';
-	@override String get clockFaceSwiss => 'Ferrocarril suizo';
 	@override String get clockZone => 'Zona horaria';
 	@override String get clockZoneUtc => 'UTC';
 	@override String get clockZoneDevice => 'Este dispositivo';
@@ -2156,7 +2155,6 @@ extension on TranslationsEs {
 			'operation.layout.panels.clockFace' => 'Esfera',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'Analógica',
-			'operation.layout.panels.clockFaceSwiss' => 'Ferrocarril suizo',
 			'operation.layout.panels.clockZone' => 'Zona horaria',
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'Este dispositivo',
@@ -2537,9 +2535,9 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
+			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			_ => null,
 		} ?? switch (path) {
-			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',

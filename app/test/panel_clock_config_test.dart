@@ -77,7 +77,7 @@ void main() {
     Future<void> pump(WidgetTester tester, PanelService service, String panelId) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: ClockPanel(panelId: panelId, panels: service, animate: false),
+          body: ClockPanel(panelId: panelId, panels: service),
         ),
       ));
       await tester.pump();
@@ -87,31 +87,42 @@ void main() {
     Object? painterOf(WidgetTester tester) => tester
         .widgetList<CustomPaint>(find.byType(CustomPaint))
         .map((w) => w.painter)
-        .firstWhere((p) => p is LcdFacePainter || p is AnalogFacePainter || p is SwissFacePainter,
-            orElse: () => null);
+        .firstWhere((p) => p is LcdFacePainter || p is AnalogFacePainter, orElse: () => null);
 
     testWidgets('each placement wears its own face', (tester) async {
       final extensions = FakePanelExtensions(configs: {
-        'clock#1': {clockFaceKey: clockFaceSwiss},
-        'clock#2': {clockFaceKey: clockFaceAnalog},
+        'clock#1': {clockFaceKey: clockFaceAnalog},
+        'clock#2': {clockFaceKey: clockFaceLcd},
       });
       final service = serviceWith(extensions);
 
+      // clock#1 first, and against the NON-default face: a lookup that
+      // silently defaulted every placement (returning an empty config
+      // instead of throwing) would read as LCD here, not analog — so this
+      // assertion alone rules that class of bug out before clock#2's
+      // default-coincident value could mask it.
       await pump(tester, service, 'clock#1');
-      expect(painterOf(tester), isA<SwissFacePainter>());
+      expect(painterOf(tester), isA<AnalogFacePainter>());
 
       await pump(tester, service, 'clock#2');
+      expect(painterOf(tester), isA<LcdFacePainter>());
+
+      // Back to clock#1, to catch the other direction: a lookup that
+      // cross-contaminated placements would now show clock#2's stored LCD
+      // instead of clock#1's own analog.
+      await pump(tester, service, 'clock#1');
       expect(painterOf(tester), isA<AnalogFacePainter>());
     });
 
-    testWidgets('a stored face the build no longer has falls back rather than throwing', (tester) async {
-      // A layout outlives the release that named its face. A pane that threw
+    testWidgets('a stored face the build no longer has falls back to analog rather than throwing', (tester) async {
+      // A layout outlives the release that named its face — `swiss` is
+      // exactly that, dropped after the SBB face's removal. A pane that threw
       // here would take the whole Operation View with it.
       final service = serviceWith(FakePanelExtensions(configs: {
-        'clock#1': {clockFaceKey: 'nixie'},
+        'clock#1': {clockFaceKey: 'swiss'},
       }));
       await pump(tester, service, 'clock#1');
-      expect(painterOf(tester), isA<LcdFacePainter>());
+      expect(painterOf(tester), isA<AnalogFacePainter>());
       expect(tester.takeException(), isNull);
     });
 
@@ -140,7 +151,6 @@ void main() {
             body: ClockPanel(
               panelId: 'clock#1',
               panels: service,
-              animate: false,
               onTitle: titles.add,
             ),
           ),

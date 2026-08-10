@@ -151,7 +151,6 @@
         "clockFace": "Face",
         "clockFaceLcd": "LCD",
         "clockFaceAnalog": "Analog",
-        "clockFaceSwiss": "Swiss railway",
         "clockZone": "Time Zone",
         "clockZoneUtc": "UTC",
         "clockZoneDevice": "This device",

@@ -151,7 +151,6 @@
         "clockFace": "Esfera",
         "clockFaceLcd": "LCD",
         "clockFaceAnalog": "Analógica",
-        "clockFaceSwiss": "Ferrocarril suizo",
         "clockZone": "Zona horaria",
         "clockZoneUtc": "UTC",
         "clockZoneDevice": "Este dispositivo",

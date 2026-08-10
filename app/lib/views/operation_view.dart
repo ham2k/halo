@@ -1561,7 +1561,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           'options': [
             {'label': t.layout.panels.clockFaceLcd, 'value': clockFaceLcd},
             {'label': t.layout.panels.clockFaceAnalog, 'value': clockFaceAnalog},
-            {'label': t.layout.panels.clockFaceSwiss, 'value': clockFaceSwiss},
           ],
         },
         {
