@@ -119,15 +119,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
 
   @override
   void dispose() {
-    // Only release the callbacks if they're still ours — the facade mounts a
-    // replacement backend's State (initState included) before this one's
-    // dispose runs on a backend swap, so an unconditional null-out here
-    // would clobber the wiring the new one just installed.
-    if (identical(widget.zoomController?.onZoomIn, _zoomIn)) {
-      widget.zoomController
-        ?..onZoomIn = null
-        ..onZoomOut = null;
-    }
+    widget.zoomController
+      ?..onZoomIn = null
+      ..onZoomOut = null;
     _readyWatchdog?.cancel();
     super.dispose();
   }

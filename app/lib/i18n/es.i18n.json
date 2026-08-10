@@ -816,7 +816,7 @@
       "noSecureStorageInline": "Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora."
     },
     "station": {
-      "title": "Configuración de Estación",
+      "title": "Configuración de Estación y Control CAT",
       "none": "No hay equipo configurado",
       "add": "Agregar equipo",
       "addTitle": "Agregar equipo",

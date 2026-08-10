@@ -485,10 +485,7 @@ class _MapZoomButtons extends StatelessWidget {
             icon: Icon(MdiIcons.plus, semanticLabel: context.t.map.zoomIn),
             onPressed: controller.zoomIn,
           ),
-          // A bare Divider has no intrinsic width and Column's non-stretch
-          // cross axis gives it none either, so it renders at zero width
-          // without an explicit one — SizedBox is what gives it one.
-          SizedBox(width: 40, child: Divider(height: 1, thickness: 1, color: theme.dividerColor)),
+          Divider(height: 1, thickness: 1, color: theme.dividerColor),
           IconButton(
             icon: Icon(MdiIcons.minus, semanticLabel: context.t.map.zoomOut),
             onPressed: controller.zoomOut,

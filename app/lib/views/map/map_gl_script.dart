@@ -180,13 +180,6 @@ window.poloMapGl = window.poloMapGl || {
     let activeStyle = style;
     let activeStyleDark = styleDark;
     let lastDark = initialDark;
-    // The URL the map is actually showing (or mid-load towards) — lets
-    // setDark skip a no-op reload when a pinned style (activeStyle ===
-    // activeStyleDark) means the light/dark toggle wouldn't change anything.
-    // MapLibre's own style diffing produces no changes for an identical
-    // style and so never fires 'style.load', which would otherwise leave
-    // styleSwapInFlight stuck true forever.
-    let activeLoadedStyleUrl = engine === 'maplibre' && initialDark ? styleDark : style;
 
     // True between setDark's setStyle call and its 'style.load' handler —
     // while true, setMarkers/setLines only update lastMarkersData/lastLinesData
@@ -243,12 +236,6 @@ window.poloMapGl = window.poloMapGl || {
         map.setConfigProperty('basemap', 'lightPreset', dark ? 'night' : 'day');
         return;
       }
-      const target = dark ? activeStyleDark : activeStyle;
-      // A pinned style (activeStyle === activeStyleDark) makes this a no-op
-      // — skip the reload rather than ask MapLibre to diff a style against
-      // itself, which produces no changes and so never fires 'style.load'.
-      if (target === activeLoadedStyleUrl) return;
-      activeLoadedStyleUrl = target;
       // 'style.load' (not 'idle', which the pending/flush machinery above
       // uses for the initial, possibly offline, load) fires as soon as the
       // new style itself is usable — addSource/addLayer don't need its
@@ -256,18 +243,7 @@ window.poloMapGl = window.poloMapGl || {
       // strand the markers for as long as the new tile server takes, or
       // forever if it never settles.
       styleSwapInFlight = true;
-      // A failed load (offline, DNS, a rejected style) never fires
-      // 'style.load' either — Mapbox/MapLibre emit 'error' instead (handled
-      // below) — so without this watchdog styleSwapInFlight would stick
-      // true forever and every marker/line update after it would silently
-      // stop applying.
-      const swapWatchdog = setTimeout(function () {
-        if (!styleSwapInFlight) return;
-        styleSwapInFlight = false;
-        report('style-timeout', 'the dark-mode style swap never finished loading');
-      }, 10000);
       map.once('style.load', function () {
-        clearTimeout(swapWatchdog);
         styleSwapInFlight = false;
         applySky();
         ensureLayers();
@@ -275,7 +251,7 @@ window.poloMapGl = window.poloMapGl || {
         if (lastLinesData) setLines(lastLinesData);
         if (lastProjection) applyProjection(lastProjection);
       });
-      map.setStyle(target);
+      map.setStyle(dark ? activeStyleDark : activeStyle);
     }
 
     // A pinned-style change (the operator picked a different named basemap,
@@ -383,13 +359,6 @@ window.poloMapGl = window.poloMapGl || {
         if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
       } catch (err) {
-        // "Style is not done loading" is the expected, frequent case while a
-        // slow/offline initial load is still pending — the watchdog below
-        // reports THAT if it never resolves. Anything else is a genuine
-        // failure this file's error channel (see the header comment) exists
-        // to surface, not to swallow.
-        const notLoadedYet = err && /not done loading/i.test(err.message || '');
-        if (!notLoadedYet) report('deferred-update', 'ensureLayers failed: ' + ((err && err.message) || err));
         return false;
       }
       ensureLayer(lineLayer('polo-lines', false, 1.5));

@@ -2641,8 +2641,8 @@ class Translations$settings$station$en {
 
 	// Translations
 
-	/// en: 'Station Configuration'
-	String get title => 'Station Configuration';
+	/// en: 'Station Configuration & CAT Control'
+	String get title => 'Station Configuration & CAT Control';
 
 	/// en: 'No equipment configured'
 	String get none => 'No equipment configured';
@@ -4642,7 +4642,7 @@ extension on Translations {
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
-			'settings.station.title' => 'Station Configuration',
+			'settings.station.title' => 'Station Configuration & CAT Control',
 			'settings.station.none' => 'No equipment configured',
 			'settings.station.add' => 'Add equipment',
 			'settings.station.addTitle' => 'Add equipment',

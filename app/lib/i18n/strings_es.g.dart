@@ -1329,7 +1329,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Configuración de Estación';
+	@override String get title => 'Configuración de Estación y Control CAT';
 	@override String get none => 'No hay equipo configurado';
 	@override String get add => 'Agregar equipo';
 	@override String get addTitle => 'Agregar equipo';
@@ -2663,7 +2663,7 @@ extension on TranslationsEs {
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
 			'settings.accounts.noKeyringInline' => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.',
 			'settings.accounts.noSecureStorageInline' => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.',
-			'settings.station.title' => 'Configuración de Estación',
+			'settings.station.title' => 'Configuración de Estación y Control CAT',
 			'settings.station.none' => 'No hay equipo configurado',
 			'settings.station.add' => 'Agregar equipo',
 			'settings.station.addTitle' => 'Agregar equipo',

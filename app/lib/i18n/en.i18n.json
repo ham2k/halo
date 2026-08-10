@@ -816,7 +816,7 @@
       "noSecureStorageInline": "Logins can’t be saved: this computer’s secure storage can’t be reached."
     },
     "station": {
-      "title": "Station Configuration",
+      "title": "Station Configuration & CAT Control",
       "none": "No equipment configured",
       "add": "Add equipment",
       "addTitle": "Add equipment",
