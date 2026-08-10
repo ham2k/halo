@@ -304,6 +304,15 @@ class CatService extends ChangeNotifier {
   /// removed. The node stays in the list and says so rather than vanishing.
   EquipmentType? typeFor(EquipmentNode node) => registry.typeFor(node.typeKey);
 
+  /// What to call [node] in the UI: the operator's own name for it, or the
+  /// type's name, or — a record written by a newer build, or by a driver
+  /// that has since been removed — its bare stored typeKey. One place, so
+  /// the Station Configuration list and the Radio control agree on it.
+  String displayNameFor(EquipmentNode node) {
+    if (node.name.isNotEmpty) return node.name;
+    return typeFor(node)?.name ?? node.typeKey;
+  }
+
   void _load() {
     final stored = _settings.stationEquipment;
     final nodes = stored['nodes'];

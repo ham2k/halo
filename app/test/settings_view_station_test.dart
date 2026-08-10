@@ -66,8 +66,8 @@ void main() {
     await pumpSettings(tester, catEnabled: true);
 
     expect(find.text('Station Configuration'), findsOneWidget);
-    // The same glyph the logging panel's Radio control uses.
-    expect(find.byIcon(MdiIcons.radio), findsWidgets);
+    // The CAT pun, not the plain radio glyph.
+    expect(find.byIcon(MdiIcons.cat), findsWidgets);
 
     // Order comes from the entry's `order`, so assert on where the rows
     // actually land. Scoped to the sidebar — it's the first ListView in the
