@@ -183,22 +183,9 @@ list_groups() {
 check_clock_discipline() {
   echo "▶ clock discipline: every 'now' goes through AppClock (docs/design/time.md)"
   local dirs=("$ROOT_DIR/app/lib")
-  # A vendored copy of a third-party package is not ours to hold to this rule:
-  # its whole value is being byte-identical to what pub.dev published, so the
-  # advice this check prints — rewrite the call against halo_core — cannot be
-  # followed without destroying that.
-  #
-  # The exemption is this list and nothing else. Inferring it from something
-  # the package carries (a PATCH.md, a pubspec field) would let a package leave
-  # the guard as a side effect of documenting itself, with no diff here for a
-  # reviewer to object to; leaving the guard has to cost a visible edit to the
-  # gate.
-  local exempt=(flutter_inappwebview_macos_patched)
-  local d name
+  local d
   for d in "$ROOT_DIR"/packages/*/lib; do
     [[ -d "$d" ]] || continue
-    name=$(basename "${d%/lib}")
-    [[ " ${exempt[*]} " == *" $name "* ]] && continue
     dirs+=("$d")
   done
   [[ -d "$ROOT_DIR/app_dist/lib" ]] && dirs+=("$ROOT_DIR/app_dist/lib")

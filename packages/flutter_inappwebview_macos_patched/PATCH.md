@@ -92,6 +92,20 @@ line is present in this copy's `Package.swift`, so a re-vendor that forgets
 to re-apply it fails the Dart suite rather than a tag-triggered macOS
 release. That line is the only part of this patch a Dart test can see.
 
+**If the clock-discipline check fails on a file in here, do not fix the
+file.** `./scripts/test.sh` scans every `packages/*/lib` for direct
+`DateTime.now()` reads and prints advice — rewrite it against `halo_core`, or
+annotate the line `// clock:allow` — that is written for first-party code.
+Both routes mean editing a copy whose entire value is being byte-identical to
+what pub.dev published, and nothing fails when that happens: the diff above is
+a command someone has to choose to run, and the next re-vendor silently
+reverts the edit anyway. The fix is a narrow exemption in
+`check_clock_discipline`, naming this package. Spell it out as a list there —
+never key it on something a package carries, such as the presence of this
+file, which would take every present and future vendored package out of the
+guard as a side effect of documenting itself, with no per-package edit for a
+reviewer to object to.
+
 **Move the whole family together.** This copy is frozen against
 `flutter_inappwebview_platform_interface` 1.4.0-beta.3, which is why
 `app/pubspec.yaml` and `app_dist/pubspec.yaml` pin the interface and the
