@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The in-panel "the map could not load" banner, shared by the Mapbox GL
+// The in-panel "the map could not load" banner, shared by the MapLibre GL
 // backends. Shown when the shared script's style watchdog fires
 // ('style-timeout' — see map_gl_script.dart) and cleared on its 'recovered'
 // signal: without this, a style that never loads is indistinguishable from

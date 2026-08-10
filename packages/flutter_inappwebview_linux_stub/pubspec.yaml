@@ -33,7 +33,7 @@
 #   - app/lib/views/operation/website/website_panel.dart, the Web Site pane —
 #     guarded in place: the probe returns early for Linux, so the pane shows
 #     `websiteUnsupported` and offers the site to the OS browser instead.
-#   - app/lib/views/map/mapbox_webview_map_view.dart, the Mapbox map backend —
+#   - app/lib/views/map/mapbox_webview_map_view.dart, the MapLibre map backend —
 #     guarded from app/lib/views/operation/map_panel.dart, which takes the
 #     webview branch only on macOS/Windows, so Linux reaches OSM instead.
 #   - app/lib/services/windows_webview.dart — the odd one out: it creates the

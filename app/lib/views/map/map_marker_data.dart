@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The backend-agnostic contract every Map tab implementation (OSM, Mapbox
-// native, Mapbox webview) accepts — built once by the facade
+// The backend-agnostic contract every Map tab implementation (OSM, the
+// MapLibre webview/web view) accepts — built once by the facade
 // (map_panel.dart) from `Qso`/`Operation` domain objects via halo_core's
 // location resolution and great-circle math, so no backend widget touches
 // halo_core's QSO shape directly or re-derives geo math. Markers are plain
@@ -143,7 +143,7 @@ class MapLineData {
 /// '#RRGGBB' for CSS/GL consumption (alpha stripped — see [mapLinesPayload]).
 String mapColorToHex(Color color) => '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
 
-/// The JSON shapes consumed by the shared Mapbox GL script (map_gl_script.dart)
+/// The JSON shapes consumed by the shared MapLibre GL script (map_gl_script.dart)
 /// — one encoder for the two backends that feed it (desktop webview and
 /// Flutter web), so the wire format can't drift from the JS that reads it.
 List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [

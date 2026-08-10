@@ -20,8 +20,8 @@ subprojects {
 }
 
 // flutter_plugin_android_lifecycle now requires everything that depends on it to
-// compile against Android API 36, but some plugins (mapbox_maps_flutter 2.25.1)
-// hardcode compileSdk 35, failing :mapbox_maps_flutter:checkReleaseAarMetadata.
+// compile against Android API 36, but some plugins (desktop_drop) hardcode an
+// older compileSdk, failing their checkReleaseAarMetadata task.
 // Force every Android module (the app + plugins) to compileSdk 36. Compiling
 // against a newer SDK is safe and independent of targetSdk/minSdk. Branch on
 // state.executed because evaluationDependsOn(":app") above evaluates some

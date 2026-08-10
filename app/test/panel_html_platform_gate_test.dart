@@ -108,18 +108,9 @@ Future<void> _pumpHtmlPanel(WidgetTester tester) async {
 }
 
 /// Settings for a Map tab whose routing actually reaches a platform branch.
-///
-/// The facade short-circuits to OSM whenever no GL engine is configured, so
-/// on a checkout with no `MAPBOX_ACCESS_TOKEN` the Linux expectation below
-/// would hold no matter what the platform branch said. The MAPLIBRE experiment
-/// picks an engine without a token, which leaves the platform branch as the
-/// only thing choosing the backend — the same on a fresh checkout as on a
-/// tokened one.
 Future<SettingsService> _mapSettings() async {
   SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  await settings.setExperimentEnabled('maplibre', true);
-  return settings;
+  return SettingsService(await SharedPreferences.getInstance());
 }
 
 Future<void> _pumpMapPanel(WidgetTester tester, SettingsService settings) async {
@@ -294,9 +285,8 @@ void main() {
 
   testWidgets('the Map tab routes macOS to the webview backend', (tester) async {
     // The counterpart carries the weight of the test above: an exclusion that
-    // caught every desktop platform would satisfy it while taking the Mapbox
-    // map away from macOS and Windows, and a facade that had stopped choosing
-    // a GL engine at all would satisfy it while asserting nothing.
+    // caught every desktop platform would satisfy it while taking the map
+    // away from macOS and Windows.
     final settings = await _mapSettings();
 
     await on(TargetPlatform.macOS, () async {
@@ -307,6 +297,23 @@ void main() {
       // As with the html panel above: with no platform implementation under
       // `flutter test`, building a real web view is observable as a throw, and
       // the throw's type belongs to the dependency rather than to this gate.
+      expect(tester.takeException(), isNotNull);
+    });
+  });
+
+  testWidgets('the Map tab routes iOS to the webview backend, not a native SDK', (tester) async {
+    // Mobile has no native map SDK to fall back to anymore — a regression
+    // that routed iOS/Android through OsmMapView (or dropped them into the
+    // desktop `_webviewSupported` branch, which is never set for mobile and
+    // would silently do the same) leaves the Map tab without a globe on
+    // every phone and tablet.
+    final settings = await _mapSettings();
+
+    await on(TargetPlatform.iOS, () async {
+      await _pumpMapPanel(tester, settings);
+
+      expect(find.byType(MapboxWebviewMapView), findsOneWidget);
+      expect(find.byType(OsmMapView), findsNothing);
       expect(tester.takeException(), isNotNull);
     });
   });

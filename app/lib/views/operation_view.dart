@@ -1233,8 +1233,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         );
   }
 
-  /// The Map tab's basemap picker (MAPLIBRE experiment only — see
-  /// MapSettingsGroup). Same shape as [_buildLoggingSettingsButton]: the Map
+  /// The Map tab's basemap picker (see MapSettingsGroup). Same shape as
+  /// [_buildLoggingSettingsButton]: the Map
   /// panel is native and reaches its settings through a target, not
   /// `formFields`, so `_buildPanelSettingsButton` wouldn't find it either.
   Widget _buildMapSettingsButton({BuildContext? context}) {
@@ -1765,8 +1765,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       // is the one that belongs to the panel.
       tabActions: {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
-        if (widget.services.settings.experimentEnabled('maplibre'))
-          'map': (context) => _buildMapSettingsButton(context: context),
+        'map': (context) => _buildMapSettingsButton(context: context),
         for (final id in inLayout)
           if (widget.services.panels[id]?.formFields.isNotEmpty ?? false)
             id: (context) => _buildPanelSettingsButton(widget.services.panels[id]!, context: context),
@@ -1866,8 +1865,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             : null,
         onPanelSettings: switch (id) {
           'logging' => () => unawaited(_openLoggingSettings(context, qsos)),
-          'map' when widget.services.settings.experimentEnabled('maplibre') =>
-            () => unawaited(_openMapSettings(context)),
+          'map' => () => unawaited(_openMapSettings(context)),
           _ when panel != null && panel.formFields.isNotEmpty =>
             () => unawaited(showPanelSettings(context, services: widget.services, panel: panel)),
           _ => null,

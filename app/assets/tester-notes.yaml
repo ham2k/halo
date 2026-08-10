@@ -10,6 +10,8 @@ upcoming:
     - "Tap a NOTE/TODO/BREAK row in the log to edit it inline, with delete/undo"
     - "Map tab: zoom in/out buttons on desktop and web, bottom-left corner"
     - "Map tab now follows dark mode — basemap, markers and lines all adapt"
+    - "Map tab: MapLibre everywhere — globe view now works on phones and tablets"
+    - "Map tab: pick a basemap style (Liberty, Bright, Positron, Voyager, Dark Matter) from its settings button"
 
 "131":
   changes:

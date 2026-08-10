@@ -414,8 +414,8 @@ EDITION="$HALO_EDITION"
 #
 # Only when ABSENT: this workflow runs the public script directly with no
 # secrets group, but app_dist/ci/build-linux.sh generates a populated
-# secrets.dart before calling in, and clobbering that would silently strip the
-# Mapbox token and every OAuth client from a real distribution build.
+# secrets.dart before calling in, and clobbering that would silently strip
+# every award API key and OAuth client from a real distribution build.
 #
 # This replaced a step that wrote app/lib/config/mapbox_token.dart, which #411
 # folded into this one store. That file is now referenced by nothing, so the

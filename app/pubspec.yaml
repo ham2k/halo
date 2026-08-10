@@ -50,10 +50,9 @@ dependencies:
   timezone: ^0.11.1
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
-  # DOM/js interop for the Flutter-web Mapbox backend (mapbox_web_map_view).
+  # DOM/js interop for the Flutter-web map backend (mapbox_web_map_view).
   web: ^1.1.0
   geolocator: ^14.0.3
-  mapbox_maps_flutter: ^2.25.1
   # Pinned exact, not caret: 6.2 is a beta line whose upstream has not
   # committed since 2026-02-10, so the next release is not something to float
   # onto. See dependency_overrides below for the Linux implementation.

@@ -717,8 +717,7 @@ fi
 
 # secrets.dart is gitignored, so fresh checkouts (like CI) don't have it and
 # the app package fails to analyze. The blank template is a supported
-# configuration — every consumer degrades rather than failing, and the Map tab
-# falls back to OpenStreetMap.
+# configuration — every consumer degrades rather than failing.
 ensure_secrets
 
 PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets packages/halo_cli app)

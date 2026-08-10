@@ -106,7 +106,7 @@ comment why.
 
 **5. Raster images and platform views scale as textures.** Vector content
 (text, MDI/FontAwesome glyphs, `Icon`s, `CustomPaint`) re-rasterizes crisply.
-Raster PNGs (e.g. the home-screen logo) and native platform views (the Mapbox
+Raster PNGs (e.g. the home-screen logo) and native platform views (the map
 webview) are scaled as bitmaps, so they can soften at large scale. If a raster
 asset needs to stay razor-sharp, ship it as SVG or at higher resolution — do
 **not** try to counter-scale it.

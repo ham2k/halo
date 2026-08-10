@@ -101,8 +101,7 @@ void main() {
 
   test('a build with nothing configured hands back null, not an error', () async {
     // A fresh checkout, a fork and every CI build without the values are all
-    // this case. Consumers degrade — no spots, no Mapbox basemap — rather than
-    // failing.
+    // this case. Consumers degrade — no spots — rather than failing.
     final host = await startWith(const {});
     expect(await ask(host, 'alpha', 'ALPHA_KEY'), isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));

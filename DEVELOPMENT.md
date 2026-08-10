@@ -55,10 +55,9 @@ npm install
 npm run build            # → app/assets/extensions/*.js + index.json  (gitignored)
 cd ..
 
-# 3. Map token (optional — the Map tab falls back to OpenStreetMap without it)
+# 3. Build-time secrets (optional — every consumer degrades without them)
 cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
-#   then paste a public Mapbox token (starts with `pk.`) into that file.
-#   Get one at https://account.mapbox.com/access-tokens/ . The file is gitignored.
+#   the Map tab needs none of these: MapLibre + OpenFreeMap need no token.
 
 # 4. Run it
 cd app && flutter run -d macos
@@ -68,8 +67,6 @@ Notes:
 - **Extension bundles are gitignored** (`app/assets/extensions/`) and only
   regenerate on an explicit `npm run build`. Re-run it after changing anything
   under `extensions/`.
-- **No Mapbox token?** The app still runs — the Map tab uses OpenStreetMap.
-  Mapbox is only used when a `pk.` token is present (and never on Linux).
 - **macOS/iOS local signing:** ad-hoc signing re-prompts for keychain access on
   every rebuild. To sign consistently, copy
   `app/macos/Runner/Configs/Local.xcconfig.sample` → `Local.xcconfig` and set
@@ -132,7 +129,7 @@ wires all of this up. The public version number lives in
 
 The single source of truth is **`./scripts/test.sh`** (or `mise run test`): it
 typechecks + tests the extensions, **rebuilds the bundles** (Dart integration
-tests load them), copies the mapbox token template if missing, then runs
+tests load them), copies the blank secrets template if missing, then runs
 `flutter analyze` + `flutter test` for every package and the app.
 
 CI splits that work across parallel jobs rather than running the script
@@ -205,10 +202,10 @@ ONBOARD_AS=KI2D,pota flutter run -d macos
 cd app && flutter run -d macos --dart-define=DEV_LABEL="header work"
 ```
 
-Build-time values (`app/lib/config/secrets.dart` — the Mapbox token, award API
-keys, per-edition OAuth clients) and, for release CI, secrets
-like `MAPBOX_ACCESS_TOKEN` / `SDK_REGISTRY_TOKEN` are **not** dart-defines —
-they're a gitignored source file and CI shell env vars, respectively.
+Build-time values (`app/lib/config/secrets.dart` — award API keys,
+per-edition OAuth clients) and, for release CI, signing secrets are **not**
+dart-defines — they're a gitignored source file and CI shell env vars,
+respectively.
 
 ---
 

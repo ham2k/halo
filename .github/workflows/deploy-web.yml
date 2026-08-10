@@ -12,8 +12,6 @@
 # Requires two repository secrets:
 #   CLOUDFLARE_API_TOKEN   - API token with the "Cloudflare Pages: Edit" permission
 #   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account id
-# and optionally MAPBOX_ACCESS_TOKEN (a publishable pk. token); when unset,
-# the build falls back to OSM maps.
 
 name: Deploy Web
 
@@ -66,13 +64,10 @@ jobs:
       # lib/config/secrets.dart is gitignored, so a fresh checkout doesn't have
       # it and the build fails to compile. Generate it from the environment via
       # the same helper every Codemagic build uses (names come from
-      # secrets.dart.example) — MAPBOX_ACCESS_TOKEN is the only one this deploy
-      # provides; it's a public pk. token, safe to bake into the served JS.
-      # Blank values (including a missing MAPBOX_ACCESS_TOKEN repository
-      # secret) degrade rather than fail — the Map tab falls back to
-      # OpenStreetMap. The helper lives in app_dist/, absent from public
-      # checkouts, which get the blank template instead — same handling as
-      # scripts/test.sh:54-61.
+      # secrets.dart.example) — this deploy currently provides none of them,
+      # and every consumer degrades rather than fails on a blank value. The
+      # helper lives in app_dist/, absent from public checkouts, which get the
+      # blank template instead — same handling as scripts/test.sh:54-61.
       - name: Generate build secrets
         run: |
           if [ -f app_dist/ci/secrets-common.sh ]; then
@@ -82,8 +77,6 @@ jobs:
             echo "no app_dist (public checkout), using the blank template"
             cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
           fi
-        env:
-          MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
 
       # HALO_SENTRY_DSN (optional secret): error reporting (#76). The
       # dart-define feeds --target=../app_dist/lib/main_dist.dart, which

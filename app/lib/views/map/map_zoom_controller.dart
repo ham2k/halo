@@ -5,8 +5,8 @@
 // is currently live. Each backend that supports zoom-by-button wires its
 // own zoomIn/zoomOut into a controller instance passed down at construction,
 // so the buttons don't need a backend-specific controller type — the facade
-// swaps backends (OSM vs Mapbox vs MapLibre) without the button widget
-// caring which one is underneath.
+// swaps backends (OSM vs the MapLibre webview/web view) without the button
+// widget caring which one is underneath.
 
 class MapZoomController {
   void Function()? onZoomIn;

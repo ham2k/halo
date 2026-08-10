@@ -249,18 +249,10 @@ void main() {
   });
 
   group('MapSettingsGroup', () {
-    Future<SettingsService> settingsWith({bool maplibre = true}) async {
-      SharedPreferences.setMockInitialValues({
-        if (maplibre) 'experiments': jsonEncode({
-            'maplibre': {'enabled': true},
-          }),
-      });
+    Future<SettingsService> settingsWith() async {
+      SharedPreferences.setMockInitialValues({});
       return SettingsService(await SharedPreferences.getInstance());
     }
-
-    test('contributes nothing at all until the MAPLIBRE experiment is on', () async {
-      expect(await MapSettingsGroup(await settingsWith(maplibre: false)).buildElements(), isEmpty);
-    });
 
     test('offers every MapStyle value, target "map", defaulting to automatic', () async {
       final elements = await MapSettingsGroup(await settingsWith()).buildElements();

@@ -6,15 +6,12 @@
 // location (grid square, or guessed from state / DXCC entity prefix), a
 // black circle per station QTH, and a great-circle line connecting each QSO
 // back to its QTH — then picks a rendering backend:
-//   - iOS/Android: MapboxNativeMapView (mapbox_maps_flutter)
-//   - macOS/Windows: MapboxWebviewMapView (Mapbox GL JS in a webview)
-//   - Web: MapboxWebMapView (Mapbox GL JS on a platform-view div)
-//   - Linux, no Mapbox token configured, or Windows where no WebView2
-//     environment can be created: OsmMapView (flutter_map/OSM), the
-//     zero-token fallback every platform can render.
-// The MAPLIBRE experiment reroutes every webview-capable platform — the
-// three GL rows above, iOS/Android through the webview backend — to
-// MapLibre GL JS + OpenFreeMap, token or not (see the build method).
+//   - macOS/Windows/iOS/Android: MapboxWebviewMapView (MapLibre GL JS in a
+//     webview) — mobile uses this rather than a native map SDK because
+//     MapLibre Native has no globe projection.
+//   - Web: MapboxWebMapView (MapLibre GL JS on a platform-view div)
+//   - Linux, or Windows where no WebView2 environment can be created:
+//     OsmMapView (flutter_map/OSM), the backend every platform can render.
 // Owns the mercator/globe projection toggle — OsmMapView ignores it (no
 // globe support), the GL backends honor it.
 //
@@ -28,7 +25,6 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../config/secrets.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
 import '../../services/windows_webview.dart';
@@ -36,7 +32,6 @@ import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
-import '../map/mapbox_native_map_view.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
@@ -69,7 +64,7 @@ class _MapPanelState extends State<MapPanel> {
   /// starts from the cached answer, pessimistically false the first time.
   /// That first answer costs a cold browser-process spawn, not a registry
   /// lookup, so the first map open of a session visibly shows OSM and then
-  /// swaps to Mapbox — every later one goes straight to the cached answer.
+  /// swaps to the webview map — every later one goes straight to the cached answer.
   bool _webviewSupported = false;
 
   /// Backs the bottom-left zoom buttons (non-mobile only, alongside pinch/scroll
@@ -161,66 +156,36 @@ class _MapPanelState extends State<MapPanel> {
     }
 
     final Widget map;
-    // The MAPLIBRE experiment (experiments.yaml) routes every webview-capable
-    // platform through MapLibre GL JS + OpenFreeMap, which needs no token —
-    // including iOS/Android, where it replaces the native Mapbox SDK to
-    // evaluate a webview map on mobile (MapLibre's own native SDK has no
-    // globe projection). Off, Mapbox runs wherever a token is configured; no
-    // token is a supported state, not a broken build: a fresh checkout, a
-    // fork, and every CI build without one fall back to OpenStreetMap below.
     final isDark = theme.brightness == Brightness.dark;
-    final useMapLibre = widget.settings.experimentEnabled('maplibre');
-    final glEngine = useMapLibre
-        ? MapGlEngine.maplibre
-        : ((secrets['MAPBOX_ACCESS_TOKEN'] ?? '').isNotEmpty ? MapGlEngine.mapbox : null);
-    var hasGlobe = glEngine != null;
-    // A pinned MapLibre style (MAPLIBRE experiment only — see the map style
-    // menu on this tab's header button) uses the same URL for both slots, so
-    // the light/dark machinery in the GL backends just never has a reason to
-    // swap it. Mapbox ignores the setting entirely (styled via lightPreset,
-    // not a style URL — see MapGlEngine.styleUrlDark's doc).
+    var hasGlobe = true;
+    // A pinned style (see the map style menu on this tab's header button)
+    // uses the same URL for both slots, so the light/dark machinery in the
+    // GL backends just never has a reason to swap it.
     final pinnedStyle = widget.settings.mapStyle;
-    final glStyleUrl = glEngine == MapGlEngine.maplibre && pinnedStyle != MapStyle.automatic
-        ? mapLibreStyleUrl(pinnedStyle)
-        : glEngine?.styleUrl ?? '';
-    final glStyleUrlDark = glEngine == MapGlEngine.maplibre && pinnedStyle != MapStyle.automatic
-        ? mapLibreStyleUrl(pinnedStyle)
-        : glEngine?.styleUrlDark ?? '';
-    // Keyed on the engine: both engines render through the same widget type
-    // on web and desktop, and those States create their map (or webview page)
-    // once — without the key, toggling the experiment mid-session reuses the
-    // old State and the engine never actually switches.
-    final glKey = ValueKey(glEngine);
-    // Native mapbox_maps_flutter (iOS/Android, MAPLIBRE off) doesn't get a
-    // zoom controller wired: it's mobile-only, and the buttons themselves are
-    // hidden there (see hasZoomButtons below).
-    if (glEngine == null) {
-      map = OsmMapView(markers: markers, lines: lines, isDark: isDark, zoomController: _zoomController);
-    } else if (kIsWeb) {
+    final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
+    final glStyleUrlDark =
+        pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
+    if (kIsWeb) {
       // The app already runs in a browser — GL JS mounts directly on a
       // platform-view div, no webview needed.
       map = MapboxWebMapView(
-          key: glKey,
           markers: markers,
           lines: lines,
           projection: _projection,
-          engine: glEngine,
           isDark: isDark,
           styleUrl: glStyleUrl,
           styleUrlDark: glStyleUrlDark,
           zoomController: _zoomController);
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
-      map = useMapLibre
-          ? MapboxWebviewMapView(
-              key: glKey,
-              markers: markers,
-              lines: lines,
-              projection: _projection,
-              engine: glEngine,
-              isDark: isDark,
-              styleUrl: glStyleUrl,
-              styleUrlDark: glStyleUrlDark)
-          : MapboxNativeMapView(markers: markers, lines: lines, projection: _projection, isDark: isDark);
+      // No zoom controller: mobile zooms by pinch, and the buttons
+      // themselves are hidden there (see hasZoomButtons below).
+      map = MapboxWebviewMapView(
+          markers: markers,
+          lines: lines,
+          projection: _projection,
+          isDark: isDark,
+          styleUrl: glStyleUrl,
+          styleUrlDark: glStyleUrlDark);
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
         _webviewSupported) {
       // Named platform by platform, and through `defaultTargetPlatform` rather
@@ -229,23 +194,20 @@ class _MapPanelState extends State<MapPanel> {
       // Linux gives Linux a blank pane, not a map: no webview implementation
       // is registered there.
       map = MapboxWebviewMapView(
-          key: glKey,
           markers: markers,
           lines: lines,
           projection: _projection,
-          engine: glEngine,
           isDark: isDark,
           styleUrl: glStyleUrl,
           styleUrlDark: glStyleUrlDark,
           zoomController: _zoomController);
     } else {
       // Linux, where no webview map exists (no web view implementation is
-      // registered there — see docs/quirks.md — and mapbox_maps_flutter is
-      // mobile-only), so the OSM backend is the real Linux map. It has
-      // markers/lines/callouts, just no globe projection. Windows without a
-      // usable WebView2 environment lands here too.
+      // registered there — see docs/quirks.md), so the OSM backend is the
+      // real Linux map. It has markers/lines/callouts, just no globe
+      // projection. Windows without a usable WebView2 environment lands
+      // here too.
       hasGlobe = false;
-      if (useMapLibre) debugPrint('[map] MAPLIBRE experiment is on but no webview map exists here; using OSM');
       map = OsmMapView(markers: markers, lines: lines, isDark: isDark, zoomController: _zoomController);
     }
 

@@ -947,10 +947,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setDensityPreference(DensityPreference preference) =>
       setSettingValue(generalGroup, _layoutDensityKey, preference.name);
 
-  /// The MapLibre basemap choice (MAPLIBRE experiment only — see
-  /// map_panel.dart). [MapStyle.automatic] by default, which keeps the
-  /// existing light/dark-aware basemap; any other value pins one style
-  /// regardless of the app's theme.
+  /// The MapLibre basemap choice (see map_panel.dart). [MapStyle.automatic]
+  /// by default, which keeps the existing light/dark-aware basemap; any
+  /// other value pins one style regardless of the app's theme.
   MapStyle get mapStyle {
     final value = settingValue(generalGroup, _mapStyleKey);
     return MapStyle.values.firstWhere((e) => e.name == value, orElse: () => MapStyle.automatic);

@@ -108,7 +108,7 @@ class ResizableSplitView extends StatefulWidget {
   static const double dividerShadowAlphaDark = 0.10;
 
   /// LOAD-BEARING, not decoration: the engine only routes pointer events
-  /// over a native platform view (the Mapbox webview) back to Flutter where
+  /// over a native platform view (the map webview) back to Flutter where
   /// Flutter has PAINTED above it — an unpainted strip would let the native
   /// view take the events and pan the map instead of dragging the divider.
   /// Painting the strip at this near-invisible alpha claims it. Do NOT

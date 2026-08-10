@@ -964,8 +964,8 @@ class HaLoServices {
 
   /// Pusher app key + cluster for the realtime client — public,
   /// non-secret values (every Pusher client SDK ships them this way), but
-  /// still build-time configured like the Mapbox token or SOTA's OAuth
-  /// client id (config/secrets.dart) since they point at whichever LoFi
+  /// still build-time configured like SOTA's OAuth client id
+  /// (config/secrets.dart) since they point at whichever LoFi
   /// deployment this build talks to. Empty in a checkout that hasn't filled
   /// them in: [pusher] is then null and every realtime feature falls back
   /// to its polling path rather than crashing.

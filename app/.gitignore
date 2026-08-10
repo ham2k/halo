@@ -44,8 +44,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Build-time secrets: award API keys, the Mapbox token, per-edition OAuth
-# client ids. See lib/config/secrets.dart.example for the template.
+# Build-time secrets: award API keys, per-edition OAuth client ids. See
+# lib/config/secrets.dart.example for the template.
 /lib/config/secrets.dart
 
 # Dead since #411 (superseded by lib/config/secrets.dart), but older

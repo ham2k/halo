@@ -39,9 +39,9 @@ void main() {
     });
 
     test('a value belonging to no extension', () {
-      // The Mapbox token lives in the same store because the app reads it
+      // The Pusher key lives in the same store because the app reads it
       // directly. That must not make it extension-readable.
-      expect(extensionMaySeeSecret('pota', 'MAPBOX_ACCESS_TOKEN'), isFalse);
+      expect(extensionMaySeeSecret('pota', 'PUSHER_KEY'), isFalse);
     });
 
     test('a longer key that merely starts the same way', () {

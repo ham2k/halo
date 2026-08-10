@@ -37,7 +37,7 @@ re-vendoring commands.
   override; only a build does.**
 - `flutter: config: enable-swift-package-manager: false` in `app/pubspec.yaml`
   — a genuine project-scoped switch that beats global config, but it moves
-  *every* Apple plugin back to CocoaPods (mapbox, sentry, sqlite3 included),
+  *every* Apple plugin back to CocoaPods (sentry, sqlite3 included),
   needs a `pod repo update` locally and in CI, and runs against Flutter's own
   push to deintegrate CocoaPods.
 
@@ -96,7 +96,7 @@ line passes everything and breaks `flutter build macos`.
   `g_application_activate`), and the runner is `G_APPLICATION_NON_UNIQUE`. A
   web view alone would not retire this.
 - **Maps** (`app/lib/views/operation/map_panel.dart`). Linux falls through to the
-  OSM backend rather than the Mapbox webview one — see the Linux entry in
+  OSM backend rather than the MapLibre webview one — see the Linux entry in
   [backlog.md](backlog.md).
 - **HTML extension panels** (`app/lib/views/operation/panel_content_view.dart`).
   The pane's own probe returns early for Linux, so it stays on the

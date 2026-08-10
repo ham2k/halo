@@ -67,8 +67,7 @@ reach neither another's values nor a name outside its own prefix.
 
 Values come from the environment (`mise.local.toml` locally, the CI env in
 `app_dist/ci/*.sh`) into a gitignored `app/lib/config/secrets.dart`. App code
-reads that map directly — the Mapbox access token is in it too. See
-`secrets.dart.example`.
+reads that map directly. See `secrets.dart.example`.
 
 **Expect null and degrade.** A fresh checkout, a fork, and every build without
 the value configured all have none. A hook that throws instead of returning

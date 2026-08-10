@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Conditional facade for the Flutter-web Mapbox backend: on the web the
-// real implementation (Mapbox GL JS mounted on an HtmlElementView — see
+// Conditional facade for the Flutter-web map backend: on the web the
+// real implementation (MapLibre GL JS mounted on an HtmlElementView — see
 // DESIGN.md §11, "a webview doesn't make sense on web, since the app itself
 // is already running in a browser") is compiled in; everywhere else a
 // never-instantiated stub keeps dart:ui_web / package:web out of native

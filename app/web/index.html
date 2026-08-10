@@ -145,7 +145,8 @@
   <script>
     // Substituted at deploy time by CI (see .github/workflows/deploy-web.yml
     // and docs/deployment.md); left as the placeholder — and therefore
-    // disabled — in local/dev builds, same convention as the Mapbox token.
+    // disabled — in local/dev builds, same convention as every optional
+    // build secret in lib/config/secrets.dart.
     const HALO_SENTRY_DSN = '%%HALO_SENTRY_DSN%%';
 
     let firstFramePainted = false;

@@ -56,12 +56,4 @@ experiments:
     name: Station Configuration
     description: Connect and control radios and other station equipment.
     aliases: [cat, rig]
-  # Renders the Map tab with MapLibre GL JS + OpenFreeMap tiles instead of
-  # Mapbox, on every platform with a webview — including iOS/Android, where
-  # it replaces the native Mapbox SDK. Needs no Mapbox token. See
-  # map_panel.dart's backend routing.
-  - key: maplibre
-    name: MapLibre Maps
-    description: Render maps with MapLibre and OpenFreeMap instead of Mapbox.
-    aliases: [libre, openfreemap]
 

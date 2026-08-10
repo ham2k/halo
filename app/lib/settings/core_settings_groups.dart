@@ -700,10 +700,11 @@ String _numText(double value) =>
     value == value.roundToDouble() ? value.toInt().toString() : '$value';
 
 /// The Map tab's basemap picker (see map_panel.dart / map_gl_script.dart's
-/// `mapLibreStyleUrl`) — MAPLIBRE-experiment only, since the Mapbox and OSM
-/// backends have no equivalent choice to offer. `target: 'map'` is what the
-/// tab's own settings button (operation_view.dart) opens; the field is also
-/// reachable from All Settings, same as every other target-scoped field.
+/// `mapLibreStyleUrl`) — the OSM backend has no equivalent choice to offer,
+/// but that only matters on Linux, where this group still shows the field
+/// (it just goes unused there). `target: 'map'` is what the tab's own
+/// settings button (operation_view.dart) opens; the field is also reachable
+/// from All Settings, same as every other target-scoped field.
 class MapSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
@@ -723,7 +724,6 @@ class MapSettingsGroup extends SettingsGroup {
 
   @override
   Future<List<Map<String, dynamic>>> buildElements() async {
-    if (!settings.experimentEnabled('maplibre')) return [];
     final s = t.settings.map;
     return [
       _select(

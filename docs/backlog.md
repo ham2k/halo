@@ -9,9 +9,9 @@ Most of the original feature backlog (secondary controls, QSO row layout,
 radio/VFO service, exports panel, activities view, status bar, call stacking)
 has shipped and was removed from this file on 2026-07-15.
 
-## Windows map backend unverified; Linux has no Mapbox path
+## Windows map backend unverified; Linux has no webview path
 
-The Map tab routes Windows to the `flutter_inappwebview` Mapbox backend
+The Map tab routes Windows to the `flutter_inappwebview` MapLibre backend
 (`app/lib/views/map/mapbox_webview_map_view.dart`) — code-audited against
 `flutter_inappwebview_windows` 0.6.0 (the bridge, `evaluateJavascript`,
 `onConsoleMessage`, `transparentBackground` and `initialData` all have
@@ -19,25 +19,21 @@ Windows implementations, and the routing falls back to OSM when no WebView2
 environment can be created) but still never run on a Windows machine.
 Windows now runs `flutter_inappwebview_windows` 0.7.0-beta.3, on WebView2 SDK
 1.0.3650.58, and the webview map backend **has** been run there since: a
-Codemagic Windows build renders the Mapbox/MapLibre pane, which exercises the
+Codemagic Windows build renders the MapLibre pane, which exercises the
 app's own WebView2 environment, `initialData` and `evaluateJavascript` on the
 new SDK. What remains unexercised is the rest of the bridge — `onConsoleMessage`,
 `transparentBackground`, and the fallback path when no WebView2 environment
 can be created (which by definition does not arise on a machine where one
 can).
-Three Windows-only caveats, also noted in the backend's header: every
+Two Windows-only caveats, also noted in the backend's header: every
 `InAppWebView` must be given the app's own WebView2 environment
 (`app/lib/services/windows_webview.dart`), because the plugin's own is
 rooted next to the exe and fails outright where that directory is not
-writable; WebView2's
-`NavigateToString` ignores `baseUrl`, so tile requests carry no Referer —
-the Mapbox token must stay free of URL restrictions or Windows breaks
-alone; and `NavigateToString` caps the document at 2MB (the page is ~10KB,
+writable; and `NavigateToString` caps the document at 2MB (the page is ~10KB,
 nowhere close).
 
 Linux is routed to the OSM/`flutter_map` backend (markers/lines/callouts,
-no globe) because it has no web view at all, and `mapbox_maps_flutter` is
-mobile-only.
+no globe) because it has no web view at all.
 
 We are on `flutter_inappwebview` 6.2.0-beta.3, which *does* endorse a Linux
 implementation — and `app/pubspec.yaml` overrides it away, because that
@@ -62,14 +58,12 @@ is a build rather than a dependency.
 ## Web map backend needs a real-deployment shakeout
 
 The web Map backend (`app/lib/views/map/mapbox_web_map_view.dart`) mounts
-Mapbox GL JS on an `HtmlElementView` div via `<script>`-tag loading and
+MapLibre GL JS on an `HtmlElementView` div via `<script>`-tag loading and
 `js_interop`, sharing the marker/line/popup JS (`map_gl_script.dart`) with
 the desktop webview backend. Verified against a dev
 `flutter run -d web-server` build; still to check on a real deployment: CSP
-headers allowing `api.mapbox.com`, and the Mapbox token's URL restrictions
-covering the production origin — noting that the Windows webview sends no
-Referer at all (see the entry above), so any URL restriction on the shared
-token breaks Windows; restrict a separate web-only token instead if needed.
+headers allowing MapLibre's CDN (`unpkg.com`) and its tile providers
+(`tiles.openfreemap.org`, `basemaps.cartocdn.com`).
 
 ## Sync onboarding UX is a bare-minimum banner, not a guided flow
 

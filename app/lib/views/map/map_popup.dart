@@ -1,11 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Flutter-rendered pieces shared by the OSM and Mapbox-native map
-// backends: the circle marker glyph and the tap callout card (callsign •
-// distance / report • mode • band • time, with the band in its band color —
-// same layout as app-polo's map callout). The webview backend re-creates
-// the same look in HTML/CSS instead (see mapbox_webview_map_view.dart).
+// The Flutter-rendered pieces for the OSM map backend: the circle marker
+// glyph and the tap callout card (callsign • distance / report • mode •
+// band • time, with the band in its band color — same layout as
+// app-polo's map callout). The webview backend re-creates the same look in
+// HTML/CSS instead (see mapbox_webview_map_view.dart).
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';

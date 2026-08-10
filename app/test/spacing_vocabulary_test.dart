@@ -139,8 +139,8 @@ String? _name(String arg) {
   return colon == -1 ? null : arg.substring(0, colon).trim();
 }
 
-// `MbxEdgeInsets` is the Mapbox SDK's own type in map viewport terms, not
-// Flutter's — the lookbehind keeps it out.
+// A vendor SDK's own EdgeInsets-shaped type, in its own viewport terms, is
+// not Flutter's — the lookbehind keeps a `FooEdgeInsets(` from matching.
 final _edgeInsets = RegExp(r'(?<![A-Za-z0-9_])EdgeInsets(\.\w+)?\s*\(');
 final _sizedBox = RegExp(r'(?<![A-Za-z0-9_])SizedBox\s*\(');
 final _number = RegExp(r'^-?\d+(\.\d+)?$');

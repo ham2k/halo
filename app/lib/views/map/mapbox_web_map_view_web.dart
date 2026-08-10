@@ -1,12 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Mapbox backend for Flutter web: the app is already running in a browser,
-// so instead of a webview (see DESIGN.md §11) this mounts a plain div as an
-// HtmlElementView, loads Mapbox GL JS with a <script> tag once, and drives
-// the shared map script (map_gl_script.dart — same markers/lines/popups as
-// the desktop webview backend) directly through js_interop. Globe
-// projection works, since that's a Mapbox GL JS feature.
+// MapLibre backend for Flutter web: the app is already running in a
+// browser, so instead of a webview (see DESIGN.md §11) this mounts a plain
+// div as an HtmlElementView, loads MapLibre GL JS with a <script> tag once,
+// and drives the shared map script (map_gl_script.dart — same
+// markers/lines/popups as the desktop webview backend) directly through
+// js_interop.
 
 import 'dart:async';
 import 'dart:convert';
@@ -18,47 +18,43 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
-import '../../config/secrets.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
 import 'map_load_notice.dart';
 import 'map_marker_data.dart';
 import 'map_zoom_controller.dart';
 
-/// Loads the engine's GL library and injects the shared map script, once per
-/// page *per engine* — toggling the MAPLIBRE experiment mid-session can put
-/// both libraries in the page, which is why the shared script takes the
-/// engine per call instead of sniffing which global exists.
-final _glLoading = <MapGlEngine, Future<void>>{};
+/// Loads MapLibre GL JS and injects the shared map script, once per page.
+Future<void>? _glLoading;
 
 /// A FAILED load is not cached: the next map open retries, because the
 /// common cause is being offline at the moment the panel first opened — a
 /// cached failure would keep the map dead for the whole page lifetime after
 /// the device comes back into coverage.
-Future<void> _ensureGlLoaded(MapGlEngine engine) {
-  final loading = _glLoading[engine] ??= _loadGl(engine);
+Future<void> _ensureGlLoaded() {
+  final loading = _glLoading ??= _loadGl();
   return loading.catchError((Object e, StackTrace s) {
-    if (identical(_glLoading[engine], loading)) _glLoading.remove(engine);
+    if (identical(_glLoading, loading)) _glLoading = null;
     Error.throwWithStackTrace(e, s);
   });
 }
 
-Future<void> _loadGl(MapGlEngine engine) async {
+Future<void> _loadGl() async {
   final head = web.document.head!;
 
   head.append(web.HTMLLinkElement()
     ..rel = 'stylesheet'
-    ..href = engine.cssUrl);
+    ..href = mapGlCssUrl);
   // Popup styling the webview backend gets from its own page's <style>.
   head.append(web.HTMLStyleElement()
-    ..textContent = '.mapboxgl-popup-content, .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }');
+    ..textContent = '.maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }');
 
-  final script = web.HTMLScriptElement()..src = engine.scriptUrl;
+  final script = web.HTMLScriptElement()..src = mapGlScriptUrl;
   final loaded = Completer<void>();
   script.addEventListener(
       'load', ((web.Event _) => loaded.complete()).toJS);
   script.addEventListener(
-      'error', ((web.Event _) => loaded.completeError(StateError('${engine.scriptUrl} failed to load'))).toJS);
+      'error', ((web.Event _) => loaded.completeError(StateError('$mapGlScriptUrl failed to load'))).toJS);
   head.append(script);
   await loaded.future;
 
@@ -69,7 +65,6 @@ class MapboxWebMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
-  final MapGlEngine engine;
   final bool isDark;
 
   /// The light/dark style URLs to actually load — see
@@ -84,7 +79,6 @@ class MapboxWebMapView extends StatefulWidget {
       required this.markers,
       this.lines = const [],
       required this.projection,
-      required this.engine,
       required this.isDark,
       required this.styleUrl,
       required this.styleUrlDark,
@@ -134,7 +128,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       // See mapbox_webview_map_view.dart's same rule — MapLibre's globe has
       // no built-in way to paint what's beyond the sphere, so this shows
       // through the canvas wherever the globe doesn't cover it.
-      if (widget.engine == MapGlEngine.maplibre) div.style.background = mapLibreSpaceBackgroundCss();
+      div.style.background = mapLibreSpaceBackgroundCss();
       _container = div;
       unawaited(_createMap());
       return div;
@@ -143,14 +137,12 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   Future<void> _createMap() async {
     try {
-      await _ensureGlLoaded(widget.engine);
+      await _ensureGlLoaded();
       if (!mounted || _container == null || _handle != null) return;
       final gl = web.window.getProperty<JSObject>('poloMapGl'.toJS);
       final onEvent = ((JSString kind, JSString message) => _onMapEvent(kind.toDart, message.toDart)).toJS;
       _handle = gl.callMethodVarArgs<JSObject>('create'.toJS, [
         _container!,
-        widget.engine.name.toJS,
-        (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').toJS,
         widget.styleUrl.toJS,
         widget.styleUrlDark.toJS,
         widget.isDark.toJS,

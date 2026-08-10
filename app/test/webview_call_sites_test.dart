@@ -37,7 +37,7 @@ const _expectedCallSites = {
   'lib/views/settings_view.dart', // the OAuth login page
   'lib/views/operation/panel_content_view.dart', // the HTML extension panel
   'lib/views/operation/website/website_panel.dart', // the Web Site pane
-  'lib/views/map/mapbox_webview_map_view.dart', // the Mapbox map backend
+  'lib/views/map/mapbox_webview_map_view.dart', // the MapLibre map backend
   'lib/services/windows_webview.dart', // the shared WebView2 environment
 };
 

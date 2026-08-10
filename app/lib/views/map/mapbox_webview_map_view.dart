@@ -1,22 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Browser-engine map backend in a webview, bridged to Dart for marker/line
+// MapLibre GL JS map backend in a webview, bridged to Dart for marker/line
 // data in and load/error status out via
-// `window.flutter_inappwebview.callHandler`. Two roles:
-//   - Mapbox GL JS on desktop (macOS and Windows; Linux has no web view to
-//     run it in — see docs/quirks.md), where no official Mapbox Flutter SDK
-//     exists and GL JS is the only globe projection.
-//   - MapLibre GL JS on every webview-capable platform including iOS and
-//     Android, under the MAPLIBRE experiment — MapLibre Native has no globe
-//     projection, so on mobile the experiment trades the native Mapbox SDK
-//     for a webview rather than for MapLibre's own SDK.
-//
-// On Windows the webview is WebView2, whose NavigateToString ignores
-// InAppWebViewInitialData.baseUrl — the page runs from an about:blank-like
-// origin and map tile requests carry no Referer. Keep the Mapbox token free
-// of URL restrictions (or issue a separate restricted one for web) or the
-// Windows map breaks while every other platform keeps working.
+// `window.flutter_inappwebview.callHandler`. Runs on every webview-capable
+// platform — macOS, Windows (Linux has no web view to run it in — see
+// docs/quirks.md), and iOS/Android, where it replaces a native map SDK
+// because MapLibre Native (unlike MapLibre GL JS) has no globe projection.
 //
 // Windows also needs the app's own WebView2 environment (WindowsWebView);
 // building this view without one, on a machine that can't create it, leaves
@@ -26,7 +16,7 @@
 // great-circle lines — all GL layers over two GeoJSON sources (the lines
 // pre-densified by the facade), so that the current QSO's line can paint over
 // the other stations' circles.
-// Clicking a circle opens a mapboxgl.Popup with the QSO's details, styled
+// Clicking a circle opens a maplibregl.Popup with the QSO's details, styled
 // to match the Flutter backends' MapPopupCard.
 
 import 'dart:async';
@@ -36,7 +26,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import '../../config/secrets.dart';
 import '../../services/windows_webview.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
@@ -48,14 +37,13 @@ class MapboxWebviewMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
-  final MapGlEngine engine;
   final bool isDark;
 
-  /// The light/dark style URLs to actually load — [MapGlEngine.styleUrl] and
-  /// [.styleUrlDark] by default, or both pointing at the same pinned style
-  /// when the operator picked one via [SettingsService.mapStyle]. Threaded in
-  /// from map_panel.dart rather than read off `engine` here, so this widget
-  /// doesn't need to know about the map-style setting at all.
+  /// The light/dark style URLs to actually load — [mapDefaultStyleUrl] and
+  /// [mapDefaultStyleUrlDark] by default, or both pointing at the same pinned
+  /// style when the operator picked one via [SettingsService.mapStyle].
+  /// Threaded in from map_panel.dart, so this widget doesn't need to know
+  /// about the map-style setting at all.
   final String styleUrl;
   final String styleUrlDark;
 
@@ -66,7 +54,6 @@ class MapboxWebviewMapView extends StatefulWidget {
     required this.markers,
     this.lines = const [],
     required this.projection,
-    required this.engine,
     required this.isDark,
     required this.styleUrl,
     required this.styleUrlDark,
@@ -83,7 +70,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   bool _loadFailed = false;
 
   /// Covers the window before the page's own error channel exists: if
-  /// mapbox-gl.js never loads (offline at map open, DNS, a proxy) or WebGL
+  /// maplibre-gl.js never loads (offline at map open, DNS, a proxy) or WebGL
   /// init throws, the inline script dies before `create()` installs the
   /// watchdog, `poloMapReady` never fires, and without this timer the pane
   /// is blank with no evidence anywhere.
@@ -180,7 +167,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       // the exe (see WindowsWebView).
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
-        data: _html(widget.engine, secrets['MAPBOX_ACCESS_TOKEN'] ?? '', widget.isDark, widget.styleUrl, widget.styleUrlDark),
+        data: _html(widget.isDark, widget.styleUrl, widget.styleUrlDark),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
@@ -233,14 +220,14 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   // callback crosses on its own 'poloMapEvent' handler rather than riding
   // onConsoleMessage: a console line is a debug print, and these have to
   // reach ErrorPolicy.
-  static String _html(MapGlEngine engine, String token, bool isDark, String styleUrl, String styleUrlDark) => '''
+  static String _html(bool isDark, String styleUrl, String styleUrlDark) => '''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script>
-    // Installed before anything can fail: an uncaught page error (the engine
+    // Installed before anything can fail: an uncaught page error (the GL
     // script missing so create() throws ReferenceError, WebGL init failing)
     // happens before the map's own error channel exists, and onConsoleMessage
     // never sees uncaught exceptions. Buffered until the bridge is ready —
@@ -263,13 +250,13 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       pending.forEach(__poloPageError);
     });
   </script>
-  <script src="${engine.scriptUrl}"
-    onerror="__poloPageError('failed to load the ${engine.name} script from ${engine.scriptUrl}')"></script>
-  <link href="${engine.cssUrl}" rel="stylesheet" />
+  <script src="$mapGlScriptUrl"
+    onerror="__poloPageError('failed to load the maplibre script from $mapGlScriptUrl')"></script>
+  <link href="$mapGlCssUrl" rel="stylesheet" />
   <style>
     body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
-    .mapboxgl-popup-content, .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
-    ${engine == MapGlEngine.maplibre ? '#map { background: ${mapLibreSpaceBackgroundCss()}; }' : ''}
+    .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
+    #map { background: ${mapLibreSpaceBackgroundCss()}; }
   </style>
 </head>
 <body>
@@ -277,7 +264,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   <script>$mapGlScript</script>
   <script>
     const handle = window.poloMapGl.create(
-      document.getElementById('map'), '${engine.name}', '$token', '$styleUrl', '$styleUrlDark',
+      document.getElementById('map'), '$styleUrl', '$styleUrlDark',
       $isDark,
       function (kind, message) {
         window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);

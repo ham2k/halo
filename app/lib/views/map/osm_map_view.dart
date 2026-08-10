@@ -1,12 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The zero-token, zero-dependency Map tab backend: OpenStreetMap raster
-// tiles via flutter_map. Used automatically whenever no Mapbox token is
-// configured (see map_panel.dart's facade routing), and works on every
-// platform — the safety net a fresh checkout falls back to before
-// MAPBOX_ACCESS_TOKEN is set in lib/config/secrets.dart. Has no globe —
-// flutter_map is a 2D tile compositor, not a 3D renderer.
+// The Map tab backend for platforms with no webview to run MapLibre GL JS
+// in: OpenStreetMap raster tiles via flutter_map (see map_panel.dart's
+// facade routing). Has no globe — flutter_map is a 2D tile compositor, not
+// a 3D renderer.
 //
 // QSOs are band-colored circles, the QTH a black one, connected by
 // great-circle polylines (pre-densified by the facade); tapping a circle

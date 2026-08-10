@@ -79,10 +79,10 @@ void main() {
         reason: "the current QSO's line has to come after the base markers, or it passes under their dots");
   });
 
-  // A mapboxgl.Marker is a DOM element above the canvas, which no layer can
+  // A maplibregl.Marker is a DOM element above the canvas, which no layer can
   // paint over — reaching for one again would undo the layering above.
   test('the GL script draws markers in the canvas, not as DOM overlays', () {
-    expect(mapGlScript, isNot(contains('new mapboxgl.Marker')));
+    expect(mapGlScript, isNot(contains('new maplibregl.Marker')));
   });
 
   test('mapHighlightColor brightens a muted hue without shifting it', () {
