@@ -394,8 +394,13 @@ void main() {
   });
 
   testWidgets(
-    'the divider between rows is a hairline, not Material\'s default 16px-tall spacer',
+    'consecutive rows sit exactly one row-height apart, not Material\'s default 16px-tall divider spacer',
     (tester) async {
+      // Every row is forced into a fixed-height sliver slot (HALO-258, so
+      // `jumpTo` can compute maxScrollExtent as itemExtent * count instead of
+      // laying out every row to find it) — the hairline divider is now
+      // painted as part of that slot rather than taking a spacer slot of its
+      // own, so the pitch between rows must equal the row height exactly.
       final operation = await operations.create(stationCall: 'KI2D');
       final first = await qsos.add(operation.uuid, {
         'their': {'call': 'W1AW'},
@@ -416,7 +421,9 @@ void main() {
         ),
       );
 
-      expect(tester.getSize(find.byType(Divider)).height, 1);
+      final pitch = tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K2HAM')).dy -
+          tester.getTopLeft(find.bySemanticsIdentifier('qso.row.W1AW')).dy;
+      expect(pitch, QsoList.rowHeightOf(tester.element(find.byType(QsoList))));
     },
   );
 

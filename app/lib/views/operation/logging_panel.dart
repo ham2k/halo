@@ -673,7 +673,20 @@ class _LoggingPanelState extends State<LoggingPanel> {
               focusNode: _listFocus,
               skipTraversal: true,
               onKeyEvent: _onQsoListKeyEvent,
-              child: list,
+              child: _LazyQsoList(
+                // Only worth deferring a large log's expensive first build —
+                // a short one (including a brand-new, empty operation) is
+                // cheap enough that showing it immediately, empty-state
+                // message and all, beats replacing it with a spinner first.
+                // A field on the SAME widget type, not a ternary between two
+                // different ones at this tree slot: logging (or deleting) a
+                // QSO can cross the threshold while the panel is open, and a
+                // changed runtimeType here would discard and remount
+                // _QsoListState — silently throwing an operator's scroll
+                // position and jumping back to the bottom mid-review.
+                largeEnough: widget.qsos.length >= _lazyQsoListThreshold,
+                child: list,
+              ),
             ),
           ),
           LoggingControls(
@@ -850,4 +863,69 @@ class _LoggingPanelState extends State<LoggingPanel> {
         'their_prefix': qso.theirEntityPrefix,
         'refs': qso.refs.map((r) => r['type']).join(','),
       };
+}
+
+/// Below this QSO count, [QsoList]'s first build is cheap enough that
+/// [_LazyQsoList]'s spinner isn't worth showing at all — see its call site.
+const _lazyQsoListThreshold = 200;
+
+/// Defers [child]'s first build behind a spinner until the enclosing route's
+/// own push transition finishes — [QsoList]'s first inflation on a large
+/// operation is expensive enough (HALO-258) to stutter if it lands on the
+/// same frames as that transition. Tied to the transition's actual
+/// [AnimationStatus] rather than a guessed duration: a fixed timer close to
+/// the transition's own length lands the swap mid-animation as often as
+/// after it. Only defers once: [child]'s underlying QSO stream already
+/// updates in place above this widget regardless of readiness, so later
+/// emissions rebuild [child] without resetting it.
+class _LazyQsoList extends StatefulWidget {
+  final Widget child;
+  final bool largeEnough;
+
+  const _LazyQsoList({required this.child, required this.largeEnough});
+
+  @override
+  State<_LazyQsoList> createState() => _LazyQsoListState();
+}
+
+class _LazyQsoListState extends State<_LazyQsoList> {
+  bool _ready = false;
+  Animation<double>? _routeAnimation;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_ready || _routeAnimation != null || !widget.largeEnough) return;
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null || animation.isCompleted) {
+      // No enclosing route transition (or it already finished before this
+      // widget mounted, e.g. reached other than by a fresh push) — nothing
+      // to wait for.
+      _ready = true;
+      return;
+    }
+    _routeAnimation = animation..addStatusListener(_onRouteAnimationStatus);
+  }
+
+  void _onRouteAnimationStatus(AnimationStatus status) {
+    // completed: the ordinary forward-push case this exists for. dismissed:
+    // the transition unwound instead of finishing (e.g. this widget mounted
+    // mid-pop, or a push got cancelled) — settling back to nothing playing
+    // out is just as much "stop waiting" as finishing forward is, and
+    // without it a stalled/aborted transition would leave the spinner on
+    // screen forever.
+    if (status != AnimationStatus.completed && status != AnimationStatus.dismissed) return;
+    _routeAnimation?.removeStatusListener(_onRouteAnimationStatus);
+    if (mounted) setState(() => _ready = true);
+  }
+
+  @override
+  void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteAnimationStatus);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      (!widget.largeEnough || _ready) ? widget.child : const Center(child: CircularProgressIndicator());
 }

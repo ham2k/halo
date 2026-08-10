@@ -216,6 +216,74 @@ bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls
   return kind == 'text' || kind == 'serial' || kind == 'options' || kind == 'form';
 }
 
+/// The list-wide numbering, column widths and day-grouping [_QsoListState]
+/// computes with an O(qsos) pass — walking every QSO plus a handful of real
+/// text-layout measurements. Cached against [_QsoListMetricsKey] so an
+/// unrelated rebuild (a keystroke elsewhere in the operation view, a focus
+/// change) reuses the last pass instead of redoing it: on a long log this is
+/// the difference between a rebuild that's free and one that stutters.
+class _QsoListMetrics {
+  final List<int> numbers;
+  final double numberWidth;
+  final double callsignWidth;
+  final double dxStateWidth;
+  final double freqWidth;
+  final double exchangeWidth;
+  final double refsWidth;
+  final int hzDigits;
+  final bool usesMultipleModes;
+  final List<int> dayKeys;
+  final List<List<int>> dayGroups;
+
+  const _QsoListMetrics({
+    required this.numbers,
+    required this.numberWidth,
+    required this.callsignWidth,
+    required this.dxStateWidth,
+    required this.freqWidth,
+    required this.exchangeWidth,
+    required this.refsWidth,
+    required this.hzDigits,
+    required this.usesMultipleModes,
+    required this.dayKeys,
+    required this.dayGroups,
+  });
+}
+
+/// Everything [_QsoListMetrics] is derived from, besides `context`'s own
+/// widget-tree dependencies (folded in separately as `theme`/`textScaler`
+/// below since `Theme.of`/`MediaQuery.textScalerOf` aren't valid outside
+/// build). Two keys are equal exactly when a recompute would produce the
+/// same metrics, so `qsos`/`activityControls` compare by identity — the
+/// list-wide passes only ever care about the actual objects a rebuild reused,
+/// not about deep content equality, which would cost as much as the pass
+/// it's meant to skip.
+class _QsoListMetricsKey {
+  final List<Qso> qsos;
+  final List<Map<String, dynamic>> activityControls;
+  final String? ourEntityPrefix;
+  final bool showQsoNumbers;
+  final ThemeData theme;
+  final TextScaler textScaler;
+
+  const _QsoListMetricsKey({
+    required this.qsos,
+    required this.activityControls,
+    required this.ourEntityPrefix,
+    required this.showQsoNumbers,
+    required this.theme,
+    required this.textScaler,
+  });
+
+  bool matches(_QsoListMetricsKey other) =>
+      identical(qsos, other.qsos) &&
+      identical(activityControls, other.activityControls) &&
+      ourEntityPrefix == other.ourEntityPrefix &&
+      showQsoNumbers == other.showQsoNumbers &&
+      identical(theme, other.theme) &&
+      textScaler == other.textScaler;
+}
+
 class QsoList extends StatefulWidget {
   /// An ordinary QSO row's height, divider included — what a caller divides
   /// its own viewport height by to size a Page Up/Down jump (APP-19; see
@@ -347,10 +415,23 @@ class _QsoListState extends State<QsoList> {
   /// correction per selection, never a loop of them.
   String? _correctedRevealFor;
 
+  /// The list-wide metrics computed by the last build whose inputs actually
+  /// warranted it, and the key that produced them. Null until first build.
+  _QsoListMetricsKey? _cachedMetricsKey;
+  _QsoListMetrics? _cachedMetrics;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _metrics = LayoutDensity.metricsOf(context);
+    // The OS accessibility text-scale preference composes on top of the
+    // app's own Font Scale (ui-scaling.md §3) and isn't reflected in
+    // [_metrics] at all — every row/header sits in an exact box (HALO-258),
+    // so [_osTextScale] is what keeps that box, and the scroll math below
+    // that assumes its size, growing with it instead of clipping it.
+    // `.scale(100) / 100` reads the scaler's effective multiplier without
+    // assuming it's linear.
+    _osTextScale = MediaQuery.textScalerOf(context).scale(100) / 100;
   }
 
   /// The resolved dimensions, refreshed by [didChangeDependencies].
@@ -359,8 +440,11 @@ class _QsoListState extends State<QsoList> {
   /// [_scrollTo] run from key handlers and post-frame callbacks — outside
   /// build, where depending on an inherited widget is not allowed. The cache
   /// is also what keeps the row height the scroll math uses identical to the
-  /// one the rows actually paint with, which is the whole contract.
+  /// one the rows actually paint with, which is the whole contract — always
+  /// read alongside [_osTextScale], never `qsoRowHeight`/`sectionHeaderHeight`
+  /// alone.
   late LayoutMetrics _metrics;
+  late double _osTextScale;
 
   @override
   void initState() {
@@ -411,7 +495,7 @@ class _QsoListState extends State<QsoList> {
     if (index < 0) return;
 
     final top = _estimatedTopOf(index);
-    final scroll = _scrollTo(top, top + _metrics.qsoRowHeight);
+    final scroll = _scrollTo(top, top + _metrics.qsoRowHeight * _osTextScale);
     if (scroll != null && _correctedRevealFor != selectedUuid) {
       // Landing is not arriving: annotation rows are taller than the nominal
       // height, so a long log can drift. One measured pass straightens it out
@@ -436,10 +520,10 @@ class _QsoListState extends State<QsoList> {
       final millis = widget.qsos[i].startAtMillis ?? 0;
       final day = millis - (millis % _dayInMillis);
       if (day != lastDay) {
-        offset += _metrics.sectionHeaderHeight;
+        offset += _metrics.sectionHeaderHeight * _osTextScale;
         lastDay = day;
       }
-      if (i < index) offset += _metrics.qsoRowHeight;
+      if (i < index) offset += _metrics.qsoRowHeight * _osTextScale;
     }
     return offset;
   }
@@ -453,9 +537,10 @@ class _QsoListState extends State<QsoList> {
   /// one, which would leave the selection somewhere the operator can't see.
   Future<void>? _scrollTo(double top, double bottom) {
     final position = _scrollController.position;
+    final headerHeight = _metrics.sectionHeaderHeight * _osTextScale;
     final double target;
-    if (top - _metrics.sectionHeaderHeight < position.pixels) {
-      target = top - _metrics.sectionHeaderHeight;
+    if (top - headerHeight < position.pixels) {
+      target = top - headerHeight;
     } else if (bottom > position.pixels + position.viewportDimension) {
       target = bottom - position.viewportDimension;
     } else {
@@ -584,145 +669,51 @@ class _QsoListState extends State<QsoList> {
     // fields use the same base font size (except for frequency, see below)."
     final callStyle = mono.copyWith(fontWeight: FontWeight.w700);
 
-    // QSO numbers count only real contacts — event markers interspersed in
-    // the timeline don't consume a number.
-    final numbers = List<int>.filled(qsos.length, 0);
-    var runningNumber = 0;
-    for (var i = 0; i < qsos.length; i++) {
-      if (qsos[i].isRealContact) runningNumber++;
-      numbers[i] = runningNumber;
-    }
-    // `numbers` only ever increases, so its last value is its max — no need
-    // to fold over it separately.
-    final maxNumber = runningNumber;
+    // The list-wide numbering, column widths and day-grouping below are an
+    // O(qsos) pass with real text-layout measurements — expensive enough on
+    // a long log to stutter if redone on every rebuild, including ones this
+    // widget's own inputs didn't change (a keystroke elsewhere in the
+    // operation view still rebuilds this StreamBuilder subtree). Reused
+    // as-is whenever the last pass's inputs still match.
+    final metricsKey = _QsoListMetricsKey(
+      qsos: qsos,
+      activityControls: activityControls,
+      ourEntityPrefix: ourEntityPrefix,
+      showQsoNumbers: showQsoNumbers,
+      theme: theme,
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+    final cachedKey = _cachedMetricsKey;
+    final metrics = cachedKey != null && cachedKey.matches(metricsKey)
+        ? _cachedMetrics!
+        : (_cachedMetrics = _computeMetrics(
+            context: context,
+            qsos: qsos,
+            activityControls: activityControls,
+            ourEntityPrefix: ourEntityPrefix,
+            showQsoNumbers: showQsoNumbers,
+            mono: mono,
+            monoDim: monoDim,
+            callStyle: callStyle,
+          ));
+    _cachedMetricsKey = metricsKey;
+    final numbers = metrics.numbers;
+    final numberWidth = metrics.numberWidth;
+    final callsignWidth = metrics.callsignWidth;
+    final dxStateWidth = metrics.dxStateWidth;
+    final freqWidth = metrics.freqWidth;
+    final exchangeWidth = metrics.exchangeWidth;
+    final refsWidth = metrics.refsWidth;
+    final hzDigits = metrics.hzDigits;
+    final usesMultipleModes = metrics.usesMultipleModes;
+    final dayKeys = metrics.dayKeys;
+    final dayGroups = metrics.dayGroups;
 
-    // Column-sizing must cover every QSO that can actually render a row —
-    // including deleted ones, which still show (struck-through) whenever the
-    // "show deleted QSOs" menu toggle is on — not just `isRealContact` ones,
-    // or a deleted QSO's callsign/frequency/mode can exceed what the columns
-    // were sized for and wrap/truncate. One pass instead of separate
-    // fold/map/toSet passes per column — cheap on its own (int/string
-    // comparisons, not text layout), but there's no reason to walk the list
-    // four times when once covers every column that needs a list-wide value.
-    var longestCall = '';
-    final freqsInKHz = <double?>[];
-    final modesUsed = <String>{};
-    // Widest band shown in the freq/band column (only null-freq rows fall back
-    // to the band) and widest their-exchange, so both columns reserve a
-    // list-wide width and stay aligned even on rows that lack them (#354).
-    var longestBand = '';
-    var longestExchange = '';
-    // Only the single longest flag and longest state ever matter for
-    // dxStateWidth below — tracking them here costs the same cheap
-    // length comparison as longestCall, deferring the two (not N) actual
-    // text-layout measurements to after this loop.
-    var longestFlag = '';
-    var longestState = '';
-    // The refs column is per-row content, so what it reserves is the widest
-    // any ONE row needs: per distinct type an icon plus its gap, and the "×N"
-    // on the types that repeat. Tracked as a count of icons and the largest
-    // repeat-count seen, so the two text measurements happen once after the
-    // loop rather than per row.
-    var mostRefIcons = 0;
-    var largestRefCount = 0;
-    for (final q in qsos) {
-      if (q.isEvent) continue;
-      final refCounts = _refCountsByType(q, activityControls);
-      if (refCounts.length > mostRefIcons) mostRefIcons = refCounts.length;
-      for (final count in refCounts.values) {
-        if (count > largestRefCount) largestRefCount = count;
-      }
-      if (q.theirCall.length > longestCall.length) longestCall = q.theirCall;
-      freqsInKHz.add(q.freq);
-      // Band only renders when the QSO has no frequency (freqField below).
-      if (q.freq == null && (q.band?.length ?? 0) > longestBand.length) longestBand = q.band!;
-      final exchange = q.theirExchange;
-      if (exchange != null && exchange.length > longestExchange.length) longestExchange = exchange;
-      final mode = q.mode;
-      if (mode != null) modesUsed.add(mode);
-      final dxState = _dxStateContentFor(q, ourEntityPrefix);
-      if (dxState == null) {
-        // no-op — nothing to measure for this row
-      } else if (dxState.isFlag) {
-        if (dxState.text.length > longestFlag.length) longestFlag = dxState.text;
-      } else if (dxState.text.length > longestState.length) {
-        longestState = dxState.text;
-      }
-    }
-
-    // Column widths are computed once for the whole list so every row lines
-    // up, per the issue: "wide enough to fit the largest number"/"longest
-    // callsign in all qsos" — DX/State and the Name column right after it
-    // are no exception (ham2k/halo-dist#186): a QSO with neither a flag
-    // nor a state must still reserve that column's width, or Name starts at
-    // a different x position on every row depending on its neighbors.
-    final numberWidth = showQsoNumbers
-        ? textWidth(context, '$maxNumber', mono)
-        : 0.0;
-    final callsignWidth = longestCall.isEmpty
-        ? 0.0
-        : textWidth(context, longestCall, callStyle);
-    // On the image fallback (flagEmojiNeedsImageFallback), every flag renders
-    // at the same fixed SVG size regardless of which entity it is, so that's
-    // the width to reserve instead of measuring emoji glyph text.
-    final flagWidth = longestFlag.isEmpty
-        ? 0.0
-        : flagEmojiNeedsImageFallback
-            ? flagGlyphDefaultFontSize * 4 / 3
-            : textWidth(context, longestFlag, emojiStyle());
-    final stateWidth = longestState.isEmpty ? 0.0 : textWidth(context, longestState, monoDim);
-    final dxStateWidth = flagWidth > stateWidth ? flagWidth : stateWidth;
-
-    // "decide how many digits to display based on all the qsos in the
-    // operation" — one Hz precision for the whole list, not per row.
-    final hzDigits = hzDigitsNeeded(freqsInKHz);
-    // The Mode column only earns its place when the operation actually mixes
-    // modes — otherwise every row would repeat the same value.
-    final usesMultipleModes = modesUsed.length > 1;
-
-    // Reserve the freq/band column at a fixed list-wide width so a QSO with
-    // neither still holds it open and Mode/Callsign line up on every row
-    // (#354). Freq strings depend on hzDigits, so measure after it's known;
-    // mono means string length tracks width, and measuring the full string in
-    // regular `mono` (the Hz part actually renders smaller) only over-reserves
-    // a hair, which is safe. Bands (null-freq rows) compete for the same width.
-    var longestFreqOrBand = longestBand;
-    for (final f in freqsInKHz) {
-      if (f == null) continue;
-      final parts = freqDisplayParts(f, hzDigits: hzDigits);
-      final s = parts.hz != null ? '${parts.mhz}.${parts.khz}.${parts.hz}' : '${parts.mhz}.${parts.khz}';
-      if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
-    }
-    final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);
-    // The their-exchange column (after the signal reports) reserves width only
-    // when some QSO actually carries an exchange, like DX/State above (#354).
-    final exchangeWidth = longestExchange.isEmpty ? 0.0 : textWidth(context, longestExchange, monoDim);
-    // Measured from the largest count actually present, so a three-figure
-    // repeat is budgeted at its real width rather than a two-digit sample.
-    // Reserved for EVERY icon on the widest row rather than only the ones
-    // that repeat: over-reserving costs the exchange column a few pixels,
-    // under-reserving costs a row that overflows.
-    final refCountWidth =
-        largestRefCount > 1 ? textWidth(context, '×$largestRefCount', mono.copyWith(fontSize: 11)) : 0.0;
-    final refsWidth =
-        mostRefIcons == 0 ? 0.0 : _columnGap + mostRefIcons * (_refIconWidth + _refIconGap + refCountWidth);
-
-    // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
-    // by startAtMillis) — bucket it into consecutive UTC-day runs so each
-    // bucket becomes one pinned header + its own sliver of rows. A plain
-    // linear scan works because same-day QSOs are already contiguous; no
-    // need to build then sort a day->indices map.
-    final dayKeys = <int>[];
-    final dayGroups = <List<int>>[];
-    for (var i = 0; i < qsos.length; i++) {
-      final millis = qsos[i].startAtMillis ?? 0;
-      final dayKey = millis - (millis % _dayInMillis);
-      if (dayKeys.isEmpty || dayKeys.last != dayKey) {
-        dayKeys.add(dayKey);
-        dayGroups.add([]);
-      }
-      dayGroups.last.add(i);
-    }
+    // See [_osTextScale]'s doc — every row/header below is forced into an
+    // exact box (HALO-258), so its extent has to grow with the OS text
+    // scale the same way the scroll math using [_metrics] elsewhere does.
+    final rowExtent = _metrics.qsoRowHeight * _osTextScale;
+    final headerExtent = _metrics.sectionHeaderHeight * _osTextScale;
 
     // Matched against each local day bucket by the same UTC-day key the
     // scoring hook uses — see `_dayInMillis`'s doc comment. Absent (or a
@@ -893,6 +884,15 @@ class _QsoListState extends State<QsoList> {
                         qso.deleted ? '' : formatNumber(number),
                         style: rowMonoDim,
                         textAlign: TextAlign.right,
+                        // [numberWidth] is measured to fit exactly, but every
+                        // row sits in a fixed-height sliver slot (HALO-258),
+                        // which can't grow to absorb a wrapped second line —
+                        // forcing one line trades a rounding-error's worth of
+                        // horizontal clipping for that, which is far less
+                        // visible.
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.clip,
                       ),
                     ),
                     const SizedBox(width: _columnGap),
@@ -1122,7 +1122,7 @@ class _QsoListState extends State<QsoList> {
                           SliverPersistentHeader(
                             pinned: true,
                             delegate: _DayHeaderDelegate(
-                              extent: _metrics.sectionHeaderHeight,
+                              extent: headerExtent,
                               child: DayHeaderRow(
                                 dayMillis: dayKeys[g],
                                 count: dayGroups[g]
@@ -1133,21 +1133,35 @@ class _QsoListState extends State<QsoList> {
                               ),
                             ),
                           ),
-                          SliverList(
-                            delegate: SliverChildBuilderDelegate((context, i) {
-                              // Divider's own `height` (the space it reserves, not the
-                              // visible line) defaults to 16 regardless of the
-                              // app-wide dividerTheme's `space` unless given
-                              // explicitly — measured at 16px in practice, way more
-                              // than the issue's "one pixel divider ... no further
-                              // margins" calls for. Same odd-index-is-a-separator
-                              // trick `ListView.separated` uses internally, since
-                              // `SliverList` has no `.separated` ctor.
-                              if (i.isOdd) {
-                                return const Divider(height: 1, thickness: 1);
-                              }
-                              return buildRow(context, dayGroups[g][i ~/ 2], plan);
-                            }, childCount: dayGroups[g].length * 2 - 1),
+                          // Fixed extent, not a plain SliverList: it gives
+                          // RenderSliverFixedExtentList's maxScrollExtent as
+                          // itemExtent * childCount, an O(1) computation —
+                          // instead of the O(n) layout walk a variable-extent
+                          // sliver needs to find where the list ends, which is
+                          // what made jumping to the newest QSO in a large
+                          // operation block the UI thread for up to 1.5s
+                          // (HALO-258). Every row is forced into this exact
+                          // height regardless of kind — see EventRow's and
+                          // AnnotationRow's padding, matched to the ordinary
+                          // row's for exactly this reason.
+                          SliverFixedExtentList(
+                            itemExtent: rowExtent,
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) => _RowDivider(
+                                // The last row of a day already meets the
+                                // next day's pinned header — a divider there
+                                // would just be a hairline under the header,
+                                // not between two rows. A selected row paints
+                                // its own accent border on the same edge
+                                // (buildRow, above) — the divider would paint
+                                // over it, since foreground decorations paint
+                                // in child-to-ancestor order.
+                                draw: i < dayGroups[g].length - 1 &&
+                                    qsos[dayGroups[g][i]].uuid != selectedUuid,
+                                child: buildRow(context, dayGroups[g][i], plan),
+                              ),
+                              childCount: dayGroups[g].length,
+                            ),
                           ),
                         ],
                       ),
@@ -1158,6 +1172,210 @@ class _QsoListState extends State<QsoList> {
           ),
         );
       }),
+    );
+  }
+}
+
+/// The O(qsos) numbering/column-width/day-grouping pass — real text-layout
+/// measurements, expensive enough on a long log to stutter if redone on
+/// every rebuild. Called only on a cache miss; see `_QsoListState.build`'s
+/// `_cachedMetrics`/`_cachedMetricsKey`.
+_QsoListMetrics _computeMetrics({
+  required BuildContext context,
+  required List<Qso> qsos,
+  required List<Map<String, dynamic>> activityControls,
+  required String? ourEntityPrefix,
+  required bool showQsoNumbers,
+  required TextStyle mono,
+  required TextStyle monoDim,
+  required TextStyle callStyle,
+}) {
+  // QSO numbers count only real contacts — event markers interspersed in
+  // the timeline don't consume a number.
+  final numbers = List<int>.filled(qsos.length, 0);
+  var runningNumber = 0;
+  for (var i = 0; i < qsos.length; i++) {
+    if (qsos[i].isRealContact) runningNumber++;
+    numbers[i] = runningNumber;
+  }
+  // `numbers` only ever increases, so its last value is its max — no need
+  // to fold over it separately.
+  final maxNumber = runningNumber;
+
+  // Column-sizing must cover every QSO that can actually render a row —
+  // including deleted ones, which still show (struck-through) whenever the
+  // "show deleted QSOs" menu toggle is on — not just `isRealContact` ones,
+  // or a deleted QSO's callsign/frequency/mode can exceed what the columns
+  // were sized for and wrap/truncate. One pass instead of separate
+  // fold/map/toSet passes per column — cheap on its own (int/string
+  // comparisons, not text layout), but there's no reason to walk the list
+  // four times when once covers every column that needs a list-wide value.
+  var longestCall = '';
+  final freqsInKHz = <double?>[];
+  final modesUsed = <String>{};
+  // Widest band shown in the freq/band column (only null-freq rows fall back
+  // to the band) and widest their-exchange, so both columns reserve a
+  // list-wide width and stay aligned even on rows that lack them (#354).
+  var longestBand = '';
+  var longestExchange = '';
+  // Only the single longest flag and longest state ever matter for
+  // dxStateWidth below — tracking them here costs the same cheap
+  // length comparison as longestCall, deferring the two (not N) actual
+  // text-layout measurements to after this loop.
+  var longestFlag = '';
+  var longestState = '';
+  // The refs column is per-row content, so what it reserves is the widest
+  // any ONE row needs: per distinct type an icon plus its gap, and the "×N"
+  // on the types that repeat. Tracked as a count of icons and the largest
+  // repeat-count seen, so the two text measurements happen once after the
+  // loop rather than per row.
+  var mostRefIcons = 0;
+  var largestRefCount = 0;
+  for (final q in qsos) {
+    if (q.isEvent) continue;
+    final refCounts = _refCountsByType(q, activityControls);
+    if (refCounts.length > mostRefIcons) mostRefIcons = refCounts.length;
+    for (final count in refCounts.values) {
+      if (count > largestRefCount) largestRefCount = count;
+    }
+    if (q.theirCall.length > longestCall.length) longestCall = q.theirCall;
+    freqsInKHz.add(q.freq);
+    // Band only renders when the QSO has no frequency (freqField below).
+    if (q.freq == null && (q.band?.length ?? 0) > longestBand.length) longestBand = q.band!;
+    final exchange = q.theirExchange;
+    if (exchange != null && exchange.length > longestExchange.length) longestExchange = exchange;
+    final mode = q.mode;
+    if (mode != null) modesUsed.add(mode);
+    final dxState = _dxStateContentFor(q, ourEntityPrefix);
+    if (dxState == null) {
+      // no-op — nothing to measure for this row
+    } else if (dxState.isFlag) {
+      if (dxState.text.length > longestFlag.length) longestFlag = dxState.text;
+    } else if (dxState.text.length > longestState.length) {
+      longestState = dxState.text;
+    }
+  }
+
+  // Column widths are computed once for the whole list so every row lines
+  // up, per the issue: "wide enough to fit the largest number"/"longest
+  // callsign in all qsos" — DX/State and the Name column right after it
+  // are no exception (ham2k/halo-dist#186): a QSO with neither a flag
+  // nor a state must still reserve that column's width, or Name starts at
+  // a different x position on every row depending on its neighbors.
+  // `formatNumber` adds locale thousands separators ("1,252"), wider
+  // than the bare digits — measuring those instead of the string that
+  // actually renders is what let a 4-digit count wrap onto a second
+  // line (HALO-258).
+  final numberWidth = showQsoNumbers ? textWidth(context, formatNumber(maxNumber), mono) : 0.0;
+  final callsignWidth = longestCall.isEmpty ? 0.0 : textWidth(context, longestCall, callStyle);
+  // On the image fallback (flagEmojiNeedsImageFallback), every flag renders
+  // at the same fixed SVG size regardless of which entity it is, so that's
+  // the width to reserve instead of measuring emoji glyph text.
+  final flagWidth = longestFlag.isEmpty
+      ? 0.0
+      : flagEmojiNeedsImageFallback
+          ? flagGlyphDefaultFontSize * 4 / 3
+          : textWidth(context, longestFlag, emojiStyle());
+  final stateWidth = longestState.isEmpty ? 0.0 : textWidth(context, longestState, monoDim);
+  final dxStateWidth = flagWidth > stateWidth ? flagWidth : stateWidth;
+
+  // "decide how many digits to display based on all the qsos in the
+  // operation" — one Hz precision for the whole list, not per row.
+  final hzDigits = hzDigitsNeeded(freqsInKHz);
+  // The Mode column only earns its place when the operation actually mixes
+  // modes — otherwise every row would repeat the same value.
+  final usesMultipleModes = modesUsed.length > 1;
+
+  // Reserve the freq/band column at a fixed list-wide width so a QSO with
+  // neither still holds it open and Mode/Callsign line up on every row
+  // (#354). Freq strings depend on hzDigits, so measure after it's known;
+  // mono means string length tracks width, and measuring the full string in
+  // regular `mono` (the Hz part actually renders smaller) only over-reserves
+  // a hair, which is safe. Bands (null-freq rows) compete for the same width.
+  var longestFreqOrBand = longestBand;
+  for (final f in freqsInKHz) {
+    if (f == null) continue;
+    final parts = freqDisplayParts(f, hzDigits: hzDigits);
+    final s = parts.hz != null ? '${parts.mhz}.${parts.khz}.${parts.hz}' : '${parts.mhz}.${parts.khz}';
+    if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
+  }
+  final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);
+  // The their-exchange column (after the signal reports) reserves width only
+  // when some QSO actually carries an exchange, like DX/State above (#354).
+  final exchangeWidth = longestExchange.isEmpty ? 0.0 : textWidth(context, longestExchange, monoDim);
+  // Measured from the largest count actually present, so a three-figure
+  // repeat is budgeted at its real width rather than a two-digit sample.
+  // Reserved for EVERY icon on the widest row rather than only the ones
+  // that repeat: over-reserving costs the exchange column a few pixels,
+  // under-reserving costs a row that overflows.
+  final refCountWidth =
+      largestRefCount > 1 ? textWidth(context, '×$largestRefCount', mono.copyWith(fontSize: 11)) : 0.0;
+  final refsWidth =
+      mostRefIcons == 0 ? 0.0 : _columnGap + mostRefIcons * (_refIconWidth + _refIconGap + refCountWidth);
+
+  // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
+  // by startAtMillis) — bucket it into consecutive UTC-day runs so each
+  // bucket becomes one pinned header + its own sliver of rows. A plain
+  // linear scan works because same-day QSOs are already contiguous; no
+  // need to build then sort a day->indices map.
+  final dayKeys = <int>[];
+  final dayGroups = <List<int>>[];
+  for (var i = 0; i < qsos.length; i++) {
+    final millis = qsos[i].startAtMillis ?? 0;
+    final dayKey = millis - (millis % _dayInMillis);
+    if (dayKeys.isEmpty || dayKeys.last != dayKey) {
+      dayKeys.add(dayKey);
+      dayGroups.add([]);
+    }
+    dayGroups.last.add(i);
+  }
+
+  return _QsoListMetrics(
+    numbers: numbers,
+    numberWidth: numberWidth,
+    callsignWidth: callsignWidth,
+    dxStateWidth: dxStateWidth,
+    freqWidth: freqWidth,
+    exchangeWidth: exchangeWidth,
+    refsWidth: refsWidth,
+    hzDigits: hzDigits,
+    usesMultipleModes: usesMultipleModes,
+    dayKeys: dayKeys,
+    dayGroups: dayGroups,
+  );
+}
+
+/// Draws the hairline between [QsoList] rows as [child]'s own bottom edge
+/// instead of a separate list item — every row sits in a fixed-height sliver
+/// slot (HALO-258), which can't alternate a shorter divider slot in between
+/// the way `ListView.separated` does.
+class _RowDivider extends StatelessWidget {
+  final Widget child;
+
+  /// False for the last row of a day (meets the pinned header, not another
+  /// row) and for the selected row (its own accent border, painted by
+  /// [buildRow], already marks that edge — this would paint over it, since
+  /// foreground decorations paint in child-to-ancestor order).
+  final bool draw;
+
+  const _RowDivider({required this.child, required this.draw});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!draw) return child;
+    return DecoratedBox(
+      // foreground: the row's own Material background is opaque and fills
+      // this whole box, so a background-position border would paint
+      // underneath it and never show.
+      position: DecorationPosition.foreground,
+      decoration: BoxDecoration(
+        // What a plain `Divider` resolves its own color to — matching it
+        // here since this replaces one (see class doc).
+        border: Border(
+          bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? Theme.of(context).dividerColor),
+        ),
+      ),
+      child: child,
     );
   }
 }
@@ -1420,7 +1638,16 @@ class EventRow extends StatelessWidget {
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
-          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 6),
+          // Matches the ordinary QSO row's own padding exactly (not a
+          // hardcoded value) — [QsoList] forces every row into the same
+          // fixed [LayoutMetrics.qsoRowHeight] box (HALO-258, avoids a
+          // per-row layout walk on `jumpTo`), so a row whose natural height
+          // doesn't match that box overflows or leaves a gap.
+          padding: PaneSafeArea.symmetricOf(
+            context,
+            horizontal: 12,
+            vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1560,7 +1787,14 @@ class AnnotationRow extends StatelessWidget {
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
-          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
+          // See EventRow's identical note: matches the ordinary row's own
+          // padding so this row's natural height fits [QsoList]'s fixed
+          // per-row box exactly (HALO-258).
+          padding: PaneSafeArea.symmetricOf(
+            context,
+            horizontal: 12,
+            vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+          ),
           child: Row(
             children: [
               SizedBox(width: leadingWidth),

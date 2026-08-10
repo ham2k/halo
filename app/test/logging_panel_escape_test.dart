@@ -96,7 +96,11 @@ void main() {
       loggingControls: const [],
       onCommandAction: (action, [params]) async {},
     )));
-    await tester.pump(const Duration(milliseconds: 100));
+    // A single QSO is well under the count where QsoList's first build is
+    // worth deferring behind a spinner (HALO-258), so it renders directly —
+    // but the wrap above still needs a frame to settle before W1AW is
+    // findable.
+    await tester.pump();
 
     expect(isEditing(tester), isFalse);
 
@@ -127,7 +131,7 @@ void main() {
       loggingControls: const [],
       onCommandAction: (action, [params]) async {},
     )));
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
 
     await tester.tap(find.text('W1AW'));
     await tester.pump();
@@ -165,7 +169,7 @@ void main() {
       loggingControls: const [],
       onCommandAction: (action, [params]) async {},
     )));
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
 
     await tester.tap(find.text('W1AW'));
     await tester.pump();

@@ -8,6 +8,7 @@
 // truth and, later, the multi-window bus (DESIGN.md §8).
 
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -364,6 +365,41 @@ class OperationsRepository {
   }
 }
 
+Qso _qsoFromRow(QsoRow row) => Qso(
+      uuid: row.uuid,
+      operationUuid: row.operation,
+      data: jsonDecode(row.data) as Map<String, dynamic>,
+      deleted: row.deleted,
+      scoreCache: row.scoreCache,
+    );
+
+/// Below this, decoding inline is cheaper than an isolate's spawn cost;
+/// above it, [_qsoFromRow]'s per-row `jsonDecode` is real enough CPU work
+/// (not the framework's usual sub-millisecond synchronous calls) that
+/// running it on the UI isolate blocks that isolate's frame pump for long
+/// enough to read as a stall rather than a stutter — moving it off-isolate
+/// trades a slightly later result for a UI thread that stays free to
+/// animate the transition while it waits.
+const _qsoRowDecodeIsolateThreshold = 200;
+
+Future<List<Qso>> _qsosFromRows(List<QsoRow> rows) async {
+  if (rows.length < _qsoRowDecodeIsolateThreshold) return rows.map(_qsoFromRow).toList();
+  try {
+    return await Isolate.run(() => rows.map(_qsoFromRow).toList());
+  } catch (_) {
+    // Isolate.spawn doesn't exist on web (dart2js/DDC) — halo_core is pure
+    // Dart with no Flutter dependency, so there's no `kIsWeb` to branch on
+    // up front — and any other isolate-infrastructure failure (spawn
+    // refused under memory pressure, etc.) deserves the same recovery:
+    // `watchForOperation`'s callers `.listen()` this without an `onError`,
+    // so an error here would otherwise silently kill live rescoring instead
+    // of just costing a slower decode. A genuinely malformed row still
+    // throws the same way it did before this existed — inline decoding
+    // doesn't change what a bad row does, only where a healthy one runs.
+    return rows.map(_qsoFromRow).toList();
+  }
+}
+
 class QsosRepository {
   final HaLoDatabase db;
 
@@ -708,7 +744,7 @@ class QsosRepository {
           ? q.operation.equals(operationUuid)
           : q.operation.equals(operationUuid) & q.deleted.equals(false))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]));
-    return query.watch().map((rows) => rows.map(_qsoFromRow).toList());
+    return query.watch().asyncMap(_qsosFromRows);
   }
 
   /// Every non-deleted, non-event QSO with [call] across every operation, most
@@ -917,14 +953,6 @@ class QsosRepository {
     });
     sequences?.invalidate();
   }
-
-  Qso _qsoFromRow(QsoRow row) => Qso(
-        uuid: row.uuid,
-        operationUuid: row.operation,
-        data: jsonDecode(row.data) as Map<String, dynamic>,
-        deleted: row.deleted,
-        scoreCache: row.scoreCache,
-      );
 
   /// Batch-writes cached scoring results, one row update per QSO but all in
   /// a single transaction — the counterpart to the `scoring` hook's single

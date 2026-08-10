@@ -16,6 +16,11 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
 import 'dart:ui' show AppExitResponse;
+// Prefixed separately from the AppExitResponse import above: some import in
+// this file's graph makes the bare name `TextDirection` resolve to something
+// without an `.ltr` getter, so the real dart:ui one needs this to be reached
+// unambiguously.
+import 'dart:ui' as dart_ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
@@ -135,20 +140,13 @@ void _mainBody({
 }) {
   WidgetsFlutterBinding.ensureInitialized();
   // Native only: on web, the engine's own bootstrap (ui_web.bootstrapEngine
-  // → _downloadAssetFonts) already eagerly downloads and registers every
-  // FontManifest-declared font, including this one, before main() ever
+  // → _downloadAssetFonts) already eagerly downloads, registers AND shapes
+  // every FontManifest-declared font, including this one, before main() ever
   // runs — preloading again here would just double the fetch. On native,
-  // pubspec-declared fonts genuinely do load lazily on first use, which is
-  // what this fixes: without it, whichever screen paints the first emoji
-  // (often a lookup result's DXCC flag) shows a placeholder for a beat
-  // before the real glyph swaps in. Deferred to the first post-frame
-  // callback rather than fired here, so it doesn't compete with
-  // bootstrap()/runApp() for CPU/IO at the most latency-sensitive moment —
-  // it only needs to beat whichever screen shows the first emoji, not the
-  // splash, which never shows one.
-  if (!kIsWeb) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_preloadEmojiFont()));
-  }
+  // pubspec-declared fonts genuinely do load and shape lazily on first use —
+  // held in the splash gate below (see `bootstrap`'s call site) rather than
+  // fired here, so it's paid once, off-screen, instead of racing whichever
+  // screen happens to measure or paint the first emoji.
   // Turn on structured dev logging ([qso], [lookup], …) for all non-release
   // builds — console output + a buffer window.__halo.recentLog() can query.
   // Off in release, so nothing is emitted or buffered there.
@@ -392,11 +390,11 @@ void _openConfirmDevicePane(
     }));
 }
 
-/// Forces the bundled color-emoji font's glyph data to load now, instead of
-/// on whichever `Text` widget happens to need it first (see [_mainBody]'s
-/// call site). Never throws — a failed/slow load just means emoji keep
-/// falling back to their placeholder a little longer, exactly like today
-/// without this at all; not worth surfacing as a boot error over.
+/// Forces the bundled color-emoji font's glyph data to load AND shape now,
+/// instead of on whichever `Text` — or text *measurement* — happens to need
+/// it first (see [bootstrap]'s call site). Never throws — a failed/slow
+/// warm-up just means the cost lands wherever it would have without this at
+/// all; not worth surfacing as a boot error over.
 Future<void> _preloadEmojiFont() async {
   try {
     // FontLoader needs the family name to register under (matching what
@@ -404,6 +402,18 @@ Future<void> _preloadEmojiFont() async {
     // independently — both come from halo_widgets/theme.dart.
     final data = await rootBundle.load(emojiFontAssetPath);
     await (FontLoader(emojiFontFamily)..addFont(Future.value(data))).load();
+    // Registering the font is cheap; laying it out is not. A flag emoji is
+    // two combined regional-indicator codepoints — Skia's first shape of
+    // that combination through a multi-megabyte color font is a real,
+    // one-time cost (measured over 1s), paid wherever the first `Text` or
+    // width *measurement* using this font happens to land. For QsoList
+    // (HALO-258) that was the first operation's row metrics, mid-transition.
+    // A throwaway layout here pays it during the splash instead.
+    (TextPainter(
+      text: TextSpan(text: '🇨🇦', style: emojiStyle()),
+      textDirection: dart_ui.TextDirection.ltr,
+    )..layout())
+        .dispose();
   } catch (error, stackTrace) {
     debugPrint('[boot] emoji font preload failed: $error\n$stackTrace');
     ErrorReportingService.report(error, stackTrace, context: 'boot:emoji-font-preload');
@@ -762,20 +772,23 @@ Future<HaLoServices> bootstrap({
   // catalog that has not arrived yet shows placeholders for panes that are
   // perfectly fine.
   //
-  // ONE short budget for both steps, because this is splash time — `runApp`
-  // shows the splash until this future resolves, and nothing else in
-  // bootstrap waits on the runtime (the logging loop deliberately never
-  // does). Overrunning is not a failure and not fatal: a panel that hasn't
-  // been read yet renders as a placeholder, and the catalog re-reads itself
-  // the moment the runtime comes up (`runtimeGeneration`). The wait buys a
-  // tidier first frame in the ordinary case; it must never buy a slow one.
-  // Real time on both ends: this is a budget for real boot work, paired with
-  // `timeout` durations that run on the real clock.
-  final catalogDeadline = realNowUtc().add(_panelCatalogBootBudget);
+  // ONE short budget for this and the emoji-font warm-up below, because this
+  // is splash time — `runApp` shows the splash until this future resolves,
+  // and nothing else in bootstrap waits on the runtime (the logging loop
+  // deliberately never does). Overrunning is not a failure and not fatal: a
+  // panel that hasn't been read yet renders as a placeholder, the catalog
+  // re-reads itself the moment the runtime comes up (`runtimeGeneration`),
+  // and an unwarmed emoji font just shapes its first glyph later, exactly as
+  // it did before this existed. The wait buys a tidier first frame in the
+  // ordinary case; it must never buy a slow one.
   try {
-    await extensions.start().timeout(_panelCatalogBootBudget);
-    final left = catalogDeadline.difference(realNowUtc());
-    if (left > Duration.zero) await services.panels.refreshExtensionPanels().timeout(left);
+    await Future.wait([
+      extensions.start().then((_) => services.panels.refreshExtensionPanels()),
+      // See _preloadEmojiFont's doc: pays the color-emoji font's one-time
+      // load-and-shape cost here instead of on whichever screen measures or
+      // paints the first flag glyph (HALO-258's QsoList open was 1s+ of it).
+      if (!kIsWeb) _preloadEmojiFont(),
+    ]).timeout(_panelCatalogBootBudget);
   } catch (e) {
     debugPrint('[boot] panel catalog not ready before first build ($e); panes will fill in');
   }
@@ -814,10 +827,11 @@ Future<HaLoServices> bootstrap({
   return services;
 }
 
-/// How long boot will wait for the extension runtime and its panel catalog
-/// before showing the first view anyway. Deliberately short: this is splash
-/// time, and the only thing it buys is not briefly showing a placeholder for
-/// a panel that turns out to be fine.
+/// How long boot will wait for the extension runtime, its panel catalog, and
+/// the emoji-font warm-up before showing the first view anyway. Deliberately
+/// short: this is splash time, and the only thing it buys is not briefly
+/// showing a placeholder panel or an unshaped flag glyph that both turn out
+/// to be fine moments later.
 const _panelCatalogBootBudget = Duration(seconds: 3);
 
 /// Key for the notice below, and the pref that keeps it to one showing.
