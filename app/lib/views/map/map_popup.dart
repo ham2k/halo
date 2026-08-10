@@ -12,8 +12,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'map_marker_data.dart';
 
-/// A QSO or QTH as a plain circle — band-colored with a dark outline for
-/// QSOs (sized by signal strength), black with a white outline for the QTH.
+/// A QSO or QTH as a plain circle — band-colored with an outline for QSOs
+/// (sized by signal strength, light/dark-mode aware — see
+/// map_panel.dart's [MapMarkerData.strokeColor]), black with a white
+/// outline for the QTH.
 class MapCircleMarker extends StatelessWidget {
   final MapMarkerData marker;
 
@@ -30,7 +32,7 @@ class MapCircleMarker extends StatelessWidget {
         shape: BoxShape.circle,
         color: marker.color,
         border: Border.all(
-          color: isQth ? Colors.white : Colors.black87,
+          color: marker.strokeColor,
           width: isQth ? 2 : 1.5,
         ),
       ),

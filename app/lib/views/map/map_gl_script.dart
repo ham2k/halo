@@ -29,6 +29,10 @@
 // 'deferred-update' and 'marker-drift'. Without a callback the script falls
 // back to the console, which is where a bare devtools session still looks.
 
+import 'dart:math';
+
+import '../../services/settings_service.dart' show MapStyle;
+
 /// Which GL library a browser-engine map runs on, and where its pieces come
 /// from. Mapbox needs the access token from secrets; MapLibre + OpenFreeMap
 /// need no token at all (see the MAPLIBRE experiment, experiments.yaml).
@@ -37,18 +41,63 @@ enum MapGlEngine {
     scriptUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js',
     cssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css',
     styleUrl: 'mapbox://styles/mapbox/standard',
+    // Ignored — the Standard style has its own day/night switch (the
+    // 'basemap' import's 'lightPreset' config property, toggled in place by
+    // setDark below), so light and dark share the one style.
+    styleUrlDark: 'mapbox://styles/mapbox/standard',
   ),
   maplibre(
     scriptUrl: 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js',
     cssUrl: 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css',
     styleUrl: 'https://tiles.openfreemap.org/styles/liberty',
+    // OpenFreeMap ships no dark style, so dark mode swaps to a different
+    // free, tokenless vector style entirely (CARTO's Dark Matter) rather
+    // than reconfiguring this one.
+    styleUrlDark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   );
 
   final String scriptUrl;
   final String cssUrl;
   final String styleUrl;
+  final String styleUrlDark;
 
-  const MapGlEngine({required this.scriptUrl, required this.cssUrl, required this.styleUrl});
+  const MapGlEngine({required this.scriptUrl, required this.cssUrl, required this.styleUrl, required this.styleUrlDark});
+}
+
+/// A pinned MapLibre basemap's style URL — every option free and tokenless,
+/// from the same two providers the automatic light/dark default already
+/// uses (OpenFreeMap for the light-toned ones, CARTO for Voyager, which
+/// OpenFreeMap doesn't have). Callers only reach this for a non-[MapStyle.automatic]
+/// pick — automatic keeps using [MapGlEngine.styleUrl]/[MapGlEngine.styleUrlDark].
+String mapLibreStyleUrl(MapStyle style) => switch (style) {
+      MapStyle.automatic => MapGlEngine.maplibre.styleUrl,
+      MapStyle.liberty => 'https://tiles.openfreemap.org/styles/liberty',
+      MapStyle.bright => 'https://tiles.openfreemap.org/styles/bright',
+      MapStyle.positron => 'https://tiles.openfreemap.org/styles/positron',
+      MapStyle.voyager => 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      MapStyle.darkMatter => MapGlEngine.maplibre.styleUrlDark,
+    };
+
+/// A dark, starry backdrop for the MapLibre container div — CSS rather than
+/// a GL style property, since MapLibre's globe has nothing equivalent to
+/// Mapbox's fog ('space-color'/'star-intensity') to paint what's beyond the
+/// sphere (see applySky in mapGlScript). Shows through wherever the canvas
+/// itself is transparent, which is everywhere the globe doesn't cover once
+/// it's zoomed out enough to see past its edge. Harmless the rest of the
+/// time: mercator, and a fully-zoomed-in globe, cover the whole canvas with
+/// map tiles and never expose it. A fixed seed keeps the scatter stable
+/// across rebuilds instead of jumping every time a map is created.
+String mapLibreSpaceBackgroundCss() {
+  final random = Random(1);
+  final stars = List.generate(80, (_) {
+    final x = random.nextDouble() * 100;
+    final y = random.nextDouble() * 100;
+    final size = 0.5 + random.nextDouble() * 1.2;
+    final opacity = 0.3 + random.nextDouble() * 0.6;
+    return 'radial-gradient(${size.toStringAsFixed(2)}px ${size.toStringAsFixed(2)}px at ${x.toStringAsFixed(2)}% '
+        '${y.toStringAsFixed(2)}%, rgba(255, 255, 255, ${opacity.toStringAsFixed(2)}), transparent)';
+  }).join(', ');
+  return '$stars, linear-gradient(180deg, #0b0f1a 0%, #0d1526 100%)';
 }
 
 /// JS that defines `window.poloMapGl`. Requires mapbox-gl.js (v3.x) or
@@ -56,11 +105,16 @@ enum MapGlEngine {
 /// `create`. Idempotent — safe to inject more than once.
 const mapGlScript = '''
 window.poloMapGl = window.poloMapGl || {
-  create: function (container, engine, token, style, onEvent) {
+  create: function (container, engine, token, style, styleDark, initialDark, onEvent) {
     const gl = engine === 'maplibre' ? maplibregl : mapboxgl;
     const options = {
       container: container,
-      style: style,
+      // Picking the right style up front (MapLibre only — Mapbox's Standard
+      // style takes dark mode as a config property, applied below once
+      // loaded, not a different style) avoids setDark() having to swap styles
+      // again the moment the map opens in dark mode, which would race the
+      // very first setMarkers/setLines call against the reload it triggers.
+      style: engine === 'maplibre' && initialDark ? styleDark : style,
       center: [0, 0],
       zoom: 1,
     };
@@ -72,6 +126,33 @@ window.poloMapGl = window.poloMapGl || {
       options.projection = 'mercator';
     }
     const map = new gl.Map(options);
+    if (engine !== 'maplibre' && initialDark) {
+      map.on('load', function () { map.setConfigProperty('basemap', 'lightPreset', 'night'); });
+    }
+
+    // MapLibre's globe has no Mapbox-style fog ('space-color'/'star-intensity')
+    // to paint what's beyond the sphere — its closest equivalent, the 'sky'
+    // root property, only reaches a solid colour. Paired with a CSS starfield
+    // behind the canvas (see mapbox_webview_map_view.dart's/
+    // mapbox_web_map_view_web.dart's container background, which shows
+    // through wherever the globe leaves the canvas transparent), this at
+    // least keeps the horizon dark instead of leaking the operator's
+    // light/dark theme colour into what's supposed to be space. Reapplied
+    // after every style swap (setStyle drops root properties along with
+    // sources and layers), not just on first load.
+    function applySky() {
+      if (engine !== 'maplibre' || !map.setSky) return;
+      map.setSky({
+        'sky-color': '#0b0f1a',
+        'horizon-color': '#0b0f1a',
+        'fog-color': '#0b0f1a',
+        'fog-ground-blend': 0.5,
+        'horizon-fog-blend': 0.8,
+        'sky-horizon-blend': 0.8,
+        'atmosphere-blend': 0.8,
+      });
+    }
+    if (engine === 'maplibre') map.on('load', applySky);
 
     const EMPTY = { type: 'FeatureCollection', features: [] };
     const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight'];
@@ -84,6 +165,36 @@ window.poloMapGl = window.poloMapGl || {
     // Signature of the base markers at the last camera fit — so a keystroke
     // that only moves the current-QSO highlight doesn't refit the camera.
     let lastBaseSig = null;
+
+    // The most recent data given to each setter, kept so a MapLibre dark-mode
+    // style swap (which throws the whole style away) can put the map back
+    // exactly where it was — camera position included, since fitBounds is
+    // skipped when setMarkers sees the same base signature.
+    let lastMarkersData = null;
+    let lastLinesData = null;
+    let lastProjection = engine === 'maplibre' ? null : 'mercator';
+
+    // Mutable so updateStyles (a pinned-style change, not a dark-mode
+    // toggle) can repoint them without touching the `dark` argument setDark
+    // was last called with.
+    let activeStyle = style;
+    let activeStyleDark = styleDark;
+    let lastDark = initialDark;
+    // The URL the map is actually showing (or mid-load towards) — lets
+    // setDark skip a no-op reload when a pinned style (activeStyle ===
+    // activeStyleDark) means the light/dark toggle wouldn't change anything.
+    // MapLibre's own style diffing produces no changes for an identical
+    // style and so never fires 'style.load', which would otherwise leave
+    // styleSwapInFlight stuck true forever.
+    let activeLoadedStyleUrl = engine === 'maplibre' && initialDark ? styleDark : style;
+
+    // True between setDark's setStyle call and its 'style.load' handler —
+    // while true, setMarkers/setLines only update lastMarkersData/lastLinesData
+    // and leave applying them to that handler, rather than also queuing
+    // through the pending/idle flush below: two independent appliers racing
+    // to be the one that actually lands the data is how a dark-mode toggle
+    // could end up with the OLD colors stuck on screen.
+    let styleSwapInFlight = false;
 
     // The latest payload each setter is waiting to apply, and whether a flush
     // is already queued. Latest-wins rather than one queued replay per call:
@@ -118,6 +229,63 @@ window.poloMapGl = window.poloMapGl || {
     // is done, so its call waits in the same latest-wins flush as the data.
     function applyProjection(name) {
       map.setProjection(engine === 'maplibre' ? { type: name } : name);
+      lastProjection = name;
+    }
+
+    // Mapbox's Standard style has a built-in day/night switch (the 'basemap'
+    // import's lightPreset config), so it never reloads. MapLibre's OpenFreeMap
+    // style has no dark counterpart, so dark mode there swaps in a whole
+    // different style — which drops every source and layer, so markers, lines
+    // and the projection have to go back up once the new one lands.
+    function setDark(dark) {
+      lastDark = dark;
+      if (engine !== 'maplibre') {
+        map.setConfigProperty('basemap', 'lightPreset', dark ? 'night' : 'day');
+        return;
+      }
+      const target = dark ? activeStyleDark : activeStyle;
+      // A pinned style (activeStyle === activeStyleDark) makes this a no-op
+      // — skip the reload rather than ask MapLibre to diff a style against
+      // itself, which produces no changes and so never fires 'style.load'.
+      if (target === activeLoadedStyleUrl) return;
+      activeLoadedStyleUrl = target;
+      // 'style.load' (not 'idle', which the pending/flush machinery above
+      // uses for the initial, possibly offline, load) fires as soon as the
+      // new style itself is usable — addSource/addLayer don't need its
+      // basemap tiles downloaded too, so waiting on a full idle here would
+      // strand the markers for as long as the new tile server takes, or
+      // forever if it never settles.
+      styleSwapInFlight = true;
+      // A failed load (offline, DNS, a rejected style) never fires
+      // 'style.load' either — Mapbox/MapLibre emit 'error' instead (handled
+      // below) — so without this watchdog styleSwapInFlight would stick
+      // true forever and every marker/line update after it would silently
+      // stop applying.
+      const swapWatchdog = setTimeout(function () {
+        if (!styleSwapInFlight) return;
+        styleSwapInFlight = false;
+        report('style-timeout', 'the dark-mode style swap never finished loading');
+      }, 10000);
+      map.once('style.load', function () {
+        clearTimeout(swapWatchdog);
+        styleSwapInFlight = false;
+        applySky();
+        ensureLayers();
+        if (lastMarkersData) setMarkers(lastMarkersData);
+        if (lastLinesData) setLines(lastLinesData);
+        if (lastProjection) applyProjection(lastProjection);
+      });
+      map.setStyle(target);
+    }
+
+    // A pinned-style change (the operator picked a different named basemap,
+    // not a light/dark toggle) — repoints both slots and reapplies through
+    // the same style.load path as setDark, using whichever slot the map is
+    // currently showing.
+    function updateStyles(newStyle, newStyleDark) {
+      activeStyle = newStyle;
+      activeStyleDark = newStyleDark;
+      setDark(lastDark);
     }
 
     function showPopup(m) {
@@ -206,10 +374,24 @@ window.poloMapGl = window.poloMapGl || {
     // marker, and its precedence over the other lines, hold in both
     // projections, and mercator, the default, is exact.
     function ensureLayers() {
-      // Adding a layer to a style that is still loading throws.
-      if (!map.isStyleLoaded()) return false;
-      if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
-      if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
+      // addSource/addLayer throw until the style itself has finished parsing
+      // — catching that, rather than pre-checking the stricter
+      // map.isStyleLoaded() (which also waits for every tile of every source,
+      // including the basemap's own), means markers can go back up as soon as
+      // the style is usable rather than only once the last tile has downloaded.
+      try {
+        if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
+        if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
+      } catch (err) {
+        // "Style is not done loading" is the expected, frequent case while a
+        // slow/offline initial load is still pending — the watchdog below
+        // reports THAT if it never resolves. Anything else is a genuine
+        // failure this file's error channel (see the header comment) exists
+        // to surface, not to swallow.
+        const notLoadedYet = err && /not done loading/i.test(err.message || '');
+        if (!notLoadedYet) report('deferred-update', 'ensureLayers failed: ' + ((err && err.message) || err));
+        return false;
+      }
       ensureLayer(lineLayer('polo-lines', false, 1.5));
       ensureLayer(circleLayer('polo-markers', false));
       ensureLayer(lineLayer('polo-lines-highlight', true, 6));
@@ -276,6 +458,8 @@ window.poloMapGl = window.poloMapGl || {
     }
 
     function setMarkers(data) {
+      lastMarkersData = data;
+      if (styleSwapInFlight) return;
       if (!ensureLayers()) { pendingMarkers = data; flushWhenReady(); return; }
       clearTimeoutState();
       if (popup) { popup.remove(); popup = null; }
@@ -303,7 +487,7 @@ window.poloMapGl = window.poloMapGl || {
             color: m.color,
             radius: Math.max(size / 2 - strokeWidth, 1),
             strokeWidth: strokeWidth,
-            strokeColor: m.kind === 'qth' ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
+            strokeColor: m.strokeColor,
           },
           geometry: { type: 'Point', coordinates: [m.longitude, m.latitude] },
         };
@@ -317,6 +501,8 @@ window.poloMapGl = window.poloMapGl || {
     }
 
     function setLines(data) {
+      lastLinesData = data;
+      if (styleSwapInFlight) return;
       if (!ensureLayers()) { pendingLines = data; flushWhenReady(); return; }
       clearTimeoutState();
       map.getSource('polo-lines').setData({ type: 'FeatureCollection', features: data.features });
@@ -389,6 +575,10 @@ window.poloMapGl = window.poloMapGl || {
       },
       onLoad: function (callback) { map.on('load', callback); },
       resize: function () { map.resize(); },
+      zoomIn: function () { map.zoomIn(); },
+      zoomOut: function () { map.zoomOut(); },
+      setDark: setDark,
+      updateStyles: updateStyles,
       remove: function () {
         resizeObserver.disconnect();
         // Or the pending-payload watchdog reports a style that never loaded,

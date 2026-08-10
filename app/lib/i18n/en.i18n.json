@@ -102,6 +102,7 @@
       "showQsoNumbers": "Show QSO Numbers",
       "lookupAllQsos": "Lookup all QSOs",
       "loggingSettingsTitle": "Logging Settings",
+      "mapSettingsTitle": "Map Settings",
       "actionsSection": "Actions",
       "relevantSettingsSection": "Relevant Settings"
     },
@@ -350,7 +351,9 @@
     "distanceKm": "${distance} km",
     "distanceMiles": "${distance} mi",
     "flat": "Flat",
-    "globe": "Globe"
+    "globe": "Globe",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
   },
   "activitiesView": {
     "title": "Activities",
@@ -690,6 +693,21 @@
         "description": "How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again."
       }
     },
+    "map": {
+      "title": "Map",
+      "style": {
+        "title": "Map Style",
+        "description": "Which basemap the Map tab uses. Automatic follows the app's light/dark theme."
+      },
+      "styleOpts": {
+        "automatic": "Automatic",
+        "liberty": "Liberty",
+        "bright": "Bright",
+        "positron": "Positron",
+        "voyager": "Voyager",
+        "darkMatter": "Dark Matter"
+      }
+    },
     "privacy": {
       "title": "Privacy",
       "shareAppData": {
@@ -798,7 +816,7 @@
       "noSecureStorageInline": "Logins can’t be saved: this computer’s secure storage can’t be reached."
     },
     "station": {
-      "title": "Station Configuration & CAT Control",
+      "title": "Station Configuration",
       "none": "No equipment configured",
       "add": "Add equipment",
       "addTitle": "Add equipment",

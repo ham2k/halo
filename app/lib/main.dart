@@ -1072,6 +1072,7 @@ class HaLoServices {
     ..register(GeneralSettingsGroup(settings, extensions))
     ..register(LoggingSettingsGroup(settings))
     ..register(RadioSettingsGroup(settings))
+    ..register(MapSettingsGroup(settings))
     ..register(PrivacySettingsGroup(settings))
     ..register(ExportsSettingsGroup(settings))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));

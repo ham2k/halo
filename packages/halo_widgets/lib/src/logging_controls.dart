@@ -240,30 +240,6 @@ const _mainFieldGap = 8.0;
 const _mainFieldGroupGap = 10.0;
 const _logButtonGap = 12.0;
 
-/// The app's positive green — matching app-polo's red/green pill
-/// convention, [_noticePill] pairs this with `theme.colorScheme.error` for
-/// alert/notice, and the Radio control's status color pairs it the same way
-/// for connected/configured-but-disconnected. One constant so the two
-/// "things are good" indicators can't drift apart.
-const _positiveGreen = Color(0xFF2E7D32);
-
-/// The Radio control's Station Configuration icon — plain [Icon], not
-/// [IconButton], so this is its actual glyph size rather than a tap target.
-/// The radio name beside it is capped at 3x this, ellipsized past that.
-const _stationConfigIconSize = 24.0;
-
-/// Strips Material 3's default toggle-button fill from the Band/Mode
-/// dropdowns' trailing arrow — see the wrapping `IconButtonTheme` at each
-/// `DropdownMenu` for why one exists at all. Shared so the two can't drift.
-const _dropdownArrowTheme = IconButtonThemeData(
-  style: ButtonStyle(
-    backgroundColor: WidgetStatePropertyAll(Colors.transparent),
-    padding: WidgetStatePropertyAll(EdgeInsets.zero),
-    minimumSize: WidgetStatePropertyAll(Size.zero),
-    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-  ),
-);
-
 /// The left+right `contentPadding` `poloFieldDecoration` (theme.dart) gives a
 /// main field, before the text scaler is applied to it.
 const _mainFieldContentPadding = 8.0;
@@ -482,35 +458,6 @@ class LoggingControls extends StatefulWidget {
   /// object (`RadioService`); when null the control behaves as it always
   /// did, reading the VFO only when it seeds.
   final Listenable? radioUpdates;
-
-  /// Whether a transceiver is configured to drive this control via CAT — the
-  /// Radio control's icon shows a cat glyph instead of a plain radio when so,
-  /// the same pun the Station settings panel makes at its own entry.
-  /// halo_widgets has no CatService of its own to ask (docs/design/cat.md),
-  /// so the app resolves this and passes it straight through.
-  final bool hasConfiguredRadio;
-
-  /// Whether the [hasConfiguredRadio] radio is actually connected right now,
-  /// as opposed to merely configured — the Station Configuration button's
-  /// green (connected) vs red (configured but not connected). Meaningless
-  /// when [hasConfiguredRadio] is false.
-  final bool radioConnected;
-
-  /// Opens the Station Configuration quick-access dialog (current radio pick
-  /// plus the equipment inventory) from inside the expanded Radio control.
-  /// Building the dialog itself is the app's job, same reasoning as
-  /// [hasConfiguredRadio].
-  final VoidCallback? onOpenStationConfig;
-
-  /// Accessible name for the [onOpenStationConfig] button — the app shows no
-  /// hover tooltips, so this is the only place it's named.
-  final String? stationConfigLabel;
-
-  /// [hasConfiguredRadio]'s display name — shown in small type below the
-  /// Station Configuration icon, past the Mode dropdown, ellipsized past 3x
-  /// the icon's own width. Null when there's no radio (nothing to name) or
-  /// [onOpenStationConfig] is null (nothing for tapping it to do).
-  final String? radioName;
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
   /// (HALO-52), from the callsign-annotation guess — see
@@ -740,11 +687,6 @@ class LoggingControls extends StatefulWidget {
     this.settings,
     this.radioService,
     this.radioUpdates,
-    this.hasConfiguredRadio = false,
-    this.radioConnected = false,
-    this.onOpenStationConfig,
-    this.stationConfigLabel,
-    this.radioName,
     this.leftieMode = false,
     this.ourItuRegion,
     this.ourCountryCode,
@@ -3770,7 +3712,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         ),
         _ControlDescriptor(
           key: 'radio',
-          icon: _radioChipIcon,
+          icon: MdiIcons.radio,
           label: widget.radioControlLabel ?? 'Radio',
           mandatory: true,
         ),
@@ -4303,8 +4245,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
         key: 'radio',
-        icon: _radioChipIcon,
-        iconColor: _radioStatusColor(theme, selected: _selectedControlKey == 'radio'),
+        icon: MdiIcons.radio,
         summary: _radioSummary,
         expandedBuilder: (context) {
           // Resolved once for both dropdowns below. `dropdownTextScale` is the
@@ -4333,82 +4274,74 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // DropdownMenu's own trailing arrow is a plain, unstyled
-              // IconButton (see dropdown_menu.dart) — with no style of its
-              // own it picks up Material 3's default toggle-button
-              // treatment, which paints a filled circle behind the glyph
-              // even when the menu is closed.
-              IconButtonTheme(
-                data: _dropdownArrowTheme,
-                child: DropdownMenu<String>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  controller: _bandDropdownController,
-                  focusNode: _bandDropdownFocus,
-                  menuController: _bandMenuController,
-                  initialSelection: band,
-                  label: Text(widget.bandLabel ?? 'Band'),
-                  width: 86,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  // Pick-only menus. With search on (the default), every
-                  // rebuild whose field text matches an entry re-runs
-                  // scrollToHighlight — and this widget rebuilds every second
-                  // (the Time chip's clock), so an open menu kept snapping
-                  // back to the selected item while the user scrolled.
-                  enableSearch: false,
-                  textStyle: haloMonoStyle(
-                    context,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  inputDecorationTheme: InputDecorationTheme(
-                    isDense: true,
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    floatingLabelStyle: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onTertiaryContainer,
-                    ),
-                    // The same density-resolved pair poloFieldDecoration gives
-                    // the sibling Frequency field. A `DropdownMenu` takes an
-                    // inputDecorationTheme rather than an InputDecoration, so it
-                    // cannot share that helper and has to restate the values —
-                    // held together by the "same height as its siblings" test.
-                    // A const here froze both dropdowns at one height while the
-                    // field beside them ran 46 to 65 across the ladder.
-                    contentPadding: EdgeInsets.fromLTRB(
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingTop * dropdownTextScale,
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
-                    ),
-                    // Without this the trailing arrow's 48px min tap target
-                    // makes the field taller (56px) than the sibling
-                    // poloFieldDecoration TextFields (53px); the whole field
-                    // is tappable, so the shrunken icon target costs nothing.
-                    suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 24),
-                    // This theme replaces the app's rather than extending it, so
-                    // the focus indicator has to be restated too — otherwise this
-                    // field focuses `primary` while the Frequency field beside it
-                    // focuses white. Underline is already the shape here (no
-                    // `border` is set), so this recolors without reshaping.
-                    focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
-                  ),
-                  dropdownMenuEntries: _bandMenuEntries,
-                  onSelected: (value) {
-                    if (value == null) return;
-                    // A discrete dropdown pick, not a keystroke — push to the
-                    // VFO immediately rather than debouncing like frequency
-                    // typing (see _applyBandPick).
-                    _applyBandPick(value);
-                    _callFocus.requestFocus();
-                  },
+              DropdownMenu<String>(
+                trailingIcon: dropdownTrailingIcon,
+                selectedTrailingIcon: dropdownSelectedTrailingIcon,
+                controller: _bandDropdownController,
+                focusNode: _bandDropdownFocus,
+                menuController: _bandMenuController,
+                initialSelection: band,
+                label: Text(widget.bandLabel ?? 'Band'),
+                width: 104,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // Pick-only menus. With search on (the default), every
+                // rebuild whose field text matches an entry re-runs
+                // scrollToHighlight — and this widget rebuilds every second
+                // (the Time chip's clock), so an open menu kept snapping
+                // back to the selected item while the user scrolled.
+                enableSearch: false,
+                textStyle: haloMonoStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  floatingLabelStyle: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  // The same density-resolved pair poloFieldDecoration gives
+                  // the sibling Frequency field. A `DropdownMenu` takes an
+                  // inputDecorationTheme rather than an InputDecoration, so it
+                  // cannot share that helper and has to restate the values —
+                  // held together by the "same height as its siblings" test.
+                  // A const here froze both dropdowns at one height while the
+                  // field beside them ran 46 to 65 across the ladder.
+                  contentPadding: EdgeInsets.fromLTRB(
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingTop * dropdownTextScale,
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
+                  ),
+                  // Without this the trailing arrow's 48px min tap target
+                  // makes the field taller (56px) than the sibling
+                  // poloFieldDecoration TextFields (53px); the whole field
+                  // is tappable, so the shrunken icon target costs nothing.
+                  suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
+                  // This theme replaces the app's rather than extending it, so
+                  // the focus indicator has to be restated too — otherwise this
+                  // field focuses `primary` while the Frequency field beside it
+                  // focuses white. Underline is already the shape here (no
+                  // `border` is set), so this recolors without reshaping.
+                  focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
+                ),
+                dropdownMenuEntries: _bandMenuEntries,
+                onSelected: (value) {
+                  if (value == null) return;
+                  // A discrete dropdown pick, not a keystroke — push to the
+                  // VFO immediately rather than debouncing like frequency
+                  // typing (see _applyBandPick).
+                  _applyBandPick(value);
+                  _callFocus.requestFocus();
+                },
               ),
               const SizedBox(width: Space.sm),
               SizedBox(
-                width: 90,
+                width: 100,
                 child: TextField(
                   controller: _freqController,
                   focusNode: _freqFocus,
@@ -4450,168 +4383,62 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 ),
               ),
               const SizedBox(width: Space.sm),
-              // Same reasoning as the Band dropdown's own wrapper above.
-              IconButtonTheme(
-                data: _dropdownArrowTheme,
-                child: DropdownMenu<String>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  controller: _modeDropdownController,
-                  focusNode: _modeDropdownFocus,
-                  menuController: _modeMenuController,
-                  initialSelection: _mode,
-                  label: Text(widget.modeLabel ?? 'Mode'),
-                  width: 86,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  // See the Band dropdown: search off so rebuilds don't
-                  // re-scroll the open menu to the selection.
-                  enableSearch: false,
-                  textStyle: haloMonoStyle(
-                    context,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  inputDecorationTheme: InputDecorationTheme(
-                    isDense: true,
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    floatingLabelStyle: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onTertiaryContainer,
-                    ),
-                    // The same density-resolved pair poloFieldDecoration gives
-                    // the sibling Frequency field. A `DropdownMenu` takes an
-                    // inputDecorationTheme rather than an InputDecoration, so it
-                    // cannot share that helper and has to restate the values —
-                    // held together by the "same height as its siblings" test.
-                    // A const here froze both dropdowns at one height while the
-                    // field beside them ran 46 to 65 across the ladder.
-                    contentPadding: EdgeInsets.fromLTRB(
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingTop * dropdownTextScale,
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
-                    ),
-                    // Same height trim, and same restated focus indicator, as the
-                    // Band dropdown above.
-                    suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 24),
-                    focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
-                  ),
-                  dropdownMenuEntries: _modeMenuEntries,
-                  onSelected: (value) {
-                    if (value == null) return;
-                    _setMode(value);
-                    _callFocus.requestFocus();
-                  },
+              DropdownMenu<String>(
+                trailingIcon: dropdownTrailingIcon,
+                selectedTrailingIcon: dropdownSelectedTrailingIcon,
+                controller: _modeDropdownController,
+                focusNode: _modeDropdownFocus,
+                menuController: _modeMenuController,
+                initialSelection: _mode,
+                label: Text(widget.modeLabel ?? 'Mode'),
+                width: 104,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // See the Band dropdown: search off so rebuilds don't
+                // re-scroll the open menu to the selection.
+                enableSearch: false,
+                textStyle: haloMonoStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  floatingLabelStyle: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  // The same density-resolved pair poloFieldDecoration gives
+                  // the sibling Frequency field. A `DropdownMenu` takes an
+                  // inputDecorationTheme rather than an InputDecoration, so it
+                  // cannot share that helper and has to restate the values —
+                  // held together by the "same height as its siblings" test.
+                  // A const here froze both dropdowns at one height while the
+                  // field beside them ran 46 to 65 across the ladder.
+                  contentPadding: EdgeInsets.fromLTRB(
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingTop * dropdownTextScale,
+                    Space.xs,
+                    dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
+                  ),
+                  // Same height trim, and same restated focus indicator, as the
+                  // Band dropdown above.
+                  suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
+                  focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
+                ),
+                dropdownMenuEntries: _modeMenuEntries,
+                onSelected: (value) {
+                  if (value == null) return;
+                  _setMode(value);
+                  _callFocus.requestFocus();
+                },
               ),
-              if (widget.onOpenStationConfig != null) ...[
-                const SizedBox(width: Space.sm),
-                Semantics(
-                  identifier: 'action.stationConfig',
-                  label: widget.stationConfigLabel ?? 'Station Configuration',
-                  button: true,
-                  enabled: widget.editingQso == null,
-                  child: InkWell(
-                    key: const ValueKey('stationConfigButton'),
-                    // Not one of Radio's fields (docs/design/logging-fields.md
-                    // names exactly Band, Frequency, Mode) — the ancestor
-                    // Focus that intercepts Tab for this control only knows
-                    // about those three, so a mouse click's default focus
-                    // grab here would make Tab compute currentIndex == -1
-                    // and jump backward to Band instead of exhausting the
-                    // control and crossing to the next pill.
-                    canRequestFocus: false,
-                    onTap: widget.editingQso != null ? null : widget.onOpenStationConfig,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      // Left-aligned so the icon and the (usually wider)
-                      // name both start flush against the Mode dropdown
-                      // beside them.
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ExcludeSemantics(
-                          child: Icon(
-                            MdiIcons.cat,
-                            size: _stationConfigIconSize,
-                            color: _stationConfigIconColor(theme),
-                          ),
-                        ),
-                        if (widget.radioName != null)
-                          ExcludeSemantics(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: _stationConfigIconSize * 3),
-                              child: Text(
-                                widget.radioName!,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: theme.colorScheme.onTertiary.withValues(
-                                    alpha: widget.editingQso != null ? 0.38 : 1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
           );
         },
       );
-
-  /// The glyph both the Radio chip and its settings-dialog entry use — a
-  /// transceiver should look like one thing throughout this row.
-  IconData get _radioChipIcon => widget.hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
-
-  /// Red (configured but not connected) or green (connected) — the same
-  /// red/green convention [_noticePill] uses. Null when there's no radio to
-  /// report on, so a caller can fall back to the theme default.
-  ///
-  /// [selected] is the pill's own — the SAME `iconColor` renders on two
-  /// different fills: `colorScheme.tertiary` when the Radio control is
-  /// selected/expanded (also the expanded button's own background), and the
-  /// lighter `HaLoColors.tertiaryLight` when it's a plain unselected chip.
-  /// Which of those two is the DARKER one flips between light and dark mode
-  /// (light mode: tertiary is a dark amber, tertiaryLight a light tan; dark
-  /// mode: tertiary is a light-ish amber, tertiaryLight a near-black brown)
-  /// — so which color pair reads well flips with `selected`, not just with
-  /// the theme.
-  Color? _radioStatusColor(ThemeData theme, {required bool selected}) {
-    if (!widget.hasConfiguredRadio) return null;
-    final dark = theme.brightness == Brightness.dark;
-    final connected = widget.radioConnected;
-    if (dark != selected) {
-      // light+selected or dark+unselected: sitting on the darker fill —
-      // needs a light pastel pair.
-      return connected ? const Color(0xFF81C784) : const Color(0xFFFF8A80);
-    }
-    if (dark) {
-      // dark+selected: colorScheme.tertiary there is only moderately
-      // light — the scheme's own error and a mid green already read fine.
-      return connected ? _positiveGreen : theme.colorScheme.error;
-    }
-    // light+unselected: tertiaryLight is a fairly bright tan — needs a
-    // properly dark pair to clear 3:1.
-    return connected ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C);
-  }
-
-  /// The Station Configuration button's color: [_radioStatusColor] on the
-  /// expanded panel's fill (the button only ever renders selected), or — a
-  /// radio that isn't configured at all barely registers — a lighter tint of
-  /// that same fill. Dimmed further while editing a logged QSO, when the
-  /// button is disabled: retuning the shack shouldn't read as an action on
-  /// a QSO that's already in the log.
-  Color _stationConfigIconColor(ThemeData theme) {
-    final status =
-        _radioStatusColor(theme, selected: true) ?? Color.lerp(theme.colorScheme.tertiary, Colors.white, 0.4)!;
-    return widget.editingQso != null ? status.withValues(alpha: 0.38) : status;
-  }
 
   /// UI-level policy, not a per-source value: how recently a QSO must have
   /// started for the button to offer spotting it at all. This is deliberately
@@ -8171,7 +7998,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Alerts are the error color; notices a positive green (matching app-polo's
     // red/green pill convention) — the panel's own tertiaryContainer fill rules
     // out relying on the neutral scheme containers for contrast.
-    final background = alert ? theme.colorScheme.error : _positiveGreen;
+    final background = alert ? theme.colorScheme.error : const Color(0xFF2E7D32);
     final foreground = alert ? theme.colorScheme.onError : Colors.white;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),

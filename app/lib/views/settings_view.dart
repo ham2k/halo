@@ -240,7 +240,7 @@ class _SettingsViewState extends State<SettingsView> {
         _SettingsPanelEntry(
           key: 'station',
           title: t.settings.panels.station,
-          icon: MdiIcons.cat,
+          icon: MdiIcons.radio,
           order: _stationPanelOrder,
           description: t.settings.panels.stationDescription,
         ),

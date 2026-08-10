@@ -25,12 +25,14 @@ class MapboxNativeMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
+  final bool isDark;
 
   const MapboxNativeMapView({
     super.key,
     required this.markers,
     this.lines = const [],
     required this.projection,
+    required this.isDark,
   });
 
   @override
@@ -94,6 +96,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   void didUpdateWidget(MapboxNativeMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projection != widget.projection) _applyProjection();
+    if (oldWidget.isDark != widget.isDark) _applyDark();
     // Re-apply only the group that actually changed. The highlight (current
     // QSO) changes on every keystroke; the base map usually doesn't, so this
     // avoids deleting and recreating every base annotation — and refitting the
@@ -112,6 +115,13 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
       MapProjection.globe => StyleProjectionName.globe,
     }));
     _repositionPopup();
+  }
+
+  /// The Standard style's own day/night switch — its 'basemap' import's
+  /// lightPreset config — rather than a different style URI: same style, so
+  /// no reload and no annotation re-application.
+  Future<void> _applyDark() async {
+    await _map?.style.setStyleImportConfigProperty('basemap', 'lightPreset', widget.isDark ? 'night' : 'day');
   }
 
   void _applyAnnotations({required bool base, required bool highlight}) {
@@ -149,7 +159,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
           geometry: Point(coordinates: Position(marker.longitude, marker.latitude)),
           circleRadius: marker.kind == MapMarkerKind.qth ? 6 : 7 * marker.sizeFactor,
           circleColor: marker.color.toARGB32(),
-          circleStrokeColor: (marker.kind == MapMarkerKind.qth ? Colors.white : Colors.black87).toARGB32(),
+          circleStrokeColor: marker.strokeColor.toARGB32(),
           circleStrokeWidth: marker.kind == MapMarkerKind.qth ? 2 : 1.5,
         );
 
@@ -254,6 +264,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
     _highlightCircles = await map.annotations.createCircleAnnotationManager();
     _highlightCircles!.tapEvents(onTap: _onCircleTapped);
     await _applyProjection();
+    await _applyDark();
     _applyAnnotations(base: true, highlight: true);
   }
 

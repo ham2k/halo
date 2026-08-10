@@ -390,6 +390,12 @@ class Translations$map$en {
 
 	/// en: 'Globe'
 	String get globe => 'Globe';
+
+	/// en: 'Zoom in'
+	String get zoomIn => 'Zoom in';
+
+	/// en: 'Zoom out'
+	String get zoomOut => 'Zoom out';
 }
 
 // Path: activitiesView
@@ -910,6 +916,7 @@ class Translations$settings$en {
 
 	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
+	late final Translations$settings$map$en map = Translations$settings$map$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
 
 	/// en: 'Operator Callsign'
@@ -1689,6 +1696,9 @@ class Translations$operation$menu$en {
 	/// en: 'Logging Settings'
 	String get loggingSettingsTitle => 'Logging Settings';
 
+	/// en: 'Map Settings'
+	String get mapSettingsTitle => 'Map Settings';
+
 	/// en: 'Actions'
 	String get actionsSection => 'Actions';
 
@@ -2326,6 +2336,21 @@ class Translations$settings$radio$en {
 	late final Translations$settings$radio$zeroBeatRange$en zeroBeatRange = Translations$settings$radio$zeroBeatRange$en.internal(_root);
 }
 
+// Path: settings.map
+class Translations$settings$map$en {
+	Translations$settings$map$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Map'
+	String get title => 'Map';
+
+	late final Translations$settings$map$style$en style = Translations$settings$map$style$en.internal(_root);
+	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
+}
+
 // Path: settings.privacy
 class Translations$settings$privacy$en {
 	Translations$settings$privacy$en.internal(this._root);
@@ -2616,8 +2641,8 @@ class Translations$settings$station$en {
 
 	// Translations
 
-	/// en: 'Station Configuration & CAT Control'
-	String get title => 'Station Configuration & CAT Control';
+	/// en: 'Station Configuration'
+	String get title => 'Station Configuration';
 
 	/// en: 'No equipment configured'
 	String get none => 'No equipment configured';
@@ -3741,6 +3766,48 @@ class Translations$settings$radio$zeroBeatRange$en {
 	String get description => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.';
 }
 
+// Path: settings.map.style
+class Translations$settings$map$style$en {
+	Translations$settings$map$style$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Map Style'
+	String get title => 'Map Style';
+
+	/// en: 'Which basemap the Map tab uses. Automatic follows the app's light/dark theme.'
+	String get description => 'Which basemap the Map tab uses. Automatic follows the app\'s light/dark theme.';
+}
+
+// Path: settings.map.styleOpts
+class Translations$settings$map$styleOpts$en {
+	Translations$settings$map$styleOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Automatic'
+	String get automatic => 'Automatic';
+
+	/// en: 'Liberty'
+	String get liberty => 'Liberty';
+
+	/// en: 'Bright'
+	String get bright => 'Bright';
+
+	/// en: 'Positron'
+	String get positron => 'Positron';
+
+	/// en: 'Voyager'
+	String get voyager => 'Voyager';
+
+	/// en: 'Dark Matter'
+	String get darkMatter => 'Dark Matter';
+}
+
 // Path: settings.privacy.shareAppData
 class Translations$settings$privacy$shareAppData$en {
 	Translations$settings$privacy$shareAppData$en.internal(this._root);
@@ -4023,6 +4090,7 @@ extension on Translations {
 			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
 			'operation.menu.lookupAllQsos' => 'Lookup all QSOs',
 			'operation.menu.loggingSettingsTitle' => 'Logging Settings',
+			'operation.menu.mapSettingsTitle' => 'Map Settings',
 			'operation.menu.actionsSection' => 'Actions',
 			'operation.menu.relevantSettingsSection' => 'Relevant Settings',
 			'operation.layout.title' => 'Add a Panel',
@@ -4212,6 +4280,8 @@ extension on Translations {
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
 			'map.flat' => 'Flat',
 			'map.globe' => 'Globe',
+			'map.zoomIn' => 'Zoom in',
+			'map.zoomOut' => 'Zoom out',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.sheetTitle' => 'Operation Setup',
 			'activitiesView.sheetTitleShort' => 'Setup',
@@ -4447,11 +4517,11 @@ extension on Translations {
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
@@ -4477,6 +4547,15 @@ extension on Translations {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tune exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
+			'settings.map.title' => 'Map',
+			'settings.map.style.title' => 'Map Style',
+			'settings.map.style.description' => 'Which basemap the Map tab uses. Automatic follows the app\'s light/dark theme.',
+			'settings.map.styleOpts.automatic' => 'Automatic',
+			'settings.map.styleOpts.liberty' => 'Liberty',
+			'settings.map.styleOpts.bright' => 'Bright',
+			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
+			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'Help us improve the app by sharing usage, crash and performance data',
@@ -4563,7 +4642,7 @@ extension on Translations {
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
-			'settings.station.title' => 'Station Configuration & CAT Control',
+			'settings.station.title' => 'Station Configuration',
 			'settings.station.none' => 'No equipment configured',
 			'settings.station.add' => 'Add equipment',
 			'settings.station.addTitle' => 'Add equipment',

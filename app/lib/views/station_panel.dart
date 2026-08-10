@@ -348,7 +348,10 @@ class StationPanel extends StatelessWidget {
     await _cat.removeNode(node.uuid);
   }
 
-  String _displayName(EquipmentNode node) => _cat.displayNameFor(node);
+  String _displayName(EquipmentNode node) {
+    if (node.name.isNotEmpty) return node.name;
+    return _cat.typeFor(node)?.name ?? node.typeKey;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -792,8 +795,8 @@ class _AddChoice {
   const _AddChoice.discovered(this.discovered) : model = null;
 }
 
-/// The glyph the logging panel's own Radio control falls back to when no
-/// CAT radio is configured — this list is what configures one.
+/// The same glyph the logging panel's own Radio control uses — a
+/// transceiver should look like one thing throughout the app.
 IconData _iconForCategory(String? category) =>
     category == kCategoryTransceiver ? MdiIcons.radio : MdiIcons.developerBoard;
 

@@ -1233,6 +1233,29 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         );
   }
 
+  /// The Map tab's basemap picker (MAPLIBRE experiment only — see
+  /// MapSettingsGroup). Same shape as [_buildLoggingSettingsButton]: the Map
+  /// panel is native and reaches its settings through a target, not
+  /// `formFields`, so `_buildPanelSettingsButton` wouldn't find it either.
+  Widget _buildMapSettingsButton({BuildContext? context}) {
+    final effectiveContext = context ?? this.context;
+    final theme = Theme.of(effectiveContext);
+    final iconColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    return Builder(
+      builder: (buttonContext) => IconButton(
+        icon: Icon(MdiIcons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
+        onPressed: () => _openMapSettings(buttonContext),
+      ),
+    );
+  }
+
+  Future<void> _openMapSettings(BuildContext buttonContext) => showSettingsForTarget(
+        buttonContext,
+        services: widget.services,
+        target: 'map',
+        title: buttonContext.t.operation.menu.mapSettingsTitle,
+      );
+
   /// Floor for [_narrowTabBar]'s QSOs-tab padding — shrunk before the tab
   /// is ever allowed to grow past an even third (and, in turn, before
   /// Spots/Map are ever asked to give up any of their own share).
@@ -1742,6 +1765,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       // is the one that belongs to the panel.
       tabActions: {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
+        if (widget.services.settings.experimentEnabled('maplibre'))
+          'map': (context) => _buildMapSettingsButton(context: context),
         for (final id in inLayout)
           if (widget.services.panels[id]?.formFields.isNotEmpty ?? false)
             id: (context) => _buildPanelSettingsButton(widget.services.panels[id]!, context: context),
@@ -1841,6 +1866,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             : null,
         onPanelSettings: switch (id) {
           'logging' => () => unawaited(_openLoggingSettings(context, qsos)),
+          'map' when widget.services.settings.experimentEnabled('maplibre') =>
+            () => unawaited(_openMapSettings(context)),
           _ when panel != null && panel.formFields.isNotEmpty =>
             () => unawaited(showPanelSettings(context, services: widget.services, panel: panel)),
           _ => null,

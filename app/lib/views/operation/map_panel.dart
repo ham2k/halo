@@ -35,6 +35,7 @@ import '../../services/windows_webview.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
+import '../map/map_zoom_controller.dart';
 import '../map/mapbox_native_map_view.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
@@ -71,6 +72,11 @@ class _MapPanelState extends State<MapPanel> {
   /// swaps to Mapbox — every later one goes straight to the cached answer.
   bool _webviewSupported = false;
 
+  /// Backs the bottom-left zoom buttons (non-mobile only, alongside pinch/scroll
+  /// zoom) — the live backend wires its own zoomIn/zoomOut into it each time it's
+  /// built, so the buttons stay agnostic to which one is currently mounted.
+  final _zoomController = MapZoomController();
+
   @override
   void initState() {
     super.initState();
@@ -85,10 +91,19 @@ class _MapPanelState extends State<MapPanel> {
     }
   }
 
-  // Lines are ~60% black at any zoom, splitting the difference on app-polo's
-  // zoom-interpolated 50–90% opacity ramp (flat styling keeps the three
-  // backends identical).
-  static const _lineColor = Color(0x99000000);
+  // Lines are ~60% black (light) or ~60% white (dark) at any zoom, splitting
+  // the difference on app-polo's zoom-interpolated 50–90% opacity ramp (flat
+  // styling keeps the three backends identical) — a dark basemap needs the
+  // inverted tone or the great-circle lines disappear into the tiles.
+  static const _lineColorLight = Color(0x99000000);
+  static const _lineColorDark = Color(0x99FFFFFF);
+
+  // The ring around a QSO circle — opaque, so it survives mapColorToHex's
+  // alpha-stripping unchanged for the GL backends. A dark stroke reads as a
+  // hole in a light basemap; a light one does the same job on a dark one.
+  static const _qsoStrokeLight = Color(0xFF1A1A1A);
+  static const _qsoStrokeDark = Color(0xFFF2F2F2);
+  static const _qthStroke = Colors.white;
 
   // Fill for a QSO whose band isn't in the theme's band table — app-polo's
   // '#FF0000' fallback. Deliberately NOT bandColor's own 'other' fallback
@@ -106,6 +121,7 @@ class _MapPanelState extends State<MapPanel> {
   bool? _builtMiles;
   HaLoColors? _builtColors;
   AppLocale? _builtLocale;
+  bool? _builtDark;
   List<MapMarkerData> _markers = const [];
   List<MapLineData> _lines = const [];
 
@@ -152,26 +168,59 @@ class _MapPanelState extends State<MapPanel> {
     // globe projection). Off, Mapbox runs wherever a token is configured; no
     // token is a supported state, not a broken build: a fresh checkout, a
     // fork, and every CI build without one fall back to OpenStreetMap below.
+    final isDark = theme.brightness == Brightness.dark;
     final useMapLibre = widget.settings.experimentEnabled('maplibre');
     final glEngine = useMapLibre
         ? MapGlEngine.maplibre
         : ((secrets['MAPBOX_ACCESS_TOKEN'] ?? '').isNotEmpty ? MapGlEngine.mapbox : null);
     var hasGlobe = glEngine != null;
+    // A pinned MapLibre style (MAPLIBRE experiment only — see the map style
+    // menu on this tab's header button) uses the same URL for both slots, so
+    // the light/dark machinery in the GL backends just never has a reason to
+    // swap it. Mapbox ignores the setting entirely (styled via lightPreset,
+    // not a style URL — see MapGlEngine.styleUrlDark's doc).
+    final pinnedStyle = widget.settings.mapStyle;
+    final glStyleUrl = glEngine == MapGlEngine.maplibre && pinnedStyle != MapStyle.automatic
+        ? mapLibreStyleUrl(pinnedStyle)
+        : glEngine?.styleUrl ?? '';
+    final glStyleUrlDark = glEngine == MapGlEngine.maplibre && pinnedStyle != MapStyle.automatic
+        ? mapLibreStyleUrl(pinnedStyle)
+        : glEngine?.styleUrlDark ?? '';
     // Keyed on the engine: both engines render through the same widget type
     // on web and desktop, and those States create their map (or webview page)
     // once — without the key, toggling the experiment mid-session reuses the
     // old State and the engine never actually switches.
     final glKey = ValueKey(glEngine);
+    // Native mapbox_maps_flutter (iOS/Android, MAPLIBRE off) doesn't get a
+    // zoom controller wired: it's mobile-only, and the buttons themselves are
+    // hidden there (see hasZoomButtons below).
     if (glEngine == null) {
-      map = OsmMapView(markers: markers, lines: lines);
+      map = OsmMapView(markers: markers, lines: lines, isDark: isDark, zoomController: _zoomController);
     } else if (kIsWeb) {
       // The app already runs in a browser — GL JS mounts directly on a
       // platform-view div, no webview needed.
-      map = MapboxWebMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine);
+      map = MapboxWebMapView(
+          key: glKey,
+          markers: markers,
+          lines: lines,
+          projection: _projection,
+          engine: glEngine,
+          isDark: isDark,
+          styleUrl: glStyleUrl,
+          styleUrlDark: glStyleUrlDark,
+          zoomController: _zoomController);
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
       map = useMapLibre
-          ? MapboxWebviewMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine)
-          : MapboxNativeMapView(markers: markers, lines: lines, projection: _projection);
+          ? MapboxWebviewMapView(
+              key: glKey,
+              markers: markers,
+              lines: lines,
+              projection: _projection,
+              engine: glEngine,
+              isDark: isDark,
+              styleUrl: glStyleUrl,
+              styleUrlDark: glStyleUrlDark)
+          : MapboxNativeMapView(markers: markers, lines: lines, projection: _projection, isDark: isDark);
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
         _webviewSupported) {
       // Named platform by platform, and through `defaultTargetPlatform` rather
@@ -179,7 +228,16 @@ class _MapPanelState extends State<MapPanel> {
       // Linux exclusion is a rule a test holds down. Widening this branch to
       // Linux gives Linux a blank pane, not a map: no webview implementation
       // is registered there.
-      map = MapboxWebviewMapView(key: glKey, markers: markers, lines: lines, projection: _projection, engine: glEngine);
+      map = MapboxWebviewMapView(
+          key: glKey,
+          markers: markers,
+          lines: lines,
+          projection: _projection,
+          engine: glEngine,
+          isDark: isDark,
+          styleUrl: glStyleUrl,
+          styleUrlDark: glStyleUrlDark,
+          zoomController: _zoomController);
     } else {
       // Linux, where no webview map exists (no web view implementation is
       // registered there — see docs/quirks.md — and mapbox_maps_flutter is
@@ -188,8 +246,12 @@ class _MapPanelState extends State<MapPanel> {
       // usable WebView2 environment lands here too.
       hasGlobe = false;
       if (useMapLibre) debugPrint('[map] MAPLIBRE experiment is on but no webview map exists here; using OSM');
-      map = OsmMapView(markers: markers, lines: lines);
+      map = OsmMapView(markers: markers, lines: lines, isDark: isDark, zoomController: _zoomController);
     }
+
+    // Mobile already zooms by pinch with no room to spare in the pane; the
+    // buttons are for the platforms where a mouse/trackpad is the norm.
+    final hasZoomButtons = !isMobilePlatform;
 
     return Stack(
       children: [
@@ -201,17 +263,18 @@ class _MapPanelState extends State<MapPanel> {
             // themselves stay edge-to-edge.
             top: 8 + PaneSafeArea.topOf(context),
             right: 8 + PaneSafeArea.rightOf(context),
-            child: SegmentedButton<MapProjection>(
-              // Keeps each segment's own MDI icon when selected instead of
-              // the framework's Material check swap (same as settings_view).
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(value: MapProjection.mercator, icon: const Icon(MdiIcons.map), label: Text(context.t.map.flat)),
-                ButtonSegment(value: MapProjection.globe, icon: const Icon(MdiIcons.earth), label: Text(context.t.map.globe)),
-              ],
-              selected: {_projection},
-              onSelectionChanged: (selection) => setState(() => _projection = selection.first),
+            child: _MapProjectionButton(
+              projection: _projection,
+              onPressed: () => setState(
+                () => _projection = _projection == MapProjection.mercator ? MapProjection.globe : MapProjection.mercator,
+              ),
             ),
+          ),
+        if (hasZoomButtons)
+          Positioned(
+            bottom: 8 + PaneSafeArea.bottomOf(context),
+            left: 8 + PaneSafeArea.leftOf(context),
+            child: _MapZoomButtons(controller: _zoomController),
           ),
       ],
     );
@@ -221,11 +284,13 @@ class _MapPanelState extends State<MapPanel> {
     final poloColors = HaLoColors.of(context);
     final miles = widget.settings.distanceUnits == DistanceUnits.miles;
     final locale = LocaleSettings.currentLocale;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (identical(_builtQsos, widget.qsos) &&
         _builtGrid == widget.operation.grid &&
         _builtMiles == miles &&
         _builtColors == poloColors &&
-        _builtLocale == locale) {
+        _builtLocale == locale &&
+        _builtDark == isDark) {
       return;
     }
     _builtQsos = widget.qsos;
@@ -233,6 +298,10 @@ class _MapPanelState extends State<MapPanel> {
     _builtMiles = miles;
     _builtColors = poloColors;
     _builtLocale = locale;
+    _builtDark = isDark;
+
+    final lineColor = isDark ? _lineColorDark : _lineColorLight;
+    final qsoStroke = isDark ? _qsoStrokeDark : _qsoStrokeLight;
 
     final qsoMarkers = <MapMarkerData>[];
     final lines = <MapLineData>[];
@@ -266,12 +335,12 @@ class _MapPanelState extends State<MapPanel> {
         if (qth != null) addQth(qthGrid, qth);
       }
 
-      qsoMarkers.add(_markerForQso(qso, location, qth, poloColors, miles: miles));
+      qsoMarkers.add(_markerForQso(qso, location, qth, poloColors, miles: miles, strokeColor: qsoStroke));
 
       if (qth != null) {
         final segments = greatCirclePoints(location, qth);
         for (var i = 0; i < segments.length; i++) {
-          lines.add(MapLineData(id: '${qso.uuid}/$i', points: segments[i], color: _lineColor));
+          lines.add(MapLineData(id: '${qso.uuid}/$i', points: segments[i], color: lineColor));
         }
       }
     }
@@ -290,6 +359,7 @@ class _MapPanelState extends State<MapPanel> {
           label: entry.value.display,
           kind: MapMarkerKind.qth,
           color: poloColors.bandColor('other'),
+          strokeColor: _qthStroke,
           popupTitle: t.map.qthPopupTitle(grid: entry.value.display),
         ),
     ];
@@ -303,10 +373,11 @@ class _MapPanelState extends State<MapPanel> {
         operationGrid: widget.operation.grid,
         composingColor: mapHighlightColor(theme.colorScheme.tertiary),
         editingColor: mapHighlightColor(theme.colorScheme.secondary),
+        strokeColor: theme.brightness == Brightness.dark ? _qsoStrokeDark : _qsoStrokeLight,
       );
 
   MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors,
-      {required bool miles}) {
+      {required bool miles, required Color strokeColor}) {
     final distanceStr = qth == null ? null : fmtDistance(distanceOnEarthKm(location, qth), miles: miles);
 
     final startAt = qso.startAt;
@@ -329,6 +400,7 @@ class _MapPanelState extends State<MapPanel> {
       label: qso.theirCall,
       kind: MapMarkerKind.qso,
       color: poloColors.bands[qso.band] ?? _unknownBandColor,
+      strokeColor: strokeColor,
       sizeFactor: _sizeFactorForQso(qso),
       popupTitle: distanceStr == null ? qso.theirCall : '${qso.theirCall} • $distanceStr',
       popupDetailPrefix: prefix,
@@ -356,6 +428,77 @@ class _MapPanelState extends State<MapPanel> {
   }
 }
 
+/// A single toggle, not a segmented pair: the icon shown is always the
+/// OTHER projection — tapping it is "switch to this" — so there's no
+/// selected/unselected state to contrast against an arbitrary basemap.
+/// A full circle, matching IconButton's own circular hover/ripple rather
+/// than a rounded-square card fighting a round one.
+class _MapProjectionButton extends StatelessWidget {
+  final MapProjection projection;
+  final VoidCallback onPressed;
+
+  const _MapProjectionButton({required this.projection, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final toGlobe = projection == MapProjection.mercator;
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      child: IconButton(
+        icon: Icon(
+          toGlobe ? MdiIcons.earth : MdiIcons.map,
+          semanticLabel: toGlobe ? context.t.map.globe : context.t.map.flat,
+        ),
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+/// The bottom-left +/- zoom cluster, non-mobile only (see hasZoomButtons in
+/// _MapPanelState._buildMap) — a mouse/trackpad has no pinch gesture, and
+/// scroll-to-zoom isn't discoverable without them. One pill rather than two
+/// separate cards, with a hairline between the two actions — clipped so
+/// each IconButton's own hover/ripple stays inside the pill instead of
+/// squaring off its corners.
+class _MapZoomButtons extends StatelessWidget {
+  final MapZoomController controller;
+
+  const _MapZoomButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(MdiIcons.plus, semanticLabel: context.t.map.zoomIn),
+            onPressed: controller.zoomIn,
+          ),
+          // A bare Divider has no intrinsic width and Column's non-stretch
+          // cross axis gives it none either, so it renders at zero width
+          // without an explicit one — SizedBox is what gives it one.
+          SizedBox(width: 40, child: Divider(height: 1, thickness: 1, color: theme.dividerColor)),
+          IconButton(
+            icon: Icon(MdiIcons.minus, semanticLabel: context.t.map.zoomOut),
+            onPressed: controller.zoomOut,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A brighter, more vivid take on [base] for the map highlight: same hue,
 /// pushed to full saturation and a punchy mid lightness so it pops over the
 /// map tiles, rather than the theme's muted tertiary/secondary (light-mode
@@ -378,6 +521,7 @@ Color mapHighlightColor(Color base) {
   required String? operationGrid,
   required Color composingColor,
   required Color editingColor,
+  required Color strokeColor,
 }) {
   const empty = (markers: <MapMarkerData>[], lines: <MapLineData>[]);
   final guess = callInfo?.guess;
@@ -399,6 +543,7 @@ Color mapHighlightColor(Color base) {
     label: callInfo.call,
     kind: MapMarkerKind.qso,
     color: accent,
+    strokeColor: strokeColor,
     // Largest size, so it reads as the one you're working on.
     sizeFactor: 1.3,
     highlight: true,

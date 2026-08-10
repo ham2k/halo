@@ -102,6 +102,7 @@
       "showQsoNumbers": "Mostrar números de QSO",
       "lookupAllQsos": "Buscar datos de todos los QSOs",
       "loggingSettingsTitle": "Configuración de Registro",
+      "mapSettingsTitle": "Configuración del Mapa",
       "actionsSection": "Acciones",
       "relevantSettingsSection": "Ajustes Relevantes"
     },
@@ -350,7 +351,9 @@
     "distanceKm": "${distance} km",
     "distanceMiles": "${distance} mi",
     "flat": "Plano",
-    "globe": "Globo"
+    "globe": "Globo",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar"
   },
   "activitiesView": {
     "title": "Actividades",
@@ -690,6 +693,21 @@
         "description": "A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez."
       }
     },
+    "map": {
+      "title": "Mapa",
+      "style": {
+        "title": "Estilo del Mapa",
+        "description": "Qué mapa base usa la pestaña Mapa. Automático sigue el tema claro/oscuro de la app."
+      },
+      "styleOpts": {
+        "automatic": "Automático",
+        "liberty": "Liberty",
+        "bright": "Bright",
+        "positron": "Positron",
+        "voyager": "Voyager",
+        "darkMatter": "Dark Matter"
+      }
+    },
     "privacy": {
       "title": "Privacidad",
       "shareAppData": {
@@ -798,7 +816,7 @@
       "noSecureStorageInline": "Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora."
     },
     "station": {
-      "title": "Configuración de Estación y Control CAT",
+      "title": "Configuración de Estación",
       "none": "No hay equipo configurado",
       "add": "Agregar equipo",
       "addTitle": "Agregar equipo",

@@ -21,12 +21,16 @@ import 'package:latlong2/latlong.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_marker_data.dart';
 import 'map_popup.dart';
+import 'map_zoom_controller.dart';
 
 class OsmMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
+  final bool isDark;
+  final MapZoomController? zoomController;
 
-  const OsmMapView({super.key, required this.markers, this.lines = const []});
+  const OsmMapView(
+      {super.key, required this.markers, this.lines = const [], required this.isDark, this.zoomController});
 
   @override
   State<OsmMapView> createState() => _OsmMapViewState();
@@ -35,6 +39,17 @@ class OsmMapView extends StatefulWidget {
 class _OsmMapViewState extends State<OsmMapView> {
   final _mapController = MapController();
   String? _selectedMarkerId;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.zoomController
+      ?..onZoomIn = _zoomIn
+      ..onZoomOut = _zoomOut;
+  }
+
+  void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
+  void _zoomOut() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
 
   @override
   void didUpdateWidget(OsmMapView oldWidget) {
@@ -63,6 +78,15 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   @override
   void dispose() {
+    // Only release the callbacks if they're still ours — the facade mounts a
+    // replacement backend's State (initState included) before this one's
+    // dispose runs on a backend swap, so an unconditional null-out here
+    // would clobber the wiring the new one just installed.
+    if (identical(widget.zoomController?.onZoomIn, _zoomIn)) {
+      widget.zoomController
+        ?..onZoomIn = null
+        ..onZoomOut = null;
+    }
     _mapController.dispose();
     super.dispose();
   }
@@ -86,7 +110,13 @@ class _OsmMapViewState extends State<OsmMapView> {
       ),
       children: [
         TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          // CARTO's Dark Matter tiles in dark mode — plain OSM has no dark
+          // variant of its own — free and tokenless like the light tiles,
+          // but built from OSM data via CARTO rather than OSM's own server,
+          // hence the attribution swap below.
+          urlTemplate: widget.isDark
+              ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+              : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ham2k.poloNext',
           // Otherwise a failed tile is swallowed by flutter_map and the pane
           // just shows grey squares with no evidence anywhere. The tile URL
@@ -124,7 +154,7 @@ class _OsmMapViewState extends State<OsmMapView> {
               ),
             ),
           ]),
-        const _OsmAttribution(),
+        _OsmAttribution(isDark: widget.isDark),
       ],
     );
   }
@@ -171,7 +201,9 @@ class _OsmMapViewState extends State<OsmMapView> {
 /// layout is routinely that narrow. A lone [Text] has no flex to overflow: it
 /// ellipsizes into whatever width it is given.
 class _OsmAttribution extends StatelessWidget {
-  const _OsmAttribution();
+  final bool isDark;
+
+  const _OsmAttribution({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +216,10 @@ class _OsmAttribution extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs),
             child: Text(
-              '© OpenStreetMap contributors',
+              // CARTO's dark tiles are still built from OSM's data, so both
+              // credits apply — the tile usage policy requires the one whose
+              // server actually served the tiles.
+              isDark ? '© OpenStreetMap contributors © CARTO' : '© OpenStreetMap contributors',
               style: theme.textTheme.bodySmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

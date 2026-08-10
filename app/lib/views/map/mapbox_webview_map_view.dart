@@ -42,12 +42,24 @@ import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
 import 'map_load_notice.dart';
 import 'map_marker_data.dart';
+import 'map_zoom_controller.dart';
 
 class MapboxWebviewMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
   final MapGlEngine engine;
+  final bool isDark;
+
+  /// The light/dark style URLs to actually load — [MapGlEngine.styleUrl] and
+  /// [.styleUrlDark] by default, or both pointing at the same pinned style
+  /// when the operator picked one via [SettingsService.mapStyle]. Threaded in
+  /// from map_panel.dart rather than read off `engine` here, so this widget
+  /// doesn't need to know about the map-style setting at all.
+  final String styleUrl;
+  final String styleUrlDark;
+
+  final MapZoomController? zoomController;
 
   const MapboxWebviewMapView({
     super.key,
@@ -55,6 +67,10 @@ class MapboxWebviewMapView extends StatefulWidget {
     this.lines = const [],
     required this.projection,
     required this.engine,
+    required this.isDark,
+    required this.styleUrl,
+    required this.styleUrlDark,
+    this.zoomController,
   });
 
   @override
@@ -90,6 +106,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   @override
   void initState() {
     super.initState();
+    widget.zoomController
+      ?..onZoomIn = _zoomIn
+      ..onZoomOut = _zoomOut;
     _readyWatchdog = Timer(const Duration(seconds: 15), () {
       if (!mounted || _mapReady) return;
       setState(() => _loadFailed = true);
@@ -100,15 +119,34 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
 
   @override
   void dispose() {
+    // Only release the callbacks if they're still ours — the facade mounts a
+    // replacement backend's State (initState included) before this one's
+    // dispose runs on a backend swap, so an unconditional null-out here
+    // would clobber the wiring the new one just installed.
+    if (identical(widget.zoomController?.onZoomIn, _zoomIn)) {
+      widget.zoomController
+        ?..onZoomIn = null
+        ..onZoomOut = null;
+    }
     _readyWatchdog?.cancel();
     super.dispose();
   }
+
+  void _zoomIn() => _controller?.evaluateJavascript(source: 'window.poloZoomIn();');
+  void _zoomOut() => _controller?.evaluateJavascript(source: 'window.poloZoomOut();');
 
   @override
   void didUpdateWidget(MapboxWebviewMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_mapReady) return;
     if (oldWidget.projection != widget.projection) _applyProjection();
+    // A pinned-style change takes precedence over isDark: applying both
+    // would swap the style twice for one operator action.
+    if (oldWidget.styleUrl != widget.styleUrl || oldWidget.styleUrlDark != widget.styleUrlDark) {
+      _applyStyleUrls();
+    } else if (oldWidget.isDark != widget.isDark) {
+      _applyDark();
+    }
     if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
     if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
   }
@@ -116,6 +154,16 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   Future<void> _applyProjection() async {
     await _controller?.evaluateJavascript(
       source: "window.poloSetProjection('${widget.projection.name}');",
+    );
+  }
+
+  Future<void> _applyDark() async {
+    await _controller?.evaluateJavascript(source: 'window.poloSetDark(${widget.isDark});');
+  }
+
+  Future<void> _applyStyleUrls() async {
+    await _controller?.evaluateJavascript(
+      source: "window.poloUpdateStyles('${widget.styleUrl}', '${widget.styleUrlDark}');",
     );
   }
 
@@ -138,7 +186,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       // the exe (see WindowsWebView).
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
-        data: _html(widget.engine, secrets['MAPBOX_ACCESS_TOKEN'] ?? ''),
+        data: _html(widget.engine, secrets['MAPBOX_ACCESS_TOKEN'] ?? '', widget.isDark, widget.styleUrl, widget.styleUrlDark),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
@@ -155,6 +203,10 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
             // if the map is ready but its style is stuck.
             if (mounted && _loadFailed) setState(() => _loadFailed = false);
             _applyProjection();
+            // Dark mode is picked at creation (see _html/create's initialDark)
+            // rather than applied here — for MapLibre, doing it again on
+            // ready would swap the style a second time and race the marker
+            // application right below it.
             _applyMarkers();
             _applyLines();
             return null;
@@ -187,7 +239,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   // callback crosses on its own 'poloMapEvent' handler rather than riding
   // onConsoleMessage: a console line is a debug print, and these have to
   // reach ErrorPolicy.
-  static String _html(MapGlEngine engine, String token) => '''
+  static String _html(MapGlEngine engine, String token, bool isDark, String styleUrl, String styleUrlDark) => '''
 <!DOCTYPE html>
 <html>
 <head>
@@ -223,6 +275,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   <style>
     body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
     .mapboxgl-popup-content, .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
+    ${engine == MapGlEngine.maplibre ? '#map { background: ${mapLibreSpaceBackgroundCss()}; }' : ''}
   </style>
 </head>
 <body>
@@ -230,13 +283,18 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   <script>$mapGlScript</script>
   <script>
     const handle = window.poloMapGl.create(
-      document.getElementById('map'), '${engine.name}', '$token', '${engine.styleUrl}',
+      document.getElementById('map'), '${engine.name}', '$token', '$styleUrl', '$styleUrlDark',
+      $isDark,
       function (kind, message) {
         window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
       });
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
     window.poloSetProjection = handle.setProjection;
+    window.poloZoomIn = handle.zoomIn;
+    window.poloZoomOut = handle.zoomOut;
+    window.poloSetDark = handle.setDark;
+    window.poloUpdateStyles = handle.updateStyles;
     handle.onLoad(function () {
       window.flutter_inappwebview.callHandler('poloMapReady');
     });

@@ -46,6 +46,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _fontScaleKey = 'fontScale';
   static const _layoutCustomizationKey = 'layoutCustomization';
   static const _layoutDensityKey = 'layoutDensity';
+  static const _mapStyleKey = 'mapStyle';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
   static const _showRSTFieldsKey = 'showRSTFields';
@@ -945,6 +946,17 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setDensityPreference(DensityPreference preference) =>
       setSettingValue(generalGroup, _layoutDensityKey, preference.name);
+
+  /// The MapLibre basemap choice (MAPLIBRE experiment only — see
+  /// map_panel.dart). [MapStyle.automatic] by default, which keeps the
+  /// existing light/dark-aware basemap; any other value pins one style
+  /// regardless of the app's theme.
+  MapStyle get mapStyle {
+    final value = settingValue(generalGroup, _mapStyleKey);
+    return MapStyle.values.firstWhere((e) => e.name == value, orElse: () => MapStyle.automatic);
+  }
+
+  Future<void> setMapStyle(MapStyle style) => setSettingValue(generalGroup, _mapStyleKey, style.name);
 }
 
 /// One callsign profile from [SettingsService.activeProfile] — an id plus a
@@ -974,6 +986,11 @@ class Profile {
 }
 
 enum DistanceUnits { kilometers, miles }
+
+/// A MapLibre basemap (see map_gl_script.dart's `mapLibreStyleUrl`) —
+/// [automatic] keeps the app's own light/dark-aware default (Liberty /
+/// Dark Matter); every other value pins one style regardless of theme.
+enum MapStyle { automatic, liberty, bright, positron, voyager, darkMatter }
 
 /// Country flags on contacts: DX only (app-polo's default), everyone, or off.
 enum DxFlags { dx, all, none }

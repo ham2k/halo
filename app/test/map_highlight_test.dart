@@ -18,9 +18,11 @@ import 'package:ham2k_logger/views/operation/map_panel.dart';
 void main() {
   const composing = Color(0xFFFF8800); // stand-in for colorScheme.tertiary
   const editing = Color(0xFF0088FF); // stand-in for colorScheme.secondary
+  const stroke = Color(0xFF1A1A1A);
 
   ({List<MapMarkerData> markers, List<MapLineData> lines}) build(CallInfoData? info, {String? grid = 'CM87'}) =>
-      buildHighlightData(callInfo: info, operationGrid: grid, composingColor: composing, editingColor: editing);
+      buildHighlightData(
+          callInfo: info, operationGrid: grid, composingColor: composing, editingColor: editing, strokeColor: stroke);
 
   test('nothing to highlight when there is no call info', () {
     expect(build(null).markers, isEmpty);

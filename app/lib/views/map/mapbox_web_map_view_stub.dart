@@ -9,15 +9,28 @@ import 'package:flutter/widgets.dart';
 
 import 'map_gl_script.dart';
 import 'map_marker_data.dart';
+import 'map_zoom_controller.dart';
 
 class MapboxWebMapView extends StatelessWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
   final MapProjection projection;
   final MapGlEngine engine;
+  final bool isDark;
+  final String styleUrl;
+  final String styleUrlDark;
+  final MapZoomController? zoomController;
 
   const MapboxWebMapView(
-      {super.key, required this.markers, this.lines = const [], required this.projection, required this.engine});
+      {super.key,
+      required this.markers,
+      this.lines = const [],
+      required this.projection,
+      required this.engine,
+      required this.isDark,
+      required this.styleUrl,
+      required this.styleUrlDark,
+      this.zoomController});
 
   @override
   Widget build(BuildContext context) => throw UnsupportedError('MapboxWebMapView is only available on the web');

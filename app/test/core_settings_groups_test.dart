@@ -247,4 +247,43 @@ void main() {
       }
     });
   });
+
+  group('MapSettingsGroup', () {
+    Future<SettingsService> settingsWith({bool maplibre = true}) async {
+      SharedPreferences.setMockInitialValues({
+        if (maplibre) 'experiments': jsonEncode({
+            'maplibre': {'enabled': true},
+          }),
+      });
+      return SettingsService(await SharedPreferences.getInstance());
+    }
+
+    test('contributes nothing at all until the MAPLIBRE experiment is on', () async {
+      expect(await MapSettingsGroup(await settingsWith(maplibre: false)).buildElements(), isEmpty);
+    });
+
+    test('offers every MapStyle value, target "map", defaulting to automatic', () async {
+      final elements = await MapSettingsGroup(await settingsWith()).buildElements();
+      final field = elements.single;
+      expect(field['key'], 'mapStyle');
+      expect(field['value'], 'automatic');
+      expect(elementMatchesTarget(field, 'map'), isTrue);
+      final offered = {for (final o in field['options'] as List) (o as Map)['value']};
+      expect(offered, MapStyle.values.map((e) => e.name).toSet());
+    });
+
+    test('commit round-trips through SettingsService.mapStyle', () async {
+      final settings = await settingsWith();
+      final group = MapSettingsGroup(settings);
+      expect(settings.mapStyle, MapStyle.automatic);
+      await group.commit('mapStyle', 'darkMatter');
+      expect(settings.mapStyle, MapStyle.darkMatter);
+    });
+
+    test('a stored value this build no longer offers falls back to automatic, not a crash', () async {
+      final settings = await settingsWith();
+      await settings.setSettingValue(SettingsService.generalGroup, 'mapStyle', 'retiredStyle');
+      expect(settings.mapStyle, MapStyle.automatic);
+    });
+  });
 }

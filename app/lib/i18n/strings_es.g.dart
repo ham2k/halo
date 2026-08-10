@@ -234,6 +234,8 @@ class _Translations$map$es extends Translations$map$en {
 	@override String distanceMiles({required Object distance}) => '${distance} mi';
 	@override String get flat => 'Plano';
 	@override String get globe => 'Globo';
+	@override String get zoomIn => 'Acercar';
+	@override String get zoomOut => 'Alejar';
 }
 
 // Path: activitiesView
@@ -460,6 +462,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get userInterface => 'Interfaz de Usuario';
 	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
 	@override late final _Translations$settings$radio$es radio = _Translations$settings$radio$es._(_root);
+	@override late final _Translations$settings$map$es map = _Translations$settings$map$es._(_root);
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
@@ -852,6 +855,7 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showQsoNumbers => 'Mostrar números de QSO';
 	@override String get lookupAllQsos => 'Buscar datos de todos los QSOs';
 	@override String get loggingSettingsTitle => 'Configuración de Registro';
+	@override String get mapSettingsTitle => 'Configuración del Mapa';
 	@override String get actionsSection => 'Acciones';
 	@override String get relevantSettingsSection => 'Ajustes Relevantes';
 }
@@ -1181,6 +1185,18 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$zeroBeatRange$es zeroBeatRange = _Translations$settings$radio$zeroBeatRange$es._(_root);
 }
 
+// Path: settings.map
+class _Translations$settings$map$es extends Translations$settings$map$en {
+	_Translations$settings$map$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mapa';
+	@override late final _Translations$settings$map$style$es style = _Translations$settings$map$style$es._(_root);
+	@override late final _Translations$settings$map$styleOpts$es styleOpts = _Translations$settings$map$styleOpts$es._(_root);
+}
+
 // Path: settings.privacy
 class _Translations$settings$privacy$es extends Translations$settings$privacy$en {
 	_Translations$settings$privacy$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1313,7 +1329,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Configuración de Estación y Control CAT';
+	@override String get title => 'Configuración de Estación';
 	@override String get none => 'No hay equipo configurado';
 	@override String get add => 'Agregar equipo';
 	@override String get addTitle => 'Agregar equipo';
@@ -1883,6 +1899,32 @@ class _Translations$settings$radio$zeroBeatRange$es extends Translations$setting
 	@override String get description => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.';
 }
 
+// Path: settings.map.style
+class _Translations$settings$map$style$es extends Translations$settings$map$style$en {
+	_Translations$settings$map$style$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Estilo del Mapa';
+	@override String get description => 'Qué mapa base usa la pestaña Mapa. Automático sigue el tema claro/oscuro de la app.';
+}
+
+// Path: settings.map.styleOpts
+class _Translations$settings$map$styleOpts$es extends Translations$settings$map$styleOpts$en {
+	_Translations$settings$map$styleOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get automatic => 'Automático';
+	@override String get liberty => 'Liberty';
+	@override String get bright => 'Bright';
+	@override String get positron => 'Positron';
+	@override String get voyager => 'Voyager';
+	@override String get darkMatter => 'Dark Matter';
+}
+
 // Path: settings.privacy.shareAppData
 class _Translations$settings$privacy$shareAppData$es extends Translations$settings$privacy$shareAppData$en {
 	_Translations$settings$privacy$shareAppData$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -2069,6 +2111,7 @@ extension on TranslationsEs {
 			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
 			'operation.menu.lookupAllQsos' => 'Buscar datos de todos los QSOs',
 			'operation.menu.loggingSettingsTitle' => 'Configuración de Registro',
+			'operation.menu.mapSettingsTitle' => 'Configuración del Mapa',
 			'operation.menu.actionsSection' => 'Acciones',
 			'operation.menu.relevantSettingsSection' => 'Ajustes Relevantes',
 			'operation.layout.title' => 'Añadir un Panel',
@@ -2258,6 +2301,8 @@ extension on TranslationsEs {
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
 			'map.flat' => 'Plano',
 			'map.globe' => 'Globo',
+			'map.zoomIn' => 'Acercar',
+			'map.zoomOut' => 'Alejar',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.sheetTitle' => 'Configuración de la Operación',
 			'activitiesView.sheetTitleShort' => 'Configuración',
@@ -2493,11 +2538,11 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
@@ -2523,6 +2568,15 @@ extension on TranslationsEs {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',
 			'settings.radio.zeroBeatRange.title' => 'Batido cero: margen de separación',
 			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
+			'settings.map.title' => 'Mapa',
+			'settings.map.style.title' => 'Estilo del Mapa',
+			'settings.map.style.description' => 'Qué mapa base usa la pestaña Mapa. Automático sigue el tema claro/oscuro de la app.',
+			'settings.map.styleOpts.automatic' => 'Automático',
+			'settings.map.styleOpts.liberty' => 'Liberty',
+			'settings.map.styleOpts.bright' => 'Bright',
+			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
+			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacidad',
 			'settings.privacy.shareAppData.title' => 'Compartir datos de uso',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ayúdanos a mejorar la app compartiendo datos de uso, fallos y rendimiento',
@@ -2609,7 +2663,7 @@ extension on TranslationsEs {
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
 			'settings.accounts.noKeyringInline' => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.',
 			'settings.accounts.noSecureStorageInline' => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.',
-			'settings.station.title' => 'Configuración de Estación y Control CAT',
+			'settings.station.title' => 'Configuración de Estación',
 			'settings.station.none' => 'No hay equipo configurado',
 			'settings.station.add' => 'Agregar equipo',
 			'settings.station.addTitle' => 'Agregar equipo',

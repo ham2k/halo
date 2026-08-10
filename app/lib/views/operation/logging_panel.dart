@@ -11,7 +11,6 @@ import 'package:intl/intl.dart';
 import '../../config/dev_bridge.dart';
 import '../../main.dart';
 import '../../i18n/strings.g.dart';
-import '../../services/cat/equipment.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
@@ -19,7 +18,6 @@ import '../../tools/form_chrome_labels.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
-import '../station_panel.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -175,58 +173,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
 
-  // Whether the 'gato' experiment is on — the single read every gate below
-  // shares, and the cat listener's own attach/detach guard. Tracked
-  // explicitly (not re-read from experimentEnabled at dispose time, which
-  // can have changed since initState if the operator flips the experiment,
-  // e.g. from the Experiments panel, without leaving this screen — that
-  // would either leak the listener into a disposed State, where a later
-  // CatService.notifyListeners() throws, or skip attaching it after a live
-  // enable, freezing the fields below). Kept in sync by _onSettingsChanged.
-  late bool _gatoEnabled = widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
-
-  // Whether the Radio control's icon should read as CAT-configured — mirrors
-  // zeroBeatSuggestionFor's gate (operation_view.dart): the experiment check
-  // comes first so `services.cat`, a `late final` that builds a whole
-  // CatService the first time it's touched, is never built just to answer
-  // "no" for an operator without Station Configuration on.
-  late bool _hasConfiguredRadio = _computeHasConfiguredRadio();
-
-  bool _computeHasConfiguredRadio() => _gatoEnabled && widget.services.cat.radio1 != null;
-
-  // Whether radio1 is actually connected right now, as opposed to merely
-  // configured — the Station Configuration button's red/green.
-  late bool _radioConnected = _computeRadioConnected();
-
-  bool _computeRadioConnected() {
-    if (!_gatoEnabled) return false;
-    final uuid = widget.services.cat.radio1;
-    return uuid != null && widget.services.cat.stateFor(uuid).status == EquipmentStatus.connected;
-  }
-
-  // radio1's display name — the Radio control's own reflection of the same
-  // name station_panel.dart's equipment list shows for it.
-  late String? _radioName = _computeRadioName();
-
-  String? _computeRadioName() {
-    if (!_gatoEnabled) return null;
-    final cat = widget.services.cat;
-    final node = cat.radio1 == null ? null : cat.nodeFor(cat.radio1!);
-    return node == null ? null : cat.displayNameFor(node);
-  }
-
-  /// The Radio control's quick-access dialog: the whole Station Configuration
-  /// panel, without leaving the operation to see it.
-  Future<void> _openStationConfigDialog(BuildContext context) => showModalPane<void>(
-    context,
-    title: context.t.settings.station.title,
-    closeLabel: context.t.common.close,
-    // StationPanel is its own scrolling ListView — the pane must not also
-    // wrap it in a SingleChildScrollView.
-    scrollable: false,
-    builder: (context) => StationPanel(services: widget.services),
-  );
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -250,12 +196,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // — rebuild so it clears the moment the operator answers via
     // the Radio control, without waiting for an unrelated rebuild.
     widget.services.radio.addListener(_onRadioChanged);
-    // Gated the same way _computeHasConfiguredRadio reads it — no listener,
-    // no CatService built, when the experiment is off. _onSettingsChanged
-    // keeps this in sync with _gatoEnabled if the experiment flips later.
-    if (_gatoEnabled) {
-      widget.services.cat.addListener(_onCatChanged);
-    }
     // Route the dev bridge's actions to this panel's LoggingControls — only
     // when the bridge is installed (dev/preview web), so nothing runs in
     // production or on native.
@@ -278,9 +218,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onRadioChanged);
-    if (_gatoEnabled) {
-      widget.services.cat.removeListener(_onCatChanged);
-    }
     // Only clear if still ours — a newer logging panel may have taken over.
     if (DevBridge.instance.actionHandler == _devAction) {
       DevBridge.instance.setFieldHandler = null;
@@ -494,25 +431,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// panel's QsoList is expensive to rebuild.
   void _onSettingsChanged() {
     final s = widget.services.settings;
-    // The 'gato' experiment can flip while this panel stays mounted (e.g.
-    // toggled from the Experiments panel over this one) — keep the cat
-    // listener's attachment and the fields it feeds in sync with it right
-    // away, rather than leaving them to drift until the next CAT event.
-    final gato = s.experimentEnabled('gato') /* stored key, see experiments.yaml */;
-    if (gato != _gatoEnabled) {
-      if (gato) {
-        widget.services.cat.addListener(_onCatChanged);
-      } else {
-        widget.services.cat.removeListener(_onCatChanged);
-      }
-      // Its own setState — _onCatChanged's below only fires one if the
-      // radio-derived fields it owns actually changed, which they don't
-      // when this flips with no CAT radio ever configured (has/connected/
-      // name all stay false/false/null), leaving build()'s own read of
-      // _gatoEnabled stale until some unrelated rebuild catches up.
-      setState(() => _gatoEnabled = gato);
-      _onCatChanged();
-    }
     if (s.showNumbersRow != _showNumbersRow ||
         s.showExtraInNumbersRow != _showExtraInNumbersRow ||
         s.vibrateNumbersRow != _vibrateNumbersRow ||
@@ -533,22 +451,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final needs = _computeNeedsBandOrMode();
     if (needs != _needsBandOrMode) {
       setState(() => _needsBandOrMode = needs);
-    }
-  }
-
-  /// Rebuilds the Radio control's icon when CAT equipment is added, removed,
-  /// designated as `radio1`, or connects/disconnects — not a VFO update,
-  /// that's [_onRadioChanged].
-  void _onCatChanged() {
-    final has = _computeHasConfiguredRadio();
-    final connected = _computeRadioConnected();
-    final name = _computeRadioName();
-    if (has != _hasConfiguredRadio || connected != _radioConnected || name != _radioName) {
-      setState(() {
-        _hasConfiguredRadio = has;
-        _radioConnected = connected;
-        _radioName = name;
-      });
     }
   }
 
@@ -693,14 +595,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
             // connected rig (CAT) instead of only reading the VFO when it
             // seeds. See LoggingControls.radioUpdates.
             radioUpdates: widget.services.radio,
-            hasConfiguredRadio: _hasConfiguredRadio,
-            radioConnected: _radioConnected,
-            // Gated on the experiment, not on whether a radio happens to be
-            // configured — the button itself is a Station Configuration
-            // affordance that shouldn't exist for operators without it on.
-            onOpenStationConfig: _gatoEnabled ? () => _openStationConfigDialog(context) : null,
-            stationConfigLabel: context.t.settings.station.title,
-            radioName: _radioName,
             ourItuRegion: widget.ourItuRegion,
             ourCountryCode: widget.ourCountryCode,
             lookup: widget.services.extensions.lookupCall,

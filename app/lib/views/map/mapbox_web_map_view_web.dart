@@ -23,6 +23,7 @@ import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
 import 'map_load_notice.dart';
 import 'map_marker_data.dart';
+import 'map_zoom_controller.dart';
 
 /// Loads the engine's GL library and injects the shared map script, once per
 /// page *per engine* — toggling the MAPLIBRE experiment mid-session can put
@@ -69,9 +70,25 @@ class MapboxWebMapView extends StatefulWidget {
   final List<MapLineData> lines;
   final MapProjection projection;
   final MapGlEngine engine;
+  final bool isDark;
+
+  /// The light/dark style URLs to actually load — see
+  /// MapboxWebviewMapView's fields of the same name.
+  final String styleUrl;
+  final String styleUrlDark;
+
+  final MapZoomController? zoomController;
 
   const MapboxWebMapView(
-      {super.key, required this.markers, this.lines = const [], required this.projection, required this.engine});
+      {super.key,
+      required this.markers,
+      this.lines = const [],
+      required this.projection,
+      required this.engine,
+      required this.isDark,
+      required this.styleUrl,
+      required this.styleUrlDark,
+      this.zoomController});
 
   @override
   State<MapboxWebMapView> createState() => _MapboxWebMapViewState();
@@ -106,11 +123,18 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   @override
   void initState() {
     super.initState();
+    widget.zoomController
+      ?..onZoomIn = _zoomIn
+      ..onZoomOut = _zoomOut;
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final div = web.HTMLDivElement();
       div.style
         ..width = '100%'
         ..height = '100%';
+      // See mapbox_webview_map_view.dart's same rule — MapLibre's globe has
+      // no built-in way to paint what's beyond the sphere, so this shows
+      // through the canvas wherever the globe doesn't cover it.
+      if (widget.engine == MapGlEngine.maplibre) div.style.background = mapLibreSpaceBackgroundCss();
       _container = div;
       unawaited(_createMap());
       return div;
@@ -127,7 +151,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
         _container!,
         widget.engine.name.toJS,
         (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').toJS,
-        widget.engine.styleUrl.toJS,
+        widget.styleUrl.toJS,
+        widget.styleUrlDark.toJS,
+        widget.isDark.toJS,
         onEvent,
       ]);
     } catch (e, s) {
@@ -140,6 +166,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       return;
     }
     _applyProjection();
+    // Dark mode is picked at creation (see create's initialDark) rather than
+    // applied here — for MapLibre, doing it again on ready would swap the
+    // style a second time and race the marker application right below it.
     // Defer the data (and its camera fit) one frame so the div has been
     // attached and laid out — fitBounds on a still-zero-sized container
     // computes a nonsense camera. The shared script's ResizeObserver keeps
@@ -156,12 +185,27 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     super.didUpdateWidget(oldWidget);
     if (_handle == null) return;
     if (oldWidget.projection != widget.projection) _applyProjection();
+    // A pinned-style change takes precedence over isDark: applying both
+    // would swap the style twice for one operator action.
+    if (oldWidget.styleUrl != widget.styleUrl || oldWidget.styleUrlDark != widget.styleUrlDark) {
+      _applyStyleUrls();
+    } else if (oldWidget.isDark != widget.isDark) {
+      _applyDark();
+    }
     if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
     if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
   }
 
   void _applyProjection() {
     _handle?.callMethod('setProjection'.toJS, widget.projection.name.toJS);
+  }
+
+  void _applyStyleUrls() {
+    _handle?.callMethod('updateStyles'.toJS, widget.styleUrl.toJS, widget.styleUrlDark.toJS);
+  }
+
+  void _applyDark() {
+    _handle?.callMethod('setDark'.toJS, widget.isDark.toJS);
   }
 
   void _applyMarkers() {
@@ -172,8 +216,20 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     _handle?.callMethod('setLinesJson'.toJS, jsonEncode(mapLinesPayload(widget.lines)).toJS);
   }
 
+  void _zoomIn() => _handle?.callMethod('zoomIn'.toJS);
+  void _zoomOut() => _handle?.callMethod('zoomOut'.toJS);
+
   @override
   void dispose() {
+    // Only release the callbacks if they're still ours — the facade mounts a
+    // replacement backend's State (initState included) before this one's
+    // dispose runs on a backend swap, so an unconditional null-out here
+    // would clobber the wiring the new one just installed.
+    if (identical(widget.zoomController?.onZoomIn, _zoomIn)) {
+      widget.zoomController
+        ?..onZoomIn = null
+        ..onZoomOut = null;
+    }
     _handle?.callMethod('remove'.toJS);
     _handle = null;
     super.dispose();

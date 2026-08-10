@@ -35,6 +35,11 @@ class MapMarkerData {
   /// access just to color a circle.
   final Color color;
 
+  /// The ring around the circle's fill — resolved once by the facade (opaque,
+  /// so [mapColorToHex] never has to carry alpha) rather than by each backend,
+  /// so light/dark mode picks one contrast without three copies of the logic.
+  final Color strokeColor;
+
   /// Signal-strength multiplier for the circle's base radius, 0.7–1.3
   /// (S5 = 1.0, same scaling as app-polo's map).
   final double sizeFactor;
@@ -62,6 +67,7 @@ class MapMarkerData {
     required this.label,
     required this.kind,
     required this.color,
+    required this.strokeColor,
     this.sizeFactor = 1.0,
     this.popupTitle = '',
     this.popupDetailPrefix = '',
@@ -83,6 +89,7 @@ class MapMarkerData {
           label == other.label &&
           kind == other.kind &&
           color == other.color &&
+          strokeColor == other.strokeColor &&
           sizeFactor == other.sizeFactor &&
           popupTitle == other.popupTitle &&
           popupDetailPrefix == other.popupDetailPrefix &&
@@ -91,7 +98,7 @@ class MapMarkerData {
           highlight == other.highlight);
 
   @override
-  int get hashCode => Object.hash(id, latitude, longitude, label, kind, color, sizeFactor, popupTitle,
+  int get hashCode => Object.hash(id, latitude, longitude, label, kind, color, strokeColor, sizeFactor, popupTitle,
       popupDetailPrefix, popupBand, popupDetailSuffix, highlight);
 }
 
@@ -148,6 +155,7 @@ List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
           'label': m.label,
           'kind': m.kind.name,
           'color': mapColorToHex(m.color),
+          'strokeColor': mapColorToHex(m.strokeColor),
           'sizeFactor': m.sizeFactor,
           'popupTitle': m.popupTitle,
           'popupDetailPrefix': m.popupDetailPrefix,

@@ -699,6 +699,56 @@ class RadioSettingsGroup extends SettingsGroup {
 String _numText(double value) =>
     value == value.roundToDouble() ? value.toInt().toString() : '$value';
 
+/// The Map tab's basemap picker (see map_panel.dart / map_gl_script.dart's
+/// `mapLibreStyleUrl`) — MAPLIBRE-experiment only, since the Mapbox and OSM
+/// backends have no equivalent choice to offer. `target: 'map'` is what the
+/// tab's own settings button (operation_view.dart) opens; the field is also
+/// reachable from All Settings, same as every other target-scoped field.
+class MapSettingsGroup extends SettingsGroup {
+  final SettingsService settings;
+
+  MapSettingsGroup(this.settings);
+
+  @override
+  String get key => 'map';
+
+  @override
+  String get title => t.settings.map.title;
+
+  @override
+  int get order => 17;
+
+  @override
+  Listenable? get listenable => settings;
+
+  @override
+  Future<List<Map<String, dynamic>>> buildElements() async {
+    if (!settings.experimentEnabled('maplibre')) return [];
+    final s = t.settings.map;
+    return [
+      _select(
+        key: 'mapStyle',
+        label: s.style.title,
+        icon: 'map-outline',
+        description: s.style.description,
+        value: settings.mapStyle.name,
+        options: [
+          for (final style in MapStyle.values)
+            (label: t['settings.map.styleOpts.${style.name}'] as String, value: style.name),
+        ],
+        target: 'map',
+      ),
+    ];
+  }
+
+  @override
+  Future<void> commit(String fieldKey, dynamic value) async {
+    if (fieldKey != 'mapStyle' || value is! String) return;
+    final style = MapStyle.values.firstWhere((e) => e.name == value, orElse: () => MapStyle.automatic);
+    await settings.setMapStyle(style);
+  }
+}
+
 /// Data-sharing consents (both opt-in, app-polo keys and wording) and the
 /// Ham2K policy links.
 class PrivacySettingsGroup extends SettingsGroup {

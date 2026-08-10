@@ -91,10 +91,6 @@ void main() {
     bool leftieMode = false,
     List<String>? enabledBands,
     List<String>? enabledModes,
-    bool hasConfiguredRadio = false,
-    bool radioConnected = false,
-    VoidCallback? onOpenStationConfig,
-    String? radioName,
     void Function(Qso qso)? enqueueLookup,
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
@@ -148,11 +144,6 @@ void main() {
       leftieMode: leftieMode,
       enabledBands: enabledBands,
       enabledModes: enabledModes,
-      hasConfiguredRadio: hasConfiguredRadio,
-      radioConnected: radioConnected,
-      onOpenStationConfig: onOpenStationConfig,
-      stationConfigLabel: 'Station Configuration',
-      radioName: radioName,
       ourItuRegion: ourItuRegion,
       ourCountryCode: ourCountryCode,
       spottingControlLabel: 'Spotting',
@@ -352,150 +343,6 @@ void main() {
     final callFieldXLeft = tester.getTopLeft(find.bySemanticsIdentifier('field.call')).dx;
     expect(logBtnXLeft, lessThan(callFieldXLeft));
     expect(wipeBtnXLeft, lessThan(callFieldXLeft));
-  });
-
-  testWidgets('the Radio control has no Station Configuration button when nothing can open one', (tester) async {
-    await tester.pumpWidget(host());
-    await openControl(tester, MdiIcons.radio);
-    expect(find.byKey(const ValueKey('stationConfigButton')), findsNothing);
-  });
-
-  testWidgets('tapping the radio name opens Station Configuration too, unless there is none to show', (
-    tester,
-  ) async {
-    await tester.pumpWidget(host());
-    await openControl(tester, MdiIcons.radio);
-    expect(find.text('Icom IC-705'), findsNothing);
-
-    var opened = false;
-    await tester.pumpWidget(host(
-      hasConfiguredRadio: true,
-      radioName: 'Icom IC-705',
-      onOpenStationConfig: () => opened = true,
-    ));
-    expect(find.text('Icom IC-705'), findsOneWidget);
-    await tester.tap(find.text('Icom IC-705'));
-    expect(opened, isTrue);
-  });
-
-  testWidgets('a long radio name is capped at 3x the icon width and ellipsized, not wrapped', (tester) async {
-    await tester.pumpWidget(host(
-      hasConfiguredRadio: true,
-      radioName: 'A Radio With A Genuinely Absurd Amount Of Name',
-      onOpenStationConfig: () {},
-    ));
-    await openControl(tester, MdiIcons.cat);
-
-    final icon = tester.widget<Icon>(find.descendant(
-      of: find.byKey(const ValueKey('stationConfigButton')),
-      matching: find.byIcon(MdiIcons.cat),
-    ));
-    final constrained = tester.widget<ConstrainedBox>(find.descendant(
-      of: find.byKey(const ValueKey('stationConfigButton')),
-      matching: find.byType(ConstrainedBox),
-    ));
-    expect(constrained.constraints.maxWidth, icon.size! * 3);
-
-    final text = tester.widget<Text>(find.descendant(
-      of: find.byKey(const ValueKey('stationConfigButton')),
-      matching: find.byType(Text),
-    ));
-    expect(text.overflow, TextOverflow.ellipsis);
-    expect(text.maxLines, 1);
-  });
-
-  testWidgets('the Station Configuration button can never become a Tab stop', (tester) async {
-    // It's a supplementary action, not one of Radio's Band/Frequency/Mode
-    // fields (docs/design/logging-fields.md names exactly those three,
-    // the full set _expandedFieldOrderFor('radio') knows about). If this
-    // button could take keyboard focus (InkWell's own default), Tab
-    // pressed from it would find no match in that list — currentIndex -1
-    // — and _stepSecondaryField's `next = -1 + 1 = 0` would jump BACKWARD
-    // to Band instead of leaving the control the way Tab is meant to once
-    // its own fields are exhausted.
-    await tester.pumpWidget(host(hasConfiguredRadio: true, onOpenStationConfig: () {}));
-    await openControl(tester, MdiIcons.cat);
-
-    final inkWell = tester.widget<InkWell>(find.byKey(const ValueKey('stationConfigButton')));
-    expect(inkWell.canRequestFocus, isFalse);
-  });
-
-  Color stationConfigButtonColor(WidgetTester tester) {
-    final icon = tester.widget<Icon>(find.descendant(
-      of: find.byKey(const ValueKey('stationConfigButton')),
-      matching: find.byIcon(MdiIcons.cat),
-    ));
-    return icon.color!;
-  }
-
-  testWidgets('Station Configuration button colors: unconfigured, configured, connected', (tester) async {
-    final theme = ThemeData(useMaterial3: true);
-
-    // No radio configured — a lighter tint of the row's own background,
-    // barely there. The button still opens the dialog (that's where an
-    // operator with nothing configured yet would go to add one).
-    var opened = false;
-    await tester.pumpWidget(host(appTheme: theme, onOpenStationConfig: () => opened = true));
-    await openControl(tester, MdiIcons.radio);
-    expect(stationConfigButtonColor(tester), Color.lerp(theme.colorScheme.tertiary, Colors.white, 0.4));
-    await tester.tap(find.byKey(const ValueKey('stationConfigButton')));
-    expect(opened, isTrue);
-
-    // Still expanded — State survives a same-shaped pumpWidget. Configured
-    // but not connected now reads red — lighter than the scheme's own error
-    // color, which reads under 3:1 against this row's dark amber `tertiary`
-    // fill (the accent color, not a pastel container).
-    await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
-    expect(stationConfigButtonColor(tester), const Color(0xFFFF8A80));
-
-    // Connected — a lighter green than _noticePill's, same contrast reasoning.
-    await tester.pumpWidget(
-        host(appTheme: theme, hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}));
-    expect(stationConfigButtonColor(tester), const Color(0xFF81C784));
-  });
-
-  // The same `iconColor` renders on two different fills (colorScheme
-  // .tertiary when selected/expanded, the lighter HaLoColors.tertiaryLight
-  // otherwise) — which one is actually darker flips between light and dark
-  // mode, so the color has to flip with `selected`, not just with the theme.
-  Color pillIconColor(WidgetTester tester) => (tester
-          .widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.cat), matching: find.byType(ChoiceChip)))
-          .avatar as Icon)
-      .color!;
-
-  testWidgets('the Radio pill icon color flips between selected and unselected: light mode', (tester) async {
-    final theme = ThemeData(useMaterial3: true);
-    await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
-    expect(pillIconColor(tester), const Color(0xFFB71C1C)); // unselected: on the bright tan fill
-    await openControl(tester, MdiIcons.cat);
-    expect(pillIconColor(tester), const Color(0xFFFF8A80)); // selected: on the dark tertiary fill
-  });
-
-  testWidgets('the Radio pill icon color flips between selected and unselected: dark mode', (tester) async {
-    final theme = ThemeData(useMaterial3: true, brightness: Brightness.dark);
-    await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
-    expect(pillIconColor(tester), const Color(0xFFFF8A80)); // unselected: on the near-black fill
-    await openControl(tester, MdiIcons.cat);
-    expect(pillIconColor(tester), theme.colorScheme.error); // selected: on the moderate tertiary fill
-  });
-
-  testWidgets('the Station Configuration button is disabled while editing an existing QSO', (tester) async {
-    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'startAtMillis': 1000000,
-          'freq': 7100,
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(
-      hasConfiguredRadio: true,
-      radioConnected: true,
-      onOpenStationConfig: () {},
-      editingQso: existingQso,
-    ));
-    await openControl(tester, MdiIcons.cat);
-
-    final button = tester.widget<InkWell>(find.byKey(const ValueKey('stationConfigButton')));
-    expect(button.onTap, isNull);
   });
 
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {
