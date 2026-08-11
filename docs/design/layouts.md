@@ -393,15 +393,27 @@ nowhere else — outside edit mode there is no layout to have options about.
   rather than hidden while it shares a group: the header is the tab strip
   there, and hiding it would strand every other pane. Also always shown while
   editing, since the header is the grab handle and the pane's own control.
-- Under a collapsed **Advanced Options**: **font size** and **layout
-  density**, for this pane alone, and a **Reset** in the dialog's footer that
+- **Font Scale**, **Layout Density** and **Theme Mode**, side by side and
+  always visible (no disclosure to open first), each an "inherit or override"
+  for this pane alone, and a **Restore Defaults** in the dialog's footer that
   asks first. The font size is a `SubtreeUiScale` — the
   only way to do this that [ui-scaling.md](ui-scaling.md) allows, since
   everything inside stays in plain logical pixels and simply lives in a space
   scaled once more. Not a nested `UiScale`, which is a root primitive and
   stretches a pane's two axes by different factors.
   Density is the same scope a vertical split already publishes, set
-  explicitly rather than derived from height.
+  explicitly rather than derived from height. Theme Mode wraps the pane in a
+  `Theme` built for the chosen `Brightness`, light or dark; there is no
+  per-pane "system" — that would only mean what inheriting already does.
+- **Panel Settings**, under its own banded header, embeds the panel's own
+  configuration in the same dialog instead of a separate one: a plain-form
+  extension panel's `formFields` render inline
+  (`EmbeddedPanelSettingsForm`), and a native panel whose settings are more
+  than a form (logging, map) embeds `settingsFormForTarget` — the same
+  target-scoped settings widget a standalone dialog would otherwise show.
+  Both autosave per field, same as the rest of this dialog. Scrolls in its
+  own bounded region so a long panel settings list doesn't push Title or the
+  footer off screen.
 
 **The VIEW has the same options, one level up** — its own name and its own
 size and density, under `LayoutKeys.operationViewOptions`, reached from a

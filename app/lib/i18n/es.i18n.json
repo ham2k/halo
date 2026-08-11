@@ -103,8 +103,7 @@
       "lookupAllQsos": "Buscar datos de todos los QSOs",
       "loggingSettingsTitle": "Configuración de Registro",
       "mapSettingsTitle": "Configuración del Mapa",
-      "actionsSection": "Acciones",
-      "relevantSettingsSection": "Ajustes Relevantes"
+      "actionsSection": "Acciones"
     },
     "layout": {
       "title": "Añadir un Panel",
@@ -120,15 +119,11 @@
       "resetPaneConfirmBody": "Su título, encabezado y tamaño vuelven a los valores predeterminados. Nada más en la disposición cambia.",
       "resetViewConfirm": "¿Restaurar la disposición predeterminada de esta vista?",
       "resetViewConfirmBody": "Los paneles vuelven a su disposición predeterminada, y las opciones de la vista y las de cada panel vuelven a sus valores predeterminados.",
-      "paneOptionsTitle": "Disposición de ${panel}",
+      "paneOptionsTitle": "Ajustes de disposición de ${panel}",
       "paneTitle": "Título",
-      "paneTitleDescription": "Tu propio nombre para este panel, en vez del suyo",
       "paneShowHeader": "Mostrar encabezado",
-      "paneShowHeaderDescription": "Muestra la barra de título de este panel",
       "paneShowHeaderTabset": "Siempre visible mientras este panel comparte un grupo — el encabezado es como se llega a los demás",
-      "paneAdvanced": "Opciones Avanzadas",
       "paneInherit": "Igual que la app",
-      "paneOverrideDescription": "Solo para este panel",
       "searchHint": "Buscar paneles",
       "noPanelsMatch": "Ningún panel coincide con tu búsqueda.",
       "nothingToAdd": "Esta vista ya tiene todos los paneles posibles",

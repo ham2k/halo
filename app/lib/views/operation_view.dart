@@ -1204,6 +1204,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// and the pane's layout options open the SAME thing. The logging panel is
   /// native and reaches its settings through a target rather than through
   /// `formFields`, so nothing else here would find it.
+  ///
+  /// The pane's layout options embeds this same target's fields too, but
+  /// without this dialog's Actions section — see [_paneEditControls]'s
+  /// `panelSettingsBuilder`, which passes none.
   Future<void> _openLoggingSettings(BuildContext buttonContext, List<Qso> qsos) {
     final effectiveContext = buttonContext;
     return showSettingsForTarget(
@@ -1821,57 +1825,105 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // What the pane would be called with no override — the placeholder the
     // dialog shows, so the operator can see what they are replacing.
     final defaultTitle = _panelTitles[id] ?? panel?.title ?? panelKeyOfPanelId(id);
+    // A plain-form extension panel's settings embed as an [EmbeddedPanelSettingsForm];
+    // logging and map are native panels reached through a target rather than
+    // `formFields`, and embed `settingsFormForTarget` instead (built below).
+    final embeddablePanel = id != 'logging' && id != 'map' && panel != null && panel.formFields.isNotEmpty
+        ? panel
+        : null;
     return IconButton(
       icon: Icon(
         MdiIcons.viewDashboardEdit,
         color: theme.colorScheme.onPrimary,
         semanticLabel: context.t.operation.layout.paneOptionsTitle(panel: options.title ?? defaultTitle),
       ),
-      onPressed: () => unawaited(showPaneLayoutOptions(
-        context,
-        paneTitle: options.title ?? defaultTitle,
-        defaultTitle: defaultTitle,
-        // The header is the tab strip once a pane shares a group, so hiding
-        // it is not on offer there.
-        inTabset: _groupSizeOf(id) > 1,
-        developerMode: widget.services.settings.developerMode,
-        current: options,
-        resetTitle: context.t.operation.layout.resetPaneConfirm(panel: options.title ?? defaultTitle),
-        resetBody: context.t.operation.layout.resetPaneConfirmBody,
-        onReset: () => setState(() => _paneOptions.remove(id)),
-        // Hiding a pane's header takes the tab action with it, and that is
-        // the only other way to a panel's own settings — for a native pane
-        // reached through a target (the logging panel) as much as for an
-        // extension panel with a form of its own.
-        // The keyboard/screen-reader route to what the delete target does:
-        // a drag cannot be made without a pointer, and Restore Defaults is the
-        // whole arrangement. Absent for the last pane, which the dock
-        // refuses to remove — an empty dock has no tab left to drag anything
-        // back with.
-        onDelete: _paneCount() > 1
-            ? () {
-                final dock = _dockKey.currentState;
-                if (dock == null) return;
-                if (dock.removeModule(id)) _forgetPanes([id]);
-              }
-            : null,
-        onPanelSettings: switch (id) {
-          'logging' => () => unawaited(_openLoggingSettings(context, qsos)),
-          'map' => () => unawaited(_openMapSettings(context)),
-          _ when panel != null && panel.formFields.isNotEmpty =>
-            () => unawaited(showPanelSettings(context, services: widget.services, panel: panel)),
-          _ => null,
-        },
-        onChanged: (next) => setState(() {
-          // Dropped rather than stored empty, so a layout carries options
-          // only for the panes that actually have any.
-          if (next.isEmpty) {
-            _paneOptions.remove(id);
-          } else {
-            _paneOptions[id] = next;
-          }
-        }),
-      )),
+      onPressed: () async {
+        // A mutable copy, not the host's own map — kept current below as
+        // each field commits, so a later edit's no-op check compares
+        // against what was actually last WRITTEN, not this snapshot from
+        // when the dialog opened. Comparing against a snapshot that never
+        // moves silently drops any edit that lands back on the value the
+        // dialog opened with, even after a real commit changed it away and
+        // back — the config and the form would agree, but the store
+        // wouldn't.
+        final panelConfig = embeddablePanel != null
+            ? Map<String, dynamic>.of(await widget.services.panels.configFor(embeddablePanel))
+            : null;
+        if (!context.mounted) return;
+        unawaited(showPaneLayoutOptions(
+          context,
+          paneTitle: options.title ?? defaultTitle,
+          defaultTitle: defaultTitle,
+          // The header is the tab strip once a pane shares a group, so hiding
+          // it is not on offer there.
+          inTabset: _groupSizeOf(id) > 1,
+          developerMode: widget.services.settings.developerMode,
+          current: options,
+          resetTitle: context.t.operation.layout.resetPaneConfirm(panel: options.title ?? defaultTitle),
+          resetBody: context.t.operation.layout.resetPaneConfirmBody,
+          onReset: () => setState(() => _paneOptions.remove(id)),
+          // The keyboard/screen-reader route to what the delete target does:
+          // a drag cannot be made without a pointer, and Restore Defaults is the
+          // whole arrangement. Absent for the last pane, which the dock
+          // refuses to remove — an empty dock has no tab left to drag anything
+          // back with.
+          onDelete: _paneCount() > 1
+              ? () {
+                  final dock = _dockKey.currentState;
+                  if (dock == null) return;
+                  if (dock.removeModule(id)) _forgetPanes([id]);
+                }
+              : null,
+          // No `actions` / no `type: 'action'` elements in any of these: an
+          // action here would need a route of its own to signal "done" by
+          // closing (the standalone dialogs' Navigator.pop), and this embed
+          // has none — it lives inside the pane layout options dialog, not
+          // behind a route it owns.
+          panelSettingsBuilder: switch (id) {
+            'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging'),
+            'map' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+            _ when embeddablePanel != null && panelConfig != null =>
+              (builderContext) => EmbeddedPanelSettingsForm(
+                fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
+                initial: panelConfig,
+                developerMode: widget.services.settings.developerMode,
+                onFieldChange: (key, value, state) async {
+                  final field = embeddablePanel.formFields.firstWhere(
+                    (f) => f['key'] == key,
+                    orElse: () => const {},
+                  );
+                  if (sameConfigValue(value, panelConfig[key], field['value'])) return;
+                  await widget.services.extensions.commitSettingsFieldValue(
+                    kind: 'simple',
+                    hookKey: embeddablePanel.hookKey ?? embeddablePanel.id,
+                    panelKey: embeddablePanel.id,
+                    fieldKey: key,
+                    value: value,
+                    state: state,
+                    isSecret: field['fieldType'] == 'secret',
+                  );
+                  // Keeps the no-op check above comparing against what was
+                  // actually last committed: without this, editing a field
+                  // away and back to its opening value reads as "already
+                  // this" against the stale snapshot and skips the commit
+                  // that would have written it back.
+                  panelConfig[key] = value;
+                  widget.services.panels.markConfigChanged(embeddablePanel.id);
+                },
+              ),
+            _ => null,
+          },
+          onChanged: (next) => setState(() {
+            // Dropped rather than stored empty, so a layout carries options
+            // only for the panes that actually have any.
+            if (next.isEmpty) {
+              _paneOptions.remove(id);
+            } else {
+              _paneOptions[id] = next;
+            }
+          }),
+        ));
+      },
     );
   }
 
@@ -1892,8 +1944,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     );
   }
 
-  /// A pane's own font-scale and density overrides, applied around the pane's
-  /// widget and nowhere else.
+  /// A pane's own font-scale, density and theme overrides, applied around
+  /// the pane's widget and nowhere else.
   ///
   /// Font scale is a [SubtreeUiScale] rather than a hand-multiplied
   /// dimension, which is the only way to do this that
@@ -1937,6 +1989,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     if (options.fontScaleValue case final scale?) {
       final inner = wrapped;
       wrapped = SubtreeUiScale(scale: scale.scaleFactor, child: inner);
+    }
+    if (options.themeBrightness case final brightness?) {
+      final inner = wrapped;
+      wrapped = Theme(data: buildHaLoTheme(brightness), child: inner);
     }
     return wrapped;
   }

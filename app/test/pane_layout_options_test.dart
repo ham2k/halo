@@ -6,6 +6,7 @@
 // contain and what it must survive: these are written by one build and read
 // by the next, and a layout that will not parse is a view that will not open.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -41,11 +42,31 @@ void main() {
     // A layout written by a newer build, or hand-edited. A pane at the app's
     // own size is a far better failure than a view that will not open — and
     // this is read during the first build of the Operation View.
-    const options = PaneLayoutOptions(fontScale: 'gigantic', density: 'roomier-than-roomy');
+    const options = PaneLayoutOptions(fontScale: 'gigantic', density: 'roomier-than-roomy', themeMode: 'system');
     expect(options.fontScaleValue, isNull);
     expect(options.densityValue, isNull);
+    expect(options.themeBrightness, isNull, reason: 'only light/dark are real overrides — system is inherit');
     expect(options.isEmpty, isFalse, reason: 'unreadable is not absent — it round-trips back out untouched');
     expect(options.toJson()['fontScale'], 'gigantic');
+  });
+
+  test('themeMode round-trips to a Brightness', () {
+    final revived = PaneLayoutOptions.fromJson(const PaneLayoutOptions(themeMode: 'dark').toJson());
+    expect(revived.themeMode, 'dark');
+    expect(revived.themeBrightness, Brightness.dark);
+  });
+
+  test('copyWith keeps a field by default and clears it only when told', () {
+    const options = PaneLayoutOptions(title: 'Sked list', fontScale: 'smaller');
+    // No args: every field survives untouched.
+    final unchanged = options.copyWith();
+    expect(unchanged.title, 'Sked list');
+    expect(unchanged.fontScale, 'smaller');
+    // Explicit null clears — the `_unset` sentinel is what tells "not passed"
+    // apart from "passed null" here, since every field is itself nullable.
+    final titleCleared = options.copyWith(title: null);
+    expect(titleCleared.title, isNull);
+    expect(titleCleared.fontScale, 'smaller', reason: 'clearing one field must not touch the others');
   });
 
   test('showHeader defaults to on, including for JSON that omits it', () {

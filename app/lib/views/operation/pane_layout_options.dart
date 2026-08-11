@@ -19,6 +19,11 @@ import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
 import '../../tools/form_chrome_labels.dart';
 
+/// Distinguishes "argument not passed" from "explicitly passed null" in
+/// [PaneLayoutOptions.copyWith] — every field there is nullable, so a plain
+/// `null` default can't tell "keep the current value" from "clear it".
+const _unset = Object();
+
 /// One pane's layout options. Immutable, and [isEmpty] when it says nothing —
 /// an empty entry is dropped rather than stored, so a layout carries options
 /// only for the panes that actually have any.
@@ -39,11 +44,32 @@ class PaneLayoutOptions {
   final String? fontScale;
   final String? density;
 
-  const PaneLayoutOptions({this.title, this.showHeader = true, this.fontScale, this.density});
+  /// The pane's theme override: `'light'`, `'dark'`, or null to inherit the
+  /// app's own [SettingsService.themeMode]. Not the full [ThemeMode] range —
+  /// a per-pane "system" would only ever mean the same thing `null` already
+  /// does.
+  final String? themeMode;
+
+  const PaneLayoutOptions({this.title, this.showHeader = true, this.fontScale, this.density, this.themeMode});
 
   static const none = PaneLayoutOptions();
 
-  bool get isEmpty => (title == null || title!.isEmpty) && showHeader && fontScale == null && density == null;
+  bool get isEmpty =>
+      (title == null || title!.isEmpty) && showHeader && fontScale == null && density == null && themeMode == null;
+
+  PaneLayoutOptions copyWith({
+    Object? title = _unset,
+    bool? showHeader,
+    Object? fontScale = _unset,
+    Object? density = _unset,
+    Object? themeMode = _unset,
+  }) => PaneLayoutOptions(
+    title: title == _unset ? this.title : title as String?,
+    showHeader: showHeader ?? this.showHeader,
+    fontScale: fontScale == _unset ? this.fontScale : fontScale as String?,
+    density: density == _unset ? this.density : density as String?,
+    themeMode: themeMode == _unset ? this.themeMode : themeMode as String?,
+  );
 
   /// The override as a [FontScale], or null to inherit. An unknown name — a
   /// layout written by a newer build, or hand-edited — inherits rather than
@@ -52,6 +78,14 @@ class PaneLayoutOptions {
   FontScale? get fontScaleValue => _byName(FontScale.values, fontScale);
 
   DensityPreference? get densityValue => _byName(DensityPreference.values, density);
+
+  /// The override as a [Brightness], or null to inherit — same "degrade
+  /// rather than throw" rule as [fontScaleValue].
+  Brightness? get themeBrightness => switch (themeMode) {
+    'light' => Brightness.light,
+    'dark' => Brightness.dark,
+    _ => null,
+  };
 
   static T? _byName<T extends Enum>(List<T> values, String? name) {
     if (name == null) return null;
@@ -66,6 +100,7 @@ class PaneLayoutOptions {
     if (!showHeader) 'showHeader': false,
     if (fontScale != null) 'fontScale': fontScale,
     if (density != null) 'density': density,
+    if (themeMode != null) 'themeMode': themeMode,
   };
 
   static PaneLayoutOptions fromJson(Object? json) {
@@ -73,6 +108,7 @@ class PaneLayoutOptions {
     final title = json['title'];
     final fontScale = json['fontScale'];
     final density = json['density'];
+    final themeMode = json['themeMode'];
     // Typed, not cast: a stored value of the wrong TYPE has to inherit for
     // the same reason an unknown name does. These are read from a `late`
     // field inside `build`, so a cast that throws is an Operation View that
@@ -83,6 +119,7 @@ class PaneLayoutOptions {
       showHeader: json['showHeader'] != false,
       fontScale: fontScale is String ? fontScale : null,
       density: density is String ? density : null,
+      themeMode: themeMode is String ? themeMode : null,
     );
   }
 
@@ -139,12 +176,15 @@ Future<void> showPaneLayoutOptions(
   /// views they made themselves.
   bool showHeaderField = true,
   bool titleEnabled = true,
-  /// Opens the PANEL's own settings — a different thing from this dialog,
-  /// which is about the pane's place in the layout. Offered here because
-  /// hiding a pane's header takes away the tab action that is otherwise the
-  /// only way in, and an operator who cannot reach a panel's form cannot
-  /// undo whatever it is set to. Null for a panel with no form of its own.
-  VoidCallback? onPanelSettings,
+  /// The PANEL's own settings, embedded under a "Panel Settings" heading —
+  /// a different thing from the rest of this dialog, which is about the
+  /// pane's PLACE in the layout. Offered here because hiding a pane's header
+  /// takes away the tab action that is otherwise the only way in, and an
+  /// operator who cannot reach a panel's settings cannot undo whatever it is
+  /// set to. Built fresh on every call (not a widget instance) so the
+  /// caller's closure can capture whatever config it just read; null for a
+  /// panel with no settings of its own.
+  WidgetBuilder? panelSettingsBuilder,
   /// Takes the pane out of the arrangement, and closes this dialog with it —
   /// there is nothing left to have options about. Null for the view's own
   /// options, and for the last pane standing, which the dock refuses to
@@ -172,7 +212,7 @@ Future<void> showPaneLayoutOptions(
       resetBody: resetBody,
       showHeaderField: showHeaderField,
       titleEnabled: titleEnabled,
-      onPanelSettings: onPanelSettings,
+      panelSettingsBuilder: panelSettingsBuilder,
       onDelete: onDelete,
     ),
   );
@@ -189,7 +229,7 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
   final String resetBody;
   final bool showHeaderField;
   final bool titleEnabled;
-  final VoidCallback? onPanelSettings;
+  final WidgetBuilder? panelSettingsBuilder;
   final VoidCallback? onDelete;
 
   const _PaneLayoutOptionsBody({
@@ -203,7 +243,7 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
     required this.resetBody,
     required this.showHeaderField,
     required this.titleEnabled,
-    this.onPanelSettings,
+    this.panelSettingsBuilder,
     this.onDelete,
   });
 
@@ -212,19 +252,14 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
 }
 
 class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
-  /// The advanced fields are spliced into the SAME element list rather than
-  /// rendered by a second FormRenderer — the same idiom (and the same reason)
-  /// as the settings target dialog's "show more": one renderer means one
-  /// piece of form state, and the hidden fields are genuinely absent from the
-  /// tree until asked for.
-  bool _showAdvanced = false;
-
   late PaneLayoutOptions _options = widget.current;
+  late final TextEditingController _titleController = TextEditingController(text: _options.title ?? '');
 
-  /// Bumped by a reset, and part of the FormRenderer's key. The renderer
-  /// reads `initialState` once, at construction — without a new key it would
-  /// go on showing the values that were just thrown away.
-  int _resetGeneration = 0;
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
 
   Future<void> _confirmReset() async {
     final confirmed = await showHaloDialog<bool>(
@@ -247,7 +282,7 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
     if (confirmed != true || !mounted) return;
     setState(() {
       _options = PaneLayoutOptions.none;
-      _resetGeneration++;
+      _titleController.text = '';
     });
     // The caller owns the model: for a pane that is one entry, for the view
     // its own and every pane's.
@@ -264,190 +299,201 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
     widget.onChanged(next);
   }
 
-  List<Map<String, dynamic>> get _baseElements => [
-    {
-      'type': 'field',
-      'key': 'title',
-      'fieldType': 'text',
-      'label': context.t.operation.layout.paneTitle,
-      // The name it would have anyway, so an operator can see what they are
-      // replacing before they replace it.
-      'placeholder': widget.defaultTitle,
-      // Greyed rather than hidden for a built-in view: an operator looking
-      // for the setting finds it and is told it does not apply, instead of
-      // hunting for something that was never there.
-      'disabled': !widget.titleEnabled,
-      'description': widget.titleEnabled
-          ? context.t.operation.layout.paneTitleDescription
-          : context.t.operation.layout.viewTitleBuiltIn,
-    },
-    if (widget.showHeaderField)
-      {
-        'type': 'field',
-        'key': 'showHeader',
-        'fieldType': 'checkbox',
-        'label': context.t.operation.layout.paneShowHeader,
-        // Greyed rather than hidden while the pane shares a group: the header
-        // is the tab strip then, and hiding it would strand the other panes.
-        'disabled': widget.inTabset,
-        'description': widget.inTabset
-            ? context.t.operation.layout.paneShowHeaderTabset
-            : context.t.operation.layout.paneShowHeaderDescription,
-      },
-  ];
-
-  List<Map<String, dynamic>> get _advancedElements => [
-    {'type': 'header', 'label': context.t.operation.layout.paneAdvanced},
-    {
-      'type': 'field',
-      'key': 'fontScale',
-      'fieldType': 'select',
-      'label': context.t.settings.fontScale,
-      'description': context.t.operation.layout.paneOverrideDescription,
-      'options': [
-        {'label': context.t.operation.layout.paneInherit, 'value': _inherit},
-        for (final scale in FontScale.selectableValues)
-          {'label': context.t['settings.fontScaleOpts.${scale.name}'] as String, 'value': scale.name},
-      ],
-    },
-    {
-      'type': 'field',
-      'key': 'density',
-      'fieldType': 'select',
-      'label': context.t.settings.layoutDensity,
-      'description': context.t.operation.layout.paneOverrideDescription,
-      'options': [
-        {'label': context.t.operation.layout.paneInherit, 'value': _inherit},
-        for (final preference in DensityPreference.selectableValues)
-          {'label': context.t['settings.layoutDensityOpts.${preference.name}'] as String, 'value': preference.name},
-      ],
-    },
-  ];
-
-  Map<String, dynamic> get _state => {
-    'title': _options.title ?? '',
-    'showHeader': _options.showHeader,
-    'fontScale': _options.fontScale ?? _inherit,
-    'density': _options.density ?? _inherit,
-  };
-
-  /// Returns null: nothing here rewrites the form's own state, it only
-  /// carries the change out to the draft.
-  Future<Map<String, dynamic>?> _onChange(String key, dynamic value, Map<String, dynamic> _) async {
-    String? pick(dynamic v) => v == _inherit || v == null ? null : v as String;
-    _apply(switch (key) {
-      'title' => PaneLayoutOptions(
-        title: (value as String?)?.trim().isEmpty ?? true ? null : (value as String).trim(),
-        showHeader: _options.showHeader,
-        fontScale: _options.fontScale,
-        density: _options.density,
-      ),
-      'showHeader' => PaneLayoutOptions(
-        title: _options.title,
-        showHeader: value == true,
-        fontScale: _options.fontScale,
-        density: _options.density,
-      ),
-      'fontScale' => PaneLayoutOptions(
-        title: _options.title,
-        showHeader: _options.showHeader,
-        fontScale: pick(value),
-        density: _options.density,
-      ),
-      'density' => PaneLayoutOptions(
-        title: _options.title,
-        showHeader: _options.showHeader,
-        fontScale: _options.fontScale,
-        density: pick(value),
-      ),
-      _ => _options,
-    });
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return _buildBody(context, theme);
-  }
-
-  Widget _buildBody(BuildContext context, ThemeData theme) {
+    final t = context.t.operation.layout;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Flexible, and scrollable on its own: title, header toggle and the
+        // three overrides are a small, constant size at the app's own scale,
+        // so ordinarily they just sit above Panel Settings without using
+        // this scroll at all — but a large font scale or a short window
+        // (docs/design/ui-scaling.md's tightest geometry) can grow them past
+        // what's left after the header and footer, and this is what keeps
+        // that case scrolling instead of overflowing off the pane.
         Flexible(
           child: SingleChildScrollView(
-            // The same inset showFormDialog gives a FormRenderer, which is
-            // what every other form in the app is shown at. FormRenderer's
-            // own rows take their horizontal padding from the ambient
-            // ListTileTheme and have none otherwise — so the ListTileTheme
-            // covers the ListTile-shaped fields (checkbox, select) and this
-            // covers the rest.
             padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
-            child: ListTileTheme(
-              data: const ListTileThemeData(contentPadding: EdgeInsets.zero),
-              child: Padding(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeInOut,
-                      alignment: Alignment.topCenter,
-                      child: FormRenderer(
-                        // Keyed on the disclosure, so growing the list rebuilds
-                        // the renderer's own state from `_state` rather than
-                        // leaving the new fields seeded from nothing.
-                        key: ValueKey('$_showAdvanced-$_resetGeneration'),
-                        formDefinition: {
-                          'elements': [..._baseElements, if (_showAdvanced) ..._advancedElements],
-                        },
-                        initialState: _state,
-                        showActions: false,
-                        showTitle: false,
-                        developerMode: widget.developerMode,
-                        labels: formRendererLabelsFor(context.t),
-                        onChange: _onChange,
-                        onSubmit: (_) {},
-                        onCancel: () {},
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              // Show Header rides beside Title rather than below it: the two
+              // are both about the pane's header (what it says, whether
+              // it's there at all), and the row reads as one decision
+              // instead of two.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _titleController,
+                      // Greyed rather than hidden for a built-in view: an
+                      // operator looking for the setting finds it and is
+                      // told it does not apply, instead of hunting for
+                      // something that was never there.
+                      enabled: widget.titleEnabled,
+                      decoration: poloFieldDecoration(context, t.paneTitle, hintText: widget.defaultTitle),
+                      onChanged: (value) =>
+                          _apply(_options.copyWith(title: value.trim().isEmpty ? null : value.trim())),
+                    ),
+                  ),
+                  if (widget.showHeaderField) ...[
+                    const SizedBox(width: Space.lg),
+                    // Flexible rather than natural width: Spanish's
+                    // "Mostrar encabezado" (and any label, at a high font
+                    // scale) can outgrow what Title leaves it in a
+                    // maxDialogWidth-capped pane, and the label ellipsizes
+                    // rather than forcing the row to overflow.
+                    Flexible(
+                      child: Opacity(
+                        // Greyed rather than hidden while the pane shares a
+                        // group: the header is the tab strip then, and
+                        // hiding it would strand the other panes.
+                        opacity: widget.inTabset ? 0.38 : 1,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Checkbox(
+                              value: _options.showHeader,
+                              onChanged: widget.inTabset
+                                  ? null
+                                  : (value) => _apply(_options.copyWith(showHeader: value ?? true)),
+                            ),
+                            Flexible(
+                              child: Text(t.paneShowHeader, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    if (widget.onPanelSettings case final open?)
-                      Padding(
-                        padding: const EdgeInsets.only(top: Space.md),
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: TextButton.icon(
-                            onPressed: open,
-                            icon: const Icon(MdiIcons.tune, size: 18),
-                            label: Text(context.t.operation.layout.panelSettingsAction),
-                          ),
-                        ),
-                      ),
-                    if (!_showAdvanced)
-                      Padding(
-                        padding: const EdgeInsets.only(top: Space.md),
-                        child: TextButton(
-                          onPressed: () => setState(() => _showAdvanced = true),
-                          child: Text(context.t.operation.layout.paneAdvanced),
-                        ),
-                      ),
                   ],
-                ),
+                ],
               ),
+              // A greyed control with no reason reads as broken, not
+              // unavailable — the same failure mode Show Header's own
+              // tabset case would be without this.
+              if (!widget.titleEnabled || (widget.showHeaderField && widget.inTabset))
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.xs),
+                  child: Text(
+                    !widget.titleEnabled ? t.viewTitleBuiltIn : t.paneShowHeaderTabset,
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              const SizedBox(height: Space.xl),
+              // Font Scale, Layout Density and Theme, side by side and
+              // always visible — three per-pane overrides an operator
+              // reaches for together, not three separate decisions.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _overrideSelect(
+                    label: context.t.settings.fontScale,
+                    // The resolved enum's own name, not the raw stored
+                    // string: fontScaleValue already applies the
+                    // unrecognized-degrades-to-inherit rule, so the select
+                    // doesn't have to re-derive it.
+                    value: _options.fontScaleValue?.name,
+                    options: [
+                      for (final scale in FontScale.selectableValues)
+                        (value: scale.name, label: context.t['settings.fontScaleOpts.${scale.name}'] as String),
+                    ],
+                    onChanged: (value) => _apply(_options.copyWith(fontScale: value)),
+                  )),
+                  const SizedBox(width: Space.md),
+                  Expanded(child: _overrideSelect(
+                    label: context.t.settings.layoutDensity,
+                    value: _options.densityValue?.name,
+                    options: [
+                      for (final preference in DensityPreference.selectableValues)
+                        (
+                          value: preference.name,
+                          label: context.t['settings.layoutDensityOpts.${preference.name}'] as String,
+                        ),
+                    ],
+                    onChanged: (value) => _apply(_options.copyWith(density: value)),
+                  )),
+                  const SizedBox(width: Space.md),
+                  Expanded(child: _overrideSelect(
+                    label: context.t.settings.theme.title,
+                    // themeBrightness is null for anything but exactly
+                    // 'light'/'dark', so a non-null result means themeMode
+                    // is already one of this select's own options.
+                    value: _options.themeBrightness == null ? null : _options.themeMode,
+                    options: [
+                      (value: 'light', label: context.t.settings.theme.light),
+                      (value: 'dark', label: context.t.settings.theme.dark),
+                    ],
+                    onChanged: (value) => _apply(_options.copyWith(themeMode: value)),
+                  )),
+                ],
+              ),
+              ],
             ),
           ),
         ),
+        if (widget.panelSettingsBuilder case final builder?)
+          // Flexible, not Expanded: a short embedded form (a handful of
+          // extension-panel fields) sizes to its own content, leaving the
+          // footer directly beneath it. Only a form taller than the space
+          // left over — the logging/map settings, wide enough on scale to
+          // reach it — clips and scrolls, instead of pushing the footer (or
+          // Title, above) off screen.
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Full-bleed to both edges, the same as a section band in
+                // the Operation Setup sheet — a band inset to match the
+                // fields above it would read as a highlighted row, not a
+                // section.
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.sm),
+                  color: haloDialogBandColorAt(context),
+                  child: Text(
+                    t.panelSettingsAction,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontFamily: 'RobotoSlab',
+                      fontWeight: FontWeight.w900,
+                      color: HaLoColors.of(context).onSurfaceAccent,
+                    ),
+                  ),
+                ),
+                // Flexible with no scrollview of its own: every
+                // panelSettingsBuilder result scrolls itself internally
+                // given a bounded height (_TargetSettingsForm's own
+                // Flexible+SingleChildScrollView; EmbeddedPanelSettingsForm's
+                // below) — wrapping it in a SECOND SingleChildScrollView here
+                // would hand it UNBOUNDED height instead, which is exactly
+                // what breaks a Flexible nested inside one.
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.lg),
+                    child: ListTileTheme(
+                      data: const ListTileThemeData(contentPadding: EdgeInsets.zero),
+                      child: Builder(builder: builder),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         // The export panel's footer, which is the app's answer for exactly
         // this shape of pane: everything that DOES something has already
         // happened by the time it is pressed, so Done is a way OUT and sits
         // in the cancel slot rather than reading as a confirm.
         Container(
           decoration: BoxDecoration(
-            color: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.08),
+            // The same band color a plain HaloDialog's own header/footer
+            // show — elevation-corrected for a modal pane's Material, so a
+            // Done-only footer reads the same everywhere it appears rather
+            // than drifting to a tint of its own.
+            color: haloDialogBandColorAt(context),
             border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
           ),
           child: SafeArea(
@@ -457,28 +503,17 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
               child: haloDialogFooterRow(
                 // The footer's leading slot, which is where a control that
                 // takes something away belongs — as far from Done as the row
-                // goes. It asks first: unlike every other control here, this
-                // one is not a change the operator can simply make again.
-                // Two controls in a slot the footer sizes to its natural
-                // width (no Flexible of its own), so they have to be able to
-                // give way — a long pair of labels in another language, or a
-                // resize to a narrow pane while this is open, would starve
-                // Done and overflow the row.
+                // goes. Remove leads: it is the single-pane act, an operator
+                // reaches for it first, and Restore Defaults (the
+                // whole-arrangement act) trails it. Two controls in a slot
+                // the footer sizes to its natural width (no Flexible of its
+                // own), so they have to be able to give way — a long pair of
+                // labels in another language, or a resize to a narrow pane
+                // while this is open, would starve Done and overflow the row.
                 destructive: Flexible(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(
-                        child: TextButton(
-                          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-                          onPressed: () => unawaited(_confirmReset()),
-                          child: Text(
-                            context.t.operation.layout.resetOptions,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
                       if (widget.onDelete case final remove?)
                         Flexible(
                           child: TextButton.icon(
@@ -500,10 +535,29 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                             ),
                           ),
                         ),
+                      Flexible(
+                        child: TextButton.icon(
+                          // Not error-colored, unlike Remove: this puts
+                          // things BACK to what they were, it doesn't destroy
+                          // anything new — the same reason it carries an undo
+                          // glyph rather than a warning one.
+                          onPressed: () => unawaited(_confirmReset()),
+                          icon: const Icon(MdiIcons.undo, size: 18),
+                          label: Text(
+                            context.t.operation.layout.resetOptions,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 cancel: TextButton(
+                  // Plain, unstyled — the same Done-only modal-pane footer
+                  // shape as the export panel's (operation_export_panel.dart),
+                  // so the two read as the same footer rather than drifting a
+                  // pixel apart.
                   // maybePop, matching the pane's own close button and barrier.
                   onPressed: () => Navigator.of(context).maybePop(),
                   child: Text(context.t.common.done),
@@ -515,4 +569,105 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
       ],
     );
   }
+
+  /// One "inherit or override" select, shared by the Font Scale, Layout
+  /// Density and Theme fields — same options shape, same "Same as the app"
+  /// first row, same null-means-inherit contract as [PaneLayoutOptions].
+  ///
+  /// [value] must already be `null` or one of [options]' own values —
+  /// [PaneLayoutOptions]' fontScaleValue/densityValue/themeBrightness
+  /// getters are what decide whether a stored override is recognized (an
+  /// unrecognized one degrades to null rather than throwing), so callers
+  /// pass the RESOLVED value through those, not the raw stored string. This
+  /// widget only has to trust the answer, not re-derive it — a second
+  /// "is this valid" check here could drift from what those getters decide.
+  Widget _overrideSelect({
+    required String label,
+    required String? value,
+    required List<({String value, String label})> options,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value ?? _inherit,
+      isExpanded: true,
+      icon: dropdownTrailingIcon,
+      decoration: poloFieldDecoration(context, label),
+      items: [
+        DropdownMenuItem(value: _inherit, child: Text(context.t.operation.layout.paneInherit)),
+        for (final option in options) DropdownMenuItem(value: option.value, child: Text(option.label)),
+      ],
+      onChanged: (picked) => onChanged(picked == _inherit ? null : picked),
+    );
+  }
+}
+
+/// A plain-form panel's own settings — its [PanelDefinition.formFields] —
+/// as a [showPaneLayoutOptions] `panelSettingsBuilder`. For a native panel
+/// whose settings are more than a plain form (logging, map), build
+/// `settingsFormForTarget` (settings_target_dialog.dart) instead; there is
+/// no `formFields` list for this widget to render.
+///
+/// The caller filters out any `type: 'action'` element before handing
+/// [fields] over: an action here would have no route of its own to close on
+/// completion, unlike the same field rendered in the panel's own standalone
+/// dialog (`showPanelSettings`), and a disabled/inert button reads as broken
+/// rather than as "not offered here".
+///
+/// A widget of its own, not inline in the caller, because it owns running
+/// form state (`_values`) across rebuilds the same way [FormRenderer]
+/// itself does for a whole dialog — a plain builder closure would rebuild
+/// that state from [initial] on every parent `setState`, discarding
+/// whatever the operator just typed.
+class EmbeddedPanelSettingsForm extends StatefulWidget {
+  final List<Map<String, dynamic>> fields;
+  final Map<String, dynamic> initial;
+  final bool developerMode;
+
+  /// Commits one field, autosaving the same way the layout options around it
+  /// do. `state` is this form's values as of the change, for callers that
+  /// persist a whole config rather than one field at a time.
+  final Future<void> Function(String key, dynamic value, Map<String, dynamic> state) onFieldChange;
+
+  const EmbeddedPanelSettingsForm({
+    super.key,
+    required this.fields,
+    required this.initial,
+    required this.developerMode,
+    required this.onFieldChange,
+  });
+
+  @override
+  State<EmbeddedPanelSettingsForm> createState() => _EmbeddedPanelSettingsFormState();
+}
+
+class _EmbeddedPanelSettingsFormState extends State<EmbeddedPanelSettingsForm> {
+  late final Map<String, dynamic> _values = Map.of(widget.initial);
+
+  /// Returns null: nothing here rewrites the form's own state, it only
+  /// mirrors the change into `_values` and carries it out to whatever
+  /// persists the panel's config.
+  Future<Map<String, dynamic>?> _onChange(String key, dynamic value, Map<String, dynamic> state) async {
+    _values[key] = value;
+    await widget.onFieldChange(key, value, state);
+    return null;
+  }
+
+  // Scrolls itself, matching the contract every panelSettingsBuilder result
+  // holds to: the caller (pane_layout_options.dart) hands it a bounded
+  // Flexible and nothing else, so a panel with more fields than fit has to
+  // clip and scroll on its own rather than overflow.
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    child: FormRenderer(
+      formDefinition: {'elements': widget.fields},
+      initialState: _values,
+      showActions: false,
+      showTitle: false,
+      developerMode: widget.developerMode,
+      labels: formRendererLabelsFor(context.t),
+      onChange: _onChange,
+      onSubmit: (_) {},
+      onCancel: () {},
+    ),
+  );
 }

@@ -103,8 +103,7 @@
       "lookupAllQsos": "Lookup all QSOs",
       "loggingSettingsTitle": "Logging Settings",
       "mapSettingsTitle": "Map Settings",
-      "actionsSection": "Actions",
-      "relevantSettingsSection": "Relevant Settings"
+      "actionsSection": "Actions"
     },
     "layout": {
       "title": "Add a Panel",
@@ -120,15 +119,11 @@
       "resetPaneConfirmBody": "Its title, header and size go back to the defaults. Nothing else in the layout changes.",
       "resetViewConfirm": "Restore this view to its default layout?",
       "resetViewConfirmBody": "The panels go back to their default arrangement, and the view's options and every panel's go back to the defaults.",
-      "paneOptionsTitle": "${panel} Layout",
+      "paneOptionsTitle": "${panel} Layout Settings",
       "paneTitle": "Title",
-      "paneTitleDescription": "Your own name for this pane, instead of the panel's",
       "paneShowHeader": "Show header",
-      "paneShowHeaderDescription": "Show this pane's title bar",
       "paneShowHeaderTabset": "Always shown while this pane shares a group — the header is how the others are reached",
-      "paneAdvanced": "Advanced Options",
       "paneInherit": "Same as the app",
-      "paneOverrideDescription": "For this pane only",
       "searchHint": "Search panels",
       "noPanelsMatch": "No panel matches your search.",
       "nothingToAdd": "This view already has all possible panels",

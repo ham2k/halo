@@ -49,8 +49,8 @@ typedef TargetDialogAction = ({String icon, String label, VoidCallback onTap});
 
 /// Opens a dialog listing every declared setting whose `target` attribute
 /// is [target], with a `'<target>-extended'` bucket hidden behind a "show
-/// more settings" toggle. [actions], if given, render as their own
-/// "Actions" section at the top of the list — for things the caller needs
+/// more settings" toggle. [actions], if given, render as their own banded
+/// "Actions" section below the settings — for things the caller needs
 /// reachable from here that aren't themselves a persisted setting (e.g. the
 /// logging panel's "Lookup all QSOs"), so they never get declared with a
 /// `target` of their own.
@@ -69,6 +69,25 @@ Future<void> showSettingsForTarget(
       inBase: (scanned) => elementMatchesTarget(scanned.element, target),
       inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
     );
+
+/// The same target-scoped settings form [showSettingsForTarget] renders
+/// inside its own dialog, as a plain widget — for a caller that wants to
+/// embed it in a surface it already owns (the pane layout options dialog's
+/// "Panel Settings" section, for a native panel whose settings are more
+/// than [PanelDefinition.formFields] can express) instead of opening a
+/// second dialog over it.
+Widget settingsFormForTarget({
+  required HaLoServices services,
+  required String target,
+  List<TargetDialogAction> actions = const [],
+}) => _TargetSettingsForm(
+  services: services,
+  inBase: (scanned) => elementMatchesTarget(scanned.element, target),
+  inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
+  order: null,
+  stripVisibleWhen: false,
+  actions: actions,
+);
 
 /// Opens the same dialog around a specific set of settings, named by the
 /// `key`s [scanSettings] reports — how SET/SHOW/HIDE show every setting a
@@ -129,10 +148,14 @@ Future<void> _showSettingsDialog(
       child: HaloDialog(
         title: Text(title),
         wide: true,
-        // No horizontal inset here — each row (SectionHeader, the settings
-        // themselves, the Actions items) carries its own via the ambient
-        // ListTileTheme set up in _TargetSettingsFormState.build, so it
-        // isn't stacked on top of a second, outer padding.
+        // _TargetSettingsFormState scrolls its own settings section — see
+        // its own comment — so this dialog's body must not also try to,
+        // or the nested scrollables fail to lay out.
+        scrollable: false,
+        // No horizontal inset here — each row (the settings themselves, the
+        // Actions items) carries its own via the ambient ListTileTheme set
+        // up in _TargetSettingsFormState.build, so it isn't stacked on top
+        // of a second, outer padding.
         contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
         content: _TargetSettingsForm(
           services: services,
@@ -450,10 +473,65 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Settings lead, and scroll in their own bounded region — no
+          // "Relevant Settings" label above them; with Actions moved below,
+          // there is no sibling section left for the name to distinguish
+          // them from. Flexible, not Expanded, so a short settings list (no
+          // extended fields, or already showing them) sizes to its own
+          // content and leaves Actions directly beneath it; only a list
+          // long enough to reach the dialog's own height limit clips and
+          // scrolls, instead of pushing Actions off the bottom.
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // One FormRenderer whose element list grows, not two
+                  // separate FormRenderer widgets swapped/composited — the
+                  // extended fields are simply spliced into the same array
+                  // once _showExtended flips, so they're absent from the
+                  // tree (and from find.text in a test) until then, with a
+                  // plain widget subtree AnimatedSize can safely resize
+                  // around.
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    alignment: Alignment.topCenter,
+                    child: _buildFormRenderer([
+                      ...base,
+                      if (_showExtended) ...extended,
+                    ]),
+                  ),
+                  if (!_showExtended && extended.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Space.xs),
+                      child: TextButton(
+                        onPressed: () => setState(() => _showExtended = true),
+                        child: Text(context.t.settings.showMoreSettings),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
           // Caller-supplied, not a declared setting — never routed through
-          // elementMatchesTarget, so it can't be mistaken for one.
+          // elementMatchesTarget, so it can't be mistaken for one. Banded
+          // and trailing, the same shape a Panel Settings section takes in
+          // the pane layout options dialog.
           if (widget.actions.isNotEmpty) ...[
-            SectionHeader(context.t.operation.menu.actionsSection),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.sm),
+              color: haloDialogBandColorAt(context),
+              child: Text(
+                context.t.operation.menu.actionsSection,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontFamily: 'RobotoSlab',
+                  fontWeight: FontWeight.w900,
+                  color: HaLoColors.of(context).onSurfaceAccent,
+                ),
+              ),
+            ),
             for (final action in widget.actions)
               ListTile(
                 leading: Icon(resolveIconName(action.icon)),
@@ -461,30 +539,6 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
                 onTap: action.onTap,
               ),
           ],
-          SectionHeader(context.t.operation.menu.relevantSettingsSection),
-          // One FormRenderer whose element list grows, not two separate
-          // FormRenderer widgets swapped/composited — the extended fields
-          // are simply spliced into the same array once _showExtended
-          // flips, so they're absent from the tree (and from find.text in
-          // a test) until then, with a plain
-          // widget subtree AnimatedSize can safely resize around.
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: _buildFormRenderer([
-              ...base,
-              if (_showExtended) ...extended,
-            ]),
-          ),
-          if (!_showExtended && extended.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: Space.xs),
-              child: TextButton(
-                onPressed: () => setState(() => _showExtended = true),
-                child: Text(context.t.settings.showMoreSettings),
-              ),
-            ),
         ],
       ),
     );

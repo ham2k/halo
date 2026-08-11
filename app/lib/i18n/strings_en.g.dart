@@ -1701,9 +1701,6 @@ class Translations$operation$menu$en {
 
 	/// en: 'Actions'
 	String get actionsSection => 'Actions';
-
-	/// en: 'Relevant Settings'
-	String get relevantSettingsSection => 'Relevant Settings';
 }
 
 // Path: operation.layout
@@ -1753,32 +1750,20 @@ class Translations$operation$layout$en {
 	/// en: 'The panels go back to their default arrangement, and the view's options and every panel's go back to the defaults.'
 	String get resetViewConfirmBody => 'The panels go back to their default arrangement, and the view\'s options and every panel\'s go back to the defaults.';
 
-	/// en: '${panel} Layout'
-	String paneOptionsTitle({required Object panel}) => '${panel} Layout';
+	/// en: '${panel} Layout Settings'
+	String paneOptionsTitle({required Object panel}) => '${panel} Layout Settings';
 
 	/// en: 'Title'
 	String get paneTitle => 'Title';
 
-	/// en: 'Your own name for this pane, instead of the panel's'
-	String get paneTitleDescription => 'Your own name for this pane, instead of the panel\'s';
-
 	/// en: 'Show header'
 	String get paneShowHeader => 'Show header';
-
-	/// en: 'Show this pane's title bar'
-	String get paneShowHeaderDescription => 'Show this pane\'s title bar';
 
 	/// en: 'Always shown while this pane shares a group — the header is how the others are reached'
 	String get paneShowHeaderTabset => 'Always shown while this pane shares a group — the header is how the others are reached';
 
-	/// en: 'Advanced Options'
-	String get paneAdvanced => 'Advanced Options';
-
 	/// en: 'Same as the app'
 	String get paneInherit => 'Same as the app';
-
-	/// en: 'For this pane only'
-	String get paneOverrideDescription => 'For this pane only';
 
 	/// en: 'Search panels'
 	String get searchHint => 'Search panels';
@@ -4086,7 +4071,6 @@ extension on Translations {
 			'operation.menu.loggingSettingsTitle' => 'Logging Settings',
 			'operation.menu.mapSettingsTitle' => 'Map Settings',
 			'operation.menu.actionsSection' => 'Actions',
-			'operation.menu.relevantSettingsSection' => 'Relevant Settings',
 			'operation.layout.title' => 'Add a Panel',
 			'operation.layout.availableSection' => 'Available panels',
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} settings',
@@ -4100,15 +4084,11 @@ extension on Translations {
 			'operation.layout.resetPaneConfirmBody' => 'Its title, header and size go back to the defaults. Nothing else in the layout changes.',
 			'operation.layout.resetViewConfirm' => 'Restore this view to its default layout?',
 			'operation.layout.resetViewConfirmBody' => 'The panels go back to their default arrangement, and the view\'s options and every panel\'s go back to the defaults.',
-			'operation.layout.paneOptionsTitle' => ({required Object panel}) => '${panel} Layout',
+			'operation.layout.paneOptionsTitle' => ({required Object panel}) => '${panel} Layout Settings',
 			'operation.layout.paneTitle' => 'Title',
-			'operation.layout.paneTitleDescription' => 'Your own name for this pane, instead of the panel\'s',
 			'operation.layout.paneShowHeader' => 'Show header',
-			'operation.layout.paneShowHeaderDescription' => 'Show this pane\'s title bar',
 			'operation.layout.paneShowHeaderTabset' => 'Always shown while this pane shares a group — the header is how the others are reached',
-			'operation.layout.paneAdvanced' => 'Advanced Options',
 			'operation.layout.paneInherit' => 'Same as the app',
-			'operation.layout.paneOverrideDescription' => 'For this pane only',
 			'operation.layout.searchHint' => 'Search panels',
 			'operation.layout.noPanelsMatch' => 'No panel matches your search.',
 			'operation.layout.nothingToAdd' => 'This view already has all possible panels',
@@ -4511,13 +4491,13 @@ extension on Translations {
 			'settings.logging.numbersRow.title' => 'Numbers Row',
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
 			'settings.logging.modes' => 'Modes',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',

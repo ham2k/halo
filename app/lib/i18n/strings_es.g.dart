@@ -857,7 +857,6 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get loggingSettingsTitle => 'Configuración de Registro';
 	@override String get mapSettingsTitle => 'Configuración del Mapa';
 	@override String get actionsSection => 'Acciones';
-	@override String get relevantSettingsSection => 'Ajustes Relevantes';
 }
 
 // Path: operation.layout
@@ -880,15 +879,11 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String get resetPaneConfirmBody => 'Su título, encabezado y tamaño vuelven a los valores predeterminados. Nada más en la disposición cambia.';
 	@override String get resetViewConfirm => '¿Restaurar la disposición predeterminada de esta vista?';
 	@override String get resetViewConfirmBody => 'Los paneles vuelven a su disposición predeterminada, y las opciones de la vista y las de cada panel vuelven a sus valores predeterminados.';
-	@override String paneOptionsTitle({required Object panel}) => 'Disposición de ${panel}';
+	@override String paneOptionsTitle({required Object panel}) => 'Ajustes de disposición de ${panel}';
 	@override String get paneTitle => 'Título';
-	@override String get paneTitleDescription => 'Tu propio nombre para este panel, en vez del suyo';
 	@override String get paneShowHeader => 'Mostrar encabezado';
-	@override String get paneShowHeaderDescription => 'Muestra la barra de título de este panel';
 	@override String get paneShowHeaderTabset => 'Siempre visible mientras este panel comparte un grupo — el encabezado es como se llega a los demás';
-	@override String get paneAdvanced => 'Opciones Avanzadas';
 	@override String get paneInherit => 'Igual que la app';
-	@override String get paneOverrideDescription => 'Solo para este panel';
 	@override String get searchHint => 'Buscar paneles';
 	@override String get noPanelsMatch => 'Ningún panel coincide con tu búsqueda.';
 	@override String get nothingToAdd => 'Esta vista ya tiene todos los paneles posibles';
@@ -2111,7 +2106,6 @@ extension on TranslationsEs {
 			'operation.menu.loggingSettingsTitle' => 'Configuración de Registro',
 			'operation.menu.mapSettingsTitle' => 'Configuración del Mapa',
 			'operation.menu.actionsSection' => 'Acciones',
-			'operation.menu.relevantSettingsSection' => 'Ajustes Relevantes',
 			'operation.layout.title' => 'Añadir un Panel',
 			'operation.layout.availableSection' => 'Paneles disponibles',
 			'operation.layout.panelSettings' => ({required Object panel}) => 'Configuración de ${panel}',
@@ -2125,15 +2119,11 @@ extension on TranslationsEs {
 			'operation.layout.resetPaneConfirmBody' => 'Su título, encabezado y tamaño vuelven a los valores predeterminados. Nada más en la disposición cambia.',
 			'operation.layout.resetViewConfirm' => '¿Restaurar la disposición predeterminada de esta vista?',
 			'operation.layout.resetViewConfirmBody' => 'Los paneles vuelven a su disposición predeterminada, y las opciones de la vista y las de cada panel vuelven a sus valores predeterminados.',
-			'operation.layout.paneOptionsTitle' => ({required Object panel}) => 'Disposición de ${panel}',
+			'operation.layout.paneOptionsTitle' => ({required Object panel}) => 'Ajustes de disposición de ${panel}',
 			'operation.layout.paneTitle' => 'Título',
-			'operation.layout.paneTitleDescription' => 'Tu propio nombre para este panel, en vez del suyo',
 			'operation.layout.paneShowHeader' => 'Mostrar encabezado',
-			'operation.layout.paneShowHeaderDescription' => 'Muestra la barra de título de este panel',
 			'operation.layout.paneShowHeaderTabset' => 'Siempre visible mientras este panel comparte un grupo — el encabezado es como se llega a los demás',
-			'operation.layout.paneAdvanced' => 'Opciones Avanzadas',
 			'operation.layout.paneInherit' => 'Igual que la app',
-			'operation.layout.paneOverrideDescription' => 'Solo para este panel',
 			'operation.layout.searchHint' => 'Buscar paneles',
 			'operation.layout.noPanelsMatch' => 'Ningún panel coincide con tu búsqueda.',
 			'operation.layout.nothingToAdd' => 'Esta vista ya tiene todos los paneles posibles',
@@ -2536,13 +2526,13 @@ extension on TranslationsEs {
 			'settings.logging.numbersRow.title' => 'Fila de Números',
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
 			'settings.logging.modes' => 'Modos',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',

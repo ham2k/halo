@@ -707,9 +707,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   Widget _buildFooter(BuildContext context, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
-        // onSurfaceAccent, not primary: at 8% the tint has to read against the
-        // surface it sits on, and primary is dark in both brightnesses.
-        color: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.08),
+        // The same band color a plain HaloDialog's own header/footer show —
+        // elevation-corrected for a modal pane's Material, so a Done-only
+        // footer reads the same everywhere it appears rather than drifting
+        // to a tint of its own.
+        color: haloDialogBandColorAt(context),
         border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: SafeArea(

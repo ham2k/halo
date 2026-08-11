@@ -33,7 +33,10 @@ const String panelRefreshMethod = 'refresh';
 /// be turned off: unchecking it produces `false` against an unstored `null`,
 /// which the "unset means falsy" rule below calls unchanged, so nothing is
 /// written and the panel goes on reading its default forever.
-@visibleForTesting
+///
+/// Also the gate the pane layout options dialog's embedded panel-settings
+/// form uses before committing an autosaved field — the same no-op check,
+/// reused rather than duplicated.
 bool sameConfigValue(Object? formValue, Object? stored, Object? declaredDefault) {
   if (formValue == stored) return true;
   if (stored != null) return false;

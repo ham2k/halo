@@ -13,6 +13,7 @@ upcoming:
     - "Map tab: MapLibre everywhere — globe view now works on phones and tablets"
     - "Map tab: pick a basemap style (Liberty, Bright, Positron, Voyager, Dark Matter) from its settings button"
     - "Clock pane: removed the Swiss railway face"
+    - "Pane layout options: panel settings embed inline, plus a new Theme Mode override"
 
 "131":
   changes:
