@@ -6,15 +6,11 @@
 
 upcoming:
   changes:
-    - "New **Weather** pane — conditions now, over a curve of the next eight hours"
-    - "Tap a NOTE/TODO/BREAK row in the log to edit it inline, with delete/undo"
-    - "Map tab: zoom in/out buttons on desktop and web, bottom-left corner"
-    - "Map tab now follows dark mode — basemap, markers and lines all adapt"
-    - "Map tab: MapLibre everywhere — globe view now works on phones and tablets"
-    - "Map tab: pick a basemap style (Liberty, Bright, Positron, Voyager, Dark Matter) from its settings button"
-    - "Clock pane: removed the Swiss railway face"
-    - "Pane layout options: panel settings embed inline, plus a new Theme Mode override"
     - "Home has a navigation sidebar, and its panes rearrange like an operation's — try both"
+    - "Maps: using Maplibre now, with map style selection and other tweaks"
+    - "New **Weather** pane — conditions now, over a curve of the next eight hours"
+    - "Pane layout options: panel settings embed inline, plus a new Theme Mode override"
+    - "Events (NOTE/TODO/BREAK) are now editable"
 
 "131":
   changes:
