@@ -22,6 +22,7 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <List<int>>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -29,6 +30,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -95,6 +99,112 @@ void main() {
       feed([0xFE, 0xFE, us, ic705, 0x03, 0x23, 0x41, 0x07, 0x14, 0x00, 0xFD]);
       expect(sink.readings.single.freqKHz, closeTo(14074.123, 0.0001));
     });
+
+    test('a 0x14 0x0A reply reports power, against the assumed 100W ceiling', () {
+      // Level 255 (0x02 0x55 BCD) is 100% of the assumed maximum.
+      feed([0xFE, 0xFE, us, ic705, 0x14, 0x0A, 0x02, 0x55, 0xFD]);
+      expect(sink.powers, [100]);
+    });
+
+    test('a 0x14 reply for a DIFFERENT level (not RF power) is ignored', () {
+      // 0x14 covers AF/RF gain/squelch too; only sub-command 0x0A is power.
+      feed([0xFE, 0xFE, us, ic705, 0x14, 0x01, 0x02, 0x55, 0xFD]);
+      expect(sink.powers, isEmpty);
+    });
+
+    test('a level that is not a clean multiple of the 100W ceiling rounds to whole watts', () {
+      // Level 195 (0x01 0x95 BCD) -> 195/255*100 = 76.47...W. Reporting
+      // that raw double would overflow the Power field's 4-digit width
+      // and store false precision on a captured QSO.
+      feed([0xFE, 0xFE, us, ic705, 0x14, 0x0A, 0x01, 0x95, 0xFD]);
+      expect(sink.powers, [76]);
+    });
+
+    test('a QRP radio configured with a real ceiling reports fractional watts', () {
+      // Below _preciseWattsCeiling the 0-255 level actually resolves to
+      // sub-watt steps, unlike the assumed-100W case above — rounding away
+      // the decimal would throw away real information, not false precision.
+      final qrpSession = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10);
+      // Level 195 (0x01 0x95 BCD) -> 195/255*10 = 7.647...W -> 7.6W.
+      qrpSession.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0x14, 0x0A, 0x01, 0x95, 0xFD]));
+      expect(sink.powers, [7.6]);
+    });
+
+    test('setPower against a 10W ceiling scales the level down accordingly', () {
+      final qrpSession = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10);
+      qrpSession.setPower(5);
+      // 5/10*255 = 127.5 -> rounds to 128 (0x01 0x28 BCD).
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x01, 0x28, 0xFD]);
+    });
+
+    test('a 0x15 0x15 reply is kept as DC input, decivolts — the raw voltage is not surfaced itself', () {
+      // Level 115 (BCD 0x01 0x15) -> 11.5V, matching a bench IC-705 on its
+      // internal battery. No power level has been read yet, so there is
+      // nothing for batteryMaxWatts to recompute — see the battery group
+      // below for that.
+      feed([0xFE, 0xFE, us, ic705, 0x15, 0x15, 0x01, 0x15, 0xFD]);
+      expect(session.dcInputDeciVolts, 115);
+      expect(sink.powers, isEmpty);
+    });
+
+    test('a 0x15 reply for a DIFFERENT meter (not DC input) is ignored', () {
+      // 0x15 covers several meters (S-meter, RF power…) sharing one command
+      // number; only sub-command 0x15 is DC input.
+      feed([0xFE, 0xFE, us, ic705, 0x15, 0x11, 0x00, 0x50, 0xFD]);
+      expect(session.dcInputDeciVolts, isNull);
+    });
+  });
+
+  group('batteryMaxWatts — a lower cap while off external DC', () {
+    IcomCivSession qrpSession() =>
+        IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10, batteryMaxWatts: 5);
+    void feedTo(IcomCivSession s, List<int> bytes) => s.handleData(Uint8List.fromList(bytes));
+    List<int> levelFrame(int hi, int lo) => [0xFE, 0xFE, us, ic705, 0x14, 0x0A, hi, lo, 0xFD];
+    List<int> dcInputFrame(int hi, int lo) => [0xFE, 0xFE, us, ic705, 0x15, 0x15, hi, lo, 0xFD];
+
+    test('a level above the cap is clamped once the radio is known to be on battery', () {
+      final s = qrpSession();
+      feedTo(s, dcInputFrame(0x01, 0x15)); // 11.5V — battery.
+      // Level 255 (0x02 0x55) -> 10W against the 10W ceiling, capped to 5.
+      feedTo(s, levelFrame(0x02, 0x55));
+      expect(sink.powers, [5]);
+    });
+
+    test('the same level is reported uncapped once external DC is seen', () {
+      final s = qrpSession();
+      feedTo(s, dcInputFrame(0x01, 0x95)); // 19.5V — external supply.
+      feedTo(s, levelFrame(0x02, 0x55));
+      expect(sink.powers, [10]);
+    });
+
+    test('a level below the cap is unaffected either way', () {
+      final s = qrpSession();
+      feedTo(s, dcInputFrame(0x01, 0x15)); // battery
+      // Level 102 (0x01 0x02) -> 102/255*10 = 4W.
+      feedTo(s, levelFrame(0x01, 0x02));
+      expect(sink.powers, [4]);
+    });
+
+    test('unplugging mid-session re-caps the already-reported level', () {
+      final s = qrpSession();
+      feedTo(s, dcInputFrame(0x01, 0x95)); // starts on external DC
+      feedTo(s, levelFrame(0x02, 0x55)); // 10W, unaffected
+      feedTo(s, dcInputFrame(0x01, 0x15)); // now on battery
+      expect(sink.powers, [10, 5], reason: 'the DC-input reading alone recomputes the last known level');
+    });
+
+    test('with no batteryMaxWatts configured, battery power is never capped', () {
+      final s = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10);
+      feedTo(s, dcInputFrame(0x01, 0x15)); // battery
+      feedTo(s, levelFrame(0x02, 0x55));
+      expect(sink.powers, [10]);
+    });
+
+    test('with no DC-input reading yet, power is reported uncapped', () {
+      final s = qrpSession();
+      feedTo(s, levelFrame(0x02, 0x55));
+      expect(sink.powers, [10], reason: 'unknown DC input must not be treated as battery');
+    });
   });
 
   group('bus discipline — what polo did not do', () {
@@ -147,20 +257,48 @@ void main() {
       expect(sink.sent, isEmpty);
     });
 
+    test('set power is a 0x14 0x0A frame, watts converted against the assumed 100W ceiling', () {
+      session.setPower(100);
+      // Level 255 (0x02 0x55 BCD) for 100W against the assumed 100W max.
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x02, 0x55, 0xFD]);
+    });
+
+    test('a power outside 0-100W is clamped to the level range, not sent malformed', () {
+      session.setPower(1000);
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x02, 0x55, 0xFD], reason: 'clamped to level 255');
+    });
+
     test('polls for frequency and mode, and stops when told', () {
       fakeAsync((async) {
         session.startUpdates();
-        expect(sink.sent, hasLength(2), reason: 'asks once immediately');
+        expect(sink.sent, hasLength(4), reason: 'asks once immediately');
         sink.sent.clear();
 
         async.elapse(const Duration(seconds: 5));
-        expect(sink.sent, hasLength(2));
+        expect(sink.sent, hasLength(4));
 
         sink.sent.clear();
         session.stopUpdates();
         async.elapse(const Duration(minutes: 1));
         expect(sink.sent, isEmpty);
       });
+    });
+  });
+
+  group('maxWatts', () {
+    test('comes from config, defaulting to the assumed 100W ceiling', () {
+      const driver = IcomCivDriver();
+      expect((driver.createSession(sink, {}) as IcomCivSession).maxWatts, 100);
+      expect((driver.createSession(sink, {'maxWatts': 10}) as IcomCivSession).maxWatts, 10);
+    });
+
+    test('batteryMaxWatts comes from config too, defaulting to no cap at all', () {
+      const driver = IcomCivDriver();
+      expect((driver.createSession(sink, {}) as IcomCivSession).batteryMaxWatts, isNull);
+      expect(
+        (driver.createSession(sink, {'maxWatts': 10, 'batteryMaxWatts': 5}) as IcomCivSession).batteryMaxWatts,
+        5,
+      );
     });
   });
 

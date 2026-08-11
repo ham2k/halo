@@ -161,9 +161,19 @@ class FlexRadioSession implements EquipmentSession {
 
   void _sendCommand(String command) => _sink.send(utf8.encode('C${_seq++}|$command\n'));
 
+  void _subscribe() {
+    _sendCommand('sub slice all');
+    _sendCommand('sub tx all');
+  }
+
+  void _unsubscribe() {
+    _sendCommand('unsub slice all');
+    _sendCommand('unsub tx all');
+  }
+
   void _startResyncTimer() {
     _resyncTimer ??= Timer.periodic(_resyncInterval, (_) {
-      if (_wantUpdates && _handshakeDone) _sendCommand('sub slice all');
+      if (_wantUpdates && _handshakeDone) _subscribe();
     });
   }
 
@@ -197,25 +207,28 @@ class FlexRadioSession implements EquipmentSession {
 
   static final _handshakePattern = RegExp(r'^H[0-9a-fA-F]+$');
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
+  static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
 
   void _handleHandshakeLine(String line) {
     if (_handshakeDone || !_handshakePattern.hasMatch(line)) return;
     _handshakeDone = true;
-    if (_wantUpdates) _sendCommand('sub slice all');
+    if (_wantUpdates) _subscribe();
   }
 
   void _handleStatusLine(String line) {
-    // e.g. "S40000001|slice 0 RF_frequency=14.250000 mode=USB in_use=1 ..."
-    final match = _slicePattern.firstMatch(line);
-    if (match == null) return;
-    if (int.tryParse(match.group(1)!) != _trackedSlice) return;
-
-    final fields = <String, String>{};
-    for (final pair in match.group(2)!.trim().split(' ')) {
-      final separator = pair.indexOf('=');
-      if (separator <= 0) continue;
-      fields[pair.substring(0, separator)] = pair.substring(separator + 1);
+    final sliceMatch = _slicePattern.firstMatch(line);
+    if (sliceMatch != null) {
+      _handleSliceLine(sliceMatch);
+      return;
     }
+    final transmitMatch = _transmitPattern.firstMatch(line);
+    if (transmitMatch != null) _handleTransmitLine(transmitMatch);
+  }
+
+  void _handleSliceLine(RegExpMatch match) {
+    // e.g. "S40000001|slice 0 RF_frequency=14.250000 mode=USB in_use=1 ..."
+    if (int.tryParse(match.group(1)!) != _trackedSlice) return;
+    final fields = _parseFields(match.group(2)!);
 
     // Flex reports MHz; we speak kHz throughout (see `Vfo.freq`). Keep the
     // decimals — down to Hz precision — rather than rounding to whole kHz.
@@ -231,6 +244,30 @@ class FlexRadioSession implements EquipmentSession {
     if (!reading.isEmpty) _sink.report(reading);
   }
 
+  /// `rfpower` is 0-100 on SmartSDR's own status object — NOT captured
+  /// against the live FLEX-6600 the freq/mode path above was verified
+  /// against, but the whole line this driver targets (6300-6700) is
+  /// 100W-rated HF, which is why treating the value as watts directly is
+  /// less of a leap here than the same assumption in the Icom/Kenwood/
+  /// FT-891 drivers, where the rated maximum varies by model.
+  void _handleTransmitLine(RegExpMatch match) {
+    final fields = _parseFields(match.group(1)!);
+    final rfpower = fields['rfpower'];
+    if (rfpower == null) return;
+    final watts = num.tryParse(rfpower);
+    if (watts != null) _sink.reportPower(watts);
+  }
+
+  Map<String, String> _parseFields(String text) {
+    final fields = <String, String>{};
+    for (final pair in text.trim().split(' ')) {
+      final separator = pair.indexOf('=');
+      if (separator <= 0) continue;
+      fields[pair.substring(0, separator)] = pair.substring(separator + 1);
+    }
+    return fields;
+  }
+
   @override
   void setFrequency(double freqKHz) => _sendCommand(
       'slice tune $_trackedSlice ${(freqKHz / 1000).toStringAsFixed(6)}');
@@ -238,12 +275,15 @@ class FlexRadioSession implements EquipmentSession {
   @override
   void setMode(String mode) => _sendCommand('slice set $_trackedSlice mode=${mode.toUpperCase()}');
 
+  @override
+  void setPower(num watts) => _sendCommand('transmit set rfpower=${watts.round().clamp(0, 100)}');
+
   /// FlexRadio pushes status on its own — "starting updates" just means
   /// subscribing.
   @override
   void startUpdates() {
     _wantUpdates = true;
-    if (_handshakeDone) _sendCommand('sub slice all');
+    if (_handshakeDone) _subscribe();
     _startResyncTimer();
   }
 
@@ -252,7 +292,7 @@ class FlexRadioSession implements EquipmentSession {
     if (!_wantUpdates) return;
     _wantUpdates = false;
     _stopResyncTimer();
-    if (_handshakeDone) _sendCommand('unsub slice all');
+    if (_handshakeDone) _unsubscribe();
   }
 
   /// Null, and NOT [_resyncInterval]: this radio pushes a slice status the
@@ -266,7 +306,7 @@ class FlexRadioSession implements EquipmentSession {
   @override
   void teardown() {
     _stopResyncTimer();
-    if (_wantUpdates && _handshakeDone) _sendCommand('unsub slice all');
+    if (_wantUpdates && _handshakeDone) _unsubscribe();
     _wantUpdates = false;
   }
 }

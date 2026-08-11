@@ -5,8 +5,11 @@
   "freqConfirm": "Frecuencia cambiada a **{{freq}} MHz**",
   "modeDescribe": "¿Cambiar el modo a **{{mode}}**?",
   "modeConfirm": "Modo cambiado a **{{mode}}**",
+  "powerDescribe": "¿Cambiar la potencia a **{{watts}}W**?",
+  "powerConfirm": "Potencia cambiada a **{{watts}}W**",
   "catalogBand": "Cambiar de banda",
   "catalogFreq": "Cambiar de frecuencia",
   "catalogMode": "Cambiar de modo",
+  "catalogPower": "Cambiar la potencia",
   "catalogCategory": "Radio"
 }

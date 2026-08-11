@@ -55,6 +55,16 @@ class CivCommand {
   static const setFrequency = 0x05;
   static const setMode = 0x06;
 
+  /// Read/set level data — a sub-command byte (see [civLevelRfPower])
+  /// selects which level. Same command number for both directions: a
+  /// request carries only the sub-command, a set also carries the value.
+  static const readSetLevel = 0x14;
+
+  /// Read meter data — read-only, unlike [readSetLevel]: a sub-command
+  /// byte (see [civMeterDcInputVoltage]) selects which meter, and there is
+  /// no matching "set".
+  static const readMeter = 0x15;
+
   /// The radio accepted the command.
   static const ack = 0xFB;
 
@@ -108,6 +118,35 @@ int? decodeBcdFrequency(List<int> bytes) {
   for (var i = bytes.length - 1; i >= 0; i--) {
     final tens = (bytes[i] >> 4) & 0x0F;
     final ones = bytes[i] & 0x0F;
+    if (tens > 9 || ones > 9) return null;
+    buffer.write(tens);
+    buffer.write(ones);
+  }
+  return int.tryParse(buffer.toString());
+}
+
+/// The sub-command selecting RF power within a 0x14 read/set-level frame.
+/// Same sub-id across the line this driver targets (IC-705/7300/9700/7610).
+const civLevelRfPower = 0x0A;
+
+/// A 0x14-family level: two BCD bytes, MOST-significant pair first (the
+/// opposite byte order from [encodeBcdFrequency]) — 0000-0255 standing for
+/// 0-100% of whatever the level in question maxes out at.
+List<int> encodeCivLevel(int value) {
+  final digits = value.clamp(0, 255).toString().padLeft(4, '0');
+  return [
+    (int.parse(digits[0]) << 4) | int.parse(digits[1]),
+    (int.parse(digits[2]) << 4) | int.parse(digits[3]),
+  ];
+}
+
+/// Null for anything that isn't exactly two valid-BCD bytes.
+int? decodeCivLevel(List<int> bytes) {
+  if (bytes.length != 2) return null;
+  final buffer = StringBuffer();
+  for (final byte in bytes) {
+    final tens = (byte >> 4) & 0x0F;
+    final ones = byte & 0x0F;
     if (tens > 9 || ones > 9) return null;
     buffer.write(tens);
     buffer.write(ones);
@@ -200,6 +239,44 @@ List<int>? buildSetModeFrame({
     data: [code, if (filter != null) filter],
   );
 }
+
+List<int> buildReadPowerLevelFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelRfPower]);
+
+List<int> buildSetPowerLevelFrame({
+  required int to,
+  int from = civDefaultControllerAddress,
+  required int level,
+}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelRfPower, ...encodeCivLevel(level)]);
+
+/// `frame.data` from a 0x14 reply, once it's been confirmed to be the RF
+/// power sub-command — null for a reply too short to hold the 2-byte level,
+/// or one that fails BCD decoding.
+int? parsePowerLevelData(List<int> data) => data.length < 3 ? null : decodeCivLevel(data.sublist(1, 3));
+
+/// DC input to the radio, in tenths of a volt (e.g. level 115 means
+/// 11.5V) — distinguishes external DC from internal battery on a radio
+/// that can run on either. Confirmed LIVE against an IC-705: ~11.5V on
+/// its internal battery, ~19.5V with a 12V-class external supply
+/// connected — the RF-power SET level (0x14 0x0A) does not change either
+/// way, but the radio quietly caps actual output on battery (see the RF
+/// power METER, 0x15 0x11). Voltage scaling is inferred from that one
+/// bench session, not a published reference.
+const civMeterDcInputVoltage = 0x15;
+
+List<int> buildReadMeterFrame({
+  required int to,
+  int from = civDefaultControllerAddress,
+  required int meterId,
+}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.readMeter, data: [meterId]);
+
+/// `frame.data` from a 0x15 reply, once it's been confirmed to be the
+/// meter asked for — same shape as a 0x14 reply, so this is just
+/// [parsePowerLevelData] under a name that doesn't say "power" for a
+/// family of readings that isn't.
+int? parseMeterData(List<int> data) => parsePowerLevelData(data);
 
 /// Splits a byte stream into complete `FE FE … FD` frames, keeping any
 /// trailing partial frame for the next call.

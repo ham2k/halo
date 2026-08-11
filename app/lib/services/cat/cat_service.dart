@@ -297,7 +297,58 @@ class CatService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ------------------------------------------------------ antenna1 / key1
+
+  /// Which antenna/key node is "in use" — the same plain-stored,
+  /// operator-or-auto-designated pointer as [radio1], for the categories
+  /// that only ever have one thing connected at a time and never a
+  /// session to disrupt. Keyed by category ([kCategoryAntenna]/
+  /// [kCategoryKey]) rather than given their own fields, since both follow
+  /// [radio1]'s three rules identically and neither carries radio1's
+  /// connect/session bookkeeping.
+  final Map<String, String?> _designated = {};
+
+  String? designatedFor(String category) => _designated[category];
+
+  bool isDesignated(String category, String uuid) => _designated[category] == uuid;
+
+  Future<void> setDesignated(String category, String? uuid) async {
+    if (_designated[category] == uuid) return;
+    _designated[category] = uuid;
+    await _save();
+    notifyListeners();
+  }
+
   EquipmentState stateFor(String uuid) => _runtimes[uuid]?.state ?? const EquipmentState();
+
+  /// [radio1]'s own power reading, when its driver can report one —
+  /// [SettingsService.currentPower] otherwise, the manual fallback for a
+  /// radio that can't report power or isn't connected at all. The one rule
+  /// both power surfaces (Station Configuration's Power field, per-QSO
+  /// station-info capture) show/capture, kept in one place so it can't
+  /// drift between them.
+  num? get displayedPower {
+    final uuid = _radio1;
+    final live = uuid == null ? null : stateFor(uuid).power;
+    return live ?? _settings.currentPower;
+  }
+
+  /// Pushes [watts] to radio1's session, if it has one and is connected — a
+  /// no-op otherwise. Unlike frequency/mode, which flow through RadioService
+  /// because several surfaces read and write them, power has exactly one UI
+  /// surface today (Station Configuration's compact Power field), so it goes
+  /// straight through here instead of by way of a second app-wide concept.
+  void setPower(num watts) {
+    final uuid = _radio1;
+    if (uuid == null) return;
+    final session = _runtimes[uuid]?.session;
+    if (session == null) return;
+    try {
+      session.setPower(watts);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:set-power');
+    }
+  }
 
   /// The type handling [node], or null if it isn't in the catalogue — a
   /// record written by a newer build, or by a driver that has since been
@@ -328,6 +379,13 @@ class CatService extends ChangeNotifier {
     // silently designating some other radio.
     final radio1 = stored['radio1'];
     if (radio1 is String && _nodes.containsKey(radio1)) _radio1 = radio1;
+    final designated = stored['designated'];
+    if (designated is Map) {
+      for (final entry in designated.entries) {
+        final uuid = entry.value;
+        if (uuid is String && _nodes.containsKey(uuid)) _designated['${entry.key}'] = uuid;
+      }
+    }
   }
 
   Future<void> _save() => _settings.setStationEquipment({
@@ -340,6 +398,7 @@ class CatService extends ChangeNotifier {
         // `if (_radio1 != null)` would behave identically and fail no test,
         // and that is correct rather than a hole in the tests.
         'radio1': _radio1,
+        'designated': _designated,
         'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
       });
 
@@ -381,7 +440,12 @@ class CatService extends ChangeNotifier {
     // The newest transceiver takes the VFO. Only transceivers: radio1 is the
     // rig whose VFO is vfoA, and the category system exists so a rotator or a
     // relay board added later cannot take it.
-    if (registry.typeFor(stored.typeKey)?.category == kCategoryTransceiver) _radio1 = stored.uuid;
+    final category = registry.typeFor(stored.typeKey)?.category;
+    if (category == kCategoryTransceiver) _radio1 = stored.uuid;
+    // Same rule as radio1, for antenna/key: the newest one designated, so
+    // adding the shack's only antenna or key needs no separate picker visit.
+    if (category == kCategoryAntenna) _designated[kCategoryAntenna] = stored.uuid;
+    if (category == kCategoryKey) _designated[kCategoryKey] = stored.uuid;
     await _save();
     _trackRadio('radio_added', stored.typeKey, extra: {'via': via});
     notifyListeners();
@@ -501,6 +565,8 @@ class CatService extends ChangeNotifier {
     // moving the logging panel onto a different rig immediately after a
     // destructive action. The dropdown is right there.
     if (_radio1 == uuid) _radio1 = null;
+    // Same rule for antenna/key designations.
+    _designated.removeWhere((_, designatedUuid) => designatedUuid == uuid);
     await _save();
     notifyListeners();
   }
@@ -679,6 +745,11 @@ class CatService extends ChangeNotifier {
         // A session from a superseded connection must not write state.
         if (runtime.connection != connection) return;
         _applyReading(uuid, reading);
+      },
+      onPower: (watts) {
+        if (runtime.connection != connection) return;
+        if (stateFor(uuid).power == watts) return;
+        _setState(uuid, stateFor(uuid).copyWith(power: watts));
       },
       onDiagnostic: (note) {
         // Same guard, same reason: a superseded session's account of itself
@@ -976,7 +1047,11 @@ class CatService extends ChangeNotifier {
     if (runtime.state.stale) _setState(uuid, runtime.state.copyWith(stale: false));
     final merged = VfoReading(
       freqKHz: reading.freqKHz ?? runtime.state.vfo.freqKHz,
-      mode: reading.mode ?? runtime.state.vfo.mode,
+      // CW-R is reverse-sideband CW, not a mode of its own to the rest of the
+      // app — every driver's own vocabulary keeps it (a radio must still be
+      // told to flip sideband), but nothing past this point should learn a
+      // mode ADIF and the log don't have.
+      mode: (reading.mode == 'CW-R' ? 'CW' : reading.mode) ?? runtime.state.vfo.mode,
     );
     // A radio echoing back what it already reported shouldn't churn this
     // service's own listeners — but it must still reach RadioService.
@@ -1273,15 +1348,24 @@ class _NodeRuntime {
 class _NodeSink implements EquipmentSink {
   final EquipmentConnection connection;
   final void Function(VfoReading) onReading;
+  final void Function(num) onPower;
   final void Function(String?) onDiagnostic;
 
-  _NodeSink({required this.connection, required this.onReading, required this.onDiagnostic});
+  _NodeSink({
+    required this.connection,
+    required this.onReading,
+    required this.onPower,
+    required this.onDiagnostic,
+  });
 
   @override
   void send(List<int> bytes) => connection.send(bytes);
 
   @override
   void report(VfoReading reading) => onReading(reading);
+
+  @override
+  void reportPower(num watts) => onPower(watts);
 
   @override
   void reportDiagnostic(String? note) => onDiagnostic(note);

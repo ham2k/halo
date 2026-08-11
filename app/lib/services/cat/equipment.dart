@@ -17,6 +17,14 @@ import 'package:flutter/foundation.dart';
 /// behaviour today, so an enum would churn for nothing.
 const kCategoryTransceiver = 'transceiver';
 
+/// A physical antenna — no live connection, only a type worth recording
+/// against a QSO.
+const kCategoryAntenna = 'antenna';
+
+/// A physical CW key — no live connection, only a type worth recording
+/// against a QSO.
+const kCategoryKey = 'key';
+
 /// Old [EquipmentNode.typeKey] values, mapped to what the catalogue calls
 /// them now.
 ///
@@ -138,6 +146,11 @@ class EquipmentState {
 
   final VfoReading vfo;
 
+  /// The transceiver's RF output power, in watts, when the driver's protocol
+  /// can report it — null on a driver that has never asked, not on a rig
+  /// reporting zero.
+  final num? power;
+
   /// Connected, but the radio has stopped saying anything.
   ///
   /// NOT the same as disconnected, and that distinction is the point: a
@@ -159,6 +172,7 @@ class EquipmentState {
     this.status = EquipmentStatus.disconnected,
     this.error,
     this.vfo = const VfoReading(),
+    this.power,
     this.stale = false,
     this.diagnostic,
   });
@@ -167,6 +181,7 @@ class EquipmentState {
     EquipmentStatus? status,
     String? error,
     VfoReading? vfo,
+    num? power,
     bool? stale,
     String? diagnostic,
     bool clearDiagnostic = false,
@@ -177,6 +192,7 @@ class EquipmentState {
         // drop the stale message rather than carry it into the next state.
         error: status == null || status == EquipmentStatus.error ? (error ?? this.error) : null,
         vfo: vfo ?? this.vfo,
+        power: power ?? this.power,
         stale: stale ?? this.stale,
         // Needs its own flag rather than a null argument: a driver saying
         // "nothing to report any more" and a caller not mentioning it at all

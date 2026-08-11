@@ -303,7 +303,11 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, our, 'my_lat', 'lat');
   _set(f, our, 'my_lon', 'lon');
   _set(f, our, 'my_pfx', 'entityPrefix');
-  _set(f, our, 'tx_pwr', 'power');
+  // num, not the raw string: `power` is also written by CAT capture
+  // (Qso.power) as a number, and the two origins have to agree on a type.
+  // Top-level, not under `our` — QSON convention (matching freq/band/mode).
+  _set(f, qso, 'tx_pwr', 'power', num.tryParse);
+  _set(f, their, 'rx_pwr', 'power', num.tryParse);
 
   final notes = _present(f['notes']) ??
       _present(f['notes_intl']) ??

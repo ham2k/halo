@@ -19,6 +19,7 @@ import '../../tools/form_chrome_labels.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
+import '../settings_view.dart';
 import '../station_panel.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
@@ -215,8 +216,47 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return node == null ? null : cat.displayNameFor(node);
   }
 
-  /// The Radio control's quick-access dialog: the whole Station Configuration
-  /// panel, without leaving the operation to see it.
+  /// Merges the operator's tracked station-info fields (Station
+  /// Configuration's "Track Station Info for each QSO") into a QSO at save
+  /// time. Runs before `decorateQsoBeforeSave`'s extension hooks, so an
+  /// activity can still see and adjust the captured values. Rig/antenna/key
+  /// nest under `our`; power is top-level (`Qso.power`), matching QSON
+  /// convention (freq/band/mode) rather than app-only placement.
+  Map<String, dynamic> _withStationInfo(Map<String, dynamic> qso) {
+    if (!_gatoEnabled) return qso;
+    final settings = widget.services.settings;
+    if (!settings.trackStationInfo) return qso;
+    final cat = widget.services.cat;
+    final tracked = settings.stationInfoTrackedFields;
+
+    String? nameFor(String? uuid) {
+      final node = uuid == null ? null : cat.nodeFor(uuid);
+      return node == null ? null : cat.displayNameFor(node);
+    }
+
+    final our = {...(qso['our'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{}};
+    num? power;
+    if (tracked.contains('rig')) {
+      final name = nameFor(cat.radio1);
+      if (name != null) our['rig'] = name;
+    }
+    if (tracked.contains('power')) {
+      power = cat.displayedPower;
+    }
+    if (tracked.contains('antenna')) {
+      final name = nameFor(cat.designatedFor(kCategoryAntenna));
+      if (name != null) our['antenna'] = name;
+    }
+    if (tracked.contains('key')) {
+      final name = nameFor(cat.designatedFor(kCategoryKey));
+      if (name != null) our['key'] = name;
+    }
+    return {...qso, 'our': our, if (power != null) 'power': power};
+  }
+
+  /// The Radio control's quick-access dialog: current configuration and the
+  /// current rig only, not the full Station Configuration page — that's one
+  /// tap away via the footer's More Settings.
   Future<void> _openStationConfigDialog(BuildContext context) => showModalPane<void>(
     context,
     title: context.t.settings.station.title,
@@ -224,7 +264,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // StationPanel is its own scrolling ListView — the pane must not also
     // wrap it in a SingleChildScrollView.
     scrollable: false,
-    builder: (context) => StationPanel(services: widget.services),
+    builder: (context) => StationPanel(
+      services: widget.services,
+      compact: true,
+      onMoreSettings: () {
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        navigator.push(MaterialPageRoute(
+          builder: (_) => SettingsView(services: widget.services, initialPanel: 'station'),
+        ));
+      },
+    ),
   );
 
   @override
@@ -727,7 +777,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 .loggingControls(widget.operation.data, qso: qso)
                 .then((result) => result.loadFailed ? null : result.controls),
             decorateQsoBeforeSave: (qso) =>
-                widget.services.extensions.decorateQsoBeforeSave(qso, widget.operation.data),
+                widget.services.extensions.decorateQsoBeforeSave(_withStationInfo(qso), widget.operation.data),
             decorateRef: widget.services.extensions.decorateRef,
             interpretCommand: widget.services.extensions.interpretCommand,
             interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,

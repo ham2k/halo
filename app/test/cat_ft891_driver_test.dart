@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -31,6 +32,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -72,6 +76,18 @@ void main() {
       expect(buildSetModeCommand(null), isNull);
       // 'A' is reserved in the MD table.
       expect(parseModeParams('0A'), isNull);
+    });
+
+    test('PC is a 3-digit level, watts directly per the CAT manual', () {
+      expect(buildSetPowerCommand(100), 'PC100;');
+      expect(buildSetPowerCommand(5), 'PC005;');
+      expect(parsePowerParams('100'), 100);
+      expect(parsePowerParams('05'), isNull, reason: 'PC is always 3 digits');
+    });
+
+    test('a power outside the documented 5-100 range is clamped', () {
+      expect(buildSetPowerCommand(150), 'PC100;');
+      expect(buildSetPowerCommand(0), 'PC005;');
     });
 
     test('a command is only a command once terminated', () {
@@ -180,10 +196,20 @@ void main() {
       expect(sink.sent, isEmpty);
     });
 
+    test('reports a PC reply as power', () {
+      session.feed('PC100;');
+      expect(sink.powers, [100]);
+    });
+
+    test('builds a power command from watts', () {
+      session.setPower(75);
+      expect(sink.sent, ['PC075;']);
+    });
+
     test('starting updates enables auto-information and asks once immediately', () {
       fakeAsync((async) {
         session.startUpdates();
-        expect(sink.sent, ['AI1;', 'FA;', 'MD0;']);
+        expect(sink.sent, ['AI1;', 'FA;', 'MD0;', 'PC;']);
         session.teardown();
         async.flushTimers();
       });
@@ -195,7 +221,7 @@ void main() {
         sink.sent.clear();
 
         async.elapse(const Duration(seconds: 5));
-        expect(sink.sent, ['FA;', 'MD0;']);
+        expect(sink.sent, ['FA;', 'MD0;', 'PC;']);
 
         sink.sent.clear();
         session.stopUpdates();

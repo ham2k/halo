@@ -108,6 +108,8 @@ class _FakeSession implements EquipmentSession {
   @override
   void setMode(String mode) => commands.add('mode:$mode');
   @override
+  void setPower(num watts) => commands.add('power:$watts');
+  @override
   void teardown() {}
 }
 

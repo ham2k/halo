@@ -156,6 +156,14 @@ class Qso {
   /// present. Nothing in HaLo writes it yet; imports/sync may carry it.
   String? get ourGrid => _our['grid'] as String?;
 
+  /// Station Configuration's "Track Station Info for each QSO" — the
+  /// transceiver/antenna/CW key display name captured at log time, when the
+  /// operator has that field turned on. Null whenever tracking is off, the
+  /// field isn't selected, or nothing was designated to capture from.
+  String? get ourRig => _our['rig'] as String?;
+  String? get ourAntenna => _our['antenna'] as String?;
+  String? get ourKey => _our['key'] as String?;
+
   String get theirCall => (_their['call'] as String?) ?? '';
   // `guess` (the merged lookup result) stays nested rather than flattened
   // onto `their`,
@@ -180,6 +188,13 @@ class Qso {
   /// or a lookup guess; the QSO row shows it after the signal reports.
   String? get theirExchange => (_their['exchange'] as String?) ?? (_theirGuess['exchange'] as String?);
 
+  /// The other station's transmit power in watts — nested under `their`
+  /// (unlike [power], which is ours and lives top-level), matching how
+  /// `sentRST`/`receivedRST` split. Nothing in HaLo captures this at log
+  /// time; the ADIF import target for `RX_PWR` (`adif_to_qson.dart`) is the
+  /// only writer today.
+  num? get theirPower => _coercedPower(_their['power']);
+
   /// Whether the value returned for `their[field]` (e.g. `'name'`, `'grid'`,
   /// `'state'`, `'entityPrefix'`, `'flag'`) is coming from the nested `guess`
   /// rather than an entered value — true exactly when the coalescing getters
@@ -191,6 +206,27 @@ class Qso {
   String? get band => data['band'] as String?;
   String? get mode => data['mode'] as String?;
   String? get notes => data['notes'] as String?;
+
+  /// Our transmit power in watts — top-level, alongside [freq]/[band]/[mode],
+  /// matching QSON convention elsewhere in the ecosystem (app-polo) rather
+  /// than nesting under `our`. Station Configuration's "Track Station Info
+  /// for each QSO" captures it at log time; the ADIF import target for
+  /// `TX_PWR` (`adif_to_qson.dart`) writes here too, so an imported QSO may
+  /// carry this even when HaLo's own tracking is off.
+  ///
+  /// Coerced rather than cast: a QSO imported by an older build, or synced
+  /// from a client that never converted `TX_PWR`, stores this as a raw
+  /// String — `as num?` throws on those rows instead of returning null.
+  num? get power => _coercedPower(data['power']);
+
+  /// Shared by [power] and [theirPower]: a raw `power` value is a `num` from
+  /// CAT capture or a fresh ADIF import, or a `String` from a QSO imported
+  /// before the ADIF importer's own fix — `as num?` throws on the latter.
+  static num? _coercedPower(Object? value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
+  }
 
   int? get startAtMillis => (data['startAtMillis'] as num?)?.toInt();
   DateTime? get startAt =>

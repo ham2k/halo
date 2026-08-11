@@ -23,6 +23,12 @@ abstract class EquipmentSink {
   /// A fresh reading from the equipment.
   void report(VfoReading reading);
 
+  /// A fresh RF output power reading, in watts. Only called by a driver
+  /// whose protocol actually answers a power query — one that never asks
+  /// never calls this, which is how [EquipmentState.power] tells "unknown"
+  /// apart from "the radio said zero".
+  void reportPower(num watts);
+
   /// Something a DEVELOPER would want to know about this session — what a
   /// protocol negotiated, what a driver had to work out for itself. Not an
   /// error (nothing is wrong) and not a reading (it is about the session, not
@@ -65,6 +71,12 @@ abstract class EquipmentSession {
   /// `LSB` by the manager before it reaches a driver, because no CAT
   /// protocol has an "SSB" mode.
   void setMode(String mode);
+
+  /// Sets the transceiver's RF output power, in watts. A driver whose
+  /// protocol represents power as a relative scale (Kenwood's `PC`, CI-V's
+  /// 0-255 level) converts against the radio's own rated maximum — see each
+  /// driver's own notes on how confident that conversion is.
+  void setPower(num watts);
 
   /// Say goodbye over a still-open connection: unsubscribe, cancel timers.
   /// The manager calls this *before* closing, in its own guard. polo found

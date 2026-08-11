@@ -6,7 +6,41 @@ import 'package:test/test.dart';
 
 Qso _qso(Map<String, dynamic> their) => Qso(uuid: 'u', operationUuid: 'op', data: {'their': their});
 
+Qso _qsoData(Map<String, dynamic> data) => Qso(uuid: 'u', operationUuid: 'op', data: data);
+
 void main() {
+  group('Qso.power', () {
+    // Top-level, alongside freq/band/mode — not nested under `our` — to
+    // match QSON convention elsewhere in the ecosystem (app-polo).
+    test('a number from CAT capture reads back as a number', () {
+      expect(_qsoData({'power': 100}).power, 100);
+      expect(_qsoData({'power': 76.5}).power, 76.5);
+    });
+
+    test('no power at all is null, not zero', () {
+      expect(_qsoData({}).power, isNull);
+    });
+
+    test('a legacy String value (an older import, before the ADIF fix) coerces instead of throwing', () {
+      expect(_qsoData({'power': '100'}).power, 100);
+      expect(_qsoData({'power': 'garbage'}).power, isNull);
+    });
+  });
+
+  group('Qso.theirPower', () {
+    test('reads back from their.power (ADIF RX_PWR)', () {
+      expect(_qso({'power': 50}).theirPower, 50);
+    });
+
+    test('no power at all is null, not zero', () {
+      expect(_qso({}).theirPower, isNull);
+    });
+
+    test('a legacy String value coerces instead of throwing', () {
+      expect(_qso({'power': '50'}).theirPower, 50);
+      expect(_qso({'power': 'garbage'}).theirPower, isNull);
+    });
+  });
   group('Qso guess coalescing & provenance', () {
     test('an entered value wins over the guess and is not flagged guessed', () {
       final q = _qso({

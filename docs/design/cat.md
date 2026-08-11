@@ -519,6 +519,49 @@ Smart VFO Snap does not undo it: the snapper only reacts to readings from the ra
 arrive as `VfoOrigin.user` and rebase it, and its smallest-move rule leaves anything under 200 Hz
 where it is regardless.
 
+## Power
+
+Unlike frequency/mode, power has exactly one UI surface (Station Configuration's compact Power
+field), so it skips the whole `RadioService`/`VfoOrigin` dance the VFO needs to keep two directions
+from chasing each other. `EquipmentState.power` (a plain `num?` watts, parallel to `vfo`) is set by
+`EquipmentSink.reportPower`, merged into state the same way `_applyReading` merges a `VfoReading`;
+writing goes straight from the field to `CatService.setPower`, which pushes to `radio1`'s session if
+one is connected and no-ops otherwise. The field shows the live reading when there is one and
+`SettingsService.currentPower` — the manual fallback — when there isn't. A second way in: the POWER
+command (`extensions/core/radio-commands`'s `PowerCommand`, e.g. "5W" typed into the call field)
+dispatches the same pair of writes via `main.dart`'s `handleCommandAction` `setPower` case — it has
+no QSO-scoped widget state to touch, unlike BAND/MODE/frequency, so it's dispatched the same way as
+SET/SHOW rather than through the logging panel's local fields. Unlike its BAND/MODE/frequency
+siblings in the same extension, PowerCommand checks `ctx.enabledExperiments` (docs/extensions/hooks.md)
+and stays invisible while `gato` is off — CAT power control has no surface anywhere else without it.
+
+Every driver's protocol represents power differently, and confidence differs between reading and
+writing it:
+
+- **flrig** has a genuine absolute-watts concept on both sides (`rig.get_power`/`rig.set_power`), so
+  no conversion is guessed either way.
+- **rigctld** reads real watts (Hamlib's `RFPOWER_METER_WATTS`), but that level is read-only in
+  Hamlib — a `set_level` against it is rejected by every correct backend. Writing goes through
+  `RFPOWER` instead, a 0.0-1.0 fraction of the rig's own maximum with no command that states what
+  that maximum is, so the write path carries the same assumed-ceiling guess as the four below it.
+- **Kenwood, FT-891, Icom CI-V, FlexRadio** represent power as a relative scale (Kenwood/FT-891's
+  `PC` 0-100; CI-V's 0-255 level; SmartSDR's `rfpower` 0-100) with no command that states the radio's
+  own maximum, on both reads and writes. Each driver documents its own assumption (see
+  `icom_civ_driver.dart`'s `_assumedMaxWatts`). The Icom CI-V driver is model-agnostic — the ceiling
+  comes from `IcomCivSession.maxWatts`, sourced from the pairing's config rather than hardcoded — so
+  `equipment_registry.dart`'s `ic705Model` overrides it to the IC-705's real 10W SSB/CW ceiling
+  instead of the assumed 100W; below that ceiling the 0-255 level actually resolves to sub-watt
+  steps, so the driver reports one decimal place there instead of rounding to a whole watt. None of
+  the six drivers' power path has met real hardware; `hardwareVerified` on each driver still reflects
+  only its frequency/mode verification, since that flag is per-driver, not per-capability.
+- The IC-705's SET level (0x14 0x0A) doesn't drop when it's running off its own battery, even though
+  actual output does — confirmed LIVE (5W actual against a 10W SET level on battery). CI-V has no
+  command for actual transmitted power outside a live transmission (the RF-power METER, 0x15 0x11,
+  reads 0 at rest), so `IcomCivSession` infers battery vs. external DC from the DC-input-voltage
+  meter (0x15 0x15) instead, and clamps the reported watts to `batteryMaxWatts` (5, from
+  `ic705Model`'s override) whenever that reading is below `_batteryDeciVoltsCeiling`. The threshold
+  and both wattage figures come from one bench session each, not a published spec.
+
 ## Smart VFO Snap
 
 Off by default, and it is the only thing in the app that moves the operator's radio without being

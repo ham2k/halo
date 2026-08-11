@@ -5691,6 +5691,47 @@ void main() {
     });
   });
 
+  testWidgets('setPower (the POWER command) forwards to onCommandAction, same whitelist trap as reloadDataFiles', (tester) async {
+    // Unlike setVfo it has no QSO-scoped widget state of its own to update
+    // here — a missing branch would still show "Change power to 5W?" /
+    // "Power set to 5W" and silently do nothing.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakePowerCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != '5W') return null;
+      return {
+        'describe': 'Change power to **5W**?',
+        'confirm': 'Power set to **5W**',
+        'commands': [
+          {
+            'setPower': {'watts': 5},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakePowerCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    final field = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(field, '5W');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'setPower');
+    expect(dispatched.single.value, {'watts': 5});
+  });
+
   testWidgets('a paramless overlay action (devTester) forwards to onCommandAction', (tester) async {
     // Same silent-no-op trap as the reloadDataFiles test above, for the
     // paramless `{devTester: {}}` shape: without its _dispatchActions

@@ -27,10 +27,12 @@ const _sliceStatusLine =
 const _sliceStatusLineWithDecimals =
     'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.071820 client_handle=0x1C61D553 index_letter=A mode=CW wide=0';
 const _otherSliceStatusLine = 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 mode=USB';
+const _transmitStatusLine = 'S5AC2F980|transmit tune=0 show_tx_in_waterfall=0 rfpower=75 tunepower=10';
 
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -38,6 +40,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -97,6 +102,17 @@ void main() {
         async.flushTimers();
       });
     });
+
+    test('also subscribes to (and unsubscribes from) transmit status, for power', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        expect(sentAny('sub tx all'), isTrue);
+        session.stopUpdates();
+        expect(sentAny('unsub tx all'), isTrue);
+        async.flushTimers();
+      });
+    });
   });
 
   group('status parsing', () {
@@ -152,6 +168,18 @@ void main() {
       session.feed('$_otherSliceStatusLine\r\n$_sliceStatusLine\r\n');
       expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DIGU')]);
     });
+
+    test('reports rfpower from a transmit status line', () {
+      session.feed('$_transmitStatusLine\n');
+      expect(sink.powers, [75]);
+    });
+
+    test('a slice status line with rfpower-shaped text does not report power', () {
+      // rfpower belongs to `transmit`, not `slice` — a coincidental field
+      // name on the wrong status object must not be read as one.
+      session.feed('S5AC2F980|slice 0 in_use=1 mode=USB\n');
+      expect(sink.powers, isEmpty);
+    });
   });
 
   group('commands', () {
@@ -163,6 +191,11 @@ void main() {
     test('sets the mode on the tracked slice', () {
       session.setMode('usb');
       expect(sentAny('slice set 0 mode=USB'), isTrue);
+    });
+
+    test('sets power on the transmit object, in watts', () {
+      session.setPower(75);
+      expect(sentAny('transmit set rfpower=75'), isTrue);
     });
 
     test('numbers each command with an increasing sequence', () {

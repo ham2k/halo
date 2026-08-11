@@ -21,6 +21,10 @@
 //   rig.set_mode       → <value></value>                  (string param)
 //   unknown method     → HTTP 200 with a <fault> struct
 // The Content-length header is spelled lowercase-l; parse it blind to case.
+//
+// rig.get_power/rig.set_power (watts, as a plain number) are documented
+// flrig XML-RPC methods but were NOT captured against a live instance —
+// unverified, same caveat CatService's `hardwareVerified` flag exists for.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -81,7 +85,7 @@ class FlrigDriver extends EquipmentDriver {
 /// What kind of answer the outstanding request will produce — the only
 /// correlation an XML-RPC response offers is "it answers the oldest
 /// unanswered question".
-enum _Ask { frequency, mode, ignored }
+enum _Ask { frequency, mode, power, ignored }
 
 class FlrigSession implements EquipmentSession {
   final EquipmentSink _sink;
@@ -140,6 +144,10 @@ class FlrigSession implements EquipmentSession {
     if (_outstanding != null || _queue.isNotEmpty) return;
     _call(_Ask.frequency, 'rig.get_vfo');
     _call(_Ask.mode, 'rig.get_mode');
+    // Documented flrig XML-RPC method (rig.get_power/rig.set_power, watts as
+    // a plain number) — unlike get_vfo/get_mode above, not captured against
+    // a live flrig instance, so treat the exact reply shape as unverified.
+    _call(_Ask.power, 'rig.get_power');
   }
 
   @override
@@ -202,6 +210,9 @@ class FlrigSession implements EquipmentSession {
         }
       case _Ask.mode:
         _report(VfoReading(mode: appModeForFlrigMode(value)));
+      case _Ask.power:
+        final watts = double.tryParse(value);
+        if (watts != null) _sink.reportPower(watts);
       case _Ask.ignored:
         break;
     }
@@ -229,6 +240,10 @@ class FlrigSession implements EquipmentSession {
 
   @override
   void setMode(String mode) => _call(_Ask.ignored, 'rig.set_mode', '<param><value>${flrigModeForAppMode(mode)}</value></param>');
+
+  @override
+  void setPower(num watts) =>
+      _call(_Ask.ignored, 'rig.set_power', '<param><value><double>$watts</double></value></param>');
 
   @override
   void startUpdates() {

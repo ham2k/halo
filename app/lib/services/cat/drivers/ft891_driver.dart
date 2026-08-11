@@ -21,6 +21,10 @@
 // Not exercised: the mode-only write path on a rig whose mode CAT code we
 // have no entry for, which sends nothing by design (buildSetModeCommand
 // returns null) — a code path, not a radio behaviour.
+//
+// Also not exercised: `PC` (RF power). Documented in the CAT manual, but
+// added after the bench session above and never sent to or read from the
+// radio it describes.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -100,6 +104,9 @@ class Ft891Session implements EquipmentSession {
   void _requestFrequencyAndMode() {
     _send(buildReadFrequencyCommand());
     _send(buildReadModeCommand());
+    // Documented (PC, see yaesu_cat_codec.dart) but NOT part of the bench
+    // verification this driver's freq/mode path has — see the file header.
+    _send(buildReadPowerCommand());
   }
 
   /// Reports upward, and tells the poller whether the radio is moving.
@@ -145,6 +152,10 @@ class Ft891Session implements EquipmentSession {
         final mode = parseModeParams(command.params);
         if (mode != null) _report(VfoReading(mode: mode));
 
+      case 'PC':
+        final watts = parsePowerParams(command.params);
+        if (watts != null) _sink.reportPower(watts);
+
       // What Auto-Information actually pushes. One packet carries both the
       // frequency and the mode, so a dial turn reaches the app immediately
       // instead of waiting out the poll.
@@ -172,6 +183,9 @@ class Ft891Session implements EquipmentSession {
     // malformed command it would silently reject.
     if (command != null) _send(command);
   }
+
+  @override
+  void setPower(num watts) => _send(buildSetPowerCommand(watts));
 
   @override
   void startUpdates() {

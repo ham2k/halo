@@ -463,7 +463,7 @@ class FormRendererState extends State<FormRenderer> {
         val = false;
       } else if (fieldType == 'list') {
         val = <Map<String, dynamic>>[];
-      } else if (fieldType == 'multiselect') {
+      } else if (fieldType == 'multiselect' || fieldType == 'checkboxGroup') {
         val = <String>[];
       } else if (['select', 'radio', 'number', 'account'].contains(fieldType)) {
         val = null;
@@ -904,6 +904,8 @@ class FormRendererState extends State<FormRenderer> {
         return _buildListField(el, theme);
       case 'multiselect':
         return _buildMultiselectField(el, theme);
+      case 'checkboxGroup':
+        return _buildCheckboxGroupField(el, theme);
       case 'account':
         return _buildAccountField(el, theme);
       case 'select':
@@ -1602,6 +1604,90 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  /// A `fieldType: 'checkboxGroup'` field: every option checked or unchecked
+  /// inline, in one wrapping row — unlike `multiselect`, there is no summary
+  /// row and no dialog, because the vocabulary this is for (a station's own
+  /// enabled bands, say) is short enough to show whole. The dialect: `value`
+  /// is a plain string list; `options` is `[{label, value}]`. Selection
+  /// order always follows the canonical `options` order, same as
+  /// `multiselect`.
+  Widget _buildCheckboxGroupField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final description = el['description'] as String?;
+    final options = (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+    final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
+    final selected = ((_values[key] as List?) ?? const []).toSet();
+
+    void toggle(dynamic value, bool on) {
+      final newSelected = {...selected};
+      if (on) {
+        newSelected.add(value);
+      } else {
+        newSelected.remove(value);
+      }
+      // Canonical order, same as multiselect's commit — the selection never
+      // depends on the order options happened to be tapped in.
+      final newValue = [
+        for (final opt in options)
+          if (newSelected.contains(opt['value'])) opt['value'],
+      ];
+      setState(() {
+        _values[key] = newValue;
+        _errors.remove(key);
+      });
+      _handleFieldBlurOrInteraction(key, newValue);
+    }
+
+    return Focus(
+      focusNode: _focusNodes[key],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+          ),
+          if (description != null && description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xxs),
+              child: Text(description, style: theme.textTheme.bodySmall?.copyWith(color: devModeColor)),
+            ),
+          Wrap(
+            children: [
+              for (final opt in options)
+                // Each option is its own tap target — a Checkbox alone
+                // hit-tests only the box, and the label beside it would do
+                // nothing when tapped.
+                InkWell(
+                  onTap: _isSubmitting ? null : () => toggle(opt['value'], !selected.contains(opt['value'])),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: Space.sm),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Checkbox(
+                          value: selected.contains(opt['value']),
+                          onChanged: _isSubmitting ? null : (val) => toggle(opt['value'], val ?? false),
+                        ),
+                        Text(opt['label'] as String),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (errorText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs, left: Space.xs),
+              child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// A `fieldType: 'multiselect'` field: pick several values from a fixed
   /// vocabulary — a single row summarizing the selection as a
   /// comma-separated list, tapping opens [_openMultiselectEditor]. The
@@ -1651,6 +1737,13 @@ class FormRendererState extends State<FormRenderer> {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final defaultValue = el['defaultValue'] is List ? (el['defaultValue'] as List).toSet() : null;
+
+    // A short, fixed vocabulary (four QSO fields to track, say) reads as
+    // sparse and edge-to-edge in the same wide, flush layout that suits
+    // Bands or Modes — dozens of options, searched and disclosed in tiers.
+    // `compact` opts out of both: the dialog takes only `compactDialogWidth`,
+    // and each row keeps its own ListTile inset instead of running flush.
+    final compact = el['compact'] == true;
 
     // Three disclosure tiers: `common: true` options at level 0, unflagged
     // at level 1, `uncommon: true` at level 2. With no uncommon options the
@@ -1743,12 +1836,13 @@ class FormRendererState extends State<FormRenderer> {
             ...filtering ? unknownRows.where((r) => (r['label'] as String).toLowerCase().contains(query)) : unknownRows,
           ];
           return HaloDialog(
-            wide: true,
+            wide: !compact,
             title: Text(label),
             // Rows run edge to edge; the shell's own scroll view is off because
             // this content scrolls itself, and its width comes from the shared
-            // sizing.
-            contentPadding: EdgeInsets.zero,
+            // sizing. A compact dialog keeps HaloDialog's own default inset
+            // instead, since its rows carry their own ListTile padding.
+            contentPadding: compact ? null : EdgeInsets.zero,
             scrollable: false,
             content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1763,7 +1857,7 @@ class FormRendererState extends State<FormRenderer> {
                           for (final opt in visible)
                             SwitchListTile(
                               dense: true,
-                              contentPadding: EdgeInsets.zero,
+                              contentPadding: compact ? null : EdgeInsets.zero,
                               // Selected values read bold, unselected ones
                               // greyed, so the states scan apart without
                               // hunting for the switch thumbs.

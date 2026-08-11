@@ -2,11 +2,12 @@
   "key": "radio-commands",
   "name": "Radio Commands",
   "version": "0.0.1",
-  "description": "Frequency, band, and mode shortcuts typed into the call field",
+  "description": "Frequency, band, mode, and power shortcuts typed into the call field",
   "keywords": [
     "band",
     "frequency",
     "mode",
+    "power",
     "vfo"
   ],
   "hooks": [

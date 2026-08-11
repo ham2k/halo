@@ -247,7 +247,7 @@ Extensions access settings through two host calls:
   locale, font scale, distance units, logging toggles, bands/modes,
   privacy consents, the active profile's `operatorCall`, `operatorName`,
   `operatorEmail`, `operatorClub` and `operatorSection`, `syncEnabled`,
-  `developerMode`, `appName`) plus every extension's own settings group
+  `developerMode`, `appName`, `enabledExperiments`) plus every extension's own settings group
   under `extensions` (keyed `extension_<key>`). Reading is unrestricted —
   settings are not secrets. Credentials and accounts are deliberately
   absent: they live in the platform keychain via the account hook system,

@@ -22,6 +22,13 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   (see `packages/halo_build_tools/lib/src/edition.dart`). For a hook whose
   static config must vary per-edition — e.g. SOTA's OAuth client, since each
   edition is a distinct app identity registered as its own client.
+* `enabledExperiments?: string[]` — Keys of every experiment
+  (`app/experiments.yaml`) currently on for this user. For a hook whose own
+  effect must stay invisible until an experiment gating the surface it
+  belongs to has shipped ungated — checked per-call, since gating at the
+  whole-extension `manifest.experiments` grain would also hide any other
+  hook the same extension registers (e.g. `radio-commands`' POWER command
+  checks `gato` here; its BAND/MODE/frequency siblings don't).
 * `getOperation?(uuid)` / `getQsos?(operationUuid)` — log-data reads, for
   hooks that only receive part of the picture as arguments (e.g. a `command`
   hook handed the operation it's typed into, needing the existing QSOs —

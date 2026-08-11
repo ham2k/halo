@@ -150,6 +150,7 @@ class KenwoodSession implements EquipmentSession {
     _send(buildKenwoodReadFrequencyCommand());
     _send(buildKenwoodReadModeCommand());
     _send(buildKenwoodReadInfoCommand());
+    _send(buildKenwoodReadPowerCommand());
   }
 
   /// Reports upward, and tells the poller whether the radio is moving.
@@ -200,6 +201,10 @@ class KenwoodSession implements EquipmentSession {
 
       case 'IF':
         _handleInfo(command.params);
+
+      case 'PC':
+        final watts = parseKenwoodPowerParams(command.params);
+        if (watts != null) _sink.reportPower(watts);
     }
     // Everything else is an acknowledgement or something we don't track;
     // ignoring them is what lets AI mode be noisy without harm.
@@ -280,6 +285,9 @@ class KenwoodSession implements EquipmentSession {
     // malformed command it would silently reject.
     if (command != null) _send(command);
   }
+
+  @override
+  void setPower(num watts) => _send(buildKenwoodSetPowerCommand(watts));
 
   @override
   void startUpdates() {

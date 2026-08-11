@@ -21,6 +21,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -28,6 +29,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -98,6 +102,12 @@ void main() {
       expect(sink.readings, [const VfoReading(freqKHz: 7074)]);
     });
 
+    test('a labeled power line reports watts', () {
+      final sink = _FakeSink();
+      RigctldSession(sink).feed('get_level:\nRFPOWER_METER_WATTS: 12.500000\n');
+      expect(sink.powers, [12.5]);
+    });
+
     test('error reports and unlabeled lines report nothing', () {
       final sink = _FakeSink();
       final session = RigctldSession(sink);
@@ -134,6 +144,21 @@ void main() {
       RigctldSession(sink).setMode('NO-SUCH');
       expect(sink.sent, isEmpty);
     });
+
+    test('power goes out as an RFPOWER fraction, not the read-only meter level', () {
+      // RFPOWER_METER_WATTS is Hamlib's read-only measured-output level —
+      // set_level against it is rejected by every correct backend. RFPOWER
+      // is the genuinely settable one, at the cost of an assumed 100W max.
+      final sink = _FakeSink();
+      RigctldSession(sink).setPower(75);
+      expect(sink.sent, ['L RFPOWER 0.750\n']);
+    });
+
+    test('a power above the assumed maximum clamps to full scale, not over 1.0', () {
+      final sink = _FakeSink();
+      RigctldSession(sink).setPower(150);
+      expect(sink.sent, ['L RFPOWER 1.000\n']);
+    });
   });
 
   group('polling', () {
@@ -146,7 +171,7 @@ void main() {
       // passband line without order bookkeeping. The probe leads so its
       // answer lands before the SECOND poll; the burst behind it goes out
       // bare on purpose rather than waiting one RTT.
-      expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n']);
+      expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n', '+l RFPOWER_METER_WATTS\n']);
       session.teardown();
     });
 
@@ -157,7 +182,7 @@ void main() {
         session.startUpdates();
         sink.sent.clear();
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
-        expect(sink.sent, ['+f\n', '+m\n']);
+        expect(sink.sent, ['+f\n', '+m\n', '+l RFPOWER_METER_WATTS\n']);
         session.teardown();
       });
     });
@@ -189,10 +214,10 @@ void main() {
         session.feed('ChkVFO: 1\n');
         sink.sent.clear();
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
-        expect(sink.sent, ['+f currVFO\n', '+m currVFO\n']);
+        expect(sink.sent, ['+f currVFO\n', '+m currVFO\n', '+l currVFO RFPOWER_METER_WATTS\n']);
         session.setFrequency(14250);
         session.setMode('CW-R');
-        expect(sink.sent.sublist(2), ['F currVFO 14250000\n', 'M currVFO CWR -1\n']);
+        expect(sink.sent.sublist(3), ['F currVFO 14250000\n', 'M currVFO CWR -1\n']);
         session.teardown();
       });
     });
@@ -238,7 +263,7 @@ void main() {
         session.stopUpdates();
         sink.sent.clear();
         session.startUpdates();
-        expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n']);
+        expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n', '+l RFPOWER_METER_WATTS\n']);
         session.teardown();
       });
     });

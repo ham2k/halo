@@ -112,6 +112,13 @@ class RigctldDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => RigctldSession(sink);
 }
 
+/// Hamlib's `RFPOWER` level (unlike `RFPOWER_METER_WATTS`, see [setPower])
+/// is genuinely settable, but expressed as a 0.0-1.0 fraction of the rig's
+/// own maximum — a fact rigctld has no command to state. 100W stands in
+/// for that maximum the same way the other four drivers' relative-scale
+/// conversions do; wrong for a QRP or a high-power station.
+const _assumedMaxWatts = 100;
+
 class RigctldSession implements EquipmentSession {
   final EquipmentSink _sink;
 
@@ -147,6 +154,12 @@ class RigctldSession implements EquipmentSession {
   void _requestFrequencyAndMode() {
     _send('+f$_vfo');
     _send('+m$_vfo');
+    // Absolute watts, not Hamlib's older 0.0-1.0 RFPOWER fraction of an
+    // unknown maximum — this level exists precisely so a front-end can deal
+    // in watts without knowing the radio's ceiling. Silently unanswered on
+    // a daemon/backend that predates it, same as any other RPRT error this
+    // driver ignores; the field just never receives a reading.
+    _send('+l$_vfo RFPOWER_METER_WATTS');
   }
 
   @override
@@ -184,6 +197,9 @@ class RigctldSession implements EquipmentSession {
     } else if (line.startsWith('Mode: ')) {
       final token = line.substring('Mode: '.length).trim();
       if (token.isNotEmpty) _report(VfoReading(mode: appModeForHamlibMode(token)));
+    } else if (line.startsWith('RFPOWER_METER_WATTS: ')) {
+      final watts = double.tryParse(line.substring('RFPOWER_METER_WATTS: '.length).trim());
+      if (watts != null) _sink.reportPower(watts);
     }
   }
 
@@ -213,6 +229,16 @@ class RigctldSession implements EquipmentSession {
     // mode never clobbers a filter width the operator set at the radio.
     if (token != null) _send('M$_vfo $token -1');
   }
+
+  /// NOT `RFPOWER_METER_WATTS` — Hamlib defines that level read-only (a
+  /// measured-output meter), so a `set_level` against it is rejected by
+  /// every correctly-implemented backend, not just an old one. `RFPOWER`
+  /// is the genuinely settable level, at the cost of [_assumedMaxWatts]'s
+  /// conversion — an ignored `RPRT` error here means the daemon/backend
+  /// rejected the value outright, same as any other rejected set.
+  @override
+  void setPower(num watts) =>
+      _send('L$_vfo RFPOWER ${(watts / _assumedMaxWatts).clamp(0, 1).toStringAsFixed(3)}');
 
   @override
   void startUpdates() {

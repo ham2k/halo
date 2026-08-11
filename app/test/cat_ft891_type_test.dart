@@ -129,6 +129,7 @@ void main() {
 class _FakeSink implements EquipmentSink {
   final sent = <List<int>>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -136,6 +137,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);

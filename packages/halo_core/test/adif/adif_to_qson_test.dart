@@ -147,7 +147,7 @@ void main() {
       expect(q.qso['band'], '20m');
       expect(q.qso['mode'], 'CW');
       expect(_our(q)['call'], 'KI2D');
-      expect(_our(q)['power'], '100');
+      expect(q.qso['power'], 100);
       expect(_their(q)['call'], 'HG5D');
       expect(_their(q)['cqZone'], 15);
       expect(_their(q)['sent'], '599');
@@ -433,6 +433,27 @@ void main() {
       final r = _only('<CALL:5>W1ABC<MY_QTH:9>Woodridge');
 
       expect(_our(r)['city'], 'Woodridge');
+    });
+  });
+
+  group('power', () {
+    AdifRecord _only(String record) {
+      final log = parseAdifLog('<EOH>\n$record<EOR>\n');
+      return log.qsos.single;
+    }
+
+    test('TX_PWR lands top-level, alongside freq/band/mode — not under our', () {
+      final r = _only('<CALL:5>W1ABC<TX_PWR:3>100');
+
+      expect(r.qso['power'], 100);
+      expect(_our(r).containsKey('power'), isFalse);
+    });
+
+    test('RX_PWR lands under their — the other station\'s power, not ours', () {
+      final r = _only('<CALL:5>W1ABC<RX_PWR:2>50');
+
+      expect(_their(r)['power'], 50);
+      expect(r.qso.containsKey('power'), isFalse);
     });
   });
 

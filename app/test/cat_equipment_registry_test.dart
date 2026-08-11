@@ -15,6 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
 void main() {
@@ -90,6 +91,10 @@ void main() {
   // anywhere says so. This is the only thing that can catch it.
   test('every transport names an icon the codepoint table actually has', () {
     for (final type in registry.types) {
+      // The one deliberate exception: NoneTransport moves no bytes, so it
+      // has nothing to depict as "how it's plugged in" — the equipment
+      // tile for its category never renders a transport glyph at all.
+      if (type.transportKey == NoneTransport.transportKey) continue;
       final name = type.transportIconName;
       expect(name, isNotNull, reason: '${type.transportKey} has no icon, so its rows show nothing');
       expect(resolveIconName(name!), isNot(MdiIcons.puzzle),
@@ -185,6 +190,8 @@ void main() {
         'ic705-serial',
         'rigctld-tcp',
         'flrig-tcp',
+        'antenna-none',
+        'key-none',
       },
     );
   });
@@ -284,7 +291,14 @@ void main() {
     // once the radio announces on its own (cat_icom_civ_test.dart).
     const pushes = {'flexradio'};
 
-    for (final type in registry.types) {
+    // Antenna/Key have no live connection at all — see NoneTransport — so
+    // createSession is documented to throw rather than answer either way.
+    final connectable = [
+      for (final type in registry.types)
+        if (type.category == kCategoryTransceiver) type,
+    ];
+
+    for (final type in connectable) {
       test('${type.key} — ${pushes.contains(type.driver.key) ? 'pushes' : 'polls'}', () {
         final session = type.driver.createSession(_SilentSink(), type.defaultConfig);
         addTearDown(session.teardown);
@@ -308,6 +322,8 @@ class _SilentSink implements EquipmentSink {
   void send(List<int> bytes) {}
   @override
   void report(VfoReading reading) {}
+  @override
+  void reportPower(num watts) {}
   @override
   void reportDiagnostic(String? note) {}
 }

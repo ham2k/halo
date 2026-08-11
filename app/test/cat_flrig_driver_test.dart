@@ -23,6 +23,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -30,6 +31,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -183,6 +187,17 @@ void main() {
       session.teardown();
     });
 
+    test('a power answer reports watts', () {
+      final sink = _FakeSink();
+      final session = FlrigSession(sink);
+      session.startUpdates();
+      session.feed(_response('14070000'));
+      session.feed(_response('USB'));
+      session.feed(_response('100'));
+      expect(sink.powers, [100]);
+      session.teardown();
+    });
+
     test('a fault answers the question and unblocks the next', () {
       // A fault consumes the outstanding ask; leaving it outstanding would
       // stall the queue forever on the first unsupported method.
@@ -212,6 +227,14 @@ void main() {
       expect(sink.sent.single, contains('rig.set_mode'));
       expect(sink.sent.single, contains('<value>USB-D</value>'));
     });
+
+    test('power goes out as an XML-RPC double, in watts', () {
+      final sink = _FakeSink();
+      final session = FlrigSession(sink);
+      session.setPower(75);
+      expect(sink.sent.single, contains('rig.set_power'));
+      expect(sink.sent.single, contains('<double>75</double>'));
+    });
   });
 
   group('polling', () {
@@ -226,16 +249,18 @@ void main() {
         session.startUpdates();
         async.elapse(kPollSlow * 3);
         expect(sink.sent, hasLength(1));
-        // flrig catches up: the answers release exactly the one queued
-        // mode question, not the missed ticks' worth of stale polls.
+        // flrig catches up: the answers release exactly the queued
+        // mode/power questions, not the missed ticks' worth of stale polls.
         session.feed(_response('14070000'));
         session.feed(_response('USB'));
-        expect(sink.sent, hasLength(2));
-        expect(sink.sent[1], contains('rig.get_mode'));
-        // The next fresh pair waits for its own tick.
-        async.elapse(kPollSlow + const Duration(milliseconds: 10));
+        session.feed(_response('100'));
         expect(sink.sent, hasLength(3));
-        expect(sink.sent[2], contains('rig.get_vfo'));
+        expect(sink.sent[1], contains('rig.get_mode'));
+        expect(sink.sent[2], contains('rig.get_power'));
+        // The next fresh trio waits for its own tick.
+        async.elapse(kPollSlow + const Duration(milliseconds: 10));
+        expect(sink.sent, hasLength(4));
+        expect(sink.sent[3], contains('rig.get_vfo'));
         session.teardown();
       });
     });
@@ -252,8 +277,9 @@ void main() {
       expect(sink.sent, hasLength(1), reason: 'one request on the wire, set queued');
       session.feed(_response('14070000'));
       session.feed(_response('USB'));
-      expect(sink.sent, hasLength(3));
-      expect(sink.sent[2], contains('rig.set_frequency'));
+      session.feed(_response('100'));
+      expect(sink.sent, hasLength(4));
+      expect(sink.sent[3], contains('rig.set_frequency'));
       session.teardown();
     });
 
@@ -271,7 +297,7 @@ void main() {
         // The junk (and the ask wedged behind it) is dropped, so polling
         // resumes instead of waiting forever on a header.
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
-        expect(sink.sent, hasLength(3));
+        expect(sink.sent, hasLength(4));
         expect(sink.sent.last, contains('rig.get_vfo'));
         session.feed(_response('14070000'));
         expect(sink.readings, [const VfoReading(freqKHz: 14070)]);
@@ -289,6 +315,7 @@ void main() {
         session.startUpdates();
         session.feed(_response('14070000'));
         session.feed(_response('USB'));
+        session.feed(_response('100'));
         sink.sent.clear();
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
         expect(sink.sent, hasLength(1));
@@ -306,6 +333,7 @@ void main() {
         expect(session.pollInterval, kPollSlow,
             reason: 'the first reading is the answer to startUpdates, not movement');
         session.feed(_response('USB'));
+        session.feed(_response('100'));
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
         session.feed(_response('14260000'));
         expect(session.pollInterval, kPollFast);

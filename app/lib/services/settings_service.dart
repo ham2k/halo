@@ -169,6 +169,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const privacyGroup = 'privacy';
   static const exportsGroup = 'exports';
   static const radioGroup = 'radio';
+  static const stationInfoGroup = 'stationInfo';
 
   String _groupPrefsKey(String group) => 'settings.$group';
 
@@ -835,6 +836,46 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// The widest offset in Hz; the draw also keeps clear of a dead zone around
   /// zero (see `zeroBeatOffsetHz`), so this is a bound, not the typical value.
   double get zeroBeatRangeHz => _radioNumber('zeroBeatRangeHz', zeroBeatRangeOptions, '25');
+
+  /// Whether the Station Configuration panel offers to record which
+  /// transceiver, power, antenna and/or CW key went with each QSO.
+  ///
+  /// Off by default — most operators log with one of each, so the field
+  /// would say the same thing on every row. [stationInfoTrackedFields] and
+  /// [includeStationInfoInAdif] only take effect while this is on.
+  bool get trackStationInfo => (settingValue(stationInfoGroup, 'trackStationInfo') as bool?) ?? false;
+
+  Future<void> setTrackStationInfo(bool value) => setSettingValue(stationInfoGroup, 'trackStationInfo', value);
+
+  /// Whether a tracked QSO's station info rides along in an ADIF export.
+  /// Off by default, for the same reason as [includePrivateData]: most
+  /// exports go to a park, a contest sponsor, or an uploader, none of which
+  /// asked which radio worked the contact.
+  bool get includeStationInfoInAdif =>
+      (settingValue(stationInfoGroup, 'includeStationInfoInAdif') as bool?) ?? false;
+
+  Future<void> setIncludeStationInfoInAdif(bool value) =>
+      setSettingValue(stationInfoGroup, 'includeStationInfoInAdif', value);
+
+  /// Which of `rig`/`power`/`antenna`/`key` to record. Defaults to just the
+  /// two most operators already have exactly one of — antenna and key are
+  /// opt-in, since tracking them means adding them to the inventory first.
+  static const defaultStationInfoTrackedFields = ['rig', 'power'];
+
+  Set<String> get stationInfoTrackedFields {
+    final value = settingValue(stationInfoGroup, 'trackedFields');
+    return value is List ? value.whereType<String>().toSet() : defaultStationInfoTrackedFields.toSet();
+  }
+
+  Future<void> setStationInfoTrackedFields(Set<String> fields) =>
+      setSettingValue(stationInfoGroup, 'trackedFields', fields.toList());
+
+  /// The power the operator is currently running, in watts — set from the
+  /// Radio control's quick CAT dialog, since nothing in the app reads it off
+  /// the rig itself. Null means unset, not zero.
+  num? get currentPower => settingValue(stationInfoGroup, 'currentPower') as num?;
+
+  Future<void> setCurrentPower(num? value) => setSettingValue(stationInfoGroup, 'currentPower', value);
 
   /// Logging view "..." menu toggles.
   bool get showRSTFields => _loggingBool(_showRSTFieldsKey, true);

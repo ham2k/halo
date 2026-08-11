@@ -25,16 +25,19 @@
 import '../../i18n/strings.g.dart';
 import 'discovery.dart';
 import 'driver.dart';
+import 'drivers/antenna_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/icom_civ_driver.dart';
 import 'drivers/kenwood_driver.dart';
+import 'drivers/key_driver.dart';
 import 'drivers/rigctld_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
 import 'transports/icom_network_protocol.dart';
 import 'transports/icom_network_transport.dart';
+import 'transports/none_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 
@@ -143,11 +146,21 @@ class EquipmentModel {
   /// [EquipmentVariant.notes].
   final String Function() _nameBuilder;
 
+  /// True for a model that is a generic placeholder rather than something to
+  /// pick from a catalogue of makes and models — [antennaModel] and
+  /// [keyModel] today. The Add dialog's searchable list excludes these; they
+  /// are offered only from its "Other Equipment" rows, under whatever name
+  /// the operator gives the resulting node. A real antenna switch or
+  /// automatic keyer added later belongs in the searchable list like any
+  /// other radio, so it leaves this false.
+  final bool hiddenFromCatalog;
+
   const EquipmentModel({
     required this.key,
     required this.category,
     required String Function() name,
     required this.variants,
+    this.hiddenFromCatalog = false,
   }) : _nameBuilder = name;
 
   String get name => _nameBuilder();
@@ -610,6 +623,13 @@ const ic705Model = EquipmentModel(
       overrides: {
         'civAddress': 'A4',
         'civControllerAddress': icomNetworkControllerAddress,
+        // The IC-705's real ceiling (10W SSB/CW) — see _assumedMaxWatts in
+        // icom_civ_driver.dart. A device fact, not something the operator
+        // picked, so it's an override like the addresses above.
+        'maxWatts': 10,
+        // On its own battery the radio caps actual output well below the
+        // SET level it keeps reporting — see civMeterDcInputVoltage.
+        'batteryMaxWatts': 5,
       },
       // The failure this transport actually produces is silence: the
       // handshake succeeds and the login is ignored, so a busy radio and a
@@ -627,6 +647,10 @@ const ic705Model = EquipmentModel(
       // unlike the network variant's override, where the RS-BA1 protocol
       // really does fix it.
       defaultConfig: {'civAddress': 'A4', 'baudRate': 19200},
+      // Unlike the address, the radio's own power ceiling can't change by
+      // sharing a bus — a fixed fact about this model, same as the network
+      // variant's override above.
+      overrides: {'maxWatts': 10, 'batteryMaxWatts': 5},
       // Same driver, same transport, same untested pairing as the generic
       // CI-V serial entry.
       hardwareVerifiedOverride: false,
@@ -647,11 +671,57 @@ List<Map<String, dynamic>> _ic705NetworkNotes() => [
       },
     ];
 
+const _antennaKey = 'antenna-none';
+const _keyKey = 'key-none';
+
+/// A generic antenna node — see [EquipmentModel.hiddenFromCatalog]. Offered
+/// from the Add dialog's "Other Equipment" section, never its searchable
+/// catalogue.
+const antennaModel = EquipmentModel(
+  key: 'antenna',
+  category: kCategoryAntenna,
+  name: _antennaModelName,
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(key: _antennaKey, driver: AntennaDriver(), transport: NoneTransport()),
+  ],
+);
+
+String _antennaModelName() => t.settings.station.models.antenna;
+
+/// A generic CW key node — see [EquipmentModel.hiddenFromCatalog]. Offered
+/// from the Add dialog's "Other Equipment" section, never its searchable
+/// catalogue.
+const keyModel = EquipmentModel(
+  key: 'key',
+  category: kCategoryKey,
+  name: _keyModelName,
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(key: _keyKey, driver: KeyDriver(), transport: NoneTransport()),
+  ],
+);
+
+String _keyModelName() => t.settings.station.models.key;
+
 /// What the app can talk to, and how it gets there.
 ///
 /// A plain Dart list today. When extensions can contribute rig definitions
 /// this gains a second source and merges them, the way [SettingsView]
 /// already merges Dart settings groups with extension-contributed panels.
+const _defaultModels = [
+  flexRadioModel,
+  ft891Model,
+  yaesuGenericModel,
+  ic705Model,
+  icomGenericModel,
+  kenwoodGenericModel,
+  rigctldModel,
+  flrigModel,
+  antennaModel,
+  keyModel,
+];
+
 class EquipmentRegistry {
   final List<EquipmentModel> models;
   final Map<String, EquipmentTransport> transports;
@@ -662,28 +732,9 @@ class EquipmentRegistry {
   final List<EquipmentType> types;
 
   EquipmentRegistry({List<EquipmentModel>? models, Map<String, EquipmentTransport>? transports})
-      : models = models ?? const [
-          flexRadioModel,
-          ft891Model,
-          yaesuGenericModel,
-          ic705Model,
-          icomGenericModel,
-          kenwoodGenericModel,
-          rigctldModel,
-          flrigModel,
-        ],
+      : models = models ?? _defaultModels,
         types = [
-          for (final model
-              in models ?? const [
-          flexRadioModel,
-          ft891Model,
-          yaesuGenericModel,
-          ic705Model,
-          icomGenericModel,
-          kenwoodGenericModel,
-          rigctldModel,
-          flrigModel,
-        ])
+          for (final model in models ?? _defaultModels)
             for (final variant in model.variants) EquipmentType(model, variant),
         ],
         transports = transports ??

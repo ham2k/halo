@@ -13,6 +13,7 @@
 // For what has and has not met real hardware, see [hardwareVerified] below.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
@@ -26,6 +27,40 @@ import 'civ_codec.dart';
 /// read back whether it took. So poll as well — the same belt-and-braces the
 /// FlexRadio and FT-891 drivers use, for the same reason.
 const _pollInterval = Duration(seconds: 5);
+
+/// The RF power level (0x14 0x0A) is a 0-255 value standing for 0-100% of
+/// the radio's OWN maximum — CI-V has no command that states what that
+/// maximum is, so [IcomCivSession.maxWatts] comes from config instead:
+/// [ic705Model]'s pairings override it to the IC-705's real 10W SSB/CW
+/// ceiling (equipment_registry.dart); everything else — the generic Icom
+/// pairing, and any config that leaves it out — falls back to this 100W
+/// guess, the common ceiling across the HF line this driver otherwise
+/// targets (IC-7300, IC-9700, IC-7610). Unverified either way — see
+/// [IcomCivDriver.hardwareVerified].
+const _assumedMaxWatts = 100;
+
+/// Below this ceiling a 0-255 level actually carries sub-watt resolution
+/// worth showing (10W over 255 steps is ~0.04W/step) — above it the ceiling
+/// itself is a guess, and reporting e.g. 76.47058823529412W as though
+/// precise is worse than useless. One decimal, not the raw division: it
+/// still fits the Power field's 4-digit width and is what a QRP radio's own
+/// display shows.
+const _preciseWattsCeiling = 20;
+
+int _levelForWatts(num watts, num maxWatts) => (watts / maxWatts * 255).round().clamp(0, 255);
+
+num _wattsForLevel(int level, num maxWatts) {
+  final raw = level / 255 * maxWatts;
+  return maxWatts <= _preciseWattsCeiling ? (raw * 10).round() / 10 : raw.round();
+}
+
+/// Below this, [IcomCivSession.dcInputDeciVolts] reads as the radio's own
+/// battery rather than an external supply — confirmed LIVE against an
+/// IC-705: ~11.5V (115) on its internal battery, ~19.5V (195) plugged in.
+/// The midpoint, since only those two bench readings exist; a supply that
+/// happens to land near it would misclassify, but nothing between "flat
+/// battery" and "external DC" is physically expected.
+const _batteryDeciVoltsCeiling = 150;
 
 class IcomCivDriver extends EquipmentDriver {
   const IcomCivDriver();
@@ -56,13 +91,17 @@ class IcomCivDriver extends EquipmentDriver {
         sink,
         radioAddress: _addressOrFallback(config['civAddress'], civRadioAddresses['IC-705']!),
         controllerAddress: _addressOrFallback(config['civControllerAddress'], civDefaultControllerAddress),
+        maxWatts: (config['maxWatts'] as num?) ?? _assumedMaxWatts,
+        batteryMaxWatts: config['batteryMaxWatts'] as num?,
       );
 
-  /// `civControllerAddress` is read directly in [createSession] above, on
-  /// every pairing, and never shown as a field on any of them — a network
-  /// fact ([icomNetworkControllerAddress]), not a setting.
+  /// `civControllerAddress`, `maxWatts` and `batteryMaxWatts` are read
+  /// directly in [createSession] above, on every pairing, and never shown as
+  /// fields on any of them — device facts ([icomNetworkControllerAddress], a
+  /// model's rated power), not settings.
   @override
-  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, 'civControllerAddress'};
+  Set<String> get recognizedConfigKeys =>
+      {...super.recognizedConfigKeys, 'civControllerAddress', 'maxWatts', 'batteryMaxWatts'};
 
   @override
   List<Map<String, dynamic>> configElements({
@@ -134,16 +173,58 @@ class IcomCivSession implements EquipmentSession {
   /// carrying it is our own echo.
   final int controllerAddress;
 
+  /// The radio's own 100%-level ceiling in watts — see [_assumedMaxWatts].
+  final num maxWatts;
+
+  /// A lower ceiling that applies instead of [maxWatts] while
+  /// [dcInputDeciVolts] says the radio is running off its own battery — null
+  /// for a radio with no separate battery rating (everything but the IC-705
+  /// today). The SET level itself doesn't drop on battery — see
+  /// [civMeterDcInputVoltage] — so without this a QRP radio quietly reports
+  /// power it cannot actually put out.
+  final num? batteryMaxWatts;
+
   final _framer = CivFramer();
   Timer? _pollTimer;
 
-  IcomCivSession(this._sink, {required this.radioAddress, required this.controllerAddress});
+  IcomCivSession(
+    this._sink, {
+    required this.radioAddress,
+    required this.controllerAddress,
+    this.maxWatts = _assumedMaxWatts,
+    this.batteryMaxWatts,
+  });
 
   void _send(List<int> frame) => _sink.send(frame);
 
   void _requestFrequencyAndMode() {
     _send(buildReadFrequencyFrame(to: radioAddress, from: controllerAddress));
     _send(buildReadModeFrame(to: radioAddress, from: controllerAddress));
+    _send(buildReadPowerLevelFrame(to: radioAddress, from: controllerAddress));
+    _send(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: civMeterDcInputVoltage));
+  }
+
+  /// DC input to the radio, in tenths of a volt — see [civMeterDcInputVoltage].
+  /// Feeds [batteryMaxWatts] capping below, but the voltage itself is not
+  /// surfaced via [EquipmentState] — public only so a test can read it
+  /// without a new EquipmentState field for a value nothing else consumes.
+  int? get dcInputDeciVolts => _dcInputDeciVolts;
+  int? _dcInputDeciVolts;
+
+  /// The last RF-power SET level (0x14 0x0A) the radio reported, cached so a
+  /// later DC-input reading — on battery, potentially a lower cap — can
+  /// recompute [EquipmentSink.reportPower] without waiting on the next power
+  /// poll.
+  int? _lastLevel;
+
+  bool get _onBattery => _dcInputDeciVolts != null && _dcInputDeciVolts! < _batteryDeciVoltsCeiling;
+
+  void _reportPower() {
+    final level = _lastLevel;
+    if (level == null) return;
+    final watts = _wattsForLevel(level, maxWatts);
+    final cap = batteryMaxWatts;
+    _sink.reportPower(cap != null && _onBattery ? math.min(watts, cap) : watts);
   }
 
   @override
@@ -199,6 +280,23 @@ class IcomCivSession implements EquipmentSession {
         // we read but do not track.
         final mode = civModeNameForCode(frame.data[0]);
         if (mode != null) _sink.report(VfoReading(mode: mode));
+
+      case CivCommand.readSetLevel:
+        // 0x14 covers several levels (AF, RF gain, squelch…) sharing one
+        // command number — only react to the RF power sub-command.
+        if (frame.data.isEmpty || frame.data[0] != civLevelRfPower) return;
+        final level = parsePowerLevelData(frame.data);
+        if (level != null) {
+          _lastLevel = level;
+          _reportPower();
+        }
+
+      case CivCommand.readMeter:
+        // 0x15 covers several meters sharing one command number — only
+        // react to the DC-input sub-command; see [dcInputDeciVolts].
+        if (frame.data.isEmpty || frame.data[0] != civMeterDcInputVoltage) return;
+        _dcInputDeciVolts = parseMeterData(frame.data);
+        _reportPower();
     }
   }
 
@@ -216,6 +314,13 @@ class IcomCivSession implements EquipmentSession {
     final frame = buildSetModeFrame(to: radioAddress, from: controllerAddress, mode: mode);
     if (frame != null) _send(frame);
   }
+
+  @override
+  void setPower(num watts) => _send(buildSetPowerLevelFrame(
+        to: radioAddress,
+        from: controllerAddress,
+        level: _levelForWatts(watts, maxWatts),
+      ));
 
   @override
   void startUpdates() {

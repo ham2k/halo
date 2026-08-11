@@ -59,6 +59,8 @@ class _SilentSession implements EquipmentSession {
   @override
   void setMode(String mode) {}
   @override
+  void setPower(num watts) {}
+  @override
   Duration? get expectedUpdateInterval => null;
   @override
   void teardown() {}

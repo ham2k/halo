@@ -127,6 +127,10 @@ class _FakeSession implements EquipmentSession {
     if (throwOnSet || throwOnSetMode) throw StateError('driver blew up');
     commands.add('mode:$mode');
   }
+
+  @override
+  void setPower(num watts) => commands.add('power:$watts');
+
   /// Pushes, like the FlexRadio this fake stands in for — so nothing
   /// here has to reason about a poll cadence.
   @override

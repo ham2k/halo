@@ -25,6 +25,13 @@ export interface HookContext {
   /// each edition's app identity is registered as its own client with
   /// SOTA's Keycloak).
   edition?: string
+  /// Keys of every experiment (app/experiments.yaml) currently ON for this
+  /// user — for a hook whose own effect must stay invisible until an
+  /// experiment gating the surface it belongs to has shipped ungated (e.g.
+  /// a `command` hook for a feature still behind `gato`, checked per-call
+  /// rather than at the whole-extension `manifest.experiments` grain, which
+  /// would also hide unrelated hooks the same extension registers).
+  enabledExperiments?: string[]
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
   /// on the Dart side). Resolves null when the uuid is unknown. For hooks
@@ -935,6 +942,11 @@ export interface CommandAction {
     band?: string
     mode?: string
   }
+  /// Pushes a wattage straight to `CatService.setPower` (and the manual
+  /// fallback setting) — unlike `setVfo` this has no QSO-scoped widget state
+  /// of its own to update, so the app dispatches it the same way as
+  /// `updateSetting` rather than through the logging panel's local fields.
+  setPower?: { watts: number }
   updateQso?: Record<string, JSONValue>
   addQso?: Record<string, JSONValue>
   /// `target` picks what gets spotted: `'self'` (default) spots the

@@ -1,0 +1,82 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The last mile of the POWER command (typing "5W" into the call field or a
+// quick-lookup bar) — the seam between `handleCommandAction` and the two
+// writes its `setPower` case makes, exercised the way
+// settings_command_dispatch_test.dart exercises SET/SHOW.
+
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/home_view.dart';
+
+/// Returns the POWER command's interpretation for "5W" — the real hook's
+/// shape, without booting a JS engine.
+class _PowerCommandExtensions extends ExtensionService {
+  @override
+  bool get ready => true;
+
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<Map<String, dynamic>?> interpretCommand(
+    String input, [
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    bool execute = false,
+  ]) async {
+    if (input.trim().toUpperCase() != '5W') return null;
+    return {
+      'describe': 'Change power to **5W**?',
+      'confirm': 'Power set to **5W**',
+      'commands': [
+        {
+          'setPower': {'watts': 5},
+        },
+      ],
+    };
+  }
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  Future<HaLoServices> buildServices() async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    return HaLoServices(db, settings, extensions: _PowerCommandExtensions());
+  }
+
+  testWidgets('Enter on a wattage command writes the manual power setting', (tester) async {
+    final services = await buildServices();
+    expect(services.settings.currentPower, isNull);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        home: Scaffold(body: HomeQuickLookup(services: services)),
+      ),
+    ));
+
+    final field = find.byType(TextField);
+    await tester.enterText(field, '5W');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(services.settings.currentPower, 5,
+        reason: 'no radio is connected in this test, so CatService.setPower is a no-op — '
+            'the manual fallback setting is the only observable write');
+  });
+}

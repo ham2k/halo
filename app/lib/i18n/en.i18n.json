@@ -883,7 +883,9 @@
         "kenwoodGeneric": "Kenwood - Generic",
         "ic705": "Icom IC-705",
         "rigctld": "Generic Radio via rigctld",
-        "flrig": "Generic Radio via flrig"
+        "flrig": "Generic Radio via flrig",
+        "antenna": "Antenna",
+        "key": "CW Key"
       },
       "transports": {
         "network": "Network",
@@ -901,6 +903,10 @@
       "transceiverForMainVfo": "Transceiver for Main VFO",
       "equipmentInventory": "Equipment Inventory",
       "noTransceiver": "None",
+      "antennaInUse": "Antenna in Use",
+      "keyInUse": "Key in Use",
+      "noneSelected": "None",
+      "moreSettings": "More Settings",
       "icomCivTroubleshootingTitle": "If two serial ports show up for the same radio",
       "icomCivTroubleshooting": "Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.",
       "rigctldTroubleshootingTitle": "If the app cannot connect",
@@ -910,7 +916,42 @@
       "ic705TroubleshootingTitle": "If the radio never answers",
       "ic705Troubleshooting": "The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio's network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a \"rejected\" message, the password is not the problem.",
       "statusStale": "Not responding",
-      "currentRadioSettings": "Current radio settings"
+      "currentRadioSettings": "Current radio settings",
+      "antennaBands": "Bands",
+      "antennaType": "Antenna type",
+      "antennaTypeRequired": "Choose an antenna type",
+      "antennaTypes": {
+        "dipole": "Dipole",
+        "vertical": "Vertical",
+        "yagiBeam": "Yagi / Beam",
+        "loop": "Loop",
+        "longWire": "Long Wire / EFHW",
+        "other": "Other"
+      },
+      "keyType": "Key type",
+      "keyTypeRequired": "Choose a key type",
+      "keyTypes": {
+        "straight": "Straight Key",
+        "sideswiper": "Sideswiper",
+        "bug": "Bug (mechanical semi-automatic)",
+        "fullyAutomatic": "Fully-automatic keyer",
+        "singlePaddle": "Single Paddle",
+        "dualPaddle": "Dual Paddle",
+        "computerDriven": "Computer Driven",
+        "other": "Other"
+      },
+      "otherEquipment": "Other Equipment (Antennas, Keys, etc)",
+      "otherOptions": "Other Options",
+      "newAntenna": "New Antenna",
+      "newKey": "New Key",
+      "trackStationInfo": "Track Station Info for each QSO",
+      "includeStationInfoInAdif": "Include in ADIF exports",
+      "whatToTrack": "What to track?",
+      "trackFieldRig": "Transceiver",
+      "trackFieldPower": "Power",
+      "watts": "Watts",
+      "trackFieldAntenna": "Antenna",
+      "trackFieldKey": "CW Key"
     },
     "offlineData": {
       "title": "Offline Data",

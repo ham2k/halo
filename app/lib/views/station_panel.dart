@@ -18,11 +18,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import 'accordion_section.dart';
 import '../settings/settings_target_dialog.dart';
 import '../services/cat/discovery.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
+import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
 import 'equipment_report.dart';
 
@@ -37,7 +39,21 @@ const _storedSecretPlaceholder = '••••••••';
 class StationPanel extends StatelessWidget {
   final HaLoServices services;
 
-  const StationPanel({super.key, required this.services});
+  /// The Radio control's quick-access dialog, as opposed to the full page
+  /// under All Settings: current configuration only, the inventory row for
+  /// whichever rig is designated (not the whole catalogue), a Power field,
+  /// and a footer offering the full page instead of Add Equipment/Other
+  /// Options inline.
+  final bool compact;
+
+  /// Compact mode's way to the full page — required exactly when [compact]
+  /// is true. A callback rather than a hardcoded `SettingsView` push: this
+  /// file and settings_view.dart already import each other for the reverse
+  /// embedding, and a second cross-import isn't worth it for one button.
+  final VoidCallback? onMoreSettings;
+
+  const StationPanel({super.key, required this.services, this.compact = false, this.onMoreSettings})
+      : assert(!compact || onMoreSettings != null, 'compact mode needs onMoreSettings');
 
   CatService get _cat => services.cat;
 
@@ -92,6 +108,8 @@ class StationPanel extends StatelessWidget {
       builder: (context) => _AddEquipmentDialog(
         cat: _cat,
         showDiscovery: showDiscovery,
+        showOtherEquipment: services.settings.trackStationInfo &&
+            services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
         supportedVariants: _supportedVariants,
       ),
     );
@@ -224,6 +242,21 @@ class StationPanel extends StatelessWidget {
                 // `transport` value no field sets.
                 if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
               },
+          // Which of the operator's own enabled bands (Preferences → Bands)
+          // this antenna covers. Lives here rather than in AntennaDriver's
+          // own configElements(): a driver is pure data with no settings
+          // access, and this list is exactly the operator's, not the
+          // catalogue's.
+          if (model.category == kCategoryAntenna)
+            {
+              'type': 'field',
+              'fieldType': 'checkboxGroup',
+              'key': 'bands',
+              'label': st.antennaBands,
+              'options': [
+                for (final band in services.settings.enabledBands) {'value': band, 'label': band},
+              ],
+            },
         ];
 
     final result = await showFormPane(
@@ -352,6 +385,14 @@ class StationPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = _buildContent(context);
+    if (!compact) return content;
+    // The compact dialog's own footer, pinned under the scrolling content —
+    // same shape as the Exports pane's (operation_export_panel.dart).
+    return Column(children: [Expanded(child: content), _compactFooter(context)]);
+  }
+
+  Widget _buildContent(BuildContext context) {
     final st = context.t.settings.station;
 
     return ListenableBuilder(
@@ -368,6 +409,14 @@ class StationPanel extends StatelessWidget {
         final transceivers = [
           for (final node in nodes)
             if (_cat.typeFor(node)?.category == kCategoryTransceiver) node,
+        ];
+        final antennas = [
+          for (final node in nodes)
+            if (_cat.typeFor(node)?.category == kCategoryAntenna) node,
+        ];
+        final keys = [
+          for (final node in nodes)
+            if (_cat.typeFor(node)?.category == kCategoryKey) node,
         ];
 
         return ListView(
@@ -439,37 +488,243 @@ class StationPanel extends StatelessWidget {
                 ],
               ),
             ),
+            // Which antenna/key a QSO's captured station info should credit
+            // — only once there's inventory to choose between; both share a
+            // row since neither needs the tune button beside the main VFO.
+            if (antennas.isNotEmpty || keys.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, 0, Space.xl, Space.md),
+                child: Row(
+                  children: [
+                    if (antennas.isNotEmpty)
+                      Expanded(
+                        child: _DesignationDropdown(
+                          key: ValueKey(_cat.designatedFor(kCategoryAntenna)),
+                          label: st.antennaInUse,
+                          nodes: antennas,
+                          selected: _cat.designatedFor(kCategoryAntenna),
+                          displayName: _displayName,
+                          noneLabel: st.noneSelected,
+                          onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
+                        ),
+                      ),
+                    if (antennas.isNotEmpty && keys.isNotEmpty) const SizedBox(width: Space.md),
+                    if (keys.isNotEmpty)
+                      Expanded(
+                        child: _DesignationDropdown(
+                          key: ValueKey(_cat.designatedFor(kCategoryKey)),
+                          label: st.keyInUse,
+                          nodes: keys,
+                          selected: _cat.designatedFor(kCategoryKey),
+                          displayName: _displayName,
+                          noneLabel: st.noneSelected,
+                          onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
 
-            // What the station is made OF. Every piece of equipment, whatever
-            // its category and whether or not it is in use.
+            // What the station is made OF. Compact shows only the rig
+            // driving the main VFO — a quick-glance connect/status row, not
+            // the whole catalogue Add Equipment and the other radios imply.
             Padding(
               padding: EdgeInsets.only(left: safeLeft),
               child: SectionHeader(st.equipmentInventory),
             ),
-            if (nodes.isEmpty) ListTile(title: Text(st.none)),
-            for (final node in nodes)
-              _EquipmentTile(
-                node: node,
-                type: _cat.typeFor(node),
-                state: _cat.stateFor(node.uuid),
-                developerMode: services.settings.developerMode,
-                displayName: _displayName(node),
-                isMainVfo: _cat.isRadio1(node.uuid),
-                onEdit: () => _editEquipment(context, node),
-                onRemoveUnknown: () => _removeEquipment(context, node),
-                onConnect: () => _cat.connect(node.uuid),
-                onDisconnect: () => _cat.disconnect(node.uuid),
+            if (compact) ...[
+              if (_cat.radio1 case final uuid?)
+                if (_cat.nodeFor(uuid) case final node?)
+                  _EquipmentTile(
+                    node: node,
+                    type: _cat.typeFor(node),
+                    state: _cat.stateFor(node.uuid),
+                    developerMode: services.settings.developerMode,
+                    displayName: _displayName(node),
+                    isMainVfo: true,
+                    onEdit: () => _editEquipment(context, node),
+                    onRemoveUnknown: () => _removeEquipment(context, node),
+                    onConnect: () => _cat.connect(node.uuid),
+                    onDisconnect: () => _cat.disconnect(node.uuid),
+                  ),
+            ] else ...[
+              if (nodes.isEmpty) ListTile(title: Text(st.none)),
+              for (final node in nodes)
+                _EquipmentTile(
+                  node: node,
+                  type: _cat.typeFor(node),
+                  state: _cat.stateFor(node.uuid),
+                  developerMode: services.settings.developerMode,
+                  displayName: _displayName(node),
+                  isMainVfo: _cat.isRadio1(node.uuid),
+                  onEdit: () => _editEquipment(context, node),
+                  onRemoveUnknown: () => _removeEquipment(context, node),
+                  onConnect: () => _cat.connect(node.uuid),
+                  onDisconnect: () => _cat.disconnect(node.uuid),
+                ),
+              ListTile(
+                leading: const Icon(MdiIcons.plus),
+                title: Text(st.add),
+                onTap: () => _addEquipment(context),
+                mouseCursor: SystemMouseCursors.click,
               ),
-            ListTile(
-              leading: const Icon(MdiIcons.plus),
-              title: Text(st.add),
-              onTap: () => _addEquipment(context),
-              mouseCursor: SystemMouseCursors.click,
-            ),
+            ],
+            if (compact) _powerField(context, safeLeft: safeLeft),
+            if (!compact) ...[
+              const SizedBox(height: Space.xl * 2),
+              // A section of its own — Space.xl of top padding from
+              // SectionHeader, same as Equipment Inventory above it — rather
+              // than tacking the toggle onto the equipment list it has
+              // nothing to do with.
+              Padding(
+                padding: EdgeInsets.only(left: safeLeft),
+                child: SectionHeader(st.otherOptions),
+              ),
+              // What to remember about EACH QSO, rather than the station's
+              // own current setup above — off by default, since most
+              // operators log with one radio, one antenna and one key, and a
+              // field that never changes says nothing worth reading on every
+              // row.
+              SwitchListTile(
+                title: Text(st.trackStationInfo),
+                value: services.settings.trackStationInfo,
+                onChanged: (value) => unawaited(services.settings.setTrackStationInfo(value)),
+                mouseCursor: SystemMouseCursors.click,
+              ),
+              if (services.settings.trackStationInfo) ..._stationInfoSettings(context),
+            ],
           ],
         );
       },
     );
+  }
+
+
+  /// Right after the current rig's row — the quick dialog's one write-in
+  /// field among its pickers, though "write-in" undersells it once a rig is
+  /// connected: a commit goes both to [SettingsService.currentPower] (the
+  /// fallback for when nothing is) and straight to the radio via
+  /// [CatService.setPower]. The CAT reading, when there is one, still wins
+  /// on the next external update — this only ever pushes a value, same as
+  /// typing a frequency does.
+  ///
+  /// Sized to 4 digits (no legal amateur power runs to 5) rather than
+  /// stretching the row, with "Watts" after it — baseline-aligned with the
+  /// field's own text, not merely centered beside it — standing in for the
+  /// unit label a bare number field doesn't carry.
+  Widget _powerField(BuildContext context, {required double safeLeft}) {
+    final st = context.t.settings.station;
+    final style = Theme.of(context).textTheme.titleMedium ?? const TextStyle();
+    // 4 digits' width, plus poloFieldDecoration's own horizontal content
+    // padding (theme.dart) and a small caret allowance — everything the
+    // field needs beyond the glyphs themselves.
+    final scale = MediaQuery.textScalerOf(context).scale(1.0);
+    final fieldWidth = textWidth(context, '0000', style) + 8 * scale + 3 * scale;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, Space.md, Space.xl, Space.md),
+      child: _PowerField(
+        power: _cat.displayedPower,
+        label: st.trackFieldPower,
+        wattsLabel: st.watts,
+        width: fieldWidth,
+        style: style,
+        onCommit: (watts) {
+          unawaited(services.settings.setCurrentPower(watts));
+          if (watts != null) _cat.setPower(watts);
+        },
+      ),
+    );
+  }
+
+  /// "More Settings" (leading) and "Done" (trailing) — [destructive] is used
+  /// only for its LEADING position, the sole slot `haloDialogFooterRow`
+  /// offers opposite the primary/cancel group; "More Settings" itself
+  /// destroys nothing.
+  Widget _compactFooter(BuildContext context) {
+    final theme = Theme.of(context);
+    final st = context.t.settings.station;
+    return Container(
+      decoration: BoxDecoration(
+        color: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.08),
+        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
+          child: haloDialogFooterRow(
+            destructive: TextButton(
+              onPressed: onMoreSettings,
+              child: Text(st.moreSettings),
+            ),
+            cancel: TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: Text(context.t.common.done),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _stationInfoSettings(BuildContext context) {
+    final st = context.t.settings.station;
+    final settings = services.settings;
+    final tracked = settings.stationInfoTrackedFields;
+    final trackedFieldOptions = [
+      {'value': 'rig', 'label': st.trackFieldRig},
+      {'value': 'power', 'label': st.trackFieldPower},
+      {'value': 'antenna', 'label': st.trackFieldAntenna},
+      {'value': 'key', 'label': st.trackFieldKey},
+    ];
+
+    return [
+      // No "Include in ADIF exports" row here: SettingsService.
+      // includeStationInfoInAdif exists, but nothing in the ADIF export
+      // path (extensions/core/adif) reads it yet. Showing the toggle would
+      // promise a QSO field the export never carries — it comes back once
+      // that wiring lands.
+      //
+      // Same field type, same summary-row-opens-a-dialog behavior as Bands
+      // and Modes in Preferences (core_settings_groups.dart) — a short,
+      // fixed vocabulary the operator picks from, not something to browse.
+      // `compact` keeps the dialog narrow and its rows padded, rather than
+      // the flush wide layout that suits a dozen-plus bands.
+      //
+      // FormRenderer's own rows read their padding from the ambient
+      // ListTileTheme, defaulting to none — every other row in this panel
+      // gets it for free from ListTile's own built-in default, so this is
+      // merged in explicitly to match.
+      ListTileTheme.merge(
+        contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
+        child: FormRenderer(
+          formDefinition: {
+            'elements': [
+              {
+                'type': 'field',
+                'fieldType': 'multiselect',
+                'key': 'trackedFields',
+                'label': st.whatToTrack,
+                'value': [for (final opt in trackedFieldOptions) if (tracked.contains(opt['value'])) opt['value']],
+                'defaultValue': SettingsService.defaultStationInfoTrackedFields,
+                'options': trackedFieldOptions,
+                'compact': true,
+              },
+            ],
+          },
+          initialState: const {},
+          showActions: false,
+          showTitle: false,
+          onChange: (fieldKey, value, state) async {
+            await settings.setStationInfoTrackedFields((value as List).cast<String>().toSet());
+            return null;
+          },
+          onSubmit: (_) {},
+          onCancel: () {},
+          labels: formRendererLabelsFor(context.t),
+        ),
+      ),
+    ];
   }
 }
 
@@ -494,11 +749,17 @@ class _AddEquipmentDialog extends StatefulWidget {
   /// which case the section is absent rather than permanently empty.
   final bool showDiscovery;
 
+  /// Whether the operator has opted to track an antenna or a key against
+  /// QSOs — see [SettingsService.stationInfoTrackedFields]. Off, the "Other
+  /// Equipment" section would only ever grow a list nothing reads.
+  final bool showOtherEquipment;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const _AddEquipmentDialog({
     required this.cat,
     required this.showDiscovery,
+    required this.showOtherEquipment,
     required this.supportedVariants,
   });
 
@@ -508,6 +769,11 @@ class _AddEquipmentDialog extends StatefulWidget {
 
 class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
   final _searchController = TextEditingController();
+
+  /// Closed by default — antennas and keys are the rare add, not the common
+  /// one, and starting open would push the radio catalogue below the fold
+  /// on every visit to this dialog.
+  var _otherEquipmentExpanded = false;
 
   /// Folded away once the operator scrolls into the list. Starts open: with
   /// a short list nothing ever scrolls, and the section is the whole point
@@ -569,8 +835,9 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
         // each comparison the sort makes, on every keystroke in the search box.
         final rows = [
           for (final model in widget.cat.registry.models)
-            if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
-              (model: model, variants: variants, name: model.name),
+            if (!model.hiddenFromCatalog)
+              if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
+                (model: model, variants: variants, name: model.name),
         ]
           // Sorted HERE rather than in the registry, because a model's name is
           // read from the current locale at call time — an order fixed at
@@ -683,14 +950,61 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                   ),
                 ),
               ),
+              if (widget.showOtherEquipment) _otherEquipmentSection(context),
             ],
           ),
+          // "Done", not "Cancel": the "Other Equipment" section below can add
+          // an antenna or key node directly, with no further pane to confirm
+          // through, so closing this dialog is never discarding a choice.
           cancel: TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.t.common.cancel),
+            child: Text(context.t.common.done),
           ),
         );
       },
+    );
+  }
+
+  /// Antennas and keys, added by name and type rather than picked from a
+  /// catalogue — there is exactly one of each, unlike the radio list above.
+  /// Closed by default (see [_otherEquipmentExpanded]): visible only when
+  /// [_AddEquipmentDialog.showOtherEquipment] says the operator tracks at
+  /// least one of these against a QSO, so the section never grows a list
+  /// nothing reads.
+  Widget _otherEquipmentSection(BuildContext context) {
+    final st = context.t.settings.station;
+    final theme = Theme.of(context);
+    final headerColor = haloDialogBandColorAt(context);
+    final onHeaderColor = theme.colorScheme.onSurfaceVariant;
+
+    return AccordionSection(
+      title: Text(
+        st.otherEquipment,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleSmall?.copyWith(color: onHeaderColor, fontWeight: FontWeight.w600),
+      ),
+      expanded: _otherEquipmentExpanded,
+      onToggle: () => setState(() => _otherEquipmentExpanded = !_otherEquipmentExpanded),
+      headerColor: headerColor,
+      onHeaderColor: onHeaderColor,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(MdiIcons.antenna),
+            title: Text(st.newAntenna),
+            onTap: () => Navigator.of(context).pop(_AddChoice.model(antennaModel)),
+            mouseCursor: SystemMouseCursors.click,
+          ),
+          ListTile(
+            leading: const Icon(MdiIcons.key),
+            title: Text(st.newKey),
+            onTap: () => Navigator.of(context).pop(_AddChoice.model(keyModel)),
+            mouseCursor: SystemMouseCursors.click,
+          ),
+        ],
+      ),
     );
   }
 
@@ -794,8 +1108,12 @@ class _AddChoice {
 
 /// The glyph the logging panel's own Radio control falls back to when no
 /// CAT radio is configured — this list is what configures one.
-IconData _iconForCategory(String? category) =>
-    category == kCategoryTransceiver ? MdiIcons.radio : MdiIcons.developerBoard;
+IconData _iconForCategory(String? category) => switch (category) {
+      kCategoryTransceiver => MdiIcons.radio,
+      kCategoryAntenna => MdiIcons.antenna,
+      kCategoryKey => MdiIcons.key,
+      _ => MdiIcons.developerBoard,
+    };
 
 /// What the Add list says under a radio's name: which of its pairings have
 /// never met a radio, and nothing else.
@@ -868,6 +1186,139 @@ class _TransportIcons extends StatelessWidget {
   }
 }
 
+/// The Power field's own text state, kept in a controller rather than
+/// [TextFormField]'s bare `initialValue` — the field's value has TWO writers
+/// (the operator typing, and a live CAT reading arriving from the radio) and
+/// only a controller can tell "external update" apart from "an edit in
+/// progress" rather than clobbering focus/cursor on every keystroke the way
+/// a value-keyed `initialValue` field would.
+///
+/// Commits (to [SettingsService.currentPower] and the radio) on submit or on
+/// losing focus, never per keystroke — the same reason the VFO frequency
+/// sync dedupes against `lastSent` (docs/design/cat.md): a command per digit
+/// would briefly send the radio through every intermediate value.
+class _PowerField extends StatefulWidget {
+  final num? power;
+  final String label;
+  final String wattsLabel;
+  final double width;
+  final TextStyle style;
+  final ValueChanged<num?> onCommit;
+
+  const _PowerField({
+    required this.power,
+    required this.label,
+    required this.wattsLabel,
+    required this.width,
+    required this.style,
+    required this.onCommit,
+  });
+
+  @override
+  State<_PowerField> createState() => _PowerFieldState();
+}
+
+class _PowerFieldState extends State<_PowerField> {
+  late final TextEditingController _controller = TextEditingController(text: _textFor(widget.power));
+  final FocusNode _focusNode = FocusNode();
+
+  static String _textFor(num? power) => power?.toString() ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) _commit();
+  }
+
+  @override
+  void didUpdateWidget(_PowerField old) {
+    super.didUpdateWidget(old);
+    // A live CAT reading arriving behind this field's back must not
+    // clobber what the operator is mid-typing — only take it while the
+    // field isn't focused, the same rule the VFO frequency field follows
+    // (docs/design/cat.md, "Never over the operator").
+    if (!_focusNode.hasFocus && widget.power != old.power) {
+      _controller.text = _textFor(widget.power);
+    }
+  }
+
+  void _commit() => widget.onCommit(num.tryParse(_controller.text));
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_onFocusChange)
+      ..dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        SizedBox(
+          width: widget.width,
+          child: TextFormField(
+            controller: _controller,
+            focusNode: _focusNode,
+            keyboardType: const TextInputType.numberWithOptions(decimal: false),
+            decoration: poloFieldDecoration(context, widget.label),
+            onFieldSubmitted: (_) => _commit(),
+          ),
+        ),
+        const SizedBox(width: Space.md),
+        Text(widget.wattsLabel, style: widget.style),
+      ],
+    );
+  }
+}
+
+/// Picks which node of a single-designation category (antenna, key) is "in
+/// use" — the same shape as the main VFO dropdown above it, minus the tune
+/// button since these nodes have nothing to connect.
+class _DesignationDropdown extends StatelessWidget {
+  final String label;
+  final List<EquipmentNode> nodes;
+  final String? selected;
+  final String Function(EquipmentNode node) displayName;
+  final String noneLabel;
+  final void Function(String? uuid) onChanged;
+
+  const _DesignationDropdown({
+    super.key,
+    required this.label,
+    required this.nodes,
+    required this.selected,
+    required this.displayName,
+    required this.noneLabel,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String?>(
+      isExpanded: true,
+      initialValue: nodes.any((n) => n.uuid == selected) ? selected : null,
+      icon: dropdownTrailingIcon,
+      decoration: poloFieldDecoration(context, label),
+      menuMaxHeight: dropdownMenuMaxHeight(context),
+      items: [
+        DropdownMenuItem<String?>(value: null, child: Text(noneLabel)),
+        for (final node in nodes)
+          DropdownMenuItem<String?>(value: node.uuid, child: Text(displayName(node), overflow: TextOverflow.ellipsis)),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
 class _EquipmentTile extends StatelessWidget {
   final EquipmentNode node;
   final EquipmentType? type;
@@ -923,6 +1374,19 @@ class _EquipmentTile extends StatelessWidget {
           icon: Icon(MdiIcons.deleteOutline, semanticLabel: st.remove),
           onPressed: onRemoveUnknown,
         ),
+      );
+    }
+
+    // Equipment with nothing to connect to — an antenna, a CW key. No plug
+    // toggle, no VFO reading, no status pill: every one of those describes a
+    // live session, and this category never has one.
+    if (resolvedType.category != kCategoryTransceiver) {
+      return ListTile(
+        leading: Icon(_iconForCategory(resolvedType.category)),
+        title: Text(displayName),
+        subtitle: Text(resolvedType.describeTarget(node.config)),
+        onTap: onEdit,
+        mouseCursor: SystemMouseCursors.click,
       );
     }
 

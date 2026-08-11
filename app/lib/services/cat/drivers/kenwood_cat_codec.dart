@@ -74,6 +74,20 @@ String buildKenwoodReadModeCommand() => 'MD;';
 
 String buildKenwoodReadInfoCommand() => 'IF;';
 
+/// `PC` is a 3-digit level, 000-100 — on the TS-480/590/2000-family CAT
+/// references this driver otherwise follows, that level IS watts (the
+/// command sets RF output power directly, not a percentage of some other
+/// maximum). Clamped rather than truncated: a value this driver has never
+/// seen a real radio reject beats a malformed command it silently ignores.
+String buildKenwoodSetPowerCommand(num watts) => 'PC${watts.round().clamp(0, 100).toString().padLeft(3, '0')};';
+
+String buildKenwoodReadPowerCommand() => 'PC;';
+
+/// `PC100;` → 100. Null unless it's exactly three digits, the same
+/// discipline [parseKenwoodFrequencyParams] applies to `FA`.
+int? parseKenwoodPowerParams(String params) =>
+    RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+
 /// `FA00014250000;` → 14250000 Hz. Null unless it is exactly eleven digits —
 /// a truncated or over-long response is not a frequency.
 int? parseKenwoodFrequencyParams(String params) {

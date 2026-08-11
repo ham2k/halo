@@ -23,6 +23,7 @@ import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/discovery.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -171,6 +172,9 @@ class _FakeSession implements EquipmentSession {
   @override
   void setMode(String mode) => log.add('setMode:$mode');
 
+  @override
+  void setPower(num watts) => log.add('setPower:$watts');
+
   /// Pushes, like the FlexRadio this fake stands in for — so nothing
   /// here has to reason about a poll cadence.
   @override
@@ -256,8 +260,8 @@ void main() {
       radio: radio,
       onTrack: onTrack,
       registry: EquipmentRegistry(
-        models: [_fakeModel(driver, transport)],
-        transports: {'fake': transport},
+        models: [_fakeModel(driver, transport), antennaModel, keyModel],
+        transports: {'fake': transport, 'none': const NoneTransport()},
       ),
       reconnectDelay: Duration.zero,
       // Short, not zero: the backoff doubles it, and zero doubled is a tight
@@ -1012,6 +1016,120 @@ void main() {
     });
   });
 
+  group('antenna/key designation (HALO-263 follow-up)', () {
+    Future<EquipmentNode> addAntenna({String name = 'Dipole'}) =>
+        cat.addNode(typeKey: antennaModel.variants.first.key, name: name);
+    Future<EquipmentNode> addKey({String name = 'Bug'}) => cat.addNode(typeKey: keyModel.variants.first.key, name: name);
+
+    test('the newest antenna added is designated, same rule as radio1', () async {
+      final first = await addAntenna(name: 'First');
+      expect(cat.designatedFor(kCategoryAntenna), first.uuid);
+
+      final second = await addAntenna(name: 'Second');
+      expect(cat.designatedFor(kCategoryAntenna), second.uuid);
+    });
+
+    test('adding an antenna does not touch which key is designated, or radio1', () async {
+      final radio = await addRadio();
+      final key = await addKey();
+
+      await addAntenna();
+
+      expect(cat.radio1, radio.uuid);
+      expect(cat.designatedFor(kCategoryKey), key.uuid);
+    });
+
+    test('removing the designated key clears it rather than promoting another', () async {
+      final a = await addKey(name: 'a');
+      final b = await addKey(name: 'b');
+      await cat.setDesignated(kCategoryKey, a.uuid);
+
+      await cat.removeNode(a.uuid);
+
+      expect(cat.designatedFor(kCategoryKey), isNull, reason: '${b.uuid} was silently promoted');
+    });
+
+    test('the operator can designate any antenna directly, None included', () async {
+      final a = await addAntenna(name: 'a');
+      await addAntenna(name: 'b');
+
+      await cat.setDesignated(kCategoryAntenna, a.uuid);
+      expect(cat.designatedFor(kCategoryAntenna), a.uuid);
+
+      await cat.setDesignated(kCategoryAntenna, null);
+      expect(cat.designatedFor(kCategoryAntenna), isNull);
+    });
+
+    test('the designation survives a relaunch', () async {
+      final key = await addKey();
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.designatedFor(kCategoryKey), key.uuid);
+    });
+  });
+
+  group('power', () {
+    test('a driver reporting power lands in stateFor, once merged into state', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+
+      driver.sessions.single.sink.reportPower(75);
+
+      expect(cat.stateFor(node.uuid).power, 75);
+    });
+
+    test('setPower reaches radio1\'s session, and no other', () async {
+      final radio1 = await addRadio(host: 'a.local');
+      final other = await cat.addNode(typeKey: 'fake-type', name: 'Other', config: {'host': 'b.local'});
+      await cat.setRadio1(radio1.uuid);
+      await connectAndLand(radio1);
+      // `other` is deliberately never connected — setPower must not reach
+      // into an unconnected node's absent session either.
+      log.clear();
+
+      cat.setPower(100);
+
+      expect(log, contains('setPower:100'));
+      expect(other.uuid, isNot(radio1.uuid), reason: 'sanity: two distinct nodes exist');
+    });
+
+    test('setPower with no radio1 designated is a no-op, not a throw', () async {
+      expect(() => cat.setPower(100), returnsNormally);
+    });
+
+    test('setPower with radio1 designated but not connected is a no-op', () async {
+      final node = await addRadio();
+      // Never connected — no session exists yet.
+      expect(() => cat.setPower(100), returnsNormally);
+      expect(driver.sessions, isEmpty);
+      expect(node.uuid, isNotEmpty);
+    });
+
+    test('displayedPower prefers the connected radio\'s live reading over the manual fallback', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+      await settings.setCurrentPower(50);
+      driver.sessions.single.sink.reportPower(75);
+
+      expect(cat.displayedPower, 75);
+    });
+
+    test('displayedPower falls back to the manual setting with no live reading', () async {
+      await settings.setCurrentPower(50);
+
+      expect(cat.displayedPower, 50);
+    });
+
+    test('displayedPower falls back to the manual setting when radio1 is not connected', () async {
+      await addRadio();
+      await settings.setCurrentPower(50);
+      // Never connected — no reading has ever landed in stateFor.
+
+      expect(cat.displayedPower, 50);
+    });
+  });
+
   group('storage', () {
     test('equipment round-trips through prefs, and live status is not stored', () async {
       final node = await addRadio();
@@ -1124,6 +1242,15 @@ void main() {
       connection.push('14075 USB\n');
       await pumpEventQueue();
       expect(notifications, 0);
+    });
+
+    test('CW-R from the radio lands in state as CW — reverse sideband is not a mode of its own', () async {
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+
+      connection.push('14074 CW-R\n');
+      await pumpEventQueue();
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'CW'));
     });
 
     test('a malformed frame does not kill the connection', () async {

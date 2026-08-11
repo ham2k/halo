@@ -1840,6 +1840,17 @@ class HaLoServices {
         if (settingKey == null || settingKey.isEmpty) return null;
         final rejected = await applySettingCommand(this, key: settingKey, value: params?['value']);
         return rejected == null ? null : (text: rejected, failed: true);
+      case 'setPower':
+        // POWER command (e.g. "5W" typed into the call field): same pair of
+        // writes as the Station Configuration Power field's own onCommit —
+        // the manual fallback setting, and radio1's session if one is
+        // connected. Returns null on success for the same reason as
+        // updateSetting: the hook's own confirm already told the operator.
+        final watts = params?['watts'] as num?;
+        if (watts == null) return null;
+        unawaited(settings.setCurrentPower(watts));
+        cat.setPower(watts);
+        return null;
       case 'openSettings':
         // The setting can't be typed on one line (multiselect, account,
         // secret), the operator named it without a value, or the query

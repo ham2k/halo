@@ -26,6 +26,7 @@ import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
+  final powers = <num>[];
   final diagnostics = <String?>[];
 
   @override
@@ -33,6 +34,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void report(VfoReading reading) => readings.add(reading);
+
+  @override
+  void reportPower(num watts) => powers.add(watts);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -75,6 +79,18 @@ void main() {
     test('the IF frequency is read from the head, which is stable across the line', () {
       expect(parseKenwoodInfoFrequency('00014250000' '0000' '+00000' '00'), 14250000);
       expect(parseKenwoodInfoFrequency('0001425'), isNull, reason: 'truncated');
+    });
+
+    test('PC is a 3-digit level this driver treats as watts directly', () {
+      expect(buildKenwoodSetPowerCommand(100), 'PC100;');
+      expect(buildKenwoodSetPowerCommand(5), 'PC005;');
+      expect(parseKenwoodPowerParams('100'), 100);
+      expect(parseKenwoodPowerParams('05'), isNull, reason: 'PC is always 3 digits, unlike a two-digit stray');
+    });
+
+    test('a power outside the documented range is clamped, not sent malformed', () {
+      expect(buildKenwoodSetPowerCommand(150), 'PC100;');
+      expect(buildKenwoodSetPowerCommand(-5), 'PC000;');
     });
   });
 
@@ -156,6 +172,20 @@ void main() {
       receive('FA00014250000;MD2;');
       expect(sink.readings.first.freqKHz, 14250.0);
       expect(sink.readings.last.mode, 'USB');
+    });
+
+    test('a PC reply reports power upward', () {
+      receive('PC100;');
+      expect(sink.powers, [100]);
+    });
+
+    test('setPower sends PC, and startUpdates polls for it', () {
+      session.setPower(75);
+      expect(sink.sent, contains('PC075;'));
+
+      sink.sent.clear();
+      session.startUpdates();
+      expect(sink.sent, contains('PC;'));
     });
 
     test('a command split across two chunks still reads', () {

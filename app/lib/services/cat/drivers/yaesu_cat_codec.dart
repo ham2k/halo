@@ -72,6 +72,20 @@ String? buildSetModeCommand(String? mode) {
 
 String buildReadModeCommand() => 'MD0;';
 
+/// `PC` is a 3-digit level, 005-100 per the FT-891 CAT manual — RF power
+/// output in watts directly, unlike Kenwood's implied-watts `PC`, which the
+/// FT-891's own manual states explicitly. NOT captured against the bench
+/// FT-891 this driver's frequency/mode path was verified on — see
+/// ft891_driver.dart's own notes on what has and hasn't met hardware.
+/// Clamped, not truncated: a value outside the documented range is more
+/// likely operator error than a command the radio would parse differently.
+String buildSetPowerCommand(num watts) => 'PC${watts.round().clamp(5, 100).toString().padLeft(3, '0')};';
+
+String buildReadPowerCommand() => 'PC;';
+
+/// `PC100;` → 100. Null unless it's exactly three digits.
+int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+
 
 /// `FA014250000;` → 14250000 Hz. Null unless it's exactly nine digits —
 /// a truncated or over-long response is not a frequency.

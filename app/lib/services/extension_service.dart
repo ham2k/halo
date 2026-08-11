@@ -1652,6 +1652,14 @@ class ExtensionService implements PanelExtensionSource {
         return {
           'developerMode': settings?.developerMode ?? false,
           'locale': settings?.locale ?? 'en',
+          // Lets a hook whose effect must stay invisible until its own
+          // experiment ships ungated check per-call, rather than hiding at
+          // the whole-extension `manifest.experiments` grain (which would
+          // also gate every other hook the same extension registers).
+          'enabledExperiments': [
+            for (final entry in (settings?.experimentStates ?? const {}).entries)
+              if (entry.value is Map && (entry.value as Map)['enabled'] == true) entry.key,
+          ],
           // Machine-facing: extensions put this in ADIF PROGRAMID, a spot's
           // source, etc. — so the fixed, platform-agnostic "Ham2K Logger", not
           // the UI's platform-tailored name.

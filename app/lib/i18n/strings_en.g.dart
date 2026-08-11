@@ -2860,6 +2860,18 @@ class Translations$settings$station$en {
 	/// en: 'None'
 	String get noTransceiver => 'None';
 
+	/// en: 'Antenna in Use'
+	String get antennaInUse => 'Antenna in Use';
+
+	/// en: 'Key in Use'
+	String get keyInUse => 'Key in Use';
+
+	/// en: 'None'
+	String get noneSelected => 'None';
+
+	/// en: 'More Settings'
+	String get moreSettings => 'More Settings';
+
 	/// en: 'If two serial ports show up for the same radio'
 	String get icomCivTroubleshootingTitle => 'If two serial ports show up for the same radio';
 
@@ -2889,6 +2901,61 @@ class Translations$settings$station$en {
 
 	/// en: 'Current radio settings'
 	String get currentRadioSettings => 'Current radio settings';
+
+	/// en: 'Bands'
+	String get antennaBands => 'Bands';
+
+	/// en: 'Antenna type'
+	String get antennaType => 'Antenna type';
+
+	/// en: 'Choose an antenna type'
+	String get antennaTypeRequired => 'Choose an antenna type';
+
+	late final Translations$settings$station$antennaTypes$en antennaTypes = Translations$settings$station$antennaTypes$en.internal(_root);
+
+	/// en: 'Key type'
+	String get keyType => 'Key type';
+
+	/// en: 'Choose a key type'
+	String get keyTypeRequired => 'Choose a key type';
+
+	late final Translations$settings$station$keyTypes$en keyTypes = Translations$settings$station$keyTypes$en.internal(_root);
+
+	/// en: 'Other Equipment (Antennas, Keys, etc)'
+	String get otherEquipment => 'Other Equipment (Antennas, Keys, etc)';
+
+	/// en: 'Other Options'
+	String get otherOptions => 'Other Options';
+
+	/// en: 'New Antenna'
+	String get newAntenna => 'New Antenna';
+
+	/// en: 'New Key'
+	String get newKey => 'New Key';
+
+	/// en: 'Track Station Info for each QSO'
+	String get trackStationInfo => 'Track Station Info for each QSO';
+
+	/// en: 'Include in ADIF exports'
+	String get includeStationInfoInAdif => 'Include in ADIF exports';
+
+	/// en: 'What to track?'
+	String get whatToTrack => 'What to track?';
+
+	/// en: 'Transceiver'
+	String get trackFieldRig => 'Transceiver';
+
+	/// en: 'Power'
+	String get trackFieldPower => 'Power';
+
+	/// en: 'Watts'
+	String get watts => 'Watts';
+
+	/// en: 'Antenna'
+	String get trackFieldAntenna => 'Antenna';
+
+	/// en: 'CW Key'
+	String get trackFieldKey => 'CW Key';
 }
 
 // Path: settings.offlineData
@@ -3854,6 +3921,12 @@ class Translations$settings$station$models$en {
 
 	/// en: 'Generic Radio via flrig'
 	String get flrig => 'Generic Radio via flrig';
+
+	/// en: 'Antenna'
+	String get antenna => 'Antenna';
+
+	/// en: 'CW Key'
+	String get key => 'CW Key';
 }
 
 // Path: settings.station.transports
@@ -3872,6 +3945,66 @@ class Translations$settings$station$transports$en {
 
 	/// en: 'WiFi'
 	String get wifi => 'WiFi';
+}
+
+// Path: settings.station.antennaTypes
+class Translations$settings$station$antennaTypes$en {
+	Translations$settings$station$antennaTypes$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Dipole'
+	String get dipole => 'Dipole';
+
+	/// en: 'Vertical'
+	String get vertical => 'Vertical';
+
+	/// en: 'Yagi / Beam'
+	String get yagiBeam => 'Yagi / Beam';
+
+	/// en: 'Loop'
+	String get loop => 'Loop';
+
+	/// en: 'Long Wire / EFHW'
+	String get longWire => 'Long Wire / EFHW';
+
+	/// en: 'Other'
+	String get other => 'Other';
+}
+
+// Path: settings.station.keyTypes
+class Translations$settings$station$keyTypes$en {
+	Translations$settings$station$keyTypes$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Straight Key'
+	String get straight => 'Straight Key';
+
+	/// en: 'Sideswiper'
+	String get sideswiper => 'Sideswiper';
+
+	/// en: 'Bug (mechanical semi-automatic)'
+	String get bug => 'Bug (mechanical semi-automatic)';
+
+	/// en: 'Fully-automatic keyer'
+	String get fullyAutomatic => 'Fully-automatic keyer';
+
+	/// en: 'Single Paddle'
+	String get singlePaddle => 'Single Paddle';
+
+	/// en: 'Dual Paddle'
+	String get dualPaddle => 'Dual Paddle';
+
+	/// en: 'Computer Driven'
+	String get computerDriven => 'Computer Driven';
+
+	/// en: 'Other'
+	String get other => 'Other';
 }
 
 // Path: operation.layout.panels.weatherConditions
@@ -4688,6 +4821,8 @@ extension on Translations {
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
+			'settings.station.models.antenna' => 'Antenna',
+			'settings.station.models.key' => 'CW Key',
 			'settings.station.transports.network' => 'Network',
 			'settings.station.transports.usbSerial' => 'USB serial',
 			'settings.station.transports.wifi' => 'WiFi',
@@ -4702,6 +4837,10 @@ extension on Translations {
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.noTransceiver' => 'None',
+			'settings.station.antennaInUse' => 'Antenna in Use',
+			'settings.station.keyInUse' => 'Key in Use',
+			'settings.station.noneSelected' => 'None',
+			'settings.station.moreSettings' => 'More Settings',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
@@ -4712,6 +4851,37 @@ extension on Translations {
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
+			'settings.station.antennaBands' => 'Bands',
+			'settings.station.antennaType' => 'Antenna type',
+			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
+			'settings.station.antennaTypes.dipole' => 'Dipole',
+			'settings.station.antennaTypes.vertical' => 'Vertical',
+			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
+			'settings.station.antennaTypes.loop' => 'Loop',
+			'settings.station.antennaTypes.longWire' => 'Long Wire / EFHW',
+			'settings.station.antennaTypes.other' => 'Other',
+			'settings.station.keyType' => 'Key type',
+			'settings.station.keyTypeRequired' => 'Choose a key type',
+			'settings.station.keyTypes.straight' => 'Straight Key',
+			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
+			'settings.station.keyTypes.bug' => 'Bug (mechanical semi-automatic)',
+			'settings.station.keyTypes.fullyAutomatic' => 'Fully-automatic keyer',
+			'settings.station.keyTypes.singlePaddle' => 'Single Paddle',
+			'settings.station.keyTypes.dualPaddle' => 'Dual Paddle',
+			'settings.station.keyTypes.computerDriven' => 'Computer Driven',
+			'settings.station.keyTypes.other' => 'Other',
+			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
+			'settings.station.otherOptions' => 'Other Options',
+			'settings.station.newAntenna' => 'New Antenna',
+			'settings.station.newKey' => 'New Key',
+			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
+			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
+			'settings.station.whatToTrack' => 'What to track?',
+			'settings.station.trackFieldRig' => 'Transceiver',
+			'settings.station.trackFieldPower' => 'Power',
+			'settings.station.watts' => 'Watts',
+			'settings.station.trackFieldAntenna' => 'Antenna',
+			'settings.station.trackFieldKey' => 'CW Key',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',

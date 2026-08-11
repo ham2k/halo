@@ -97,6 +97,7 @@ class _FakeRigctld {
   /// (the operator at the radio) and by the client's `F`/`M` commands.
   String frequency = '145000000';
   String mode = 'FM';
+  String power = '50';
 
   _FakeRigctld(this._server) {
     _server.listen(
@@ -119,6 +120,12 @@ class _FakeRigctld {
                 socket.add(utf8.encode('RPRT 0\n'));
               } else if (command.startsWith('M ')) {
                 mode = command.split(' ')[1];
+                socket.add(utf8.encode('RPRT 0\n'));
+              } else if (command == '+l RFPOWER_METER_WATTS') {
+                socket.add(utf8.encode('get_level:\nRFPOWER_METER_WATTS: $power\nRPRT 0\n'));
+              } else if (command.startsWith('L RFPOWER ')) {
+                final fraction = double.parse(command.substring('L RFPOWER '.length).trim());
+                power = (fraction * 100).round().toString();
                 socket.add(utf8.encode('RPRT 0\n'));
               }
             }
@@ -151,6 +158,7 @@ class _FakeFlrig {
   /// operator at the radio) and by the client's set_* calls.
   String frequency = '14070000';
   String mode = 'USB';
+  String power = '100';
 
   _FakeFlrig(this._server) {
     _server.listen(
@@ -183,6 +191,11 @@ class _FakeFlrig {
                 case 'rig.set_mode':
                   mode = RegExp(r'<param><value>([^<]+)</value></param>').firstMatch(body)!.group(1)!;
                   socket.add(_response(''));
+                case 'rig.get_power':
+                  socket.add(_response(power));
+                case 'rig.set_power':
+                  power = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
+                  socket.add(_response('<i4>1</i4>'));
               }
             }
           },

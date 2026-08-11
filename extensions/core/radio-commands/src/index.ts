@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Core radio commands: band, frequency, and mode shortcuts typed into the
-// call field and triggered on space. Ported from app-polo's RadioCommands
+// call field and triggered on space, ported from app-polo's RadioCommands
 // extension (src/extensions/commands/RadioCommands.js) — this is the
 // reference implementation of the `command` hook category (DESIGN.md §4,
-// docs/extensions/hooks.md).
+// docs/extensions/hooks.md). Power has no app-polo equivalent — CAT power
+// control is new to this app.
 //
 // Frequency parsing delegates to @ham2k/lib-format-tools' parseFreq (the
 // same published parser app-polo uses), which accepts MHz-style input
@@ -17,8 +18,16 @@ import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
 import { tFor } from "./i18n.ts"
+import { parsePowerCommand } from "./parsePowerCommand.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
+
+// Station Configuration — and everything CAT, including power — is still
+// behind this experiment (.agents/AGENTS.md: no user-visible surface until
+// an experiment ships ungated). BAND/MODE/frequency predate it and stay
+// ungated; only POWER checks this, per-call via ctx.enabledExperiments
+// rather than manifest.experiments, which would gate the whole file.
+const GATO_EXPERIMENT = 'gato'
 
 const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
@@ -135,11 +144,41 @@ const ModeCommand = {
   },
 }
 
+const PowerCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return null
+    const watts = parsePowerCommand(input)
+    if (watts == null) return null
+    const t = tFor(ctx)
+    return {
+      describe: t('powerDescribe', { watts }),
+      confirm: t('powerConfirm', { watts }),
+      commands: [{ setPower: { watts } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return []
+    const t = tFor(ctx)
+    return [
+      {
+        command: '5W',
+        params: '(1W, 5W, 50W…)',
+        describe: t('catalogPower'),
+        category: t('catalogCategory'),
+        expectsParams: true,
+        suggest: true,
+      },
+    ]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'radio-commands-band', hook: BandCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-frequency', hook: FrequencyCommand, priority: 99 })
+    registerHook('command', { key: 'radio-commands-power', hook: PowerCommand, priority: 100 })
   },
 })

@@ -705,11 +705,11 @@ void main() {
   test('the registry offers every model\'s every variant over three transports', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ic705-network')?.key, 'ic705-network');
-    // Eight models, and the IC-705 contributes two — the flat list is derived
+    // Ten models, and the IC-705 contributes two — the flat list is derived
     // from the models, so a variant added to one has to appear here without
     // anything else being edited.
-    expect(registry.types, hasLength(9));
-    expect(registry.models, hasLength(8));
+    expect(registry.types, hasLength(11));
+    expect(registry.models, hasLength(10));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network']));
   });
 
@@ -759,6 +759,8 @@ class _CountingSink implements EquipmentSink {
   void send(List<int> bytes) => sent.add(bytes);
   @override
   void report(VfoReading reading) {}
+  @override
+  void reportPower(num watts) {}
   @override
   void reportDiagnostic(String? note) {}
 }

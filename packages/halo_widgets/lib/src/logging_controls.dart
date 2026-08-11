@@ -5728,6 +5728,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.onCommandAction?.call('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
       } else if (map['openSettings'] is Map) {
         await widget.onCommandAction?.call('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
+      } else if (map['setPower'] is Map) {
+        // No QSO-scoped widget state of its own — same dispatch shape as
+        // updateSetting/openSettings above, straight through to the app layer.
+        await widget.onCommandAction?.call('setPower', (map['setPower'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)

@@ -828,6 +828,11 @@ class CommandEngine extends ChangeNotifier {
         await runAction('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
       } else if (map['openSettings'] is Map) {
         await runAction('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
+      } else if (map['setPower'] is Map) {
+        // Not QSO-scoped, unlike the actions this fallback path can't serve
+        // (addQso, updateQso, setCallField — see the comment below) — so,
+        // unlike those, it runs here whether or not a logging panel is live.
+        await runAction('setPower', (map['setPower'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a
         // command that's scoped to the logging panel (addQso, updateQso,
