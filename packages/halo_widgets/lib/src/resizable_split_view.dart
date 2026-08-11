@@ -478,12 +478,24 @@ class PaneSafeArea extends InheritedWidget {
   /// SafeArea handles it) — carrying it through here would double it. Left/
   /// right/bottom are NOT consumed by Scaffold (no bottomNavigationBar
   /// here), so they pass through as-is.
-  factory PaneSafeArea.root(BuildContext context, {required Widget child}) {
+  ///
+  /// [left] overrides that edge for a view whose body does NOT start at the
+  /// window's left edge — Home, whose navigation rail sits there and takes the
+  /// inset itself by widening. Passing 0 there is what stops every pane
+  /// beyond the rail padding itself by a cutout that is no longer anywhere
+  /// near it. Null keeps the device's own value, which is right for a body
+  /// that really does reach the edge.
+  factory PaneSafeArea.root(BuildContext context, {required Widget child, double? left}) {
     // Aspect-scoped: subscribes the caller to `padding` only, not the whole
     // MediaQueryData — a bare `MediaQuery.of` here would rebuild the entire
     // body on every keyboard show/hide or text-scale change.
     final padding = MediaQuery.paddingOf(context);
-    return PaneSafeArea(left: padding.left, right: padding.right, bottom: padding.bottom, child: child);
+    return PaneSafeArea(
+      left: left ?? padding.left,
+      right: padding.right,
+      bottom: padding.bottom,
+      child: child,
+    );
   }
 
   /// All 4 edges composed into one [EdgeInsets], for a consumer that pads

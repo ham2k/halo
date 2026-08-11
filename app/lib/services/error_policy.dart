@@ -26,6 +26,7 @@ import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 import 'package:http/http.dart' show ClientException;
 
+import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -125,6 +126,15 @@ class ErrorPolicy {
       disposition: ErrorDisposition.ignore,
       logOncePerSession: true,
       matches: _isWebFocusTraversalNull,
+    ),
+    ErrorRule(
+      id: 'bottom-chrome-squeezed',
+      reason: 'the window is too short to seat all of the bottom chrome above the keyboard, so '
+          'the status footer and then the numbers row gave way (BottomChromeBudget). The '
+          'operator loses status while typing and cannot tell why, which is what this line is '
+          'for — it is not something they can act on mid-contact',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isBottomChromeSqueezed,
     ),
     ErrorRule(
       id: 'renderflex-overflow',
@@ -270,6 +280,11 @@ class ErrorPolicy {
   /// worth a "Something went wrong" notice aimed at an operator who can't
   /// do anything about it, or an external report for something that
   /// literally cannot happen in the release build users run.
+  /// Raised by `StatusBarOverlay` itself, once per transition, when the
+  /// bottom chrome cannot all be seated above the on-screen keyboard.
+  static bool _isBottomChromeSqueezed(Object error, FlutterErrorDetails? details) =>
+      error is BottomChromeSqueezed;
+
   static bool _isRenderFlexOverflow(Object error, FlutterErrorDetails? details) =>
       error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
 

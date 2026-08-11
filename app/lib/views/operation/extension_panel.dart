@@ -37,7 +37,11 @@ import 'panel_content_view.dart';
 /// for reasons no panel cares about.
 @immutable
 class PanelRenderContext {
-  final Operation operation;
+  /// Null on a view that has no operation open — Home. A panel whose template
+  /// names the operation renders that part empty there rather than the view
+  /// refusing to place it: the dashboard panels (clock, weather, solar) are
+  /// exactly the ones an operator wants on Home, and none of them ask.
+  final Operation? operation;
   final Map<String, dynamic>? qso;
   final int qsoCount;
 
@@ -47,9 +51,9 @@ class PanelRenderContext {
   final int lookupRevision;
 
   const PanelRenderContext({
-    required this.operation,
+    this.operation,
     this.qso,
-    required this.qsoCount,
+    this.qsoCount = 0,
     this.spotsRevision = 0,
     this.lookupRevision = 0,
   });
@@ -57,7 +61,7 @@ class PanelRenderContext {
   /// The triggers that fired between [previous] and this — empty means
   /// nothing this panel could have asked for actually changed.
   Set<String> changesFrom(PanelRenderContext previous) => {
-    if (operation.uuid != previous.operation.uuid || operation.data != previous.operation.data) 'operation',
+    if (operation?.uuid != previous.operation?.uuid || operation?.data != previous.operation?.data) 'operation',
     if (qso != previous.qso) 'qso',
     if (qsoCount != previous.qsoCount) 'qsoLogged',
     if (spotsRevision != previous.spotsRevision) 'spots',
@@ -409,17 +413,23 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
           'panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
         config = const {};
       }
+      final operation = ctx.operation;
       final result = await widget.panels.render(panel, {
-        'operation': {
-          ...ctx.operation.data,
-          'uuid': ctx.operation.uuid,
-          // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
-          // and a panel is the surface that most wants to say when the
-          // operation ran. Without them a template naming the operation's
-          // date has nothing to name (see the SDK's `opValues`).
-          if (ctx.operation.startAtMillisMin != null) 'startAtMillisMin': ctx.operation.startAtMillisMin,
-          if (ctx.operation.startAtMillisMax != null) 'startAtMillisMax': ctx.operation.startAtMillisMax,
-        },
+        // Absent, not empty, on a view with no operation open: an empty map
+        // would answer a template's `op.call` with the empty string, which
+        // reads as "this operation has no callsign" rather than "there is no
+        // operation". The SDK's `opValues` treats a missing key as the latter.
+        if (operation != null)
+          'operation': {
+            ...operation.data,
+            'uuid': operation.uuid,
+            // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
+            // and a panel is the surface that most wants to say when the
+            // operation ran. Without them a template naming the operation's
+            // date has nothing to name (see the SDK's `opValues`).
+            if (operation.startAtMillisMin != null) 'startAtMillisMin': operation.startAtMillisMin,
+            if (operation.startAtMillisMax != null) 'startAtMillisMax': operation.startAtMillisMax,
+          },
         if (ctx.qso != null) 'qso': ctx.qso,
         'qsoCount': ctx.qsoCount,
         'config': config,

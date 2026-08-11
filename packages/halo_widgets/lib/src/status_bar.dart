@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'chrome_edge.dart';
 import 'density.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
@@ -238,8 +239,9 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           },
           child: !hasItems
               ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
-              : Material(
+              : ChromeTopEdge(
                   key: const ValueKey('footer_active'),
+                  child: Material(
                   color: backgroundColor,
                   child: SafeArea(
                     top: false,
@@ -252,6 +254,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                         child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
                       ),
                     ),
+                  ),
                   ),
                 ),
         ),
@@ -606,6 +609,14 @@ class NoticeStack extends StatefulWidget {
   /// tight budget by the whole band. Below [_noticeBandHeight] the
   /// band itself gives way, so this is a bound the widget cannot exceed.
   final double? maxHeight;
+
+  /// The least this stack can be given and still SHOW a notice rather than a
+  /// sliver of one: a row of card, plus the band it paints around it. The
+  /// footer floors its own cap the same way (`_buildExpanded`) — a notice is
+  /// where ErrorPolicy puts what the operator must read, so it may not be the
+  /// one piece that silently shrinks to nothing.
+  static double minHeightOf(BuildContext context) =>
+      LayoutDensity.metricsOf(context).statusBarRow + _noticeBandHeight;
 
   const NoticeStack({
     super.key,

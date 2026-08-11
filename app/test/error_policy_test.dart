@@ -26,6 +26,7 @@ import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure
 // keep quiet — exist only on the socket/serial side.
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart' show IcomLoginTimeout;
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
+import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
@@ -151,6 +152,20 @@ void main() {
       // Only the framework's own assertion is exempt: an ordinary exception
       // of ours that happens to quote the field name must not ride along.
       expect(dispositionFor(StateError('canRequestFocus went wrong')), ErrorDisposition.notify);
+    });
+  });
+
+  group('bottom chrome squeezed', () {
+    // The window is too short to seat all of the bottom chrome above the
+    // keyboard, so the footer and then the numbers row gave way. The operator
+    // cannot act on that mid-contact and a notice about a notice not fitting
+    // would be absurd — but it must not be silent either, or "the numbers row
+    // doesn't work on my phone" has nothing behind it.
+    test('is console-only — never uploaded, never noticed', () {
+      expect(
+        dispositionFor(const BottomChromeSqueezed('no room above the keyboard for the numbers row')),
+        ErrorDisposition.logOnly,
+      );
     });
   });
 

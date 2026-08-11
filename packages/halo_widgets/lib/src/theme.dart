@@ -111,6 +111,18 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// app-polo, darkened for contrast in light mode and lightened in dark.
   final Color spotMultiplier;
 
+  /// The backdrop a list of records is laid on — the operations list on Home
+  /// today. A near-neutral one step off [ColorScheme.surface], not
+  /// `surfaceContainerHighest`: that role is the app's dialog/pane BAND
+  /// (#DCE4E9), a blue-grey heavy enough to read as chrome, and an empty list
+  /// wearing it looks like a panel that failed to load rather than a surface
+  /// waiting to be filled.
+  ///
+  /// Deliberately close to `surface` in both variants: the rows themselves are
+  /// `surface`, and this only has to be distinguishable from them where it
+  /// shows through below the last one.
+  final Color listBackground;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -123,6 +135,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.tabIndicator,
     required this.onSurfaceAccent,
     required this.spotMultiplier,
+    required this.listBackground,
     required this.bands,
   });
 
@@ -138,6 +151,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     tabIndicator: _tabIndicatorBlue,
     onSurfaceAccent: Color(0xFF006783), // = colorScheme.primary; already reads fine here
     spotMultiplier: Color(0xFFC2500F), // 10m's hue, darkened to 4.6:1 on the light surface
+    listBackground: Color(0xFFF7F8FA), // a hair cooler and darker than surface (#FBFCFE)
     bands: _bandColors,
   );
 
@@ -151,6 +165,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     tabIndicator: _tabIndicatorBlue,
     onSurfaceAccent: Color(0xFF00A8D6), // same hue/saturation as primary, lightened
     spotMultiplier: Color(0xFFFF8A4C), // 10m's hue, lightened to 7.3:1 on the dark surface
+    listBackground: Color(0xFF1E2224), // the same one-step-off-surface relationship, inverted
     bands: _bandColors,
   );
 
@@ -184,6 +199,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? tabIndicator,
     Color? onSurfaceAccent,
     Color? spotMultiplier,
+    Color? listBackground,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -196,6 +212,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       tabIndicator: tabIndicator ?? this.tabIndicator,
       onSurfaceAccent: onSurfaceAccent ?? this.onSurfaceAccent,
       spotMultiplier: spotMultiplier ?? this.spotMultiplier,
+      listBackground: listBackground ?? this.listBackground,
       bands: bands ?? this.bands,
     );
   }

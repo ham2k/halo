@@ -45,6 +45,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
   static const _layoutCustomizationKey = 'layoutCustomization';
+  static const _homeNavExpandedKey = 'homeNavExpanded';
   static const _layoutDensityKey = 'layoutDensity';
   static const _mapStyleKey = 'mapStyle';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
@@ -672,6 +673,21 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setLayoutCustomization(bool value) =>
       setSettingValue(generalGroup, _layoutCustomizationKey, value);
 
+  /// Whether Home's navigation rail shows its labels. Not a visibility switch:
+  /// the rail is always there, and this is only how wide (see
+  /// `HomeNavigationRail`). Collapsed by default — the rail's two destinations
+  /// are a notebook and a gear, and an operator who wants the words has one
+  /// click to them.
+  ///
+  /// Read differently at each width, because the two have different room to
+  /// give: wide it means LABELS, narrow it means the rail is on screen at all
+  /// (labels would take a third of a phone's width from the panes). See
+  /// `HomeNavigationRail.widthFor`.
+  bool get homeNavExpanded => (settingValue(generalGroup, _homeNavExpandedKey) as bool?) ?? false;
+
+  Future<void> setHomeNavExpanded(bool value) =>
+      setSettingValue(generalGroup, _homeNavExpandedKey, value);
+
   String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? 'en';
 
   Future<void> setLocale(String localeCode) async {
@@ -1088,7 +1104,6 @@ enum FontScale {
 /// write can't typo apart (a forked key would silently reset the pane width
 /// on every launch, and only across restarts).
 abstract final class LayoutKeys {
-  static const homeLeftColumn = 'home.leftColumn';
   static const operationLeftColumn = 'operation.leftColumn';
   static const operationDock = 'operation.dock';
 
@@ -1110,6 +1125,22 @@ abstract final class LayoutKeys {
   /// overrides nothing inherits these, and these in turn fall back to the
   /// app's own settings.
   static const operationViewOptions = 'operation.viewOptions';
+
+  /// Home's OLD divider width, in pixels, from before its split became a dock.
+  /// Read once, by the migration that turns it into the dock's initial split
+  /// weights (`_migratedColumnWeights` in home_view.dart), and never written
+  /// again. Kept rather than deleted: an operator's dragged width is a
+  /// deliberate choice, and dropping the key would reset it silently on
+  /// upgrade.
+  static const homeLeftColumn = 'home.leftColumn';
+
+  /// Home's dock, in the same four parts and for the same reasons. There is no
+  /// live `leftColumn` counterpart to Operation's: Home's split IS the dock's,
+  /// and the dock carries its own weights.
+  static const homeDock = 'home.dock';
+  static const homeDockState = 'home.dockState';
+  static const homePaneOptions = 'home.paneOptions';
+  static const homeViewOptions = 'home.viewOptions';
 }
 
 /// Flow ids for [SettingsService.onboardingShownCount] /

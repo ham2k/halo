@@ -85,6 +85,37 @@ sealed class DockNode {
     DockGroup(:final modules) => List.of(modules),
     DockSplit(:final children) => [for (final c in children) ...c.collectModules()],
   };
+
+  /// This arrangement without [id], for a module a view has RETIRED — one that
+  /// is no longer a pane at all, so a saved arrangement naming it describes
+  /// something that cannot be built.
+  ///
+  /// Null when nothing is left. A group emptied of its last module goes with
+  /// it, and a split left holding one child collapses into that child, so the
+  /// remaining panes take the space rather than sharing it with a gap.
+  ///
+  /// NOT for a module that is merely unavailable — an extension disabled or
+  /// slow to answer still gets a placeholder pane, because its arrangement is
+  /// meant to come back.
+  DockNode? without(String id) {
+    switch (this) {
+      case DockGroup(:final modules):
+        final kept = modules.where((m) => m != id).toList();
+        return kept.isEmpty ? null : DockGroup(kept);
+      case DockSplit(:final axis, :final children, :final weights):
+        final kept = <DockNode>[];
+        final keptWeights = <double>[];
+        for (var i = 0; i < children.length; i++) {
+          final child = children[i].without(id);
+          if (child == null) continue;
+          kept.add(child);
+          keptWeights.add(weights[i]);
+        }
+        if (kept.isEmpty) return null;
+        if (kept.length == 1) return kept.first;
+        return DockSplit(axis, kept, keptWeights);
+    }
+  }
 }
 
 /// A tabbed stack of modules. With a single module the header still shows
@@ -367,11 +398,24 @@ class _TabFramePainter extends CustomPainter {
 /// edges, with the bottom corners rounded. No top — the tab strip drew that,
 /// notched around the tab that is showing.
 class _PaneFramePainter extends CustomPainter {
-  const _PaneFramePainter();
+  /// Whether the tab strip above is drawing this pane's top edge for us.
+  /// False for a headerless pane, which has no strip and so needs the fourth
+  /// side painted here — the outline is what marks a pane as a block to be
+  /// moved, and three sides of one reads as an unfinished box.
+  final bool topFromStrip;
+
+  const _PaneFramePainter({this.topFromStrip = true});
 
   @override
   void paint(Canvas canvas, Size size) {
     const half = _editingFrameWidth / 2;
+    if (!topFromStrip) {
+      canvas.drawRect(
+        Rect.fromLTRB(half, half, size.width - half, size.height - half),
+        _editingFramePaint,
+      );
+      return;
+    }
     // Starts at y = 0, which is the strip's own bottom edge — the horizontal
     // segments the tabs drew are centred half a stroke ABOVE that, so the two
     // overlap rather than meeting at a seam. The pane's content is inset by a
@@ -390,7 +434,7 @@ class _PaneFramePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PaneFramePainter oldDelegate) => false;
+  bool shouldRepaint(_PaneFramePainter oldDelegate) => oldDelegate.topFromStrip != topFromStrip;
 }
 
 /// Which side of a target group (or of the dock itself) a drag lands on.
@@ -436,13 +480,37 @@ class DockLayoutView extends StatefulWidget {
   /// Modules whose group header is hidden — for a pane that is alone in its
   /// group and whose operator has turned its header off.
   ///
-  /// Two things always override it. A group holding more than one module
-  /// keeps its header whatever this says: the header IS the tab strip there,
-  /// and hiding it would strand every pane but the showing one. And [editing]
-  /// keeps every header, because the header is the grab handle and the pane's
-  /// own control — a headerless pane in edit mode could not be moved, renamed
-  /// or put back.
+  /// One thing always overrides it: a group holding more than one module keeps
+  /// its header whatever this says, because the header IS the tab strip there
+  /// and hiding it would strand every pane but the showing one.
+  ///
+  /// [editing] does NOT override it. A headerless pane still needs a grab
+  /// handle and its own control while the layout is being rearranged, but it
+  /// gets them floated over its corner (`_FloatingPaneChrome`) rather than in
+  /// a strip — a strip conjured for the edit costs a chrome height the pane
+  /// may not have, and a pane that changes size on entering edit mode makes
+  /// [dockMinPaneHeight] two numbers instead of one.
   final Set<String> headerlessModules;
+
+  /// Modules that size themselves along their split's axis instead of taking
+  /// a share of it — Home's Quick Lookup, which is a bar and a result line and
+  /// has no use for half the window.
+  ///
+  /// Such a pane is **not resizable**: the divider beside it carries no drag,
+  /// because there is no weight for a drag to move. It is not a FIXED size
+  /// either — it takes what its content needs and grows when that content
+  /// does, which is the whole point for a pane whose bar gains a line when a
+  /// callsign resolves.
+  ///
+  /// Bounded at both ends regardless: never below [dockMinPaneHeight] /
+  /// [dockMinPaneWidth], and never so tall that the flexible panes beside it
+  /// fall under theirs — a pane that sizes itself must not be able to starve
+  /// its neighbours.
+  ///
+  /// Only meaningful for a module alone in its group: a tabbed group's height
+  /// is whatever its tallest tab wants, which is not a property any one module
+  /// can claim.
+  final Set<String> fixedExtentModules;
 
   /// A module the operator dragged onto the delete target, reported AFTER it
   /// has left the arrangement — the caller's cue to forget whatever else it
@@ -488,6 +556,7 @@ class DockLayoutView extends StatefulWidget {
     this.tabActions,
     this.editingPaneControls,
     this.headerlessModules = const {},
+    this.fixedExtentModules = const {},
     this.onModuleDeleted,
     this.onSpecChanged,
     this.editing = false,
@@ -915,7 +984,30 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     DockSplit() => _buildSplit(node),
   };
 
+  /// Whether this child sizes itself along the split's axis rather than
+  /// taking a share of it — see [DockLayoutView.fixedExtentModules]. Only a
+  /// group of ONE qualifies: a tabbed group's extent belongs to the group, not
+  /// to any module in it.
+  bool _isFixedExtent(DockNode child) =>
+      child is DockGroup &&
+      child.modules.length == 1 &&
+      widget.fixedExtentModules.contains(child.modules.first);
+
   Widget _buildSplit(DockSplit split) {
+    // A run holding a self-sizing child cannot be laid out from weights at
+    // all: that child's extent is only known once its content has been laid
+    // out, which is after the arithmetic below would have had to spend it.
+    // Flex already resolves exactly this — non-flex children take their
+    // intrinsic size, flex children divide the remainder — so such a run is
+    // built there instead, and every other run keeps the path it has.
+    //
+    // What that costs is the device-pixel boundary snapping below: Flex
+    // computes its own child extents and they can land between pixels, which
+    // is the hairline-seam problem that snapping exists to prevent. Accepted
+    // only for runs that need it, and only because the alternative is
+    // measuring a subtree during layout to feed a number back into the same
+    // layout.
+    if (split.children.any(_isFixedExtent)) return _buildFlexSplit(split);
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontal = split.axis == Axis.horizontal;
@@ -933,7 +1025,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         final growing = identical(split, _growingSplit);
         final rawSum = split.weights.reduce((a, b) => a + b);
         final floorWeight = available <= 0 ? 0.0 : LayoutDensity.chromeHeightOf(context) / available * rawSum;
-        final weights = growing
+        var weights = growing
             ? [
                 for (var i = 0; i < split.weights.length; i++)
                   i == _growingIndex
@@ -944,7 +1036,40 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                       : split.weights[i],
               ]
             : split.weights;
-        final weightSum = weights.reduce((a, b) => a + b);
+        var weightSum = weights.reduce((a, b) => a + b);
+        // Hold every child to the floor for this axis, BEFORE the extents are
+        // derived. `_minPaneExtent` below bounds a divider DRAG and nothing
+        // else, so on its own it lets a saved arrangement — or a shipped
+        // default like 9:1 — lay a pane out below the height of its own
+        // chrome, which overflows the group's Column. That is a layout error
+        // the operator cannot see the cause of and cannot drag their way out
+        // of, since the drag bound refuses to shrink a pane that is already
+        // under the limit but never grows it back.
+        //
+        // Proportional give: the panes above the floor fund the ones below it,
+        // in proportion to what they have, so a run that is merely tight
+        // degrades evenly instead of collapsing its last child. A run with no
+        // room for its own floors (available < floor × children) is left
+        // alone — every child is under, there is nothing to take from, and
+        // scaling further would only trade one overflow for another.
+        final floor = split.axis == Axis.horizontal ? dockMinPaneWidth(context) : dockMinPaneHeight(context);
+        if (available > 0 && weightSum > 0 && floor * split.children.length <= available) {
+          final floorWeight = floor / available * weightSum;
+          final lifted = [for (final w in weights) math.max(w, floorWeight)];
+          final excess = lifted.reduce((a, b) => a + b) - weightSum;
+          if (excess > 0) {
+            // What the panes ABOVE the floor can give, and what each gives.
+            final spare = [for (final w in lifted) math.max(0.0, w - floorWeight)];
+            final spareSum = spare.reduce((a, b) => a + b);
+            if (spareSum > 0) {
+              for (var i = 0; i < lifted.length; i++) {
+                lifted[i] -= excess * spare[i] / spareSum;
+              }
+            }
+          }
+          weights = lifted;
+          weightSum = weights.reduce((a, b) => a + b);
+        }
         // Weights give fractional extents; laying panes out at those puts
         // every boundary after the first one between device pixels, where it
         // antialiases against its neighbor and reads as a hairline gap. Walk
@@ -995,6 +1120,17 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                 extent: flat[2 * i - 1],
                 onDragUpdate: (delta) => setState(() {
                   if (available <= 0) return;
+                  // Against the weights this frame was LAID OUT from, which
+                  // are not the stored ones whenever the floor above lifted a
+                  // pane: measured from the stored pair instead, a boundary
+                  // beside an under-floor pane moves by the difference
+                  // between them rather than by the drag, so it lags the
+                  // pointer and then snaps. The lifted pair is also what is on
+                  // screen, so adopting it here is the same rule `onDragCancel`
+                  // follows — persist what the operator can see. Not while a
+                  // pane is animating in: those weights are a frame of an
+                  // animation, not an arrangement.
+                  final base = List<double>.of(growing ? split.weights : weights);
                   // Move the boundary between i-1 and i, keeping both panes
                   // usable; weights shift by the dragged fraction of the run.
                   // Bounds via max/min, not clamp(): a pane ALREADY below the
@@ -1003,11 +1139,14 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                   // shrink it further.
                   final deltaWeight = delta / available * weightSum;
                   final lower = _minPaneExtent / available * weightSum;
-                  final maxGive = math.max(0.0, split.weights[i - 1] - lower);
-                  final maxTake = math.max(0.0, split.weights[i] - lower);
+                  final maxGive = math.max(0.0, base[i - 1] - lower);
+                  final maxTake = math.max(0.0, base[i] - lower);
                   final shift = math.min(maxTake, math.max(-maxGive, deltaWeight));
-                  split.weights[i - 1] += shift;
-                  split.weights[i] -= shift;
+                  base[i - 1] += shift;
+                  base[i] -= shift;
+                  for (var k = 0; k < split.weights.length; k++) {
+                    split.weights[k] = base[k];
+                  }
                 }),
                 onDragEnd: _emit,
                 // Weights were mutated live during the drag — a cancelled
@@ -1040,6 +1179,114 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               ),
             ),
           );
+        }
+        return horizontal
+            ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+      },
+    );
+  }
+
+  /// A split holding at least one self-sizing child.
+  ///
+  /// The self-sizing children are plain Flex children — they lay out at the
+  /// size their content asks for — and everything else is [Expanded] with its
+  /// weight, so the remainder divides exactly as it did before. Dividers next
+  /// to a self-sizing child are still DRAWN (the boundary is chrome, and a run
+  /// whose panes touched would read as one pane) but carry no drag: there is
+  /// no weight on that side for a drag to move, and a bar that offers a resize
+  /// it cannot perform is worse than one that plainly does not.
+  Widget _buildFlexSplit(DockSplit split) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontal = split.axis == Axis.horizontal;
+        final total = horizontal ? constraints.maxWidth : constraints.maxHeight;
+        final dividerExtent = _dividerExtent;
+        final grid = PixelGrid.of(context);
+        final snappedDivider = grid.snap(dividerExtent);
+        final floor = horizontal ? dockMinPaneWidth(context) : dockMinPaneHeight(context);
+        final flexCount = split.children.where((c) => !_isFixedExtent(c)).length;
+        // What a self-sizing child may take before it starts starving the
+        // panes beside it: everything except the dividers and the flexible
+        // children's own floors. Without this a Quick Lookup whose result line
+        // ran long would push the operation list under its own chrome — the
+        // pane sizes itself, but not at the others' expense.
+        final reserved = snappedDivider * (split.children.length - 1) + floor * flexCount;
+        final fixedCeiling = math.max(floor, total - reserved);
+
+        final ambient = PaneSafeArea.maybeOf(context);
+        final ambientLeft = ambient?.left ?? 0;
+        final ambientTop = ambient?.top ?? 0;
+        final ambientRight = ambient?.right ?? 0;
+        final ambientBottom = ambient?.bottom ?? 0;
+
+        final children = <Widget>[];
+        for (var i = 0; i < split.children.length; i++) {
+          if (i > 0) {
+            children.add(
+              SolidPaneDivider(
+                axis: split.axis,
+                extent: snappedDivider,
+                // Inert when either side sizes itself. `onDragUpdate` is
+                // required by the widget, so refusing here is how the bar says
+                // no — it is drawn, hoverable as chrome, and moves nothing.
+                interactive: !_isFixedExtent(split.children[i - 1]) && !_isFixedExtent(split.children[i]),
+                onDragUpdate: (delta) => setState(() {
+                  final flexible = [
+                    for (var j = 0; j < split.children.length; j++)
+                      if (!_isFixedExtent(split.children[j])) j,
+                  ];
+                  // Only the two flexible panes either side of this boundary
+                  // trade; a self-sizing one between them is not in the sum.
+                  final before = flexible.where((j) => j < i).lastOrNull;
+                  final after = flexible.where((j) => j >= i).firstOrNull;
+                  if (before == null || after == null) return;
+                  final run = math.max(1.0, total - reserved);
+                  final weightSum = split.weights.reduce((a, b) => a + b);
+                  final deltaWeight = delta / run * weightSum;
+                  final lower = floor / run * weightSum;
+                  final maxGive = math.max(0.0, split.weights[before] - lower);
+                  final maxTake = math.max(0.0, split.weights[after] - lower);
+                  final shift = math.min(maxTake, math.max(-maxGive, deltaWeight));
+                  split.weights[before] += shift;
+                  split.weights[after] -= shift;
+                }),
+                onDragEnd: _emit,
+                onDragCancel: _emit,
+              ),
+            );
+          }
+          final isFirst = i == 0;
+          final isLast = i == split.children.length - 1;
+          final fixed = _isFixedExtent(split.children[i]);
+          final pane = PaneSafeArea(
+            left: horizontal ? (isFirst ? ambientLeft : 0) : ambientLeft,
+            top: horizontal ? ambientTop : (isFirst ? ambientTop : 0),
+            right: horizontal ? (isLast ? ambientRight : 0) : ambientRight,
+            bottom: horizontal ? ambientBottom : (isLast ? ambientBottom : 0),
+            child: _buildNode(split.children[i]),
+          );
+          if (fixed) {
+            children.add(
+              ConstrainedBox(
+                // Both ends: never under its own chrome, never over what the
+                // others can spare.
+                constraints: horizontal
+                    ? BoxConstraints(minWidth: floor, maxWidth: fixedCeiling)
+                    : BoxConstraints(minHeight: floor, maxHeight: fixedCeiling),
+                child: pane,
+              ),
+            );
+          } else {
+            children.add(
+              Expanded(
+                // Weights are doubles and Flex takes an int; scaled rather
+                // than rounded to 1, which would flatten a 2:1 into 1:1.
+                flex: math.max(1, (split.weights[i] * 1000).round()),
+                child: pane,
+              ),
+            );
+          }
         }
         return horizontal
             ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)
@@ -1117,6 +1364,12 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     );
   }
 
+  /// A group's body: [Expanded] normally, so it fills its pane, and a plain
+  /// child when the group sizes itself — an Expanded in a shrink-wrapping
+  /// Column has no remainder to expand into and throws.
+  Widget _groupBody({required bool selfSizing, required Widget child}) =>
+      selfSizing ? child : Expanded(child: child);
+
   /// A module in the arrangement that the caller supplied no widget for.
   /// Renders as nothing, but says so: an empty pane where a pane was asked
   /// for otherwise reads as a broken panel rather than a missing one.
@@ -1131,11 +1384,24 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   Widget _buildGroup(DockGroup group) {
     final theme = Theme.of(context);
     final headerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-    // See [headerlessModules] for the two overrides.
-    final showHeader = widget.editing ||
-        group.modules.length > 1 ||
+    // See [headerlessModules] for the two overrides. Edit mode is NOT one of
+    // them any more: a strip conjured for the duration of an edit is a whole
+    // chrome height the pane has to find from somewhere, and a pane already at
+    // its floor ([dockMinPaneHeight]) has nowhere to find it — so the layout
+    // overflowed for exactly as long as the operator was rearranging it, which
+    // is the worst possible moment. A headerless pane gets [_FloatingPaneChrome]
+    // laid OVER its top-left corner instead: same handle, same title, same
+    // options button, no height taken from anything.
+    final showHeader = group.modules.length > 1 ||
         !widget.headerlessModules.contains(group.modules.first);
+    final floatingChrome = widget.editing && !showHeader;
+    // A self-sizing group must SHRINK-WRAP, or it defeats its own purpose: the
+    // body below is an Expanded, which fills whatever maximum it is handed, so
+    // a group handed "as much as the others can spare" takes all of it and the
+    // pane that was supposed to be a bar becomes the tallest thing in the run.
+    final selfSizing = _isFixedExtent(group);
     return Column(
+      mainAxisSize: selfSizing ? MainAxisSize.min : MainAxisSize.max,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeader)
@@ -1275,9 +1541,12 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
             ),
           ),
         ),
-        Expanded(
+        _groupBody(
+          selfSizing: selfSizing,
           child: Stack(
-            fit: StackFit.expand,
+            // Loose while self-sizing, so the stack takes the height its pane
+            // asked for instead of the one it was offered.
+            fit: selfSizing ? StackFit.loose : StackFit.expand,
             children: [
               // No local PaneSafeArea wrap here: this group's content
               // inherits whatever ambient value _buildSplit (or this dock's
@@ -1311,8 +1580,11 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                 // outline there, and the strip has not moved.
                     child: Padding(
                       padding: widget.editing
-                          ? const EdgeInsets.only(
+                          ? EdgeInsets.only(
                               left: _editingFrameWidth,
+                              // A headerless pane has no strip drawing its top
+                              // edge, so it gives up room for that side too.
+                              top: showHeader ? 0 : _editingFrameWidth,
                               right: _editingFrameWidth,
                               bottom: _editingFrameWidth,
                             )
@@ -1320,7 +1592,9 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                       child: IndexedStack(
                         // Tight constraints, like a TabBarView page — panes
                         // are designed to fill their pane, not shrink-wrap.
-                        sizing: StackFit.expand,
+                        // Except a self-sizing one, which is the whole point of
+                        // it: there its child's height IS the pane's.
+                        sizing: selfSizing ? StackFit.loose : StackFit.expand,
                         index: group.selected,
                         children: [
                           for (var i = 0; i < group.modules.length; i++)
@@ -1349,7 +1623,39 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               // the pane being aimed at loses its own edges at the moment it
               // matters most.
               if (widget.editing)
-                const Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _PaneFramePainter()))),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(painter: _PaneFramePainter(topFromStrip: showHeader)),
+                  ),
+                ),
+              // Above the frame and the wash both: it is the only thing in a
+              // headerless pane that is still a control while editing, so
+              // nothing may paint over it.
+              if (floatingChrome)
+                Positioned(
+                  left: _editingFrameWidth,
+                  top: _editingFrameWidth,
+                  child: _FloatingPaneChrome(
+                    title: widget.titles[group.modules.first] ?? group.modules.first,
+                    moduleId: group.modules.first,
+                    action: widget.editingPaneControls?.call(context, group.modules.first),
+                    onPointerDownAt: (position) => _pressGlobal = position,
+                    onDragStarted: (id) => setState(() {
+                      _dragging = id;
+                      _dragTravel = 0;
+                      _lastDragLocal = null;
+                      final press = _pressGlobal;
+                      _deleteArmed = press == null || !_isOnDeleteTarget(press);
+                    }),
+                    onDragUpdate: _trackDragTravel,
+                    onDragEnded: () => setState(() {
+                      _dragging = null;
+                      _dragTravel = 0;
+                      _lastDragLocal = null;
+                      _deleteArmed = false;
+                    }),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1495,7 +1801,7 @@ class _DockTab extends StatelessWidget {
   /// The grab handle exists only while editing ([showHandle] IS `editing`),
   /// so there is one size and one strength: it is the control the operator
   /// is there to use, not a hint that a tab could be moved.
-  static const double _editingHandleSize = 20;
+  static const double editingHandleSize = 20;
 
   /// The least the SHOWING tab is squeezed to while editing: both slots — its
   /// grab handle and its options button — and enough between them for three
@@ -1519,13 +1825,13 @@ class _DockTab extends StatelessWidget {
     // label's own inset either side of it (see [_tabContent]) and the tab's
     // padding. Leave one out and the floor is that much short — the tab
     // ellipsizes below the three letters this exists to keep.
-    return _editingHandleSize + _editingActionSize + width + Space.sm * 2 + Space.xxs * 2;
+    return editingHandleSize + _editingActionSize + width + Space.sm * 2 + Space.xxs * 2;
   }
 
   /// The least a tab being squeezed can be given: its grab handle and the
   /// tab's own padding, both fixed boxes. Below this the Row overflows
   /// instead of shrinking, and the handle paints over the neighbouring tab.
-  static const double squeezedMinWidth = _editingHandleSize + Space.xxs * 2;
+  static const double squeezedMinWidth = editingHandleSize + Space.xxs * 2;
 
   /// What a tab's action is given while editing — its own icon and a little
   /// around it, rather than the chrome-height tap target it gets while the
@@ -1569,8 +1875,8 @@ class _DockTab extends StatelessWidget {
       children: [
         if (showHandle)
           SizedBox(
-            width: _editingHandleSize,
-            child: Icon(MdiIcons.dragVertical, size: _editingHandleSize, color: labelColor),
+            width: editingHandleSize,
+            child: Icon(MdiIcons.dragVertical, size: editingHandleSize, color: labelColor),
           ),
         Expanded(
           child: Row(
@@ -2047,3 +2353,135 @@ class _EdgeDropTarget extends StatelessWidget {
   }
 }
 
+
+/// The edit-mode chrome for a pane that has no header of its own: a grab
+/// handle, the pane's name, and its layout-options button, in a small block
+/// laid OVER the pane's top-left corner.
+///
+/// Over, not above. A strip conjured for the duration of an edit costs a whole
+/// chrome height, and a pane at [dockMinPaneHeight] has none to give — so the
+/// arrangement overflowed for precisely as long as it was being rearranged.
+/// Floating it means a pane is the same height edit mode or not, which is also
+/// what lets [dockMinPaneHeight] be ONE number rather than one per state.
+///
+/// Sized to its content, so it covers as little of the pane as it can, and
+/// faded out toward its right and bottom edges rather than stopping at a hard
+/// border: the block sits on top of somebody's content, and a rectangle with a
+/// crisp edge reads as a piece of that content rather than as chrome over it.
+class _FloatingPaneChrome extends StatelessWidget {
+  final String title;
+  final String moduleId;
+  final Widget? action;
+  final ValueChanged<Offset> onPointerDownAt;
+  final ValueChanged<String> onDragStarted;
+  final ValueChanged<Offset> onDragUpdate;
+  final VoidCallback onDragEnded;
+
+  const _FloatingPaneChrome({
+    required this.title,
+    required this.moduleId,
+    required this.action,
+    required this.onPointerDownAt,
+    required this.onDragStarted,
+    required this.onDragUpdate,
+    required this.onDragEnded,
+  });
+
+  /// How far past the content the fade runs before it is fully transparent.
+  /// The gradient needs somewhere to happen: ending it at the last glyph puts
+  /// a hard edge exactly where the block is trying not to have one.
+  static const double _fadeExtent = 28.0;
+
+  /// Clear space between the controls and where the fade begins, so the block
+  /// reads as chrome sitting on the pane rather than as a label crowded
+  /// against its own edge.
+  static const double _runUp = Space.xl;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final header = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    final height = LayoutDensity.chromeHeightOf(context);
+    // Deliberately NOT a _DockTab: a tab is a choice among tabs, and this is
+    // the only thing in its pane. Borrowing the tab's frame and fill made it
+    // read as a one-tab strip that had come loose — the pane's own outline
+    // ([_PaneFramePainter]) is what marks the block now, and this carries just
+    // the three controls on the fade.
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(MdiIcons.dragVertical, size: _DockTab.editingHandleSize, color: onHeader),
+        const SizedBox(width: Space.xxs),
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(color: onHeader, fontWeight: FontWeight.bold),
+          ),
+        ),
+        if (action != null) ...[const SizedBox(width: Space.xs), action!],
+      ],
+    );
+    return IgnorePointer(
+      // Paint-only outside the block itself: the fade extends past the
+      // controls, and a transparent tail that swallowed taps would take them
+      // from the pane underneath.
+      ignoring: false,
+      child: SizedBox(
+        height: height + _fadeExtent,
+        child: DecoratedBox(
+          // Diagonal, which fades BOTH free edges with one gradient — the
+          // block is anchored top-left, so right and bottom are the two sides
+          // that meet the pane's content.
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [header, header, header.withValues(alpha: 0)],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.only(left: Space.md, right: _runUp + _fadeExtent, bottom: _fadeExtent),
+            child: SizedBox(
+              height: height,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                // Pointer-down, not drag start: `onDragStarted` carries no
+                // position, and the delete target's arming rule is about where
+                // the press LANDED.
+                child: Listener(
+                  onPointerDown: (event) => onPointerDownAt(event.position),
+                  child: Draggable<String>(
+                    data: moduleId,
+                    dragAnchorStrategy: pointerDragAnchorStrategy,
+                    onDragStarted: () => onDragStarted(moduleId),
+                    onDragUpdate: (details) => onDragUpdate(details.globalPosition),
+                    onDragEnd: (_) => onDragEnded(),
+                    onDraggableCanceled: (_, _) => onDragEnded(),
+                    feedback: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(6),
+                      color: theme.colorScheme.primary,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
+                        child: Text(
+                          title,
+                          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary),
+                        ),
+                      ),
+                    ),
+                    childWhenDragging: Opacity(opacity: 0.4, child: content),
+                    child: content,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

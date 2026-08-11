@@ -206,15 +206,25 @@ double? macOSAwareLeadingWidth(BuildContext context) =>
 /// A `BackButton` with left padding reserved for the traffic-light buttons
 /// when [isMacOSChromelessWindow]. Pair with [macOSAwareLeadingWidth] as the
 /// AppBar's `leadingWidth`.
-Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: isMacOSChromelessWindow
-          ? Padding(
-              padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
-              child: BackButton(onPressed: onPressed),
-            )
-          : BackButton(onPressed: onPressed),
-    );
+///
+/// [close] swaps the arrow for a cross, for a view that COVERS what it came
+/// from rather than sitting deeper than it. An arrow promises a step back
+/// along a trail; a view that arrived over the top of everything has no trail
+/// to step back along, and closing it is the only thing the control does.
+Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed, bool close = false}) {
+  final button = close
+      ? IconButton(
+          icon: const Icon(MdiIcons.close),
+          onPressed: onPressed ?? () => Navigator.maybePop(context),
+        )
+      : BackButton(onPressed: onPressed);
+  return MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: isMacOSChromelessWindow
+        ? Padding(padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)), child: button)
+        : button,
+  );
+}
 
 /// True while a dimming modal — a `showDialog` dialog or a `showModalPane`
 /// pane — sits on top of the root navigator. The window-chrome mask

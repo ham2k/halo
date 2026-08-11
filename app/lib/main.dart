@@ -23,6 +23,7 @@ import 'dart:ui' show AppExitResponse;
 import 'dart:ui' as dart_ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -33,6 +34,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'views/command_dialog.dart';
 import 'views/confirm_device_dialog.dart';
 import 'views/operation_view.dart';
+import 'views/home_navigation_rail.dart';
 import 'views/home_view.dart';
 import 'views/settings_view.dart';
 import 'views/notice_actions.dart';
@@ -56,6 +58,7 @@ import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/error_reporting_backend.dart';
+import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/cat/cat_service.dart';
@@ -2267,7 +2270,7 @@ class _HaLoAppState extends State<HaLoApp> {
         // android's AndroidManifest.xml label "HaLo").
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
-        navigatorObservers: [_modalBarrierObserver, homeRouteObserver],
+        navigatorObservers: [_modalBarrierObserver, homeRouteObserver, homeRailRouteObserver],
         locale: TranslationProvider.of(context).locale.flutterLocale,
         supportedLocales: AppLocaleUtils.supportedLocales,
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -2960,7 +2963,32 @@ class BottomChromeBudget {
   /// The cap for the whole expanded footer, collapsed height included.
   final double footerMax;
 
-  const BottomChromeBudget({required this.noticeMax, required this.footerMax});
+  /// Whether the notice stack got at least the row it needs to be readable.
+  ///
+  /// False only where the window cannot seat one at all — every other piece
+  /// has already yielded by then. The notice is not dropped in that case (it
+  /// is where ErrorPolicy puts what the operator must read, so a missing one
+  /// is worse than a cramped one); it is reported instead, because an error
+  /// raised into a box too small to read is an error nobody was told.
+  final bool seatsNotice;
+
+  /// Whether the footer is drawn at all, and whether the numbers row is.
+  ///
+  /// False where the band cannot fit above the keyboard however the growable
+  /// pieces are capped: the field being typed into and the keyboard itself
+  /// already take the window between them. Something has to give, and these
+  /// two give in this order — status first, then the row — because both come
+  /// straight back when the keyboard goes away, and the field does not.
+  final bool showFooter;
+  final bool showNumbersRow;
+
+  const BottomChromeBudget({
+    required this.noticeMax,
+    required this.footerMax,
+    this.showFooter = true,
+    this.showNumbersRow = true,
+    this.seatsNotice = true,
+  });
 
   /// The most of the negotiable space the growable chrome may take between
   /// them, so the app always keeps the rest.
@@ -2985,36 +3013,268 @@ class BottomChromeBudget {
     required bool hasStatusItems,
     required double numbersRowHeight,
     required double footerHeight,
+    double homeChromeHeight = 0,
+    double noticeFloor = 0,
   }) {
     // Only what is actually on screen is charged: the footer collapses to
     // nothing without items, exactly as the row is absent without a spec.
-    final collapsedFooter = hasStatusItems ? footerHeight : 0.0;
-    final fixed = (hasNumbersRow ? numbersRowHeight : 0.0) + collapsedFooter;
-    final negotiable = math.max(0.0, windowHeight - keyboardInset - fixed);
+    // [homeChromeHeight] is what the home layer needs for chrome of its OWN —
+    // Quick Lookup, which Home draws inside itself — and zero when a view that
+    // owns the window has replaced it. It is not part of this band, but it
+    // comes out of the same window: a budget blind to it hands the notice and
+    // the footer room Home has already spent, and Home overflows rather than
+    // the band.
+    // What is left once the one piece that cannot yield has taken its share:
+    // Quick Lookup is the field the keyboard is up FOR, and dropping it would
+    // take away what the operator is typing into.
+    final unyielding = windowHeight - keyboardInset - homeChromeHeight;
+    // Then status, then the row — dropped rather than overflowing the window,
+    // and only with the keyboard up. With it down there is always room, and
+    // chrome that came and went on a desktop window would be a flicker with no
+    // cause the operator can see. Reachable on a landscape phone at a large
+    // Font Scale, where `UiScale` divides the window while the row's and the
+    // field's tap-target floors stay put (docs/design/ui-scaling.md): at 1.90
+    // the field, its row and the keyboard alone want 16pt more than the window
+    // has.
+    final tight = keyboardInset > 0;
+    final wantedRow = hasNumbersRow ? numbersRowHeight : 0.0;
+    final showFooter = !tight || unyielding - wantedRow >= footerHeight;
+    final showNumbersRow = !tight || unyielding >= wantedRow;
+    final row = showNumbersRow ? wantedRow : 0.0;
+    final collapsedFooter = hasStatusItems && showFooter ? footerHeight : 0.0;
+    final negotiable = math.max(0.0, unyielding - row - collapsedFooter);
     final chrome = negotiable * _chromeShare;
+    // The notice takes its share, or [noticeFloor] — one readable row —
+    // whichever is larger. The difference comes out of the FOOTER's share and
+    // never out of the app's: the whole point of [_chromeShare] is that the
+    // app keeps the rest no matter what, and a floor that borrowed past it
+    // would drive the app toward zero to seat a notice, which is the failure
+    // this class exists to prevent. Between the two of them the footer is the
+    // one that can give — it scrolls past its cap, and its rows are short.
+    final noticeMax = math.min(chrome, math.max(chrome * _noticeShare, noticeFloor));
+    final footerMax = collapsedFooter + math.max(0.0, chrome - noticeMax);
     return BottomChromeBudget(
-      noticeMax: chrome * _noticeShare,
-      footerMax: collapsedFooter + chrome * (1 - _noticeShare),
+      noticeMax: noticeMax,
+      footerMax: footerMax,
+      showFooter: showFooter,
+      showNumbersRow: showNumbersRow,
+      seatsNotice: noticeMax >= noticeFloor,
     );
   }
 }
 
+/// The navigation rail's state, owned by the ROOT window rather than by a view.
+///
+/// It lives here because the rail is a sibling of the whole window — every
+/// view's header and panes AND the status footer sit to its right. Drawn
+/// inside the navigator it would be shortened whenever the footer took height,
+/// and its bottom-anchored Settings destination would ride up and down as
+/// status items came and went. Navigation must not move because a sync
+/// reported progress.
+///
+/// [visible] follows the route: Home and the Settings it shows in place have
+/// it; an operation takes it away.
+class HomeRailState extends ChangeNotifier {
+  int _covering = 0;
+  int _coveringPages = 0;
+  bool _expanded = false;
+  bool _showSettings = false;
+
+  /// Whether ANYTHING is on top of the home layer — a pushed view, a dialog, a
+  /// modal pane.
+  ///
+  /// The rail is drawn either side of the routes depending on this, and
+  /// nothing else about it changes: it does not hide, narrow, or animate for
+  /// navigation. Over the routes it is the window fixture Home sits beside and
+  /// can be pressed; under them whatever arrived simply covers it, which is
+  /// what a view that owns the window — or a dialog that dims it — should do.
+  /// It has to be over them the rest of the time because the overlay a route
+  /// lives in takes every pointer that lands in it, and a rail permanently
+  /// underneath is a rail nothing can press.
+  ///
+  /// A COUNT rather than a flag, and driven by the navigator rather than by
+  /// one route class opting in ([HomeRailRouteObserver]). Declared by the
+  /// route, this is wrong for every route that forgets to declare — a ⌘K jump
+  /// to an operation left a live rail pasted over the logging screen, pressing
+  /// its Settings destination drove the Home underneath, and nothing said so.
+  /// A flag is wrong again the moment two of them stack, since the inner one
+  /// clears it on the way out while the outer is still up.
+  bool get covered => _covering > 0;
+
+  /// Whether the home layer's own chrome — Quick Lookup — is still on screen.
+  ///
+  /// Not the same question as [covered]: a dialog covers the rail without
+  /// taking Quick Lookup off the window, so the bottom-chrome budget must go
+  /// on reserving its height. Only a full page over the top replaces it.
+  bool get homeChromeShowing => _coveringPages == 0;
+
+  bool get expanded => _expanded;
+  bool get showSettings => _showSettings;
+
+  /// Counts one route arriving over the home layer, or leaving it. [page] for
+  /// a route that REPLACES what is under it rather than dimming it.
+  void coveringChanged(int delta, {required bool page}) => _set(() {
+        _covering = math.max(0, _covering + delta);
+        if (page) _coveringPages = math.max(0, _coveringPages + delta);
+      }, false);
+
+  set expanded(bool value) => _set(() => _expanded = value, _expanded == value);
+  set showSettings(bool value) => _set(() => _showSettings = value, _showSettings == value);
+
+  /// Applies a change and tells the shell, deferring when we are inside a
+  /// build: a view sets these from `initState`, which runs while the shell
+  /// ABOVE it is building, and notifying straight through there is
+  /// markNeedsBuild-during-build — refused by the framework, so the rail never
+  /// appears and ErrorPolicy keeps the reason off the screen.
+  void _set(VoidCallback apply, bool unchanged) {
+    if (unchanged) return;
+    apply();
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => notifyListeners());
+      return;
+    }
+    notifyListeners();
+  }
+}
+
+final homeRail = HomeRailState();
+
+/// Keeps [HomeRailState.covered] in sync with the navigator's route stack.
+///
+/// Every route above the home layer counts, whatever pushed it and whatever
+/// class it is — that is the whole point of observing the navigator instead of
+/// asking routes to declare themselves. The bottom route is the home layer
+/// itself and is not counted: it is what everything else covers.
+class HomeRailRouteObserver extends NavigatorObserver {
+  /// The first route pushed is the one the app starts on. Held rather than
+  /// counted so a later push of the same class is still counted.
+  Route<dynamic>? _homeRoute;
+
+  /// What is currently counted, so no route is released twice — a pop that is
+  /// followed by a remove, or an exit animation that finishes after the route
+  /// has already gone, must not take a second off the count and expose the
+  /// rail over whatever else is up.
+  final Set<Route<dynamic>> _counted = {};
+
+  bool _isPage(Route<dynamic> route) => route is PageRoute;
+
+  void _cover(Route<dynamic> route) {
+    if (identical(route, _homeRoute)) return;
+    if (_counted.add(route)) homeRail.coveringChanged(1, page: _isPage(route));
+  }
+
+  void _uncover(Route<dynamic> route) {
+    if (_counted.remove(route)) homeRail.coveringChanged(-1, page: _isPage(route));
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (previousRoute == null && _homeRoute == null) {
+      _homeRoute = route;
+      return;
+    }
+    _cover(route);
+  }
+
+  /// Released when the route is GONE, not when the pop is asked for.
+  ///
+  /// `didPop` fires as the pop begins, with the outgoing view still filling
+  /// the window for the length of its reverse transition — 400ms for the
+  /// operation view. Counting it out there paints the rail over a screen that
+  /// is still on its way off and, being topmost, hands it the operator's taps:
+  /// a press on Settings mid-slide drives the Home layer under an operation
+  /// that is still visible. So the exit animation is what releases it.
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final animation = route is TransitionRoute ? route.animation : null;
+    if (animation == null || animation.isDismissed) {
+      _uncover(route);
+      return;
+    }
+    void whenGone(AnimationStatus status) {
+      if (status != AnimationStatus.dismissed) return;
+      animation.removeStatusListener(whenGone);
+      _uncover(route);
+    }
+
+    animation.addStatusListener(whenGone);
+  }
+
+  /// A removal has no transition to wait for — the route is off the stack
+  /// already. This also covers a pop whose animation never reaches dismissed
+  /// because the route was disposed under it.
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => _uncover(route);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (oldRoute != null) {
+      if (identical(oldRoute, _homeRoute)) {
+        _homeRoute = newRoute;
+        return;
+      }
+      _uncover(oldRoute);
+    }
+    if (newRoute != null) _cover(newRoute);
+  }
+}
+
+final homeRailRouteObserver = HomeRailRouteObserver();
+
 @visibleForTesting
-class StatusBarOverlay extends StatelessWidget {
+class StatusBarOverlay extends StatefulWidget {
   final HaLoServices services;
   final Widget child;
 
   const StatusBarOverlay({super.key, required this.services, required this.child});
 
   @override
+  State<StatusBarOverlay> createState() => _StatusBarOverlayState();
+}
+
+class _StatusBarOverlayState extends State<StatusBarOverlay> {
+  /// What the last frame's budget gave way on, so the console gets one line
+  /// per transition rather than one per frame — this rebuilds on every
+  /// progress tick of a sync.
+  String? _lastSqueeze;
+
+  /// Says out loud that the window could not seat all of the bottom chrome.
+  ///
+  /// Nothing else would: the pieces are simply absent, at the one moment the
+  /// operator is looking at a field rather than at the chrome, and the setting
+  /// that publishes the numbers row still reads ON. Reported from a post-frame
+  /// callback because this is decided inside `build`, and reporting there is a
+  /// side effect during layout.
+  void _reportSqueeze(BottomChromeBudget bottom) {
+    final gave = [
+      if (!bottom.showFooter) 'the status footer',
+      if (!bottom.showNumbersRow) 'the numbers row',
+      if (!bottom.seatsNotice) 'a readable notice',
+    ];
+    final detail = gave.isEmpty ? null : gave.join(' and ');
+    if (detail == _lastSqueeze) return;
+    _lastSqueeze = detail;
+    if (detail == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ErrorReportingService.report(
+        BottomChromeSqueezed('no room above the keyboard for $detail'),
+        StackTrace.current,
+        context: 'bottom-chrome',
+      );
+    });
+  }
+
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      // Both, because the budget below has to see the numbers row: whether one
-      // is published changes how much room the notice and the footer get, and
+      // All three, because the budget below has to see the numbers row and the
+      // home layer: whether a row is published and whether Quick Lookup is on
+      // screen both change how much room the notice and the footer get, and
       // listening only to the status bar would leave that stale.
-      listenable: Listenable.merge([services.statusBar, services.keyboardAccessory]),
+      listenable: Listenable.merge([widget.services.statusBar, widget.services.keyboardAccessory, homeRail]),
       builder: (context, _) {
-        final statusBar = services.statusBar;
+        final statusBar = widget.services.statusBar;
         final items = [
           for (final item in statusBar.items)
             StatusBarItemData(
@@ -3086,7 +3346,7 @@ class StatusBarOverlay extends StatelessWidget {
         // one piece just moves the overflow to the next; the
         // sum is the thing that has to be bounded, so it is worked out once,
         // here, by the only widget that can see all of them.
-        final accessory = services.keyboardAccessory.value;
+        final accessory = widget.services.keyboardAccessory.value;
         final bottom = BottomChromeBudget.of(
           windowHeight: MediaQuery.sizeOf(context).height,
           keyboardInset: keyboardInset,
@@ -3094,14 +3354,38 @@ class StatusBarOverlay extends StatelessWidget {
           hasStatusItems: items.isNotEmpty,
           numbersRowHeight: NumberKeys.heightOf(context),
           footerHeight: StatusBarFooter.collapsedHeightOf(context),
+          // Quick Lookup is chrome for the home layer and nothing else, so it
+          // is charged exactly while that layer is showing — a view that owns
+          // the window replaces it, and charging for it there would take the
+          // room from the notice for a bar that is not on screen. Home draws
+          // it itself; what is reserved here is the room it needs.
+          //
+          // Its safe area is part of that room: the bar holds the home
+          // indicator's height below the field (and the rail's Settings cap
+          // does the same), so a charge of the bar alone hands the band ~34pt
+          // of an iPhone that Home has already spent. Zero with the keyboard
+          // up, which is when the bar drops the reserve — the strip below it
+          // is the keyboard's by then.
+          homeChromeHeight: homeRail.homeChromeShowing
+              ? HomeQuickLookup.heightOf(context) + (keyboardInset > 0 ? 0 : MediaQuery.viewPaddingOf(context).bottom)
+              : 0,
+          // One readable notice, floored the way the footer floors its own
+          // expanded cap: the notice is the surface ErrorPolicy raises to, and
+          // a share-of-what-is-left that works out to a few points renders the
+          // error as a sliver nobody can read and nothing logs.
+          noticeFloor: NoticeStack.minHeightOf(context),
         );
+        _reportSqueeze(bottom);
 
+        // The rail runs the full height beside this whole strip, so a status
+        // item shortens the views and never the navigation.
         return MediaQuery.removeViewInsets(
           context: context,
           removeBottom: true,
-          child: Column(
-            children: [
-              Expanded(child: child),
+          child: HomeRailShell(
+            services: widget.services,
+            routes: widget.child,
+            chrome: [
               if (notices.isNotEmpty)
                 NoticeStack(
                   notices: notices,
@@ -3109,12 +3393,15 @@ class StatusBarOverlay extends StatelessWidget {
                   maxHeight: bottom.noticeMax,
                   dismissLabel: context.t.common.dismiss,
                 ),
-              StatusBarFooter(
-                items: items,
-                onDismiss: statusBar.clear,
-                maxExpandedHeight: bottom.footerMax,
-                dismissLabel: context.t.common.dismiss,
-              ),
+              if (bottom.showFooter)
+                StatusBarFooter(
+                  items: items,
+                  onDismiss: statusBar.clear,
+                  maxExpandedHeight: bottom.footerMax,
+                  dismissLabel: context.t.common.dismiss,
+                ),
+            ],
+            keyboard: [
               // The mobile numbers row, published by whichever field has focus
               // (KeyboardAccessoryController). Drawn HERE, below the footer and
               // directly on the keyboard: it reads as an extension of the
@@ -3127,7 +3414,7 @@ class StatusBarOverlay extends StatelessWidget {
               // (see the merged listenable above), and the budget must be
               // computed from the SAME value this renders — a nested builder
               // could show a row the budget above had not accounted for.
-              if (accessory != null)
+              if (accessory != null && bottom.showNumbersRow)
                 NumberKeys(
                   onKey: accessory.onKey,
                   extraKey: accessory.extraKey,

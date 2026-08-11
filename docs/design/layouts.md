@@ -60,9 +60,136 @@ still tolerate them; users just can't *drag* a window below it.
 
 | View | XS / S | L / XL |
 |---|---|---|
-| **Home** | Operation list with Quick Lookup below, full width | List + Quick Lookup in a left column (~2/3 width, resizable); right column shows branding (logo, name, version) on a tinted background |
+| **Home** | Navigation rail, then the operation list, with Quick Lookup under both | Navigation rail, then a **dock**: Operation List (~2/3 width) beside Current Version — the default arrangement, which the operator may rearrange — with Quick Lookup under both |
 | **Operation** | Four tabs: QSOs, Spots, Map, Operation | Logging pane on the left (~2/3 width, resizable); right side tabs: Info, Spots, Map, Operation |
 | **Settings** | Settings list; each panel pushes a full screen | Settings list stays as a left column (resizable); selected panel on the right |
+
+### The navigation rail
+
+The rail runs down the left edge of the **window**, not of a view — it is a
+sibling of the routes and of the status chrome, so a status item shortens the
+views beside it and never the navigation, and Settings can be shown in Home's
+place with the rail standing still. It sits outside the dock, so rearranging
+can neither move it nor delete it.
+
+**The logo toggles it, and one stored preference (`homeNavExpanded`) means two
+different things** because the two sizes have different room to give:
+
+| | L / XL | XS / S |
+|---|---|---|
+| toggle off | icon-only rail | **no rail** — the logo and a settings cog in the header instead |
+| toggle on | labelled rail | icon-only rail |
+
+Labels would take a third of a phone's width, so a narrow window spends the
+toggle on the rail's presence rather than on labels. The settings cog exists
+only for the one arrangement with no rail to hold it — two ways to the same
+screen, one of them a permanent fixture of the other's chrome, is how an
+operator learns to distrust both — and it fades *and* closes up as the rail
+arrives, rather than leaving a hole where it stood.
+
+**The mark is drawn by the window**, at a fixed position, rather than by the
+rail or by the header. It has to be: the operator's own gesture is what moves
+the rail out from under it, so on a narrow window it starts over the header and
+ends over a rail that has just appeared beneath it. A mark belonging to either
+one would jump between them, or be clipped in as the rail widens. Its box is
+the same in every state — the icon column's width, the header's height — and
+it sits on the header's own LINE, never below it. On a chromeless macOS window
+that means after the native window buttons rather than under them: the mark
+takes the next place along that line, the rail below keeps its own width
+rather than growing to hold both, and a header beside it holds open only the
+part the mark overhangs the rail by. It belongs to the rail and travels with
+it: a view that covers the rail covers
+the mark too, and neither needs telling. It is never taken down for a view
+that does NOT cover it — those hold a gap for it instead, as Home's header
+does, and as embedded Settings does in the railless arrangement where it would
+otherwise put its back button in the mark's corner.
+
+**The chrome continues through the rail.** The mark's slot at the top and the
+Settings destination at the bottom sit on the header's own colour, at the
+header's own height, so each end of the window reads as one unbroken band
+rather than as a header with a notch cut out of it. Settings takes the
+chrome's foreground there — the muted surface colours the other destinations
+use are unreadable on it — and marks selection by full strength against a
+dimmed rest, the same distinction the surface destinations draw with hue.
+
+Between those two caps the rail is a **well**: the chrome above, the chrome
+below, and the panes to the right all cast inward onto it. All three shadows
+are drawn by the RAIL, not by any of the casters — one painted by the caster
+would fall on the caster's own side of the boundary — and they are paint-only,
+so every destination under them stays pressable. Dark mode swaps the black for
+a white glow, the same rule and the same numbers as the `surfaces` split
+divider.
+
+**Safe areas.** A landscape cutout falls on the leading edge, and who takes it
+depends on who is standing there. With a rail, the rail does — by GROWING,
+never by padding its contents in: its widths are sized to hold a glyph and a
+label, and an inset subtracted from them overflows instead of insetting. Every
+width computed for the rail therefore carries the cutout too, including the
+tight one it is laid out at; one that left it out would clamp the widening
+away and squeeze the glyph out of its own column, on device only. Its icons
+are then padded off the cutout inside that wider column. With no rail, Home
+reaches that edge itself and takes the inset in the usual way
+(`PaneSafeArea.root`'s `left`). The mark, drawn outside both, clears the
+status bar and the cutout on its own.
+
+The rail also stops where the **on-screen keyboard** starts. It runs the full
+height of the window and pins Settings to the bottom of itself, so a keyboard
+over that corner takes the app's only route to Settings with it. The shell is
+built inside `removeViewInsets(removeBottom: true)` and cannot see the keyboard
+from there, so the inset is handed to it. Standing clear of a keyboard leaves
+the rail short — shorter than its own contents on a landscape phone at a large
+font scale — so it scrolls rather than overflows, while staying exactly as it
+was wherever there is room.
+
+Its destinations are **Operations** (`notebook-multiple`) at the top and
+**Settings** (`cog`) pinned to the bottom. Operations names the screen the
+operator is already on: it renders selected and announces itself, but it is
+not a control and navigates nowhere. It is there because a rail holding only
+Settings does not read as navigation, and because it is what a second
+destination will be added beside. Settings, unlike it, is a **toggle** —
+whoever opened it from the rail reaches for the same control to put it away.
+
+### Navigation around the rail
+
+The rail never hides, narrows, or animates for navigation. What changes is
+which side of the routes it is painted on:
+
+- **Home and Settings sit beside it**, each holding its own column open by the
+  rail's width, and the rail is painted *over* them. That is forced rather than
+  chosen: the overlay a route lives in takes every pointer that lands in it, so
+  a rail painted underneath is a rail nothing can press. Settings slides in
+  from the window's edge, passing *under* the rail, and comes to rest beside
+  it; the same will hold for alternate home layouts.
+- **The operation view owns the whole window**, so the rail is painted *under*
+  that one and the view simply covers it on the way in. Losing the rail's taps
+  while it is buried costs nothing, which is what makes the flip safe. It
+  arrives from the RIGHT, away from the rail's edge — a view that covers the
+  navigation should not read as having come out of it — and its header carries
+  a cross rather than a back arrow, because a view over the top of everything
+  has no trail behind it to step back along. It travels over **400ms**, longer
+  than the 300ms that paces pane widths and the rail's toggle: a whole view
+  crossing a whole window covers far more ground, and the shorter duration
+  over that distance reads as a snap. Out matches in.
+
+The two layers are keyed, because they swap places in the Stack. Unkeyed, the
+framework matches children by position, finds a `Positioned` in each slot, and
+updates each element with the other one's widget — re-inflating the whole route
+tree on every push, at exactly the moment a view is trying to animate in.
+
+Views take **no inset from the rail's animating width**: one inset by it would
+re-lay itself out on every frame. Home's inset comes off the rail's *resting*
+width, which changes only on the toggle, and animates for that alone — in step
+with the rail, same duration and curve.
+
+**The foot of the window is two rows, and they belong to different owners.**
+Nearest the panes, Quick Lookup with the rail's Settings cap beside it: that
+row is the HOME layer's, drawn inside the routes, so an operation covers it by
+covering the window and Settings shown in Home's place slides over the field
+it replaces — neither is told to hide it. Below that, notices, the status
+footer and the numbers row span the whole window and belong to no view: they
+say the same things over Home, over Settings and over an operation, so they
+stop at nothing and move for nothing. The rail's column ends where that band
+begins.
 
 Mode switches are **hard cuts within a single build** — a view's `build`
 switches on `ShirtSize.of(context)` and returns one arrangement or the
@@ -106,7 +233,28 @@ as a `layoutPolicy` const on the view class:
 
   All of a customizable view's dividers — the fixed split's and the dock's —
   use the **solid** style below.
-- **`fixed`** — the arrangement never changes (Home, Settings). Fixed
+
+  **Home is customizable too, and is NOT behind that setting.** The setting
+  exists so a fixed logging screen is the one an operator can be talked
+  through over the air; Home is not the screen anyone is talked through
+  mid-contact, so its dock is simply on. It carries its own four
+  `LayoutKeys` (`home.dock`, `home.dockState`, `home.paneOptions`,
+  `home.viewOptions`) and its own two panels — Operation List and Current
+  Version. Quick Lookup is NOT among them: it is chrome the operator cannot
+  rearrange away, under whatever the layout holds. There is no
+  `home.leftColumn` any more: a dock's splits carry their own weights, and
+  Restore Defaults deliberately ignores the old key rather than handing back a
+  width dragged before the dock existed.
+
+  **The dock is two-pane only, in every customizable view.** A dock tree
+  names splits, weights and module ids and no widths at all, so drawing one
+  at 360px hands a phone the same two-thirds/one-third split it was arranged
+  at. Below the two-pane boundary each view falls back to a fixed narrow
+  arrangement — Home to the operation list alone, Quick Lookup being chrome
+  under it either way,
+  Operation to its four tabs — and the header's layout controls are absent
+  there, because there is nothing on screen to edit.
+- **`fixed`** — the arrangement never changes (Settings). Fixed
   views may opt their splits into the **surfaces** divider style.
 
 ## Resizable splits
@@ -143,7 +291,7 @@ divider width can give back. A guard on the bar alone would buy a guarantee
 that still does not hold, so the bar stays simple and the real fix belongs
 where the chrome is added.
 
-**Surfaces (opt-in — Home and Settings today).** The divider consumes no
+**Surfaces (opt-in — Settings today).** The divider consumes no
 layout space — it is a transparent drag overlay (with grab dots) on the
 secondary's leftmost pixels, so the secondary's own background and content
 stretch to the very boundary, and the separation is drawn by the shadow
@@ -770,7 +918,9 @@ not add it.
 | Resizable split with draggable divider | `packages/halo_widgets/lib/src/resizable_split_view.dart` |
 | Modal Panes (`showModalPane`) | `packages/halo_widgets/lib/src/modal_pane.dart` |
 | Persisted pane widths (`layoutDimension`) | `app/lib/services/settings_service.dart` |
-| Home split + branding pane | `app/lib/views/home_view.dart` |
+| Home's dock, panels and narrow fallback | `app/lib/views/home_view.dart` |
+| The navigation rail | `app/lib/views/home_navigation_rail.dart` |
+| The shared dock-hosting machinery | `app/lib/views/dock_host.dart` |
 | Operation tab/split layout | `app/lib/views/operation_view.dart` |
 | Settings split | `app/lib/views/settings_view.dart` |
 | Tests | `packages/halo_widgets/test/`, `app/test/` |

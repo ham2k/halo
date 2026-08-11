@@ -36,7 +36,14 @@ class PaneLayoutOptions {
   /// Whether the pane shows its header when it is ALONE in its group. A pane
   /// sharing a group with others always shows it — the header is the tab
   /// strip, and without it there would be no way to reach the other panes.
-  final bool showHeader;
+  ///
+  /// Null is "no opinion", and the VIEW decides (see
+  /// `DockHost.defaultHeaderlessModules`) — the Operation view's panes are
+  /// headed by default and Home's are not. Tri-state rather than a bool
+  /// defaulting to true, because on a view whose default is headerless a
+  /// stored `true` is the operator asking for a header, and a bool could not
+  /// tell that apart from never having been asked.
+  final bool? showHeader;
 
   /// Overrides for this pane alone, by enum name; null inherits the app's own
   /// setting. Held as names rather than enums so the whole object round-trips
@@ -50,22 +57,33 @@ class PaneLayoutOptions {
   /// does.
   final String? themeMode;
 
-  const PaneLayoutOptions({this.title, this.showHeader = true, this.fontScale, this.density, this.themeMode});
+  const PaneLayoutOptions({this.title, this.showHeader, this.fontScale, this.density, this.themeMode});
 
   static const none = PaneLayoutOptions();
 
   bool get isEmpty =>
-      (title == null || title!.isEmpty) && showHeader && fontScale == null && density == null && themeMode == null;
+      (title == null || title!.isEmpty) &&
+      showHeader == null &&
+      fontScale == null &&
+      density == null &&
+      themeMode == null;
+
+  /// Whether this pane shows its header, given what the VIEW does by default
+  /// for panes nobody has expressed an opinion about.
+  bool showsHeader({required bool byDefault}) => showHeader ?? byDefault;
 
   PaneLayoutOptions copyWith({
     Object? title = _unset,
-    bool? showHeader,
+    // On the sentinel like the rest, because [showHeader] is tri-state: a
+    // plain `bool?` cannot tell "leave it alone" from "clear the opinion",
+    // and clearing is what Reset does to a pane on a headerless view.
+    Object? showHeader = _unset,
     Object? fontScale = _unset,
     Object? density = _unset,
     Object? themeMode = _unset,
   }) => PaneLayoutOptions(
     title: title == _unset ? this.title : title as String?,
-    showHeader: showHeader ?? this.showHeader,
+    showHeader: showHeader == _unset ? this.showHeader : showHeader as bool?,
     fontScale: fontScale == _unset ? this.fontScale : fontScale as String?,
     density: density == _unset ? this.density : density as String?,
     themeMode: themeMode == _unset ? this.themeMode : themeMode as String?,
@@ -97,7 +115,7 @@ class PaneLayoutOptions {
 
   Map<String, dynamic> toJson() => {
     if (title != null && title!.isNotEmpty) 'title': title,
-    if (!showHeader) 'showHeader': false,
+    if (showHeader != null) 'showHeader': showHeader,
     if (fontScale != null) 'fontScale': fontScale,
     if (density != null) 'density': density,
     if (themeMode != null) 'themeMode': themeMode,
@@ -116,7 +134,7 @@ class PaneLayoutOptions {
     // would repair it behind the view that will not open.
     return PaneLayoutOptions(
       title: title is String && title.trim().isNotEmpty ? title.trim() : null,
-      showHeader: json['showHeader'] != false,
+      showHeader: json['showHeader'] is bool ? json['showHeader'] as bool : null,
       fontScale: fontScale is String ? fontScale : null,
       density: density is String ? density : null,
       themeMode: themeMode is String ? themeMode : null,
@@ -175,6 +193,7 @@ Future<void> showPaneLayoutOptions(
   /// and its name is the app's rather than the operator's until there are
   /// views they made themselves.
   bool showHeaderField = true,
+  bool headerByDefault = true,
   bool titleEnabled = true,
   /// The PANEL's own settings, embedded under a "Panel Settings" heading —
   /// a different thing from the rest of this dialog, which is about the
@@ -211,6 +230,7 @@ Future<void> showPaneLayoutOptions(
       resetTitle: resetTitle,
       resetBody: resetBody,
       showHeaderField: showHeaderField,
+      headerByDefault: headerByDefault,
       titleEnabled: titleEnabled,
       panelSettingsBuilder: panelSettingsBuilder,
       onDelete: onDelete,
@@ -228,6 +248,12 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
   final String resetTitle;
   final String resetBody;
   final bool showHeaderField;
+
+  /// What the checkbox reads when the operator has never expressed an opinion
+  /// — this VIEW's default (see `DockHost.defaultHeaderlessModules`). Without
+  /// it a tri-state `showHeader` of null renders as an unchecked box on a view
+  /// whose panes are headed, and ticking it would look like a no-op.
+  final bool headerByDefault;
   final bool titleEnabled;
   final WidgetBuilder? panelSettingsBuilder;
   final VoidCallback? onDelete;
@@ -242,6 +268,7 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
     required this.resetTitle,
     required this.resetBody,
     required this.showHeaderField,
+    required this.headerByDefault,
     required this.titleEnabled,
     this.panelSettingsBuilder,
     this.onDelete,
@@ -358,10 +385,17 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Checkbox(
-                              value: _options.showHeader,
+                              // Resolved against the VIEW's default, because
+                              // `showHeader` is tri-state: a pane nobody has
+                              // expressed an opinion about is shown as the
+                              // view will actually draw it — checked on the
+                              // Operation view, unchecked on Home — rather
+                              // than as an assumed `true` the pane contradicts.
+                              value: _options.showsHeader(byDefault: widget.headerByDefault),
                               onChanged: widget.inTabset
                                   ? null
-                                  : (value) => _apply(_options.copyWith(showHeader: value ?? true)),
+                                  : (value) =>
+                                        _apply(_options.copyWith(showHeader: value ?? widget.headerByDefault)),
                             ),
                             Flexible(
                               child: Text(t.paneShowHeader, maxLines: 1, overflow: TextOverflow.ellipsis),

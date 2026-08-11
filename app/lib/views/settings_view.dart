@@ -153,13 +153,56 @@ class SettingsView extends StatefulWidget {
   final HaLoServices services;
   final String? initialPanel;
 
-  const SettingsView({super.key, required this.services, this.initialPanel});
+  /// Whether Settings is shown INSIDE a shell that already provides
+  /// navigation, rather than pushed as its own route.
+  ///
+  /// No inset goes with it — the rail is a sibling that owns its own column,
+  /// so nothing here has to hold room for it.
+  final bool embedded;
+
+  /// Leaves the settings screen when it is [embedded]. There is no route under
+  /// an embedded SettingsView, so the plain back button has nothing to pop:
+  /// the owner takes it down instead.
+  final VoidCallback? onBack;
+
+  /// Space held at the leading edge for the app's mark, which the window draws
+  /// over that corner (see `HomeRailLogo`). Zero where a rail sits under the
+  /// mark and this view starts beside it — only the railless arrangement has
+  /// this view and the mark reaching for the same corner.
+  final double leadingInset;
+
+  const SettingsView({
+    super.key,
+    required this.services,
+    this.initialPanel,
+    this.embedded = false,
+    this.onBack,
+    this.leadingInset = 0,
+  });
 
   @override
   State<SettingsView> createState() => _SettingsViewState();
 }
 
 class _SettingsViewState extends State<SettingsView> {
+  /// Embedded, the window controls sit over the RAIL rather than over this
+  /// header, so the macOS traffic-light clearance is the rail's to hold and a
+  /// plain back button is the right one here.
+  Widget _leading(BuildContext context) {
+    if (!widget.embedded) return macOSAwareBackButton(context);
+    if (widget.onBack == null) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(left: widget.leadingInset),
+      child: BackButton(onPressed: widget.onBack),
+    );
+  }
+
+  double? _leadingWidth(BuildContext context) {
+    if (!widget.embedded) return macOSAwareLeadingWidth(context);
+    if (widget.onBack == null) return 0;
+    return widget.leadingInset == 0 ? null : widget.leadingInset + 48;
+  }
+
   late String _selectedPanel;
   List<Map<String, dynamic>> _extensionPanels = [];
   // Extension-contributed panels only appear in _buildPanelEntries once
@@ -332,8 +375,8 @@ class _SettingsViewState extends State<SettingsView> {
           child: Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
-              leadingWidth: macOSAwareLeadingWidth(context),
-              leading: macOSAwareBackButton(context),
+              leadingWidth: _leadingWidth(context),
+              leading: _leading(context),
               title: shrinkToFitText(Text(context.t.settings.title)),
             ),
             body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
@@ -400,8 +443,8 @@ class _SettingsViewState extends State<SettingsView> {
       return Scaffold(
         appBar: AppBar(
           flexibleSpace: windowHeaderGestureArea(),
-          leadingWidth: macOSAwareLeadingWidth(context),
-          leading: macOSAwareBackButton(context),
+          leadingWidth: _leadingWidth(context),
+          leading: _leading(context),
           title: shrinkToFitText(Text(context.t.settings.title)),
           actions: [
             HeaderProfileLabel(settings: widget.services.settings),

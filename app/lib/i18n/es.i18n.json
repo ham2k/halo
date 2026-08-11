@@ -66,7 +66,20 @@
     "stationCallsign": "Indicativo de la estación",
     "titleOptional": "Título (opcional)",
     "emptyList": "Aún no hay operaciones. Crea una para comenzar a registrar.",
-    "quickLookup": "Búsqueda Rápida"
+    "quickLookup": "Búsqueda Rápida",
+    "nav": {
+      "operations": "Operaciones",
+      "settings": "Ajustes"
+    },
+    "panels": {
+      "operations": "Lista de Operaciones",
+      "operationsDescription": "Tus operaciones, la más reciente primero.",
+      "version": "Versión Actual",
+      "versionDescription": "La marca Ham2K, el nombre de esta aplicación y qué compilación usas.",
+      "lookup": "Búsqueda Rápida",
+      "lookupDescription": "Busca un indicativo o escribe un comando."
+    },
+    "toggleNav": "Mostrar u ocultar las etiquetas de navegación"
   },
   "dialogs": {
     "operationDetails": "Detalles de la operación",

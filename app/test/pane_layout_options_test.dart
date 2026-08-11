@@ -69,13 +69,30 @@ void main() {
     expect(titleCleared.fontScale, 'smaller', reason: 'clearing one field must not touch the others');
   });
 
-  test('showHeader defaults to on, including for JSON that omits it', () {
-    // The field is written only when FALSE, so every layout saved before
-    // these options existed — and every pane nobody has touched — parses as
-    // showing its header.
-    expect(PaneLayoutOptions.fromJson(<String, dynamic>{}).showHeader, isTrue);
-    expect(PaneLayoutOptions.fromJson({'title': 'Notes'}).showHeader, isTrue);
+  test('showHeader is tri-state: absent means the VIEW decides', () {
+    // Absent is "no opinion", not "off" and not "on". The view supplies the
+    // default — Operation's panes are headed, Home's are not — and a bool
+    // could not tell "never asked" from "asked for a header", which on a
+    // headerless-by-default view are opposite outcomes.
+    expect(PaneLayoutOptions.fromJson(<String, dynamic>{}).showHeader, isNull);
+    expect(PaneLayoutOptions.fromJson({'title': 'Notes'}).showHeader, isNull);
     expect(const PaneLayoutOptions(title: 'Notes').toJson().containsKey('showHeader'), isFalse);
+
+    // Resolution against each view's default.
+    const noOpinion = PaneLayoutOptions();
+    expect(noOpinion.showsHeader(byDefault: true), isTrue);
+    expect(noOpinion.showsHeader(byDefault: false), isFalse);
+
+    // An opinion overrides the default in BOTH directions — the second is the
+    // one a bool could not express: a header asked for on a view that hides
+    // them by default.
+    expect(const PaneLayoutOptions(showHeader: false).showsHeader(byDefault: true), isFalse);
+    expect(const PaneLayoutOptions(showHeader: true).showsHeader(byDefault: false), isTrue);
+
+    // And it survives a round trip, which is what makes it stick: `true` is
+    // now a value worth storing, where before it was the default and dropped.
+    expect(PaneLayoutOptions.fromJson(const PaneLayoutOptions(showHeader: true).toJson()).showHeader, isTrue);
+    expect(const PaneLayoutOptions(showHeader: true).isEmpty, isFalse);
   });
 
   test('the map it hands back is always mutable', () {

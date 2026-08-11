@@ -21,6 +21,16 @@ import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 /// Where a panel comes from, which decides how the view gets its content.
 enum PanelSource { native, extension }
 
+/// The root views that host a dock, and so the values a native panel's
+/// [PanelDefinition.views] is drawn from.
+///
+/// These reach settings storage indirectly — a view's [LayoutKeys] entries are
+/// spelled with the same words — so they are as stable as a panel id.
+abstract final class PanelViews {
+  static const home = 'home';
+  static const operation = 'operation';
+}
+
 class PanelDefinition {
   /// Stable across releases — it is persisted inside saved layouts, so
   /// changing one drops that panel out of every arrangement holding it.
@@ -69,6 +79,23 @@ class PanelDefinition {
   /// separately persisted without any storage code of their own.
   final bool multiple;
 
+  /// Which root views may offer this panel (see [PanelViews]).
+  ///
+  /// Empty means opposite things by [source], and deliberately so — each
+  /// direction is the SAFE one for that kind of panel:
+  ///
+  /// - **Extension**: every view. An extension knows nothing about our views,
+  ///   and a dashboard panel is as much at home beside the operation list as
+  ///   beside the logging controls.
+  /// - **Native**: no view at all. Ours are built out of one view's own state,
+  ///   so a native panel that names no view is a registration someone forgot
+  ///   to finish. Failing CLOSED makes the expensive mistake impossible: the
+  ///   other view can never offer a pane it has no widget for, which would
+  ///   land the operator a permanently broken pane whose tab reads like a real
+  ///   panel. The cheap mistake is what is left — the panel is missing from
+  ///   its own sheet, which whoever added it sees immediately.
+  final Set<String> views;
+
   const PanelDefinition({
     required this.id,
     required this.title,
@@ -82,7 +109,13 @@ class PanelDefinition {
     this.formFields = const [],
     this.settingsTarget,
     this.multiple = false,
+    this.views = const {},
   });
+
+  /// Whether [view] may offer this panel — see [views] for why an empty set
+  /// answers yes for an extension panel and no for a native one.
+  bool availableIn(String view) =>
+      views.isEmpty ? source == PanelSource.extension : views.contains(view);
 
   bool get hasSettings => formFields.isNotEmpty || settingsTarget != null;
 
@@ -101,6 +134,7 @@ class PanelDefinition {
     formFields: formFields,
     settingsTarget: settingsTarget,
     multiple: multiple,
+    views: views,
   );
 
   /// Value equality so a re-registration with identical content is a no-op:
@@ -120,6 +154,7 @@ class PanelDefinition {
       other.panelKey == panelKey &&
       other.settingsTarget == settingsTarget &&
       other.multiple == multiple &&
+      setEquals(other.views, views) &&
       listEquals(other.triggers, triggers) &&
       other.formFields.length == formFields.length;
 
@@ -426,7 +461,17 @@ class PanelService extends ChangeNotifier {
 
   /// Every panel, native first in registration order and extension panels
   /// after — a view's own panes are the ones an operator is looking for.
+  ///
+  /// Every view's, though: this is the catalog an id is resolved against, and
+  /// a saved arrangement may name a panel the current view does not offer.
+  /// What a view puts in front of the operator is [catalogFor].
   List<PanelDefinition> get catalog => [..._native.values, ..._extensionPanels];
+
+  /// The panels [view] may offer — what its Add a Panel sheet lists. Native
+  /// panels belonging to another view are filtered out; extension panels name
+  /// no view and so survive for every one.
+  List<PanelDefinition> catalogFor(String view) =>
+      catalog.where((panel) => panel.availableIn(view)).toList();
 
   /// The panel an id names. An instance id (`…#2`) resolves to its
   /// descriptor, but what comes back carries the INSTANCE id — config is

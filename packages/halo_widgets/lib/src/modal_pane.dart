@@ -530,14 +530,18 @@ class _TopModalPaneScaffold extends StatelessWidget {
           // haloDialogConstraints' 1.5-header-height clearance.
           : screenSize.height - topOffset - headerHeight / 2,
     );
-    // Not applied in the full-width narrow case.
+    // Not applied in the full-width narrow case. Floored at zero for the same
+    // reason as [sheetMaxHeight]: callers measure the control to align with,
+    // and a control measured while its own route is still animating in reports
+    // a position off the left of the window — a negative inset that asserts
+    // inside Padding rather than merely misplacing the sheet.
     final leftInset = isNarrow
         ? null
-        : (route.leftInset == null ? null : route.leftInset! - leftNudge);
+        : (route.leftInset == null ? null : math.max(0.0, route.leftInset! - leftNudge));
     // No nudge on this side: [rightInset] lines the sheet's own right EDGE up
     // with the caller's control, rather than lining a control up with the
     // sheet's leading button the way [leftInset] does.
-    final rightInset = isNarrow ? null : route.rightInset;
+    final rightInset = isNarrow ? null : (route.rightInset == null ? null : math.max(0.0, route.rightInset!));
 
     final curvedAnimation = CurvedAnimation(parent: route.animation!, curve: Curves.easeOutCubic);
 

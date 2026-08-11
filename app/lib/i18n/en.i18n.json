@@ -66,7 +66,20 @@
     "stationCallsign": "Station callsign",
     "titleOptional": "Title (optional)",
     "emptyList": "No operations yet. Create one to start logging.",
-    "quickLookup": "Quick Lookup"
+    "quickLookup": "Quick Lookup",
+    "nav": {
+      "operations": "Operations",
+      "settings": "Settings"
+    },
+    "panels": {
+      "operations": "Operation List",
+      "operationsDescription": "Your operations, most recent first.",
+      "version": "Current Version",
+      "versionDescription": "The Ham2K mark, this app’s name and which build you are running.",
+      "lookup": "Quick Lookup",
+      "lookupDescription": "Look a callsign up, or type a command."
+    },
+    "toggleNav": "Show or hide the navigation labels"
   },
   "dialogs": {
     "operationDetails": "Operation details",

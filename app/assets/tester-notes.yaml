@@ -14,6 +14,7 @@ upcoming:
     - "Map tab: pick a basemap style (Liberty, Bright, Positron, Voyager, Dark Matter) from its settings button"
     - "Clock pane: removed the Swiss railway face"
     - "Pane layout options: panel settings embed inline, plus a new Theme Mode override"
+    - "Home has a navigation sidebar, and its panes rearrange like an operation's — try both"
 
 "131":
   changes:

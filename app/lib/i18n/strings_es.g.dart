@@ -182,6 +182,9 @@ class _Translations$home$es extends Translations$home$en {
 	@override String get titleOptional => 'Título (opcional)';
 	@override String get emptyList => 'Aún no hay operaciones. Crea una para comenzar a registrar.';
 	@override String get quickLookup => 'Búsqueda Rápida';
+	@override late final _Translations$home$nav$es nav = _Translations$home$nav$es._(_root);
+	@override late final _Translations$home$panels$es panels = _Translations$home$panels$es._(_root);
+	@override String get toggleNav => 'Mostrar u ocultar las etiquetas de navegación';
 }
 
 // Path: dialogs
@@ -822,6 +825,32 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String shortfall({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.';
 	@override String get busy => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.';
 	@override String get oneFileOnly => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.';
+}
+
+// Path: home.nav
+class _Translations$home$nav$es extends Translations$home$nav$en {
+	_Translations$home$nav$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get operations => 'Operaciones';
+	@override String get settings => 'Ajustes';
+}
+
+// Path: home.panels
+class _Translations$home$panels$es extends Translations$home$panels$en {
+	_Translations$home$panels$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get operations => 'Lista de Operaciones';
+	@override String get operationsDescription => 'Tus operaciones, la más reciente primero.';
+	@override String get version => 'Versión Actual';
+	@override String get versionDescription => 'La marca Ham2K, el nombre de esta aplicación y qué compilación usas.';
+	@override String get lookup => 'Búsqueda Rápida';
+	@override String get lookupDescription => 'Busca un indicativo o escribe un comando.';
 }
 
 // Path: operation.tabs
@@ -2076,6 +2105,15 @@ extension on TranslationsEs {
 			'home.titleOptional' => 'Título (opcional)',
 			'home.emptyList' => 'Aún no hay operaciones. Crea una para comenzar a registrar.',
 			'home.quickLookup' => 'Búsqueda Rápida',
+			'home.nav.operations' => 'Operaciones',
+			'home.nav.settings' => 'Ajustes',
+			'home.panels.operations' => 'Lista de Operaciones',
+			'home.panels.operationsDescription' => 'Tus operaciones, la más reciente primero.',
+			'home.panels.version' => 'Versión Actual',
+			'home.panels.versionDescription' => 'La marca Ham2K, el nombre de esta aplicación y qué compilación usas.',
+			'home.panels.lookup' => 'Búsqueda Rápida',
+			'home.panels.lookupDescription' => 'Busca un indicativo o escribe un comando.',
+			'home.toggleNav' => 'Mostrar u ocultar las etiquetas de navegación',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -2522,6 +2560,8 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
 			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
@@ -2531,8 +2571,6 @@ extension on TranslationsEs {
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
 			'settings.logging.modes' => 'Modos',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',

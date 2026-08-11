@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' as io;
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,18 +9,24 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../config/dev_bridge.dart';
+import '../config/release_notes.dart';
 import '../config/dev_flags.dart';
 import '../config/web_preview_label.dart';
 import '../main.dart';
+import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../tools/operation_title.dart';
 import 'command_engine.dart';
+import 'dock_host.dart';
 import 'header_profile_label.dart';
+import 'home_navigation_rail.dart';
+import 'operation/extension_panel.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
 import 'ham2k_logo.dart';
 import 'panel_use_tracker.dart';
+import 'release_overlay.dart';
 import 'version_label.dart';
 import '../i18n/strings.g.dart';
 
@@ -63,9 +70,7 @@ class _OperationRow extends StatelessWidget {
       color: theme.colorScheme.surface,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
-          ),
+          slideInFromRight((_) => OperationView(services: services, operationUuid: operation.uuid)),
         ),
         onLongPress: () => confirmDeleteOperation(context, services, operation),
         mouseCursor: SystemMouseCursors.click,
@@ -145,7 +150,7 @@ class OperationListPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
+    final color = HaLoColors.of(context).listBackground;
     if (operations.isEmpty) {
       if (loading) return ColoredBox(color: color);
       return Container(color: color, child: Center(child: Text(context.t.home.emptyList)));
@@ -164,9 +169,17 @@ class OperationListPanel extends StatelessWidget {
 }
 
 class HomeView extends StatefulWidget {
-  /// Home's arrangement is fixed (docs/design/layouts.md): its split opts
-  /// into the "surfaces" divider style below.
-  static const layoutPolicy = ViewLayoutPolicy.fixed;
+  /// Home's panes are user-arrangeable (docs/design/layouts.md). Unlike the
+  /// Operation view, this is NOT behind the Enable Layout Customization
+  /// setting: that setting exists so an operator can be talked through a
+  /// fixed logging screen over the air, and Home is not the screen anyone is
+  /// talked through mid-contact.
+  static const layoutPolicy = ViewLayoutPolicy.customizable;
+
+  /// The dock module ids Home builds itself.
+  static const operationsPanelId = 'operations';
+  static const versionPanelId = 'version';
+  static const lookupPanelId = 'lookup';
 
   final HaLoServices services;
 
@@ -194,13 +207,162 @@ const _newOperationNudgeDelay = Duration(seconds: 5);
 const _fabTransitionDuration = Duration(milliseconds: 300);
 const _fabSettleSlack = Duration(milliseconds: 100);
 
-class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteAware {
+class _HomeViewState extends State<HomeView>
+    with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin, DockHost<HomeView> {
+  @override
+  HaLoServices get dockServices => widget.services;
+
+  @override
+  String get dockView => PanelViews.home;
+
+  @override
+  DockLayoutKeys get dockKeys => const DockLayoutKeys(
+    spec: LayoutKeys.homeDock,
+    state: LayoutKeys.homeDockState,
+    paneOptions: LayoutKeys.homePaneOptions,
+    viewOptions: LayoutKeys.homeViewOptions,
+  );
+
+  @override
+  Set<String> get nativeModuleIds => const {
+    HomeView.operationsPanelId,
+    HomeView.versionPanelId,
+  };
+
+  /// All three of them. Home's panes say what they are by their own content —
+  /// a list of operations, a search field, the Ham2K mark — so a title bar
+  /// over each would be three labels naming what is already on screen, in a
+  /// window whose whole job is to show them. The operator can turn any of them
+  /// back on from that pane's layout options.
+  @override
+  Set<String> get defaultHeaderlessModules => nativeModuleIds;
+
+  /// Quick Lookup is a bar, not a pane with a share of the window. It takes the
+  /// height its field needs and grows by a line when a lookup resolves or a
+  /// command answers — which is also why it must not be resizable: there is no
+  /// right height for an operator to drag it to.
+  @override
+  Set<String> get fixedExtentModules => const {};
+
+  /// Home has no operation, no QSO being logged, and no live spot cache — it
+  /// subscribes to none of them, so there is nothing here to report. Extension
+  /// panels on Home therefore render on mount, on their own `tick:` timer, and
+  /// whenever their config changes; the `operation`/`qso`/`spots` triggers
+  /// cannot fire, because on this screen none of those things happen.
+  @override
+  PanelRenderContext get panelRenderContext => const PanelRenderContext();
+
+  @override
+  Map<String, String> get nativeTitles => {
+    HomeView.operationsPanelId: context.t.home.panels.operations,
+    HomeView.versionPanelId: context.t.home.panels.version,
+  };
+
+  /// Reproduces the arrangement Home shipped with before it was arrangeable:
+  /// the operation list with Quick Lookup beneath it on the left, branding on
+  /// the right. A vertical split rather than a tabbed group for the left
+  /// column, so a PHONE — where the whole dock is one column — still shows the
+  /// list and the lookup bar together, as it always has.
+  /// What the operator's old dragged divider becomes, once.
+  ///
+  /// Installs carry a pixel width under `home.leftColumn`, from the fixed
+  /// split the dock replaces. The dock persists proportions, so that value has
+  /// to be converted rather than abandoned — dropping it silently resets a
+  /// width the operator chose deliberately. Read against the window the FIRST default spec
+  /// is built for, which is the only moment a pixel width can be turned into a
+  /// ratio at all.
+  ///
+  /// Returns null when there is nothing stored (a fresh install, or an
+  /// operator who never dragged it), which leaves the shipped 2:1.
+  List<double>? _migratedColumnWeights() {
+    final stored = widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn);
+    if (stored == null || stored <= 0) return null;
+    final total = MediaQuery.sizeOf(context).width - HomeNavigationRail.collapsedWidth;
+    if (total <= 0) return null;
+    // The cap the old split enforced through `maxPrimaryWidth`, applied here
+    // because the dock has no such notion: without it a 2560px window gives
+    // the operation list ~1700px of stretched rows. `ShirtSize.sMax` is the
+    // widest a pane's content is designed for.
+    final primary = math.min(stored, ShirtSize.sMax);
+    final secondary = total - primary;
+    if (secondary <= 0) return null;
+    return [primary, secondary];
+  }
+
+  /// The shipped split: two thirds to the operation list, and never wider
+  /// than a pane's content is designed for.
+  ///
+  /// Worked out against the window rather than written as `[2, 1]`, because
+  /// that ratio has no ceiling and the dock enforces only a floor — on a
+  /// 2560pt window it lays the list out at ~1700pt of stretched callsign rows,
+  /// where the split this replaced clamped it to [ShirtSize.sMax]. Weights
+  /// persist from here, so the cap applies as the default is first built.
+  List<double> _shippedColumnWeights() {
+    final total = MediaQuery.sizeOf(context).width - HomeNavigationRail.collapsedWidth;
+    if (total <= 0) return [2, 1];
+    final primary = math.min(total * 2 / 3, ShirtSize.sMax);
+    final secondary = total - primary;
+    return secondary <= 0 ? [2, 1] : [primary, secondary];
+  }
+
+  @override
+  DockNode buildDefaultDockSpec({bool migrate = true}) => DockSplit(Axis.horizontal, [
+    DockGroup([HomeView.operationsPanelId]),
+    DockGroup([HomeView.versionPanelId]),
+    // The operator's own width if they ever set one — but never for a RESTORE,
+    // which is the one control that has to reach the shipped arrangement.
+  ], (migrate ? _migratedColumnWeights() : null) ?? _shippedColumnWeights());
+
+  /// Quick Lookup is chrome, not a pane — always on screen, below
+  /// whatever the layout holds — so an arrangement that still names it is
+  /// describing a pane that no longer exists.
+  @override
+  Set<String> get retiredModules => const {HomeView.lookupPanelId};
+
+  /// Registers Home's panels with the service. From [didChangeDependencies]
+  /// rather than [initState] because the titles are localized — a locale
+  /// change has to reach the catalog too.
+  void _registerNativePanels() {
+    final t = context.t.home.panels;
+    final service = widget.services.panels;
+    service.registerNative(PanelDefinition(
+      id: HomeView.operationsPanelId,
+      title: t.operations,
+      description: t.operationsDescription,
+      icon: 'notebook-multiple',
+      source: PanelSource.native,
+      views: const {PanelViews.home},
+    ));
+    service.registerNative(PanelDefinition(
+      id: HomeView.versionPanelId,
+      title: t.version,
+      description: t.versionDescription,
+      icon: 'information-outline',
+      source: PanelSource.native,
+      views: const {PanelViews.home},
+    ));
+  }
+
   bool _isFabExtended = true;
 
   /// Bumped once a transition's deadline passes, and used as the animated
   /// FAB subtree's key — see [_setFabExtended].
   int _fabSettleEpoch = 0;
   Timer? _fabSettleTimer;
+
+  /// Carries the pane subtrees across the two-pane flip.
+  ///
+  /// The dock and the narrow Column are different widgets at the same slot, so
+  /// without these the whole subtree is torn down and rebuilt whenever the
+  /// window (or a Font Scale change, which moves the effective width) crosses
+  /// the boundary: the list loses its scroll position, its operations stream
+  /// resubscribes and the pane flashes its empty state for a frame, and the
+  /// FAB snaps back to extended. Reparenting keeps the elements, their State
+  /// and their scroll offsets. Same reason the Operation view keys its panes.
+  ///
+  /// Per-instance, not file-level: two HomeViews alive at once (a route
+  /// transition between them) would otherwise collide on one key.
+  late final GlobalKey _operationsPaneKey = GlobalKey();
 
   /// Identifies the FAB's button proper — everything a finger can be resting
   /// on — so it is MOVED rather than rebuilt whenever the wrapper above it is
@@ -257,10 +419,8 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
         unawaited(
           Navigator.of(context)
               .push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      OperationView(services: widget.services, operationUuid: operation.uuid, openActivities: true),
-                ),
+                slideInFromRight((_) =>
+                    OperationView(services: widget.services, operationUuid: operation.uuid, openActivities: true)),
               )
               .whenComplete(() => _creatingOperation = false),
         );
@@ -277,6 +437,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   void initState() {
     super.initState();
     _startHomeVisit();
+    // Seed the rail from the stored preference.
+    homeRail.expanded = widget.services.settings.homeNavExpanded;
+    homeRail.showSettings = false;
+    homeRail.addListener(_onRailChanged);
     WidgetsBinding.instance.addObserver(this);
     _nudgeTimer = Timer(_newOperationNudgeDelay, () {
       if (mounted) setState(() => _nudgeArmed = true);
@@ -297,6 +461,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _registerNativePanels();
     final route = ModalRoute.of(context);
     if (route is PageRoute) homeRouteObserver.subscribe(this, route);
   }
@@ -306,6 +471,12 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
 
   @override
   void dispose() {
+    // Nothing resets the rail's global state here. It outlives this view by
+    // design — the window draws the rail, not Home — and every field it holds
+    // is re-seeded by the next `initState`. Writing to it from a `dispose`
+    // would also notify an ancestor already being torn down.
+    _settingsSlide.dispose();
+    homeRail.removeListener(_onRailChanged);
     homeRouteObserver.unsubscribe(this);
     _fabSettleTimer?.cancel();
     _nudgeTimer?.cancel();
@@ -377,7 +548,121 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     );
   }
 
+  /// The operator's stored preference, mirrored here so the toggle takes
+  /// effect on the frame it is pressed. [SettingsService.setHomeNavExpanded]
+  /// only makes the new value readable once its write to storage has
+  /// completed, and nothing rebuilds this scaffold when it does — reading the
+  /// setting back inside `build` shows the OLD width and then never corrects
+  /// itself, which is a toggle that does nothing at all.
+  late bool _navExpandedSetting = widget.services.settings.homeNavExpanded;
+
+  /// Whether Settings is showing IN PLACE of Home's own content. Not a pushed
+  /// route: the rail is the app's navigation, and a route over the top would
+  /// cover the very thing the operator navigated with. Other entry points into
+  /// Settings (the command bar, the operation view) still push, because they
+  /// are not navigating within this shell.
+  bool _showingSettings = false;
+
+  /// Drives Settings on and off OVER Home. An explicit controller rather than
+  /// an AnimatedSwitcher: a switcher animates both children, and coming back
+  /// has to leave Home exactly where it is so that it is REVEALED rather than
+  /// slid in behind.
+  late final AnimationController _settingsSlide = AnimationController(
+    vsync: this,
+    duration: layoutAnimationDuration,
+  );
+
+  late final Animation<Offset> _settingsOffset =
+      Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+          .animate(CurvedAnimation(parent: _settingsSlide, curve: layoutAnimationCurve));
+
+  void _showSettings(bool showing) {
+    if (_showingSettings == showing) return;
+    setState(() => _showingSettings = showing);
+    showing ? _settingsSlide.forward() : _settingsSlide.reverse();
+    // Settings shown IN PLACE is navigation without a route, so `didPopNext`
+    // never fires for it — and a home visit that is not marked on the way back
+    // leaves `screen_viewed` counting home per launch while settings and
+    // operations count per visit, which is the comparability `homeRouteObserver`
+    // exists to keep (see its doc).
+    if (!showing) _startHomeVisit();
+  }
+
+  /// Mirrors the window's rail state into this view — the rail is drawn by the
+  /// shell, so what it reports is the source of truth for which destination is
+  /// up and whether the labels are out.
+  void _onRailChanged() {
+    if (!mounted) return;
+    _showSettings(homeRail.showSettings);
+    if (homeRail.expanded != _navExpandedSetting) {
+      setState(() => _navExpandedSetting = homeRail.expanded);
+    }
+  }
+
+
   Widget _buildScaffold(BuildContext context, ThemeData theme) {
+    final isTwoPane = ShirtSize.of(context).isTwoPane;
+    // Home and Settings both sit BESIDE the rail (drawn by the window — see
+    // `HomeRailState`), so each holds its own column open by the rail's width.
+    //
+    // Off the rail's RESTING width — what it measures with the labels out or
+    // not — which changes only when the operator toggles it. Animated for
+    // exactly that reason and no other, in step with the rail: same duration
+    // and curve, both started by the same notification. Home does not move for
+    // anything else, and never for navigation.
+    //
+    // The padding goes on each child rather than around the Stack so that
+    // Settings SLIDES from the window's edge, passing under the rail on its
+    // way, and only comes to rest beside it. Around the Stack it would start
+    // at the rail's inner edge instead, which reads as sliding out of the
+    // panes rather than out of the destination that was pressed.
+    Widget besideRail(Widget child) => AnimatedPadding(
+          duration: layoutAnimationDuration,
+          curve: layoutAnimationCurve,
+          padding: EdgeInsets.only(
+            left: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting),
+          ),
+          child: child,
+        );
+
+    // Settings rides OVER Home rather than swapping with it: both directions
+    // travel leftward — in from the left edge, out to it — and on the way out
+    // Home has to be sitting there unmoved to be revealed.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        besideRail(_homeScaffold(context, theme, isTwoPane)),
+        // Listening to the controller, not just to `setState`: the slide OUT
+        // ends without any rebuild of its own, and a Settings left mounted
+        // off-screen keeps laying itself out against a pane it no longer has —
+        // which is a negative padding, not merely wasted work.
+        ListenableBuilder(
+          listenable: _settingsSlide,
+          builder: (context, child) => _settingsSlide.isDismissed
+              ? const SizedBox.shrink()
+              : SlideTransition(position: _settingsOffset, child: child!),
+          child: besideRail(
+            SettingsView(
+              services: widget.services,
+              embedded: true,
+              onBack: () => homeRail.showSettings = false,
+              // Where this view and the app's mark reach for the same corner —
+              // no rail at all, or a Mac window where the buttons have pushed
+              // the mark off the rail's column — hold what the mark overhangs
+              // by, so the back button lands beside it rather than under it.
+              leadingInset: HomeRailLogo.headerReserveOf(
+                context,
+                railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _homeScaffold(BuildContext context, ThemeData theme, bool isTwoPane) {
+    final railPresent = HomeNavigationRail.presentIn(context, expanded: _navExpandedSetting);
     return Scaffold(
       // Full height behind the on-screen keyboard so each pane paints its own
       // bottom — the Quick Lookup bar's teal on the left, the branding on the
@@ -386,16 +671,19 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
-        leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
-        leading: Padding(
-          padding: EdgeInsets.fromLTRB(
-            8 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
-            Space.md,
-            Space.md,
-            Space.md,
-          ),
-          child: SvgPicture.asset(ham2kSquareLogoAsset, width: 22, height: 22),
+        // Room for the mark, which the WINDOW draws over this corner (see
+        // [HomeRailLogo]) — only for the part of it the rail is not already
+        // holding open, which is nothing at all in the common case.
+        leadingWidth: HomeRailLogo.headerReserveOf(
+          context,
+          railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting),
         ),
+        // Matches the inset of an operation row's text
+        // (`PaneSafeArea.symmetricOf(context, horizontal: 16)` in
+        // [_OperationRow]), so the product name and the callsigns below it
+        // start on the same vertical line rather than a few pixels apart.
+        titleSpacing: Space.xl,
+        leading: const SizedBox.shrink(),
         // "Desktop Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
         // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
@@ -434,47 +722,114 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
           ],
         ),
         actions: [
-          HeaderProfileLabel(settings: widget.services.settings),
-          IconButton(
-            icon: Icon(MdiIcons.cog, semanticLabel: context.t.settings.title),
-            onPressed: () =>
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
-            mouseCursor: SystemMouseCursors.click,
+          // The settings cog, for the one arrangement with no rail to put it
+          // in. Two ways to the same screen, one of them a permanent fixture
+          // of the other's chrome, is how an operator learns to distrust
+          // both — so it goes away as the rail arrives, fading AND closing up
+          // in step with it rather than leaving a hole where it stood.
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: railPresent ? 0 : 1),
+            duration: layoutAnimationDuration,
+            curve: layoutAnimationCurve,
+            builder: (context, t, child) => t == 0
+                ? const SizedBox.shrink()
+                : ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      widthFactor: t,
+                      child: Opacity(opacity: t, child: child),
+                    ),
+                  ),
+            child: IconButton(
+              // Named, because on this arrangement it is the ONLY way into
+              // Settings and the app shows no hover tooltips
+              // (docs/design/user-interface.md) — an icon button's accessible
+              // name is the only place it says what it is.
+              icon: Icon(MdiIcons.cogOutline, semanticLabel: context.t.settings.title),
+              mouseCursor: SystemMouseCursors.click,
+              onPressed: () => homeRail.showSettings = true,
+            ),
           ),
+          if (!layoutSheetOpen) HeaderProfileLabel(settings: widget.services.settings),
+          // The VIEW's own layout options, and the only route to Restore
+          // Defaults — without it an operator who rearranges Home into
+          // something they dislike, or drops a pane, has no way back to the
+          // arrangement it ships with. Null unless editing.
+          if (isTwoPane) ?viewOptionsButton(context, editing: layoutEditing),
+          // Only where there is an arrangement to edit — the dock, which is
+          // two-pane. Same rule as the Operation view's.
+          if (isTwoPane) ...layoutHeaderControls(context),
           const SizedBox(width: Space.md),
           windowsCaptionSpacer(context),
         ],
       ),
-      // Two-pane on L+ (docs/design/layouts.md): the list column keeps the
-      // ideal pane width and the branding pane takes the rest. Single-pane
-      // sizes pass a null secondary so the list subtree stays mounted (and
-      // keeps its scroll position) across a live resize.
+      // Quick Lookup UNDER the layout and inside this view, full width beside
+      // the rail's own Settings cap: it is the home layer's chrome, so an
+      // operation covers it by covering the window and Settings slides over it
+      // without either being told to hide it. The notice band and the numbers
+      // row are the window's, below this view entirely (see [HomeRailShell]).
+      // The safe area wraps BOTH rows, not just the panes: Quick Lookup reads
+      // its own horizontal inset from this ancestor, and outside it a cutout
+      // lands on the lookup field's magnifier and the first characters typed
+      // — on a landscape phone with no rail, which is the shipped default
+      // there and the one arrangement where this view really does touch that
+      // edge.
       body: PaneSafeArea.root(
         context,
-        // Real device safe-area insets (notch, home indicator) bubble in
-        // from here; PaneSafeArea's own
-        // divider-clearance role composes with it further down.
-        child: ResizableSplitView(
-          // Home is ViewLayoutPolicy.fixed and (for now) opts into the
-          // "surfaces" divider: the branding pane reads as a surface under
-          // the list column's shadow. See docs/design/layouts.md.
-          dividerStyle: SplitDividerStyle.surfaces,
-          secondary: ShirtSize.of(context).isTwoPane ? const _BrandingPane() : null,
-          // Null when never dragged → the split's own 2/3-capped-at-sMax
-          // default applies.
-          preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn),
-          maxPrimaryWidth: ShirtSize.sMax,
-          onPreferredPrimaryWidthChanged: (width) =>
-              widget.services.settings.setLayoutDimension(LayoutKeys.homeLeftColumn, width),
-          primary: Column(
-            children: [
-              Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (ScrollNotification notification) {
-                    _setFabExtended(notification.metrics.pixels <= 10);
-                    return false;
-                  },
-                  child: Stack(
+        // Real device safe-area insets (notch, home indicator) bubble in from
+        // here; PaneSafeArea's own divider-clearance role composes with it
+        // further down.
+        //
+        // Except the LEFT one WHERE THERE IS A RAIL: the rail touches that
+        // edge and takes the cutout by widening itself, so the panes never
+        // reach it and republishing it here would indent every operation row
+        // and the lookup field by a cutout nothing is avoiding. With no rail
+        // this view does touch that edge, and has to take the cutout itself or
+        // a notch lands on the list.
+        left: railPresent ? 0 : null,
+        child: Column(
+          children: [
+            Expanded(
+              child: isTwoPane
+                  ? withViewOverrides(buildDock(children: _panes(context, theme)))
+                  // A phone shows the list with Quick Lookup beneath it, as it
+                  // always has. The dock's tree names no widths — it is the
+                  // same splits and weights wherever it is drawn — so applying
+                  // it here would give a 360px window a two-thirds list and a
+                  // 120px branding column. The Operation view draws the same
+                  // line at the same place.
+                  : KeyedSubtree(key: _operationsPaneKey, child: _operationsPane(context, theme)),
+            ),
+            // Pointer-down rather than a gesture, exactly as the operations
+            // pane does it: this only OBSERVES, so it neither competes with
+            // the field's own taps nor changes hit testing. Quick Lookup is
+            // chrome rather than a pane, but it is still one of the two things
+            // the home screen offers, and telemetry.md counts it.
+            Listener(
+              onPointerDown: (_) => _panels.used('quick_lookup'),
+              child: HomeQuickLookup(services: widget.services),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<String, Widget> _panes(BuildContext context, ThemeData theme) => {
+    HomeView.operationsPanelId: KeyedSubtree(key: _operationsPaneKey, child: _operationsPane(context, theme)),
+    HomeView.versionPanelId: const _BrandingPane(),
+  };
+
+  /// The operation list with the New Operation FAB over it — one pane, because
+  /// the button creates what the list holds and an operator who moved the list
+  /// elsewhere would otherwise leave its button behind.
+  Widget _operationsPane(BuildContext context, ThemeData theme) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification notification) {
+        _setFabExtended(notification.metrics.pixels <= 10);
+        return false;
+      },
+      child: Stack(
                     children: [
                       Positioned.fill(
                         child: StreamBuilder<List<Operation>>(
@@ -607,16 +962,6 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ),
-              Listener(
-                onPointerDown: (_) => _panels.used('quick_lookup'),
-                child: HomeQuickLookup(services: widget.services),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -748,8 +1093,52 @@ class _BrandingPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // The current release's photo, behind everything. A FutureBuilder
+        // rather than a field: the notes are parsed from a bundled YAML once
+        // per launch and cached by [loadReleaseNotes], so this costs one
+        // already-resolved future after the first pane to ask.
+        //
+        // Every failure here paints NOTHING and leaves the pane on its own
+        // background: a release with no photo committed yet, an asset that
+        // fails to decode, or notes that will not parse. The pane's job is
+        // the version, and it still does it.
+        FutureBuilder<List<ReleaseNotesEntry>>(
+          future: loadReleaseNotes(),
+          builder: (context, snapshot) {
+            final release = snapshot.data?.firstOrNull;
+            if (release == null) return const SizedBox.shrink();
+            return ReleasePhoto(
+              imageAssetPath: release.imageAssetPath,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            );
+          },
+        ),
+        // A scrim, not a tint on the text: the photo is a real photograph and
+        // its brightness is not ours to predict, so the contrast the branding
+        // needs is bought here rather than assumed.
+        //
+        // Strong enough to carry `onSurfaceVariant` text over an arbitrary
+        // photo, light enough that the photo still reads as one — past about
+        // 0.7 it stops being a background and becomes a tint nobody can tell
+        // from a flat fill. Heavier in dark mode, where the text is light and
+        // a bright photo is what would swallow it.
+        Positioned.fill(
+          child: ColoredBox(
+            color: theme.colorScheme.surface.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.62 : 0.55,
+            ),
+          ),
+        ),
+        _brandingContent(context, theme),
+      ],
+    );
+  }
+
+  Widget _brandingContent(BuildContext context, ThemeData theme) {
     return Container(
-      color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
       // No keyboard padding here: `StatusBarOverlay` holds the keyboard's
       // height back for the whole app and consumes the inset, so this pane is
@@ -813,6 +1202,19 @@ class HomeQuickLookup extends StatefulWidget {
   final HaLoServices services;
 
   const HomeQuickLookup({super.key, required this.services});
+
+  /// This bar's RESTING height — the field and its padding, before a lookup
+  /// line or a command's answer grows it upward.
+  ///
+  /// Exact rather than an estimate: the field is held to one chrome row below,
+  /// so this is the height, and two other things are built to it. The window's
+  /// chrome budget reserves it, since the bar is always on screen on the home
+  /// layer and a budget blind to it hands the notice and the footer room Home
+  /// has already spent. And the rail's Settings cap is this tall, so the two
+  /// read as one row across the foot of the window — the cap does NOT follow
+  /// the bar when it grows, which is the one direction they may differ.
+  static double heightOf(BuildContext context) =>
+      LayoutDensity.chromeHeightOf(context) + Space.md * 2;
 
   @override
   State<HomeQuickLookup> createState() => _HomeQuickLookupState();
@@ -1035,7 +1437,15 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
             ),
           Padding(
             padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 8),
-            child: TextField(
+            // One chrome row exactly, rather than whatever a dense
+            // `InputDecoration` and a prefix icon happen to measure. [heightOf]
+            // is what the rail's Settings cap is built to and what the window's
+            // chrome budget reserves, and both are wrong the moment this bar
+            // is a few pixels off it — a cap that does not line up with the bar
+            // beside it reads as one of them being misaligned.
+            child: SizedBox(
+              height: LayoutDensity.chromeHeightOf(context),
+              child: TextField(
               selectAllOnFocus: false,
               controller: _controller,
               focusNode: _focusNode,
@@ -1067,6 +1477,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
               // runs. onEditingComplete replaces that default entirely, so
               // the field keeps focus for the next command.
               onEditingComplete: () => _engine.submit(),
+              ),
             ),
           ),
           // The numbers row is not drawn here — it is published to

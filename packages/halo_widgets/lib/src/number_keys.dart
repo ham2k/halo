@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'chrome_edge.dart';
 import 'density.dart';
 
 import 'spacing.dart';
@@ -75,7 +76,8 @@ class NumberKeys extends StatelessWidget {
       '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
       ?extraKey,
     ];
-    return Material(
+    return ChromeTopEdge(
+      child: Material(
       color: backgroundColor,
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -108,6 +110,7 @@ class NumberKeys extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
     );
   }

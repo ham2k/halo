@@ -14,6 +14,9 @@
 
 import 'package:flutter/widgets.dart';
 
+import 'density.dart';
+import 'spacing.dart';
+
 /// The width most panes are designed for.
 ///
 /// Width only. The height counterpart is `LayoutDensity` (density.dart), which
@@ -27,6 +30,32 @@ const double idealPaneWidth = 500.0;
 /// Below this a pane stops being useful (forms wrap badly, lists truncate).
 /// The default minimum for either side of a resizable split.
 const double minPaneWidth = 280.0;
+
+/// The floor a DOCK pane may be laid out at, on either axis — a different and
+/// much harder limit than [minPaneWidth], which is about a pane being *useful*.
+/// This one is about a pane being *possible*: below it a pane cannot draw the
+/// chrome that makes it a pane at all, and its own Column overflows.
+///
+/// **Height** is [dockMinPaneHeight] — one standard value for every pane,
+/// whatever chrome it happens to carry. A group of tabs cannot be shorter than
+/// a tab; a group with a header cannot be shorter than that header; and a
+/// headerless pane cannot be shorter than the chrome edit mode needs to put
+/// over it. Those are the same measurement, so they are one number, and a pane
+/// never changes height just because the operator entered edit mode.
+///
+/// **Width** is [dockMinPaneWidth]: enough for a grab handle and an options
+/// button with no title between them. A pane narrower than that has no way to
+/// be moved or configured, which makes it unrecoverable rather than merely
+/// cramped.
+///
+/// Read the height through [dockMinPaneHeight], never as a constant: on touch
+/// the chrome it is derived from is held to the tap-target minimum, and the
+/// density rungs move it besides.
+double dockMinPaneHeight(BuildContext context) => LayoutDensity.chromeHeightOf(context);
+
+/// Grab handle + options button, no title. Both are square tap targets at the
+/// chrome height, plus the gap between them.
+double dockMinPaneWidth(BuildContext context) => LayoutDensity.chromeHeightOf(context) * 2 + Space.md;
 
 /// The base resize floor for a desktop window, in logical (UiScale-divided)
 /// pixels: the width is the S-size layout minimum ([ShirtSize.xsMax]) — a

@@ -16,6 +16,7 @@
 // as a backgrounded tab's dead frame pump would, while Timers keep running.
 
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -98,7 +99,14 @@ void main() {
     // ballistically and fire more scroll notifications while we are trying to
     // hold the FAB mid-transition.
     final gesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
-    await gesture.moveBy(const Offset(0, -200));
+    // Past the touch slop FIRST, then the rest — a single jump of the whole
+    // distance is one move event, and the drag recognizer has to win its arena
+    // before it will accept any of it. `tester.drag` splits the move for this
+    // reason and cannot be used here: it releases, and a released fling settles
+    // ballistically, firing more scroll notifications while we are trying to
+    // hold the FAB mid-transition.
+    await gesture.moveBy(const Offset(0, kDragSlopDefault));
+    await gesture.moveBy(const Offset(0, -200 - kDragSlopDefault));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
 

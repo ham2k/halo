@@ -318,6 +318,27 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('top pane body'), findsNothing);
     });
+
+    testWidgets('an inset measured off the left of the window still opens the pane', (tester) async {
+      setWidth(tester, 1200);
+      addTearDown(tester.view.resetPhysicalSize);
+      final context = await pumpHost(tester);
+
+      // Callers pass the measured position of the control the sheet aligns to.
+      // Measured while that control's own route is still animating in, it
+      // reads off the left of the window — and modal_pane then subtracts a
+      // further nudge from it. Unfloored, that reaches Padding as a negative
+      // inset and the pane never mounts.
+      unawaited(showTopModalPane<void>(
+        context,
+        leftInset: -400,
+        builder: (context) => const Text('top pane body'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('top pane body'), findsOneWidget, reason: 'a nonsense inset must not take the pane down with it');
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('showFormPane', () {

@@ -297,6 +297,12 @@ class Translations$home$en {
 
 	/// en: 'Quick Lookup'
 	String get quickLookup => 'Quick Lookup';
+
+	late final Translations$home$nav$en nav = Translations$home$nav$en.internal(_root);
+	late final Translations$home$panels$en panels = Translations$home$panels$en.internal(_root);
+
+	/// en: 'Show or hide the navigation labels'
+	String get toggleNav => 'Show or hide the navigation labels';
 }
 
 // Path: dialogs
@@ -1632,6 +1638,48 @@ class Translations$adifImport$en {
 
 	/// en: 'Drop one ADIF file at a time — the order files are imported in decides which data wins.'
 	String get oneFileOnly => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.';
+}
+
+// Path: home.nav
+class Translations$home$nav$en {
+	Translations$home$nav$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Operations'
+	String get operations => 'Operations';
+
+	/// en: 'Settings'
+	String get settings => 'Settings';
+}
+
+// Path: home.panels
+class Translations$home$panels$en {
+	Translations$home$panels$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Operation List'
+	String get operations => 'Operation List';
+
+	/// en: 'Your operations, most recent first.'
+	String get operationsDescription => 'Your operations, most recent first.';
+
+	/// en: 'Current Version'
+	String get version => 'Current Version';
+
+	/// en: 'The Ham2K mark, this app’s name and which build you are running.'
+	String get versionDescription => 'The Ham2K mark, this app’s name and which build you are running.';
+
+	/// en: 'Quick Lookup'
+	String get lookup => 'Quick Lookup';
+
+	/// en: 'Look a callsign up, or type a command.'
+	String get lookupDescription => 'Look a callsign up, or type a command.';
 }
 
 // Path: operation.tabs
@@ -4174,6 +4222,15 @@ extension on Translations {
 			'home.titleOptional' => 'Title (optional)',
 			'home.emptyList' => 'No operations yet. Create one to start logging.',
 			'home.quickLookup' => 'Quick Lookup',
+			'home.nav.operations' => 'Operations',
+			'home.nav.settings' => 'Settings',
+			'home.panels.operations' => 'Operation List',
+			'home.panels.operationsDescription' => 'Your operations, most recent first.',
+			'home.panels.version' => 'Current Version',
+			'home.panels.versionDescription' => 'The Ham2K mark, this app’s name and which build you are running.',
+			'home.panels.lookup' => 'Quick Lookup',
+			'home.panels.lookupDescription' => 'Look a callsign up, or type a command.',
+			'home.toggleNav' => 'Show or hide the navigation labels',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
@@ -4620,6 +4677,8 @@ extension on Translations {
 			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
 			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
@@ -4629,8 +4688,6 @@ extension on Translations {
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
 			'settings.logging.modes' => 'Modes',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.title' => 'Radio',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',
