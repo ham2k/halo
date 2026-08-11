@@ -42,6 +42,15 @@ String _utcTimeLabel(DateTime? time) => time == null
 /// stands in for the whole column.
 const _timeLabelSample = '00:00z';
 
+/// The plain row's own mono font size — also [AnnotationRow]'s time label.
+/// Named so [_QsoListState.didChangeDependencies]'s row-height measurement
+/// can't silently drift from what the row it's sizing actually paints at.
+const _rowMonoFontSize = 14.0;
+
+/// [EventRow]'s own (smaller) mono time-label size — see [_rowMonoFontSize]'s
+/// doc for why this is named rather than a second bare literal.
+const _eventTimeFontSize = 12.0;
+
 /// A hair of headroom in the row's width budget, absorbing the difference
 /// between what `textWidth` measures and what layout then rounds to. One
 /// logical pixel: far more than the fractions actually observed, and not
@@ -425,13 +434,67 @@ class _QsoListState extends State<QsoList> {
     super.didChangeDependencies();
     _metrics = LayoutDensity.metricsOf(context);
     // The OS accessibility text-scale preference composes on top of the
-    // app's own Font Scale (ui-scaling.md §3) and isn't reflected in
-    // [_metrics] at all — every row/header sits in an exact box (HALO-258),
-    // so [_osTextScale] is what keeps that box, and the scroll math below
-    // that assumes its size, growing with it instead of clipping it.
-    // `.scale(100) / 100` reads the scaler's effective multiplier without
-    // assuming it's linear.
-    _osTextScale = MediaQuery.textScalerOf(context).scale(100) / 100;
+    // app's own Font Scale (ui-scaling.md §3) and can be NON-linear — unlike
+    // the app's own scale, which is one multiplier applied everywhere, the
+    // OS curve can grow a 12px line by a different ratio than a 14px one.
+    // Sampling it at an arbitrary reference size (the previous fix's
+    // `scaler.scale(100) / 100`) reads whatever that curve does at 100px,
+    // which nothing in this row paints at — a flat curve above the sizes
+    // that actually appear reads as no growth at all while the row's real
+    // text keeps growing. Every row/header sits in an exact box (HALO-258),
+    // which also rules out `spots_panel`'s own fix (measure a real mounted
+    // row's rendered size): `SliverFixedExtentList` forces that size to
+    // equal whatever this value already is, so measuring it back would just
+    // measure this line's own previous answer. Measuring the TEXT alone via
+    // [spansHeight] sidesteps both — a `Text` inside `Row` gets loose
+    // cross-axis constraints from `CrossAxisAlignment.center`, so its
+    // rendered size is never clamped by the row's own fixed extent, and
+    // measuring at the row's OWN font sizes reads the curve where it matters.
+    //
+    // The growth ratio is measured directly (scaled height ÷ unscaled
+    // height for the SAME style), not reconstructed from `qsoRowHeight`'s
+    // declared total: that total is "declared rather than measured" (see
+    // [LayoutMetrics]'s own doc) and doesn't cleanly decompose into
+    // `2×padding + line height + divider` — a style whose real unscaled
+    // line height already runs under what that arithmetic would assume can
+    // make the reconstructed baseline read too tall, understating growth
+    // below 1.0 even while the OS scale is above it.
+    //
+    // A style's own line-height MULTIPLIER (`AnnotationRow`'s unmodified
+    // `bodyMedium` carries Material 3's 1.43×, meant for prose; the plain
+    // row's `haloMonoStyle` sets none) cancels out of this ratio — scaling
+    // is a function of font SIZE, not of what multiplies it afterward. What
+    // actually varies across the row kinds sharing one slot is size: 14px
+    // (the plain row, `AnnotationRow`'s time label and description) and
+    // [_eventTimeFontSize]/`labelMedium`'s 12px (`EventRow`'s time label and
+    // its own label). The worst case of the two is what the ONE shared slot
+    // has to fit, and what the pinned header (closer to the row's own
+    // convention, but not proven identical under every curve) gets sized
+    // against too, rather than risk being the one under-provisioned box left
+    // after guarding the rest.
+    final theme = Theme.of(context);
+    double growthOf(TextStyle? style) {
+      // Not a "nothing to measure" skip: [_layoutSpans] resolves a null
+      // style as `DefaultTextStyle.of(context).style.merge(null)` — the
+      // ambient ancestor style, which is what actually paints (same
+      // resolution `AnnotationRow`'s own `bodyMedium?.copyWith(...)` relies
+      // on). Short-circuiting here would silently drop that style's growth
+      // from the max instead of measuring it.
+      const sample = [TextSpan(text: _timeLabelSample)];
+      final scaled = spansHeight(context, sample, style);
+      final unscaled = spansHeight(context, sample, style, textScaler: TextScaler.noScaling);
+      assert(unscaled > 0, 'unscaled height measured non-positive for style: $style');
+      // Never below 1.0: an OS scale at or under the app's own baseline
+      // shouldn't shrink the row below its declared height.
+      return unscaled <= 0 ? 1.0 : (scaled / unscaled).clamp(1.0, double.infinity);
+    }
+
+    _rowHeightScale = [
+      growthOf(haloMonoStyle(context, fontSize: _rowMonoFontSize)),
+      growthOf(theme.textTheme.bodyMedium),
+      growthOf(haloMonoStyle(context, fontSize: _eventTimeFontSize)),
+      growthOf(theme.textTheme.labelMedium),
+    ].reduce((a, b) => a > b ? a : b);
   }
 
   /// The resolved dimensions, refreshed by [didChangeDependencies].
@@ -441,10 +504,15 @@ class _QsoListState extends State<QsoList> {
   /// build, where depending on an inherited widget is not allowed. The cache
   /// is also what keeps the row height the scroll math uses identical to the
   /// one the rows actually paint with, which is the whole contract — always
-  /// read alongside [_osTextScale], never `qsoRowHeight`/`sectionHeaderHeight`
+  /// read alongside [_rowHeightScale], never `qsoRowHeight`/`sectionHeaderHeight`
   /// alone.
   late LayoutMetrics _metrics;
-  late double _osTextScale;
+
+  /// See [didChangeDependencies]'s doc — the row-height correction factor
+  /// [_estimatedTopOf], [_scrollTo] and every fixed sliver extent below
+  /// multiply a declared height by, so all four keep agreeing with what the
+  /// rows actually paint.
+  late double _rowHeightScale;
 
   @override
   void initState() {
@@ -495,7 +563,7 @@ class _QsoListState extends State<QsoList> {
     if (index < 0) return;
 
     final top = _estimatedTopOf(index);
-    final scroll = _scrollTo(top, top + _metrics.qsoRowHeight * _osTextScale);
+    final scroll = _scrollTo(top, top + _metrics.qsoRowHeight * _rowHeightScale);
     if (scroll != null && _correctedRevealFor != selectedUuid) {
       // Landing is not arriving: annotation rows are taller than the nominal
       // height, so a long log can drift. One measured pass straightens it out
@@ -520,10 +588,10 @@ class _QsoListState extends State<QsoList> {
       final millis = widget.qsos[i].startAtMillis ?? 0;
       final day = millis - (millis % _dayInMillis);
       if (day != lastDay) {
-        offset += _metrics.sectionHeaderHeight * _osTextScale;
+        offset += _metrics.sectionHeaderHeight * _rowHeightScale;
         lastDay = day;
       }
-      if (i < index) offset += _metrics.qsoRowHeight * _osTextScale;
+      if (i < index) offset += _metrics.qsoRowHeight * _rowHeightScale;
     }
     return offset;
   }
@@ -537,7 +605,7 @@ class _QsoListState extends State<QsoList> {
   /// one, which would leave the selection somewhere the operator can't see.
   Future<void>? _scrollTo(double top, double bottom) {
     final position = _scrollController.position;
-    final headerHeight = _metrics.sectionHeaderHeight * _osTextScale;
+    final headerHeight = _metrics.sectionHeaderHeight * _rowHeightScale;
     final double target;
     if (top - headerHeight < position.pixels) {
       target = top - headerHeight;
@@ -661,7 +729,7 @@ class _QsoListState extends State<QsoList> {
 
     final mono = haloMonoStyle(
       context,
-      fontSize: 14,
+      fontSize: _rowMonoFontSize,
       color: theme.colorScheme.onSurface,
     );
     final monoDim = mono.copyWith(color: theme.colorScheme.outline);
@@ -709,11 +777,11 @@ class _QsoListState extends State<QsoList> {
     final dayKeys = metrics.dayKeys;
     final dayGroups = metrics.dayGroups;
 
-    // See [_osTextScale]'s doc — every row/header below is forced into an
+    // See [_rowHeightScale]'s doc — every row/header below is forced into an
     // exact box (HALO-258), so its extent has to grow with the OS text
     // scale the same way the scroll math using [_metrics] elsewhere does.
-    final rowExtent = _metrics.qsoRowHeight * _osTextScale;
-    final headerExtent = _metrics.sectionHeaderHeight * _osTextScale;
+    final rowExtent = _metrics.qsoRowHeight * _rowHeightScale;
+    final headerExtent = _metrics.sectionHeaderHeight * _rowHeightScale;
 
     // Matched against each local day bucket by the same UTC-day key the
     // scoring hook uses — see `_dayInMillis`'s doc comment. Absent (or a
@@ -1678,7 +1746,7 @@ class EventRow extends StatelessWidget {
                 timeLabel,
                 style: haloMonoStyle(
                   context,
-                  fontSize: 12,
+                  fontSize: _eventTimeFontSize,
                   color: theme.colorScheme.outline,
                 ),
               ),
@@ -1766,7 +1834,7 @@ class AnnotationRow extends StatelessWidget {
       color: ink,
       fontFamilyFallback: const [emojiFontFamily],
     );
-    var timeStyle = haloMonoStyle(context, fontSize: 14, color: ink);
+    var timeStyle = haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink);
     // Deleted annotations follow the QSO rows' "show deleted" treatment:
     // struck-through and faded, still in the timeline.
     if (qso.deleted) {

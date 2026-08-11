@@ -7,6 +7,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+/// A real OS accessibility text-scale curve can be non-linear — unlike
+/// `TextScaler.linear`, which multiplies every font size by the identical
+/// factor and so can't distinguish "measured the row's own font sizes" from
+/// "sampled the curve at an arbitrary reference size" (both read the same
+/// ratio under a linear scaler). This flattens above the sizes any row
+/// actually paints at, so a fix that samples at the wrong size reads no
+/// growth at all while the row's real text keeps growing.
+class _FlattensAboveRowSizes extends TextScaler {
+  const _FlattensAboveRowSizes();
+
+  @override
+  double scale(double fontSize) => fontSize <= 20 ? fontSize * 1.4 : fontSize;
+
+  @override
+  double get textScaleFactor => 1.4;
+}
+
 void main() {
   late HaLoDatabase db;
   late OperationsRepository operations;
@@ -213,6 +230,118 @@ void main() {
       await tester.pumpWidget(hostWith(list, list.last.uuid));
       await tester.pumpAndSettle();
       expect(find.text('K200HAM'), findsOneWidget);
+    });
+
+    testWidgets('a row does not overflow its fixed slot at an OS text scale above 1.0 (HALO-209)', (tester) async {
+      // Every row sits in a fixed-extent sliver slot (HALO-258), which
+      // `RenderSliverFixedExtentList` enforces on the ACTUAL rendered
+      // geometry, not just on the arithmetic that estimates a reveal's
+      // scroll offset — so unlike the pre-fixed-extent bug this card
+      // originally described, scroll math can no longer drift from where a
+      // row actually paints; both read the same `_rowHeightScale`. What can
+      // still go wrong is the opposite direction: if that shared scale
+      // doesn't grow enough for the OS accessibility text-scale preference
+      // (ui-scaling.md §3, composes independently of the app's own Font
+      // Scale), the row's real text overflows the now-rigid slot instead of
+      // the slot growing to fit it, the way an unconstrained row used to.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 2);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+          child: hostWith(list, null),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The pitch between rows is exactly the slot each one sits in — see
+      // 'consecutive rows sit exactly one row-height apart'. It has to have
+      // actually grown past the unscaled declared height (proving the OS
+      // scale was applied at all, not just coincidentally sufficient), and
+      // the row's own text has to fit inside it (proving it grew enough).
+      final pitch = tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K2HAM')).dy -
+          tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K1HAM')).dy;
+      final declared = QsoList.rowHeightOf(tester.element(find.byType(QsoList)));
+      expect(pitch, greaterThan(declared), reason: 'the slot never grew for the OS text scale');
+
+      final textHeight = tester.getSize(find.text('K1HAM')).height;
+      expect(textHeight, lessThanOrEqualTo(pitch), reason: "the row's own text overflowed its slot");
+    });
+
+    testWidgets('an annotation row does not overflow its slot at an OS text scale above 1.0 (HALO-209)',
+        (tester) async {
+      // AnnotationRow's description uses bodyMedium unmodified — Material 3's
+      // 1.43x line-height multiplier, meant for prose, unlike the plain row's
+      // `haloMonoStyle` (no explicit `height`) that the previous test's slot
+      // was calibrated against. A scale that only measured the mono style
+      // would under-provision the ONE slot every row kind shares.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso1 = await qsos.add(operation.uuid, {
+        'their': {'call': 'K1HAM'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      final note = await qsos.add(operation.uuid, {
+        'band': 'event',
+        'freq': 0,
+        'mode': 'note',
+        'startAtMillis': 2000,
+        'our': {'call': 'EVENT'},
+        'their': {'call': 'NOTE'},
+        'event': {'event': 'note', 'note': 'A note long enough to take a row of its own'},
+      });
+      final qso2 = await qsos.add(operation.uuid, {
+        'their': {'call': 'K2HAM'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 3000,
+      });
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+          child: hostWith([qso1, note, qso2], null),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The pitch between the two QSO rows spans the annotation row between
+      // them too — divide by two rows' worth to get one slot's real height.
+      final slot = (tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K2HAM')).dy -
+              tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K1HAM')).dy) /
+          2;
+      final noteHeight = tester.getSize(find.text('A note long enough to take a row of its own')).height;
+      expect(noteHeight, lessThanOrEqualTo(slot), reason: "the annotation row's text overflowed its slot");
+    });
+
+    testWidgets('a row does not overflow under a non-linear OS text-scale curve (HALO-209)', (tester) async {
+      // `TextScaler.linear` — every other test in this file — multiplies
+      // every font size by the identical factor, so it can't tell "measured
+      // at the row's own font sizes" apart from "sampled an arbitrary
+      // reference size": both read the same ratio under it. A real OS
+      // accessibility curve isn't guaranteed linear; [_FlattensAboveRowSizes]
+      // is the shape that broke the fix this replaced (which sampled
+      // `scaler.scale(100) / 100` — flat here, reading NO growth at all).
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 2);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: _FlattensAboveRowSizes()),
+          child: hostWith(list, null),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final pitch = tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K2HAM')).dy -
+          tester.getTopLeft(find.bySemanticsIdentifier('qso.row.K1HAM')).dy;
+      final declared = QsoList.rowHeightOf(tester.element(find.byType(QsoList)));
+      expect(pitch, greaterThan(declared), reason: 'the slot never grew under the curve');
+
+      final textHeight = tester.getSize(find.text('K1HAM')).height;
+      expect(textHeight, lessThanOrEqualTo(pitch), reason: "the row's own text overflowed its slot");
     });
 
     testWidgets('a jump lands the row fully on screen, clear of the pinned header', (tester) async {

@@ -263,6 +263,32 @@ double spansWidth(
   List<InlineSpan> spans,
   TextStyle? style, {
   List<PlaceholderDimensions> placeholders = const [],
+}) =>
+    _layoutSpans(context, spans, style, placeholders: placeholders).width;
+
+/// The rendered height of one line of [spans] in [style] — see [spansWidth]'s
+/// doc for the shared ambient-style/text-scaler/placeholder contract.
+///
+/// [textScaler] overrides the ambient one when given — for a caller that
+/// needs the UNSCALED height as a baseline to compare a real measurement
+/// against (HALO-209's row-height correction: how much a style's line height
+/// actually grows under the current scaler isn't derivable from its
+/// unscaled height alone, so both ends of that ratio have to be measured).
+double spansHeight(
+  BuildContext context,
+  List<InlineSpan> spans,
+  TextStyle? style, {
+  List<PlaceholderDimensions> placeholders = const [],
+  TextScaler? textScaler,
+}) =>
+    _layoutSpans(context, spans, style, placeholders: placeholders, textScaler: textScaler).height;
+
+Size _layoutSpans(
+  BuildContext context,
+  List<InlineSpan> spans,
+  TextStyle? style, {
+  List<PlaceholderDimensions> placeholders = const [],
+  TextScaler? textScaler,
 }) {
   assert(() {
     var count = 0;
@@ -278,18 +304,18 @@ double spansWidth(
       countPlaceholders(span);
     }
     return count == placeholders.length;
-  }(), 'spansWidth needs one PlaceholderDimensions per WidgetSpan, in tree order');
+  }(), 'spansWidth/spansHeight need one PlaceholderDimensions per WidgetSpan, in tree order');
 
   final merged = DefaultTextStyle.of(context).style.merge(style);
   final painter = TextPainter(
     text: TextSpan(children: spans, style: merged),
     textDirection: TextDirection.ltr,
-    textScaler: MediaQuery.textScalerOf(context),
+    textScaler: textScaler ?? MediaQuery.textScalerOf(context),
   );
   if (placeholders.isNotEmpty) painter.setPlaceholderDimensions(placeholders);
   try {
     painter.layout();
-    return painter.width;
+    return painter.size;
   } finally {
     // Frees the native paragraph rather than leaving it to a GC finalizer —
     // this runs a few times per build of the logging panel.
