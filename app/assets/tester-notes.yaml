@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"132":
   changes:
     - "Home has a navigation sidebar, and its panes rearrange like an operation's — try both"
     - "Maps: using Maplibre now, with map style selection and other tweaks"
