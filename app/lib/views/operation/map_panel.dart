@@ -67,6 +67,15 @@ class _MapPanelState extends State<MapPanel> {
   /// swaps to the webview map — every later one goes straight to the cached answer.
   bool _webviewSupported = false;
 
+  /// Set once [_maybeProbeWebview] has actually asked — NOT on a platform
+  /// skip, so a pane mounted off macOS/Windows keeps re-checking on every
+  /// dependency change, which costs nothing (the branch returns immediately).
+  /// Guards against stacking a second `.then` on [WindowsWebView.isAvailable]'s
+  /// memoized future when a pane flips visible more than once; it does not
+  /// guard against a second browser-process spawn, which that future already
+  /// rules out.
+  bool _probed = false;
+
   /// Backs the bottom-left zoom buttons (non-mobile only, alongside pinch/scroll
   /// zoom) — the live backend wires its own zoomIn/zoomOut into it each time it's
   /// built, so the buttons stay agnostic to which one is currently mounted.
@@ -79,11 +88,30 @@ class _MapPanelState extends State<MapPanel> {
       return;
     }
     _webviewSupported = WindowsWebView.resolved ?? defaultTargetPlatform != TargetPlatform.windows;
-    if (WindowsWebView.resolved == null) {
-      WindowsWebView.isAvailable().then((ok) {
-        if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
-      });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybeProbeWebview();
+  }
+
+  /// Kicks off the WebView2 availability probe the first time this pane is
+  /// actually on screen, not merely mounted — a dock group's `IndexedStack`
+  /// builds every pane in it up front, and probing from `initState` would
+  /// spawn the WebView2 browser process for a Map tab nobody has looked at
+  /// yet. Outside a dock, `DockPaneVisibility.of` answers true immediately, so
+  /// this fires on the same frame `initState` used to.
+  void _maybeProbeWebview() {
+    if (_probed) return;
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
+      return;
     }
+    if (!DockPaneVisibility.of(context)) return;
+    _probed = true;
+    WindowsWebView.isAvailable().then((ok) {
+      if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
+    });
   }
 
   // Lines are ~60% black (light) or ~60% white (dark) at any zoom, splitting

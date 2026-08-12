@@ -38,8 +38,10 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -69,6 +71,20 @@ void _failingWindowsProbe() {
   WindowsWebView.debugCreateEnvironment = () async => throw StateError('no WebView2 environment in tests');
 }
 
+/// Stands in for a created WebView2 environment, same shell as
+/// windows_webview_test.dart's — nothing here calls into the real plugin.
+class _FakePlatformWebViewEnvironment extends PlatformWebViewEnvironment {
+  _FakePlatformWebViewEnvironment() : super.implementation(const PlatformWebViewEnvironmentCreationParams());
+}
+
+/// A Windows probe that answers, and answers yes.
+void _succeedingWindowsProbe() {
+  WindowsWebView.debugReset();
+  addTearDown(WindowsWebView.debugReset);
+  WindowsWebView.debugCreateEnvironment =
+      () async => WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
+}
+
 PanelService _websiteService() {
   final service = PanelService(FakePanelExtensions(configs: {
     'website#1': {websiteUrlKey: 'https://example.com'},
@@ -85,11 +101,14 @@ PanelService _websiteService() {
   return service;
 }
 
-Future<void> _pumpWebsitePanel(WidgetTester tester, PanelService service) async {
+Future<void> _pumpWebsitePanel(WidgetTester tester, PanelService service, {bool dockVisible = true}) async {
   await tester.pumpWidget(TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
-        body: WebsitePanel(panelId: 'website#1', panels: service, autoRefresh: false),
+        body: DockPaneVisibility(
+          visible: dockVisible,
+          child: WebsitePanel(panelId: 'website#1', panels: service, autoRefresh: false),
+        ),
       ),
     ),
   ));
@@ -113,18 +132,21 @@ Future<SettingsService> _mapSettings() async {
   return SettingsService(await SharedPreferences.getInstance());
 }
 
-Future<void> _pumpMapPanel(WidgetTester tester, SettingsService settings) async {
+Future<void> _pumpMapPanel(WidgetTester tester, SettingsService settings, {bool dockVisible = true}) async {
   await tester.pumpWidget(
     TranslationProvider(
       child: MaterialApp(
         home: Scaffold(
-          body: MapPanel(
-            // The operation's grid is what puts a marker on the map: with none
-            // at all the panel renders its empty state and the backend routing
-            // is never reached.
-            operation: Operation(uuid: 'op-map-gate', data: const {'grid': 'FN31pr'}),
-            qsos: const [],
-            settings: settings,
+          body: DockPaneVisibility(
+            visible: dockVisible,
+            child: MapPanel(
+              // The operation's grid is what puts a marker on the map: with none
+              // at all the panel renders its empty state and the backend routing
+              // is never reached.
+              operation: Operation(uuid: 'op-map-gate', data: const {'grid': 'FN31pr'}),
+              qsos: const [],
+              settings: settings,
+            ),
           ),
         ),
       ),
@@ -315,6 +337,91 @@ void main() {
       expect(find.byType(MapboxWebviewMapView), findsOneWidget);
       expect(find.byType(OsmMapView), findsNothing);
       expect(tester.takeException(), isNotNull);
+    });
+  });
+
+  testWidgets('the Map tab does not spawn WebView2 for a pane hidden in a dock group', (tester) async {
+    // HALO-260: a dock group's IndexedStack builds every pane in it up front,
+    // so probing from initState spawns the WebView2 browser process for a Map
+    // tab nobody has looked at — a plausible trigger for the native crashes
+    // Sentry reports there. Deferring the probe to visibility is the fix.
+    _failingWindowsProbe();
+    final settings = await _mapSettings();
+
+    await on(TargetPlatform.windows, () async {
+      await _pumpMapPanel(tester, settings, dockVisible: false);
+      await tester.pump();
+
+      expect(WindowsWebView.resolved, isNull,
+          reason: 'a pane behind another tab in its dock group must not spawn the WebView2 process');
+
+      // The dock selects this pane's tab — same pane, now on screen.
+      await _pumpMapPanel(tester, settings, dockVisible: true);
+      await tester.pump();
+
+      expect(WindowsWebView.resolved, isNotNull,
+          reason: 'once actually on screen the pane must still ask, or a capable Windows machine never gets its map');
+    });
+  });
+
+  testWidgets('the Map tab is not stranded on OSM once WebView2 resolves while it was hidden', (tester) async {
+    // Regression in the fix above: `initState` still stamps the pessimistic
+    // Windows default into `_webviewSupported` while hidden, so the pane must
+    // re-ask on reveal even if `WindowsWebView.resolved` is already set —
+    // some other pane (Web Site, an extension's html panel, account login)
+    // can resolve it first while the Map tab sits behind another tab. Bailing
+    // out early just because `resolved != null` leaves that stale `false`
+    // in place forever.
+    _succeedingWindowsProbe();
+    final settings = await _mapSettings();
+
+    await on(TargetPlatform.windows, () async {
+      await _pumpMapPanel(tester, settings, dockVisible: false);
+      await tester.pump();
+
+      // Someone else resolves availability while this pane is still hidden.
+      expect(await WindowsWebView.isAvailable(), isTrue);
+
+      // The dock selects this pane's tab — same pane, now on screen.
+      await _pumpMapPanel(tester, settings, dockVisible: true);
+      await tester.pump();
+
+      expect(
+        find.byType(MapboxWebviewMapView),
+        findsOneWidget,
+        reason: 'an answer resolved elsewhere must still reach this pane on reveal, or a capable '
+            'Windows machine is stuck on OSM for the rest of the session',
+      );
+      expect(find.byType(OsmMapView), findsNothing);
+      // As with the platform-routing tests above: with no platform
+      // implementation under `flutter test`, reaching a real web view is
+      // observable as a throw from inside `flutter_inappwebview`'s own null
+      // check, which belongs to the dependency rather than to this gate.
+      expect(tester.takeException(), isNotNull);
+    });
+  });
+
+  testWidgets('the Web Site pane does not spawn WebView2 for a pane hidden in a dock group', (tester) async {
+    // Same trigger and same fix as the Map tab above, for the other real
+    // (placeable) pane that probes eagerly.
+    _failingWindowsProbe();
+    final service = _websiteService();
+
+    await on(TargetPlatform.windows, () async {
+      await _pumpWebsitePanel(tester, service, dockVisible: false);
+      await tester.pump();
+
+      expect(WindowsWebView.resolved, isNull,
+          reason: 'a pane behind another tab in its dock group must not spawn the WebView2 process');
+
+      await _pumpWebsitePanel(tester, service, dockVisible: true);
+      await tester.pump();
+
+      expect(
+        WindowsWebView.resolved,
+        isNotNull,
+        reason: 'once actually on screen the pane must still ask, or a capable Windows machine never gets its web view',
+      );
     });
   });
 }

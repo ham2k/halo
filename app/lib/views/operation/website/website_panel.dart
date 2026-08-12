@@ -146,6 +146,10 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
   /// [probeWebviewSupport].
   WebviewSupport _webviewSupported = WebviewSupport.pending;
 
+  /// Set once [_maybeProbeWebview] has kicked off (or skipped) the probe —
+  /// a pane that flips visible more than once doesn't ask again.
+  bool _probed = false;
+
   Map<String, dynamic> _config = const {};
   int _configRevision = 0;
   int _refreshRequest = 0;
@@ -174,19 +178,25 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     // the moment of the flip — which is exactly the always-stale bug the
     // deadline exists to avoid.
     _loadedAt = widget.now();
-    _probeWebview();
-    unawaited(_loadConfig());
-  }
-
-  /// The shared rule, plus this pane's own test seam. The answer costs a cold
-  /// browser-process spawn the first time in a session, so it arrives late and
-  /// must reach `setState` rather than leaving the pane on whatever it guessed.
-  void _probeWebview() {
+    // The test seam is decided now, not deferred with the real probe below:
+    // it is synchronous and has no browser process to spawn.
     final forced = widget.webviewSupported;
     if (forced != null) {
       _webviewSupported = forced ? WebviewSupport.yes : WebviewSupport.no;
-      return;
+      _probed = true;
     }
+    unawaited(_loadConfig());
+  }
+
+  /// Kicks off the real probe once this pane is actually on screen, not
+  /// merely mounted — a dock group's `IndexedStack` builds every pane in it
+  /// up front, and probing from `initState` would spawn the WebView2 browser
+  /// process for a pane nobody has looked at yet (see map_panel.dart's
+  /// identical gate). Outside a dock, `DockPaneVisibility.of` answers true
+  /// immediately, so this fires on the same frame `initState` used to.
+  void _maybeProbeWebview() {
+    if (_probed || !_dockVisible) return;
+    _probed = true;
     _webviewSupported = probeWebviewSupport((ok) {
       if (mounted) setState(() => _webviewSupported = ok ? WebviewSupport.yes : WebviewSupport.no);
     });
@@ -207,6 +217,7 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
   void didChangeDependencies() {
     super.didChangeDependencies();
     _dockVisible = DockPaneVisibility.of(context);
+    _maybeProbeWebview();
     _syncRefresh();
   }
 
