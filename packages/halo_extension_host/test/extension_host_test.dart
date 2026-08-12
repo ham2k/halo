@@ -175,7 +175,7 @@ __polo.defineExtension({
       'includePrivateData': true,
     }) as Map;
 
-    expect(result['filename'], '2026-07-05 KI2D Test Op.adi');
+    expect(result['filename'], '2026-07-05 KI2D Test Op Full.adi');
     final content = result['content'] as String;
     expect(content, contains('<ADIF_VER:5>3.1.5'));
     expect(content, contains('<EOH>'));
@@ -228,11 +228,11 @@ __polo.defineExtension({
       return value['filename'] as String;
     }
 
-    expect(await nameFor('suggestExportOptions', compact: false), '2026-07-05 KI2D Test Op.adi');
-    expect(await nameFor('suggestExportOptions', compact: true), 'KI2D-20260705-test-op.adi');
+    expect(await nameFor('suggestExportOptions', compact: false), '2026-07-05 KI2D Test Op Full.adi');
+    expect(await nameFor('suggestExportOptions', compact: true), 'KI2D-20260705-test-op-full.adi');
     // Both halves of the contract, because the panel shows one and the file
     // is written under the other.
-    expect(await nameFor('generateExport', compact: true), 'KI2D-20260705-test-op.adi');
+    expect(await nameFor('generateExport', compact: true), 'KI2D-20260705-test-op-full.adi');
   });
 
   test('POTA extension composes ADIF fields into the export (in-runtime hooks)', () async {

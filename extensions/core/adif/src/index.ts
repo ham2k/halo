@@ -11,10 +11,11 @@
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { defineExtension, exportFilename, hooks, qsoValues, renderTemplate, startMillisOf, templateContext } from "@ham2k/halo-extension-sdk"
+import { defineExtension, hooks, qsoValues, renderTemplate, startMillisOf, templateContext } from "@ham2k/halo-extension-sdk"
 import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
+import { filenameFor } from "./filename.ts"
 
 const ADIF_VERSION = '3.1.5'
 const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
@@ -45,22 +46,6 @@ const TEXT_FIELD_TEMPLATES: { name: string; template: string; private: boolean }
   { name: 'COMMENT', template: '', private: false },
   { name: 'QSLMSG', template: '', private: false },
 ]
-
-/// The whole-log export claims no single reference, so the operation's title
-/// is what distinguishes one file from the next.
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  compact?: boolean,
-): string {
-  return exportFilename({
-    stationCall: operation.stationCall,
-    modifier: String(operation.title ?? ''),
-    startAtMillis: startMillisOf(operation, qsos),
-    extension: 'adi',
-    compact,
-  })
-}
 
 interface AdifField {
   name: string

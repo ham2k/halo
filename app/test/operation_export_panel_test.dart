@@ -106,7 +106,7 @@ void main() {
 
       expect(find.text('Full ADIF Export'), findsOneWidget);
       expect(find.text('POTA US-1234'), findsOneWidget);
-      expect(find.text('2026-07-15 N0CALL Test Op.adi'), findsOneWidget);
+      expect(find.text('2026-07-15 N0CALL Test Op Full.adi'), findsOneWidget);
 
       // Only POTA is selectedByDefault, so the button opens on 1.
       expect(find.text('Save 1 file'), findsOneWidget);
@@ -167,7 +167,7 @@ void main() {
       // not drag the ticked POTA option along. The button is icon-only and
       // this app has no hover tooltips (#433), so its accessible name — which
       // names the actual file — is the only name it has.
-      await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op.adi'));
+      await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
       await tester.pumpAndSettle();
 
       expect(exports.generated, hasLength(1));
@@ -184,7 +184,7 @@ void main() {
       final handle = tester.ensureSemantics();
       await pump(tester);
 
-      final node = tester.getSemantics(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op.adi'));
+      final node = tester.getSemantics(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
       expect(node.hasFlag(SemanticsFlag.isButton), isTrue);
       expect(node.hasFlag(SemanticsFlag.hasCheckedState), isFalse,
           reason: 'a checked state here means it merged into the checkbox again');
@@ -207,7 +207,7 @@ void main() {
       // The ADIF row's own icon: POTA's row uses 'pine-tree', so this is unique.
       final iconX = tester.getCenter(find.byIcon(MdiIcons.fileExport)).dx;
       final labelX = tester.getCenter(find.text('Full ADIF Export')).dx;
-      final buttonX = tester.getCenter(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op.adi')).dx;
+      final buttonX = tester.getCenter(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi')).dx;
       final checkboxX = tester.getCenter(find.byType(Checkbox).last).dx;
 
       expect(iconX, lessThan(labelX));
@@ -243,9 +243,9 @@ void main() {
       await settings.setUseCompactFileNames(true);
       await tester.pumpAndSettle();
 
-      expect(find.text('N0CALL-20260715-test-op.adi'), findsOneWidget,
+      expect(find.text('N0CALL-20260715-test-op-full.adi'), findsOneWidget,
           reason: 'the extensions rebuild their names; the panel re-asks rather than rewriting them');
-      expect(find.text('2026-07-15 N0CALL Test Op.adi'), findsNothing);
+      expect(find.text('2026-07-15 N0CALL Test Op Full.adi'), findsNothing);
       expect(find.text('Save 2 files'), findsOneWidget, reason: 'a relist must not silently drop selections');
     });
 
@@ -329,7 +329,7 @@ void main() {
       exports.shareSucceeds = false;
       await pump(tester);
 
-      await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op.adi'));
+      await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
       await tester.pumpAndSettle();
 
       expect(exports.sharedFiles, hasLength(1), reason: 'the share sheet was opened');
@@ -339,7 +339,7 @@ void main() {
     testWidgets('a completed share is reported', (tester) async {
       await pump(tester);
 
-      await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op.adi'));
+      await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
       await tester.pumpAndSettle();
 
       final message = services.statusBar.items.firstWhere((i) => i.key == 'export:status');
@@ -488,7 +488,7 @@ class _MultiCallExportService extends ExportService {
             'format': 'adif',
             'stationCall': call,
             'label': 'Full ADIF Export',
-            'filename': '2026-07-15 $call Multi.adi',
+            'filename': '2026-07-15 $call Multi Full.adi',
             'selectedByDefault': true,
             'priority': -1,
           },
@@ -565,7 +565,7 @@ class _FakeExportService extends ExportService {
         'stationCall': operation.stationCalls.first,
         'label': 'Full ADIF Export',
         if (adifColor != null) 'color': adifColor,
-        'filename': compact ? 'N0CALL-20260715-test-op.adi' : '2026-07-15 N0CALL Test Op.adi',
+        'filename': compact ? 'N0CALL-20260715-test-op-full.adi' : '2026-07-15 N0CALL Test Op Full.adi',
         'selectedByDefault': false,
         'priority': -1,
       },
