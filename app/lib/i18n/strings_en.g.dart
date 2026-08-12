@@ -1840,6 +1840,15 @@ class Translations$operation$layout$en {
 	/// en: 'Done'
 	String get done => 'Done';
 
+	/// en: 'Layout couldn't be read'
+	String get layoutUnreadableTitle => 'Layout couldn\'t be read';
+
+	/// en: 'Your saved layout could not be read, so the default arrangement is showing instead. It won't be saved over your original until you choose to keep it.'
+	String get layoutUnreadableBody => 'Your saved layout could not be read, so the default arrangement is showing instead. It won\'t be saved over your original until you choose to keep it.';
+
+	/// en: 'Use this layout'
+	String get layoutUnreadableAction => 'Use this layout';
+
 	/// en: '${panel} could not be displayed'
 	String panelRenderFailed({required Object panel}) => '${panel} could not be displayed';
 
@@ -4288,6 +4297,9 @@ extension on Translations {
 			'operation.layout.saveLayout' => 'Save Layout',
 			'operation.layout.revertLayout' => 'Discard layout changes',
 			'operation.layout.done' => 'Done',
+			'operation.layout.layoutUnreadableTitle' => 'Layout couldn\'t be read',
+			'operation.layout.layoutUnreadableBody' => 'Your saved layout could not be read, so the default arrangement is showing instead. It won\'t be saved over your original until you choose to keep it.',
+			'operation.layout.layoutUnreadableAction' => 'Use this layout',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
 			'operation.layout.panelRenderRetry' => 'Try again',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
@@ -4674,11 +4686,11 @@ extension on Translations {
 			'settings.logging.defaultReport.description' => 'Used when Sent or Rcvd is left empty on SSB, FM or AM',
 			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
 			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',

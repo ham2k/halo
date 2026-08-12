@@ -922,6 +922,9 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String get saveLayout => 'Guardar Disposición';
 	@override String get revertLayout => 'Descartar los cambios de disposición';
 	@override String get done => 'Listo';
+	@override String get layoutUnreadableTitle => 'No se pudo leer la disposición';
+	@override String get layoutUnreadableBody => 'No se pudo leer tu disposición guardada, así que se muestra la disposición predeterminada. No se guardará sobre la original hasta que elijas conservarla.';
+	@override String get layoutUnreadableAction => 'Usar esta disposición';
 	@override String panelRenderFailed({required Object panel}) => 'No se pudo mostrar ${panel}';
 	@override String get panelRenderRetry => 'Reintentar';
 	@override late final _Translations$operation$layout$panels$es panels = _Translations$operation$layout$panels$es._(_root);
@@ -2171,6 +2174,9 @@ extension on TranslationsEs {
 			'operation.layout.saveLayout' => 'Guardar Disposición',
 			'operation.layout.revertLayout' => 'Descartar los cambios de disposición',
 			'operation.layout.done' => 'Listo',
+			'operation.layout.layoutUnreadableTitle' => 'No se pudo leer la disposición',
+			'operation.layout.layoutUnreadableBody' => 'No se pudo leer tu disposición guardada, así que se muestra la disposición predeterminada. No se guardará sobre la original hasta que elijas conservarla.',
+			'operation.layout.layoutUnreadableAction' => 'Usar esta disposición',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => 'No se pudo mostrar ${panel}',
 			'operation.layout.panelRenderRetry' => 'Reintentar',
 			'operation.layout.panels.loggingDescription' => 'El registro y los campos de entrada',
@@ -2557,11 +2563,11 @@ extension on TranslationsEs {
 			'settings.logging.defaultReport.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM',
 			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
 			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',

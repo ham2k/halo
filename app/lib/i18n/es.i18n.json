@@ -146,6 +146,9 @@
       "saveLayout": "Guardar Disposición",
       "revertLayout": "Descartar los cambios de disposición",
       "done": "Listo",
+      "layoutUnreadableTitle": "No se pudo leer la disposición",
+      "layoutUnreadableBody": "No se pudo leer tu disposición guardada, así que se muestra la disposición predeterminada. No se guardará sobre la original hasta que elijas conservarla.",
+      "layoutUnreadableAction": "Usar esta disposición",
       "panelRenderFailed": "No se pudo mostrar ${panel}",
       "panelRenderRetry": "Reintentar",
       "panels": {

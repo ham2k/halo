@@ -146,6 +146,9 @@
       "saveLayout": "Save Layout",
       "revertLayout": "Discard layout changes",
       "done": "Done",
+      "layoutUnreadableTitle": "Layout couldn't be read",
+      "layoutUnreadableBody": "Your saved layout could not be read, so the default arrangement is showing instead. It won't be saved over your original until you choose to keep it.",
+      "layoutUnreadableAction": "Use this layout",
       "panelRenderFailed": "${panel} could not be displayed",
       "panelRenderRetry": "Try again",
       "panels": {

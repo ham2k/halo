@@ -23,6 +23,7 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
+import '../services/status_bar_service.dart';
 import 'extensions_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/layout_sheet.dart';
@@ -153,6 +154,31 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// widget's mutations via `onSpecChanged`.
   DockNode? dockSpec;
 
+  /// True from the moment a saved arrangement is found unreadable until the
+  /// operator explicitly accepts the default shown in its place (the
+  /// StatusBar notice's action, see [_hasNoDuplicates]). While this is on,
+  /// nothing writes [DockLayoutKeys.spec] — the unreadable original is what a
+  /// future fix would need to recover, and every ordinary write path (a
+  /// divider drag, a save) would otherwise replace it with the default the
+  /// moment it runs, which is exactly the silent loss this guards against.
+  bool _showingRecoveredDefault = false;
+
+  /// The default substituted when a saved arrangement was found unreadable —
+  /// what "Use this layout" actually writes. A SEPARATE value from [dockSpec]
+  /// on purpose: the operator can start editing while the notice is still up
+  /// (`dockSpec` starts equal to this, but a live edit moves it, see
+  /// `onSpecChanged`), and accepting must write the plain default that was
+  /// shown, not whatever half-finished draft happens to be on screen at the
+  /// moment they tap it — that draft has its own, later save.
+  DockNode? _recoveredDefaultSpec;
+
+  /// Listens for the StatusBar notice leaving [StatusBarService.activeNotices]
+  /// by any means OTHER than its own action — chiefly the notice card's
+  /// built-in dismiss button, which this file has no way to intercept
+  /// directly. Live only while [_showingRecoveredDefault] is on; removed the
+  /// moment it resolves one way or the other. See [_hasNoDuplicates].
+  VoidCallback? _recoveredDefaultNoticeListener;
+
   /// The dock's STATE — which pane is on top — in its own key, apart from the
   /// arrangement.
   ///
@@ -241,6 +267,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   @override
   void dispose() {
     dockServices.panels.removeListener(_onPanelCatalogChanged);
+    if (_recoveredDefaultNoticeListener case final listener?) {
+      dockServices.statusBar.removeListener(listener);
+    }
     super.dispose();
   }
 
@@ -326,10 +355,73 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     }
   }
 
+  /// Writes [_recoveredDefaultSpec] and lets ordinary writes resume — the
+  /// operator has said the substituted default replaces the unreadable
+  /// original. Idempotent: the notice's action and
+  /// [_recoveredDefaultNoticeListener] can both reach here (the action's own
+  /// `dismissNotice` call re-triggers the listener), so the guard is checked
+  /// first rather than assumed.
+  void _acceptRecoveredDefault() {
+    if (!_showingRecoveredDefault) return;
+    _showingRecoveredDefault = false;
+    if (_recoveredDefaultSpec case final spec?) {
+      dockServices.settings.setLayoutData(dockKeys.spec, spec.toJson());
+    }
+    if (_recoveredDefaultNoticeListener case final listener?) {
+      dockServices.statusBar.removeListener(listener);
+      _recoveredDefaultNoticeListener = null;
+    }
+  }
+
   bool _hasNoDuplicates(DockNode spec) {
     final modules = spec.collectModules();
     if (modules.length == modules.toSet().length) return true;
     debugPrint('[layout] saved $dockView arrangement lists a module twice; falling back to the default');
+    _showingRecoveredDefault = true;
+    _recoveredDefaultSpec = buildDefaultDockSpec();
+    final noticeKey = 'layout:$dockView:unreadable';
+    // Deferred to a microtask: `_hasNoDuplicates` runs from `ensureDockSpec`,
+    // which runs from `build`, and `showNotice`'s `notifyListeners()` would
+    // otherwise mark a StatusBar listener dirty mid-build — the identical
+    // hazard `ErrorReportingService.notify` defers around, for the same
+    // reason (see its own comment).
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      // The notice card's own dismiss button calls `dismissNotice` directly
+      // (see `main.dart`'s `NoticeStack`) — nothing routes through this
+      // file's action. Without this, dismissing any way but the action below
+      // leaves `_showingRecoveredDefault` on forever (the notice cannot
+      // reappear — `ensureDockSpec` resolves once), silently no-opping every
+      // later save for the rest of the session.
+      void onNoticeChanged() {
+        final stillActive = dockServices.statusBar.activeNotices.any((n) => n.key == noticeKey);
+        if (!stillActive) _acceptRecoveredDefault();
+      }
+
+      _recoveredDefaultNoticeListener = onNoticeChanged;
+      dockServices.statusBar.addListener(onNoticeChanged);
+      dockServices.statusBar.showNotice(
+        key: noticeKey,
+        icon: 'alert-circle',
+        title: _t.layoutUnreadableTitle,
+        text: _t.layoutUnreadableBody,
+        // Not persisted: `StatusBarNotice._toJson` drops `actions` (a
+        // `VoidCallback` can't survive a restart), so a persisted-but-not-yet-
+        // accepted copy would reload with its title and body but no "Use this
+        // layout" button — the same reason `ErrorReportingService.notify`
+        // sets this false for its own action notice.
+        persist: false,
+        actions: [
+          StatusBarAction(
+            label: _t.layoutUnreadableAction,
+            onTap: () {
+              _acceptRecoveredDefault();
+              dockServices.statusBar.dismissNotice(noticeKey);
+            },
+          ),
+        ],
+      );
+    });
     return false;
   }
 
@@ -465,7 +557,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     _focusAtPress = null;
     final spec = dockSpec;
     if (spec == null) {
-      debugPrint('[layout] Edit Layout pressed with no arrangement resolved');
+      // `ensureDockSpec` always resolves this before the dock (and this
+      // button) can be built — reachable only if that contract breaks.
+      assert(false, 'layout:edit-no-arrangement: Edit Layout pressed with no arrangement resolved');
+      debugPrint('[layout] edit-no-arrangement: Edit Layout pressed with no arrangement resolved');
       return;
     }
     setState(() {
@@ -488,11 +583,24 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// not arrangement (see [DockState]), and it is saved as the operator makes
   /// it whether or not they are editing.
   void revertLayout() {
+    // A second call must not re-read a snapshot the first already cleared —
+    // unlike a stray extra press elsewhere in this file, this one is reachable
+    // in practice: nothing disables Discard until the rebuild its own
+    // `setState` schedules actually lands, so two taps landing in the same
+    // frame both call in before `layoutEditing` visibly goes false on screen
+    // (the FIELD is already false the moment this returns, which is what this
+    // guard reads).
+    if (!layoutEditing) return;
     final snapshot = _layoutSnapshot;
     final spec = snapshot == null ? null : DockNode.fromJson(snapshot);
     if (spec == null) {
       // Leave anyway. Edit mode left on has no way out from here.
-      debugPrint('[layout] discard pressed with nothing to revert to');
+      // `startLayoutEditing` always sets `_layoutSnapshot` from a live,
+      // already-valid `DockNode` before `layoutEditing` can turn on, so
+      // neither a null snapshot nor one that fails to parse back should be
+      // reachable here.
+      assert(false, 'layout:revert-no-snapshot: discard pressed with nothing to revert to');
+      debugPrint('[layout] revert-no-snapshot: discard pressed with nothing to revert to');
       setState(() {
         _pendingForgets.clear();
         layoutEditing = false;
@@ -547,14 +655,23 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // empty one they just filled in.
     final kept = spec?.collectModules().toSet() ?? const <String>{};
     final forgotten = _pendingForgets.toSet().difference(kept);
-    // Before the writes, never after: forgetting drops these panes' entries
-    // from [paneOptions], and a map serialized first would carry a removed
-    // pane's title and overrides to disk for whatever takes its id next.
-    _forgetPanesNow(forgotten);
-    final settings = dockServices.settings;
-    if (spec != null) settings.setLayoutData(dockKeys.spec, spec.toJson());
-    settings.setLayoutData(dockKeys.paneOptions, PaneLayoutOptions.mapToJson(paneOptions));
-    settings.setLayoutData(dockKeys.viewOptions, viewOptions.toJson());
+    // Same guard as `onSpecChanged`'s divider-drag write — see
+    // [_showingRecoveredDefault]. An edit session reachable while a saved
+    // arrangement is unread is editing the DEFAULT, and NONE of it — the
+    // spec, the pane options, the view options, or a forgotten pane's config
+    // — may reach settings before the operator has chosen to keep it. A
+    // pane id the default happens to share with the real arrangement would
+    // otherwise have its options clobbered ahead of that choice.
+    if (!_showingRecoveredDefault) {
+      // Before the writes, never after: forgetting drops these panes' entries
+      // from [paneOptions], and a map serialized first would carry a removed
+      // pane's title and overrides to disk for whatever takes its id next.
+      _forgetPanesNow(forgotten);
+      final settings = dockServices.settings;
+      if (spec != null) settings.setLayoutData(dockKeys.spec, spec.toJson());
+      settings.setLayoutData(dockKeys.paneOptions, PaneLayoutOptions.mapToJson(paneOptions));
+      settings.setLayoutData(dockKeys.viewOptions, viewOptions.toJson());
+    }
     setState(() {
       layoutEditing = false;
       _layoutSnapshot = null;
@@ -755,6 +872,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         onDelete: paneCount() > 1
             ? () {
                 final dock = dockKey.currentState;
+                // NOT asserted-impossible: the dialog this button lives in is
+                // a route, which outlives the dock across a breakpoint that
+                // crosses the two-pane threshold and unmounts it — same
+                // condition [openAddPanelSheet] and `onAdd` guard against.
                 if (dock == null) return;
                 if (dock.removeModule(id)) forgetPanes([id]);
               }
@@ -954,10 +1075,12 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     if (layoutSheetOpen) return;
     final dock = dockKey.currentState;
     if (dock == null) {
-      // The button is only rendered alongside the dock, so this is a bug
-      // rather than a state the operator can be in — and a button that does
-      // nothing at all is not something they could report.
-      debugPrint('[layout] add-panel button pressed with no dock mounted');
+      // NOT asserted-impossible: this button lives in the view's own header,
+      // outside the dock's own tree, so a breakpoint crossing the two-pane
+      // threshold can unmount the dock while the button stays up. A silent
+      // no-op is correct here, not a bug — see `onAdd`'s matching guard for
+      // the same condition reached through the sheet this button opens.
+      debugPrint('[layout] add-panel-no-dock: add-panel button pressed with no dock mounted');
       return;
     }
     // An extension enabled since this view mounted has panels nobody has asked
@@ -1054,6 +1177,11 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                 // under, so two panes sharing one would share their contents
                 // too.
                 final dock = dockKey.currentState;
+                // NOT asserted-impossible: the sheet is a route and outlives
+                // the dock across a breakpoint that crosses the two-pane
+                // threshold and unmounts it — a silent no-op here is what
+                // stops that resize from throwing a setState-after-dispose
+                // through a callback the sheet is still holding.
                 if (dock == null) return;
                 final panel = dockServices.panels[id];
                 dock.addModule(
@@ -1205,8 +1333,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         // While editing, the arrangement is a draft and storage hears nothing
         // — which is the whole basis on which Discard can promise anything.
         // Outside edit mode this is a divider drag, and those save as they
-        // always have.
-        if (!layoutEditing) {
+        // always have — unless the operator hasn't yet accepted the recovered
+        // default (see [_showingRecoveredDefault]), in which case even a drag
+        // must not be the write that clobbers the unreadable original.
+        if (!layoutEditing && !_showingRecoveredDefault) {
           dockServices.settings.setLayoutData(dockKeys.spec, node.toJson());
         }
         // The layout sheet, if it is open, is listing this very tree.

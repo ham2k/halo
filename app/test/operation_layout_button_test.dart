@@ -516,4 +516,171 @@ void main() {
 
     await unmount(tester);
   });
+
+  group('a saved arrangement naming a module twice', () {
+    Future<HaLoServices> servicesWithDuplicateSpec(WidgetTester tester) async {
+      final services = await servicesWith(tester, layoutCustomization: true);
+      // Not reachable through the UI (both addModule and the drop handler
+      // dedupe) — this is what a hand-edited or corrupted store looks like.
+      await services.settings.setLayoutData(LayoutKeys.operationDock, DockGroup(['logging', 'logging']).toJson());
+      return services;
+    }
+
+    testWidgets('shows a notice instead of the old console-only debugPrint', (tester) async {
+      final services = await servicesWithDuplicateSpec(tester);
+      await pumpWide(tester, services);
+
+      final notices = services.statusBar.activeNotices;
+      expect(notices.map((n) => n.key), contains('layout:operation:unreadable'));
+
+      await unmount(tester);
+    });
+
+    testWidgets('does not crash the real StatusBar listener it notifies', (tester) async {
+      // `_hasNoDuplicates` runs from `ensureDockSpec`, which runs from
+      // `build` — showing the notice SYNCHRONOUSLY there would notify a real
+      // StatusBar listener mid-build and throw "setState() called during
+      // build". `pumpWide`'s bare MaterialApp has no such listener, so only
+      // wrapping with the app's own StatusBarOverlay (as main.dart does)
+      // exercises this.
+      final services = await servicesWithDuplicateSpec(tester);
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final operation = await services.operations.create(stationCall: 'KI2D');
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: StatusBarOverlay(
+            services: services,
+            child: OperationView(services: services, operationUuid: operation.uuid),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(services.statusBar.activeNotices.map((n) => n.key), contains('layout:operation:unreadable'));
+
+      await unmount(tester);
+    });
+
+    testWidgets('does not let a later write clobber the unreadable original', (tester) async {
+      final services = await servicesWithDuplicateSpec(tester);
+      await pumpWide(tester, services);
+
+      // A plain edit-and-save, exactly like the ones that ordinarily persist
+      // fine — this is the "next thing written" the bug let through.
+      await startEditing(tester);
+      await dragToDelete(tester, tabs.info);
+      await tester.tap(find.text(t.saveLayout));
+      await tester.pumpAndSettle();
+
+      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+          ['logging', 'logging'],
+          reason: 'the unreadable original must survive until the operator accepts the recovered default');
+      // The guard once covered only the spec write — paneOptions/viewOptions
+      // persisted unconditionally and could describe the provisional default
+      // rather than the operator's real, still-unaccepted arrangement.
+      expect(services.settings.layoutData(LayoutKeys.operationPaneOptions), isNull,
+          reason: 'nothing describing the provisional default may reach storage either, until accepted');
+      expect(services.settings.layoutData(LayoutKeys.operationViewOptions), isNull,
+          reason: 'nothing describing the provisional default may reach storage either, until accepted');
+
+      await unmount(tester);
+    });
+
+    testWidgets('dismissing the notice any other way still lets saving resume', (tester) async {
+      final services = await servicesWithDuplicateSpec(tester);
+      await pumpWide(tester, services);
+
+      // The notice card's own close button calls dismissNotice directly —
+      // there is no route through this file's "Use this layout" action.
+      services.statusBar.dismissNotice('layout:operation:unreadable');
+      await tester.pumpAndSettle();
+
+      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
+          isNot(['logging', 'logging'].toSet()),
+          reason: 'any dismissal accepts the default — the notice cannot come back to ask again this session');
+
+      await startEditing(tester);
+      await dragToDelete(tester, tabs.info);
+      await tester.tap(find.text(t.saveLayout));
+      await tester.pumpAndSettle();
+      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+          isNot(contains('info')),
+          reason: 'saving must not still be silently suppressed after the notice is gone');
+
+      await unmount(tester);
+    });
+
+    testWidgets('a second Discard call once editing has already ended does not crash', (tester) async {
+      // Exercises `revertLayout`'s reentrancy guard directly rather than via
+      // two dispatched taps: `tester.tap` fully settles the first press
+      // (including the rebuild that would normally disable the button)
+      // before a second `tap` could be sent, which cannot reproduce the two
+      // pointer events landing in the same frame that make this reachable in
+      // a real app. Calling the method twice is the reliable way to prove
+      // the guard, not the gesture, is what makes the second call safe.
+      final services = await servicesWithDuplicateSpec(tester);
+      await pumpWide(tester, services);
+      await startEditing(tester);
+
+      final state = tester.state<State>(find.byType(OperationView)) as dynamic;
+      // ignore: avoid_dynamic_calls
+      state.revertLayout();
+      // ignore: avoid_dynamic_calls
+      state.revertLayout();
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+
+      await unmount(tester);
+    });
+
+    testWidgets('accepting the notice writes the default and lets saving resume', (tester) async {
+      final services = await servicesWithDuplicateSpec(tester);
+      await pumpWide(tester, services);
+
+      final notice = services.statusBar.activeNotices.firstWhere((n) => n.key == 'layout:operation:unreadable');
+      notice.actions.single.onTap();
+      await tester.pumpAndSettle();
+
+      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
+          isNot(['logging', 'logging'].toSet()),
+          reason: 'accepting writes the default over the unreadable original');
+      expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('layout:operation:unreadable')));
+
+      // Ordinary saving is back to normal — the guard only held while the
+      // recovered default was unaccepted.
+      await startEditing(tester);
+      await dragToDelete(tester, tabs.info);
+      await tester.tap(find.text(t.saveLayout));
+      await tester.pumpAndSettle();
+      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+          isNot(contains('info')));
+
+      await unmount(tester);
+    });
+
+    testWidgets('accepting mid-edit writes the plain default, not the unsaved draft', (tester) async {
+      final services = await servicesWithDuplicateSpec(tester);
+      await pumpWide(tester, services);
+
+      // Start editing the recovered default and drop a pane, WITHOUT saving —
+      // `dockSpec` now holds a draft that was never meant to reach storage.
+      await startEditing(tester);
+      await dragToDelete(tester, tabs.info);
+
+      final notice = services.statusBar.activeNotices.firstWhere((n) => n.key == 'layout:operation:unreadable');
+      notice.actions.single.onTap();
+      await tester.pumpAndSettle();
+
+      expect(
+          DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+          contains('info'),
+          reason: 'accepting must write the plain default that was shown, not the still-unsaved draft on screen');
+
+      await unmount(tester);
+    });
+  });
 }
