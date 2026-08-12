@@ -1674,12 +1674,6 @@ class Translations$home$panels$en {
 
 	/// en: 'The Ham2K mark, this app’s name and which build you are running.'
 	String get versionDescription => 'The Ham2K mark, this app’s name and which build you are running.';
-
-	/// en: 'Quick Lookup'
-	String get lookup => 'Quick Lookup';
-
-	/// en: 'Look a callsign up, or type a command.'
-	String get lookupDescription => 'Look a callsign up, or type a command.';
 }
 
 // Path: operation.tabs
@@ -4234,8 +4228,6 @@ extension on Translations {
 			'home.panels.operationsDescription' => 'Your operations, most recent first.',
 			'home.panels.version' => 'Current Version',
 			'home.panels.versionDescription' => 'The Ham2K mark, this app’s name and which build you are running.',
-			'home.panels.lookup' => 'Quick Lookup',
-			'home.panels.lookupDescription' => 'Look a callsign up, or type a command.',
 			'home.toggleNav' => 'Show or hide the navigation labels',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
@@ -4683,10 +4675,10 @@ extension on Translations {
 			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
 			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',

@@ -179,7 +179,20 @@ class HomeView extends StatefulWidget {
   /// The dock module ids Home builds itself.
   static const operationsPanelId = 'operations';
   static const versionPanelId = 'version';
-  static const lookupPanelId = 'lookup';
+
+  /// Quick Lookup's id, which names NO pane — it is chrome now, outside the
+  /// arrangement entirely.
+  ///
+  /// Named `retired` because that is the only thing left to do with it, and it
+  /// must go on being done: `_HomeViewState.retiredModules` hands this to the
+  /// dock host, which drops the module from a spec that still names it and
+  /// gives its space to its siblings. An operator who arranged Home while
+  /// Quick Lookup was a pane has exactly such a spec. Take this away and the
+  /// drop stops: `lookup` reaches the dock as a module nobody supplies a
+  /// widget for, and Home shows a permanent empty pane — with only
+  /// `DockLayoutView`'s assert-mode "no child widget supplied" line to say so,
+  /// which no release build prints and no operator can read.
+  static const retiredLookupPanelId = 'lookup';
 
   final HaLoServices services;
 
@@ -229,20 +242,13 @@ class _HomeViewState extends State<HomeView>
     HomeView.versionPanelId,
   };
 
-  /// All three of them. Home's panes say what they are by their own content —
-  /// a list of operations, a search field, the Ham2K mark — so a title bar
-  /// over each would be three labels naming what is already on screen, in a
-  /// window whose whole job is to show them. The operator can turn any of them
-  /// back on from that pane's layout options.
+  /// Both of them. Home's panes say what they are by their own content — a
+  /// list of operations, the Ham2K mark — so a title bar over each would be a
+  /// label naming what is already on screen, in a window whose whole job is to
+  /// show them. The operator can turn either back on from that pane's layout
+  /// options.
   @override
   Set<String> get defaultHeaderlessModules => nativeModuleIds;
-
-  /// Quick Lookup is a bar, not a pane with a share of the window. It takes the
-  /// height its field needs and grows by a line when a lookup resolves or a
-  /// command answers — which is also why it must not be resizable: there is no
-  /// right height for an operator to drag it to.
-  @override
-  Set<String> get fixedExtentModules => const {};
 
   /// Home has no operation, no QSO being logged, and no live spot cache — it
   /// subscribes to none of them, so there is nothing here to report. Extension
@@ -258,11 +264,6 @@ class _HomeViewState extends State<HomeView>
     HomeView.versionPanelId: context.t.home.panels.version,
   };
 
-  /// Reproduces the arrangement Home shipped with before it was arrangeable:
-  /// the operation list with Quick Lookup beneath it on the left, branding on
-  /// the right. A vertical split rather than a tabbed group for the left
-  /// column, so a PHONE — where the whole dock is one column — still shows the
-  /// list and the lookup bar together, as it always has.
   /// What the operator's old dragged divider becomes, once.
   ///
   /// Installs carry a pixel width under `home.leftColumn`, from the fixed
@@ -305,6 +306,10 @@ class _HomeViewState extends State<HomeView>
     return secondary <= 0 ? [2, 1] : [primary, secondary];
   }
 
+  /// The operation list beside the branding, which is the arrangement Home
+  /// shipped with. Quick Lookup is in neither group: it is chrome under the
+  /// whole dock, so a phone shows the list with the bar beneath it without the
+  /// arrangement having to say so.
   @override
   DockNode buildDefaultDockSpec({bool migrate = true}) => DockSplit(Axis.horizontal, [
     DockGroup([HomeView.operationsPanelId]),
@@ -317,7 +322,7 @@ class _HomeViewState extends State<HomeView>
   /// whatever the layout holds — so an arrangement that still names it is
   /// describing a pane that no longer exists.
   @override
-  Set<String> get retiredModules => const {HomeView.lookupPanelId};
+  Set<String> get retiredModules => const {HomeView.retiredLookupPanelId};
 
   /// Registers Home's panels with the service. From [didChangeDependencies]
   /// rather than [initState] because the titles are localized — a locale

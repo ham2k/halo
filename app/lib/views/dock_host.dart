@@ -134,11 +134,6 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// pane the operator has an opinion about, in either direction.
   Set<String> get defaultHeaderlessModules => const {};
 
-  /// Modules that size themselves along their split's axis instead of taking a
-  /// share of it, and so get no resize bar — see
-  /// [DockLayoutView.fixedExtentModules].
-  Set<String> get fixedExtentModules => const {};
-
   /// Whether [id] shows its header right now, resolving the operator's own
   /// choice against this view's default.
   bool _showsHeader(String id) =>
@@ -1178,7 +1173,6 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         for (final id in inLayout)
           if (!_showsHeader(id)) id,
       },
-      fixedExtentModules: fixedExtentModules,
       // Only after the dock has actually dropped it — it refuses for the last
       // module, and forgetting a pane that is still on screen would wipe what
       // the operator can see.

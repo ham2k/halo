@@ -42,7 +42,6 @@ void main() {
     Map<String, WidgetBuilder>? tabActions,
     Widget Function(BuildContext, String)? editingPaneControls,
     Set<String> headerlessModules = const {},
-    Set<String> fixedExtentModules = const {},
     ValueChanged<String>? onModuleDeleted,
     // Defaults to the widget's own default — OFF — so a test that drags has
     // to say so. Dragging is not the dock's resting state: outside edit mode
@@ -73,7 +72,6 @@ void main() {
             tabActions: tabActions,
             editingPaneControls: editingPaneControls,
             headerlessModules: headerlessModules,
-            fixedExtentModules: fixedExtentModules,
             onModuleDeleted: onModuleDeleted,
             editing: editing,
             onSpecChanged: onChanged,
@@ -118,144 +116,6 @@ void main() {
     expect(DockLayoutView.specMatches(spec, ['a', 'b']), isFalse, reason: 'extra module in spec');
     expect(DockLayoutView.specMatches(spec, ['a', 'b', 'c', 'd']), isFalse, reason: 'missing module');
     expect(DockLayoutView.specMatches(null, ['a']), isFalse);
-  });
-
-  group('self-sizing panes', () {
-    // A pane whose height is its content's cannot be expressed as a weight —
-    // the weight would have to be spent before the content was laid out. The
-    // failure it replaces is silent in both directions: too generous a weight
-    // leaves a band of empty pane under the bar, too mean a one clips it.
-    testWidgets('takes its content height, not a share of the run', (tester) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['b'])], [1, 1]),
-        headerlessModules: const {'a', 'b'},
-        fixedExtentModules: const {'b'},
-        children: const {
-          'a': SizedBox.expand(key: Key('pane-a')),
-          // Nothing like an even share of 800.
-          'b': SizedBox(height: 70, key: Key('pane-b')),
-        },
-      ));
-      await tester.pumpAndSettle();
-
-      expect(tester.takeException(), isNull);
-      expect(
-        tester.getSize(find.byKey(const Key('pane-b'))).height,
-        moreOrLessEquals(70, epsilon: 1),
-        reason: 'a 1:1 weight must not give it 400 — it asked for 70',
-      );
-      expect(
-        tester.getSize(find.byKey(const Key('pane-a'))).height,
-        greaterThan(600),
-        reason: 'and everything it did not take belongs to the pane beside it',
-      );
-    });
-
-    testWidgets('grows with its content', (tester) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      Widget at(double height) => harness(
-        key: ValueKey(height),
-        spec: DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['b'])], [1, 1]),
-        headerlessModules: const {'a', 'b'},
-        fixedExtentModules: const {'b'},
-        children: {
-          'a': const SizedBox.expand(key: Key('pane-a')),
-          'b': SizedBox(height: height, key: const Key('pane-b')),
-        },
-      );
-
-      await tester.pumpWidget(at(70));
-      await tester.pumpAndSettle();
-      final before = tester.getSize(find.byKey(const Key('pane-a'))).height;
-
-      // What a resolved callsign does to Quick Lookup: one more line.
-      await tester.pumpWidget(at(110));
-      await tester.pumpAndSettle();
-
-      expect(tester.getSize(find.byKey(const Key('pane-b'))).height, moreOrLessEquals(110, epsilon: 1));
-      expect(
-        tester.getSize(find.byKey(const Key('pane-a'))).height,
-        lessThan(before),
-        reason: 'the growth comes out of the flexible pane, not out of the window',
-      );
-    });
-
-    testWidgets('cannot starve the pane beside it', (tester) async {
-      tester.view.physicalSize = const Size(1200, 300);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      // The greedy pane overflows ITSELF here, and that is not what this test
-      // is about: a self-sizing group shrink-wraps, so Flutter hands its
-      // content unbounded height, and content that asks for more than the run
-      // holds reports it — the pane's own problem, the same as any oversized
-      // child. Swallowed so it cannot mask the assertion below, which is about
-      // the pane NEXT to it.
-      final priorOnError = FlutterError.onError;
-      FlutterError.onError = (details) {
-        if (details.exceptionAsString().contains('overflowed')) return;
-        priorOnError?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = priorOnError);
-
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['b'])], [1, 1]),
-        headerlessModules: const {'a', 'b'},
-        fixedExtentModules: const {'b'},
-        children: const {
-          'a': SizedBox.expand(key: Key('pane-a')),
-          // Far more than the run holds. Sizing itself is not licence to take
-          // everything: the ceiling is what stops the pane BESIDE it losing
-          // its floor, whatever this one asks for.
-          'b': SizedBox(height: 5000, key: Key('pane-b')),
-        },
-      ));
-      await tester.pumpAndSettle();
-
-      expect(
-        tester.getSize(find.byKey(const Key('pane-a'))).height,
-        greaterThanOrEqualTo(dockMinPaneHeight(tester.element(find.byType(DockLayoutView))) - 0.5),
-        reason: 'the flexible pane keeps its floor however much the other one wants',
-      );
-    });
-
-    testWidgets('the divider beside it offers no resize', (tester) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      DockNode spec() => DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['b'])], [1, 1]);
-      await tester.pumpWidget(harness(
-        spec: spec(),
-        headerlessModules: const {'a', 'b'},
-        fixedExtentModules: const {'b'},
-        children: const {
-          'a': SizedBox.expand(key: Key('pane-a')),
-          'b': SizedBox(height: 70, key: Key('pane-b')),
-        },
-      ));
-      await tester.pumpAndSettle();
-
-      final before = tester.getSize(find.byKey(const Key('pane-a'))).height;
-      // The bar is still DRAWN — the boundary is chrome — so it is findable
-      // and draggable-looking. Dragging it must simply do nothing: there is no
-      // weight on the self-sizing side for the drag to move.
-      await tester.drag(find.byType(SolidPaneDivider), const Offset(0, -120));
-      await tester.pumpAndSettle();
-
-      expect(
-        tester.getSize(find.byKey(const Key('pane-a'))).height,
-        moreOrLessEquals(before, epsilon: 1),
-        reason: 'a bar that resized this would be resizing a pane whose height is its content',
-      );
-    });
   });
 
   group('pane minimums', () {

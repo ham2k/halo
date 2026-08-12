@@ -52,14 +52,6 @@ class SolidPaneDivider extends StatefulWidget {
   /// axis of the split that owns it.
   final Axis axis;
 
-  /// Whether this bar resizes anything. False beside a pane that sizes itself
-  /// to its content (see `DockLayoutView.fixedExtentModules`): there is no
-  /// weight on that side for a drag to move, so the bar keeps its LOOK — the
-  /// boundary is chrome, and panes that touched would read as one pane — and
-  /// gives up the resize cursor, the grab line and the gesture. A bar that
-  /// invites a drag it cannot perform is worse than one that plainly does not.
-  final bool interactive;
-
   final VoidCallback? onDragStart;
 
   /// Pointer delta along [axis], in logical pixels (already in the
@@ -94,7 +86,6 @@ class SolidPaneDivider extends StatefulWidget {
     this.onDragEnd,
     this.onDragCancel,
     this.dragging = false,
-    this.interactive = true,
   });
 
   /// The grab line's resting opacity; hovering (or dragging) raises it to
@@ -246,14 +237,6 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
         decoration: BoxDecoration(color: lineColor, borderRadius: BorderRadius.circular(1.5)),
       ),
     );
-    if (!widget.interactive) {
-      return Container(
-        width: horizontal ? widget.extent : null,
-        height: horizontal ? null : widget.extent,
-        color: barColor,
-        // No grab line either: it is the mark that says "drag me".
-      );
-    }
     return MouseRegion(
       cursor: horizontal ? SystemMouseCursors.resizeLeftRight : SystemMouseCursors.resizeUpDown,
       onEnter: (_) => setState(() => _hovered = true),

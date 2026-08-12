@@ -849,8 +849,6 @@ class _Translations$home$panels$es extends Translations$home$panels$en {
 	@override String get operationsDescription => 'Tus operaciones, la más reciente primero.';
 	@override String get version => 'Versión Actual';
 	@override String get versionDescription => 'La marca Ham2K, el nombre de esta aplicación y qué compilación usas.';
-	@override String get lookup => 'Búsqueda Rápida';
-	@override String get lookupDescription => 'Busca un indicativo o escribe un comando.';
 }
 
 // Path: operation.tabs
@@ -2113,8 +2111,6 @@ extension on TranslationsEs {
 			'home.panels.operationsDescription' => 'Tus operaciones, la más reciente primero.',
 			'home.panels.version' => 'Versión Actual',
 			'home.panels.versionDescription' => 'La marca Ham2K, el nombre de esta aplicación y qué compilación usas.',
-			'home.panels.lookup' => 'Búsqueda Rápida',
-			'home.panels.lookupDescription' => 'Busca un indicativo o escribe un comando.',
 			'home.toggleNav' => 'Mostrar u ocultar las etiquetas de navegación',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
@@ -2562,10 +2558,10 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
 			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',

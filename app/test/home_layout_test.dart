@@ -142,7 +142,7 @@ void main() {
       LayoutKeys.homeDock,
       DockSplit(Axis.horizontal, [
         DockGroup([HomeView.versionPanelId]),
-        DockGroup([HomeView.operationsPanelId, HomeView.lookupPanelId]),
+        DockGroup([HomeView.operationsPanelId, HomeView.retiredLookupPanelId]),
       ], [1, 1]).toJson(),
     );
 

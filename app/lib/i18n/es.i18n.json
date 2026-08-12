@@ -75,9 +75,7 @@
       "operations": "Lista de Operaciones",
       "operationsDescription": "Tus operaciones, la más reciente primero.",
       "version": "Versión Actual",
-      "versionDescription": "La marca Ham2K, el nombre de esta aplicación y qué compilación usas.",
-      "lookup": "Búsqueda Rápida",
-      "lookupDescription": "Busca un indicativo o escribe un comando."
+      "versionDescription": "La marca Ham2K, el nombre de esta aplicación y qué compilación usas."
     },
     "toggleNav": "Mostrar u ocultar las etiquetas de navegación"
   },

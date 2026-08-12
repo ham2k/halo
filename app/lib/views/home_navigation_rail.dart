@@ -245,13 +245,13 @@ class HomeNavigationRail extends StatelessWidget {
           // own side of the boundary. Paint-only, so every destination under
           // them stays clickable.
           _RailShadow(
-            edge: AxisDirection.up,
+            edge: _RailShadowEdge.underTopCap,
             top: capTop,
             color: shadowColor,
             alpha: shadowAlpha,
           ),
           _RailShadow(
-            edge: AxisDirection.right,
+            edge: _RailShadowEdge.fromPanes,
             top: capTop,
             color: shadowColor,
             alpha: shadowAlpha,
@@ -262,45 +262,54 @@ class HomeNavigationRail extends StatelessWidget {
   }
 }
 
+/// Which of the well's edges a shadow falls from.
+///
+/// Two values rather than an [AxisDirection], because those are the two the
+/// rail has: a wider type would take a `down` or a `left` the switches below
+/// do not answer for, and silently paint the right-edge band instead of
+/// failing where the mistake is.
+enum _RailShadowEdge {
+  /// The band the top chrome casts down under its cap.
+  underTopCap,
+
+  /// The band the panes cast leftward along the rail's edge.
+  fromPanes,
+}
+
 /// One edge of the well the rail sits in — the band of shadow whatever is on
 /// the far side of that edge casts into it.
 class _RailShadow extends StatelessWidget {
-  /// Which way the shadow falls: [AxisDirection.up] for the band under the top
-  /// cap, [AxisDirection.down] for the one over the bottom cap,
-  /// [AxisDirection.right] for the one the panes cast along the rail's edge.
-  final AxisDirection edge;
-  final double? top;
+  final _RailShadowEdge edge;
+
+  /// Where the band starts — below the top cap for both of them, since neither
+  /// edge of the well begins at the rail's own top.
+  final double top;
   final Color color;
   final double alpha;
 
-  const _RailShadow({required this.edge, this.top, required this.color, required this.alpha});
+  const _RailShadow({required this.edge, required this.top, required this.color, required this.alpha});
 
   @override
   Widget build(BuildContext context) {
     final width = ResizableSplitView.dividerShadowWidth;
     return Positioned(
-      left: edge == AxisDirection.right ? null : 0,
+      left: edge == _RailShadowEdge.fromPanes ? null : 0,
       right: 0,
-      // Defaults to the box's own top rather than to null: a Positioned given
-      // only `bottom` is not stretched, it is sized by its child — and this
-      // one has none, so it would paint nothing at all.
-      top: edge == AxisDirection.down ? null : (top ?? 0),
-      bottom: edge == AxisDirection.up ? null : 0,
-      width: edge == AxisDirection.right ? width : null,
-      height: edge == AxisDirection.right ? null : width,
+      top: top,
+      bottom: edge == _RailShadowEdge.underTopCap ? null : 0,
+      width: edge == _RailShadowEdge.fromPanes ? width : null,
+      height: edge == _RailShadowEdge.fromPanes ? null : width,
       child: IgnorePointer(
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: switch (edge) {
-                AxisDirection.up => Alignment.topCenter,
-                AxisDirection.down => Alignment.bottomCenter,
-                _ => Alignment.centerRight,
+                _RailShadowEdge.underTopCap => Alignment.topCenter,
+                _RailShadowEdge.fromPanes => Alignment.centerRight,
               },
               end: switch (edge) {
-                AxisDirection.up => Alignment.bottomCenter,
-                AxisDirection.down => Alignment.topCenter,
-                _ => Alignment.centerLeft,
+                _RailShadowEdge.underTopCap => Alignment.bottomCenter,
+                _RailShadowEdge.fromPanes => Alignment.centerLeft,
               },
               colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0.0)],
             ),
