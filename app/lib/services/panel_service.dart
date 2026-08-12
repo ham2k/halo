@@ -96,6 +96,16 @@ class PanelDefinition {
   ///   its own sheet, which whoever added it sees immediately.
   final Set<String> views;
 
+  /// A minimum this panel's own content needs, beyond the dock's default
+  /// floor (`dockMinPaneExtent` in halo_widgets) — a map, a table, anything
+  /// that genuinely cannot use less. Null on either axis falls back to the
+  /// default there.
+  ///
+  /// Native panels only for now: an extension panel's `panel` hook entry
+  /// declares no minimum and always gets the default.
+  final double? minWidth;
+  final double? minHeight;
+
   const PanelDefinition({
     required this.id,
     required this.title,
@@ -110,6 +120,8 @@ class PanelDefinition {
     this.settingsTarget,
     this.multiple = false,
     this.views = const {},
+    this.minWidth,
+    this.minHeight,
   });
 
   /// Whether [view] may offer this panel — see [views] for why an empty set
@@ -135,6 +147,8 @@ class PanelDefinition {
     settingsTarget: settingsTarget,
     multiple: multiple,
     views: views,
+    minWidth: minWidth,
+    minHeight: minHeight,
   );
 
   /// Value equality so a re-registration with identical content is a no-op:
@@ -156,10 +170,13 @@ class PanelDefinition {
       other.multiple == multiple &&
       setEquals(other.views, views) &&
       listEquals(other.triggers, triggers) &&
-      other.formFields.length == formFields.length;
+      other.formFields.length == formFields.length &&
+      other.minWidth == minWidth &&
+      other.minHeight == minHeight;
 
   @override
-  int get hashCode => Object.hash(id, title, description, icon, preview, source, hookKey, panelKey, settingsTarget);
+  int get hashCode =>
+      Object.hash(id, title, description, icon, preview, source, hookKey, panelKey, settingsTarget, minWidth, minHeight);
 
   /// Reads one entry of `getExtensionPanels`. Returns null for an entry
   /// missing what a panel cannot work without — an extension bug should

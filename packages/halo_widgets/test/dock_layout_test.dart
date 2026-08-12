@@ -42,6 +42,7 @@ void main() {
     Map<String, WidgetBuilder>? tabActions,
     Widget Function(BuildContext, String)? editingPaneControls,
     Set<String> headerlessModules = const {},
+    Map<String, Size> moduleMinimumSizes = const {},
     ValueChanged<String>? onModuleDeleted,
     // Defaults to the widget's own default — OFF — so a test that drags has
     // to say so. Dragging is not the dock's resting state: outside edit mode
@@ -72,6 +73,7 @@ void main() {
             tabActions: tabActions,
             editingPaneControls: editingPaneControls,
             headerlessModules: headerlessModules,
+            moduleMinimumSizes: moduleMinimumSizes,
             onModuleDeleted: onModuleDeleted,
             editing: editing,
             onSpecChanged: onChanged,
@@ -145,7 +147,7 @@ void main() {
       // publishes its own rung when a vertical split has shortened it. The two
       // contexts genuinely disagree, and the split's own value is the one that
       // bounded the layout.
-      final floor = dockMinPaneHeight(tester.element(find.byKey(const Key('pane-b'))));
+      final floor = dockPaneUnit(tester.element(find.byKey(const Key('pane-b'))));
       final short = tester.getSize(find.byKey(const Key('pane-b')));
       expect(
         short.height,
@@ -193,7 +195,7 @@ void main() {
       final editing = tester.getSize(find.byKey(const Key('pane-b'))).height;
       expect(
         resting.height - editing,
-        lessThan(dockMinPaneHeight(tester.element(find.byType(DockLayoutView))) / 2),
+        lessThan(dockPaneUnit(tester.element(find.byType(DockLayoutView))) / 2),
         reason: 'edit mode costs a divider, not a chrome height',
       );
     });
@@ -213,18 +215,85 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      // The floor is DEFINED as "a grab handle and an options button with no
-      // title between them" — so what it has to guarantee is that both fit,
-      // whatever density rung the split resolved it at. Asserting the number
-      // instead would just re-derive `dockMinPaneWidth` in a second place.
+      // The window is tall (800), so the header can stack handle/title/action
+      // VERTICALLY instead of in a row — see [dockMinPaneExtent] — and the
+      // width floor drops to one unit rather than three. `pane-b`'s own box
+      // is the SPLIT's allocated width minus the editing frame it gives up
+      // on every free side (a headerless pane while editing gives up all
+      // four), so the bound here is the unit floor less that frame rather
+      // than the floor itself — asserting the exact number would just
+      // re-derive both constants in a second place.
       expect(
         tester.getSize(find.byKey(const Key('pane-b'))).width,
-        greaterThan(52),
-        reason: 'a pane below its handle plus its action has no way to be moved or configured',
+        greaterThanOrEqualTo(dockPaneUnit(tester.element(find.byKey(const Key('opts-b')))) - 12),
+        reason: 'a pane below one unit wide has no room for even a stacked handle and action',
       );
-      // The floor is DEFINED as "handle and options with no title between
-      // them", so both have to actually be there at it.
+      // The floor is DEFINED as "handle and options fit, whatever the
+      // orientation", so both have to actually be there at it.
       expect(find.byKey(const Key('opts-b')), findsOneWidget);
+      // Actually reachable, not merely present: the floating chrome must be
+      // laid out against the pane's REAL (narrow) width, not an unbounded
+      // one — a Positioned given only two edges hands its child infinite
+      // constraints, which would always choose the wide row layout and paint
+      // the button past the pane, and past the window, untappable.
+      expect(find.byKey(const Key('opts-b')).hitTestable(), findsOneWidget);
+      expect(
+        tester.getRect(find.byKey(const Key('opts-b'))).right,
+        lessThanOrEqualTo(tester.getRect(find.byType(DockLayoutView)).right),
+        reason: 'the options button must land inside the window, not past its right edge',
+      );
+    });
+
+    testWidgets("a module's declared minimum raises the floor beyond the default", (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(harness(
+        spec: DockSplit(Axis.horizontal, [DockGroup(['a']), DockGroup(['b'])], [200, 1]),
+        headerlessModules: const {'a', 'b'},
+        moduleMinimumSizes: const {'b': Size(300, 0)},
+      ));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byKey(const Key('pane-b'))).width,
+        greaterThanOrEqualTo(300 - 0.5),
+        reason: "a panel that declares its own minimum must get at least it, however lopsided the saved weights",
+      );
+    });
+
+    testWidgets("a nested split's floor is its subtree's, not one unit per direct child", (tester) async {
+      // A vertical split holding a group and a nested vertical split of two
+      // more groups, weighted 3:1 so the nested pair is the tight side.
+      // Treating the nested split as one chrome height, the same as any
+      // direct child, reserves it too little room, so its own two children
+      // fall under their floor once it lays itself out — short by exactly
+      // the divider between them.
+      tester.view.physicalSize = const Size(400, 250);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(harness(
+        spec: DockSplit(Axis.vertical, [
+          DockGroup(['a']),
+          DockSplit(Axis.vertical, [DockGroup(['b']), DockGroup(['c'])], [1, 1]),
+        ], [3, 1]),
+        headerlessModules: const {'a', 'b', 'c'},
+      ));
+      await tester.pumpAndSettle();
+
+      final unit = dockPaneUnit(tester.element(find.byType(DockLayoutView)));
+      expect(
+        tester.getSize(find.byKey(const Key('pane-b'))).height,
+        greaterThanOrEqualTo(unit - 0.5),
+        reason: "the nested split's own children must each still reach the floor",
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('pane-c'))).height,
+        greaterThanOrEqualTo(unit - 0.5),
+        reason: "the nested split's own children must each still reach the floor",
+      );
     });
   });
 
@@ -827,8 +896,6 @@ void main() {
     /// gesture: start, pump so it mounts, then move onto it.
     Future<void> dragToDelete(WidgetTester tester, String label) async {
       final gesture = await tester.startGesture(tester.getCenter(find.text(label).first));
-      // Far enough to arm the target — it does not mount under a pointer
-      // that has barely moved. See the nudge test below.
       await gesture.moveBy(const Offset(0, 90));
       await tester.pump();
       await gesture.moveTo(tester.getCenter(find.byIcon(MdiIcons.trashCanOutline)));
@@ -837,16 +904,14 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('a fumbled click on a tab under the target deletes nothing', (tester) async {
+    testWidgets('a barely-moved press deletes nothing', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
       await tester.pumpWidget(harness(spec: twoGroups(), editing: true, key: key));
 
-      // The target sits against the dock's top edge, where the tab strips
-      // are — so a press at the top centre is already INSIDE it. A mouse only
-      // has to slip a pixel between press and release, and the pane would be
-      // gone with no confirmation. A MOUSE deliberately: touch has ~18pt of
-      // slop before a drag even starts, so the hazard is the precise
-      // pointer's.
+      // A press that never travels far enough for Draggable's own recognizer
+      // to call it a drag must not mount the target at all — there is
+      // nothing app-specific guarding this once a drag genuinely starts (see
+      // the test below), so this is the floor a fumbled click rests on.
       final dock = tester.getRect(find.byType(DockLayoutView));
       final gesture = await tester.startGesture(
         Offset(dock.center.dx - 4, dock.top + 8),
@@ -860,37 +925,16 @@ void main() {
       expect(key.currentState!.modules, ['a', 'b', 'c'], reason: 'nothing was deleted');
     });
 
-    testWidgets('an ordinary drag arms the target from its first move', (tester) async {
+    testWidgets('an ordinary drag mounts the target from its first move', (tester) async {
       await tester.pumpWidget(harness(spec: twoGroups(), editing: true));
 
-      // Everywhere but inside the circle, the target has to be there from the
-      // start: `onDragUpdate` fires AFTER Flutter has hit-tested that move, so
-      // a target that appears part-way through a fast drag can miss the last
-      // update and never become the active one — the pane would silently
-      // re-dock at the top edge instead of being deleted.
-      // 30, not 2: a touch pointer has ~18pt of slop before the drag itself
-      // starts, which is a different threshold from the arming one.
+      // The target has to be there from the start of a genuine drag, not
+      // appear a frame or two later: a fast flick could otherwise carry the
+      // pointer past it before Flutter ever gets a chance to hit-test it.
       final gesture = await tester.startGesture(tester.getCenter(find.text('Charlie').first));
       await gesture.moveBy(const Offset(0, 30));
       await tester.pump();
       expect(find.byIcon(MdiIcons.trashCanOutline), findsOneWidget);
-      await gesture.up();
-      await tester.pumpAndSettle();
-    });
-
-    testWidgets('a drag that lands on the target in one jump still finds it', (tester) async {
-      await tester.pumpWidget(harness(spec: twoGroups(), editing: true));
-
-      // Arming is decided from where the PRESS landed, not from the first
-      // move: a flick can put the pointer inside the circle in a single frame
-      // with no travel recorded yet, and a rule that read the position
-      // instead would refuse the drop the operator is making right now.
-      final dock = tester.getRect(find.byType(DockLayoutView));
-      final gesture = await tester.startGesture(tester.getCenter(find.text('Charlie').first));
-      await gesture.moveTo(Offset(dock.center.dx, dock.top + 8));
-      await tester.pump();
-      expect(find.byIcon(MdiIcons.trashCanOutline), findsOneWidget);
-
       await gesture.up();
       await tester.pumpAndSettle();
     });

@@ -1173,6 +1173,15 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         for (final id in inLayout)
           if (!_showsHeader(id)) id,
       },
+      // A panel's own declared minimum, when it has one — see
+      // [PanelDefinition.minWidth]/[minHeight]. Missing entries fall back to
+      // the dock's default floor, so this only needs to name the panels that
+      // ask for more.
+      moduleMinimumSizes: {
+        for (final id in inLayout)
+          if (dockServices.panels[id] case final panel? when panel.minWidth != null || panel.minHeight != null)
+            id: Size(panel.minWidth ?? 0, panel.minHeight ?? 0),
+      },
       // Only after the dock has actually dropped it — it refuses for the last
       // module, and forgetting a pane that is still on screen would wipe what
       // the operator can see.

@@ -282,14 +282,16 @@ because there a divider drag competes with pane drags for the same pointer
 and has to read as a grab target rather than as furniture.
 
 The editing width is granted unconditionally — the panes give it up, and
-nothing rations it against what they can spare. **Edit mode is not
-overflow-safe in a very short dock, and the divider is the smaller half of
-why.** A group is a Column of its tab strip over an Expanded body, so a pane
-shorter than its own strip overflows; entering edit mode also gives every
-headerless group a strip it did not have, a whole chrome height that no
-divider width can give back. A guard on the bar alone would buy a guarantee
-that still does not hold, so the bar stays simple and the real fix belongs
-where the chrome is added.
+nothing rations it against what they can spare. A group is a Column of its
+tab strip over an Expanded body, so a pane shorter than its own strip
+overflows — which is why a headerless group does NOT gain a strip on
+entering edit mode: its handle, name and options button float over its
+corner instead (`_FloatingPaneChrome`), costing the pane a divider's few
+points rather than a whole chrome height. A guard on the bar alone would
+have bought a guarantee that still didn't hold for a headed group, so the
+bar stays simple and the real floor lives where the chrome is —
+`dockMinPaneExtent` (`packages/halo_widgets/lib/src/layout.dart`), one number
+for every pane whatever its orientation, editing or not.
 
 **Surfaces (opt-in — Settings today).** The divider consumes no
 layout space — it is a transparent drag overlay (with grab dots) on the
@@ -335,6 +337,31 @@ stored as dotted keys under the `layout` setting:
 The split clamps the preference to what fits **at layout time only** — a
 temporarily small window never overwrites the stored value. The persistence
 callback fires on drag end, not on every drag frame.
+
+### Dock pane minimum size
+
+Every dock pane's floor is expressed in **units**
+(`dockPaneUnit`, `packages/halo_widgets/lib/src/layout.dart`) — a normal
+button's size at the current density and font scale, the same value the
+chrome height and the handle/settings icons are built from. A pane cannot
+lay out its handle, title and settings icon at all below **three units in a
+row, or one wide by three tall** — whichever orientation its available space
+allows (`dockMinPaneExtent`). Below three units on one axis the header
+reflows from a row to a stacked column on the other, rather than shrinking
+past the point its three controls still fit.
+
+This is the floor for every pane, editing or not — a pane never changes size
+just because the operator entered edit mode (see the divider section above).
+A `DockSplit`'s own floor along an axis is the max, or for a matching-axis
+nested split the SUM, of its children's floors (`DockLayoutViewState._nodeMinExtent`)
+— a nested split needs its whole subtree's minimum, not one unit per direct
+child.
+
+A panel can declare a larger minimum than the three-unit default for content
+that genuinely needs more (a map, a table) via `PanelDefinition.minWidth`/
+`minHeight` (`app/lib/services/panel_service.dart`) — native panels only
+today; an extension panel's `panel` hook entry declares no minimum and
+always gets the default.
 
 ## Layout density: the height vocabulary
 

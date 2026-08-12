@@ -442,6 +442,20 @@ class _PaneFramePainter extends CustomPainter {
 /// carries the position within the group, which a region can't say.
 enum DockRegion { left, right, top, bottom }
 
+/// Expects a root `Overlay` above it (any `MaterialApp`/`WidgetsApp` provides
+/// one) — the layout-edit delete target is painted there rather than in this
+/// widget's own subtree, so it can reach over the host app's own window
+/// header. Its absence degrades gracefully: no delete target, everything else
+/// unaffected.
+///
+/// The delete target shows the instant a drag starts, with no check on
+/// whether the PRESS that started the drag landed on top of it — safe only
+/// because the target paints well above the dock's own top edge, where no
+/// tab's own press can land. A host that puts nothing of its own above the
+/// dock — no separate app bar or window header — puts a tab's press and the
+/// target back in the same place: a barely-moved press near the dock's
+/// top-center could then show and immediately accept a drop on it. Keep
+/// something above the dock's own top edge.
 class DockLayoutView extends StatefulWidget {
   /// The starting arrangement. The view owns mutations from then on,
   /// reporting each through [onSpecChanged]; later changes to this field are
@@ -489,8 +503,20 @@ class DockLayoutView extends StatefulWidget {
   /// gets them floated over its corner (`_FloatingPaneChrome`) rather than in
   /// a strip — a strip conjured for the edit costs a chrome height the pane
   /// may not have, and a pane that changes size on entering edit mode makes
-  /// [dockMinPaneHeight] two numbers instead of one.
+  /// [dockMinPaneExtent] two numbers instead of one.
   final Set<String> headerlessModules;
+
+  /// Module id → a minimum size the module's own content needs, beyond the
+  /// default floor ([dockMinPaneExtent]) every pane already gets. A width or
+  /// height left null falls back to the default on that axis. Missing ids get
+  /// the default on both.
+  ///
+  /// A tabbed group takes the max across its modules on each axis — whichever
+  /// tab is showing, the group must fit it. Read through [DockNode] traversal
+  /// ([DockLayoutViewState._nodeMinExtent]), never assumed uniform: a nested
+  /// [DockSplit] needs its own subtree's minimum, not one chrome height per
+  /// direct child.
+  final Map<String, Size> moduleMinimumSizes;
 
   /// A module the operator dragged onto the delete target, reported AFTER it
   /// has left the arrangement — the caller's cue to forget whatever else it
@@ -536,6 +562,7 @@ class DockLayoutView extends StatefulWidget {
     this.tabActions,
     this.editingPaneControls,
     this.headerlessModules = const {},
+    this.moduleMinimumSizes = const {},
     this.onModuleDeleted,
     this.onSpecChanged,
     this.editing = false,
@@ -592,6 +619,9 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed && mounted) setState(() => _growingSplit = null);
       });
+    // Deferred a frame: `Overlay.of` needs the ancestor tree this State is
+    // being mounted INTO, which isn't resolvable until that mount completes.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _insertDeleteTargetOverlay());
   }
 
   void _growPane(DockSplit split, int index) {
@@ -600,71 +630,37 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     _growth.forward(from: 0);
   }
 
+  /// Lives outside this State's own subtree so it can paint over the HOST
+  /// app's own window header, not just the dock's content area — see
+  /// [_buildDeleteTargetOverlay].
+  OverlayEntry? _deleteTargetOverlayEntry;
+
+  void _insertDeleteTargetOverlay() {
+    if (!mounted || _deleteTargetOverlayEntry != null) return;
+    // `maybeOf`, not `of`: every real host has a root Overlay (MaterialApp's
+    // Navigator provides one), but a test harness or an unusual embedding
+    // might not, and losing the delete target is a survivable degradation —
+    // not something worth an assertion failure inside a post-frame callback,
+    // several stack frames from whoever actually embedded this dock.
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+    // The ROOT overlay, not the nearest one: a route-local Overlay (a Modal
+    // Pane, a dialog) would still leave the target under whatever chrome sits
+    // above the route, which is exactly the app's own window header here.
+    final entry = OverlayEntry(builder: (context) => _buildDeleteTargetOverlay());
+    overlay.insert(entry);
+    _deleteTargetOverlayEntry = entry;
+  }
+
   @override
   void dispose() {
+    _deleteTargetOverlayEntry?.remove();
     _growth.dispose();
     super.dispose();
   }
 
   /// The module id being dragged, or null — gates the drop-region overlays.
   String? _dragging;
-
-  /// How far the current drag has travelled, and whether that is yet enough
-  /// to arm the delete target.
-  ///
-  /// The target sits against the dock's top edge, which is where the tab
-  /// strips are: a press on a tab near the middle of the strip lands INSIDE
-  /// it. Mounting a delete under a pointer that never went looking for one
-  /// means a mouse has only to slip a pixel between press and release to take
-  /// a pane with it.
-  ///
-  /// So the answer is decided from where the PRESS landed, before the drag
-  /// exists: anywhere outside the circle and the target is armed and mounted
-  /// from the first frame — which is every ordinary drag. Only a press that
-  /// landed inside waits, and then only until the pointer leaves the circle
-  /// or has travelled a diameter.
-  ///
-  /// Deciding it later — from accumulated travel, say — would be worse than
-  /// the bug it fixes: `onDragUpdate` fires AFTER Flutter has hit-tested that
-  /// move, so a target that appears part-way through a drag can miss the last
-  /// update and never become the active one, and the pane silently re-docks
-  /// at the top edge instead of being deleted. Arming before the drag starts
-  /// has no such frame to lose, and the leave-the-circle case cannot race
-  /// either: coming back to drop takes more moves.
-  double _dragTravel = 0;
-  Offset? _lastDragLocal;
-  Offset? _pressGlobal;
-  bool _deleteArmed = false;
-
-  /// Whether [globalPosition] is on the delete target, in the DOCK's own
-  /// coordinates — which is what the target's size is in too. Drags report
-  /// global positions and the tree may be scaled between the two (Font Scale
-  /// divides the whole window), so they are converted rather than compared.
-  ///
-  /// The circle, not its bounding box: the operator aims at what is painted,
-  /// and a corner of the square is visibly outside it.
-  bool _isOnDeleteTarget(Offset globalPosition) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return false;
-    final local = box.globalToLocal(globalPosition);
-    final radius = _DeleteDropTarget.diameterIn(context) / 2;
-    return (local - Offset(box.size.width / 2, radius)).distance <= radius;
-  }
-
-  void _trackDragTravel(Offset globalPosition) {
-    if (_deleteArmed) return;
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    final local = box.globalToLocal(globalPosition);
-    final previous = _lastDragLocal;
-    _lastDragLocal = local;
-    if (previous != null) _dragTravel += (local - previous).distance;
-    // A press that landed inside: armed once the pointer leaves, or once it
-    // has wandered a diameter without leaving (a flick that jumps clean over
-    // the far side in a single frame).
-    if (_isOnDeleteTarget(globalPosition) && _dragTravel < _DeleteDropTarget.diameterIn(context)) return;
-    setState(() => _deleteArmed = true);
-  }
 
   // Dock splits use the shared solid divider (pane_divider.dart) — same
   // header-colored bar as ResizableSplitView's default style, at the width
@@ -678,8 +674,6 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   // still does not hold, so the honest version is the plain one — see
   // docs/design/layouts.md.
   double get _dividerExtent => paneDividerWidth(editing: widget.editing);
-
-  static const double _minPaneExtent = 120.0;
 
   /// Publishes a pane's own density when it is genuinely shorter than what it
   /// inherited — a vertical split halves the height without the window
@@ -918,31 +912,39 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         if (_dragging != null)
           for (final region in const [DockRegion.left, DockRegion.right, DockRegion.top, DockRegion.bottom])
             _positionedEdge(region, _EdgeDropTarget(region: region, onDrop: (id) => _handleEdgeDrop(id, region))),
-        // LAST, so it takes the drop where it overlaps the top edge strip:
-        // a pointer carried to the middle of the top edge is aiming at the
-        // one thing drawn there, not at the strip behind it.
-        //
-        // Absent for the last module in the arrangement, which cannot be
-        // removed — an empty dock has no tab left to drag anything back with,
-        // so the layout would be unrecoverable from inside the view. A target
-        // that refuses on drop would read as a bug.
-        if (_dragging != null && _deleteArmed && _spec.collectModules().length > 1)
-          Positioned(
-            // Against the dock's own top edge, where a pointer carried
-            // upwards runs out of room — the one place reachable by throwing
-            // the pane in a direction rather than aiming at a spot. It
-            // overlaps the middle of the tab strip and takes the drop there
-            // (it is drawn last); the strip's own tabs are still reachable
-            // either side of it, and a pane dropped on the one thing drawn
-            // at the top edge is aiming at that.
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Align(child: _DeleteDropTarget(onDrop: _handleDeleteDrop)),
-          ),
       ],
     );
   }
+
+  /// The delete target, laid over the HOST app's own window header rather
+  /// than the dock's content area — a pane is thrown UP and OUT, not at a
+  /// button living among the panes it might be mistaken for one of. Reached
+  /// through the root [Overlay] because that header belongs to the view
+  /// hosting this dock, not to anything in this widget's own subtree.
+  ///
+  /// Absent for the last module in the arrangement, which cannot be
+  /// removed — an empty dock has no tab left to drag anything back with, so
+  /// the layout would be unrecoverable from inside the view. A target that
+  /// refuses on drop would read as a bug.
+  Widget _buildDeleteTargetOverlay() {
+    if (!(_dragging != null && _spec.collectModules().length > 1)) {
+      return const SizedBox.shrink();
+    }
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Align(child: _DeleteDropTarget(onDrop: _handleDeleteDrop)),
+    );
+  }
+
+  /// Call after any change [_buildDeleteTargetOverlay] depends on
+  /// (`_dragging`, the spec). The entry's Element is a sibling subtree, not a
+  /// descendant reached by this State's own `setState` — safe to call
+  /// directly from here because these all run as ordinary event-handler
+  /// callbacks, never mid-build, which is the one context `markNeedsBuild`
+  /// refuses.
+  void _syncDeleteTargetOverlay() => _deleteTargetOverlayEntry?.markNeedsBuild();
 
   void _handleDeleteDrop(String id) {
     if (removeModule(id)) widget.onModuleDeleted?.call(id);
@@ -962,6 +964,67 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     DockGroup() => _buildGroup(node),
     DockSplit() => _buildSplit(node),
   };
+
+  /// A module's declared minimum along [axis] ([DockLayoutView.moduleMinimumSizes]),
+  /// or 0 when it has none — 0 rather than the default unit, so a caller can
+  /// `max()` this against [dockMinPaneExtent] without double-counting.
+  double _moduleMinFor(String id, Axis axis) {
+    final size = widget.moduleMinimumSizes[id];
+    return (axis == Axis.horizontal ? size?.width : size?.height) ?? 0;
+  }
+
+  /// [node]'s own minimum extent along [axis], walking its subtree.
+  ///
+  /// [crossExtent] is the ACTUAL extent [node] will receive on the other
+  /// axis, when known. Known for the top-level call (a split's own direct
+  /// children share its incoming cross-axis constraint via
+  /// `CrossAxisAlignment.stretch`) and stays known through any further
+  /// nesting ALONG [axis] — a split that doesn't subdivide the cross axis
+  /// can't hide it. It is lost only crossing into a NESTED split whose own
+  /// axis is the one being asked about as a cross axis: that split divides
+  /// it among its children by weight, which isn't decided until the layout
+  /// this computation runs ahead of. There, a grandchild [DockGroup] that
+  /// DOES reflow (see below) is estimated at the single-unit floor rather
+  /// than the true 3-unit one — an UNDER-estimate in the narrow-cross-axis
+  /// case, never an over-estimate, so it cannot itself manufacture a new
+  /// overflow.
+  double _nodeMinExtent(DockNode node, Axis axis, {double? crossExtent}) {
+    switch (node) {
+      case DockGroup(:final modules):
+        final unit = dockPaneUnit(context);
+        // Only a headerless SOLO module reflows: it gets `_FloatingPaneChrome`,
+        // which stacks vertically below three units. Every other group shows a
+        // real header row — a tab strip for more than one module, or a plain
+        // title bar for one — that never stacks, editing or not, so its floor
+        // stays three units wide by one tall regardless of what the cross axis
+        // can spare. This must track `_buildGroup`'s own `showHeader`, or the
+        // floor promises an orientation the header can't actually paint.
+        final reflows = modules.length == 1 && widget.headerlessModules.contains(modules.first);
+        final base = reflows
+            ? (crossExtent != null ? dockMinPaneExtent(context, crossExtent: crossExtent) : unit)
+            : (axis == Axis.horizontal ? unit * 3 : unit);
+        final declared = modules.fold(0.0, (max_, id) => math.max(max_, _moduleMinFor(id, axis)));
+        return math.max(base, declared);
+      case DockSplit(axis: final childAxis, :final children):
+        if (childAxis == axis) {
+          // This split's OWN axis matches the one being measured, so it
+          // doesn't subdivide the CROSS axis at all — every child gets the
+          // exact crossExtent this call received (`CrossAxisAlignment.stretch`
+          // gives each of THIS split's children the same cross-axis share the
+          // split itself was handed). Known, not lost, so it propagates.
+          final dividerTotal = _dividerExtent * (children.length - 1);
+          return children.fold(
+            dividerTotal,
+            (sum, c) => sum + _nodeMinExtent(c, axis, crossExtent: crossExtent),
+          );
+        }
+        // Here this split's OWN axis IS the cross axis being asked about —
+        // it divides that axis among its children by weight, which isn't
+        // known ahead of the layout this computation runs ahead of. See the
+        // class comment above for what that costs.
+        return children.fold(0.0, (max_, c) => math.max(max_, _nodeMinExtent(c, axis)));
+    }
+  }
 
   Widget _buildSplit(DockSplit split) {
     return LayoutBuilder(
@@ -994,10 +1057,10 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
             : split.weights;
         var weightSum = weights.reduce((a, b) => a + b);
         // Hold every child to the floor for this axis, BEFORE the extents are
-        // derived. `_minPaneExtent` below bounds a divider DRAG and nothing
-        // else, so on its own it lets a saved arrangement — or a shipped
-        // default like 9:1 — lay a pane out below the height of its own
-        // chrome, which overflows the group's Column. That is a layout error
+        // derived. The divider drag below bounds a DRAG and nothing else, so
+        // on its own it lets a saved arrangement — or a shipped default like
+        // 9:1 — lay a pane out below the height of its own chrome, which
+        // overflows the group's Column. That is a layout error
         // the operator cannot see the cause of and cannot drag their way out
         // of, since the drag bound refuses to shrink a pane that is already
         // under the limit but never grows it back.
@@ -1005,17 +1068,24 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         // Proportional give: the panes above the floor fund the ones below it,
         // in proportion to what they have, so a run that is merely tight
         // degrades evenly instead of collapsing its last child. A run with no
-        // room for its own floors (available < floor × children) is left
+        // room for its own floors (available < the floors' sum) is left
         // alone — every child is under, there is nothing to take from, and
         // scaling further would only trade one overflow for another.
-        final floor = split.axis == Axis.horizontal ? dockMinPaneWidth(context) : dockMinPaneHeight(context);
-        if (available > 0 && weightSum > 0 && floor * split.children.length <= available) {
-          final floorWeight = floor / available * weightSum;
-          final lifted = [for (final w in weights) math.max(w, floorWeight)];
+        //
+        // Per-child, not a single scalar: a module can declare a larger
+        // minimum than the default (`DockLayoutView.moduleMinimumSizes`), and
+        // a child that is itself a nested split needs its own subtree's
+        // minimum, not one unit per direct child — see [_nodeMinExtent].
+        final crossExtent = horizontal ? constraints.maxHeight : constraints.maxWidth;
+        final floors = [for (final c in split.children) _nodeMinExtent(c, split.axis, crossExtent: crossExtent)];
+        final totalFloor = floors.fold(0.0, (a, b) => a + b);
+        if (available > 0 && weightSum > 0 && totalFloor <= available) {
+          final floorWeights = [for (final f in floors) f / available * weightSum];
+          final lifted = [for (var i = 0; i < weights.length; i++) math.max(weights[i], floorWeights[i])];
           final excess = lifted.reduce((a, b) => a + b) - weightSum;
           if (excess > 0) {
-            // What the panes ABOVE the floor can give, and what each gives.
-            final spare = [for (final w in lifted) math.max(0.0, w - floorWeight)];
+            // What the panes ABOVE their own floor can give, and what each gives.
+            final spare = [for (var i = 0; i < lifted.length; i++) math.max(0.0, lifted[i] - floorWeights[i])];
             final spareSum = spare.reduce((a, b) => a + b);
             if (spareSum > 0) {
               for (var i = 0; i < lifted.length; i++) {
@@ -1094,9 +1164,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                   // clamp's limits, which throws — max/min just refuse to
                   // shrink it further.
                   final deltaWeight = delta / available * weightSum;
-                  final lower = _minPaneExtent / available * weightSum;
-                  final maxGive = math.max(0.0, base[i - 1] - lower);
-                  final maxTake = math.max(0.0, base[i] - lower);
+                  final maxGive = math.max(0.0, base[i - 1] - floors[i - 1] / available * weightSum);
+                  final maxTake = math.max(0.0, base[i] - floors[i] / available * weightSum);
                   final shift = math.min(maxTake, math.max(-maxGive, deltaWeight));
                   base[i - 1] += shift;
                   base[i] -= shift;
@@ -1193,22 +1262,15 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
           _emitState();
         },
         moduleId: id,
-          onPointerDownAt: (position) => _pressGlobal = position,
-          onDragStarted: (id) => setState(() {
-            _dragging = id;
-            _dragTravel = 0;
-            _lastDragLocal = null;
-            final press = _pressGlobal;
-            _deleteArmed = press == null || !_isOnDeleteTarget(press);
-          }),
-          onDragUpdate: _trackDragTravel,
-          onDragEnded: () => setState(() {
-            _dragging = null;
-            _dragTravel = 0;
-            _lastDragLocal = null;
-            _deleteArmed = false;
-          }),
-        ),
+        onDragStarted: (id) {
+          setState(() => _dragging = id);
+          _syncDeleteTargetOverlay();
+        },
+        onDragEnded: () {
+          setState(() => _dragging = null);
+          _syncDeleteTargetOverlay();
+        },
+      ),
     );
   }
 
@@ -1229,7 +1291,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     // See [headerlessModules] for the two overrides. Edit mode is NOT one of
     // them any more: a strip conjured for the duration of an edit is a whole
     // chrome height the pane has to find from somewhere, and a pane already at
-    // its floor ([dockMinPaneHeight]) has nowhere to find it — so the layout
+    // its floor ([dockMinPaneExtent]) has nowhere to find it — so the layout
     // overflowed for exactly as long as the operator was rearranging it, which
     // is the worst possible moment. A headerless pane gets [_FloatingPaneChrome]
     // laid OVER its top-left corner instead: same handle, same title, same
@@ -1463,28 +1525,33 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               // headerless pane that is still a control while editing, so
               // nothing may paint over it.
               if (floatingChrome)
-                Positioned(
-                  left: _editingFrameWidth,
-                  top: _editingFrameWidth,
-                  child: _FloatingPaneChrome(
-                    title: widget.titles[group.modules.first] ?? group.modules.first,
-                    moduleId: group.modules.first,
-                    action: widget.editingPaneControls?.call(context, group.modules.first),
-                    onPointerDownAt: (position) => _pressGlobal = position,
-                    onDragStarted: (id) => setState(() {
-                      _dragging = id;
-                      _dragTravel = 0;
-                      _lastDragLocal = null;
-                      final press = _pressGlobal;
-                      _deleteArmed = press == null || !_isOnDeleteTarget(press);
-                    }),
-                    onDragUpdate: _trackDragTravel,
-                    onDragEnded: () => setState(() {
-                      _dragging = null;
-                      _dragTravel = 0;
-                      _lastDragLocal = null;
-                      _deleteArmed = false;
-                    }),
+                // `.fill`, not left/top alone: a Positioned with only two
+                // edges hands its child UNBOUNDED constraints (nothing pins
+                // the other two), so the reflow LayoutBuilder inside
+                // _FloatingPaneChrome could never see the pane's real width
+                // and always chose the wide layout. Align keeps the content
+                // shrink-wrapped within the now-bounded box — it gets LOOSE
+                // constraints from Align, not the tight ones Positioned.fill
+                // itself receives.
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: _editingFrameWidth, top: _editingFrameWidth),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: _FloatingPaneChrome(
+                        title: widget.titles[group.modules.first] ?? group.modules.first,
+                        moduleId: group.modules.first,
+                        action: widget.editingPaneControls?.call(context, group.modules.first),
+                        onDragStarted: (id) {
+                          setState(() => _dragging = id);
+                          _syncDeleteTargetOverlay();
+                        },
+                        onDragEnded: () {
+                          setState(() => _dragging = null);
+                          _syncDeleteTargetOverlay();
+                        },
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -1607,9 +1674,7 @@ class _DockTab extends StatelessWidget {
 
   final VoidCallback onTap;
   final String moduleId;
-  final ValueChanged<Offset> onPointerDownAt;
   final ValueChanged<String> onDragStarted;
-  final ValueChanged<Offset> onDragUpdate;
   final VoidCallback onDragEnded;
 
   const _DockTab({
@@ -1623,9 +1688,7 @@ class _DockTab extends StatelessWidget {
     required this.action,
     required this.onTap,
     required this.moduleId,
-    required this.onPointerDownAt,
     required this.onDragStarted,
-    required this.onDragUpdate,
     required this.onDragEnded,
   });
 
@@ -1835,17 +1898,10 @@ class _DockTab extends StatelessWidget {
     );
     return MouseRegion(
       cursor: SystemMouseCursors.grab,
-      // Pointer-down, not drag start: `onDragStarted` carries no position,
-      // and the delete target's arming rule is about where the press LANDED.
-      // Reading it from the first drag update instead would mean the pointer
-      // has already moved, which is the one thing the rule has to tell apart.
-      child: Listener(
-        onPointerDown: (event) => onPointerDownAt(event.position),
-        child: Draggable<String>(
+      child: Draggable<String>(
         data: moduleId,
         dragAnchorStrategy: pointerDragAnchorStrategy,
         onDragStarted: () => onDragStarted(moduleId),
-        onDragUpdate: (details) => onDragUpdate(details.globalPosition),
         onDragEnd: (_) => onDragEnded(),
         onDraggableCanceled: (_, _) => onDragEnded(),
         feedback: Material(
@@ -1869,7 +1925,6 @@ class _DockTab extends StatelessWidget {
           ),
         ),
         child: framedTab,
-        ),
       ),
     );
   }
@@ -2101,8 +2156,8 @@ class _TabDropSlotState extends State<_TabDropSlot> {
   }
 }
 
-/// Where a pane goes to be thrown away: a circle at the top of the dock,
-/// live only while something is being dragged.
+/// Where a pane goes to be thrown away: a circle over the HOST app's own
+/// window header, live only while something is being dragged.
 ///
 /// Deleting is a DRAG destination rather than a button on the pane, and that
 /// is the whole point of it — a control sitting on every pane is one an
@@ -2190,10 +2245,10 @@ class _EdgeDropTarget extends StatelessWidget {
 /// laid OVER the pane's top-left corner.
 ///
 /// Over, not above. A strip conjured for the duration of an edit costs a whole
-/// chrome height, and a pane at [dockMinPaneHeight] has none to give — so the
+/// chrome height, and a pane at [dockMinPaneExtent] has none to give — so the
 /// arrangement overflowed for precisely as long as it was being rearranged.
 /// Floating it means a pane is the same height edit mode or not, which is also
-/// what lets [dockMinPaneHeight] be ONE number rather than one per state.
+/// what lets [dockMinPaneExtent] be ONE number rather than one per state.
 ///
 /// Sized to its content, so it covers as little of the pane as it can, and
 /// faded out toward its right and bottom edges rather than stopping at a hard
@@ -2203,18 +2258,14 @@ class _FloatingPaneChrome extends StatelessWidget {
   final String title;
   final String moduleId;
   final Widget? action;
-  final ValueChanged<Offset> onPointerDownAt;
   final ValueChanged<String> onDragStarted;
-  final ValueChanged<Offset> onDragUpdate;
   final VoidCallback onDragEnded;
 
   const _FloatingPaneChrome({
     required this.title,
     required this.moduleId,
     required this.action,
-    required this.onPointerDownAt,
     required this.onDragStarted,
-    required this.onDragUpdate,
     required this.onDragEnded,
   });
 
@@ -2233,86 +2284,110 @@ class _FloatingPaneChrome extends StatelessWidget {
     final theme = Theme.of(context);
     final header = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
-    final height = LayoutDensity.chromeHeightOf(context);
+    final unit = LayoutDensity.chromeHeightOf(context);
+    final handle = Icon(MdiIcons.dragVertical, size: _DockTab.editingHandleSize, color: onHeader);
+    final label = Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleSmall?.copyWith(color: onHeader, fontWeight: FontWeight.bold),
+    );
     // Deliberately NOT a _DockTab: a tab is a choice among tabs, and this is
     // the only thing in its pane. Borrowing the tab's frame and fill made it
     // read as a one-tab strip that had come loose — the pane's own outline
     // ([_PaneFramePainter]) is what marks the block now, and this carries just
     // the three controls on the fade.
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(MdiIcons.dragVertical, size: _DockTab.editingHandleSize, color: onHeader),
-        const SizedBox(width: Space.xxs),
-        Flexible(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(color: onHeader, fontWeight: FontWeight.bold),
-          ),
-        ),
-        if (action != null) ...[const SizedBox(width: Space.xs), action!],
-      ],
-    );
-    return IgnorePointer(
-      // Paint-only outside the block itself: the fade extends past the
-      // controls, and a transparent tail that swallowed taps would take them
-      // from the pane underneath.
-      ignoring: false,
-      child: SizedBox(
-        height: height + _fadeExtent,
-        child: DecoratedBox(
-          // Diagonal, which fades BOTH free edges with one gradient — the
-          // block is anchored top-left, so right and bottom are the two sides
-          // that meet the pane's content.
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [header, header, header.withValues(alpha: 0)],
-              stops: const [0.0, 0.5, 1.0],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.only(left: Space.md, right: _runUp + _fadeExtent, bottom: _fadeExtent),
-            child: SizedBox(
-              height: height,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.grab,
-                // Pointer-down, not drag start: `onDragStarted` carries no
-                // position, and the delete target's arming rule is about where
-                // the press LANDED.
-                child: Listener(
-                  onPointerDown: (event) => onPointerDownAt(event.position),
-                  child: Draggable<String>(
-                    data: moduleId,
-                    dragAnchorStrategy: pointerDragAnchorStrategy,
-                    onDragStarted: () => onDragStarted(moduleId),
-                    onDragUpdate: (details) => onDragUpdate(details.globalPosition),
-                    onDragEnd: (_) => onDragEnded(),
-                    onDraggableCanceled: (_, _) => onDragEnded(),
-                    feedback: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(6),
-                      color: theme.colorScheme.primary,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
-                        child: Text(
-                          title,
-                          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary),
+    //
+    // The pane offering this block is, by construction, at LEAST
+    // [dockMinPaneExtent]'s floor — three units in a row, or one wide by
+    // three tall when the pane can't spare the width. Reading its own real
+    // constraint (via the enclosing LayoutBuilder below) rather than
+    // assuming the roomier shape keeps the two in agreement: a floor that
+    // promised vertical stacking must get a block that actually stacks.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= unit * 3;
+        final content = wide
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  handle,
+                  const SizedBox(width: Space.xxs),
+                  Flexible(child: label),
+                  if (action != null) ...[const SizedBox(width: Space.xs), action!],
+                ],
+              )
+            : SizedBox(
+                width: unit,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    handle,
+                    const SizedBox(height: Space.xxs),
+                    label,
+                    if (action != null) ...[const SizedBox(height: Space.xs), action!],
+                  ],
+                ),
+              );
+        final blockWidth = wide ? null : unit + _fadeExtent;
+        final blockHeight = wide ? unit + _fadeExtent : unit * 3 + _fadeExtent;
+        return IgnorePointer(
+          // Paint-only outside the block itself: the fade extends past the
+          // controls, and a transparent tail that swallowed taps would take
+          // them from the pane underneath.
+          ignoring: false,
+          child: SizedBox(
+            width: blockWidth,
+            height: blockHeight,
+            child: DecoratedBox(
+              // Diagonal, which fades BOTH free edges with one gradient — the
+              // block is anchored top-left, so right and bottom are the two
+              // sides that meet the pane's content.
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [header, header, header.withValues(alpha: 0)],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+              child: Padding(
+                padding: wide
+                    ? const EdgeInsets.only(left: Space.md, right: _runUp + _fadeExtent, bottom: _fadeExtent)
+                    : const EdgeInsets.only(left: Space.md, top: Space.md, right: _fadeExtent, bottom: _runUp + _fadeExtent),
+                child: SizedBox(
+                  width: wide ? null : unit,
+                  height: wide ? unit : null,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: Draggable<String>(
+                      data: moduleId,
+                      dragAnchorStrategy: pointerDragAnchorStrategy,
+                      onDragStarted: () => onDragStarted(moduleId),
+                      onDragEnd: (_) => onDragEnded(),
+                      onDraggableCanceled: (_, _) => onDragEnded(),
+                      feedback: Material(
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(6),
+                        color: theme.colorScheme.primary,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
+                          child: Text(
+                            title,
+                            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary),
+                          ),
                         ),
                       ),
+                      childWhenDragging: Opacity(opacity: 0.4, child: content),
+                      child: content,
                     ),
-                    childWhenDragging: Opacity(opacity: 0.4, child: content),
-                    child: content,
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
