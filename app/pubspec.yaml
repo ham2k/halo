@@ -92,6 +92,10 @@ dependencies:
   # That broke every platform in 26.8.1-alpha1+98 (#385 moved it out of here).
   sentry_flutter: ^9.0.0
   flutter_libserialport: ^0.6.0
+  # Android-only plugin (dev.bessems.usbserial), but a pure Dart/platform-
+  # channel API surface, so it compiles fine on every platform — its methods
+  # are only ever called when Platform.isAndroid (serial_transport_io.dart).
+  usb_serial: ^0.5.2
   # Minimal hand-rolled Pusher-protocol client (PusherService) sits on top of
   # this rather than a Pusher SDK package: the official pusher_channels_flutter
   # only covers android/ios/web (no macos/windows/linux — the exact platform

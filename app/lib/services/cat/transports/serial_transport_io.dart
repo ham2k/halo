@@ -1,10 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Serial over libserialport (FFI, same shape as the halo_quickjs plugin).
-// Desktop only for now: Android's USB host stack needs a different package
-// and a runtime permission flow, and iOS has no USB host API at all without
-// MFi.
+// Serial over libserialport (FFI, same shape as the halo_quickjs plugin) on
+// desktop, and over the usb_serial plugin (Android's UsbManager wrapped in a
+// MethodChannel) on Android — libserialport enumerates via Linux
+// /dev/sysfs nodes, which a sandboxed Android app can't read. iOS has no
+// USB host API at all without MFi, so it stays on the (non-functional)
+// libserialport path below like every other non-Android dart:io platform.
 //
 // PLATFORM COST, none of it optional:
 //   - macOS needs `com.apple.security.device.serial` in BOTH entitlement
@@ -12,13 +14,18 @@
 //     entitlements that break spawning — but verify on a SIGNED Release
 //     build, because Debug passes regardless.
 //   - Linux CI needs `libudev-dev` to build libserialport.
+//   - Android needs `<uses-feature android:name="android.hardware.usb.host"
+//     android:required="false" />` in AndroidManifest.xml. usb_serial pops
+//     the runtime USB-permission dialog itself, inside `UsbDevice.create()`.
 
 import 'dart:async';
 import 'dart:ffi' as ffi;
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
+import 'package:usb_serial/usb_serial.dart' as usb;
 
 import '../transport.dart';
 import 'serial_transport_config.dart';
@@ -57,15 +64,59 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 
   static const transportKey = 'serial';
 
+  /// One USB host controller for the whole device, same reasoning as
+  /// `serial_transport_web.dart`'s granted-ports cache being static rather
+  /// than per-instance.
+  static List<SerialPortOption> _cachedAndroidPortOptions = const [];
+  static Map<String, usb.UsbDevice> _androidDevicesByName = const {};
+
   @override
   String get key => transportKey;
 
   @override
-  List<SerialPortOption> get availablePorts => availableSerialPorts();
+  List<SerialPortOption> get availablePorts =>
+      Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts();
+
+  /// Android's device list is a MethodChannel round-trip, unlike
+  /// libserialport's synchronous FFI scan — so it goes through the same
+  /// prefetch-and-cache hook the web transport uses, populated before
+  /// `configElements()` (which reads `availablePorts` synchronously) runs.
+  @override
+  Future<void> prepareConfigElements() async {
+    if (!Platform.isAndroid) return;
+
+    List<usb.UsbDevice> devices;
+    try {
+      devices = await usb.UsbSerial.listDevices();
+    } catch (e) {
+      debugPrint('[cat] android usb device enumeration unavailable: $e');
+      _androidDevicesByName = const {};
+      _cachedAndroidPortOptions = const [];
+      return;
+    }
+
+    final byName = <String, usb.UsbDevice>{};
+    final options = <SerialPortOption>[];
+    for (final device in devices) {
+      byName[device.deviceName] = device;
+      options.add(SerialPortOption(
+        name: device.deviceName,
+        manufacturer: device.manufacturerName,
+        productName: device.productName,
+        serialNumber: device.serial,
+        vendorId: device.vid,
+        productId: device.pid,
+      ));
+    }
+    _androidDevicesByName = byName;
+    _cachedAndroidPortOptions = options;
+  }
 
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
     if (cancel.isCancelled) throw const CatCancelledException();
+
+    if (Platform.isAndroid) return _connectAndroid(target, cancel: cancel);
 
     _quietLibserialport();
 
@@ -120,6 +171,90 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     }
 
     return _SerialConnection(port);
+  }
+
+  Future<EquipmentConnection> _connectAndroid(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
+    final name = target['port'] as String? ?? '';
+    final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
+
+    var device = _androidDevicesByName[name];
+    if (device == null) {
+      // Boot-time auto-reconnect and the panel's own Connect button call
+      // this directly, without ever going through the equipment editor's
+      // prepareConfigElements() — so the cache can still be at its empty
+      // default here. Look the device up fresh rather than assuming gone.
+      try {
+        for (final candidate in await usb.UsbSerial.listDevices()) {
+          if (candidate.deviceName == name) {
+            device = candidate;
+            break;
+          }
+        }
+      } catch (e) {
+        throw SerialPortUnavailable(name, '$e');
+      }
+    }
+    if (device == null) {
+      throw SerialPortUnavailable(name, 'no longer plugged in — pick it again from the port list');
+    }
+
+    // device.create() awaits Android's system USB-permission dialog, which
+    // can block indefinitely on the operator — race it against cancellation
+    // the same way tcp_transport_io.dart races Socket.connect, so a
+    // superseded attempt doesn't leave the port claimed behind a newer one.
+    final createCompleter = Completer<usb.UsbPort?>();
+    unawaited(device.create().then(
+      (port) {
+        if (createCompleter.isCompleted) {
+          unawaited(port?.close().catchError((Object _) => false));
+        } else {
+          createCompleter.complete(port);
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!createCompleter.isCompleted) createCompleter.completeError(error, stackTrace);
+      },
+    ));
+    unawaited(cancel.whenCancelled.then((_) {
+      if (!createCompleter.isCompleted) createCompleter.completeError(const CatCancelledException());
+    }));
+
+    final usb.UsbPort? port;
+    try {
+      port = await createCompleter.future;
+    } on CatCancelledException {
+      rethrow;
+    } catch (e) {
+      throw SerialPortUnavailable(name, '$e');
+    }
+    if (port == null) throw SerialPortUnavailable(name, 'could not open a serial connection to this device');
+
+    final bool opened;
+    try {
+      opened = await port.open();
+    } catch (e) {
+      throw SerialPortUnavailable(name, '$e');
+    }
+    if (!opened) throw SerialPortUnavailable(name, 'permission denied, or the port is already in use');
+
+    try {
+      await port.setPortParameters(baudRate, usb.UsbPort.DATABITS_8, usb.UsbPort.STOPBITS_1, usb.UsbPort.PARITY_NONE);
+      await port.setFlowControl(usb.UsbPort.FLOW_CONTROL_OFF);
+      // RTS and DTR stay OFF — see the RTS-as-PTT note on the desktop
+      // connect path above; the same wiring risk applies here.
+      await port.setDTR(false);
+      await port.setRTS(false);
+    } catch (e) {
+      unawaited(port.close().catchError((Object _) => false));
+      throw SerialPortUnavailable(name, '$e');
+    }
+
+    if (cancel.isCancelled) {
+      unawaited(port.close().catchError((Object _) => false));
+      throw const CatCancelledException();
+    }
+
+    return _AndroidSerialConnection(port);
   }
 }
 
@@ -184,6 +319,62 @@ class _SerialConnection implements EquipmentConnection {
     } catch (e) {
       debugPrint('[cat] serial write failed: $e');
     }
+  }
+
+  @override
+  Future<void> close() async => _markClosed();
+}
+
+class _AndroidSerialConnection implements EquipmentConnection {
+  final usb.UsbPort _port;
+  StreamSubscription<Uint8List>? _sub;
+  final _dataController = StreamController<Uint8List>();
+  final _closedCompleter = Completer<void>();
+  bool _open = true;
+
+  _AndroidSerialConnection(this._port) {
+    _sub = _port.inputStream?.listen(
+      _dataController.add,
+      // A USB-serial adapter unplugged mid-session surfaces here.
+      onError: (Object _) => unawaited(_markClosed()),
+      onDone: () => unawaited(_markClosed()),
+      cancelOnError: true,
+    );
+  }
+
+  /// [closed] fires AFTER the native port is released, not before: `CatService`
+  /// starts its own reconnect the moment [closed] fires, and reopening the
+  /// same still-claimed USB interface before `port.close()`'s MethodChannel
+  /// round-trip lands would lose that race — same reasoning as the web
+  /// transport's `_markClosed`.
+  Future<void> _markClosed() async {
+    if (!_open) return;
+    _open = false;
+    unawaited(_dataController.close());
+    unawaited(_sub?.cancel());
+    try {
+      await _port.close();
+    } catch (e) {
+      // Already gone — an unplugged adapter takes the handle with it.
+      debugPrint('[cat] android usb port teardown: $e');
+    }
+    if (!_closedCompleter.isCompleted) _closedCompleter.complete();
+  }
+
+  @override
+  Stream<Uint8List> get data => _dataController.stream;
+
+  @override
+  Future<void> get closed => _closedCompleter.future;
+
+  @override
+  void send(List<int> bytes) {
+    if (!_open) return;
+    // Drivers write from unguarded poll timers, so a write to a port that
+    // has gone away must not throw into a timer callback.
+    unawaited(_port.write(Uint8List.fromList(bytes)).catchError((Object e) {
+      debugPrint('[cat] android usb write failed: $e');
+    }));
   }
 
   @override

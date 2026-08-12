@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Android: USB-serial radios now show up as CAT connection options"
+
 "132":
   changes:
     - "Home has a navigation sidebar, and its panes rearrange like an operation's — try both"
