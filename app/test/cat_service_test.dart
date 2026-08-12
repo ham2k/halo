@@ -13,9 +13,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -1275,6 +1277,36 @@ void main() {
 
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
       expect(cat.stateFor(node.uuid).error, contains('Connection refused'));
+      // Nothing to translate for an unrecognized cause, so no separate
+      // detail — the row's own text already IS the raw message.
+      expect(cat.stateFor(node.uuid).errorDetail, isNull);
+    });
+
+    test('a timed-out connect shows the translated reason, keeping the raw one for reports', () async {
+      final node = await addRadio(host: 'secret-host.invalid');
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.single.completer.completeError(TimeoutException('no reply from secret-host.invalid'));
+      await connecting;
+
+      final state = cat.stateFor(node.uuid);
+      expect(state.status, EquipmentStatus.error);
+      expect(state.error, t.settings.station.connectFailedTimeout);
+      expect(state.errorDetail, contains('secret-host'));
+    });
+
+    test('an unreachable connect shows the translated reason, keeping the raw one for reports', () async {
+      final node = await addRadio(host: 'secret-host.invalid');
+      const socketError = SocketException('No route to host', osError: OSError('No route to host', 65));
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.single.completer.completeError(socketError);
+      await connecting;
+
+      final state = cat.stateFor(node.uuid);
+      expect(state.status, EquipmentStatus.error);
+      expect(state.error, t.settings.station.connectFailedNetwork);
+      expect(state.errorDetail, socketError.toString());
     });
 
     test('an unusable configuration is refused before any socket is opened', () async {

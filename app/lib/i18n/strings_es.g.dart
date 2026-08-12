@@ -1419,6 +1419,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get radioPass => 'Contraseña de la radio';
 	@override String get radioLoginDescription => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.';
 	@override String get radioUserRequired => 'Se requiere el usuario de control remoto de la radio';
+	@override String get connectFailedNetwork => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.';
+	@override String get connectFailedTimeout => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.';
 	@override late final _Translations$settings$station$models$es models = _Translations$settings$station$models$es._(_root);
 	@override late final _Translations$settings$station$transports$es transports = _Translations$settings$station$transports$es._(_root);
 	@override String get troubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
@@ -2753,6 +2755,8 @@ extension on TranslationsEs {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
+			'settings.station.connectFailedNetwork' => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.',
+			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Genérico',

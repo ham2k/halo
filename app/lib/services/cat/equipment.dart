@@ -144,6 +144,14 @@ class EquipmentState {
   /// Connected, with no way to tell why a connection had failed.
   final String? error;
 
+  /// The connect failure's own words, kept alongside [error] when that field
+  /// has been translated into something friendlier for the row. Only the
+  /// equipment report feature reads this — a developer triaging a report
+  /// needs the address/port/errno a translated message drops, in the
+  /// language the report expects. Null when [error] IS the raw text (no
+  /// translation happened), never a duplicate of it.
+  final String? errorDetail;
+
   final VfoReading vfo;
 
   /// The transceiver's RF output power, in watts, when the driver's protocol
@@ -171,6 +179,7 @@ class EquipmentState {
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
+    this.errorDetail,
     this.vfo = const VfoReading(),
     this.power,
     this.stale = false,
@@ -180,6 +189,7 @@ class EquipmentState {
   EquipmentState copyWith({
     EquipmentStatus? status,
     String? error,
+    String? errorDetail,
     VfoReading? vfo,
     num? power,
     bool? stale,
@@ -191,6 +201,7 @@ class EquipmentState {
         // An explicit null clears it: any transition out of `error` should
         // drop the stale message rather than carry it into the next state.
         error: status == null || status == EquipmentStatus.error ? (error ?? this.error) : null,
+        errorDetail: status == null || status == EquipmentStatus.error ? (errorDetail ?? this.errorDetail) : null,
         vfo: vfo ?? this.vfo,
         power: power ?? this.power,
         stale: stale ?? this.stale,

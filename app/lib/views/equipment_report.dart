@@ -219,7 +219,10 @@ EquipmentReport buildEquipmentReport({
     '- Driver: `${type.driver.key}`',
     ..._configLines(node, type, registry),
     '- Status: ${state.status.name}',
-    if (state.error != null) '- Error: ${state.error}',
+    // The raw exception's own words when the row shows a translated
+    // stand-in instead — a developer triaging this needs the address, port
+    // or errno a friendly message drops.
+    if (state.error != null) '- Error: ${state.errorDetail ?? state.error}',
     // The devMode readout — what a driver worked out about the rig it was
     // talking to (a Kenwood's learned IF offset, say). Meaningless to the
     // operator, which is why it is normally hidden, and exactly what a

@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../i18n/strings.g.dart';
 import '../error_reporting_service.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
@@ -227,6 +228,23 @@ class CatService extends ChangeNotifier {
     if (error is TimeoutException) return 'timeout';
     if (error.runtimeType.toString() == 'SocketException') return 'network';
     return 'other';
+  }
+
+  /// What the equipment row shows for a failed connect. [reason] is
+  /// [_failureReason]'s classification, reused rather than re-derived so
+  /// there's one place deciding what counts as a network or timeout error.
+  /// `'other'` keeps the exception's own words — `error.toString()` — since
+  /// guessing at an unfamiliar cause would be more likely to mislead an
+  /// operator than a raw Dart message already is.
+  static String _friendlyConnectError(String reason, Object error) {
+    switch (reason) {
+      case 'timeout':
+        return t.settings.station.connectFailedTimeout;
+      case 'network':
+        return t.settings.station.connectFailedNetwork;
+      default:
+        return '$error';
+    }
   }
 
   /// The baud rate a failed serial attempt was using — deliberately the ONE
@@ -723,11 +741,19 @@ class CatService extends ChangeNotifier {
       if (attempt != runtime.attemptSeq) return _ConnectOutcome.superseded;
       // Wrapped for the report only: ErrorPolicy needs to know a bare
       // SocketException came from a connect attempt before it can keep a
-      // switched-off rig out of the backend. The state below keeps the
-      // underlying error's own words, which is what the operator reads.
+      // switched-off rig out of the backend. The state below shows a
+      // translated reason for a recognized cause, or the underlying error's
+      // own words otherwise — [errorDetail] keeps those words either way,
+      // for the equipment report a developer reads.
       ErrorReportingService.report(CatConnectFailure(node.typeKey, e), st, context: 'cat:connect');
-      _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: '$e'));
-      _trackFailure(uuid, node.typeKey, _failureReason(e), extra: _baudExtra(config));
+      final reason = _failureReason(e);
+      final friendly = _friendlyConnectError(reason, e);
+      final raw = '$e';
+      _setState(
+        uuid,
+        EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw),
+      );
+      _trackFailure(uuid, node.typeKey, reason, extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
 

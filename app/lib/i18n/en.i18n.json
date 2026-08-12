@@ -888,6 +888,8 @@
       "radioPass": "Radio password",
       "radioLoginDescription": "The radio's own Network → Remote login, not your WiFi password.",
       "radioUserRequired": "The radio's remote-control username is required",
+      "connectFailedNetwork": "Cannot find the radio over the network. Check its address and that it's powered on and reachable.",
+      "connectFailedTimeout": "The radio didn't respond in time. Check it's powered on and reachable.",
       "models": {
         "flexRadio": "FlexRadio (SmartSDR)",
         "ft891": "Yaesu FT-891",

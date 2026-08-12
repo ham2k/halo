@@ -888,6 +888,8 @@
       "radioPass": "Contraseña de la radio",
       "radioLoginDescription": "El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.",
       "radioUserRequired": "Se requiere el usuario de control remoto de la radio",
+      "connectFailedNetwork": "No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.",
+      "connectFailedTimeout": "La radio no respondió a tiempo. Comprueba que esté encendida y accesible.",
       "models": {
         "flexRadio": "FlexRadio (SmartSDR)",
         "ft891": "Yaesu FT-891",

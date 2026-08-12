@@ -2872,6 +2872,12 @@ class Translations$settings$station$en {
 	/// en: 'The radio's remote-control username is required'
 	String get radioUserRequired => 'The radio\'s remote-control username is required';
 
+	/// en: 'Cannot find the radio over the network. Check its address and that it's powered on and reachable.'
+	String get connectFailedNetwork => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.';
+
+	/// en: 'The radio didn't respond in time. Check it's powered on and reachable.'
+	String get connectFailedTimeout => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.';
+
 	late final Translations$settings$station$models$en models = Translations$settings$station$models$en.internal(_root);
 	late final Translations$settings$station$transports$en transports = Translations$settings$station$transports$en.internal(_root);
 
@@ -4870,6 +4876,8 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
+			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
+			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
