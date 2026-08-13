@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"133":
   changes:
     - "Android: USB-serial radios now show up as CAT connection options"
     - "Exports panel offers a separate hunter/chaser log for any hunted references"
