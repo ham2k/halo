@@ -1,3 +1,4 @@
 {
-  "adifForRef": "ADIF for {{program}} {{ref}}"
+  "adifForRef": "ADIF for {{program}} {{ref}}",
+  "adifForHunter": "{{program}} Hunter Log"
 }

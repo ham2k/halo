@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "Android: USB-serial radios now show up as CAT connection options"
+    - "Exports panel offers a separate hunter/chaser log for any hunted references"
 
 "132":
   changes:

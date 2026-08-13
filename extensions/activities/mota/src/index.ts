@@ -16,6 +16,7 @@ import {
   activityScorer,
   contestScorer,
   defineExtension,
+  huntingExportHook,
   referenceActivity,
 } from "@ham2k/halo-extension-sdk"
 import type {
@@ -175,6 +176,13 @@ defineExtension({
     registerHook('export', {
       hook: activityExportHook({ key: 'mota', label: 'MOTA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
       key: 'mota',
+    })
+    // The chaser side: every reference hunted, across the whole log — a
+    // different key so it doesn't collide with the activator registration
+    // above.
+    registerHook('export', {
+      hook: huntingExportHook({ key: 'mota', label: 'MOTA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
+      key: 'mota-hunter',
     })
   },
 })

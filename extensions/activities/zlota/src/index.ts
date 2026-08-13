@@ -16,6 +16,7 @@ import {
   contestScorer,
   defineExtension,
   host,
+  huntingExportHook,
   referenceActivity,
 } from "@ham2k/halo-extension-sdk"
 import type { DataFileDefinition, HookContext, Spot } from "@ham2k/halo-extension-sdk"
@@ -203,6 +204,13 @@ defineExtension({
     registerHook('export', {
       hook: activityExportHook({ key: 'zlota', label: 'ZLOTA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
       key: 'zlota',
+    })
+    // The chaser side: every reference hunted, across the whole log — a
+    // different key so it doesn't collide with the activator registration
+    // above.
+    registerHook('export', {
+      hook: huntingExportHook({ key: 'zlota', label: 'ZLOTA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
+      key: 'zlota-hunter',
     })
   },
 })

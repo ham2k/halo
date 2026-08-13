@@ -15,6 +15,7 @@ import {
   activityScorer,
   contestScorer,
   defineExtension,
+  huntingExportHook,
   referenceActivity,
 } from "@ham2k/halo-extension-sdk"
 import type { DataFileDefinition, HookContext } from "@ham2k/halo-extension-sdk"
@@ -122,6 +123,13 @@ defineExtension({
     registerHook('export', {
       hook: activityExportHook({ key: 'siota', label: 'SiOTA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
       key: 'siota',
+    })
+    // The chaser side: every reference hunted, across the whole log — a
+    // different key so it doesn't collide with the activator registration
+    // above.
+    registerHook('export', {
+      hook: huntingExportHook({ key: 'siota', label: 'SiOTA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
+      key: 'siota-hunter',
     })
   },
 })

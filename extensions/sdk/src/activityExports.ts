@@ -65,8 +65,11 @@ interface ActivationRef {
   name?: string
 }
 
-function activationRefsOf(operation: Record<string, JSONValue>, type: string): ActivationRef[] {
-  const refs = (operation.refs as Record<string, JSONValue>[] | undefined) ?? []
+/// Shared by activator and hunter exports alike — a QSO's hunted refs are the
+/// same shape as an operation's activation refs, just read off a different
+/// container.
+function refsOfType(container: Record<string, JSONValue>, type: string): ActivationRef[] {
+  const refs = (container.refs as Record<string, JSONValue>[] | undefined) ?? []
   return refs
     .filter((r) => r && r.type === type && typeof r.ref === 'string' && r.ref.length > 0)
     .map((r) => ({ ref: r.ref as string, name: typeof r.name === 'string' ? r.name : undefined }))
@@ -108,7 +111,7 @@ export function activityExportHook(rules: ActivityExportRules) {
     ): Promise<ExportOption[]> {
       // No activation, nothing to submit. A pure hunting log is the plain ADIF
       // export's business, not ours.
-      const refs = activationRefsOf(operation, rules.activationType)
+      const refs = refsOfType(operation, rules.activationType)
       const t = tFor(ctx)
 
       return refs.map((ref) => ({
@@ -145,7 +148,7 @@ export function activityExportHook(rules: ActivityExportRules) {
       // and running it and `wanted` is gone. Filtering to nothing below would
       // then produce a perfectly valid ADIF that claims no reference at all,
       // which is worse than failing: it looks submittable and isn't.
-      if (!activationRefsOf(args.operation, rules.activationType).some((r) => r.ref === wanted)) {
+      if (!refsOfType(args.operation, rules.activationType).some((r) => r.ref === wanted)) {
         throw new Error(`${rules.key}: operation has no ${rules.activationType} reference '${wanted}'`)
       }
 
@@ -165,6 +168,123 @@ export function activityExportHook(rules: ActivityExportRules) {
       })
       return {
         filename: filenameFor(args.operation, args.qsos, wanted, args.compactFilenames),
+        mimeType: 'text/plain',
+        content,
+      }
+    },
+  }
+}
+
+export interface HuntingExportRules {
+  /// The extension's key, which namespaces the exportType — 'sota'.
+  key: string
+  /// Short program name for the option label — 'SOTA'.
+  label: string
+  /// The ref type a QSO carries for a reference the other station was at
+  /// ('sota').
+  huntingType: string
+  /// The ref type an operation carries while activating this SAME program
+  /// ('sotaActivation'). An operation activating it already owes an activator
+  /// log for any same-program summit-to-summit contact — offering a hunter
+  /// log alongside it would submit those same contacts twice, so this
+  /// suppresses the option entirely rather than trying to split them.
+  activationType: string
+  icon?: string
+  /// Accent color for the panel row's icon, as `#RRGGBB` (the program's
+  /// `manifest.accentColor`). `activityExportHook` gets this for free — its
+  /// `refType` names an activation type, which IS an operation control the
+  /// panel loads. A hunted ref is never one (it lives on QSOs, and the
+  /// control that names `huntingType` is a `loggingControls` entry, which
+  /// the panel doesn't fetch) — so this hook has no `refType` to borrow a
+  /// color from and has to be told directly.
+  color?: string
+}
+
+/// Shared by the option listing and the generated result, which must agree —
+/// see `filenameFor`'s identical comment above. No `ref` here: unlike an
+/// activator file, which claims one reference, a hunter file spans every
+/// reference the operator worked, so it takes the "for POTA"/"for SOTA" shape
+/// instead of the "at US-1234" one.
+function filenameForHunt(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  activity: string,
+  compact?: boolean,
+): string {
+  return exportFilename({
+    stationCall: operation.stationCall,
+    activity,
+    startAtMillis: startMillisOf(operation, qsos),
+    extension: 'adi',
+    compact,
+  })
+}
+
+/// An `ExportHook` offering one ADIF of every contact that hunted this
+/// program — the chaser/hunter side, as opposed to `activityExportHook`'s
+/// activator side. Register it alongside the activity's other hooks, under
+/// its OWN key so it doesn't collide with the activator registration:
+///
+/// ```ts
+/// registerHook('export', { hook: huntingExportHook(SOTA_HUNTING), key: 'sota-hunter' })
+/// ```
+export function huntingExportHook(rules: HuntingExportRules) {
+  const exportType = `${rules.key}-hunter`
+
+  function huntedQsos(qsos: Record<string, JSONValue>[]): Record<string, JSONValue>[] {
+    return qsos.filter((qso) => refsOfType(qso, rules.huntingType).length > 0)
+  }
+
+  return {
+    async suggestExportOptions(
+      { operation, qsos, compactFilenames }: ExportOptionsRequest,
+      ctx: HookContext,
+    ): Promise<ExportOption[]> {
+      // Already owes an activator log for this program — see the field's doc.
+      if (refsOfType(operation, rules.activationType).length > 0) return []
+      // Nothing hunted, nothing to submit.
+      if (huntedQsos(qsos ?? []).length === 0) return []
+      const t = tFor(ctx)
+
+      return [{
+        exportType,
+        format: 'adif',
+        label: t('adifForHunter', { program: rules.label }),
+        filename: filenameForHunt(operation, qsos ?? [], rules.label, compactFilenames),
+        icon: rules.icon,
+        color: rules.color,
+        selectedByDefault: true,
+        // No `refType`: hunted refs live on QSOs, not on operation segments,
+        // so this isn't the segment-scoped slice `activityExportHook` uses —
+        // it spans the whole log. (See `HuntingExportRules.color` for why the
+        // accent has to be threaded explicitly instead.)
+      }]
+    },
+
+    async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
+      const requested = String(args.exportType ?? '')
+      if (requested !== exportType) {
+        throw new Error(`${rules.key}: unknown export type '${requested}'`)
+      }
+
+      // The option was listed from the operation's refs, but the two are read
+      // at different moments — activate this same program between opening the
+      // Exports panel and running it, and the file would otherwise duplicate
+      // every same-program summit-to-summit contact the activator log also
+      // claims. Same staleness `activityExportHook.generateExport` guards.
+      if (refsOfType(args.operation, rules.activationType).length > 0) {
+        throw new Error(`${rules.key}: operation now activates ${rules.activationType}; hunter export withdrawn`)
+      }
+
+      const content = await adifFor({
+        operation: args.operation,
+        qsos: huntedQsos(args.qsos ?? []),
+        includePrivateData: args.includePrivateData,
+      })
+      return {
+        // The FULL qsos list, matching the option's filename — see
+        // `filenameFor`'s identical comment above.
+        filename: filenameForHunt(args.operation, args.qsos ?? [], rules.label, args.compactFilenames),
         mimeType: 'text/plain',
         content,
       }

@@ -16,6 +16,7 @@
 import {
   activityExportHook,
   defineExtension,
+  huntingExportHook,
   referenceActivity,
 } from "@ham2k/halo-extension-sdk"
 import type {
@@ -158,6 +159,13 @@ defineExtension({
     registerHook('export', {
       hook: activityExportHook({ key: 'gma', label: 'GMA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
       key: 'gma',
+    })
+    // The chaser side: every reference hunted, across the whole log — a
+    // different key so it doesn't collide with the activator registration
+    // above.
+    registerHook('export', {
+      hook: huntingExportHook({ key: 'gma', label: 'GMA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
+      key: 'gma-hunter',
     })
   },
 })

@@ -13,7 +13,7 @@
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -868,6 +868,20 @@ defineExtension({
         icon: 'image-filter-hdr',
       }),
       key: 'sota',
+    })
+    // The chaser side: every summit hunted, across the whole log — a
+    // different key so it doesn't collide with the activator registration
+    // above.
+    registerHook('export', {
+      hook: huntingExportHook({
+        key: 'sota',
+        label: 'SOTA',
+        huntingType: HUNTING_TYPE,
+        activationType: ACTIVATION_TYPE,
+        icon: 'image-filter-hdr',
+        color: manifest.accentColor,
+      }),
+      key: 'sota-hunter',
     })
   },
 })

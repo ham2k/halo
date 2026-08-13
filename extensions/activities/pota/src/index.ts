@@ -14,7 +14,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -631,6 +631,19 @@ defineExtension({
         icon: 'pine-tree',
       }),
       key: 'pota',
+    })
+    // The chaser side: every park hunted, across the whole log — a different
+    // key so it doesn't collide with the activator registration above.
+    registerHook('export', {
+      hook: huntingExportHook({
+        key: 'pota',
+        label: 'POTA',
+        huntingType: HUNTING_TYPE,
+        activationType: ACTIVATION_TYPE,
+        icon: 'pine-tree',
+        color: manifest.accentColor,
+      }),
+      key: 'pota-hunter',
     })
   },
 })

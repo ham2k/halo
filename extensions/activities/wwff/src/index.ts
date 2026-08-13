@@ -15,6 +15,7 @@ import {
   contestScorer,
   defineExtension,
   host,
+  huntingExportHook,
   referenceActivity,
 } from "@ham2k/halo-extension-sdk"
 import type {
@@ -303,6 +304,13 @@ defineExtension({
     registerHook('export', {
       hook: activityExportHook({ key: 'wwff', label: 'WWFF', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
       key: 'wwff',
+    })
+    // The chaser side: every reference hunted, across the whole log — a
+    // different key so it doesn't collide with the activator registration
+    // above.
+    registerHook('export', {
+      hook: huntingExportHook({ key: 'wwff', label: 'WWFF', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
+      key: 'wwff-hunter',
     })
   },
 })
