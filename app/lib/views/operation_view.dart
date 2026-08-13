@@ -41,6 +41,15 @@ import 'operation/spots_panel.dart';
 import '../tools/operation_title.dart';
 import '../i18n/strings.g.dart';
 
+/// How far into the sheet's open/close slide (0 closed, 1 open) the header's
+/// falling-dots handoff to the accept button completes — shared by the
+/// title's leading-gap animation ([_OperationViewState._leadingGapWidth]),
+/// the accept button's own grow-in (headerLeading in _openOperationSheet),
+/// and the dots' fade-out ([_FallingDotsPainter]), which all have to reach
+/// their end state at the same instant for the handoff to read as one
+/// motion rather than three drifting apart.
+const _sheetHandoffThreshold = 0.6;
+
 class OperationView extends StatefulWidget {
   /// The Operation view is the (currently only) layout-customizable view
   /// (docs/design/layouts.md): its panes are dock-arrangeable behind the
@@ -410,19 +419,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// second controller can drift out of sync with the route's own reverse
   /// transition (variable duration/curve) for no benefit.
   ///
-  /// Reaches the target width on the same `progress / 0.6` curve the accept
-  /// button's own grow-in uses (see headerLeading in _openOperationSheet),
-  /// not raw progress — the button finishes growing at progress 0.6 and
-  /// holds there while the sheet keeps sliding to 1.0, so a gap that kept
-  /// widening past that point would still be making room for a button that
-  /// had already stopped growing, and one still catching up on the way in
-  /// (or shrinking early on the way out) reads as the button overlapping
-  /// the title.
+  /// Reaches the target width on the same `progress / _sheetHandoffThreshold`
+  /// curve the accept button's own grow-in uses (see headerLeading in
+  /// _openOperationSheet), not raw progress — the button finishes growing at
+  /// that threshold and holds there while the sheet keeps sliding to 1.0, so
+  /// a gap that kept widening past that point would still be making room for
+  /// a button that had already stopped growing, and one still catching up on
+  /// the way in (or shrinking early on the way out) reads as the button
+  /// overlapping the title.
   double get _leadingGapWidth {
     const dotsWidth = 10.0;
     final progress = _sheetAnimation?.value ?? 0.0;
     if (progress == 0.0) return dotsWidth;
-    final growth = (progress / 0.6).clamp(0.0, 1.0);
+    final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
     final targetWidth = _sheetOkButtonWidth ?? dotsWidth;
     return dotsWidth + (targetWidth - dotsWidth) * growth;
   }
@@ -1028,11 +1037,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           builder: (context) => AnimatedBuilder(
             animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
             // Grows out of the falling dots' top circle instead of popping
-            // in at full size — same 0.6 cutoff the dots fade out by (see
-            // _FallingDotsPainter), so the two read as one handoff rather
-            // than two unrelated motions layered on each other.
+            // in at full size — same _sheetHandoffThreshold cutoff the dots
+            // fade out by (see _FallingDotsPainter), so the two read as one
+            // handoff rather than two unrelated motions layered on each
+            // other.
             builder: (context, child) {
-              final growth = ((_sheetAnimation?.value ?? 1.0) / 0.6).clamp(0.0, 1.0);
+              final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
               return Opacity(
                 opacity: growth,
                 child: Transform.scale(
@@ -1093,26 +1103,21 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        icon: Icon(MdiIcons.cog, semanticLabel: context.t.activitiesView.options),
-                        onPressed: () async {
+                      _operationHeaderActions(
+                        context,
+                        operation: _draftOperation ?? operation,
+                        isTwoPane: isTwoPane,
+                        onOptions: () async {
                           final op = _draftOperation ?? operation;
                           await sheetKey.currentState?.saveAndClose();
                           if (mounted) unawaited(_showOperationOptions(op, includeExport: !isTwoPane));
                         },
+                        onExport: () async {
+                          final op = _draftOperation ?? operation;
+                          await sheetKey.currentState?.saveAndClose();
+                          if (mounted) unawaited(_export(op));
+                        },
                       ),
-                      if (isTwoPane)
-                        Opacity(
-                          opacity: (_draftOperation ?? operation).qsoCount == 0 ? 0.8 : 1.0,
-                          child: IconButton(
-                            icon: Icon(MdiIcons.fileExportOutline, semanticLabel: context.t.activitiesView.exports),
-                            onPressed: () async {
-                              final op = _draftOperation ?? operation;
-                              await sheetKey.currentState?.saveAndClose();
-                              if (mounted) unawaited(_export(op));
-                            },
-                          ),
-                        ),
                       windowsCaptionSpacer(context),
                     ],
                   ),
@@ -1229,14 +1234,44 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Future<void> _export(Operation operation) =>
       showOperationExportPanel(context, services: widget.services, operation: operation);
 
+  /// Options + (wide only) Export — shared between the AppBar's own actions
+  /// and their live copy in headerTrailing (see _openOperationSheet): same
+  /// icons, same dimming, only the press handlers differ (immediate here,
+  /// close-the-sheet-first there).
+  Widget _operationHeaderActions(
+    BuildContext context, {
+    required Operation operation,
+    required bool isTwoPane,
+    required VoidCallback onOptions,
+    required VoidCallback onExport,
+  }) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      IconButton(
+        icon: Icon(MdiIcons.cog, semanticLabel: context.t.activitiesView.options),
+        onPressed: onOptions,
+      ),
+      if (isTwoPane)
+        Opacity(
+          opacity: operation.qsoCount == 0 ? 0.8 : 1.0,
+          child: IconButton(
+            icon: Icon(MdiIcons.fileExportOutline, semanticLabel: context.t.activitiesView.exports),
+            onPressed: onExport,
+          ),
+        ),
+    ],
+  );
+
   /// The operation-level actions that don't belong in the activities list
   /// itself. Share and Archive are declared but inert — the rows are here so
   /// the menu's shape is settled, and they stay disabled until each has an
   /// implementation behind it. Standalone rather than routed through the
-  /// setup sheet: the AppBar's Options button — its only caller — is itself
-  /// unreachable while the sheet is open (nothing behind a modal pane is),
-  /// so [operation] is always the real one, never the sheet's draft, and is
-  /// saved directly (editOperationDetails' own `save: true` default).
+  /// setup sheet: reached both from the AppBar's own Options button (sheet
+  /// closed) and from its live copy in headerTrailing (sheet open — see
+  /// _openOperationSheet), which closes the sheet first and calls this with
+  /// its already-saved draft, so [operation] is always current by the time
+  /// this actually shows. Editing details here saves directly either way
+  /// (editOperationDetails' own `save: true` default), not through a draft.
   ///
   /// [includeExport] adds Export Logs as the top row — narrow layouts drop
   /// the AppBar's own Export icon for lack of room beside the title, so this
@@ -2186,22 +2221,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 // keeps only the gear — there isn't room for a second icon
                 // beside the title — with Export Logs folded into its menu
                 // instead of dropped.
-                if (!editingHeader) ...[
-                  IconButton(
-                    icon: Icon(MdiIcons.cog, semanticLabel: context.t.activitiesView.options),
-                    onPressed: () => unawaited(
+                if (!editingHeader)
+                  _operationHeaderActions(
+                    context,
+                    operation: _draftOperation ?? operation,
+                    isTwoPane: isTwoPane,
+                    onOptions: () => unawaited(
                       _showOperationOptions(_draftOperation ?? operation, includeExport: !isTwoPane),
                     ),
+                    onExport: () => unawaited(_export(_draftOperation ?? operation)),
                   ),
-                  if (isTwoPane)
-                    Opacity(
-                      opacity: (_draftOperation ?? operation).qsoCount == 0 ? 0.8 : 1.0,
-                      child: IconButton(
-                        icon: Icon(MdiIcons.fileExportOutline, semanticLabel: context.t.activitiesView.exports),
-                        onPressed: () => unawaited(_export(_draftOperation ?? operation)),
-                      ),
-                    ),
-                ],
                 if (isTwoPane && _customLayout) ...[
                   // The sheet draws its own copy over this header while it
                   // is up; two would be one too many, and the one down here
@@ -2552,7 +2581,7 @@ class _FallingDotsPainter extends CustomPainter {
     // way; the top dot grows slightly as it goes, reading as a hand-off to
     // the accept button growing in over it (see headerLeading in
     // _openOperationSheet).
-    final opacity = (1.0 - progress / 0.6).clamp(0.0, 1.0);
+    final opacity = (1.0 - progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
     if (opacity <= 0) return;
 
     final paint = Paint()

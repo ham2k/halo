@@ -564,4 +564,25 @@ void main() {
     expect(lookup1, isNull);
     expect(lookup2, isNotNull);
   });
+
+  test('queryLookups treats a literal % or _ in the search term as text, not a SQL wildcard', () async {
+    final lookupRepo = LookupRepository(db);
+    await lookupRepo.insertLookupBatch([
+      LookupRow(category: 'pota', key: 'US-0001', name: '100% Park', updated: 1),
+      LookupRow(category: 'pota', key: 'US-0002', name: '100X Park', updated: 1),
+      LookupRow(category: 'pota', key: 'US-0003', name: 'A_B Reserve', updated: 1),
+      LookupRow(category: 'pota', key: 'US-0004', name: 'AZB Reserve', updated: 1),
+    ]);
+
+    // An unescaped '%' matches zero-or-more of anything, so 'Park' would
+    // wrongly also match "100X Park" here — pinning that only the row with
+    // the LITERAL '%' comes back.
+    final percentMatch = await lookupRepo.queryLookups('pota', '100%');
+    expect(percentMatch.map((r) => r.key), ['US-0001']);
+
+    // An unescaped '_' matches exactly one of anything, so it would wrongly
+    // also match "AZB Reserve" here.
+    final underscoreMatch = await lookupRepo.queryLookups('pota', 'A_B');
+    expect(underscoreMatch.map((r) => r.key), ['US-0003']);
+  });
 }

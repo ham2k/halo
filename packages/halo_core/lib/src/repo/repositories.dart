@@ -1013,6 +1013,11 @@ class QsosRepository {
   }
 }
 
+/// Escapes SQLite LIKE metacharacters (`%`, `_`) in [input] so a search term
+/// containing either is matched literally rather than as a wildcard —
+/// pass `escapeChar: r'\'` on every `.like()` built from the result.
+String _escapeLikePattern(String input) => input.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
+
 class LookupRepository {
   final HaLoDatabase db;
 
@@ -1070,13 +1075,19 @@ class LookupRepository {
   /// Key-prefix and name-prefix hits are also ordered first, for the rest —
   /// the ones a [relevanceForMatch]-style ranking would call most relevant —
   /// so those are what a full 100 rows displaces last.
+  ///
+  /// [query] is escaped via [_escapeLikePattern] before it's built into any
+  /// pattern — a literal `%` or `_` in a searched name (e.g. a park with one
+  /// in its title) would otherwise be read as a SQL wildcard instead of the
+  /// character it is.
   Future<List<LookupRow>> queryLookups(String category, String query, {String? subCategory}) async {
-    final keyPrefixMatch = db.lookups.key.like('$query%');
-    final namePrefixMatch = db.lookups.name.like('$query%');
+    final escaped = _escapeLikePattern(query);
+    final keyPrefixMatch = db.lookups.key.like('$escaped%', escapeChar: r'\');
+    final namePrefixMatch = db.lookups.name.like('$escaped%', escapeChar: r'\');
     return await (db.select(db.lookups)
           ..where((l) =>
               l.category.equals(category) &
-              (l.key.like('%$query%') | l.name.like('%$query%')) &
+              (l.key.like('%$escaped%', escapeChar: r'\') | l.name.like('%$escaped%', escapeChar: r'\')) &
               (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)))
           ..orderBy([
             (l) => OrderingTerm(expression: keyPrefixMatch, mode: OrderingMode.desc),

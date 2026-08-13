@@ -397,6 +397,17 @@ class OperationSheetState extends State<OperationSheet> {
 
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
+
+  /// Flips only when [_searchController]'s text crosses empty/non-empty —
+  /// not on every keystroke once it's non-empty, and not on a caret move at
+  /// all — so the clear button's AnimatedBuilder rebuilds the search field
+  /// only when whether the button shows actually changes, not on every
+  /// notification the controller fires.
+  late final ValueNotifier<bool> _searchIsEmpty;
+  void _onSearchControllerChanged() {
+    final isEmpty = _searchController.text.isEmpty;
+    if (isEmpty != _searchIsEmpty.value) _searchIsEmpty.value = isEmpty;
+  }
   Timer? _debounce;
   List<Map<String, dynamic>> _suggestions = const [];
   bool _loadingSuggestions = true;
@@ -448,7 +459,9 @@ class OperationSheetState extends State<OperationSheet> {
     super.initState();
     _operation = widget.operation;
     _loadControls();
-    
+    _searchIsEmpty = ValueNotifier(_searchController.text.isEmpty);
+    _searchController.addListener(_onSearchControllerChanged);
+
     final hidden = widget.services.settings.prefs.getBool('activitiesAllOptionsHidden') ?? false;
     _allOptionsExpanded = !hidden;
     _allOptionsFullyOpened = false;
@@ -463,6 +476,8 @@ class OperationSheetState extends State<OperationSheet> {
   void dispose() {
     _debounce?.cancel();
     _flashTimer?.cancel();
+    _searchController.removeListener(_onSearchControllerChanged);
+    _searchIsEmpty.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     if (_watchingLocation) {
@@ -1957,13 +1972,17 @@ class OperationSheetState extends State<OperationSheet> {
                           child: Row(
                             children: [
                         Expanded(
-                          // Listens to the controller directly, not the outer
-                          // rebuild cycle: _onSearchChanged only sets state
-                          // after its 400ms debounce fires, which would leave
-                          // the clear button lagging a beat behind every
-                          // keystroke instead of tracking the field live.
+                          // Listens to _searchIsEmpty, not the controller
+                          // directly nor the outer rebuild cycle:
+                          // _onSearchChanged only sets state after its 400ms
+                          // debounce fires, which would leave the clear
+                          // button lagging a beat behind every keystroke
+                          // instead of tracking the field live — and
+                          // _searchIsEmpty only flips (so only rebuilds)
+                          // when the button's own presence actually changes,
+                          // not on every keystroke or caret move.
                           child: AnimatedBuilder(
-                            animation: _searchController,
+                            animation: _searchIsEmpty,
                             builder: (context, _) => TextField(
                               selectAllOnFocus: false,
                               controller: _searchController,
@@ -1971,7 +1990,7 @@ class OperationSheetState extends State<OperationSheet> {
                               decoration: InputDecoration(
                                 hintText: t.searchHint,
                                 prefixIcon: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
-                                suffixIcon: _searchController.text.isEmpty
+                                suffixIcon: _searchIsEmpty.value
                                     ? null
                                     : IconButton(
                                         icon: Icon(

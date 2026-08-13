@@ -528,6 +528,32 @@ class _TopModalPaneScaffold extends StatelessWidget {
     child: Builder(builder: route.builder),
   );
 
+  /// Shared shape for [TopModalPaneRoute.headerTrailing] and
+  /// [TopModalPaneRoute.headerLeading] — same visibility guard and vertical
+  /// band, differing only in which edge they pin to, what alignment they
+  /// use within it, and what they hold. Null (rather than a hidden
+  /// `Positioned`) when not shown, so a null-aware spread in the caller's
+  /// `Stack` drops it entirely — the same absence [headerTrailing]/
+  /// [headerLeading] being null already produces.
+  Widget? _headerOverlay({
+    required bool visible,
+    required Widget? content,
+    required double top,
+    required double height,
+    double? left,
+    double? right,
+    required AlignmentDirectional alignment,
+  }) {
+    if (!visible || content == null) return null;
+    return Positioned(
+      top: top,
+      left: left,
+      right: right,
+      height: height,
+      child: Align(alignment: alignment, child: content),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -754,14 +780,15 @@ class _TopModalPaneScaffold extends StatelessWidget {
             // it in this list — the header's dismiss gesture included — is
             // behind it for hit testing. See [TopModalPaneRoute.headerTrailing]
             // for why the view cannot host these controls itself.
-            if ((!isNarrow || route.keepHeaderVisible) && route.headerTrailing != null)
-              Positioned(
-                top: MediaQuery.of(context).padding.top,
-                left: 0,
-                right: 0,
-                height: headerHeight,
-                child: Align(alignment: AlignmentDirectional.centerEnd, child: route.headerTrailing!),
-              ),
+            ?_headerOverlay(
+              visible: !isNarrow || route.keepHeaderVisible,
+              content: route.headerTrailing,
+              top: MediaQuery.of(context).padding.top,
+              height: headerHeight,
+              left: 0,
+              right: 0,
+              alignment: AlignmentDirectional.centerEnd,
+            ),
             // Same reasoning as headerTrailing above, positioned at the same
             // leftInset the card itself uses instead of the trailing edge —
             // see [TopModalPaneRoute.headerLeading]. The card's own nudged
@@ -771,13 +798,14 @@ class _TopModalPaneScaffold extends StatelessWidget {
             // raw [TopModalPaneRoute.leftInset] the caller measured against
             // the view's own header, which is laid out the same way on
             // narrow as it is on wide.
-            if ((!isNarrow || route.keepHeaderVisible) && route.headerLeading != null)
-              Positioned(
-                top: MediaQuery.of(context).padding.top,
-                left: isNarrow ? (route.leftInset ?? 0) : (leftInset ?? 0),
-                height: headerHeight,
-                child: Align(alignment: AlignmentDirectional.centerStart, child: route.headerLeading!),
-              ),
+            ?_headerOverlay(
+              visible: !isNarrow || route.keepHeaderVisible,
+              content: route.headerLeading,
+              top: MediaQuery.of(context).padding.top,
+              height: headerHeight,
+              left: isNarrow ? (route.leftInset ?? 0) : (leftInset ?? 0),
+              alignment: AlignmentDirectional.centerStart,
+            ),
           ],
         ),
       ),
