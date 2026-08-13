@@ -1,6 +1,7 @@
 # Node
 node_modules/
 .wrangler/
+.orca/
 
 # Flutter / Dart
 .dart_tool/
