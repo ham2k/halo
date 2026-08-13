@@ -43,6 +43,8 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   final _stateFocus = FocusNode();
   final _countyFocus = FocusNode();
 
+  static final _twoLetterState = RegExp(r'^[A-Za-z]{2}$');
+
   String? _gridSource;
 
   List<Map<String, dynamic>> _controls = const [];
@@ -60,6 +62,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     super.initState();
     _gridSource = widget.operation.data['gridSource'] as String?;
     _gridController.addListener(_onGridTextChanged);
+    _stateFocus.addListener(_onStateFocusChange);
     _loadControls();
     widget.services.location.start();
     widget.services.location.addListener(_onLocationChanged);
@@ -95,6 +98,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   @override
   void dispose() {
     _gridController.removeListener(_onGridTextChanged);
+    _stateFocus.removeListener(_onStateFocusChange);
     widget.services.location.removeListener(_onLocationChanged);
     widget.services.location.stop();
     _gridController.dispose();
@@ -122,6 +126,23 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     }
   }
 
+  /// A 2-letter entry reads as an abbreviation ("CA"), not a proper noun
+  /// with an oddly-capitalized second letter ("Ca") — full names ("New
+  /// Brunswick") are left to whatever case the operator typed, since
+  /// [CapitalizeFirstLetterTextFormatter] already handled the first letter
+  /// live.
+  String _normalizeState(String text) => _twoLetterState.hasMatch(text) ? text.toUpperCase() : text;
+
+  /// Only on blur, not as-typed, so a state that's on its way to becoming a
+  /// longer word doesn't get force-capitalized mid-keystroke. `_save` applies
+  /// [_normalizeState] itself too — `onSubmitted` can reach it before this
+  /// listener's own blur has fired, and the field must read correctly either
+  /// way, not depend on which happened first.
+  void _onStateFocusChange() {
+    if (_stateFocus.hasFocus) return;
+    _stateController.text = _normalizeState(_stateController.text.trim());
+  }
+
   void _adoptGrid(String grid, String source) {
     setState(() {
       _gridSource = source;
@@ -142,8 +163,17 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   bool _gridRejected = false;
 
   void _save() {
-    final grid = _gridController.text.trim();
-    final state = _stateController.text.trim();
+    // GridCaseTextFormatter already keeps the field in the conventional
+    // mixed case (FN31pr) live; normalizeGrid here is a safety net for
+    // anything that reached the controller some other way (pasted text
+    // lands through the formatter too, but this stays cheap and correct
+    // either way). It returns anything that isn't well-formed unchanged, so
+    // this doesn't interfere with the rejection check below.
+    final grid = normalizeGrid(_gridController.text.trim());
+    // Not just _onStateFocusChange's job: onSubmitted (Enter in the field
+    // itself) reaches here before that blur listener necessarily has,
+    // and this must be correct regardless of which fires first.
+    final state = _normalizeState(_stateController.text.trim());
     final county = _countyController.text.trim();
 
     // Nothing downstream validates this: the operation would carry a grid that
@@ -193,6 +223,9 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               selectAllOnFocus: false,
               controller: _gridController,
               focusNode: _gridFocus,
+              // Field pair/square uppercase, subsquare-on lowercase, live —
+              // see GridCaseTextFormatter.
+              inputFormatters: const [GridCaseTextFormatter()],
               decoration: poloFieldDecoration(
                 context,
                 t.gridSquare,
@@ -247,6 +280,9 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                   selectAllOnFocus: false,
                   controller: _stateController,
                   focusNode: _stateFocus,
+                  // A 2-letter abbreviation goes fully uppercase on blur —
+                  // see _onStateFocusChange.
+                  inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
                   decoration: poloFieldDecoration(context, t.stateOrProvince),
                   onSubmitted: (_) => _save(),
                 ),
@@ -255,6 +291,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                   selectAllOnFocus: false,
                   controller: _countyController,
                   focusNode: _countyFocus,
+                  inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
                   decoration: poloFieldDecoration(context, t.county),
                   onSubmitted: (_) => _save(),
                 ),

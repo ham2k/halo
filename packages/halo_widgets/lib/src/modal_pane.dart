@@ -362,11 +362,15 @@ Future<T?> showTopModalPane<T>(
   EdgeInsetsGeometry? contentPadding,
   VoidCallback? onDismiss,
   Widget? headerTrailing,
+  Widget? headerLeading,
+  bool showHeader = true,
+  bool keepHeaderVisible = false,
 }) {
   assert(leftInset == null || rightInset == null, 'a top pane aligns to one edge or the other, not both');
   final route = TopModalPaneRoute<T>(
     maxWidth: maxWidth,
     headerTrailing: headerTrailing,
+    headerLeading: headerLeading,
     contentPadding: contentPadding,
     builder: builder,
     title: title,
@@ -378,6 +382,8 @@ Future<T?> showTopModalPane<T>(
     leftInset: leftInset,
     rightInset: rightInset,
     onDismiss: onDismiss,
+    showHeader: showHeader,
+    keepHeaderVisible: keepHeaderVisible,
   );
   final result = Navigator.of(context).push(route);
   // After push: the route's animation is created by install(), which the
@@ -436,6 +442,33 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// is no strip to put anything in.
   final Widget? headerTrailing;
 
+  /// Same idea as [headerTrailing] — reachable above the dismiss layer,
+  /// wide layouts only — but positioned at [leftInset] instead of the
+  /// trailing edge, for a control that belongs where the pane's own leading
+  /// button would otherwise sit (see [showHeader]: a pane with no header of
+  /// its own has no leading button to draw there itself). Left unaligned
+  /// (flush to the screen edge) when [leftInset] is null.
+  final Widget? headerLeading;
+
+  /// False removes the [HaloDialogHeader] band entirely — no leading, title,
+  /// or trailing, and no height reserved for them — for a pane whose own
+  /// accept/dismiss controls live in the view's header instead (reached
+  /// through [headerTrailing] there, since the header behind the pane isn't
+  /// otherwise tappable — see [headerTrailing]'s own doc). [leading],
+  /// [title], and [trailing] are ignored when this is false; dismissal still
+  /// works via the barrier, Escape, and [onDismiss].
+  final bool showHeader;
+
+  /// True keeps the view's own header uncovered on a narrow layout too,
+  /// the way a wide one always does — the pane starts below it instead of
+  /// swallowing the whole screen, and [headerLeading]/[headerTrailing]
+  /// draw there regardless of [ShirtSize]. For a pane whose header
+  /// controls (leading and/or trailing) live entirely in the view behind
+  /// it rather than in its own [showHeader] band — a narrow pane with
+  /// nowhere else to put them still needs the default full-screen
+  /// coverage, so this defaults to false.
+  final bool keepHeaderVisible;
+
   final _bodyKey = GlobalKey();
 
   TopModalPaneRoute({
@@ -452,6 +485,9 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.contentPadding,
     this.onDismiss,
     this.headerTrailing,
+    this.headerLeading,
+    this.showHeader = true,
+    this.keepHeaderVisible = false,
   }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
@@ -503,7 +539,11 @@ class _TopModalPaneScaffold extends StatelessWidget {
     // the status bar, and only the device's bottom safe area (home
     // indicator) is cleared outside.
     final isNarrow = !ShirtSize.of(context).isTwoPane;
-    final topOffset = isNarrow ? 0.0 : MediaQuery.of(context).padding.top + headerHeight;
+    // keepHeaderVisible reserves the same clearance a wide layout always
+    // gets, rather than the full-screen 0 a narrow one otherwise starts
+    // at — see [TopModalPaneRoute.keepHeaderVisible].
+    final topOffset =
+        (isNarrow && !route.keepHeaderVisible) ? 0.0 : MediaQuery.of(context).padding.top + headerHeight;
     // How far left of [TopModalPaneRoute.leftInset] the sheet's edge sits, so
     // that the caller's header control lands centered over the sheet's own
     // leading button: the caller centers its control's content 12px in, and
@@ -653,12 +693,14 @@ class _TopModalPaneScaffold extends StatelessWidget {
                           borderRadius:
                               isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
                           clipBehavior: Clip.antiAlias,
-                          // Narrow only: the sheet starts at the screen's
-                          // very top, so its first row must clear the status
-                          // bar itself. Wide starts below the app's header —
-                          // a SafeArea there would double-inset.
+                          // Narrow only, and only when the header behind it
+                          // isn't being kept visible: the sheet starts at the
+                          // screen's very top then, so its first row must
+                          // clear the status bar itself. Wide (or
+                          // keepHeaderVisible) starts below the app's header
+                          // instead — a SafeArea there would double-inset.
                           child: SafeArea(
-                            top: isNarrow,
+                            top: isNarrow && !route.keepHeaderVisible,
                             bottom: false,
                             left: false,
                             right: false,
@@ -666,14 +708,15 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  HaloDialogHeader(
-                                    leading: route.leading,
-                                    title: route.title,
-                                    trailing: route.trailing ?? IconButton(
-                                      icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
-                                      onPressed: () => Navigator.of(context).maybePop(),
+                                  if (route.showHeader)
+                                    HaloDialogHeader(
+                                      leading: route.leading,
+                                      title: route.title,
+                                      trailing: route.trailing ?? IconButton(
+                                        icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
+                                        onPressed: () => Navigator.of(context).maybePop(),
+                                      ),
                                     ),
-                                  ),
                                   if (route.scrollable)
                                     Flexible(
                                       child: Material(
@@ -711,13 +754,29 @@ class _TopModalPaneScaffold extends StatelessWidget {
             // it in this list — the header's dismiss gesture included — is
             // behind it for hit testing. See [TopModalPaneRoute.headerTrailing]
             // for why the view cannot host these controls itself.
-            if (!isNarrow && route.headerTrailing != null)
+            if ((!isNarrow || route.keepHeaderVisible) && route.headerTrailing != null)
               Positioned(
                 top: MediaQuery.of(context).padding.top,
                 left: 0,
                 right: 0,
                 height: headerHeight,
                 child: Align(alignment: AlignmentDirectional.centerEnd, child: route.headerTrailing!),
+              ),
+            // Same reasoning as headerTrailing above, positioned at the same
+            // leftInset the card itself uses instead of the trailing edge —
+            // see [TopModalPaneRoute.headerLeading]. The card's own nudged
+            // `leftInset` only means anything for the card narrow forces to
+            // null (sheetWidth is full-bleed there regardless) — a narrow
+            // keepHeaderVisible pane instead lines this control up with the
+            // raw [TopModalPaneRoute.leftInset] the caller measured against
+            // the view's own header, which is laid out the same way on
+            // narrow as it is on wide.
+            if ((!isNarrow || route.keepHeaderVisible) && route.headerLeading != null)
+              Positioned(
+                top: MediaQuery.of(context).padding.top,
+                left: isNarrow ? (route.leftInset ?? 0) : (leftInset ?? 0),
+                height: headerHeight,
+                child: Align(alignment: AlignmentDirectional.centerStart, child: route.headerLeading!),
               ),
           ],
         ),

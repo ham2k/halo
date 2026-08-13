@@ -356,26 +356,18 @@ class OperationSheet extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
   final ValueChanged<Operation>? onOperationChanged;
-  final VoidCallback? onDelete;
 
   /// Opens the operation-details editor (callsign, title, notes) — owned by
   /// the presenting screen, which routes the result back in through
   /// [OperationSheetState.updateOperation].
   final VoidCallback? onEditDetails;
 
-  /// Starts an ADIF import into this operation. Owned by the presenting
-  /// screen, which also wires the drag-and-drop route to the same flow so the
-  /// two ways in cannot behave differently.
-  final VoidCallback? onImportAdif;
-
   const OperationSheet({
     super.key,
     required this.services,
     required this.operation,
     this.onOperationChanged,
-    this.onDelete,
     this.onEditDetails,
-    this.onImportAdif,
   });
 
   @override
@@ -747,6 +739,13 @@ class OperationSheetState extends State<OperationSheet> {
     _debounce = Timer(const Duration(milliseconds: 400), () => _search(text));
   }
 
+  void _clearSearch() {
+    _searchController.clear();
+    _debounce?.cancel();
+    unawaited(_search(''));
+    _searchFocusNode.requestFocus();
+  }
+
   /// The extension keys the loaded activity controls belong to — what a
   /// `key:` prefix in the search box is checked against.
   Set<String> get _activityKeys => _controls
@@ -777,7 +776,17 @@ class OperationSheetState extends State<OperationSheet> {
         _suggestions = results.suggestions;
         _searchFailed = results.allSourcesFailed;
         _suggestionsAreSearchResults = trimmed.isNotEmpty;
-        _disabledMatches = _disabledExtensionsMatching(term);
+        // A recognized scope (`query.activityKey` set) already names a KNOWN,
+        // enabled extension — the box's fuzzy search text still reaches
+        // `_disabledExtensionsMatching` otherwise, and an unrelated disabled
+        // extension whose keywords happen to mention this one's name (`pota:`
+        // matching State Parks' "similar to POTA" blurb, say) would offer to
+        // enable it above the very extension the operator just scoped to.
+        // Unscoped text still needs this: it's what catches a DISABLED
+        // extension's own key, which `ActivitySearchQuery.parse` can never
+        // recognize as a scope (a switched-off extension loads no controls,
+        // so its key never reaches `knownKeys`).
+        _disabledMatches = query.activityKey == null ? _disabledExtensionsMatching(term) : const [];
         // The enable row lives in the Activity Types section, which the
         // operator may have collapsed — so a search that finds only a
         // switched-off extension would otherwise answer with nothing at all.
@@ -810,77 +819,6 @@ class OperationSheetState extends State<OperationSheet> {
           control: controlForRefType(_controls, type),
         ),
       );
-
-  /// The operation-level actions that don't belong in the activities list
-  /// itself. Share and Archive are declared but inert — the rows are here so
-  /// the menu's shape is settled, and they stay disabled until each has an
-  /// implementation behind it. Public: the sheet's Options button lives in
-  /// the modal route's own header, which reaches in through the sheet key.
-  Future<void> showOptions() async {
-    final t = context.t.activitiesView;
-    final theme = Theme.of(context);
-    await showHaloDialog<void>(
-      context: context,
-      builder: (dialogContext) => HaloDialog(
-        title: Text(t.optionsTitle),
-        // The rows are the dialog's whole content, so they get the header's
-        // horizontal inset from the ListTiles themselves rather than a
-        // content padding that would double it.
-        contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(MdiIcons.noteEditOutline),
-              title: Text(t.operationDetails),
-              // Same editor the pills open — the menu closes first so the
-              // details dialog isn't stacked on top of it.
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                widget.onEditDetails?.call();
-              },
-            ),
-            ListTile(
-              leading: const Icon(MdiIcons.fileImportOutline),
-              title: Text(t.importAdif),
-              // The menu closes first: the picker is a platform sheet, and the
-              // import's own summary dialog belongs to the screen underneath
-              // rather than stacked on a menu that is going away.
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                widget.onImportAdif?.call();
-              },
-            ),
-            ListTile(
-              enabled: false,
-              leading: const Icon(MdiIcons.shareVariant),
-              title: Text(t.share),
-            ),
-            ListTile(
-              enabled: false,
-              leading: Icon(MdiIcons.archiveOutline),
-              title: Text(t.archive),
-            ),
-            ListTile(
-              leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
-              title: Text(t.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
-              // The sheet closes with the menu: deleting is about the
-              // operation as a whole, and its confirmation belongs to the
-              // screen underneath, not to a pane over a row that's going away.
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                widget.onDelete?.call();
-              },
-            ),
-          ],
-        ),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(context.t.common.done),
-        ),
-      ),
-    );
-  }
 
   Future<void> _addSuggestion(Map<String, dynamic> suggestion) async {
     final type = suggestion['type'] as String?;
@@ -1324,7 +1262,13 @@ class OperationSheetState extends State<OperationSheet> {
     if (_searchController.text.trim().isNotEmpty ||
         _hasOperationGrid ||
         widget.services.location.position != null) {
-      return _emptyStatePadding(child: _emptyStateFromMessage(theme, t.noSuggestions));
+      return _emptyStatePadding(
+        child: _emptyStateMessage(
+          theme,
+          title: t.noSuggestions,
+          body: '${t.noSuggestionsHint}\n${t.noSuggestionsExample}',
+        ),
+      );
     }
 
     // Denied permission and a location the device can't produce are named
@@ -2013,25 +1957,43 @@ class OperationSheetState extends State<OperationSheet> {
                           child: Row(
                             children: [
                         Expanded(
-                          child: TextField(
-                            selectAllOnFocus: false,
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            decoration: InputDecoration(
-                              hintText: t.searchHint,
-                              prefixIcon: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
-                              filled: true,
-                              // Paler than the band it sits on, so the field
-                              // reads as a well rather than blending in.
-                              fillColor: theme.colorScheme.surface,
-                              border: searchBorder,
-                              // Contrast is against the field's own `surface`
-                              // fill, not the accordion band around it — the
-                              // indicator is drawn over the well.
-                              focusedBorder: haloFocusedBorder(searchBorder, context),
-                              isDense: true,
+                          // Listens to the controller directly, not the outer
+                          // rebuild cycle: _onSearchChanged only sets state
+                          // after its 400ms debounce fires, which would leave
+                          // the clear button lagging a beat behind every
+                          // keystroke instead of tracking the field live.
+                          child: AnimatedBuilder(
+                            animation: _searchController,
+                            builder: (context, _) => TextField(
+                              selectAllOnFocus: false,
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              decoration: InputDecoration(
+                                hintText: t.searchHint,
+                                prefixIcon: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
+                                suffixIcon: _searchController.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        icon: Icon(
+                                          MdiIcons.close,
+                                          color: onAccordionColor.withValues(alpha: 0.6),
+                                          semanticLabel: context.t.common.clear,
+                                        ),
+                                        onPressed: _clearSearch,
+                                      ),
+                                filled: true,
+                                // Paler than the band it sits on, so the field
+                                // reads as a well rather than blending in.
+                                fillColor: theme.colorScheme.surface,
+                                border: searchBorder,
+                                // Contrast is against the field's own `surface`
+                                // fill, not the accordion band around it — the
+                                // indicator is drawn over the well.
+                                focusedBorder: haloFocusedBorder(searchBorder, context),
+                                isDense: true,
+                              ),
+                              onChanged: _onSearchChanged,
                             ),
-                            onChanged: _onSearchChanged,
                           ),
                         ),
                         Padding(

@@ -81,6 +81,7 @@ class _Translations$common$es extends Translations$common$en {
 
 	// Translations
 	@override String get save => 'Guardar';
+	@override String get ok => 'OK';
 	@override String get cancel => 'Cancelar';
 	@override String get delete => 'Eliminar';
 	@override String get create => 'Crear';
@@ -249,8 +250,6 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 
 	// Translations
 	@override String get title => 'Actividades';
-	@override String get sheetTitle => 'Configuración de la Operación';
-	@override String get sheetTitleShort => 'Configuración';
 	@override String get activitiesCountZero => 'Sin actividades seleccionadas';
 	@override String get activitiesCountOne => '1 actividad';
 	@override String activitiesCountOther({required Object count}) => '${count} actividades';
@@ -266,7 +265,9 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get invalidReference => 'Referencia no válida';
 	@override String get duplicateReference => 'Ya añadida';
 	@override String get searchHint => 'Busca por nombre, referencia o cualquier otra cosa…';
-	@override String get noSuggestions => 'Sin sugerencias';
+	@override String get noSuggestions => 'Sin coincidencias';
+	@override String get noSuggestionsHint => 'Busca por nombre o número de referencia arriba';
+	@override String get noSuggestionsExample => '(por ejemplo \'trail\' o \'4556\')';
 	@override String get allOptions => 'Tipos de actividad';
 	@override String get determiningLocation => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas';
 	@override String get locationUnavailableTitle => 'Datos de ubicación no disponibles';
@@ -282,6 +283,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get searchUnavailableReason => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.';
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
 	@override String get exports => 'Exportar';
+	@override String get exportLogs => 'Exportar registros';
 	@override String get options => 'Opciones';
 	@override String get optionsTitle => 'Opciones de la operación';
 	@override String get operationDetails => 'Detalles de la Operación';
@@ -296,7 +298,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get controlsUnavailableTitle => 'Controles de actividad no disponibles';
 	@override String get controlsUnavailableReason => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.';
 	@override String get controlsUnavailableRetry => 'Reintentar';
-	@override String get onlyDisabledMatches => 'Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo.';
+	@override String get onlyDisabledMatches => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.';
 }
 
 // Path: loggingControls
@@ -2052,6 +2054,7 @@ extension on TranslationsEs {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
 			'common.save' => 'Guardar',
+			'common.ok' => 'OK',
 			'common.cancel' => 'Cancelar',
 			'common.delete' => 'Eliminar',
 			'common.create' => 'Crear',
@@ -2332,8 +2335,6 @@ extension on TranslationsEs {
 			'map.zoomIn' => 'Acercar',
 			'map.zoomOut' => 'Alejar',
 			'activitiesView.title' => 'Actividades',
-			'activitiesView.sheetTitle' => 'Configuración de la Operación',
-			'activitiesView.sheetTitleShort' => 'Configuración',
 			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
 			'activitiesView.activitiesCountOne' => '1 actividad',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
@@ -2349,7 +2350,9 @@ extension on TranslationsEs {
 			'activitiesView.invalidReference' => 'Referencia no válida',
 			'activitiesView.duplicateReference' => 'Ya añadida',
 			'activitiesView.searchHint' => 'Busca por nombre, referencia o cualquier otra cosa…',
-			'activitiesView.noSuggestions' => 'Sin sugerencias',
+			'activitiesView.noSuggestions' => 'Sin coincidencias',
+			'activitiesView.noSuggestionsHint' => 'Busca por nombre o número de referencia arriba',
+			'activitiesView.noSuggestionsExample' => '(por ejemplo \'trail\' o \'4556\')',
 			'activitiesView.allOptions' => 'Tipos de actividad',
 			'activitiesView.determiningLocation' => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas',
 			'activitiesView.locationUnavailableTitle' => 'Datos de ubicación no disponibles',
@@ -2365,6 +2368,7 @@ extension on TranslationsEs {
 			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
+			'activitiesView.exportLogs' => 'Exportar registros',
 			'activitiesView.options' => 'Opciones',
 			'activitiesView.optionsTitle' => 'Opciones de la operación',
 			'activitiesView.operationDetails' => 'Detalles de la Operación',
@@ -2379,7 +2383,7 @@ extension on TranslationsEs {
 			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
-			'activitiesView.onlyDisabledMatches' => 'Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo.',
+			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
@@ -2561,10 +2565,10 @@ extension on TranslationsEs {
 			'settings.logging.jumpAfterRST.descriptionOff' => 'No saltar automáticamente',
 			'settings.logging.defaultReport.title' => 'Reporte por defecto — Fonía',
 			'settings.logging.defaultReport.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM',
-			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
-			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
+			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',

@@ -211,13 +211,28 @@ double? macOSAwareLeadingWidth(BuildContext context) =>
 /// from rather than sitting deeper than it. An arrow promises a step back
 /// along a trail; a view that arrived over the top of everything has no trail
 /// to step back along, and closing it is the only thing the control does.
-Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed, bool close = false}) {
-  final button = close
+///
+/// [boxSize], for the close variant, pins the button's own tap box instead of
+/// leaving it to fill whatever the AppBar's leading slot offers — by default
+/// that slot stretches to the toolbar's full height (48) and its own
+/// `leadingWidth` (56 unless overridden), well past a plain action IconButton's
+/// natural 40x40, so a leading close button reads as oversized next to
+/// actions sitting right across the same header. Sized through an [Align],
+/// not the IconButton's own `constraints`: the leading slot hands its child a
+/// TIGHT box (that same toolbarHeight/leadingWidth), and a widget's own
+/// smaller preferred size can't win against a tight incoming constraint — only
+/// a widget that hands its OWN child loose constraints (Align does) lets a
+/// fixed-size box beneath actually come out smaller.
+Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed, bool close = false, double? boxSize}) {
+  Widget button = close
       ? IconButton(
           icon: const Icon(MdiIcons.close),
           onPressed: onPressed ?? () => Navigator.maybePop(context),
         )
       : BackButton(onPressed: onPressed);
+  if (boxSize != null) {
+    button = Align(child: SizedBox(width: boxSize, height: boxSize, child: button));
+  }
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: isMacOSChromelessWindow

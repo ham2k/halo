@@ -202,21 +202,23 @@ const ActivityHook = {
   },
 
   async suggest({ location, searchTerm, callsign }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
-    const rows: LookupRow[] = searchTerm
-      ? await host.dbLookupSelectAll('pota', searchTerm)
-      : location
-        ? await host.dbLookupSelectByLocation('pota', location.lat, location.lon, NEARBY_DELTA)
-        : []
-
     // A name/code search spans every POTA park worldwide, so narrow it to
     // the caller's own DXCC entity when we can tell whose callsign this is
     // — nearby (location-based) results are already geographically scoped
     // by distance and shouldn't also be entity-restricted (a caller near a
-    // border may well want a nearby park just across it).
+    // border may well want a nearby park just across it). Passed INTO the
+    // query itself, not filtered after: a common word ("trail") can match
+    // thousands of rows worldwide, and the query only returns the first 100
+    // it finds — filtering afterward can narrow an already-truncated 100 down
+    // to zero even though a real match, in the caller's own country, exists.
     const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
-    const filteredRows = callerEntity ? rows.filter((row) => row.subCategory === callerEntity) : rows
+    const rows: LookupRow[] = searchTerm
+      ? await host.dbLookupSelectAll('pota', searchTerm, callerEntity)
+      : location
+        ? await host.dbLookupSelectByLocation('pota', location.lat, location.lon, NEARBY_DELTA)
+        : []
 
-    const withDistance = filteredRows.map((row) => ({
+    const withDistance = rows.map((row) => ({
       row,
       distance:
         location && row.lat != null && row.lon != null
@@ -259,12 +261,22 @@ const ActivityHook = {
     if (normalizedSearch && !suggestions.some((s) => s.ref === normalizedSearch)) {
       const isTestRef = normalizedSearch.endsWith('-TEST')
       const t = tFor(ctx)
-      const name = isTestRef ? t('testParkName') : t('unknownParkName')
+      // The row query above searched for the RAW text ("us1234"), which a
+      // dashless/lowercase reference never matches — the local table's keys
+      // are dashed and uppercase. Only normalizing found the well-formed
+      // code, so it's worth one more exact lookup before settling for
+      // "Unknown": [fetchPark] tries the local table again (this time by
+      // the normalized key) and then the network, same as a real ref lookup
+      // gets everywhere else.
+      const resolved = isTestRef ? null : await fetchPark(normalizedSearch)
+      const name = resolved?.name || (isTestRef ? t('testParkName') : t('unknownParkName'))
       if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
       suggestions.unshift({
         type: ACTIVATION_TYPE,
         ref: normalizedSearch,
         name,
+        grid: resolved?.grid6,
+        location: resolved?.locationDesc,
         program: 'POTA',
         label: `POTA ${normalizedSearch}: ${name}`,
         shortLabel: `POTA ${normalizedSearch}`,

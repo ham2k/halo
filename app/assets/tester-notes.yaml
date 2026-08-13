@@ -8,6 +8,8 @@
   changes:
     - "Android: USB-serial radios now show up as CAT connection options"
     - "Exports panel offers a separate hunter/chaser log for any hunted references"
+    - "Operation header: Options/Export moved to the top bar, with an OK button for Operation Setup"
+    - "Operation Setup: search fields now have a clear (X) button"
 
 "132":
   changes:

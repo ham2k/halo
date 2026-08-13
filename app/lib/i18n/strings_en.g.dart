@@ -85,6 +85,9 @@ class Translations$common$en {
 	/// en: 'Save'
 	String get save => 'Save';
 
+	/// en: 'OK'
+	String get ok => 'OK';
+
 	/// en: 'Cancel'
 	String get cancel => 'Cancel';
 
@@ -415,12 +418,6 @@ class Translations$activitiesView$en {
 	/// en: 'Activities'
 	String get title => 'Activities';
 
-	/// en: 'Operation Setup'
-	String get sheetTitle => 'Operation Setup';
-
-	/// en: 'Setup'
-	String get sheetTitleShort => 'Setup';
-
 	/// en: 'No Activities Selected'
 	String get activitiesCountZero => 'No Activities Selected';
 
@@ -466,8 +463,14 @@ class Translations$activitiesView$en {
 	/// en: 'Search by name, reference or anything else…'
 	String get searchHint => 'Search by name, reference or anything else…';
 
-	/// en: 'No suggestions'
-	String get noSuggestions => 'No suggestions';
+	/// en: 'No matches'
+	String get noSuggestions => 'No matches';
+
+	/// en: 'Search by reference name or number above'
+	String get noSuggestionsHint => 'Search by reference name or number above';
+
+	/// en: '(for example 'trail' or '4556')'
+	String get noSuggestionsExample => '(for example \'trail\' or \'4556\')';
 
 	/// en: 'Activity Types'
 	String get allOptions => 'Activity Types';
@@ -514,6 +517,9 @@ class Translations$activitiesView$en {
 	/// en: 'Exports'
 	String get exports => 'Exports';
 
+	/// en: 'Export Logs'
+	String get exportLogs => 'Export Logs';
+
 	/// en: 'Options'
 	String get options => 'Options';
 
@@ -556,8 +562,8 @@ class Translations$activitiesView$en {
 	/// en: 'Retry'
 	String get controlsUnavailableRetry => 'Retry';
 
-	/// en: 'Nothing to add yet What you searched for is switched off. Turn it on under Activity Types below.'
-	String get onlyDisabledMatches => 'Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below.';
+	/// en: 'No matches Some available extensions might have results. Enable them in Activity Types below.'
+	String get onlyDisabledMatches => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.';
 }
 
 // Path: loggingControls
@@ -4175,6 +4181,7 @@ extension on Translations {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
 			'common.save' => 'Save',
+			'common.ok' => 'OK',
 			'common.cancel' => 'Cancel',
 			'common.delete' => 'Delete',
 			'common.create' => 'Create',
@@ -4455,8 +4462,6 @@ extension on Translations {
 			'map.zoomIn' => 'Zoom in',
 			'map.zoomOut' => 'Zoom out',
 			'activitiesView.title' => 'Activities',
-			'activitiesView.sheetTitle' => 'Operation Setup',
-			'activitiesView.sheetTitleShort' => 'Setup',
 			'activitiesView.activitiesCountZero' => 'No Activities Selected',
 			'activitiesView.activitiesCountOne' => '1 Activity',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
@@ -4472,7 +4477,9 @@ extension on Translations {
 			'activitiesView.invalidReference' => 'Not a valid reference',
 			'activitiesView.duplicateReference' => 'Already added',
 			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
-			'activitiesView.noSuggestions' => 'No suggestions',
+			'activitiesView.noSuggestions' => 'No matches',
+			'activitiesView.noSuggestionsHint' => 'Search by reference name or number above',
+			'activitiesView.noSuggestionsExample' => '(for example \'trail\' or \'4556\')',
 			'activitiesView.allOptions' => 'Activity Types',
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
 			'activitiesView.locationUnavailableTitle' => 'Location data not available',
@@ -4488,6 +4495,7 @@ extension on Translations {
 			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
+			'activitiesView.exportLogs' => 'Export Logs',
 			'activitiesView.options' => 'Options',
 			'activitiesView.optionsTitle' => 'Operation Options',
 			'activitiesView.operationDetails' => 'Operation Details',
@@ -4502,7 +4510,7 @@ extension on Translations {
 			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
-			'activitiesView.onlyDisabledMatches' => 'Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below.',
+			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -4684,10 +4692,10 @@ extension on Translations {
 			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
 			'settings.logging.defaultReport.title' => 'Default report — Phone',
 			'settings.logging.defaultReport.description' => 'Used when Sent or Rcvd is left empty on SSB, FM or AM',
-			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
-			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
+			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
 			'settings.logging.defaultReportFT8.description' => 'Used when Sent or Rcvd is left empty on the FT modes',
 			'settings.logging.numbersRow.title' => 'Numbers Row',

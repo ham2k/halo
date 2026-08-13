@@ -293,8 +293,13 @@ const ActivityHook = {
         ? await host.dbLookupSelectByLocation('sota', location.lat, location.lon, NEARBY_DELTA)
         : []
 
-    // See POTA's identical note: entity-restrict name/code search results
-    // to the caller's own DXCC entity when known, but never nearby ones.
+    // Entity-restrict name/code search results to the caller's own DXCC
+    // entity when known, but never nearby ones — same reasoning as POTA's
+    // own filter. Unlike POTA's, this still filters AFTER the query rather
+    // than in it (see dbLookupSelectAll's doc): subCategoryMatchesCaller
+    // needs a prefix match, which the query's subCategory filter doesn't
+    // support, so a common search term can still crowd out a real match the
+    // same way "trail" once did for POTA.
     const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
     const filteredRows = callerEntity ? rows.filter((row) => subCategoryMatchesCaller(row.subCategory, callerEntity)) : rows
 

@@ -254,8 +254,19 @@ export const host = {
     return (await hostCallFn()('dbLookupSelectOne', { category, key })) as LookupRow | null
   },
 
-  async dbLookupSelectAll(category: string, query: string): Promise<LookupRow[]> {
-    return (await hostCallFn()('dbLookupSelectAll', { category, query })) as LookupRow[]
+  /// [subCategory], when given, filters IN THE QUERY rather than after —
+  /// which matters because of `limit`: a common word ("trail") can match
+  /// thousands of rows worldwide, and the query only returns the first 100
+  /// it happens to find. Filtering by subCategory afterward, in the caller,
+  /// can end up filtering an already-truncated set down to nothing even
+  /// though a real match exists — POTA, which scopes by the caller's own
+  /// DXCC entity, passes it here instead, so the limit applies to the
+  /// already-narrowed set. SOTA scopes by entity too but needs a PREFIX
+  /// match ([subCategory] here is exact-equals only), so it still filters
+  /// after the fact and is exposed to the same truncation bug this exists
+  /// to avoid.
+  async dbLookupSelectAll(category: string, query: string, subCategory?: string): Promise<LookupRow[]> {
+    return (await hostCallFn()('dbLookupSelectAll', { category, query, subCategory })) as LookupRow[]
   },
 
   async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number): Promise<LookupRow[]> {

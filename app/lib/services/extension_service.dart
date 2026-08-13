@@ -1786,7 +1786,8 @@ class ExtensionService implements PanelExtensionSource {
       case 'dbLookupSelectAll':
         final category = params['category'] as String;
         final query = params['query'] as String;
-        final list = await lookups?.queryLookups(category, query) ?? const [];
+        final subCategory = params['subCategory'] as String?;
+        final list = await lookups?.queryLookups(category, query, subCategory: subCategory) ?? const [];
         return list
             .map((row) => {
                   'category': row.category,

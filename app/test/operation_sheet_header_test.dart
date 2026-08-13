@@ -1,19 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Operation Setup sheet's two header rows, which both give ground as the
-// row narrows and must give it in a fixed order:
+// The Operation Setup sheet's operation pills (activities_view.dart's
+// _operationPills), which give ground as the row narrows and must give it in
+// a fixed order: one line while everything fits, otherwise two — the
+// callsigns and the pencil on top, the title and notes marker below —
+// shedding the title first, then the operator callsign, then the notes
+// marker, never the station callsign or the pencil, and leaving a "…" pill
+// wherever something went.
 //
-//   - the sheet's own top row (operation_view.dart's _SheetHeaderFit): the
-//     title's long form, then its short form, then the Options label, then the
-//     Exports one;
-//   - the operation pills (activities_view.dart's _operationPills): one line
-//     while everything fits, otherwise two — the callsigns and the pencil on
-//     top, the title and notes marker below — shedding the title first, then
-//     the operator callsign, then the notes marker, never the station callsign
-//     or the pencil, and leaving a "…" pill wherever something went.
-//
-// Both decisions are made from measured text widths, so they read differently
+// The decision is made from measured text widths, so it reads differently
 // under the test font than on a device; these tests pin the ORDER and the
 // invariants, never a pixel width, and sweep widths rather than name one.
 
@@ -92,70 +88,6 @@ void main() {
     tester.view.physicalSize = Size(width, 900);
     await tester.pumpAndSettle();
   }
-
-  testWidgets('the sheet title and the Options/Exports labels give ground in that order', (tester) async {
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-    tester.view.physicalSize = const Size(1400, 900);
-    await openSheet(tester);
-
-    final t = TranslationProvider.of(tester.element(find.byType(OperationSheet))).translations.activitiesView;
-    var everWentShort = false;
-    var everDroppedOptions = false;
-
-    for (final width in _widths) {
-      await resize(tester, width);
-      final longTitle = find.text(t.sheetTitle).evaluate().isNotEmpty;
-      final shortTitle = find.text(t.sheetTitleShort).evaluate().isNotEmpty;
-      final optionsLabel = find.text(t.options).evaluate().isNotEmpty;
-      final exportsLabel = find.text(t.exports).evaluate().isNotEmpty;
-      final at = 'at $width logical px';
-
-      expect(longTitle ^ shortTitle, isTrue, reason: 'exactly one form of the title shows, $at');
-      // The rungs' order, stated as what each concession implies about the
-      // ones before it: a label only goes after the title has already given
-      // up its long form, and Exports' label outlives Options'.
-      if (optionsLabel) expect(longTitle || shortTitle, isTrue, reason: 'title present with both labels, $at');
-      if (!optionsLabel) expect(shortTitle, isTrue, reason: 'the title shortens before a label goes, $at');
-      if (exportsLabel == false) expect(optionsLabel, isFalse, reason: 'Options label goes before Exports, $at');
-
-      // A concession, once made, is never taken back as the row narrows
-      // further — the ladder is ordered, not re-shuffled per width.
-      if (shortTitle) everWentShort = true;
-      if (!optionsLabel) everDroppedOptions = true;
-      if (everWentShort) expect(longTitle, isFalse, reason: 'the long title does not come back, $at');
-      if (everDroppedOptions) expect(optionsLabel, isFalse, reason: 'the Options label does not come back, $at');
-
-      // Whatever it decided, it fits: an over-wide trailing row would overflow
-      // the header's Row and paint the debug stripes.
-      expect(tester.takeException(), isNull, reason: 'no overflow, $at');
-    }
-
-    expect(everWentShort, isTrue, reason: 'the sweep reaches a width where the long title cannot fit');
-    expect(everDroppedOptions, isTrue, reason: 'the sweep reaches a width where the Options label cannot fit');
-
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(seconds: 5));
-  });
-
-  testWidgets('a roomy row shows the long title and both control labels', (tester) async {
-    // The top rung of the ladder, which the sweep above cannot reach: without
-    // this, "the long title does not come back" and "the title shortens before
-    // a label goes" are both vacuous — every width would already be short.
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-    tester.view.physicalSize = const Size(1400, 900);
-    await openSheet(tester, textScaler: 0.5);
-
-    final t = TranslationProvider.of(tester.element(find.byType(OperationSheet))).translations.activitiesView;
-    expect(find.text(t.sheetTitle), findsOneWidget, reason: 'the long title while it fits');
-    expect(find.text(t.sheetTitleShort), findsNothing);
-    expect(find.text(t.options), findsOneWidget);
-    expect(find.text(t.exports), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(seconds: 5));
-  });
 
   testWidgets('the operation pills keep the callsigns and pencil on the top line, shedding extras below',
       (tester) async {

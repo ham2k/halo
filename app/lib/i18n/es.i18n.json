@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Guardar",
+    "ok": "OK",
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "create": "Crear",
@@ -364,8 +365,6 @@
   },
   "activitiesView": {
     "title": "Actividades",
-    "sheetTitle": "Configuración de la Operación",
-    "sheetTitleShort": "Configuración",
     "activitiesCountZero": "Sin actividades seleccionadas",
     "activitiesCountOne": "1 actividad",
     "activitiesCountOther": "${count} actividades",
@@ -381,7 +380,9 @@
     "invalidReference": "Referencia no válida",
     "duplicateReference": "Ya añadida",
     "searchHint": "Busca por nombre, referencia o cualquier otra cosa…",
-    "noSuggestions": "Sin sugerencias",
+    "noSuggestions": "Sin coincidencias",
+    "noSuggestionsHint": "Busca por nombre o número de referencia arriba",
+    "noSuggestionsExample": "(por ejemplo 'trail' o '4556')",
     "allOptions": "Tipos de actividad",
     "determiningLocation": "Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas",
     "locationUnavailableTitle": "Datos de ubicación no disponibles",
@@ -397,6 +398,7 @@
     "searchUnavailableReason": "Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.",
     "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
     "exports": "Exportar",
+    "exportLogs": "Exportar registros",
     "options": "Opciones",
     "optionsTitle": "Opciones de la operación",
     "operationDetails": "Detalles de la Operación",
@@ -411,7 +413,7 @@
     "controlsUnavailableTitle": "Controles de actividad no disponibles",
     "controlsUnavailableReason": "Tus referencias están a salvo, pero ahora mismo no se pueden editar.",
     "controlsUnavailableRetry": "Reintentar",
-    "onlyDisabledMatches": "Nada que añadir todavía\nLo que buscaste está desactivado.\nActívalo en Tipos de actividad, más abajo."
+    "onlyDisabledMatches": "Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo."
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",

@@ -1053,11 +1053,35 @@ class LookupRepository {
   }
 
   /// Searches lookups in a category by matching query prefix on key or name.
-  Future<List<LookupRow>> queryLookups(String category, String query) async {
+  ///
+  /// [subCategory], when given, filters IN THIS QUERY rather than left to the
+  /// caller: a common word ("trail") can match thousands of rows worldwide,
+  /// and this query only returns the first 100 it finds. A caller that
+  /// narrows by country AFTER fetching (POTA's `suggest` hook, scoping to the
+  /// operator's own DXCC entity) can end up filtering an already-truncated
+  /// 100 down to nothing even though a real match exists — "Appalachian
+  /// Trail National Scenic Trail" searched as "trail" is exactly this:
+  /// plenty of non-US "trail" rows fill the cap before SQLite (with no ORDER
+  /// BY) happens to reach it. Filtering here means the limit applies to the
+  /// already-narrowed set instead. Exact-equals only — SOTA scopes by entity
+  /// too but needs a prefix match, so it still filters after fetching and
+  /// still has this bug (extensions/activities/sota/src/index.ts).
+  ///
+  /// Key-prefix and name-prefix hits are also ordered first, for the rest —
+  /// the ones a [relevanceForMatch]-style ranking would call most relevant —
+  /// so those are what a full 100 rows displaces last.
+  Future<List<LookupRow>> queryLookups(String category, String query, {String? subCategory}) async {
+    final keyPrefixMatch = db.lookups.key.like('$query%');
+    final namePrefixMatch = db.lookups.name.like('$query%');
     return await (db.select(db.lookups)
           ..where((l) =>
               l.category.equals(category) &
-              (l.key.like('%$query%') | l.name.like('%$query%')))
+              (l.key.like('%$query%') | l.name.like('%$query%')) &
+              (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)))
+          ..orderBy([
+            (l) => OrderingTerm(expression: keyPrefixMatch, mode: OrderingMode.desc),
+            (l) => OrderingTerm(expression: namePrefixMatch, mode: OrderingMode.desc),
+          ])
           ..limit(100))
         .get();
   }

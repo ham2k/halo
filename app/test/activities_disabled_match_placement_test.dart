@@ -186,7 +186,7 @@ void main() {
     expect(find.text('Activity Types'), findsOneWidget);
     // The results area still renders its own content rather than being
     // squeezed out of existence.
-    expect(find.textContaining('switched off').hitTestable(), findsOneWidget);
+    expect(find.textContaining('might have results').hitTestable(), findsOneWidget);
   });
 
   testWidgets('a search matching nothing disabled leaves a collapsed section shut', (tester) async {
@@ -204,9 +204,9 @@ void main() {
     final (services, operation) = await _harness();
     await _pumpAndSearch(tester, services, operation, 'parks');
 
-    // "No suggestions" here would flatly contradict the enable row sitting
+    // A bare "No matches" here would flatly contradict the enable row sitting
     // just below it: the activity they searched for does exist.
-    expect(find.text('No suggestions'), findsNothing);
-    expect(find.textContaining('switched off'), findsOneWidget);
+    expect(find.text('No matches'), findsNothing);
+    expect(find.textContaining('might have results'), findsOneWidget);
   });
 }

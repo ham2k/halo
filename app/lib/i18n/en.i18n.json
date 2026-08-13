@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Save",
+    "ok": "OK",
     "cancel": "Cancel",
     "delete": "Delete",
     "create": "Create",
@@ -364,8 +365,6 @@
   },
   "activitiesView": {
     "title": "Activities",
-    "sheetTitle": "Operation Setup",
-    "sheetTitleShort": "Setup",
     "activitiesCountZero": "No Activities Selected",
     "activitiesCountOne": "1 Activity",
     "activitiesCountOther": "${count} Activities",
@@ -381,7 +380,9 @@
     "invalidReference": "Not a valid reference",
     "duplicateReference": "Already added",
     "searchHint": "Search by name, reference or anything else…",
-    "noSuggestions": "No suggestions",
+    "noSuggestions": "No matches",
+    "noSuggestionsHint": "Search by reference name or number above",
+    "noSuggestionsExample": "(for example 'trail' or '4556')",
     "allOptions": "Activity Types",
     "determiningLocation": "Determining current location…\nWaiting for GPS fix to find nearby references",
     "locationUnavailableTitle": "Location data not available",
@@ -397,6 +398,7 @@
     "searchUnavailableReason": "No activity extension could answer. Try again in a moment.",
     "emptySheet": "Use suggestions & search below to add one",
     "exports": "Exports",
+    "exportLogs": "Export Logs",
     "options": "Options",
     "optionsTitle": "Operation Options",
     "operationDetails": "Operation Details",
@@ -411,7 +413,7 @@
     "controlsUnavailableTitle": "Activity controls unavailable",
     "controlsUnavailableReason": "Your references are safe, but editing them is unavailable right now.",
     "controlsUnavailableRetry": "Retry",
-    "onlyDisabledMatches": "Nothing to add yet\nWhat you searched for is switched off.\nTurn it on under Activity Types below."
+    "onlyDisabledMatches": "No matches\nSome available extensions might have results.\nEnable them in Activity Types below."
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",
