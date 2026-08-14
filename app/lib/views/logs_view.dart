@@ -19,6 +19,7 @@ import '../services/adif_import_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
+import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
 import 'home_navigation_rail.dart';
 import 'operation/adif_import_flow.dart';
@@ -105,6 +106,16 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   /// to mean anything against.
   @override
   PanelRenderContext get panelRenderContext => const PanelRenderContext();
+
+  /// The map is reached through a target rather than through `formFields`,
+  /// so its settings embed as the same target-scoped widget
+  /// [_buildMapSettingsButton]'s dialog would show — see OperationView's own
+  /// copy of this override.
+  @override
+  WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
+    LogsView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+    _ => null,
+  };
 
   /// The table beside the info+map column, stacked — the shipped arrangement.
   /// No migration to fold in: this dock has no pre-dock history like Home's.
@@ -398,12 +409,24 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
                       _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
                   LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
                 },
+                tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
                 extraChildren: sharedDashboardPanes,
               ))
             : qsoListPane,
       ),
     );
   }
+
+  /// The Map panel's basemap picker, same target-scoped dialog the
+  /// Operation view's own Map tab opens (see OperationView's own copy of
+  /// this button) — Map is native and reached through a target rather than
+  /// through `formFields`, so [DockHost.buildPanelSettingsButton] wouldn't
+  /// find it either.
+  Widget _buildMapSettingsButton(BuildContext context) => buildTargetSettingsButton(
+        context,
+        target: 'map',
+        title: context.t.operation.menu.mapSettingsTitle,
+      );
 
   /// The search field's own row, shown only below the two-pane boundary —
   /// the title row (see [_buildTitle]) drops it there rather than shrinking

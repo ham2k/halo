@@ -24,6 +24,7 @@ import '../main.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
+import '../settings/settings_target_dialog.dart';
 import 'extensions_panel.dart';
 import 'operation/clock/clock_panel.dart';
 import 'operation/clock/clock_zones.dart';
@@ -946,6 +947,35 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           semanticLabel: _t.panelSettings(panel: panel.title),
         ),
         onPressed: () => unawaited(showPanelSettings(buttonContext, services: dockServices, panel: panel)),
+      ),
+    );
+  }
+
+  /// A tune-icon button that opens a target-scoped settings dialog — the
+  /// counterpart of [buildPanelSettingsButton] for a pane the VIEW answers
+  /// for natively (through its own [nativePanelSettingsForm] override)
+  /// rather than through `formFields`.
+  Widget buildTargetSettingsButton(
+    BuildContext context, {
+    required String target,
+    required String title,
+    List<TargetDialogAction> actions = const [],
+  }) {
+    final theme = Theme.of(context);
+    return Builder(
+      builder: (buttonContext) => IconButton(
+        icon: Icon(
+          MdiIcons.tune,
+          color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+          semanticLabel: MaterialLocalizations.of(context).showMenuTooltip,
+        ),
+        onPressed: () => showSettingsForTarget(
+          buttonContext,
+          services: dockServices,
+          target: target,
+          title: title,
+          actions: actions,
+        ),
       ),
     );
   }

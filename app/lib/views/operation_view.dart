@@ -1365,81 +1365,43 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // override exists anywhere in the dock tree today) but would silently
     // read the wrong ambient values the day one is added.
     final effectiveContext = context ?? this.context;
-    // Every call site sits on a header-colored surface (the dock module
-    // header, the tab bar riding on the AppBar's own color, the wide
-    // split's new title bar) — same resolution the headers themselves use
-    // for their foreground, so the icon reads against all three.
-    final theme = Theme.of(effectiveContext);
-    final iconColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
-    return Builder(
-      builder: (buttonContext) => IconButton(
-        // A plain IconButton doesn't supply an accessible name by default —
-        // set explicitly as a semanticLabel, not a tooltip, since the app
-        // shows no hover labels (docs/design/user-interface.md).
-        icon: Icon(MdiIcons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
-        onPressed: () => _openLoggingSettings(buttonContext, qsos),
-      ),
+    return buildTargetSettingsButton(
+      effectiveContext,
+      target: 'logging',
+      // The logging view's own title for its own dialog — distinct from
+      // LoggingSettingsGroup.title ("Logging"), which names the group as it
+      // appears in All Settings/Common Preferences, a different surface
+      // with a different audience.
+      title: effectiveContext.t.operation.menu.loggingSettingsTitle,
+      // The pane's layout options embeds this same target's fields too, but
+      // without this Actions section — see [_paneEditControls]'s
+      // `panelSettingsBuilder`, which passes none.
+      actions: [
+        (
+          icon: 'refresh',
+          label: effectiveContext.t.operation.menu.lookupAllQsos,
+          // Refreshes lookup data (QRZ, HamDB…) for the whole log via the
+          // background queue — progress shows in the status bar, and rows
+          // repaint as results land. The queue itself filters out event
+          // markers etc. Not itself a persisted setting, so it's an
+          // Actions-section item rather than a target element.
+          onTap: () {
+            Navigator.of(effectiveContext).pop();
+            widget.services.lookupQueue.enqueueAll(qsos);
+          },
+        ),
+      ],
     );
-  }
-
-  /// The logging pane's own settings dialog, in one place so the tab button
-  /// and the pane's layout options open the SAME thing. The logging panel is
-  /// native and reaches its settings through a target rather than through
-  /// `formFields`, so nothing else here would find it.
-  ///
-  /// The pane's layout options embeds this same target's fields too, but
-  /// without this dialog's Actions section — see [_paneEditControls]'s
-  /// `panelSettingsBuilder`, which passes none.
-  Future<void> _openLoggingSettings(BuildContext buttonContext, List<Qso> qsos) {
-    final effectiveContext = buttonContext;
-    return showSettingsForTarget(
-          buttonContext,
-          services: widget.services,
-          target: 'logging',
-          // The logging view's own title for its own dialog — distinct from
-          // LoggingSettingsGroup.title ("Logging"), which names the group as
-          // it appears in All Settings/Common Preferences, a different
-          // surface with a different audience.
-          title: effectiveContext.t.operation.menu.loggingSettingsTitle,
-          actions: [
-            (
-              icon: 'refresh',
-              label: effectiveContext.t.operation.menu.lookupAllQsos,
-              // Refreshes lookup data (QRZ, HamDB…) for the whole log via
-              // the background queue — progress shows in the status bar,
-              // and rows repaint as results land. The queue itself filters
-              // out event markers etc. Not itself a persisted setting, so
-              // it's an Actions-section item rather than a target element.
-              onTap: () {
-                Navigator.of(buttonContext).pop();
-                widget.services.lookupQueue.enqueueAll(qsos);
-              },
-            ),
-          ],
-        );
   }
 
   /// The Map tab's basemap picker (see MapSettingsGroup). Same shape as
-  /// [_buildLoggingSettingsButton]: the Map
-  /// panel is native and reaches its settings through a target, not
-  /// `formFields`, so `_buildPanelSettingsButton` wouldn't find it either.
-  Widget _buildMapSettingsButton({BuildContext? context}) {
-    final effectiveContext = context ?? this.context;
-    final theme = Theme.of(effectiveContext);
-    final iconColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
-    return Builder(
-      builder: (buttonContext) => IconButton(
-        icon: Icon(MdiIcons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
-        onPressed: () => _openMapSettings(buttonContext),
-      ),
-    );
-  }
-
-  Future<void> _openMapSettings(BuildContext buttonContext) => showSettingsForTarget(
-        buttonContext,
-        services: widget.services,
+  /// [_buildLoggingSettingsButton]: the Map panel is native and reaches its
+  /// settings through a target, not `formFields`, so
+  /// [DockHost.buildPanelSettingsButton] wouldn't find it either.
+  Widget _buildMapSettingsButton({BuildContext? context}) => buildTargetSettingsButton(
+        context ?? this.context,
         target: 'map',
-        title: buttonContext.t.operation.menu.mapSettingsTitle,
+        title: (context ?? this.context).t.operation.menu.mapSettingsTitle,
       );
 
   /// Floor for [_narrowTabBar]'s QSOs-tab padding — shrunk before the tab
