@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"136":
   changes:
     - "Clock, Weather and Web Site panes can now be added to Home and the Logs view, not just an operation"
     - "Weather pane's Location setting now offers a 'use the operation's location' checkbox"
