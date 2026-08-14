@@ -497,10 +497,20 @@ class _SummaryContentState extends State<_SummaryContent> {
             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: Space.sm),
-          if (plan.additions.isNotEmpty) stat(t.newContacts(count: plan.additions.length)),
-          if (plan.merges.isNotEmpty) stat(t.merging(count: plan.merges.length)),
-          if (plan.unusable.isNotEmpty) stat(t.unusable(count: plan.unusable.length), muted: true),
-          if (plan.undated.isNotEmpty) stat(t.noDate(count: plan.undated.length), muted: true),
+          if (plan.additions.isNotEmpty)
+            stat(t.newContacts(count: plan.additions.length, formatted: formatNumber(plan.additions.length))),
+          if (plan.merges.isNotEmpty)
+            stat(t.merging(count: plan.merges.length, formatted: formatNumber(plan.merges.length))),
+          // Counts every match, including ones `merges` leaves out because
+          // folding the file's data in changed nothing — a re-import of an
+          // unchanged file otherwise shows neither line above and reads as
+          // though nothing in it was recognized, rather than as already logged.
+          if (plan.alreadyLoggedCount > 0)
+            stat(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount)), muted: true),
+          if (plan.unusable.isNotEmpty)
+            stat(t.unusable(count: plan.unusable.length, formatted: formatNumber(plan.unusable.length)), muted: true),
+          if (plan.undated.isNotEmpty)
+            stat(t.noDate(count: plan.undated.length, formatted: formatNumber(plan.undated.length)), muted: true),
           if (plan.hoistedOperationRefs.isNotEmpty && !plan.isEmpty) ...[
             const SizedBox(height: Space.sm),
             // Named, not silently dropped. Stripping an activation off every
@@ -518,7 +528,8 @@ class _SummaryContentState extends State<_SummaryContent> {
               title: Text(t.addActivation),
             ),
           ],
-          if (plan.flagged.isNotEmpty) stat(t.flagged(count: plan.flagged.length), muted: true),
+          if (plan.flagged.isNotEmpty)
+            stat(t.flagged(count: plan.flagged.length, formatted: formatNumber(plan.flagged.length)), muted: true),
           // Two sentences and two counts, because the two failures are not the
           // same claim about the same records. Nothing reaching the runtime
           // means no references were recovered, full stop; one program's hook
@@ -530,12 +541,16 @@ class _SummaryContentState extends State<_SummaryContent> {
           // hooks answered in full. Each line counts only its own kind, so the
           // conflation is not expressible here.
           if (plan.recordsUnreachable > 0)
-            stat(t.missingRefs(count: plan.recordsUnreachable), muted: true),
+            stat(
+              t.missingRefs(count: plan.recordsUnreachable, formatted: formatNumber(plan.recordsUnreachable)),
+              muted: true,
+            ),
           if (widget.failedPrograms.isNotEmpty)
             stat(
               t.partialRefs(
                 programs: widget.failedPrograms.join(', '),
                 count: plan.recordsWithFailedHooks,
+                formatted: formatNumber(plan.recordsWithFailedHooks),
               ),
               muted: true,
             ),

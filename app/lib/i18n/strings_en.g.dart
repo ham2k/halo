@@ -1566,40 +1566,58 @@ class Translations$adifImport$en {
 	/// en: 'Drop an ADIF file to import'
 	String get dropHint => 'Drop an ADIF file to import';
 
-	/// en: '(one) {${count} new contact} (other) {${count} new contacts}'
-	String newContacts({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {${count} QSO in this file} (other) {${formatted} QSOs in this file}'
+	String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO in this file',
+		other: '${formatted} QSOs in this file',
+	);
+
+	/// en: '(one) {${count} already in your log} (other) {${formatted} already in your log}'
+	String alreadyLogged({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} already in your log',
+		other: '${formatted} already in your log',
+	);
+
+	/// en: '(one) {${count} will be imported} (other) {${formatted} will be imported}'
+	String willImport({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} will be imported',
+		other: '${formatted} will be imported',
+	);
+
+	/// en: '(one) {${count} new contact} (other) {${formatted} new contacts}'
+	String newContacts({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} new contact',
-		other: '${count} new contacts',
+		other: '${formatted} new contacts',
 	);
 
-	/// en: '(one) {${count} will merge with an existing contact} (other) {${count} will merge with existing contacts}'
-	String merging({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {${count} will merge with an existing contact} (other) {${formatted} will merge with existing contacts}'
+	String merging({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} will merge with an existing contact',
-		other: '${count} will merge with existing contacts',
+		other: '${formatted} will merge with existing contacts',
 	);
 
-	/// en: '(one) {${count} cannot be imported (no callsign)} (other) {${count} cannot be imported (no callsign)}'
-	String unusable({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {${count} cannot be imported (no callsign)} (other) {${formatted} cannot be imported (no callsign)}'
+	String unusable({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} cannot be imported (no callsign)',
-		other: '${count} cannot be imported (no callsign)',
+		other: '${formatted} cannot be imported (no callsign)',
 	);
 
-	/// en: '(one) {${count} needs a closer look} (other) {${count} need a closer look}'
-	String flagged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {${count} needs a closer look} (other) {${formatted} need a closer look}'
+	String flagged({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} needs a closer look',
-		other: '${count} need a closer look',
+		other: '${formatted} need a closer look',
 	);
 
-	/// en: '(one) {References could not be recovered for ${count} contact} (other) {References could not be recovered for ${count} contacts}'
-	String missingRefs({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {References could not be recovered for ${count} contact} (other) {References could not be recovered for ${formatted} contacts}'
+	String missingRefs({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: 'References could not be recovered for ${count} contact',
-		other: 'References could not be recovered for ${count} contacts',
+		other: 'References could not be recovered for ${formatted} contacts',
 	);
 
-	/// en: '(one) {${programs} references may be incomplete for ${count} contact} (other) {${programs} references may be incomplete for ${count} contacts}'
-	String partialRefs({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {${programs} references may be incomplete for ${count} contact} (other) {${programs} references may be incomplete for ${formatted} contacts}'
+	String partialRefs({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${programs} references may be incomplete for ${count} contact',
-		other: '${programs} references may be incomplete for ${count} contacts',
+		other: '${programs} references may be incomplete for ${formatted} contacts',
 	);
 
 	/// en: 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.'
@@ -1632,10 +1650,10 @@ class Translations$adifImport$en {
 	/// en: ' and '
 	String get stationCallJoin => ' and ';
 
-	/// en: '(one) {${count} has no date and cannot be imported} (other) {${count} have no date and cannot be imported}'
-	String noDate({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {${count} has no date and cannot be imported} (other) {${formatted} have no date and cannot be imported}'
+	String noDate({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} has no date and cannot be imported',
-		other: '${count} have no date and cannot be imported',
+		other: '${formatted} have no date and cannot be imported',
 	);
 
 	/// en: 'This file records an activation of ${refs}.'
@@ -3391,11 +3409,17 @@ class Translations$home$logs$import$en {
 	/// en: 'Reading ADIF file…'
 	String get readingTitle => 'Reading ADIF file…';
 
+	/// en: 'Checking for duplicates…'
+	String get checkingTitle => 'Checking for duplicates…';
+
 	/// en: 'Importing QSOs…'
 	String get importingTitle => 'Importing QSOs…';
 
 	/// en: '${kb} Kb'
 	String readingDetail({required Object kb}) => '${kb} Kb';
+
+	/// en: '${done} of ${total} checked'
+	String checkingDetail({required Object done, required Object total}) => '${done} of ${total} checked';
 
 	/// en: '${imported} imported, out of ${total}'
 	String importingDetail({required Object imported, required Object total}) => '${imported} imported, out of ${total}';
@@ -4375,8 +4399,10 @@ extension on Translations {
 			'home.logs.import.skippedOne' => '1 record could not be read',
 			'home.logs.import.skippedOther' => ({required Object count}) => '${count} records could not be read',
 			'home.logs.import.readingTitle' => 'Reading ADIF file…',
+			'home.logs.import.checkingTitle' => 'Checking for duplicates…',
 			'home.logs.import.importingTitle' => 'Importing QSOs…',
 			'home.logs.import.readingDetail' => ({required Object kb}) => '${kb} Kb',
+			'home.logs.import.checkingDetail' => ({required Object done, required Object total}) => '${done} of ${total} checked',
 			'home.logs.import.importingDetail' => ({required Object imported, required Object total}) => '${imported} imported, out of ${total}',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
@@ -4800,10 +4826,10 @@ extension on Translations {
 			'settings.layoutDensityDescription.normal' => 'The standard layout',
 			'settings.layoutDensityDescription.sparse' => 'More room around everything',
 			'settings.layoutDensityDescription.sparsest' => 'The most room around everything',
-			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
-			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			_ => null,
 		} ?? switch (path) {
+			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
+			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
@@ -5314,21 +5340,24 @@ extension on Translations {
 			'switchAccounts.serverRejected' => ({required Object error}) => 'The sync server rejected the request: ${error}',
 			'switchAccounts.noLinkCode' => 'The sync server did not return a link code. Try again later.',
 			'switchAccounts.noConfirmationCode' => 'The sync server did not send a confirmation code. Try again later.',
-			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
-			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
+			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			'adifImport.title' => 'Import QSOs from ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Reading ${filename}…',
 			'adifImport.dropHint' => 'Drop an ADIF file to import',
-			'adifImport.newContacts' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} new contact', other: '${count} new contacts', ), 
-			'adifImport.merging' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} will merge with an existing contact', other: '${count} will merge with existing contacts', ), 
-			'adifImport.unusable' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} cannot be imported (no callsign)', other: '${count} cannot be imported (no callsign)', ), 
-			'adifImport.flagged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} needs a closer look', other: '${count} need a closer look', ), 
-			'adifImport.missingRefs' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${count} contacts', ), 
-			'adifImport.partialRefs' => ({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${count} contacts', ), 
+			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO in this file', other: '${formatted} QSOs in this file', ), 
+			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} already in your log', other: '${formatted} already in your log', ), 
+			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} will be imported', other: '${formatted} will be imported', ), 
+			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} new contact', other: '${formatted} new contacts', ), 
+			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} will merge with an existing contact', other: '${formatted} will merge with existing contacts', ), 
+			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} cannot be imported (no callsign)', other: '${formatted} cannot be imported (no callsign)', ), 
+			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} needs a closer look', other: '${formatted} need a closer look', ), 
+			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${formatted} contacts', ), 
+			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 
 			'adifImport.stackingTypesUnknown' => 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.',
 			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
 			'adifImport.confirm' => 'Import',
@@ -5338,7 +5367,7 @@ extension on Translations {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an ADIF file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
-			'adifImport.noDate' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${count} have no date and cannot be imported', ), 
+			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',

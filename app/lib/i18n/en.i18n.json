@@ -103,8 +103,10 @@
         "skippedOne": "1 record could not be read",
         "skippedOther": "${count} records could not be read",
         "readingTitle": "Reading ADIF file…",
+        "checkingTitle": "Checking for duplicates…",
         "importingTitle": "Importing QSOs…",
         "readingDetail": "${kb} Kb",
+        "checkingDetail": "${done} of ${total} checked",
         "importingDetail": "${imported} imported, out of ${total}"
       }
     }
@@ -1286,29 +1288,41 @@
     "title": "Import QSOs from ADIF",
     "reading": "Reading ${filename}…",
     "dropHint": "Drop an ADIF file to import",
+    "totalInFile": {
+      "one": "${count} QSO in this file",
+      "other": "${formatted} QSOs in this file"
+    },
+    "alreadyLogged": {
+      "one": "${count} already in your log",
+      "other": "${formatted} already in your log"
+    },
+    "willImport": {
+      "one": "${count} will be imported",
+      "other": "${formatted} will be imported"
+    },
     "newContacts": {
       "one": "${count} new contact",
-      "other": "${count} new contacts"
+      "other": "${formatted} new contacts"
     },
     "merging": {
       "one": "${count} will merge with an existing contact",
-      "other": "${count} will merge with existing contacts"
+      "other": "${formatted} will merge with existing contacts"
     },
     "unusable": {
       "one": "${count} cannot be imported (no callsign)",
-      "other": "${count} cannot be imported (no callsign)"
+      "other": "${formatted} cannot be imported (no callsign)"
     },
     "flagged": {
       "one": "${count} needs a closer look",
-      "other": "${count} need a closer look"
+      "other": "${formatted} need a closer look"
     },
     "missingRefs": {
       "one": "References could not be recovered for ${count} contact",
-      "other": "References could not be recovered for ${count} contacts"
+      "other": "References could not be recovered for ${formatted} contacts"
     },
     "partialRefs": {
       "one": "${programs} references may be incomplete for ${count} contact",
-      "other": "${programs} references may be incomplete for ${count} contacts"
+      "other": "${programs} references may be incomplete for ${formatted} contacts"
     },
     "stackingTypesUnknown": "Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.",
     "nothingToImport": "Nothing in this file can be imported",
@@ -1324,7 +1338,7 @@
     "stationCallJoin": " and ",
     "noDate": {
       "one": "${count} has no date and cannot be imported",
-      "other": "${count} have no date and cannot be imported"
+      "other": "${formatted} have no date and cannot be imported"
     },
     "activationFound": "This file records an activation of ${refs}.",
     "addActivation": "Add it to this operation",

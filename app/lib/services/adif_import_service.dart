@@ -87,7 +87,11 @@ class AdifImportService {
   ///
   /// Degrades rather than fails: with no host, no hooks, or a failing batch,
   /// the QSOs import ref-less rather than not at all.
-  Future<AdifImportOutcome> applyHooks(List<AdifRecord> records) async {
+  /// [onBatch], when given, is called after every batch with (records
+  /// processed so far, total records) — the natural checkpoint for a caller
+  /// showing real progress rather than an indeterminate spinner for however
+  /// long the crossings take.
+  Future<AdifImportOutcome> applyHooks(List<AdifRecord> records, {void Function(int done, int total)? onBatch}) async {
     final host = _host;
     if (host == null || records.isEmpty) {
       return AdifImportOutcome(
@@ -111,6 +115,15 @@ class AdifImportService {
       // damage — understating exactly the number this exists to report.
       final batchFailed = <String>{};
       await _applyBatch(host, batch, batchFailed);
+      // A caller's progress UI throwing (a disposed notifier, a formatting
+      // edge case) must not fail the import itself, or discard the
+      // failure/unreachable counts already accumulated from batches that
+      // actually ran clean.
+      try {
+        onBatch?.call(end, records.length);
+      } catch (e) {
+        debugPrint('[extensions] adifImport onBatch callback failed: $e');
+      }
       // Split by KIND, not just counted. Within one batch these are mutually
       // exclusive — the crossing's catch returns before any named key is added
       // — but across batches a long file can hit both, and then each number has

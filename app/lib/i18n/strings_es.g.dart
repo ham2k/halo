@@ -785,29 +785,41 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String get title => 'Importar QSOs desde ADIF';
 	@override String reading({required Object filename}) => 'Leyendo ${filename}…';
 	@override String get dropHint => 'Suelta un archivo ADIF para importarlo';
-	@override String newContacts({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} QSO en este archivo',
+		other: '${formatted} QSOs en este archivo',
+	);
+	@override String alreadyLogged({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} ya está en tu registro',
+		other: '${formatted} ya están en tu registro',
+	);
+	@override String willImport({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} se importará',
+		other: '${formatted} se importarán',
+	);
+	@override String newContacts({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} contacto nuevo',
-		other: '${count} contactos nuevos',
+		other: '${formatted} contactos nuevos',
 	);
-	@override String merging({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String merging({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} se combinará con un contacto existente',
-		other: '${count} se combinarán con contactos existentes',
+		other: '${formatted} se combinarán con contactos existentes',
 	);
-	@override String unusable({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String unusable({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} no se puede importar (sin indicativo)',
-		other: '${count} no se pueden importar (sin indicativo)',
+		other: '${formatted} no se pueden importar (sin indicativo)',
 	);
-	@override String flagged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String flagged({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} requiere revisión',
-		other: '${count} requieren revisión',
+		other: '${formatted} requieren revisión',
 	);
-	@override String missingRefs({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String missingRefs({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'No se pudieron recuperar las referencias de ${count} contacto',
-		other: 'No se pudieron recuperar las referencias de ${count} contactos',
+		other: 'No se pudieron recuperar las referencias de ${formatted} contactos',
 	);
-	@override String partialRefs({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String partialRefs({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto',
-		other: 'Las referencias de ${programs} pueden estar incompletas en ${count} contactos',
+		other: 'Las referencias de ${programs} pueden estar incompletas en ${formatted} contactos',
 	);
 	@override String get stackingTypesUnknown => 'Los contactos combinados podrían perder una referencia: las actividades no pudieron indicar qué tipos se acumulan. Cancela y reinténtalo para evitarlo.';
 	@override String get nothingToImport => 'No hay nada importable en este archivo';
@@ -821,9 +833,9 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String notAdif({required Object filename}) => '${filename} no parece un archivo ADIF';
 	@override String stationWarning({required Object calls, required Object station}) => 'Atención: este ADIF tiene QSOs de ${calls}, pero se importarán como ${station} si continúas.';
 	@override String get stationCallJoin => ' y ';
-	@override String noDate({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String noDate({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} no tiene fecha y no se puede importar',
-		other: '${count} no tienen fecha y no se pueden importar',
+		other: '${formatted} no tienen fecha y no se pueden importar',
 	);
 	@override String activationFound({required Object refs}) => 'Este archivo registra una activación de ${refs}.';
 	@override String get addActivation => 'Añadirla a esta operación';
@@ -1628,8 +1640,10 @@ class _Translations$home$logs$import$es extends Translations$home$logs$import$en
 	@override String get skippedOne => '1 registro no se pudo leer';
 	@override String skippedOther({required Object count}) => '${count} registros no se pudieron leer';
 	@override String get readingTitle => 'Leyendo archivo ADIF…';
+	@override String get checkingTitle => 'Buscando duplicados…';
 	@override String get importingTitle => 'Importando QSOs…';
 	@override String readingDetail({required Object kb}) => '${kb} Kb';
+	@override String checkingDetail({required Object done, required Object total}) => '${done} de ${total} verificados';
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} importados, de ${total}';
 }
 
@@ -2194,8 +2208,10 @@ extension on TranslationsEs {
 			'home.logs.import.skippedOne' => '1 registro no se pudo leer',
 			'home.logs.import.skippedOther' => ({required Object count}) => '${count} registros no se pudieron leer',
 			'home.logs.import.readingTitle' => 'Leyendo archivo ADIF…',
+			'home.logs.import.checkingTitle' => 'Buscando duplicados…',
 			'home.logs.import.importingTitle' => 'Importando QSOs…',
 			'home.logs.import.readingDetail' => ({required Object kb}) => '${kb} Kb',
+			'home.logs.import.checkingDetail' => ({required Object done, required Object total}) => '${done} de ${total} verificados',
 			'home.logs.import.importingDetail' => ({required Object imported, required Object total}) => '${imported} importados, de ${total}',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
@@ -2619,10 +2635,10 @@ extension on TranslationsEs {
 			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
 			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
 			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
-			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
-			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			_ => null,
 		} ?? switch (path) {
+			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
+			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',
@@ -3103,12 +3119,15 @@ extension on TranslationsEs {
 			'adifImport.title' => 'Importar QSOs desde ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
-			'adifImport.newContacts' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} contacto nuevo', other: '${count} contactos nuevos', ), 
-			'adifImport.merging' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se combinará con un contacto existente', other: '${count} se combinarán con contactos existentes', ), 
-			'adifImport.unusable' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no se puede importar (sin indicativo)', other: '${count} no se pueden importar (sin indicativo)', ), 
-			'adifImport.flagged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} requiere revisión', other: '${count} requieren revisión', ), 
-			'adifImport.missingRefs' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'No se pudieron recuperar las referencias de ${count} contacto', other: 'No se pudieron recuperar las referencias de ${count} contactos', ), 
-			'adifImport.partialRefs' => ({required num count, required Object programs}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto', other: 'Las referencias de ${programs} pueden estar incompletas en ${count} contactos', ), 
+			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
+			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 
+			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se importará', other: '${formatted} se importarán', ), 
+			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} contacto nuevo', other: '${formatted} contactos nuevos', ), 
+			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se combinará con un contacto existente', other: '${formatted} se combinarán con contactos existentes', ), 
+			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no se puede importar (sin indicativo)', other: '${formatted} no se pueden importar (sin indicativo)', ), 
+			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} requiere revisión', other: '${formatted} requieren revisión', ), 
+			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'No se pudieron recuperar las referencias de ${count} contacto', other: 'No se pudieron recuperar las referencias de ${formatted} contactos', ), 
+			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Las referencias de ${programs} pueden estar incompletas en ${count} contacto', other: 'Las referencias de ${programs} pueden estar incompletas en ${formatted} contactos', ), 
 			'adifImport.stackingTypesUnknown' => 'Los contactos combinados podrían perder una referencia: las actividades no pudieron indicar qué tipos se acumulan. Cancela y reinténtalo para evitarlo.',
 			'adifImport.nothingToImport' => 'No hay nada importable en este archivo',
 			'adifImport.confirm' => 'Importar',
@@ -3118,7 +3137,7 @@ extension on TranslationsEs {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no parece un archivo ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atención: este ADIF tiene QSOs de ${calls}, pero se importarán como ${station} si continúas.',
 			'adifImport.stationCallJoin' => ' y ',
-			'adifImport.noDate' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no tiene fecha y no se puede importar', other: '${count} no tienen fecha y no se pueden importar', ), 
+			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no tiene fecha y no se puede importar', other: '${formatted} no tienen fecha y no se pueden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Este archivo registra una activación de ${refs}.',
 			'adifImport.addActivation' => 'Añadirla a esta operación',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',

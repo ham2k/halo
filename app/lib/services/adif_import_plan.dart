@@ -25,6 +25,14 @@ class AdifImportPlan {
   /// [planAdifImport] on why that matters.
   final List<Qso> merges;
 
+  /// How many existing contacts the file matched at least one record
+  /// against — including ones [merges] leaves out because folding in the
+  /// file's data changed nothing. A re-import of an unchanged file matches
+  /// every record and merges none of them, so this is the only count that
+  /// tells the operator "this file is already in your log" rather than
+  /// reading as though nothing in it was recognized at all.
+  final int alreadyLoggedCount;
+
   /// Records the parser could not accept as contacts: no callsign. Not
   /// imported.
   final List<AdifRecord> unusable;
@@ -104,6 +112,7 @@ class AdifImportPlan {
     required this.filename,
     this.additions = const [],
     this.merges = const [],
+    this.alreadyLoggedCount = 0,
     this.unusable = const [],
     this.undated = const [],
     this.flagged = const [],
@@ -311,6 +320,7 @@ AdifImportPlan planAdifImport({
     filename: filename,
     additions: [for (final group in fresh) group.folded],
     merges: merges,
+    alreadyLoggedCount: byExisting.length,
     unusable: unusable,
     undated: undated,
     flagged: flagged,

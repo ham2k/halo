@@ -145,6 +145,8 @@ void main() {
     final their = plan.merges.single.data['their'] as Map;
     expect(their['name'], 'Hiram');
     expect(their['grid'], 'FN31');
+    // One EXISTING contact matched, not one per file record that matched it.
+    expect(plan.alreadyLoggedCount, 1);
   });
 
   test('the merge keeps the existing record identity', () {
@@ -313,6 +315,10 @@ void main() {
     expect(plan.merges, isEmpty);
     expect(plan.additions, isEmpty);
     expect(plan.isEmpty, isTrue);
+    // The one thing that tells an operator "this file is already in your
+    // log" rather than "nothing in it was recognized" — merges alone can't,
+    // since a no-op merge is deliberately dropped above.
+    expect(plan.alreadyLoggedCount, 1);
   });
 
   group('records that cannot be imported', () {

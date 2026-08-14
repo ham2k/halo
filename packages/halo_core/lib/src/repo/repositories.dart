@@ -401,10 +401,15 @@ Future<List<Qso>> _qsosFromRows(List<QsoRow> rows) async {
   }
 }
 
-/// SQLite's default bound-variable limit is 999; well under that keeps an
-/// `IN` clause safe without needing to know the connection's actual compiled
-/// limit.
-const _inClauseChunkSize = 200;
+/// SQLite's default bound-variable limit is 999. [historyForCalls]'s query
+/// binds a few more params alongside the `IN` clause itself (the `deleted`/
+/// `uuid.isNull()` checks), so this stays under that with room to spare
+/// rather than pushing all the way to 999. As large as it safely can,
+/// though, not just "safe": each chunk is a full query+decode round trip,
+/// and a re-import whose `theirCall`s mostly already exist pays for a much
+/// bigger result set per chunk than a fresh one does, so fewer, larger
+/// chunks matter more here than for a fresh import's near-empty results.
+const _inClauseChunkSize = 900;
 
 class QsosRepository {
   final HaLoDatabase db;
@@ -511,7 +516,7 @@ class QsosRepository {
         if (serialSequences.isEmpty && qso.refs.isNotEmpty) sequences!.invalidate();
       }
       await db.into(db.qsos).insert(_companionFor(qso));
-      await _refreshOperationCounters(operationUuid);
+      await refreshOperationCounters(operationUuid);
     });
     onChange?.call();
     // Structured dev event — real contacts only, not timeline markers.
@@ -586,6 +591,11 @@ class QsosRepository {
     required String operationUuid,
     List<Map<String, dynamic>> inserts = const [],
     List<Qso> updates = const [],
+    // `false` for a caller writing one operation across many chunked calls
+    // (a large import) — the counters only need to be right after the LAST
+    // chunk, so the intermediate ones pass `false` here and the caller runs
+    // [refreshOperationCounters] itself, once, after the final chunk.
+    bool refreshCounters = true,
   }) async {
     if (inserts.isEmpty && updates.isEmpty) return 0;
 
@@ -638,11 +648,22 @@ class QsosRepository {
 
     var written = 0;
     await db.transaction(() async {
-      for (final qso in toInsert) {
-        await db.into(db.qsos).insert(_companionFor(qso));
-        written++;
+      // `db.batch()`, not one `.insert()`/`.write()` call per row — a large
+      // import (thousands of records) otherwise pays a separate
+      // prepare/bind/execute round trip per row; batching compiles the whole
+      // set into one statement, the same way `insertLookupBatch` already does
+      // for lookup rows. Still inside `db.transaction()`, so a duplicate uuid
+      // still throws and rolls the whole batch back (`batch.insert`'s default
+      // conflict mode matches `.insert()`'s).
+      if (toInsert.isNotEmpty) {
+        await db.batch((batch) {
+          for (final qso in toInsert) {
+            batch.insert(db.qsos, _companionFor(qso));
+          }
+        });
+        written += toInsert.length;
       }
-      for (final qso in updates) {
+      if (updates.isNotEmpty) {
         // The row is keyed on `qso.uuid`, so the QSON must agree. A merged
         // record takes the newer side's fields — `uuid` among them — so a QSON
         // import can hand back a map carrying the INCOMING file's uuid, and
@@ -654,18 +675,47 @@ class QsosRepository {
         // written while staying invisible — callers build their plan from
         // `watchForOperation`, which excludes deleted rows, so a plan should
         // never target one.
-        final stamped = _restamped(Qso(
-          uuid: qso.uuid,
-          operationUuid: qso.operationUuid,
-          data: {...qso.data, 'uuid': qso.uuid},
-        ));
-        // An update whose uuid is no longer in the table affects no rows.
-        // Counting it anyway would report an import as complete while a record
-        // deleted since the plan was built silently didn't land.
-        written += await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid)))
-            .write(_companionFor(stamped));
+        final stampedByUuid = <String, Qso>{
+          for (final qso in updates)
+            qso.uuid: _restamped(Qso(
+              uuid: qso.uuid,
+              operationUuid: qso.operationUuid,
+              data: {...qso.data, 'uuid': qso.uuid},
+            )),
+        };
+        // `batch.update` has no return value, unlike the row-by-row `.write()`
+        // this replaces — so which uuids actually exist is checked up front,
+        // inside the same transaction (so nothing else can change it
+        // underneath this read). An update whose uuid is no longer in the
+        // table affects no rows; counting it anyway would report an import as
+        // complete while a record deleted since the plan was built silently
+        // didn't land.
+        //
+        // Chunked at [_inClauseChunkSize], the same as [historyForCalls] — a
+        // caller that hands a large re-import's merges straight through
+        // (`adif_import_flow.dart` does not chunk its own `writeBatch` call)
+        // would otherwise build one `IN` clause with one bound variable per
+        // update, and a big enough operation exceeds SQLite's limit on a
+        // record count this method used to have no such ceiling on at all.
+        final updateUuids = stampedByUuid.keys.toList();
+        final existingUuids = <String>{};
+        for (var i = 0; i < updateUuids.length; i += _inClauseChunkSize) {
+          final chunk = updateUuids.sublist(i, math.min(i + _inClauseChunkSize, updateUuids.length));
+          final rows = await (db.selectOnly(db.qsos)
+                ..addColumns([db.qsos.uuid])
+                ..where(db.qsos.uuid.isIn(chunk)))
+              .map((row) => row.read(db.qsos.uuid)!)
+              .get();
+          existingUuids.addAll(rows);
+        }
+        await db.batch((batch) {
+          for (final uuid in existingUuids) {
+            batch.update(db.qsos, _companionFor(stampedByUuid[uuid]!), where: (q) => q.uuid.equals(uuid));
+          }
+        });
+        written += existingUuids.length;
       }
-      await _refreshOperationCounters(operationUuid);
+      if (refreshCounters) await refreshOperationCounters(operationUuid);
     });
 
     sequences?.invalidate();
@@ -677,7 +727,7 @@ class QsosRepository {
     final stamped = _restamped(qso);
     await db.transaction(() async {
       await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped));
-      await _refreshOperationCounters(stamped.operationUuid);
+      await refreshOperationCounters(stamped.operationUuid);
     });
     // An edit can change a serial by hand, and never routes through the
     // allocator — so the memoized high-water mark can no longer be trusted.
@@ -716,7 +766,7 @@ class QsosRepository {
           updatedAtMillis: Value(stamped.updatedAtMillis),
         ),
       );
-      await _refreshOperationCounters(stamped.operationUuid);
+      await refreshOperationCounters(stamped.operationUuid);
       changed = true;
     });
     if (changed) onChange?.call();
@@ -788,7 +838,12 @@ class QsosRepository {
   /// [_inClauseChunkSize] for SQLite's bound-variable limit; [watchForOurCalls]
   /// does not chunk its own `IN` list, since every caller today passes it a
   /// single callsign.
-  Future<List<Qso>> historyForCalls(Iterable<String> calls) async {
+  ///
+  /// [onChunk], when given, is called after every chunk with (calls looked
+  /// up so far, total calls) — real progress for a caller that would
+  /// otherwise have nothing but "still working" for however long the
+  /// chunks take.
+  Future<List<Qso>> historyForCalls(Iterable<String> calls, {void Function(int done, int total)? onChunk}) async {
     final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
     if (normalized.isEmpty) return const [];
     final results = <Qso>[];
@@ -807,20 +862,31 @@ class QsosRepository {
       // animating.
       final decoded = await _qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
       results.addAll(decoded.where((qso) => !qso.isEvent));
+      // A caller's progress UI throwing (a disposed notifier, a formatting
+      // edge case) must not fail the lookup itself, or discard whatever
+      // chunks already decoded cleanly.
+      try {
+        onChunk?.call(math.min(i + _inClauseChunkSize, normalized.length), normalized.length);
+      } catch (e) {
+        DevLog.instance.log('historyForCalls-onChunk-error', {'error': e.toString()});
+      }
     }
     return results;
   }
 
   /// Every station callsign QSOs have been logged under, across every
-  /// operation — the Logs experiment's callsign list (docs card HALO-273).
-  /// Matches the denormalized `ourCall` column (stored uppercase), same join
-  /// shape as [historyForCall]: a deleted operation's QSOs drop out even
-  /// though deleting an operation does not tombstone them.
-  Stream<List<String>> watchDistinctOurCalls() {
-    final query = db.selectOnly(db.qsos, distinct: true).join([
+  /// operation, with how many QSOs each has — the Logs experiment's
+  /// callsign picker (docs card HALO-273), which shows the count as a pill
+  /// next to each entry. Matches the denormalized `ourCall` column (stored
+  /// uppercase), same join shape as [historyForCall]: a deleted operation's
+  /// QSOs drop out even though deleting an operation does not tombstone
+  /// them.
+  Stream<Map<String, int>> watchDistinctOurCalls() {
+    final count = db.qsos.uuid.count();
+    final query = db.selectOnly(db.qsos).join([
       leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
     ])
-      ..addColumns([db.qsos.ourCall])
+      ..addColumns([db.qsos.ourCall, count])
       ..where(db.qsos.ourCall.isNotNull() &
           db.qsos.ourCall.equals('').not() &
           db.qsos.deleted.equals(false) &
@@ -831,10 +897,15 @@ class QsosRepository {
           // bare `band != 'event'`: that reads NULL — not true — for a
           // QSO logged without a band, silently dropping it too.
           _isContact &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..groupBy([db.qsos.ourCall]);
     return query.watch().map((rows) {
-      final calls = <String>{for (final row in rows) if (row.read(db.qsos.ourCall) case final call? when call.isNotEmpty) call};
-      return calls.toList()..sort();
+      final calls = <String, int>{};
+      for (final row in rows) {
+        final call = row.read(db.qsos.ourCall);
+        if (call != null && call.isNotEmpty) calls[call] = row.read(count) ?? 0;
+      }
+      return calls;
     });
   }
 
@@ -1006,7 +1077,7 @@ class QsosRepository {
         affectedOperations.add(operationUuid);
       }
       for (final operationUuid in affectedOperations) {
-        await _refreshOperationCounters(operationUuid);
+        await refreshOperationCounters(operationUuid);
       }
     });
     // Another device's numbers arrived without passing through the allocator,
@@ -1079,25 +1150,39 @@ class QsosRepository {
   /// so refreshing them must not flip `synced` back to false. Doing so
   /// would make an operation perpetually "dirty" any time its QSOs change,
   /// even after a round already sent its actual (unchanged) content.
-  Future<void> _refreshOperationCounters(String operationUuid) async {
-    final count = db.qsos.uuid.count();
-    final minStart = db.qsos.startAtMillis.min();
-    final maxStart = db.qsos.startAtMillis.max();
-    // Event pseudo-QSOs (start/break/end markers) share the qsos table but
-    // aren't real contacts — exclude them from the count and time range.
-    final notEvent = db.qsos.band.isNull() | db.qsos.band.equals('event').not();
-    final query = db.selectOnly(db.qsos)
-      ..addColumns([count, minStart, maxStart])
-      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & notEvent);
-    final row = await query.getSingle();
+  ///
+  /// Public (not called only from within this class) so a caller writing in
+  /// many chunks — [writeBatch] with `refreshCounters: false` per chunk — can
+  /// run this once after the last one, instead of once per chunk.
+  Future<void> refreshOperationCounters(String operationUuid) async {
+    // Self-transacting (drift nests a transaction() called from inside
+    // another via a savepoint, so this stays cheap for the callers that
+    // already wrap it in their own) — the SELECT and the UPDATE below have
+    // to be atomic with respect to a concurrent write to the same
+    // operation's QSOs, or the UPDATE can overwrite fresher counters with
+    // the stale ones this SELECT computed. `refreshTouchedCounters` in
+    // `logs_view.dart` is the one caller that has never had an outer
+    // transaction of its own to rely on for that.
+    await db.transaction(() async {
+      final count = db.qsos.uuid.count();
+      final minStart = db.qsos.startAtMillis.min();
+      final maxStart = db.qsos.startAtMillis.max();
+      // Event pseudo-QSOs (start/break/end markers) share the qsos table but
+      // aren't real contacts — exclude them from the count and time range.
+      final notEvent = db.qsos.band.isNull() | db.qsos.band.equals('event').not();
+      final query = db.selectOnly(db.qsos)
+        ..addColumns([count, minStart, maxStart])
+        ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & notEvent);
+      final row = await query.getSingle();
 
-    await (db.update(db.operations)..where((op) => op.uuid.equals(operationUuid))).write(
-      OperationsCompanion(
-        qsoCount: Value(row.read(count) ?? 0),
-        startAtMillisMin: Value(row.read(minStart)),
-        startAtMillisMax: Value(row.read(maxStart)),
-      ),
-    );
+      await (db.update(db.operations)..where((op) => op.uuid.equals(operationUuid))).write(
+        OperationsCompanion(
+          qsoCount: Value(row.read(count) ?? 0),
+          startAtMillisMin: Value(row.read(minStart)),
+          startAtMillisMax: Value(row.read(maxStart)),
+        ),
+      );
+    });
   }
 }
 

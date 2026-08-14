@@ -446,8 +446,11 @@ void _set(
 /// HTML entity decoding. Real files over-declare by one routinely
 /// (`<qth:37>` for a 36-byte value), and the newline it swallows would
 /// otherwise ride along into the QSO — and, for `PROGRAMID`, defeat the
-/// comparison in [_genericQslFor].
-String _clean(String value) => _decodeEntities(value).replaceFirst(RegExp(r'\s+$'), '');
+/// comparison in [_genericQslFor]. `trimRight()`, not a regex: this runs
+/// once per field of every record, and a `RegExp` literal re-compiles its
+/// pattern on every call rather than once — measured as the single largest
+/// cost in parsing a 38k-QSO file (~1.4s of it).
+String _clean(String value) => _decodeEntities(value).trimRight();
 
 /// ADIF `CNTY` is `STATE,COUNTY` with no country in it, while QSON county
 /// codes are country-qualified. `??/` marks a county from a country whose

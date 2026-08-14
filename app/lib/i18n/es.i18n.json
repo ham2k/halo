@@ -103,8 +103,10 @@
         "skippedOne": "1 registro no se pudo leer",
         "skippedOther": "${count} registros no se pudieron leer",
         "readingTitle": "Leyendo archivo ADIF…",
+        "checkingTitle": "Buscando duplicados…",
         "importingTitle": "Importando QSOs…",
         "readingDetail": "${kb} Kb",
+        "checkingDetail": "${done} de ${total} verificados",
         "importingDetail": "${imported} importados, de ${total}"
       }
     }
@@ -1245,29 +1247,41 @@
     "title": "Importar QSOs desde ADIF",
     "reading": "Leyendo ${filename}…",
     "dropHint": "Suelta un archivo ADIF para importarlo",
+    "totalInFile": {
+      "one": "${count} QSO en este archivo",
+      "other": "${formatted} QSOs en este archivo"
+    },
+    "alreadyLogged": {
+      "one": "${count} ya está en tu registro",
+      "other": "${formatted} ya están en tu registro"
+    },
+    "willImport": {
+      "one": "${count} se importará",
+      "other": "${formatted} se importarán"
+    },
     "newContacts": {
       "one": "${count} contacto nuevo",
-      "other": "${count} contactos nuevos"
+      "other": "${formatted} contactos nuevos"
     },
     "merging": {
       "one": "${count} se combinará con un contacto existente",
-      "other": "${count} se combinarán con contactos existentes"
+      "other": "${formatted} se combinarán con contactos existentes"
     },
     "unusable": {
       "one": "${count} no se puede importar (sin indicativo)",
-      "other": "${count} no se pueden importar (sin indicativo)"
+      "other": "${formatted} no se pueden importar (sin indicativo)"
     },
     "flagged": {
       "one": "${count} requiere revisión",
-      "other": "${count} requieren revisión"
+      "other": "${formatted} requieren revisión"
     },
     "missingRefs": {
       "one": "No se pudieron recuperar las referencias de ${count} contacto",
-      "other": "No se pudieron recuperar las referencias de ${count} contactos"
+      "other": "No se pudieron recuperar las referencias de ${formatted} contactos"
     },
     "partialRefs": {
       "one": "Las referencias de ${programs} pueden estar incompletas en ${count} contacto",
-      "other": "Las referencias de ${programs} pueden estar incompletas en ${count} contactos"
+      "other": "Las referencias de ${programs} pueden estar incompletas en ${formatted} contactos"
     },
     "stackingTypesUnknown": "Los contactos combinados podrían perder una referencia: las actividades no pudieron indicar qué tipos se acumulan. Cancela y reinténtalo para evitarlo.",
     "nothingToImport": "No hay nada importable en este archivo",
@@ -1283,7 +1297,7 @@
     "stationCallJoin": " y ",
     "noDate": {
       "one": "${count} no tiene fecha y no se puede importar",
-      "other": "${count} no tienen fecha y no se pueden importar"
+      "other": "${formatted} no tienen fecha y no se pueden importar"
     },
     "activationFound": "Este archivo registra una activación de ${refs}.",
     "addActivation": "Añadirla a esta operación",

@@ -158,22 +158,22 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
 
-  /// Cached from [_callsignsStream] — the picker menu needs a synchronous
-  /// list to build its items from, and this is also what a fresh view
-  /// auto-selects the first entry of.
-  List<String> _callsigns = const [];
+  /// Cached from the callsigns stream (see [_subscribeCallsigns]), call ->
+  /// its QSO count — the picker menu needs a synchronous map to build its
+  /// items from (the count becomes a pill next to each entry), and the keys
+  /// are also what a fresh view auto-selects the first of.
+  Map<String, int> _callsigns = const {};
 
-  /// `false` until [_callsignsStream] delivers its first snapshot — the view
-  /// shows a spinner for that stretch rather than the "select a callsign"
-  /// prompt, which would otherwise flash before there is anything to select.
+  /// `false` until the callsigns stream delivers its first snapshot — the
+  /// view shows a spinner for that stretch rather than the "select a
+  /// callsign" prompt, which would otherwise flash before there is anything
+  /// to select.
   bool _callsignsLoaded = false;
-  StreamSubscription<List<String>>? _callsignsSubscription;
+  StreamSubscription<Map<String, int>>? _callsignsSubscription;
 
   /// Empty until a callsign is picked — the query needs one, so there is
   /// nothing to watch before then.
   Stream<List<Qso>>? _qsosStream;
-
-  late final Stream<List<String>> _callsignsStream = widget.services.qsos.watchDistinctOurCalls();
 
   final _pickerKey = GlobalKey();
 
@@ -227,16 +227,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     // fresh each time the destination switches back to it, so `initState` is
     // exactly "a visit started".
     widget.services.track('screen_viewed', {'screen': 'logs'});
-    _callsignsSubscription = _callsignsStream.listen((calls) {
-      setState(() {
-        _callsignsLoaded = true;
-        _callsigns = calls;
-        // A fresh view, or one whose selected callsign just dropped out of
-        // the list (its last QSO deleted), opens on something rather than
-        // getting stuck on a callsign with nothing left behind it.
-        if (!calls.contains(_filter.stationCall) && calls.isNotEmpty) _selectCall(calls.first);
-      });
-    });
+    _subscribeCallsigns();
   }
 
   @override
@@ -244,6 +235,26 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     unawaited(_callsignsSubscription?.cancel());
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Also called by [_runAdifDrop] to resubscribe after pausing this for the
+  /// write phase — see that function's own doc comment on why. Requests a
+  /// fresh stream each time rather than reusing one cached instance: Drift's
+  /// `.watch()` streams are single-subscription, so a stream already
+  /// cancelled once cannot be listened to again.
+  void _subscribeCallsigns() {
+    _callsignsSubscription = widget.services.qsos.watchDistinctOurCalls().listen((calls) {
+      setState(() {
+        _callsignsLoaded = true;
+        _callsigns = calls;
+        // A fresh view, or one whose selected callsign just dropped out of
+        // the list (its last QSO deleted), opens on something rather than
+        // getting stuck on a callsign with nothing left behind it.
+        if (!calls.containsKey(_filter.stationCall) && calls.isNotEmpty) {
+          _selectCall((calls.keys.toList()..sort()).first);
+        }
+      });
+    });
   }
 
   void _selectCall(String call) {
@@ -277,14 +288,33 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     if (box == null || overlayBox == null) return;
     final topLeft = box.localToGlobal(Offset(0, box.size.height), ancestor: overlayBox);
     final position = RelativeRect.fromLTRB(topLeft.dx, topLeft.dy, overlayBox.size.width - topLeft.dx, 0);
+    final theme = Theme.of(context);
+    final sortedCalls = _callsigns.keys.toList()..sort();
     final picked = await showMenu<String>(
       context: context,
       position: position,
       items: [
-        for (final call in _callsigns)
+        for (final call in sortedCalls)
           PopupMenuItem(
             value: call,
-            child: Text(call, style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w700)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(call, style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: Space.md),
+                // Same count-pill treatment the operation list uses for its
+                // own QSO count.
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(formatNumber(_callsigns[call] ?? 0), style: theme.textTheme.labelLarge),
+                ),
+              ],
+            ),
           ),
       ],
     );
@@ -588,20 +618,49 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         if (total > 0) progress.value = readSoFar / total;
         detail.value = importT.readingDetail(kb: formatNumber((readSoFar / 1024).round()));
       }
-      // Parsing and the extension ref-hook pass have no comparable per-unit
-      // progress to report — back to indeterminate for this stretch.
+      // Parsing has no natural checkpoint to report progress from (a single
+      // synchronous pass), but the ref-hook pass and the duplicate lookup
+      // both already run in bounded batches/chunks — real per-record
+      // progress for those, on one combined bar, rather than leaving the
+      // whole stretch indeterminate. Each callback below reports progress
+      // ABSOLUTE within its own phase; `checkTotal` covers both phases, so
+      // the lookup's contribution is offset by the hooks phase's total
+      // (already complete by the time lookup starts) rather than restarting
+      // the bar at the boundary between them.
+      title.value = importT.checkingTitle;
+      detail.value = '';
       progress.value = null;
       log = parseAdifLogBytes(builder.takeBytes());
-      final hookOutcome = await AdifImportService(widget.services.extensions.host).applyHooks(log.qsos);
+      // Normalized the same way `historyForCalls` normalizes its own `calls`
+      // argument internally (trim + uppercase) — otherwise two records
+      // differing only in case or stray whitespace count as two entries
+      // here but collapse to one in `historyForCalls`'s own total, and the
+      // combined progress bar below stalls just short of 100% because the
+      // lookup phase can never report as many calls checked as this side
+      // expects.
       final theirCalls = <String>{
         for (final record in log.qsos)
-          if ((record.qso['their'] as Map?)?['call'] case final String call when call.isNotEmpty) call,
-      };
+          if ((record.qso['their'] as Map?)?['call'] case final String call when call.isNotEmpty)
+            call.trim().toUpperCase(),
+      }..removeWhere((call) => call.isEmpty);
+      final checkTotal = log.qsos.length + theirCalls.length;
+      void reportChecked(int checked) {
+        if (checkTotal > 0) progress.value = checked / checkTotal;
+        detail.value = importT.checkingDetail(done: formatNumber(checked), total: formatNumber(checkTotal));
+      }
+
+      final hookOutcome = await AdifImportService(widget.services.extensions.host).applyHooks(
+        log.qsos,
+        onBatch: (done, total) => reportChecked(done),
+      );
       // One batched query rather than one per distinct counterparty — a
       // large file's callsigns run into the thousands, and a sequential
       // `historyForCall` per callsign turns that into thousands of
       // round trips with the progress bar stuck on indeterminate.
-      final existing = await widget.services.qsos.historyForCalls(theirCalls);
+      final existing = await widget.services.qsos.historyForCalls(
+        theirCalls,
+        onChunk: (done, total) => reportChecked(log.qsos.length + done),
+      );
       // Threaded through to the plan the same way `adif_import_flow.dart`
       // does — dropping these silently degrades a ref-hook failure into a
       // clean-looking import with no references, indistinguishable from a
@@ -629,12 +688,6 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     }
     closeProgressDialog();
 
-    if (plan.isEmpty) {
-      disposeNotifiers();
-      await _showAdifNotice(context.t.adifImport.nothingToImport);
-      return;
-    }
-
     // Uppercased, like every other callsign path in this view — an ADIF
     // file's STATION_CALLSIGN case isn't guaranteed, and `_callsigns` (from
     // `watchDistinctOurCalls`) is always uppercase, so a mixed-case value
@@ -658,8 +711,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     final confirmed = await showHaloDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        final info = context.t.loggingControls.info;
         final importT = context.t.home.logs.import;
+        final totalInFile = t.totalInFile(count: log.qsos.length, formatted: formatNumber(log.qsos.length));
         return HaloDialog(
           title: Text(t.title),
           content: Column(
@@ -668,10 +721,15 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
             children: [
               Text(importT.callsigns(calls: calls.join(', '))),
               const SizedBox(height: Space.sm),
-              Text(
-                plan.importCount == 1 ? info.qsoCountOne : info.qsoCountOther(count: formatNumber(plan.importCount)),
-              ),
-              if (dateRangeLabel != null) Text(dateRangeLabel),
+              // Three separate counts, not one combined figure — a re-import
+              // of a file already fully in the log matches every record and
+              // imports none of them, and "0 QSOs" on its own reads as
+              // nothing in the file was recognized rather than as "nothing
+              // has changed since last time."
+              Text(dateRangeLabel == null ? totalInFile : '$totalInFile ($dateRangeLabel)'),
+              if (plan.alreadyLoggedCount > 0)
+                Text(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount))),
+              Text(t.willImport(count: plan.importCount, formatted: formatNumber(plan.importCount))),
               if (plan.refusedCount > 0) ...[
                 const SizedBox(height: Space.sm),
                 Text(
@@ -690,7 +748,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
               if (plan.recordsUnreachable > 0) ...[
                 const SizedBox(height: Space.sm),
                 Text(
-                  t.missingRefs(count: plan.recordsUnreachable),
+                  t.missingRefs(count: plan.recordsUnreachable, formatted: formatNumber(plan.recordsUnreachable)),
                   style: Theme.of(dialogContext).textTheme.bodySmall,
                 ),
               ],
@@ -701,16 +759,28 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
                     programs: failedProgramNames(widget.services.extensions.availableExtensions, plan.failedHooks)
                         .join(', '),
                     count: plan.recordsWithFailedHooks,
+                    formatted: formatNumber(plan.recordsWithFailedHooks),
                   ),
                   style: Theme.of(dialogContext).textTheme.bodySmall,
                 ),
               ],
+              // Truly nothing recognized — as opposed to a fully-matched
+              // re-import, which still has `alreadyLoggedCount` to say so —
+              // gets the same explicit line `adif_import_flow.dart`'s
+              // summary shows for the same case.
+              if (plan.isEmpty && plan.refusedCount == 0 && plan.alreadyLoggedCount == 0)
+                Text(context.t.adifImport.nothingToImport),
             ],
           ),
-          actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(t.confirm))],
+          // Empty plans get no confirm action, the same way
+          // `adif_import_flow.dart` handles them — nothing to write, so the
+          // only thing to do is close the summary.
+          actions: [
+            if (!plan.isEmpty) FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(t.confirm)),
+          ],
           cancel: TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.t.common.cancel),
+            child: Text(plan.isEmpty ? context.t.common.done : context.t.common.cancel),
           ),
         );
       },
@@ -730,23 +800,77 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       barrierDismissible: false,
       builder: (_) => _AdifProgressDialog(title: title, progress: progress, detail: detail),
     ));
+
+    // Unsubscribed for the write phase, not merely paused — a large import
+    // commits dozens of chunks, and each commit makes a live Drift stream
+    // re-run its query and re-decode the full result set REGARDLESS of
+    // whether its listener is paused (pausing only withholds delivery, not
+    // the underlying work). Nothing is watching either while this view sits
+    // behind the non-dismissible progress dialog above, so cancel rather
+    // than pause, and resubscribe once after the last chunk lands.
+    await _callsignsSubscription?.cancel();
+    _callsignsSubscription = null;
+    final callBeforeWrite = _filter.stationCall;
+    if (mounted) setState(() => _qsosStream = null);
+    // Never allowed to throw — called right before the notifiers/dialog
+    // cleanup on every exit path (success, write failure, unmount), and a
+    // caller that skipped that cleanup because THIS threw would leave the
+    // non-dismissible progress dialog stuck on screen with nothing able to
+    // close it, and — on the write-failure path — the real error unreported
+    // underneath whatever this raised instead.
+    void resubscribe() {
+      try {
+        if (!mounted) return;
+        _subscribeCallsigns();
+        setState(() => _qsosStream = callBeforeWrite == null ? null : widget.services.qsos.watchForOurCalls([callBeforeWrite]));
+      } catch (e, stack) {
+        ErrorReportingService.report(e, stack, context: 'logsAdifImport:resubscribe');
+      }
+    }
     // `writeBatch` refuses a batch whose updates don't all share its
     // `operationUuid`, so each destination operation (or the loose bucket)
     // gets its own call — chunked, so `progress` moves as QSOs actually
-    // land rather than jumping straight to done on one giant batch.
-    const chunkSize = 200;
+    // land rather than jumping straight to done on one giant batch. 1000,
+    // not something smaller: `writeBatch` compiles each chunk into one
+    // `db.batch()` statement, so the per-chunk cost is now mostly the
+    // transaction commit rather than per-row work, and a larger chunk still
+    // leaves plenty of progress updates (tens of them) on a file large
+    // enough for the chunking to matter at all.
+    const chunkSize = 1000;
+    // Each chunk skips `writeBatch`'s own counter refresh (`refreshCounters:
+    // false`) — a large import writes the same operation across dozens of
+    // chunks, and the counters only need to be right once writing to it is
+    // done, not after every intermediate chunk. `refreshTouchedCounters`
+    // below catches up whichever operations were actually written to, once,
+    // regardless of whether the import completes or throws partway through.
+    final touchedOperations = <String>{};
     Future<void> writeChunked(String operationUuid, {List<Map<String, dynamic>> inserts = const [], List<Qso> updates = const []}) async {
+      if (operationUuid.isNotEmpty) touchedOperations.add(operationUuid);
       for (var i = 0; i < inserts.length; i += chunkSize) {
         final chunk = inserts.sublist(i, math.min(i + chunkSize, inserts.length));
-        written += await widget.services.qsos.writeBatch(operationUuid: operationUuid, inserts: chunk);
+        written += await widget.services.qsos.writeBatch(operationUuid: operationUuid, inserts: chunk, refreshCounters: false);
         if (totalPlanned > 0) progress.value = written / totalPlanned;
         detail.value = importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned));
       }
       for (var i = 0; i < updates.length; i += chunkSize) {
         final chunk = updates.sublist(i, math.min(i + chunkSize, updates.length));
-        written += await widget.services.qsos.writeBatch(operationUuid: operationUuid, updates: chunk);
+        written += await widget.services.qsos.writeBatch(operationUuid: operationUuid, updates: chunk, refreshCounters: false);
         if (totalPlanned > 0) progress.value = written / totalPlanned;
         detail.value = importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned));
+      }
+    }
+
+    // Same "never throws" contract as `resubscribe` above, and for the same
+    // reason — one operation's counter failing to refresh must not skip the
+    // dialog cleanup, or bury the write failure the catch block below exists
+    // to report.
+    Future<void> refreshTouchedCounters() async {
+      for (final operationUuid in touchedOperations) {
+        try {
+          await widget.services.qsos.refreshOperationCounters(operationUuid);
+        } catch (e, stack) {
+          ErrorReportingService.report(e, stack, context: 'logsAdifImport:refreshCounters');
+        }
       }
     }
 
@@ -762,6 +886,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         await writeChunked('', inserts: plan.additions);
       }
     } catch (e, stack) {
+      await refreshTouchedCounters();
+      resubscribe();
       disposeNotifiers();
       closeProgressDialog();
       ErrorReportingService.report(e, stack, context: 'logsAdifImport:write');
@@ -779,6 +905,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       }
       return;
     }
+    await refreshTouchedCounters();
+    resubscribe();
     disposeNotifiers();
     closeProgressDialog();
     if (!mounted) return;

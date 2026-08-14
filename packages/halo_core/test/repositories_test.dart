@@ -326,6 +326,33 @@ void main() {
       expect(await counting.writeBatch(operationUuid: op.uuid), 0);
       expect(changes, 0);
     });
+
+    test('an update batch bigger than one existence-check chunk still counts every row', () async {
+      // The existence check for updates is chunked the same way historyForCalls
+      // chunks its own IN clause — a caller that hands a large re-import's
+      // merges straight through in one call (adif_import_flow.dart does) would
+      // otherwise build one IN clause with one bound variable per update, past
+      // SQLite's limit on a big enough operation. This spans more than one
+      // chunk to prove the counts still add up across the boundary.
+      final op = await operations.create(stationCall: 'KI2D');
+      const total = 1200;
+      await qsos.writeBatch(
+        operationUuid: op.uuid,
+        inserts: [for (var i = 0; i < total; i++) qsoData('W1AW$i')],
+      );
+      final existing = await qsos.watchForOperation(op.uuid).first;
+
+      final written = await qsos.writeBatch(
+        operationUuid: op.uuid,
+        updates: [
+          for (final qso in existing) Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'notes': 'updated'}),
+        ],
+      );
+
+      expect(written, total);
+      final updated = await qsos.watchForOperation(op.uuid).first;
+      expect(updated.every((qso) => qso.notes == 'updated'), isTrue);
+    });
   });
 
   group('sync revision stamps (updatedAtMillis)', () {
