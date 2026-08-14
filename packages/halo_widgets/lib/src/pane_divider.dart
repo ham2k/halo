@@ -100,14 +100,14 @@ class SolidPaneDivider extends StatefulWidget {
 class _SolidPaneDividerState extends State<SolidPaneDivider> {
   bool _hovered = false;
 
-  /// Non-null for the duration of a drag: a root-level, PURELY VISUAL
-  /// overlay entry that covers the ENTIRE window, above every platform view
-  /// (the map webview) regardless of where in the tree it lives. The bar
-  /// itself is only a few device pixels wide — a fast drag routinely puts
-  /// the pointer well past it, and if that lands on a native platform view,
-  /// the OS can hand subsequent events (including the terminating mouse-up)
-  /// straight to the platform view instead of Flutter, leaving the drag
-  /// stuck "active" forever.
+  /// Non-null for the duration of a drag: a root-level, PURELY VISUAL and
+  /// fully transparent overlay entry that covers the ENTIRE window, above
+  /// every platform view (the map webview) regardless of where in the tree
+  /// it lives. The bar itself is only a few device pixels wide — a fast drag
+  /// routinely puts the pointer well past it, and if that lands on a native
+  /// platform view, the OS can hand subsequent events (including the
+  /// terminating mouse-up) straight to the platform view instead of Flutter,
+  /// leaving the drag stuck "active" forever.
   ///
   /// The overlay does NOT itself receive pointer events: Flutter hit-tests a
   /// pointer once, at its PointerDownEvent, and routes every later event of
@@ -165,13 +165,12 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
       widget.onDragStart?.call();
       final overlay = Overlay.of(context, rootOverlay: true);
       _captureOverlay = OverlayEntry(
-        // Fully opaque, not a near-invisible wash: this also hides a native
-        // platform view (the map webview) from its own resize flicker,
-        // which a merely-transparent occluder wouldn't. IgnorePointer: it's
-        // paint-only, see the field doc above for why it can't drive the
-        // drag itself.
-        builder: (context) =>
-            Positioned.fill(child: IgnorePointer(child: ColoredBox(color: Theme.of(context).colorScheme.surface))),
+        // Fully transparent: this exists only to claim the pointer route
+        // away from the platform view (see the field doc above), not to
+        // paint anything — a native platform view (the map webview) may
+        // still flicker under a fast drag, which is tolerated. IgnorePointer:
+        // it's paint-only, it can't drive the drag itself.
+        builder: (context) => const Positioned.fill(child: IgnorePointer(child: ColoredBox(color: Colors.transparent))),
       );
       overlay.insert(_captureOverlay!);
     }
