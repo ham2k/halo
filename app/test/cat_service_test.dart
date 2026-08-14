@@ -316,6 +316,7 @@ void main() {
       final props = only('radio_connected').single;
       expect(props['radio'], 'fake-type');
       expect(props['transport'], 'fake');
+      expect(props['name'], 'Left Radio');
     });
 
     test('radio_connect_failed classifies the error and never carries its text', () async {
@@ -333,6 +334,7 @@ void main() {
 
       final props = only('radio_connect_failed').single;
       expect(props['reason'], 'timeout');
+      expect(props['name'], 'Left Radio');
       expect(props.values.join(' '), isNot(contains('secret-host')),
           reason: 'no config value or error text may reach the payload');
     });
@@ -343,6 +345,7 @@ void main() {
       await withTracking();
       await addRadio();
       expect(only('radio_added').single['via'], 'manual');
+      expect(only('radio_added').single['name'], 'Left Radio');
 
       tracked.clear();
       await cat.addDiscovered(const DiscoveredEquipment(
@@ -352,6 +355,28 @@ void main() {
         config: {'host': 'found.local'},
       ));
       expect(only('radio_added').single['via'], 'discovery');
+      expect(only('radio_added').single['name'], 'Found Radio');
+    });
+
+    test('a blank name falls back to the driver name, not an empty string', () async {
+      // The trap: addNode always fills a blank name in via suggestedNameFor,
+      // so only updateNode (which applies no such fallback) can produce the
+      // pre-`name`-field / operator-cleared-the-field case this guards.
+      await withTracking();
+      final node = await addRadio();
+      await cat.updateNode(node.copyWith(name: ''));
+      tracked.clear();
+      await connectAndLand(node);
+
+      expect(only('radio_connected').single['name'], 'Fake Radio');
+    });
+
+    test('a name past 60 characters is truncated before it leaves the device', () async {
+      await withTracking();
+      final node = await cat.addNode(typeKey: 'fake-type', name: 'x' * 80, config: const {'host': 'a.local'});
+      await connectAndLand(node);
+
+      expect(only('radio_connected').single['name'], 'x' * 60);
     });
   });
 

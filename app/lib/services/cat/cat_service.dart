@@ -203,22 +203,42 @@ class CatService extends ChangeNotifier {
     _radio?.addListener(_onVfoChanged);
   }
 
-  /// Describes a radio by its CATALOGUE identity only — the variant key (a
-  /// stable id we ship), its transport and its driver. Never anything from
-  /// the node's config: a serial `port` embeds the adapter's device serial
-  /// number on macOS, and the network transports hold addresses and
-  /// passwords. See docs/design/telemetry.md.
-  void _trackRadio(String event, String typeKey, {Map<String, Object?> extra = const {}}) {
+  /// Describes a radio by its catalogue identity — the variant key (a
+  /// stable id we ship), its transport and its driver — plus the node's
+  /// name. Still never any other config: a serial `port` embeds the
+  /// adapter's device serial number on macOS, and the network transports
+  /// hold addresses and passwords. See docs/design/telemetry.md.
+  ///
+  /// Taking the whole [node] (not a separately-passed name) so every call
+  /// site gets the same blank-name fallback rather than each one having to
+  /// remember it: an unnamed node — freshly loaded from a pre-`name` record,
+  /// or blanked out in the editor, which enforces no minimum length — falls
+  /// back to the driver's own name, e.g. "Kenwood (CAT)". That is still
+  /// bounded (drawn from our own driver catalogue, not typed by the
+  /// operator), just less specific than a real name.
+  void _trackRadio(String event, EquipmentNode node, {Map<String, Object?> extra = const {}}) {
     final track = _onTrack;
     if (track == null) return;
-    final type = registry.typeFor(typeKey);
+    final type = registry.typeFor(node.typeKey);
+    final name = node.name.isNotEmpty ? node.name : (type?.driver.name ?? node.typeKey);
     track(event, {
-      'radio': typeKey,
+      'radio': node.typeKey,
       'transport': type?.transportKey,
       'driver': type?.driver.key,
+      'name': _trackedName(name),
       ...extra,
     });
   }
+
+  /// The name field has no length limit in the editor, unlike every other
+  /// property this event sends — all bounded by our own catalogue. Capped
+  /// here, at the one place all `radio_*` events funnel through, rather than
+  /// in the editor: a length limit there is a UX decision for the name
+  /// operators see everywhere, not a telemetry one.
+  static const _maxTrackedNameLength = 60;
+
+  static String _trackedName(String name) =>
+      name.length <= _maxTrackedNameLength ? name : name.substring(0, _maxTrackedNameLength);
 
   /// A bounded classification, never the exception's text: `'$e'` routinely
   /// carries the port path or host that failed. Matched on the type NAME for
@@ -258,9 +278,9 @@ class CatService extends ChangeNotifier {
   /// report on every cycle, which is the volume this de-dup exists to stop.
   /// The question being answered is "does this pairing ever fail for people",
   /// not "how often".
-  void _trackFailure(String uuid, String typeKey, String reason, {Map<String, Object?> extra = const {}}) {
-    if (!_trackedFailed.add(uuid)) return;
-    _trackRadio('radio_connect_failed', typeKey, extra: {'reason': reason, ...extra});
+  void _trackFailure(EquipmentNode node, String reason, {Map<String, Object?> extra = const {}}) {
+    if (!_trackedFailed.add(node.uuid)) return;
+    _trackRadio('radio_connect_failed', node, extra: {'reason': reason, ...extra});
   }
 
   List<EquipmentNode> get nodes => List.unmodifiable(_nodes.values);
@@ -465,7 +485,7 @@ class CatService extends ChangeNotifier {
     if (category == kCategoryAntenna) _designated[kCategoryAntenna] = stored.uuid;
     if (category == kCategoryKey) _designated[kCategoryKey] = stored.uuid;
     await _save();
-    _trackRadio('radio_added', stored.typeKey, extra: {'via': via});
+    _trackRadio('radio_added', stored, extra: {'via': via});
     notifyListeners();
     return stored;
   }
@@ -704,7 +724,7 @@ class CatService extends ChangeNotifier {
     final transport = registry.transportFor(type?.transportKey);
     if (type == null || transport == null) {
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: 'Unknown equipment type "${node.typeKey}"'));
-      _trackFailure(uuid, node.typeKey, 'unknown_type');
+      _trackFailure(node, 'unknown_type');
       return _ConnectOutcome.failed;
     }
 
@@ -713,7 +733,7 @@ class CatService extends ChangeNotifier {
     final invalid = type.validate(config);
     if (invalid != null) {
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: invalid));
-      _trackFailure(uuid, node.typeKey, 'invalid_config', extra: _baudExtra(config));
+      _trackFailure(node, 'invalid_config', extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
 
@@ -753,7 +773,7 @@ class CatService extends ChangeNotifier {
         uuid,
         EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw),
       );
-      _trackFailure(uuid, node.typeKey, reason, extra: _baudExtra(config));
+      _trackFailure(node, reason, extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
 
@@ -834,7 +854,7 @@ class CatService extends ChangeNotifier {
     }));
 
     _setState(uuid, const EquipmentState(status: EquipmentStatus.connected));
-    if (_trackedConnected.add(uuid)) _trackRadio('radio_connected', node.typeKey);
+    if (_trackedConnected.add(uuid)) _trackRadio('radio_connected', node);
     _armStaleWatch(uuid, runtime);
 
     // Start updates on connect rather than when a UI subscriber shows up:

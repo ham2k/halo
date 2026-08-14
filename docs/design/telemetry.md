@@ -12,8 +12,12 @@ vocabulary so both apps report comparable usage.
   tracking immediately; no restart involved.
 - **No identifying data**: the client identifier is a random install-scoped
   UUID, salted and SHA-256 hashed before leaving the device. Event payloads
-  carry no callsigns, no locations, no free text — the QSO events send only
-  the contact's DXCC prefix and ref *types*.
+  carry no callsigns, no locations — the QSO events send only the contact's
+  DXCC prefix and ref *types*. The one deliberate exception is `radio_*`'s
+  `name`: a node's label, sent (capped at 60 characters) so a generic
+  driver's actual make/model (which the catalogue key alone can't tell
+  apart, e.g. `kenwood-generic`) is visible in the data. See "Radios"
+  below.
 - **OSS builds are silent — and backend-free**: this repo contains only the
   generic `MetricsService` interface (no-op by default) and the consent
   gate. Any analytics backend lives in the private distribution layer
@@ -41,9 +45,9 @@ Names and property keys follow app-polo's set; HaLo-only additions marked *.
 | `notice_shown` / `notice_dismissed` | `notice_key` | remote notices (FlagsService) |
 | `extension_enabled` / `extension_disabled` * | `extension` | Extensions panel toggle |
 | `sync_enabled` / `sync_disabled` * | — | Sync settings toggle |
-| `radio_added` * | `radio`, `transport`, `driver`, `via` | equipment configured (`discovery`/`manual`) |
-| `radio_connected` * | `radio`, `transport`, `driver` | first successful connect, once per radio per session |
-| `radio_connect_failed` * | `radio`, `transport`, `driver`, `reason`, `baud` | first failed connect, once per radio per session |
+| `radio_added` * | `radio`, `transport`, `driver`, `name`, `via` | equipment configured (`discovery`/`manual`) |
+| `radio_connected` * | `radio`, `transport`, `driver`, `name` | first successful connect, once per radio per session |
+| `radio_connect_failed` * | `radio`, `transport`, `driver`, `name`, `reason`, `baud` | first failed connect, once per radio per session |
 
 ### Screens and panels
 
@@ -93,11 +97,23 @@ comparable.
 change — so cardinality is bounded by our own catalogue rather than by what
 hardware exists. `transport` and `driver` are their keys likewise.
 
-**No config value is ever sent, with one deliberate exception.** A serial
+**No config value is ever sent, with two deliberate exceptions.** A serial
 `port` embeds the adapter's device serial number on macOS, and the network
-transports hold addresses and passwords. The exception is `baud` on a failed
-connect: a mismatch is the classic cause of a silent port, the set of rates
-is small and fixed, and it identifies nobody.
+transports hold addresses and passwords. The first exception is `baud` on a
+failed connect: a mismatch is the classic cause of a silent port, the set of
+rates is small and fixed, and it identifies nobody. The second is `name` —
+sent on all three `radio_*` events despite being free text, because it is
+the only way to tell one radio behind a generic driver from another:
+`radio` alone collapses every Kenwood on `kenwood-generic` into one bucket.
+This is the one place in the app's telemetry where free text reaches the
+backend, and it is not always operator-typed: a discovered node (FlexRadio
+over SmartLink) takes its name from the radio's own broadcast nickname,
+which the operator never reviews before it is used — see `addDiscovered`.
+Two mitigations, both in `_trackRadio`: an empty name (a pre-`name` stored
+record, or one blanked out in the editor, which enforces no minimum length)
+falls back to the driver's own name — e.g. "Kenwood (CAT)", bounded because
+it comes from our own driver catalogue rather than the operator — and every
+name is capped at 60 characters before it leaves the device.
 
 `reason` is a bounded classification — `unknown_type`, `invalid_config`,
 `timeout`, `network`, `other` — derived from *where* the failure happened,
