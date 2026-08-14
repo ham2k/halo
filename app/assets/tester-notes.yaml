@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "Clock, Weather and Web Site panes can now be added to Home and the Logs view, not just an operation"
     - "Weather pane's Location setting now offers a 'use the operation's location' checkbox"
+    - "Dialog backdrops in dark mode now lighten instead of darken"
 
 "133":
   changes:

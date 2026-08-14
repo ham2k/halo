@@ -392,6 +392,20 @@ const dropdownSelectedTrailingIcon = Icon(MdiIcons.menuUp);
 /// the operation list and count pills already use.
 Color haloDialogBandColor(BuildContext context) => Theme.of(context).colorScheme.surfaceContainerHighest;
 
+/// The modal barrier behind a dialog. In dark mode a black scrim sits on top
+/// of an already-dark backdrop, so it barely separates the backdrop from the
+/// dialog's own dark surface — a light veil gives the same separation dark
+/// mode's raised surfaces already rely on instead. [lightColor] lets each
+/// call site keep its own existing light-mode barrier.
+Color haloBarrierColor(BuildContext context, {Color lightColor = Colors.black54}) =>
+    Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.30) : lightColor;
+
+/// The drop shadow every modal surface (dialog card, Modal Pane, sheet) casts
+/// — same in both brightnesses. `shadowColor` defaults to transparent on both
+/// Flutter's own Material 3 [Dialog] and this app's modal surfaces, so none
+/// of them casts a shadow without this.
+const Color haloDialogShadowColor = Color(0x4D000000);
+
 /// The elevation every modal surface (dialog card, Modal Pane) is raised to.
 /// Content that has to match a pane's own banding from the inside must tint
 /// itself to the same elevation — see [haloDialogBandColorAt].

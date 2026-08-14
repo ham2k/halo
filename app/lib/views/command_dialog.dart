@@ -40,7 +40,7 @@ Future<void> showCommandDialog(BuildContext context, HaLoServices services) {
     context: context,
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black.withValues(alpha: 0.45),
+    barrierColor: haloBarrierColor(context, lightColor: Colors.black.withValues(alpha: 0.45)),
     transitionDuration: const Duration(milliseconds: 140),
     pageBuilder: (context, _, _) => CommandDialog(services: services),
     transitionBuilder: (context, animation, _, child) {

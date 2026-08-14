@@ -35,6 +35,7 @@ Future<T?> showHaloDialog<T>({
 }) => showDialog<T>(
   context: context,
   barrierDismissible: barrierDismissible,
+  barrierColor: haloBarrierColor(context),
   // Center first: showDialog hands its builder TIGHT full-screen constraints,
   // and a ConstrainedBox can't shrink below a tight incoming width — the cap
   // would silently do nothing. Center loosens them so the cap actually bites.
@@ -137,7 +138,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
-  Color? get barrierColor => Colors.black54;
+  Color? get barrierColor => navigator != null ? haloBarrierColor(navigator!.context) : Colors.black54;
 
   /// Always true — see [_tapOutsideDismissible]'s doc for why this is
   /// deliberately not the constructor's `barrierDismissible` value. Escape
@@ -273,7 +274,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                   child: Material(
                     color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
                     elevation: modalSurfaceElevation,
-                    shadowColor: Colors.transparent,
+                    shadowColor: haloDialogShadowColor,
                     surfaceTintColor: theme.colorScheme.surfaceTint,
                     borderRadius: BorderRadius.circular(28),
                     clipBehavior: Clip.antiAlias,
@@ -626,9 +627,8 @@ class _TopModalPaneScaffold extends StatelessWidget {
                 child: AnimatedBuilder(
                   animation: curvedAnimation,
                   builder: (context, child) {
-                    return Container(
-                      color: Colors.black.withValues(alpha: 0.54 * curvedAnimation.value),
-                    );
+                    final barrier = haloBarrierColor(context);
+                    return Container(color: barrier.withValues(alpha: barrier.a * curvedAnimation.value));
                   },
                 ),
               ),
@@ -711,7 +711,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                           child: Material(
                           color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
                           elevation: modalSurfaceElevation,
-                          shadowColor: Colors.transparent,
+                          shadowColor: haloDialogShadowColor,
                           surfaceTintColor: theme.colorScheme.surfaceTint,
                           // Square at the bottom in the narrow case — it
                           // reaches the screen's true edge there, so a

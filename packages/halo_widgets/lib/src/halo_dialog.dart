@@ -247,6 +247,7 @@ class HaloDialog extends StatelessWidget {
       // The card colour IS the band colour: the header and footer are just
       // this showing around the surface-coloured content.
       backgroundColor: haloDialogBandColor(context),
+      shadowColor: haloDialogShadowColor,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       // A dialog takes its whole allowed width rather than shrink-wrapping:
