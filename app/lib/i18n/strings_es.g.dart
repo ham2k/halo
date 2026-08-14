@@ -1653,9 +1653,10 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get clockZoneDevice => 'Este dispositivo';
 	@override String get clockShowSeconds => 'Mostrar segundos';
 	@override String get weatherDescription => 'El tiempo ahora y durante las próximas ocho horas, donde estás operando';
+	@override String get weatherUseOperationLocation => 'Usar la ubicación de la operación';
 	@override String get weatherLocation => 'Ubicación';
-	@override String get weatherLocationDescription => 'Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.';
-	@override String get weatherNoLocation => 'Esta operación todavía no tiene ubicación. Ponle una a la operación, o dale una a este panel en sus ajustes.';
+	@override String get weatherLocationDescription => 'Un cuadrante (FN31pr) o lat,lon. Se ignora mientras esté marcada \'Usar la ubicación de la operación\'.';
+	@override String get weatherNoLocation => 'No hay ubicación. Dale una a este panel en sus ajustes, o colócalo dentro de una operación que tenga una.';
 	@override String weatherBadLocation({required Object location}) => 'No se pudo leer la ubicación ${location}. Usa un cuadrante como FN31pr, o 42.36,-71.06.';
 	@override String get weatherUnreachable => 'No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.';
 	@override String get weatherUnreadable => 'Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.';
@@ -2273,9 +2274,10 @@ extension on TranslationsEs {
 			'operation.layout.panels.clockZoneDevice' => 'Este dispositivo',
 			'operation.layout.panels.clockShowSeconds' => 'Mostrar segundos',
 			'operation.layout.panels.weatherDescription' => 'El tiempo ahora y durante las próximas ocho horas, donde estás operando',
+			'operation.layout.panels.weatherUseOperationLocation' => 'Usar la ubicación de la operación',
 			'operation.layout.panels.weatherLocation' => 'Ubicación',
-			'operation.layout.panels.weatherLocationDescription' => 'Un cuadrante (FN31pr) o lat,lon. Déjalo vacío para seguir la ubicación de la operación.',
-			'operation.layout.panels.weatherNoLocation' => 'Esta operación todavía no tiene ubicación. Ponle una a la operación, o dale una a este panel en sus ajustes.',
+			'operation.layout.panels.weatherLocationDescription' => 'Un cuadrante (FN31pr) o lat,lon. Se ignora mientras esté marcada \'Usar la ubicación de la operación\'.',
+			'operation.layout.panels.weatherNoLocation' => 'No hay ubicación. Dale una a este panel en sus ajustes, o colócalo dentro de una operación que tenga una.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'No se pudo leer la ubicación ${location}. Usa un cuadrante como FN31pr, o 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.',
@@ -2619,9 +2621,9 @@ extension on TranslationsEs {
 			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
-			'settings.distanceUnits' => 'Unidades de distancia',
 			_ => null,
 		} ?? switch (path) {
+			'settings.distanceUnits' => 'Unidades de distancia',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',
 			'settings.userInterface' => 'Interfaz de Usuario',

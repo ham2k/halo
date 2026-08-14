@@ -3448,14 +3448,17 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Conditions now and for the next eight hours, where you're operating'
 	String get weatherDescription => 'Conditions now and for the next eight hours, where you\'re operating';
 
+	/// en: 'Use the operation's own location'
+	String get weatherUseOperationLocation => 'Use the operation\'s own location';
+
 	/// en: 'Location'
 	String get weatherLocation => 'Location';
 
-	/// en: 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation's own location.'
-	String get weatherLocationDescription => 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation\'s own location.';
+	/// en: 'A grid square (FN31pr) or lat,lon. Ignored while 'Use the operation's own location' is checked.'
+	String get weatherLocationDescription => 'A grid square (FN31pr) or lat,lon. Ignored while \'Use the operation\'s own location\' is checked.';
 
-	/// en: 'This operation has no location yet. Set one on the operation, or give this panel a location in its settings.'
-	String get weatherNoLocation => 'This operation has no location yet. Set one on the operation, or give this panel a location in its settings.';
+	/// en: 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.'
+	String get weatherNoLocation => 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.';
 
 	/// en: 'Couldn't read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.'
 	String weatherBadLocation({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.';
@@ -4452,9 +4455,10 @@ extension on Translations {
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
 			'operation.layout.panels.weatherDescription' => 'Conditions now and for the next eight hours, where you\'re operating',
+			'operation.layout.panels.weatherUseOperationLocation' => 'Use the operation\'s own location',
 			'operation.layout.panels.weatherLocation' => 'Location',
-			'operation.layout.panels.weatherLocationDescription' => 'A grid square (FN31pr) or lat,lon. Leave empty to follow the operation\'s own location.',
-			'operation.layout.panels.weatherNoLocation' => 'This operation has no location yet. Set one on the operation, or give this panel a location in its settings.',
+			'operation.layout.panels.weatherLocationDescription' => 'A grid square (FN31pr) or lat,lon. Ignored while \'Use the operation\'s own location\' is checked.',
+			'operation.layout.panels.weatherNoLocation' => 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo answered, but not with anything readable. Will try again shortly.',
@@ -4798,9 +4802,9 @@ extension on Translations {
 			'settings.layoutDensityDescription.sparsest' => 'The most room around everything',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
-			'settings.distanceUnits' => 'Distance Units',
 			_ => null,
 		} ?? switch (path) {
+			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
 			'settings.userInterface' => 'User Interface',
@@ -5312,9 +5316,9 @@ extension on Translations {
 			'switchAccounts.noConfirmationCode' => 'The sync server did not send a confirmation code. Try again later.',
 			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
 			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
-			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			'adifImport.title' => 'Import QSOs from ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Reading ${filename}…',

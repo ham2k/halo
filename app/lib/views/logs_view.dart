@@ -144,6 +144,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       source: PanelSource.native,
       views: const {PanelViews.logs},
     ));
+    registerSharedDashboardPanels();
   }
 
   @override
@@ -360,12 +361,15 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       body: AdifDropTarget(
         onFile: _handleAdifDrop,
         child: isTwoPane
-            ? withViewOverrides(buildDock(children: {
-                LogsView.qsoTablePanelId: qsoListPane,
-                LogsView.infoPanelId:
-                    _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
-                LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
-              }))
+            ? withViewOverrides(buildDock(
+                children: {
+                  LogsView.qsoTablePanelId: qsoListPane,
+                  LogsView.infoPanelId:
+                      _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
+                  LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
+                },
+                extraChildren: sharedDashboardPanes,
+              ))
             : qsoListPane,
       ),
     );

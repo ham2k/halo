@@ -27,11 +27,6 @@ import 'panel_use_tracker.dart';
 import 'operation/adif_import_flow.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
-import 'operation/clock/clock_panel.dart';
-import 'operation/clock/clock_zones.dart';
-import 'operation/panel_settings.dart';
-import 'operation/weather/weather_panel.dart';
-import 'operation/website/website_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
@@ -1670,125 +1665,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       source: PanelSource.native,
       views: const {PanelViews.operation},
     ));
-    service.registerNative(PanelDefinition(
-      id: clockPanelId,
-      title: t.tabs.clock,
-      description: t.layout.panels.clockDescription,
-      icon: 'clock-outline',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-      // The one native pane an operator plausibly wants several of: a UTC
-      // clock beside the DX's local time is the whole point of it.
-      multiple: true,
-      formFields: [
-        {
-          'type': 'field',
-          'key': clockFaceKey,
-          'fieldType': 'select',
-          'label': t.layout.panels.clockFace,
-          'value': clockFaceLcd,
-          'options': [
-            {'label': t.layout.panels.clockFaceLcd, 'value': clockFaceLcd},
-            {'label': t.layout.panels.clockFaceAnalog, 'value': clockFaceAnalog},
-          ],
-        },
-        {
-          'type': 'field',
-          'key': clockZoneKey,
-          'fieldType': 'select',
-          // `icon` is what puts this behind a full-list dialog rather than an
-          // inline dropdown — 341 zones in a ten-row popup is not a picker.
-          // The dialog searches past twenty options.
-          'icon': 'earth',
-          'label': t.layout.panels.clockZone,
-          'value': utcZoneId,
-          'options': clockZoneOptions(
-            utcLabel: t.layout.panels.clockZoneUtc,
-            deviceLabel: t.layout.panels.clockZoneDevice,
-          ),
-        },
-        {
-          'type': 'field',
-          'key': clockShowSecondsKey,
-          'fieldType': 'checkbox',
-          'label': t.layout.panels.clockShowSeconds,
-          'value': true,
-        },
-      ],
-    ));
-    service.registerNative(PanelDefinition(
-      id: weatherPanelId,
-      title: t.tabs.weather,
-      description: t.layout.panels.weatherDescription,
-      icon: 'weather-partly-cloudy',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-      // Placed once, deliberately, and so its location survives the pane
-      // being removed and put back — see `forgetInstanceConfig`, which names
-      // this panel as the case that distinction exists for.
-      formFields: [
-        {
-          'type': 'field',
-          'key': weatherLocationKey,
-          'fieldType': 'text',
-          'label': t.layout.panels.weatherLocation,
-          'description': t.layout.panels.weatherLocationDescription,
-          'value': '',
-        },
-      ],
-    ));
-    service.registerNative(PanelDefinition(
-      id: websitePanelId,
-      title: t.tabs.website,
-      description: t.layout.panels.websiteDescription,
-      icon: 'web',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-      multiple: true,
-      formFields: [
-        {
-          'type': 'field',
-          'key': websiteUrlKey,
-          // No `url` fieldType exists, and an unknown one renders as nothing
-          // at all — no field, no error, no log.
-          'fieldType': 'text',
-          'label': t.layout.panels.websiteUrl,
-          'placeholder': 'https://…',
-          'value': '',
-        },
-        {
-          'type': 'field',
-          'key': websiteRefreshKey,
-          'fieldType': 'select',
-          'label': t.layout.panels.websiteRefresh,
-          // `0`, not null: a null-valued select cannot tell "dismissed" from
-          // "picked null". Ints survive the config's JSON round-trip as ints,
-          // which is what the dropdown's `value ==` needs.
-          'value': 0,
-          'options': [
-            {'label': t.layout.panels.websiteRefreshNever, 'value': 0},
-            {'label': t.layout.panels.websiteRefresh1, 'value': 1},
-            {'label': t.layout.panels.websiteRefresh5, 'value': 5},
-            {'label': t.layout.panels.websiteRefresh15, 'value': 15},
-          ],
-        },
-        {
-          'type': 'field',
-          'key': websiteTitleKey,
-          'fieldType': 'text',
-          'label': t.layout.panels.websiteTitle,
-          'value': '',
-        },
-        // Live only because `showPanelSettings` passes `onAction`; without
-        // that this button renders disabled.
-        {
-          'type': 'action',
-          'key': 'refreshNow',
-          'label': t.layout.panels.websiteRefreshNow,
-          'method': panelRefreshMethod,
-        },
-      ],
-    ));
+    registerSharedDashboardPanels();
   }
 
   /// This view's panes, handed to the shared dock host. The clock is built
@@ -1822,42 +1699,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
         'map': (context) => _buildMapSettingsButton(context: context),
       },
-      extraChildren: (inLayout) => {
-        for (final id in inLayout)
-          if (PanelDefinition.descriptorIdOf(id) == clockPanelId)
-            id: ClockPanel(
-              key: ValueKey('panel-$id'),
-              panelId: id,
-              panels: widget.services.panels,
-              onTitle: (title) => onPanelTitle(id, title),
-            )
-          else if (id == weatherPanelId)
-            id: WeatherPanel(
-              key: const ValueKey('panel-$weatherPanelId'),
-              panelId: id,
-              panels: widget.services.panels,
-              settings: widget.services.settings,
-              // The saved operation's grid, not the draft's: the pane refetches
-              // when this changes, and a half-typed grid square would send a
-              // request per keystroke.
-              operationGrid: _operationForPanels?.grid,
-              onTitle: (title) => onPanelTitle(id, title),
-            )
-          else if (PanelDefinition.descriptorIdOf(id) == websitePanelId)
-            id: WebsitePanel(
-              key: ValueKey('panel-$id'),
-              panelId: id,
-              panels: widget.services.panels,
-              onTitle: (title) => onPanelTitle(id, title),
-              // From `_callInfo`, which this view keeps current
-              // unconditionally — NOT from the QSO draft, which is only
-              // produced when a panel declares `qso` and costs a rebuild plus
-              // a deep compare on every keystroke. A pull-only question asked
-              // once a minute must not put the whole view on the typing path
-              // to answer it.
-              isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
-            ),
-      },
+      extraChildren: (inLayout) => sharedDashboardPanes(
+        inLayout,
+        // The saved operation's grid, not the draft's: the pane refetches
+        // when this changes, and a half-typed grid square would send a
+        // request per keystroke.
+        operationGrid: _operationForPanels?.grid,
+        // From `_callInfo`, which this view keeps current unconditionally —
+        // NOT from the QSO draft, which is only produced when a panel
+        // declares `qso` and costs a rebuild plus a deep compare on every
+        // keystroke. A pull-only question asked once a minute must not put
+        // the whole view on the typing path to answer it.
+        isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
+      ),
     );
   }
 

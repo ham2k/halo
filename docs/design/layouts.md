@@ -471,13 +471,22 @@ A layout-customizable view arranges **panels**, and the list of panels is a
 registry — `PanelService` (`app/lib/services/panel_service.dart`) — not a
 constant in the view. Two sources write into it:
 
-- **Native panels.** The view registers its own (Operation: QSOs, Info,
-  Spots, Map, Clock, Weather, Web Site) with their title, description, icon
-  and, where they have
-  any, the settings *target* whose declared settings make up their settings
+- **Native panels.** Each view registers its own (Operation: QSOs, Info,
+  Spots, Map; Home: Operation List, Current Version; the Logs view: QSOs,
+  Info, Map) with their title, description, icon and, where they have any,
+  the settings *target* whose declared settings make up their settings
   dialog. The service holds identity only: the widget stays with the view
   that builds it, which is what lets the Add a Panel sheet list a panel it
   has no way to build.
+
+  Clock, Weather and Web Site are the exception: every customizable view
+  offers all three, so `DockHost.registerSharedDashboardPanels` (used by
+  every view via the mixin) is what registers them, and
+  `DockHost.sharedDashboardPanes` is what builds their widgets. Registering
+  from every view rather than a single owner is deliberate —
+  `PanelService.registerNative` no-ops on an identical re-registration, so
+  whichever view mounts first wins and the other calls cost nothing, and no
+  view's catalog depends on another view having mounted first.
 
   A native panel may also carry `formFields` — the same declarative schema an
   extension panel's `form` uses, rendered by the same `FormRenderer` and

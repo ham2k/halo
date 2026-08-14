@@ -26,6 +26,9 @@ import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+import 'package:ham2k_logger/views/operation/clock/clock_panel.dart';
+import 'package:ham2k_logger/views/operation/weather/weather_panel.dart';
+import 'package:ham2k_logger/views/operation/website/website_panel.dart';
 
 Future<HaLoServices> _services() async {
   SharedPreferences.setMockInitialValues({});
@@ -178,11 +181,17 @@ void main() {
       reason: 'a logging pane on Home has no operation to log into',
     );
 
+    final sharedDashboardIds = {clockPanelId, weatherPanelId, websitePanelId};
     final operationCatalog = services.panels.catalogFor(PanelViews.operation).map((p) => p.id).toSet();
     expect(
-      operationCatalog.intersection(homeCatalog),
+      operationCatalog.intersection(homeCatalog.difference(sharedDashboardIds)),
       isEmpty,
       reason: 'and an Operation List pane inside an operation is a pane that has nothing to do with the one it is in',
+    );
+    expect(
+      operationCatalog.intersection(homeCatalog),
+      sharedDashboardIds,
+      reason: 'Clock, Weather and Web Site are the panels every customizable view offers',
     );
     await _endOfTest(tester);
   });

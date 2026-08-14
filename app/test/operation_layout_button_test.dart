@@ -157,10 +157,11 @@ void main() {
     // that group is still on Spots, and its band names Spots.
     await startEditing(tester);
     await openAddSheet(tester);
-    // What stays on offer is everything not already placed: Clock and Web
-    // Site because they are placeable more than once, Weather because it
-    // ships outside the default arrangement. Every pane the discard restored
-    // is gone from this list, which is what it is asserting.
+    // What stays on offer is everything not already placed: Clock, Weather
+    // and Web Site are all placeable more than once, so they stay listed
+    // whether or not one is already in the view, and none of the three ships
+    // in the default arrangement besides. Every pane the discard restored is
+    // gone from this list, which is what it is asserting.
     expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website'],
         reason: 'every single-placement pane is in the view again');
 

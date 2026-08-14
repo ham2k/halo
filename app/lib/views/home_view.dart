@@ -347,6 +347,7 @@ class _HomeViewState extends State<HomeView>
       source: PanelSource.native,
       views: const {PanelViews.home},
     ));
+    registerSharedDashboardPanels();
   }
 
   bool _isFabExtended = true;
@@ -845,7 +846,9 @@ class _HomeViewState extends State<HomeView>
           children: [
             Expanded(
               child: isTwoPane
-                  ? withViewOverrides(buildDock(children: _panes(context, theme)))
+                  ? withViewOverrides(
+                      buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes),
+                    )
                   // A phone shows the list with Quick Lookup beneath it, as it
                   // always has. The dock's tree names no widths — it is the
                   // same splits and weights wherever it is drawn — so applying

@@ -678,9 +678,9 @@ class PanelService extends ChangeNotifier {
   /// pane somebody adds, under its old tab name.
   ///
   /// A panel placed once is the opposite case and is deliberately NOT
-  /// forgotten: the weather panel's location is that panel's configuration,
-  /// not that pane's, and an operator who removes the pane and puts it back
-  /// expects their setup intact.
+  /// forgotten: its configuration belongs to the panel, not to that pane, and
+  /// an operator who removes the pane and puts it back expects their setup
+  /// intact.
   Future<void> forgetInstanceConfig(String id) async {
     // Ahead of every guard below, because none of their reasoning applies to
     // this: trigger declarations are runtime state, not the operator's

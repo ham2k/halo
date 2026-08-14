@@ -25,11 +25,15 @@ import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
 import 'extensions_panel.dart';
+import 'operation/clock/clock_panel.dart';
+import 'operation/clock/clock_zones.dart';
 import 'operation/extension_panel.dart';
 import 'operation/layout_sheet.dart';
 import 'operation/missing_panel_pane.dart';
 import 'operation/pane_layout_options.dart';
 import 'operation/panel_settings.dart';
+import 'operation/weather/weather_panel.dart';
+import 'operation/website/website_panel.dart';
 
 /// Where one view's layout lives in settings. Four keys rather than one: the
 /// reasons they are kept apart are on [LayoutKeys]'s own members, and a view
@@ -1231,6 +1235,198 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       // here.
       if (mounted) setState(() => layoutSheetOpen = false);
     }
+  }
+
+  /// Clock, Weather and Web Site: the three native panels every customizable
+  /// view offers (docs/design/layouts.md), built here once so a change to one
+  /// of them doesn't have to reach every view that hosts a dock. See
+  /// [registerSharedDashboardPanels] for their catalog entry — this only
+  /// builds the widget for whatever placement [inLayout] holds.
+  ///
+  /// [operationGrid] and [isEnteringQso] are the two things only an operation
+  /// has: null outside the Operation view, which leaves Weather to its own
+  /// configured location and Web Site to reload strictly on schedule.
+  Map<String, Widget> sharedDashboardPanes(
+    List<String> inLayout, {
+    String? operationGrid,
+    bool Function()? isEnteringQso,
+  }) => {
+    for (final id in inLayout)
+      if (PanelDefinition.descriptorIdOf(id) == clockPanelId)
+        id: ClockPanel(
+          key: ValueKey('panel-$id'),
+          panelId: id,
+          panels: dockServices.panels,
+          onTitle: (title) => onPanelTitle(id, title),
+        )
+      else if (PanelDefinition.descriptorIdOf(id) == weatherPanelId)
+        id: WeatherPanel(
+          key: ValueKey('panel-$id'),
+          panelId: id,
+          panels: dockServices.panels,
+          settings: dockServices.settings,
+          operationGrid: operationGrid,
+          onTitle: (title) => onPanelTitle(id, title),
+        )
+      else if (PanelDefinition.descriptorIdOf(id) == websitePanelId)
+        id: WebsitePanel(
+          key: ValueKey('panel-$id'),
+          panelId: id,
+          panels: dockServices.panels,
+          onTitle: (title) => onPanelTitle(id, title),
+          isEnteringQso: isEnteringQso,
+        ),
+  };
+
+  /// Clock, Weather and Web Site's catalog entries — see
+  /// [sharedDashboardPanes] for the widgets. Every view that hosts a dock
+  /// calls this from its own `_registerNativePanels`: [PanelService.registerNative]
+  /// no-ops on an identical re-registration, so whichever view mounts first
+  /// wins and the other two calls cost nothing. A single owner (Home, say,
+  /// since it's the one view mounted for the app's whole lifetime) would
+  /// leave these missing from Operation's or the Logs view's own catalog
+  /// whenever either is exercised on its own — as every one of their widget
+  /// tests does.
+  void registerSharedDashboardPanels() {
+    final t = context.t.operation;
+    final service = dockServices.panels;
+    const sharedViews = {PanelViews.home, PanelViews.operation, PanelViews.logs};
+    service.registerNative(PanelDefinition(
+      id: clockPanelId,
+      title: t.tabs.clock,
+      description: t.layout.panels.clockDescription,
+      icon: 'clock-outline',
+      source: PanelSource.native,
+      views: sharedViews,
+      // The one native pane an operator plausibly wants several of: a UTC
+      // clock beside the DX's local time is the whole point of it.
+      multiple: true,
+      formFields: [
+        {
+          'type': 'field',
+          'key': clockFaceKey,
+          'fieldType': 'select',
+          'label': t.layout.panels.clockFace,
+          'value': clockFaceLcd,
+          'options': [
+            {'label': t.layout.panels.clockFaceLcd, 'value': clockFaceLcd},
+            {'label': t.layout.panels.clockFaceAnalog, 'value': clockFaceAnalog},
+          ],
+        },
+        {
+          'type': 'field',
+          'key': clockZoneKey,
+          'fieldType': 'select',
+          // `icon` is what puts this behind a full-list dialog rather than an
+          // inline dropdown — 341 zones in a ten-row popup is not a picker.
+          // The dialog searches past twenty options.
+          'icon': 'earth',
+          'label': t.layout.panels.clockZone,
+          'value': utcZoneId,
+          'options': clockZoneOptions(
+            utcLabel: t.layout.panels.clockZoneUtc,
+            deviceLabel: t.layout.panels.clockZoneDevice,
+          ),
+        },
+        {
+          'type': 'field',
+          'key': clockShowSecondsKey,
+          'fieldType': 'checkbox',
+          'label': t.layout.panels.clockShowSeconds,
+          'value': true,
+        },
+      ],
+    ));
+    service.registerNative(PanelDefinition(
+      id: weatherPanelId,
+      title: t.tabs.weather,
+      description: t.layout.panels.weatherDescription,
+      icon: 'weather-partly-cloudy',
+      source: PanelSource.native,
+      views: sharedViews,
+      // Instanceable so a placement in Home, in an operation and in the Logs
+      // view are three independent locations rather than one shared config
+      // — the same reason Clock is (see its own comment below). Unlike
+      // Clock, an operator plausibly wants only one at a time; `multiple`
+      // exists for the cross-view case, not to invite several in one dock.
+      multiple: true,
+      formFields: [
+        {
+          'type': 'field',
+          'key': weatherUseOperationLocationKey,
+          'fieldType': 'checkbox',
+          'label': t.layout.panels.weatherUseOperationLocation,
+          'value': true,
+        },
+        {
+          'type': 'field',
+          'key': weatherLocationKey,
+          'fieldType': 'text',
+          'label': t.layout.panels.weatherLocation,
+          'description': t.layout.panels.weatherLocationDescription,
+          'value': '',
+          // Deliberately never hidden by `visibleWhen`, even though it's
+          // read only while [weatherUseOperationLocationKey] is off — a
+          // config predating that checkbox never wrote it, so an existing
+          // override's checkbox state is INFERRED (`_useOperationLocation`)
+          // rather than read back, and can disagree with what the form
+          // shows. A hidden field would put the one control that explains
+          // — or fixes — that disagreement out of reach.
+        },
+      ],
+    ));
+    service.registerNative(PanelDefinition(
+      id: websitePanelId,
+      title: t.tabs.website,
+      description: t.layout.panels.websiteDescription,
+      icon: 'web',
+      source: PanelSource.native,
+      views: sharedViews,
+      multiple: true,
+      formFields: [
+        {
+          'type': 'field',
+          'key': websiteUrlKey,
+          // No `url` fieldType exists, and an unknown one renders as nothing
+          // at all — no field, no error, no log.
+          'fieldType': 'text',
+          'label': t.layout.panels.websiteUrl,
+          'placeholder': 'https://…',
+          'value': '',
+        },
+        {
+          'type': 'field',
+          'key': websiteRefreshKey,
+          'fieldType': 'select',
+          'label': t.layout.panels.websiteRefresh,
+          // `0`, not null: a null-valued select cannot tell "dismissed" from
+          // "picked null". Ints survive the config's JSON round-trip as ints,
+          // which is what the dropdown's `value ==` needs.
+          'value': 0,
+          'options': [
+            {'label': t.layout.panels.websiteRefreshNever, 'value': 0},
+            {'label': t.layout.panels.websiteRefresh1, 'value': 1},
+            {'label': t.layout.panels.websiteRefresh5, 'value': 5},
+            {'label': t.layout.panels.websiteRefresh15, 'value': 15},
+          ],
+        },
+        {
+          'type': 'field',
+          'key': websiteTitleKey,
+          'fieldType': 'text',
+          'label': t.layout.panels.websiteTitle,
+          'value': '',
+        },
+        // Live only because `showPanelSettings` passes `onAction`; without
+        // that this button renders disabled.
+        {
+          'type': 'action',
+          'key': 'refreshNow',
+          'label': t.layout.panels.websiteRefreshNow,
+          'method': panelRefreshMethod,
+        },
+      ],
+    ));
   }
 
   // ----------------------------------------------------------------- the dock

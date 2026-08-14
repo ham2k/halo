@@ -4,11 +4,12 @@
 // One weather pane: the current reading, large, over a curve of the next
 // eight hours.
 //
-// Location comes from the OPERATION's grid, so the pane works the moment it
-// is placed, with a settings override for a grid square or lat/lon — handy
-// for checking a summit before driving to it. Deliberately not the device's
-// GPS: that is a permission prompt for a panel that only wants a rough
-// position, and the operation already knows one.
+// Location either follows the OPERATION's own grid, so the pane works the
+// moment it's placed inside one, or is a typed override — a grid square or
+// lat/lon, handy for checking a summit before driving to it, and the only
+// option outside an operation (Home, the Logs view). Deliberately not the
+// device's GPS: that is a permission prompt for a panel that only wants a
+// rough position.
 //
 // Native rather than an extension `panel` hook, for the reason
 // docs/design/layouts.md gives for the clock: an extension contributes a
@@ -38,6 +39,12 @@ import 'weather_reading.dart';
 const String weatherPanelId = 'weather';
 
 const String weatherLocationKey = 'location';
+
+/// Whether the pane follows the operation's own grid rather than
+/// [weatherLocationKey]'s typed override. Absent from an older saved config,
+/// which is why [_WeatherPanelState._useOperationLocation] falls back to
+/// "was there a typed override" rather than treating a missing key as false.
+const String weatherUseOperationLocationKey = 'useOperationLocation';
 
 /// How long a reading stands before it is refetched.
 const Duration weatherMaxAge = Duration(minutes: 15);
@@ -291,13 +298,22 @@ class _WeatherPanelState extends State<WeatherPanel> with WidgetsBindingObserver
 
   String get _override => (_config[weatherLocationKey] as String? ?? '').trim();
 
-  /// Null when the pane has nowhere to look — no override and no operation
-  /// grid — and also when the override is there but unreadable, which
-  /// [_overrideIsBad] tells apart.
-  WeatherPlace? get _place =>
-      parseWeatherPlace(_override) ?? (_override.isEmpty ? parseWeatherPlace(widget.operationGrid) : null);
+  /// Whether the pane follows the operation's grid rather than [_override].
+  /// A config that never wrote this key is read as "follow the operation"
+  /// exactly when [_override] is blank — an empty override defers to the
+  /// operation, and a typed one wins outright — so an older placement's
+  /// behavior stays identical without a migration step.
+  bool get _useOperationLocation => _config[weatherUseOperationLocationKey] as bool? ?? _override.isEmpty;
 
-  bool get _overrideIsBad => _override.isNotEmpty && parseWeatherPlace(_override) == null;
+  /// Null when the pane has nowhere to look — following the operation
+  /// outside one, or with no grid set, or a blank override — and also when
+  /// the override is there but unreadable, which [_overrideIsBad] tells
+  /// apart.
+  WeatherPlace? get _place =>
+      _useOperationLocation ? parseWeatherPlace(widget.operationGrid) : parseWeatherPlace(_override);
+
+  bool get _overrideIsBad =>
+      !_useOperationLocation && _override.isNotEmpty && parseWeatherPlace(_override) == null;
 
   /// What a reading is OF. Rounded to two places so a grid square's centre
   /// and the same square typed as lat/lon are one reading, not two.

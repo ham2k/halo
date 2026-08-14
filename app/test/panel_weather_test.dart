@@ -31,6 +31,7 @@ void main() {
   final t = AppLocale.en.buildSync().operation.layout.panels;
 
   const fields = [
+    {'type': 'field', 'key': weatherUseOperationLocationKey, 'fieldType': 'checkbox'},
     {'type': 'field', 'key': weatherLocationKey, 'fieldType': 'text'},
   ];
 
@@ -288,6 +289,29 @@ void main() {
         fetch: answering(forecast(nowUtc()).body),
       );
       expect(requested.single.queryParameters['latitude'], '51.4800');
+    });
+
+    testWidgets('the operation-location checkbox wins over a typed override', (tester) async {
+      await pump(
+        tester,
+        config: {weatherUseOperationLocationKey: true, weatherLocationKey: '51.48,-0.10'},
+        operationGrid: 'FN42',
+        fetch: answering(forecast(nowUtc()).body),
+      );
+      // FN42's centre, not 51.48/-0.10 — the checkbox, not the typed text,
+      // decides which place is asked about.
+      expect(requested.single.queryParameters['latitude'], isNot('51.4800'));
+    });
+
+    testWidgets('the checkbox off with a blank override asks for a location, and fetches nothing', (tester) async {
+      await pump(
+        tester,
+        config: {weatherUseOperationLocationKey: false},
+        operationGrid: 'FN42',
+        fetch: answering(forecast(nowUtc()).body),
+      );
+      expect(find.text(t.weatherNoLocation), findsOneWidget);
+      expect(requested, isEmpty);
     });
   });
 
