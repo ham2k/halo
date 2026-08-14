@@ -70,6 +70,7 @@
     "quickLookup": "Quick Lookup",
     "nav": {
       "operations": "Operations",
+      "logs": "Logs",
       "settings": "Settings"
     },
     "panels": {
@@ -78,7 +79,35 @@
       "version": "Current Version",
       "versionDescription": "The Ham2K mark, this app’s name and which build you are running."
     },
-    "toggleNav": "Show or hide the navigation labels"
+    "toggleNav": "Show or hide the navigation labels",
+    "logs": {
+      "title": "Logs",
+      "titleFor": "Logs for",
+      "emptyCallsigns": "No QSOs logged yet",
+      "emptyQsos": "No QSOs for ${call}",
+      "openOperation": "Open operation",
+      "mapNoSelection": "Select a QSO to see it on the map",
+      "changeCallsign": "Change callsign",
+      "searchHint": "Search callsign or name",
+      "noSearchMatches": "No QSOs match your search",
+      "panels": {
+        "qsos": "QSO Log",
+        "qsosDescription": "The selected callsign's QSOs, across every operation.",
+        "info": "Info",
+        "infoDescription": "Total QSO count, or the selected QSO's callsign lookup.",
+        "map": "Map",
+        "mapDescription": "The selected QSO's location."
+      },
+      "import": {
+        "callsigns": "Callsigns: ${calls}",
+        "skippedOne": "1 record could not be read",
+        "skippedOther": "${count} records could not be read",
+        "readingTitle": "Reading ADIF file…",
+        "importingTitle": "Importing QSOs…",
+        "readingDetail": "${kb} Kb",
+        "importingDetail": "${imported} imported, out of ${total}"
+      }
+    }
   },
   "dialogs": {
     "operationDetails": "Operation details",
@@ -512,7 +541,9 @@
     "theirGrid": "Grid",
     "theirState": "State",
     "band": "Band",
-    "notes": "Notes"
+    "notes": "Notes",
+    "saveFailed": "Could not save: ${error}",
+    "deleteFailed": "Could not delete: ${error}"
   },
   "qsoList": {
     "empty": "No QSOs yet — work someone!",
@@ -1284,7 +1315,7 @@
     "importing": "Importing ${filename}…",
     "imported": {
       "one": "Imported ${count} contact from ${filename}",
-      "other": "Imported ${count} contacts from ${filename}"
+      "other": "Imported ${formatted} contacts from ${filename}"
     },
     "failed": "Could not import ${filename}: ${error}",
     "notAdif": "${filename} does not look like an ADIF file",

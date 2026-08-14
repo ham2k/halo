@@ -56,4 +56,10 @@ experiments:
     name: Station Configuration
     description: Connect and control radios and other station equipment.
     aliases: [cat, rig]
+  # A home-rail destination listing every station callsign ever logged, with
+  # a virtualized table of that callsign's QSOs across all operations —
+  # independent of the Operations list, which is per-operation.
+  - key: logs
+    name: Logs
+    description: A rail destination listing all QSOs across operations, by station callsign.
 

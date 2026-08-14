@@ -26,11 +26,16 @@ class HomeNavigationRail extends StatelessWidget {
   final bool expanded;
 
   /// Which destination the shell is showing. The rail is real navigation:
-  /// whichever destination is up is the selected one, and the other is a live
-  /// control back to it.
-  final bool settingsSelected;
+  /// whichever destination is up is the selected one, and the others are live
+  /// controls back to it.
+  final HomeDestination destination;
 
-  final ValueChanged<bool> onDestination;
+  /// Whether the `logs` experiment is on — the Logs destination is otherwise
+  /// left out of the rail entirely rather than shown disabled, same as any
+  /// other experiment-gated entry point.
+  final bool showLogs;
+
+  final ValueChanged<HomeDestination> onDestination;
 
   /// Toggles [expanded]. The logo is the control, and it lives at the top of
   /// this column rather than in a view's header — the rail owns the whole left
@@ -40,7 +45,8 @@ class HomeNavigationRail extends StatelessWidget {
   const HomeNavigationRail({
     super.key,
     required this.expanded,
-    required this.settingsSelected,
+    required this.destination,
+    required this.showLogs,
     required this.onDestination,
   });
 
@@ -106,6 +112,15 @@ class HomeNavigationRail extends StatelessWidget {
   /// derived from the two widths it has to reconcile.
   static const leadingInset = (collapsedWidth - iconSize) / 2;
 
+  /// Where closing Settings lands: [homeRail]'s own record of what was open
+  /// before, unless that was Logs and the experiment has since been turned
+  /// off underneath it — in which case [HomeRailShell]'s own reset is about
+  /// to fire anyway, and returning straight to it here avoids the flash of
+  /// landing on Logs first.
+  HomeDestination _returnFromSettingsDestination() {
+    final last = homeRail.lastNonSettingsDestination;
+    return (last == HomeDestination.logs && !showLogs) ? HomeDestination.operations : last;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,13 +196,30 @@ class HomeNavigationRail extends StatelessWidget {
                                     outline: null,
                                     label: t.operations,
                                     expanded: expanded,
-                                    selected: !settingsSelected,
+                                    selected: destination == HomeDestination.operations,
                                     // Inert only while it names where the
                                     // operator already is — a control that
                                     // reloads the screen you are on is a
                                     // control that does nothing.
-                                    onTap: settingsSelected ? () => onDestination(false) : null,
+                                    onTap: destination == HomeDestination.operations
+                                        ? null
+                                        : () => onDestination(HomeDestination.operations),
                                   ),
+                                  if (showLogs) ...[
+                                    const SizedBox(height: Space.lg),
+                                    _RailDestination(
+                                      // MDI has no `file-cabinet-outline`
+                                      // either, same fallback as Operations.
+                                      solid: MdiIcons.fileCabinet,
+                                      outline: null,
+                                      label: t.logs,
+                                      expanded: expanded,
+                                      selected: destination == HomeDestination.logs,
+                                      onTap: destination == HomeDestination.logs
+                                          ? null
+                                          : () => onDestination(HomeDestination.logs),
+                                    ),
+                                  ],
                                   const Spacer(),
                                 ],
                       ),
@@ -215,17 +247,23 @@ class HomeNavigationRail extends StatelessWidget {
                             outline: MdiIcons.cogOutline,
                             label: t.settings,
                             expanded: expanded,
-                            selected: settingsSelected,
+                            selected: destination == HomeDestination.settings,
                             // On chrome rather than on the rail's own surface,
                             // so it takes the chrome's foreground: the muted
                             // surface colours the other destinations use are
                             // unreadable on it.
                             onChrome: true,
-                            // A TOGGLE, unlike Operations: pressing the entry
-                            // for the screen already open puts Settings away
-                            // again, which is the gesture the operator reaches
-                            // for after opening it from here.
-                            onTap: () => onDestination(!settingsSelected),
+                            // A TOGGLE, unlike Operations or Logs: pressing
+                            // the entry for the screen already open puts
+                            // Settings away again, back to whichever of
+                            // Operations/Logs was open before — the gesture
+                            // the operator reaches for after opening it from
+                            // here.
+                            onTap: () => onDestination(
+                              destination == HomeDestination.settings
+                                  ? _returnFromSettingsDestination()
+                                  : HomeDestination.settings,
+                            ),
                           ),
                         ),
                       ),
@@ -523,51 +561,59 @@ class HomeRailLogo extends StatelessWidget {
       height: HomeNavigationRail.logoBoxHeightOf(context),
       child: Padding(
         padding: EdgeInsets.only(left: MediaQuery.paddingOf(context).left),
-        child: Semantics(
-          button: true,
-          label: context.t.home.toggleNav,
-          // Its own Material: this is a sibling of the views, not inside any
-          // Scaffold, so there is no ancestor to print an ink response on.
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onToggle,
-              mouseCursor: SystemMouseCursors.click,
-              // No hover or press wash: the mark is artwork, not a button
-              // surface, and a highlight painted behind it reads as a stray
-              // dark square — one the pointer can leave stuck there by exiting
-              // over a widget that rebuilt under it.
-              hoverColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              splashColor: Colors.transparent,
-              // Lifted off the bottom of its box by a hair: sitting exactly on
-              // the header's baseline the mark reads a touch low against the
-              // title beside it, which has descender room under it that this
-              // does not.
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: _logoLift),
-                child: Align(
-                alignment: Alignment.bottomLeft,
-                child: SizedBox(
-                  width: HomeNavigationRail.collapsedWidth,
-                  child: ClipRect(
-                    child: OverflowBox(
-                      // Both minimums released, not just the maximums: a tight
-                      // width is a MINIMUM too, and a mark narrower than the
-                      // column would inherit it and leave the constraints
-                      // non-normalized.
-                      minWidth: 0,
-                      minHeight: 0,
-                      maxWidth: logoSize,
-                      maxHeight: logoSize,
-                      // Bottom-anchored, so the mark sits on the rail's first
-                      // destination whatever it measures.
-                      alignment: Alignment.bottomCenter,
-                      child: SvgPicture.asset(ham2kSquareLogoAsset, width: logoSize, height: logoSize),
+        // Lifted off the bottom of its box by a hair: sitting exactly on
+        // the header's baseline the mark reads a touch low against the
+        // title beside it, which has descender room under it that this
+        // does not.
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: _logoLift),
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            // Semantics/Material/InkWell live HERE, shrink-wrapped to the
+            // glyph's own box — not on the outer SizedBox above, which is
+            // the full header-height column. That box exists to clear a
+            // landscape cutout and hold the mark's layout slot open; it is
+            // taller than the mark itself, and an InkWell sized to it would
+            // take taps on the blank strip above the glyph as a toggle,
+            // same as one anywhere else in that corner.
+            child: Semantics(
+              button: true,
+              label: context.t.home.toggleNav,
+              // Its own Material: this is a sibling of the views, not inside
+              // any Scaffold, so there is no ancestor to print an ink
+              // response on.
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onToggle,
+                  mouseCursor: SystemMouseCursors.click,
+                  // No hover or press wash: the mark is artwork, not a button
+                  // surface, and a highlight painted behind it reads as a
+                  // stray dark square — one the pointer can leave stuck
+                  // there by exiting over a widget that rebuilt under it.
+                  hoverColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  child: SizedBox(
+                    width: HomeNavigationRail.collapsedWidth,
+                    child: ClipRect(
+                      child: OverflowBox(
+                        // Both minimums released, not just the maximums: a
+                        // tight width is a MINIMUM too, and a mark narrower
+                        // than the column would inherit it and leave the
+                        // constraints non-normalized.
+                        minWidth: 0,
+                        minHeight: 0,
+                        maxWidth: logoSize,
+                        maxHeight: logoSize,
+                        // Bottom-anchored, so the mark sits on the rail's
+                        // first destination whatever it measures.
+                        alignment: Alignment.bottomCenter,
+                        child: SvgPicture.asset(ham2kSquareLogoAsset, width: logoSize, height: logoSize),
+                      ),
                     ),
                   ),
                 ),
-              ),
               ),
             ),
           ),
@@ -685,8 +731,23 @@ class _HomeRailShellState extends State<HomeRailShell> {
 
   Widget _shell(BuildContext context) {
     return ListenableBuilder(
-      listenable: homeRail,
+      // Settings too, alongside the rail's own state: `showLogs` below reads
+      // the `logs` experiment straight off it, and this is the rail's only
+      // path back to the screen when a Developer Settings toggle flips it —
+      // nothing else here reads settings on every build.
+      listenable: Listenable.merge([homeRail, widget.services.settings]),
       builder: (context, child) {
+        final showLogs = widget.services.settings.experimentEnabled('logs') /* stored key, see experiments.yaml */;
+        // A Developer Settings toggle can flip the experiment off while
+        // Logs is the destination on screen — its rail entry disappears
+        // (below), but nothing else would ever put the pane away, since
+        // `_HomeViewState._onRailChanged` only mirrors whatever
+        // `homeRail.destination` already says. `_set` defers the
+        // notification when called mid-build (see its own doc comment), so
+        // this is safe here.
+        if (!showLogs && homeRail.destination == HomeDestination.logs) {
+          homeRail.destination = HomeDestination.operations;
+        }
         // The stored preference AND enough width to honour it. At XS/S the
         // labels would take a third of the window from the views, so the rail
         // is icon-only there whatever is stored — and the preference is left
@@ -740,8 +801,9 @@ class _HomeRailShellState extends State<HomeRailShell> {
                   alignment: Alignment.centerLeft,
                   child: HomeNavigationRail(
                     expanded: showingLabels,
-                    settingsSelected: homeRail.showSettings,
-                    onDestination: (settings) => homeRail.showSettings = settings,
+                    destination: homeRail.destination,
+                    showLogs: showLogs,
+                    onDestination: (destination) => homeRail.destination = destination,
                   ),
                 ),
               ),

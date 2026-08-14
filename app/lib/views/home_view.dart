@@ -20,6 +20,7 @@ import 'command_engine.dart';
 import 'dock_host.dart';
 import 'header_profile_label.dart';
 import 'home_navigation_rail.dart';
+import 'logs_view.dart';
 import 'operation/extension_panel.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
@@ -444,7 +445,7 @@ class _HomeViewState extends State<HomeView>
     _startHomeVisit();
     // Seed the rail from the stored preference.
     homeRail.expanded = widget.services.settings.homeNavExpanded;
-    homeRail.showSettings = false;
+    homeRail.destination = HomeDestination.operations;
     homeRail.addListener(_onRailChanged);
     WidgetsBinding.instance.addObserver(this);
     _nudgeTimer = Timer(_newOperationNudgeDelay, () {
@@ -481,6 +482,7 @@ class _HomeViewState extends State<HomeView>
     // is re-seeded by the next `initState`. Writing to it from a `dispose`
     // would also notify an ancestor already being torn down.
     _settingsSlide.dispose();
+    _logsSlide.dispose();
     homeRail.removeListener(_onRailChanged);
     homeRouteObserver.unsubscribe(this);
     _fabSettleTimer?.cancel();
@@ -568,6 +570,9 @@ class _HomeViewState extends State<HomeView>
   /// are not navigating within this shell.
   bool _showingSettings = false;
 
+  /// Same as [_showingSettings], for the Logs destination.
+  bool _showingLogs = false;
+
   /// Drives Settings on and off OVER Home. An explicit controller rather than
   /// an AnimatedSwitcher: a switcher animates both children, and coming back
   /// has to leave Home exactly where it is so that it is REVEALED rather than
@@ -581,24 +586,52 @@ class _HomeViewState extends State<HomeView>
       Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
           .animate(CurvedAnimation(parent: _settingsSlide, curve: layoutAnimationCurve));
 
+  /// Same as [_settingsSlide], for the Logs destination.
+  late final AnimationController _logsSlide = AnimationController(
+    vsync: this,
+    duration: layoutAnimationDuration,
+  );
+
+  late final Animation<Offset> _logsOffset = Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+      .animate(CurvedAnimation(parent: _logsSlide, curve: layoutAnimationCurve));
+
   void _showSettings(bool showing) {
     if (_showingSettings == showing) return;
     setState(() => _showingSettings = showing);
     showing ? _settingsSlide.forward() : _settingsSlide.reverse();
-    // Settings shown IN PLACE is navigation without a route, so `didPopNext`
-    // never fires for it — and a home visit that is not marked on the way back
-    // leaves `screen_viewed` counting home per launch while settings and
-    // operations count per visit, which is the comparability `homeRouteObserver`
-    // exists to keep (see its doc).
-    if (!showing) _startHomeVisit();
   }
+
+  /// Same as [_showSettings], for the Logs destination.
+  void _showLogsView(bool showing) {
+    if (_showingLogs == showing) return;
+    setState(() => _showingLogs = showing);
+    showing ? _logsSlide.forward() : _logsSlide.reverse();
+  }
+
+  /// Which destination [_onRailChanged] last tracked a visit for — set to
+  /// [HomeDestination.operations] in [initState] to match its own explicit
+  /// [_startHomeVisit] call, so the rail's very first change (e.g. straight
+  /// into Settings) doesn't also count as a second Home visit.
+  HomeDestination _lastTrackedDestination = HomeDestination.operations;
 
   /// Mirrors the window's rail state into this view — the rail is drawn by the
   /// shell, so what it reports is the source of truth for which destination is
   /// up and whether the labels are out.
   void _onRailChanged() {
     if (!mounted) return;
-    _showSettings(homeRail.showSettings);
+    final destination = homeRail.destination;
+    _showSettings(destination == HomeDestination.settings);
+    _showLogsView(destination == HomeDestination.logs);
+    // Settings/Logs shown IN PLACE is navigation without a route, so
+    // `didPopNext` never fires for it. Settings and Logs track their own
+    // `screen_viewed` in `initState` (embedded panes get freshly remounted
+    // each time they're revealed — see the `isDismissed` check around each
+    // one's `ListenableBuilder`); Home only gets one when the destination
+    // actually LANDS there, not merely whenever some other pane hides.
+    if (destination != _lastTrackedDestination) {
+      _lastTrackedDestination = destination;
+      if (destination == HomeDestination.operations) _startHomeVisit();
+    }
     if (homeRail.expanded != _navExpandedSetting) {
       setState(() => _navExpandedSetting = homeRail.expanded);
     }
@@ -650,7 +683,15 @@ class _HomeViewState extends State<HomeView>
             SettingsView(
               services: widget.services,
               embedded: true,
-              onBack: () => homeRail.showSettings = false,
+              onBack: () {
+                final last = homeRail.lastNonSettingsDestination;
+                // Same guard as the rail's own Settings toggle — Logs may
+                // have gone behind the experiment flag while Settings sat
+                // over it.
+                final showLogs = widget.services.settings.experimentEnabled('logs') /* stored key, see experiments.yaml */;
+                homeRail.destination =
+                    (last == HomeDestination.logs && !showLogs) ? HomeDestination.operations : last;
+              },
               // Where this view and the app's mark reach for the same corner —
               // no rail at all, or a Mac window where the buttons have pushed
               // the mark off the rail's column — hold what the mark overhangs
@@ -661,6 +702,14 @@ class _HomeViewState extends State<HomeView>
               ),
             ),
           ),
+        ),
+        // Same arrangement as Settings above, for the Logs destination.
+        ListenableBuilder(
+          listenable: _logsSlide,
+          builder: (context, child) => _logsSlide.isDismissed
+              ? const SizedBox.shrink()
+              : SlideTransition(position: _logsOffset, child: child!),
+          child: besideRail(LogsView(services: widget.services)),
         ),
       ],
     );
@@ -752,7 +801,7 @@ class _HomeViewState extends State<HomeView>
               // name is the only place it says what it is.
               icon: Icon(MdiIcons.cogOutline, semanticLabel: context.t.settings.title),
               mouseCursor: SystemMouseCursors.click,
-              onPressed: () => homeRail.showSettings = true,
+              onPressed: () => homeRail.destination = HomeDestination.settings,
             ),
           ),
           if (!layoutSheetOpen) HeaderProfileLabel(settings: widget.services.settings),

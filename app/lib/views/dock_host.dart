@@ -46,7 +46,7 @@ class DockLayoutKeys {
   /// under. A new dock belongs in this list on the day it is added; nothing
   /// enforces that, which is why the list is here beside the keys rather than
   /// somewhere a reader of those keys would not look.
-  static const everySpec = [LayoutKeys.homeDock, LayoutKeys.operationDock];
+  static const everySpec = [LayoutKeys.homeDock, LayoutKeys.operationDock, LayoutKeys.logsDock];
 
   /// The arrangement — splits, weights and module ids.
   final String spec;

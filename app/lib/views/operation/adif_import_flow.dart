@@ -34,14 +34,19 @@ bool looksLikeAdif(String filename) {
   return _adifExtensions.any((ext) => lower.endsWith('.$ext'));
 }
 
-/// One import at a time, across BOTH entry points.
+/// One import at a time, across every entry point — this file's own two AND
+/// `logs_view.dart`'s, which shares this same flag rather than keeping its
+/// own.
 ///
 /// The plan is computed from a snapshot of the log taken before the operator
 /// confirms. A second import started while that dialog is open plans against
 /// the same pre-write log, and whichever writes second overwrites the first's
 /// merges with data computed from a log that no longer exists. Refusing is
 /// right rather than queueing: a queued import would still be planning stale.
-bool _importInFlight = false;
+/// The Logs destination's own import plans across EVERY operation, so a
+/// second import racing it is the same corruption with a wider blast radius,
+/// not a smaller one.
+bool adifImportInFlight = false;
 
 /// Opens the file picker, then runs [importAdifFile] on what was chosen.
 Future<void> pickAndImportAdif(
@@ -91,7 +96,7 @@ Future<void> importAdifFile(
   final statusBar = services.statusBar;
   final filename = file.name;
 
-  if (_importInFlight) {
+  if (adifImportInFlight) {
     await _showNotice(context, t.busy);
     return;
   }
@@ -104,7 +109,7 @@ Future<void> importAdifFile(
     return;
   }
 
-  _importInFlight = true;
+  adifImportInFlight = true;
   try {
     statusBar.setMessage(key: 'adifImport:status', text: t.reading(filename: filename));
     final AdifImportPlan plan;
@@ -161,7 +166,7 @@ Future<void> importAdifFile(
 
     statusBar.setMessage(
       key: 'adifImport:status',
-      text: t.imported(count: written, filename: filename),
+      text: t.imported(count: written, filename: filename, formatted: formatNumber(written)),
     );
     // The repository counts rows actually affected, so a merge target deleted
     // while the dialog was open shows up here. Approving "70 new, 4 merging"
@@ -182,7 +187,7 @@ Future<void> importAdifFile(
       ErrorReportingService.report(e, stack, context: 'adifImport:telemetry');
     }
   } finally {
-    _importInFlight = false;
+    adifImportInFlight = false;
   }
 }
 
@@ -286,7 +291,9 @@ Future<void> _showNotice(BuildContext context, String message) => showHaloDialog
 /// Sorted, because the set arrives in the order the hooks happened to reply
 /// across batches and `invokeHookAll` guarantees none. (Dart's default `Set`
 /// is insertion-ordered, so the instability is the replies, not the container.)
-@visibleForTesting
+///
+/// Shared with `logs_view.dart`'s own import summary, not just this file's —
+/// both surface the same `AdifImportOutcome.failedHooks` set.
 List<String> failedProgramNames(Iterable<ExtensionInfo> available, Set<String> failedHooks) {
   final byKey = {for (final info in available) info.key: info.effectiveShortName};
   return [

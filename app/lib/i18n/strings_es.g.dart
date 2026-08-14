@@ -186,6 +186,7 @@ class _Translations$home$es extends Translations$home$en {
 	@override late final _Translations$home$nav$es nav = _Translations$home$nav$es._(_root);
 	@override late final _Translations$home$panels$es panels = _Translations$home$panels$es._(_root);
 	@override String get toggleNav => 'Mostrar u ocultar las etiquetas de navegación';
+	@override late final _Translations$home$logs$es logs = _Translations$home$logs$es._(_root);
 }
 
 // Path: dialogs
@@ -387,6 +388,8 @@ class _Translations$qsoEditForm$es extends Translations$qsoEditForm$en {
 	@override String get theirState => 'Estado/Provincia';
 	@override String get band => 'Banda';
 	@override String get notes => 'Notas';
+	@override String saveFailed({required Object error}) => 'No se pudo guardar: ${error}';
+	@override String deleteFailed({required Object error}) => 'No se pudo eliminar: ${error}';
 }
 
 // Path: qsoList
@@ -810,9 +813,9 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String get nothingToImport => 'No hay nada importable en este archivo';
 	@override String get confirm => 'Importar';
 	@override String importing({required Object filename}) => 'Importando ${filename}…';
-	@override String imported({required num count, required Object filename}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String imported({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'Se importó ${count} contacto desde ${filename}',
-		other: 'Se importaron ${count} contactos desde ${filename}',
+		other: 'Se importaron ${formatted} contactos desde ${filename}',
 	);
 	@override String failed({required Object filename, required Object error}) => 'No se pudo importar ${filename}: ${error}';
 	@override String notAdif({required Object filename}) => '${filename} no parece un archivo ADIF';
@@ -837,6 +840,7 @@ class _Translations$home$nav$es extends Translations$home$nav$en {
 
 	// Translations
 	@override String get operations => 'Operaciones';
+	@override String get logs => 'Registros';
 	@override String get settings => 'Ajustes';
 }
 
@@ -851,6 +855,26 @@ class _Translations$home$panels$es extends Translations$home$panels$en {
 	@override String get operationsDescription => 'Tus operaciones, la más reciente primero.';
 	@override String get version => 'Versión Actual';
 	@override String get versionDescription => 'La marca Ham2K, el nombre de esta aplicación y qué compilación usas.';
+}
+
+// Path: home.logs
+class _Translations$home$logs$es extends Translations$home$logs$en {
+	_Translations$home$logs$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Registros';
+	@override String get titleFor => 'Registros de';
+	@override String get emptyCallsigns => 'Aún no hay QSOs registrados';
+	@override String emptyQsos({required Object call}) => 'No hay QSOs para ${call}';
+	@override String get openOperation => 'Abrir operación';
+	@override String get mapNoSelection => 'Selecciona un QSO para verlo en el mapa';
+	@override String get changeCallsign => 'Cambiar indicativo';
+	@override String get searchHint => 'Buscar indicativo o nombre';
+	@override String get noSearchMatches => 'Ningún QSO coincide con tu búsqueda';
+	@override late final _Translations$home$logs$panels$es panels = _Translations$home$logs$panels$es._(_root);
+	@override late final _Translations$home$logs$import$es import = _Translations$home$logs$import$es._(_root);
 }
 
 // Path: operation.tabs
@@ -1578,6 +1602,37 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Radios y otros equipos';
 }
 
+// Path: home.logs.panels
+class _Translations$home$logs$panels$es extends Translations$home$logs$panels$en {
+	_Translations$home$logs$panels$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get qsos => 'Registro de QSOs';
+	@override String get qsosDescription => 'Los QSOs del indicativo seleccionado, en todas las operaciones.';
+	@override String get info => 'Información';
+	@override String get infoDescription => 'Total de QSOs, o la búsqueda del QSO seleccionado.';
+	@override String get map => 'Mapa';
+	@override String get mapDescription => 'La ubicación del QSO seleccionado.';
+}
+
+// Path: home.logs.import
+class _Translations$home$logs$import$es extends Translations$home$logs$import$en {
+	_Translations$home$logs$import$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String callsigns({required Object calls}) => 'Indicativos: ${calls}';
+	@override String get skippedOne => '1 registro no se pudo leer';
+	@override String skippedOther({required Object count}) => '${count} registros no se pudieron leer';
+	@override String get readingTitle => 'Leyendo archivo ADIF…';
+	@override String get importingTitle => 'Importando QSOs…';
+	@override String readingDetail({required Object kb}) => '${kb} Kb';
+	@override String importingDetail({required Object imported, required Object total}) => '${imported} importados, de ${total}';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$es extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -2112,12 +2167,35 @@ extension on TranslationsEs {
 			'home.emptyList' => 'Aún no hay operaciones. Crea una para comenzar a registrar.',
 			'home.quickLookup' => 'Búsqueda Rápida',
 			'home.nav.operations' => 'Operaciones',
+			'home.nav.logs' => 'Registros',
 			'home.nav.settings' => 'Ajustes',
 			'home.panels.operations' => 'Lista de Operaciones',
 			'home.panels.operationsDescription' => 'Tus operaciones, la más reciente primero.',
 			'home.panels.version' => 'Versión Actual',
 			'home.panels.versionDescription' => 'La marca Ham2K, el nombre de esta aplicación y qué compilación usas.',
 			'home.toggleNav' => 'Mostrar u ocultar las etiquetas de navegación',
+			'home.logs.title' => 'Registros',
+			'home.logs.titleFor' => 'Registros de',
+			'home.logs.emptyCallsigns' => 'Aún no hay QSOs registrados',
+			'home.logs.emptyQsos' => ({required Object call}) => 'No hay QSOs para ${call}',
+			'home.logs.openOperation' => 'Abrir operación',
+			'home.logs.mapNoSelection' => 'Selecciona un QSO para verlo en el mapa',
+			'home.logs.changeCallsign' => 'Cambiar indicativo',
+			'home.logs.searchHint' => 'Buscar indicativo o nombre',
+			'home.logs.noSearchMatches' => 'Ningún QSO coincide con tu búsqueda',
+			'home.logs.panels.qsos' => 'Registro de QSOs',
+			'home.logs.panels.qsosDescription' => 'Los QSOs del indicativo seleccionado, en todas las operaciones.',
+			'home.logs.panels.info' => 'Información',
+			'home.logs.panels.infoDescription' => 'Total de QSOs, o la búsqueda del QSO seleccionado.',
+			'home.logs.panels.map' => 'Mapa',
+			'home.logs.panels.mapDescription' => 'La ubicación del QSO seleccionado.',
+			'home.logs.import.callsigns' => ({required Object calls}) => 'Indicativos: ${calls}',
+			'home.logs.import.skippedOne' => '1 registro no se pudo leer',
+			'home.logs.import.skippedOther' => ({required Object count}) => '${count} registros no se pudieron leer',
+			'home.logs.import.readingTitle' => 'Leyendo archivo ADIF…',
+			'home.logs.import.importingTitle' => 'Importando QSOs…',
+			'home.logs.import.readingDetail' => ({required Object kb}) => '${kb} Kb',
+			'home.logs.import.importingDetail' => ({required Object imported, required Object total}) => '${imported} importados, de ${total}',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -2475,6 +2553,8 @@ extension on TranslationsEs {
 			'qsoEditForm.theirState' => 'Estado/Provincia',
 			'qsoEditForm.band' => 'Banda',
 			'qsoEditForm.notes' => 'Notas',
+			'qsoEditForm.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
+			'qsoEditForm.deleteFailed' => ({required Object error}) => 'No se pudo eliminar: ${error}',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
 			'qsoList.bandOrModeWarning' => 'Verifica que tu banda y modo sean correctos',
 			'qsoList.today' => 'Hoy',
@@ -2540,6 +2620,8 @@ extension on TranslationsEs {
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',
 			'settings.userInterface' => 'Interfaz de Usuario',
@@ -2565,8 +2647,6 @@ extension on TranslationsEs {
 			'settings.logging.jumpAfterRST.descriptionOff' => 'No saltar automáticamente',
 			'settings.logging.defaultReport.title' => 'Reporte por defecto — Fonía',
 			'settings.logging.defaultReport.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
 			'settings.logging.defaultReportCW.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en CW, RTTY y otros modos digitales',
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
@@ -3031,7 +3111,7 @@ extension on TranslationsEs {
 			'adifImport.nothingToImport' => 'No hay nada importable en este archivo',
 			'adifImport.confirm' => 'Importar',
 			'adifImport.importing' => ({required Object filename}) => 'Importando ${filename}…',
-			'adifImport.imported' => ({required num count, required Object filename}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} contacto desde ${filename}', other: 'Se importaron ${count} contactos desde ${filename}', ), 
+			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} contacto desde ${filename}', other: 'Se importaron ${formatted} contactos desde ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'No se pudo importar ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no parece un archivo ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atención: este ADIF tiene QSOs de ${calls}, pero se importarán como ${station} si continúas.',

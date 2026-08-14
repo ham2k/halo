@@ -383,7 +383,7 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    addTearDown(() => homeRail.showSettings = false);
+    addTearDown(() => homeRail.destination = HomeDestination.operations);
 
     // Through the app's own observer, which is what decides this. Declared by
     // the route instead, every route that does not opt in — ⌘K's jump to an
@@ -408,19 +408,23 @@ void main() {
     // would answer a question about the widget tree instead.
     final cog = find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.cog));
     final onTheCog = tester.getCenter(cog);
-    homeRail.showSettings = false;
+    homeRail.destination = HomeDestination.operations;
     await tester.tapAt(onTheCog);
     await _settle(tester);
-    expect(homeRail.showSettings, isTrue, reason: 'beside Home the rail is a fixture and must be pressable');
+    expect(
+      homeRail.destination,
+      HomeDestination.settings,
+      reason: 'beside Home the rail is a fixture and must be pressable',
+    );
 
-    homeRail.showSettings = false;
+    homeRail.destination = HomeDestination.operations;
     await tester.tap(find.text('push a page'));
     await _settle(tester);
     await tester.tapAt(onTheCog);
     await _settle(tester);
     expect(
-      homeRail.showSettings,
-      isFalse,
+      homeRail.destination,
+      HomeDestination.operations,
       reason: 'a view that owns the window covers the rail; a press there must not reach it',
     );
 
@@ -433,24 +437,24 @@ void main() {
     await tester.tapAt(onTheCog);
     await tester.pump();
     expect(
-      homeRail.showSettings,
-      isFalse,
+      homeRail.destination,
+      HomeDestination.operations,
       reason: 'the rail stays under a route for the whole way out, not just until the pop is asked for',
     );
 
     await _settle(tester);
     await tester.tapAt(onTheCog);
     await _settle(tester);
-    expect(homeRail.showSettings, isTrue, reason: 'and comes back once the route is gone');
+    expect(homeRail.destination, HomeDestination.settings, reason: 'and comes back once the route is gone');
 
-    homeRail.showSettings = false;
+    homeRail.destination = HomeDestination.operations;
     await tester.tap(find.text('open a dialog'));
     await _settle(tester);
     await tester.tapAt(onTheCog);
     await _settle(tester);
     expect(
-      homeRail.showSettings,
-      isFalse,
+      homeRail.destination,
+      HomeDestination.operations,
       reason: 'a dialog dims the window; the rail must not float over it taking taps meant for the barrier',
     );
   });

@@ -70,6 +70,7 @@
     "quickLookup": "Búsqueda Rápida",
     "nav": {
       "operations": "Operaciones",
+      "logs": "Registros",
       "settings": "Ajustes"
     },
     "panels": {
@@ -78,7 +79,35 @@
       "version": "Versión Actual",
       "versionDescription": "La marca Ham2K, el nombre de esta aplicación y qué compilación usas."
     },
-    "toggleNav": "Mostrar u ocultar las etiquetas de navegación"
+    "toggleNav": "Mostrar u ocultar las etiquetas de navegación",
+    "logs": {
+      "title": "Registros",
+      "titleFor": "Registros de",
+      "emptyCallsigns": "Aún no hay QSOs registrados",
+      "emptyQsos": "No hay QSOs para ${call}",
+      "openOperation": "Abrir operación",
+      "mapNoSelection": "Selecciona un QSO para verlo en el mapa",
+      "changeCallsign": "Cambiar indicativo",
+      "searchHint": "Buscar indicativo o nombre",
+      "noSearchMatches": "Ningún QSO coincide con tu búsqueda",
+      "panels": {
+        "qsos": "Registro de QSOs",
+        "qsosDescription": "Los QSOs del indicativo seleccionado, en todas las operaciones.",
+        "info": "Información",
+        "infoDescription": "Total de QSOs, o la búsqueda del QSO seleccionado.",
+        "map": "Mapa",
+        "mapDescription": "La ubicación del QSO seleccionado."
+      },
+      "import": {
+        "callsigns": "Indicativos: ${calls}",
+        "skippedOne": "1 registro no se pudo leer",
+        "skippedOther": "${count} registros no se pudieron leer",
+        "readingTitle": "Leyendo archivo ADIF…",
+        "importingTitle": "Importando QSOs…",
+        "readingDetail": "${kb} Kb",
+        "importingDetail": "${imported} importados, de ${total}"
+      }
+    }
   },
   "dialogs": {
     "operationDetails": "Detalles de la operación",
@@ -512,7 +541,9 @@
     "theirGrid": "Locador",
     "theirState": "Estado/Provincia",
     "band": "Banda",
-    "notes": "Notas"
+    "notes": "Notas",
+    "saveFailed": "No se pudo guardar: ${error}",
+    "deleteFailed": "No se pudo eliminar: ${error}"
   },
   "qsoList": {
     "empty": "Aún no hay QSOs — ¡haz un contacto!",
@@ -1243,7 +1274,7 @@
     "importing": "Importando ${filename}…",
     "imported": {
       "one": "Se importó ${count} contacto desde ${filename}",
-      "other": "Se importaron ${count} contactos desde ${filename}"
+      "other": "Se importaron ${formatted} contactos desde ${filename}"
     },
     "failed": "No se pudo importar ${filename}: ${error}",
     "notAdif": "${filename} no parece un archivo ADIF",

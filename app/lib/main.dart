@@ -3074,11 +3074,18 @@ class BottomChromeBudget {
 ///
 /// [visible] follows the route: Home and the Settings it shows in place have
 /// it; an operation takes it away.
+///
+/// One of the destinations the rail can point at — [HomeDestination.logs]
+/// only reaches the rail when the `logs` experiment is on, but the state
+/// still carries it whether or not it's currently offered, same as the
+/// others.
+enum HomeDestination { operations, logs, settings }
+
 class HomeRailState extends ChangeNotifier {
   int _covering = 0;
   int _coveringPages = 0;
   bool _expanded = false;
-  bool _showSettings = false;
+  HomeDestination _destination = HomeDestination.operations;
 
   /// Whether ANYTHING is on top of the home layer — a pushed view, a dialog, a
   /// modal pane.
@@ -3109,7 +3116,15 @@ class HomeRailState extends ChangeNotifier {
   bool get homeChromeShowing => _coveringPages == 0;
 
   bool get expanded => _expanded;
-  bool get showSettings => _showSettings;
+  HomeDestination get destination => _destination;
+
+  /// Whichever of [HomeDestination.operations]/[HomeDestination.logs] was
+  /// active right before Settings opened — what closing Settings (the rail
+  /// entry's own toggle, or its in-pane back button) returns to, rather than
+  /// both of those hardcoding [HomeDestination.operations] and silently
+  /// dropping out of Logs.
+  HomeDestination _lastNonSettingsDestination = HomeDestination.operations;
+  HomeDestination get lastNonSettingsDestination => _lastNonSettingsDestination;
 
   /// Counts one route arriving over the home layer, or leaving it. [page] for
   /// a route that REPLACES what is under it rather than dimming it.
@@ -3119,7 +3134,10 @@ class HomeRailState extends ChangeNotifier {
       }, false);
 
   set expanded(bool value) => _set(() => _expanded = value, _expanded == value);
-  set showSettings(bool value) => _set(() => _showSettings = value, _showSettings == value);
+  set destination(HomeDestination value) => _set(() {
+        if (_destination != HomeDestination.settings) _lastNonSettingsDestination = _destination;
+        _destination = value;
+      }, _destination == value);
 
   /// Applies a change and tells the shell, deferring when we are inside a
   /// build: a view sets these from `initState`, which runs while the shell

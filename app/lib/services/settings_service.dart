@@ -1141,6 +1141,13 @@ abstract final class LayoutKeys {
   static const homeDockState = 'home.dockState';
   static const homePaneOptions = 'home.paneOptions';
   static const homeViewOptions = 'home.viewOptions';
+
+  /// The Logs destination's dock, in the same four parts, for the same
+  /// reasons as Home's.
+  static const logsDock = 'logs.dock';
+  static const logsDockState = 'logs.dockState';
+  static const logsPaneOptions = 'logs.paneOptions';
+  static const logsViewOptions = 'logs.viewOptions';
 }
 
 /// Flow ids for [SettingsService.onboardingShownCount] /

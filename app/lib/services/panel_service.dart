@@ -29,6 +29,7 @@ enum PanelSource { native, extension }
 abstract final class PanelViews {
   static const home = 'home';
   static const operation = 'operation';
+  static const logs = 'logs';
 }
 
 class PanelDefinition {

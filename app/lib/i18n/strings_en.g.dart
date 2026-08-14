@@ -306,6 +306,8 @@ class Translations$home$en {
 
 	/// en: 'Show or hide the navigation labels'
 	String get toggleNav => 'Show or hide the navigation labels';
+
+	late final Translations$home$logs$en logs = Translations$home$logs$en.internal(_root);
 }
 
 // Path: dialogs
@@ -773,6 +775,12 @@ class Translations$qsoEditForm$en {
 
 	/// en: 'Notes'
 	String get notes => 'Notes';
+
+	/// en: 'Could not save: ${error}'
+	String saveFailed({required Object error}) => 'Could not save: ${error}';
+
+	/// en: 'Could not delete: ${error}'
+	String deleteFailed({required Object error}) => 'Could not delete: ${error}';
 }
 
 // Path: qsoList
@@ -1606,10 +1614,10 @@ class Translations$adifImport$en {
 	/// en: 'Importing ${filename}…'
 	String importing({required Object filename}) => 'Importing ${filename}…';
 
-	/// en: '(one) {Imported ${count} contact from ${filename}} (other) {Imported ${count} contacts from ${filename}}'
-	String imported({required num count, required Object filename}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	/// en: '(one) {Imported ${count} contact from ${filename}} (other) {Imported ${formatted} contacts from ${filename}}'
+	String imported({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: 'Imported ${count} contact from ${filename}',
-		other: 'Imported ${count} contacts from ${filename}',
+		other: 'Imported ${formatted} contacts from ${filename}',
 	);
 
 	/// en: 'Could not import ${filename}: ${error}'
@@ -1657,6 +1665,9 @@ class Translations$home$nav$en {
 	/// en: 'Operations'
 	String get operations => 'Operations';
 
+	/// en: 'Logs'
+	String get logs => 'Logs';
+
 	/// en: 'Settings'
 	String get settings => 'Settings';
 }
@@ -1680,6 +1691,45 @@ class Translations$home$panels$en {
 
 	/// en: 'The Ham2K mark, this app’s name and which build you are running.'
 	String get versionDescription => 'The Ham2K mark, this app’s name and which build you are running.';
+}
+
+// Path: home.logs
+class Translations$home$logs$en {
+	Translations$home$logs$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Logs'
+	String get title => 'Logs';
+
+	/// en: 'Logs for'
+	String get titleFor => 'Logs for';
+
+	/// en: 'No QSOs logged yet'
+	String get emptyCallsigns => 'No QSOs logged yet';
+
+	/// en: 'No QSOs for ${call}'
+	String emptyQsos({required Object call}) => 'No QSOs for ${call}';
+
+	/// en: 'Open operation'
+	String get openOperation => 'Open operation';
+
+	/// en: 'Select a QSO to see it on the map'
+	String get mapNoSelection => 'Select a QSO to see it on the map';
+
+	/// en: 'Change callsign'
+	String get changeCallsign => 'Change callsign';
+
+	/// en: 'Search callsign or name'
+	String get searchHint => 'Search callsign or name';
+
+	/// en: 'No QSOs match your search'
+	String get noSearchMatches => 'No QSOs match your search';
+
+	late final Translations$home$logs$panels$en panels = Translations$home$logs$panels$en.internal(_root);
+	late final Translations$home$logs$import$en import = Translations$home$logs$import$en.internal(_root);
 }
 
 // Path: operation.tabs
@@ -3294,6 +3344,63 @@ class Translations$settings$panels$en {
 	String get stationDescription => 'Radios and other equipment';
 }
 
+// Path: home.logs.panels
+class Translations$home$logs$panels$en {
+	Translations$home$logs$panels$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'QSO Log'
+	String get qsos => 'QSO Log';
+
+	/// en: 'The selected callsign's QSOs, across every operation.'
+	String get qsosDescription => 'The selected callsign\'s QSOs, across every operation.';
+
+	/// en: 'Info'
+	String get info => 'Info';
+
+	/// en: 'Total QSO count, or the selected QSO's callsign lookup.'
+	String get infoDescription => 'Total QSO count, or the selected QSO\'s callsign lookup.';
+
+	/// en: 'Map'
+	String get map => 'Map';
+
+	/// en: 'The selected QSO's location.'
+	String get mapDescription => 'The selected QSO\'s location.';
+}
+
+// Path: home.logs.import
+class Translations$home$logs$import$en {
+	Translations$home$logs$import$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Callsigns: ${calls}'
+	String callsigns({required Object calls}) => 'Callsigns: ${calls}';
+
+	/// en: '1 record could not be read'
+	String get skippedOne => '1 record could not be read';
+
+	/// en: '${count} records could not be read'
+	String skippedOther({required Object count}) => '${count} records could not be read';
+
+	/// en: 'Reading ADIF file…'
+	String get readingTitle => 'Reading ADIF file…';
+
+	/// en: 'Importing QSOs…'
+	String get importingTitle => 'Importing QSOs…';
+
+	/// en: '${kb} Kb'
+	String readingDetail({required Object kb}) => '${kb} Kb';
+
+	/// en: '${imported} imported, out of ${total}'
+	String importingDetail({required Object imported, required Object total}) => '${imported} imported, out of ${total}';
+}
+
 // Path: operation.layout.panels
 class Translations$operation$layout$panels$en {
 	Translations$operation$layout$panels$en.internal(this._root);
@@ -4239,12 +4346,35 @@ extension on Translations {
 			'home.emptyList' => 'No operations yet. Create one to start logging.',
 			'home.quickLookup' => 'Quick Lookup',
 			'home.nav.operations' => 'Operations',
+			'home.nav.logs' => 'Logs',
 			'home.nav.settings' => 'Settings',
 			'home.panels.operations' => 'Operation List',
 			'home.panels.operationsDescription' => 'Your operations, most recent first.',
 			'home.panels.version' => 'Current Version',
 			'home.panels.versionDescription' => 'The Ham2K mark, this app’s name and which build you are running.',
 			'home.toggleNav' => 'Show or hide the navigation labels',
+			'home.logs.title' => 'Logs',
+			'home.logs.titleFor' => 'Logs for',
+			'home.logs.emptyCallsigns' => 'No QSOs logged yet',
+			'home.logs.emptyQsos' => ({required Object call}) => 'No QSOs for ${call}',
+			'home.logs.openOperation' => 'Open operation',
+			'home.logs.mapNoSelection' => 'Select a QSO to see it on the map',
+			'home.logs.changeCallsign' => 'Change callsign',
+			'home.logs.searchHint' => 'Search callsign or name',
+			'home.logs.noSearchMatches' => 'No QSOs match your search',
+			'home.logs.panels.qsos' => 'QSO Log',
+			'home.logs.panels.qsosDescription' => 'The selected callsign\'s QSOs, across every operation.',
+			'home.logs.panels.info' => 'Info',
+			'home.logs.panels.infoDescription' => 'Total QSO count, or the selected QSO\'s callsign lookup.',
+			'home.logs.panels.map' => 'Map',
+			'home.logs.panels.mapDescription' => 'The selected QSO\'s location.',
+			'home.logs.import.callsigns' => ({required Object calls}) => 'Callsigns: ${calls}',
+			'home.logs.import.skippedOne' => '1 record could not be read',
+			'home.logs.import.skippedOther' => ({required Object count}) => '${count} records could not be read',
+			'home.logs.import.readingTitle' => 'Reading ADIF file…',
+			'home.logs.import.importingTitle' => 'Importing QSOs…',
+			'home.logs.import.readingDetail' => ({required Object kb}) => '${kb} Kb',
+			'home.logs.import.importingDetail' => ({required Object imported, required Object total}) => '${imported} imported, out of ${total}',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
@@ -4602,6 +4732,8 @@ extension on Translations {
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
+			'qsoEditForm.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
+			'qsoEditForm.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.bandOrModeWarning' => 'Please make sure your band and mode are correct',
 			'qsoList.today' => 'Today',
@@ -4667,6 +4799,8 @@ extension on Translations {
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
+			_ => null,
+		} ?? switch (path) {
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
 			'settings.userInterface' => 'User Interface',
@@ -4692,8 +4826,6 @@ extension on Translations {
 			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
 			'settings.logging.defaultReport.title' => 'Default report — Phone',
 			'settings.logging.defaultReport.description' => 'Used when Sent or Rcvd is left empty on SSB, FM or AM',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
 			'settings.logging.defaultReportCW.description' => 'Used when Sent or Rcvd is left empty on CW, RTTY and other data modes',
 			'settings.logging.defaultReportFT8.title' => 'Default report — FT8 and FT4',
@@ -5181,6 +5313,8 @@ extension on Translations {
 			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
 			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			'adifImport.title' => 'Import QSOs from ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Reading ${filename}…',
@@ -5195,7 +5329,7 @@ extension on Translations {
 			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
 			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
-			'adifImport.imported' => ({required num count, required Object filename}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${count} contacts from ${filename}', ), 
+			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${formatted} contacts from ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an ADIF file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',

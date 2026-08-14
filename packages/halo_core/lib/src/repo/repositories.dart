@@ -9,6 +9,7 @@
 
 import 'dart:convert';
 import 'dart:isolate';
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -400,6 +401,11 @@ Future<List<Qso>> _qsosFromRows(List<QsoRow> rows) async {
   }
 }
 
+/// SQLite's default bound-variable limit is 999; well under that keeps an
+/// `IN` clause safe without needing to know the connection's actual compiled
+/// limit.
+const _inClauseChunkSize = 200;
+
 class QsosRepository {
   final HaLoDatabase db;
 
@@ -774,6 +780,88 @@ class QsosRepository {
       for (final row in rows.map((r) => _qsoFromRow(r.readTable(db.qsos))))
         if (!row.isEvent) row,
     ];
+  }
+
+  /// [historyForCall] for every one of [calls] in a single query — an ADIF
+  /// import matching a large file's counterparties one callsign at a time
+  /// turns into thousands of sequential round trips. Chunked at
+  /// [_inClauseChunkSize] for SQLite's bound-variable limit; [watchForOurCalls]
+  /// does not chunk its own `IN` list, since every caller today passes it a
+  /// single callsign.
+  Future<List<Qso>> historyForCalls(Iterable<String> calls) async {
+    final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
+    if (normalized.isEmpty) return const [];
+    final results = <Qso>[];
+    for (var i = 0; i < normalized.length; i += _inClauseChunkSize) {
+      final chunk = normalized.sublist(i, math.min(i + _inClauseChunkSize, normalized.length));
+      final query = db.select(db.qsos).join([
+        leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+      ])
+        ..where(db.qsos.theirCall.isIn(chunk) &
+            db.qsos.deleted.equals(false) &
+            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+      final rows = await query.get();
+      // `_qsosFromRows`, not a bare `.map(_qsoFromRow)` — a chunk from an
+      // established callsign can itself clear the isolate-offload
+      // threshold, and this runs while the import's progress dialog is
+      // animating.
+      final decoded = await _qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
+      results.addAll(decoded.where((qso) => !qso.isEvent));
+    }
+    return results;
+  }
+
+  /// Every station callsign QSOs have been logged under, across every
+  /// operation — the Logs experiment's callsign list (docs card HALO-273).
+  /// Matches the denormalized `ourCall` column (stored uppercase), same join
+  /// shape as [historyForCall]: a deleted operation's QSOs drop out even
+  /// though deleting an operation does not tombstone them.
+  Stream<List<String>> watchDistinctOurCalls() {
+    final query = db.selectOnly(db.qsos, distinct: true).join([
+      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+    ])
+      ..addColumns([db.qsos.ourCall])
+      ..where(db.qsos.ourCall.isNotNull() &
+          db.qsos.ourCall.equals('').not() &
+          db.qsos.deleted.equals(false) &
+          // Event markers (start/break/end) carry no real callsign —
+          // excluded the same way `historyForCall` excludes them from a
+          // QSO list, or a callsign whose only rows are markers shows up
+          // in this picker with nothing behind it. `_isContact`, not a
+          // bare `band != 'event'`: that reads NULL — not true — for a
+          // QSO logged without a band, silently dropping it too.
+          _isContact &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+    return query.watch().map((rows) {
+      final calls = <String>{for (final row in rows) if (row.read(db.qsos.ourCall) case final call? when call.isNotEmpty) call};
+      return calls.toList()..sort();
+    });
+  }
+
+  /// Every non-deleted QSO logged under any of [calls] (own station
+  /// callsign), across every operation, oldest first — the Logs experiment's
+  /// QSO table, scoped by its "log filter". Same join shape as
+  /// [historyForCall], but on `ourCall` instead of `theirCall`, and live
+  /// (the log filter's callsign selection can change under the caller).
+  /// Unlike [historyForCalls], [calls] is not chunked — stay well under
+  /// SQLite's bound-variable limit (~999) if the log filter ever grows past a
+  /// single callsign.
+  Stream<List<Qso>> watchForOurCalls(Iterable<String> calls) {
+    final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
+    if (normalized.isEmpty) return Stream.value(const []);
+    final query = db.select(db.qsos).join([
+      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+    ])
+      ..where(db.qsos.ourCall.isIn(normalized) &
+          db.qsos.deleted.equals(false) &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
+    return query.watch().asyncMap((rows) async {
+      final decoded = await _qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
+      // Same exclusion `historyForCall` applies — an event marker is not a
+      // QSO, and this view has no concept of one to render or edit.
+      return decoded.where((qso) => !qso.isEvent).toList();
+    });
   }
 
   /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s

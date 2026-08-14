@@ -204,6 +204,9 @@ flutter:
     - family: RobotoMono
       fonts:
         - asset: assets/fonts/RobotoMono.ttf
+    - family: RobotoCondensed
+      fonts:
+        - asset: assets/fonts/RobotoCondensed.ttf
     - family: MaterialDesignIcons
       fonts:
         - asset: assets/fonts/MaterialDesignIcons.ttf
