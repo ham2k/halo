@@ -77,6 +77,7 @@ import 'services/spots_service.dart';
 import 'services/spots_status_reporter.dart';
 import 'services/status_bar_service.dart';
 import 'services/view_focus_guard.dart';
+import 'services/web_popup.dart';
 import 'settings/core_settings_groups.dart';
 import 'settings/settings_command.dart';
 import 'settings/settings_registry.dart';
@@ -1793,6 +1794,11 @@ class HaLoServices {
         return null;
       case 'devTimeTravel':
         return _travelTime(params);
+      case 'devPopup':
+        if (!kIsWeb) return (text: 'DEVPOPUP is web-only', failed: true);
+        return openPopupWindow()
+            ? (text: 'Opened in a standalone window', failed: false)
+            : (text: 'Popup blocked — allow popups for this site', failed: true);
       case 'devSentry':
         // DEVSENTRY [message]: push a synthetic error through the real
         // reporting pipeline to verify the Sentry wiring end to end.

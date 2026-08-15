@@ -1012,6 +1012,9 @@ export interface CommandAction {
   /// bypassing its edition and last-seen-build gates — see
   /// `app/lib/main.dart`'s `_TesterOverlayGate`.
   devTester?: Record<string, never>
+  /// Developer-only: reopens the app in a standalone, phone-sized popup
+  /// window (DEVPOPUP) — web only.
+  devPopup?: Record<string, never>
   /// Developer-only: moves the app clock (DEVTT — see docs/design/time.md).
   /// `deltaMillis` is CUMULATIVE from wherever the clock already reads, and
   /// `speed` is virtual seconds per real second; `reset: true` returns to real

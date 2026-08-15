@@ -10,7 +10,8 @@
 // a focused text field. DEVSPLASH re-shows the startup release-notes overlay on
 // demand, bypassing its normal "once per version" gate. DEVSENTRY pushes a
 // synthetic error through the error-reporting pipeline to verify the
-// Sentry wiring. RELOAD forces a data-file re-sync (bypassing the normal 30-day
+// Sentry wiring. DEVPOPUP reopens the app in a standalone, phone-sized popup
+// window (web only). RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
 // DEVTT moves the app clock, for testing anything that turns on the date or on
@@ -236,6 +237,21 @@ const DevTesterCommand = {
   },
 
   catalog: devCatalog('DEVTESTER', 'Re-show the tester-notes overlay'),
+}
+
+// Reopens the app in a standalone, chrome-less popup window sized like a
+// phone screen — for checking phone-scale layout without a device. Web only;
+// the app reports the "not on web" outcome itself, the EXP/DEVTT pattern.
+const DevPopupCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== 'DEVPOPUP') return null
+    return {
+      describe: 'Open the app in a standalone popup window?',
+      commands: [{ devPopup: {} }],
+    }
+  },
+
+  catalog: devCatalog('DEVPOPUP', 'Open the app in a standalone, phone-sized popup window'),
 }
 
 // "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
@@ -519,6 +535,7 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devtester', hook: DevTesterCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devpopup', hook: DevPopupCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devsentry', hook: DevSentryCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })

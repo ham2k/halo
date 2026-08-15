@@ -572,7 +572,7 @@ interface CommandHook {
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, updateSetting?, openSettings?, setCallField?,
 //   reloadDataFiles?, devNotice?, devStatus?, devProgress?, devHammer?,
-//   devSplash?, devOnboard?, devTester?, devTimeTravel?, toggleExperiment?}
+//   devSplash?, devOnboard?, devTester?, devPopup?, devTimeTravel?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"

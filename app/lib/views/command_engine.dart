@@ -818,6 +818,8 @@ class CommandEngine extends ChangeNotifier {
         await runAction('devOnboard', null);
       } else if (map['devTester'] is Map) {
         await runAction('devTester', null);
+      } else if (map['devPopup'] is Map) {
+        await runAction('devPopup', null);
       } else if (map['devTimeTravel'] is Map) {
         await runAction('devTimeTravel', (map['devTimeTravel'] as Map).cast<String, dynamic>());
       } else if (map['reloadDataFiles'] is Map) {
