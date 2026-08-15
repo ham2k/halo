@@ -105,9 +105,24 @@ class WindowsWebView {
     }
   }
 
+  /// `additionalBrowserArguments` disables WebView2's Chromium compositor:
+  /// several Windows-only native crashes bottom out in DirectManipulation and
+  /// D3D compositor frames (`mtx_do_lock`, `CContext::EmptyOutAllDDIBindPoints`),
+  /// which is that layer. Rasterization and video decode stay on the GPU —
+  /// this is milder than `--disable-gpu`'s full software-rendering fallback.
+  ///
+  /// Extracted so a test can assert the argument is actually there — this
+  /// path IS the mitigation, so a silent regression (a mistyped or dropped
+  /// flag) brings the crash straight back with the suite still green.
+  @visibleForTesting
+  static WebViewEnvironmentSettings debugEnvironmentSettings(String userDataFolder) => WebViewEnvironmentSettings(
+        userDataFolder: userDataFolder,
+        additionalBrowserArguments: '--disable-gpu-compositing',
+      );
+
   static Future<WebViewEnvironment> _createEnvironment() async {
     final folder = await Directory(await userDataFolderPath()).create(recursive: true);
-    return WebViewEnvironment.create(settings: WebViewEnvironmentSettings(userDataFolder: folder.path));
+    return WebViewEnvironment.create(settings: debugEnvironmentSettings(folder.path));
   }
 
   /// `%LOCALAPPDATA%\<edition>\WebView2`, read from [environment] (the real

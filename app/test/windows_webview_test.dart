@@ -122,6 +122,12 @@ void main() {
     });
   });
 
+  test('the environment disables the compositor, not GPU rendering outright', () {
+    final settings = WindowsWebView.debugEnvironmentSettings(r'C:\Users\n0dev\AppData\Local\Ham2K\WebView2');
+
+    expect(settings.additionalBrowserArguments, '--disable-gpu-compositing');
+  });
+
   test('a failure is remembered, so a blank map never becomes a retry loop', () async {
     var creations = 0;
     WindowsWebView.debugCreateEnvironment = () async {
