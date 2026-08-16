@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), on by default"
+
 "136":
   changes:
     - "Clock, Weather and Web Site panes can now be added to Home and the Logs view, not just an operation"

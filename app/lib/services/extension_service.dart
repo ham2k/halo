@@ -1518,6 +1518,21 @@ class ExtensionService implements PanelExtensionSource {
 
   Future<void> setExtensionEnabled(String key, bool enabled) => setExtensionsEnabled({key: enabled});
 
+  /// One-time migration (HALO): the Ham2K Lookup Service extension covers
+  /// the same ground HamDB did, so existing installs get HamDB switched off
+  /// once when it ships (SettingsService.consumeHamDbDisabledForLookupServiceMigration
+  /// owns the once-per-install decision). Goes through [setExtensionEnabled]
+  /// — not a direct settings write — so the disable also stamps
+  /// `extensionDisabledSince` (via [_updateDisabledSince]) and restarts the
+  /// runtime if one is already up, the same as a user toggling it by hand.
+  Future<void> migrateHamDbDisabledForLookupService() async {
+    final currentSettings = settings;
+    if (currentSettings == null) return;
+    if (await currentSettings.consumeHamDbDisabledForLookupServiceMigration()) {
+      await setExtensionEnabled('hamdb', false);
+    }
+  }
+
   /// The activated extensions of the LIVE runtime, with versions — served
   /// by the kernel's own `kernel-info` extension (the one place versions
   /// exist). Empty when the runtime is down.

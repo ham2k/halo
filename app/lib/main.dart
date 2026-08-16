@@ -684,6 +684,11 @@ Future<HaLoServices> bootstrap({
     updates: updates ?? (kIsWeb || kDebugMode ? const NoopUpdateService() : ShorebirdUpdateService(settings)),
     updateCheck: updateCheck,
   );
+  // Needs extensions.settings, which the HaLoServices constructor above just
+  // wired — going through ExtensionService (rather than a bare settings
+  // write) so a disable here stamps extensionDisabledSince and restarts the
+  // runtime like any other toggle.
+  await services.extensions.migrateHamDbDisabledForLookupService();
   // Cache the running code-push number for the synchronous version displays
   // (views/version_label.dart's buildDetails). Awaited rather than
   // fire-and-forget: a late arrival would leave the first frames naming a
