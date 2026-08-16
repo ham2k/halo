@@ -1228,6 +1228,13 @@ class ExtensionService implements PanelExtensionSource {
   /// extension's 'no-secret' default, exactly like app-polo dev builds.
   static const _lofiSecret = String.fromEnvironment('HAM2K_LOFI_SECRET');
 
+  /// Shared secret for the standalone LoFi backup capture service
+  /// (`flutter build ... --dart-define=HAM2K_BACKUP_TOKEN=...`). Unset means
+  /// the extension's fallback capture on a LoFi failure is a no-op — same
+  /// shape as `_lofiSecret` going unset, just with "skip the feature" as the
+  /// fallback instead of a shared dev default.
+  static const _backupToken = String.fromEnvironment('HAM2K_BACKUP_TOKEN');
+
   /// Seeds the `ham2k-lofi` sync extension's device identity (a stable
   /// per-install key, generated once by `SettingsService.syncDeviceKey`),
   /// operator callsign, and build secret. Called both at boot and whenever
@@ -1242,6 +1249,7 @@ class ExtensionService implements PanelExtensionSource {
     _host?.setKV('ham2k-lofi', 'key', deviceKey);
     _host?.setKV('ham2k-lofi', 'call', operatorCall);
     if (_lofiSecret.isNotEmpty) _host?.setKV('ham2k-lofi', 'secret', _lofiSecret);
+    if (_backupToken.isNotEmpty) _host?.setKV('ham2k-lofi', 'backupToken', _backupToken);
   }
 
   Future<void> _start() async {

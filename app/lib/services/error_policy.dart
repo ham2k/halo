@@ -203,6 +203,15 @@ class ErrorPolicy {
       matches: _isFetchTransportTransient,
     ),
     ErrorRule(
+      id: 'lofi-backup-capture-also-failed',
+      reason: 'the ham2k-lofi extension already fell back to the standalone backup capture '
+          'service on a LoFi outage, and that capture attempt also failed -- this device now '
+          'holds the only copy of the payload, distinct from an ordinary LoFi failure (which '
+          'still has a backup somewhere) and worth an operator notice',
+      disposition: ErrorDisposition.notify,
+      matches: _isLoFiBackupCaptureAlsoFailed,
+    ),
+    ErrorRule(
       id: 'http-client-connection-transient',
       reason: 'a direct package:http call (DataFileManager and its siblings, not hostFetch) '
           'failed at the connection layer (DNS, refused, reset) rather than anything our code '
@@ -435,6 +444,16 @@ class ErrorPolicy {
     return error.message.startsWith('ClientException:') ||
         error.message.startsWith('ClientException with ') ||
         error.message.startsWith('TimeoutException');
+  }
+
+  /// The prefix is `extensions/sync/ham2k-lofi/src/index.ts`'s `sync()`
+  /// wrapping the original LoFi error when its own fallback capture to the
+  /// backup service also throws -- deliberately distinct from any message
+  /// [_isFetchTransportTransient] or a bare `LoFiRequestError` would produce,
+  /// so this never accidentally shadows an ordinary LoFi failure.
+  static bool _isLoFiBackupCaptureAlsoFailed(Object error, FlutterErrorDetails? details) {
+    if (error is! ExtensionHostException) return false;
+    return error.message.startsWith('LoFi sync failed and the backup capture also failed:');
   }
 
   /// Any direct `package:http` caller's own `Client.send()` failing below

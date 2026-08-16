@@ -425,6 +425,29 @@ void main() {
     });
   });
 
+  group('lofi backup capture also failing', () {
+    // sync()'s catch block in extensions/sync/ham2k-lofi/src/index.ts
+    // prefixes the original LoFi error with this exact text when its own
+    // fallback capture to the backup service also throws. Asserted via the
+    // rule id, not just the disposition -- this rule's disposition happens
+    // to equal the default (notify), so a disposition-only assertion could
+    // pass even if the message never actually matched.
+    test('is classified by its own rule, not folded into the unmatched default', () {
+      final decision = ErrorPolicy.decide(ExtensionHostException(
+        'LoFi sync failed and the backup capture also failed: LoFi request failed: HTTP 503 '
+        '(capture error: backup capture returned HTTP 500)',
+      ));
+      expect(decision.rule?.id, 'lofi-backup-capture-also-failed');
+      expect(decision.disposition, ErrorDisposition.notify);
+    });
+
+    test('an ordinary LoFi failure is NOT claimed by this rule', () {
+      final decision = ErrorPolicy.decide(ExtensionHostException('LoFi request failed: HTTP 503'));
+      expect(decision.rule, isNull);
+      expect(decision.disposition, ErrorDisposition.notify);
+    });
+  });
+
   group('http client connection transience', () {
     // DataFileManager talks to package:http directly rather than through
     // hostFetch, so its connection failures reach the policy as a raw

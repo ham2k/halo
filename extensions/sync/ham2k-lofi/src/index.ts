@@ -14,7 +14,10 @@
 // 'no-secret' fallback app-polo dev builds use. `token` is deliberately
 // NOT seeded: `host.kv` is in-memory per process, so the token written
 // below only survives within one run and each launch re-registers,
-// matching app-polo's memory-only `GLOBAL.syncLoFiToken`.
+// matching app-polo's memory-only `GLOBAL.syncLoFiToken`. In builds that
+// define HAM2K_BACKUP_TOKEN, the same seeding also sets `backupToken` —
+// unset means `sync`'s fallback capture (below) is a no-op, same shape as
+// the LoFi secret.
 
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type {
@@ -26,6 +29,7 @@ import type {
   SyncResponse,
 } from "@ham2k/halo-extension-sdk"
 
+import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
 import { loFiErrorMessage, normalizedEmail } from "./errors.ts"
 import { tFor } from "./i18n.ts"
 import { attachReportContext, buildReportPayload } from "./report.ts"
@@ -34,6 +38,7 @@ import type { ReportContext, ReportPayload } from "./report.ts"
 import manifest from "../manifest.json" with { type: "json" }
 
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
+export const DEFAULT_BACKUP_SERVICE_URL = 'https://backup.ham2k.online'
 const DEFAULT_SECRET = 'no-secret'
 // The host stamps HaLo's canonical User-Agent on every host.fetch call (see
 // docs/design/network.md), so this extension doesn't set its own.
@@ -220,8 +225,12 @@ let cachedToken: string | null = null
 let registrationInFlight: Promise<string> | null = null
 
 async function serverUrl(): Promise<string> {
-  const configured = await host.kvGet('server')
-  return typeof configured === 'string' && configured ? configured : DEFAULT_LOFI_SERVER
+  return kvUrlOr('server', DEFAULT_LOFI_SERVER)
+}
+
+async function kvUrlOr(key: string, fallback: string): Promise<string> {
+  const configured = await host.kvGet(key)
+  return typeof configured === 'string' && configured ? configured : fallback
 }
 
 async function registerClient(): Promise<string> {
@@ -276,17 +285,6 @@ async function doRegisterClient(): Promise<string> {
   }
 
   return cachedToken
-}
-
-/// A non-2xx server reply, kept distinct from plain Errors so linkClient
-/// can turn "the server said no" (with its status) into flow data while
-/// genuine transport failures keep propagating.
-class LoFiRequestError extends Error {
-  status: number
-  constructor(message: string, status: number) {
-    super(message)
-    this.status = status
-  }
 }
 
 /// Authenticated request with the same retry-once-on-401 shape as the RN
@@ -354,7 +352,56 @@ async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncRespon
     return (await request('POST', 'v1/sync', payload as unknown as JSONValue)) as SyncResponse
   } catch (e) {
     if (e instanceof LoFiRequestError && e.status === 422) return { error: e.message, error_status: e.status }
+
+    // Hand the payload to the backup capture service before the original
+    // error keeps propagating. Captured even with no cached token -- the
+    // token only lets a later replay skip re-authenticating, the data is
+    // worth preserving for manual recovery either way.
+    if (shouldCaptureToBackup(e)) {
+      try {
+        await captureToBackupService(payload)
+      } catch (captureError) {
+        // Neither LoFi nor the backup service could take this payload -- it
+        // has nowhere safe to live but this device.
+        throw new Error(backupCaptureAlsoFailedMessage(e, captureError))
+      }
+    }
+
     throw e
+  }
+}
+
+async function backupServiceUrl(): Promise<string> {
+  return kvUrlOr('backupUrl', DEFAULT_BACKUP_SERVICE_URL)
+}
+
+/// Best-effort only -- a caller that reaches this already has a real LoFi
+/// failure to report; this must never replace that error with one of its
+/// own on the happy path, only add to it if the capture itself also fails
+/// (see `sync`'s catch). No explicit `timeout` -- the fallback triggers
+/// exactly when the network is degraded, not just when LoFi itself is down,
+/// so this gets the same generous host.fetch defaults (15s headers/30s body)
+/// as every other request in this file rather than a tighter one of its own
+/// that would turn a slow connection into a false double-failure.
+async function captureToBackupService(payload: SyncPayload): Promise<void> {
+  const token = await host.kvGet('backupToken')
+  if (typeof token !== 'string' || !token) return // not configured on this build, skip silently
+
+  const server = await backupServiceUrl()
+  const response = await host.fetch(`${server}/v1/capture`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      client_jwt: cachedToken ?? '',
+      sync_body: payload,
+      client_timestamp: new Date().toISOString(),
+    }),
+  })
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`backup capture returned HTTP ${response.status}`)
   }
 }
 
