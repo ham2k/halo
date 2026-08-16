@@ -135,9 +135,9 @@ dev_dependencies:
   # so declared directly. `any` because the override decides the version.
   flutter_inappwebview_linux: any
 
-# Two of these entries replace a `flutter_inappwebview` platform
+# Three of these entries replace a `flutter_inappwebview` platform
 # implementation we cannot use as published; each vendored package documents
-# its own reason, and dropping either breaks a build. The rest freeze the
+# its own reason, and dropping any one breaks a build. The rest freeze the
 # family at beta.3.
 #
 # The freeze is load-bearing, not tidiness. Pinning `flutter_inappwebview`
@@ -158,7 +158,11 @@ dependency_overrides:
   flutter_inappwebview_android: 1.2.0-beta.3
   flutter_inappwebview_ios: 1.2.0-beta.3
   flutter_inappwebview_web: 1.2.0-beta.3
-  flutter_inappwebview_windows: 0.7.0-beta.3
+  # See packages/flutter_inappwebview_windows_patched/PATCH.md: a use-after-free
+  # in the plugin's own C++ destructor, racing the engine's raster thread
+  # during window close (HALO-290/HALO-NEXT-3).
+  flutter_inappwebview_windows:
+    path: ../packages/flutter_inappwebview_windows_patched
   # Upstream's SPM manifest declares a lower macOS minimum than its own code
   # requires, so the package does not compile under Swift Package Manager —
   # which 6.2 is the first version to use here. One line differs; see the

@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Guards everything `app/pubspec.yaml` says about `flutter_inappwebview`: the
-// exact pin on the umbrella, the six version pins in `dependency_overrides`
-// that hold the rest of the family still, the two overrides that
-// displace the published Linux and macOS implementations outright, and the
-// one patched line inside the vendored macOS copy.
+// exact pin on the umbrella, the five version pins in `dependency_overrides`
+// that hold the rest of the family still, the three overrides that
+// displace the published Linux, macOS and Windows implementations outright,
+// and the one patched line inside each of the vendored macOS and Windows
+// copies.
 //
 // All of it is invisible to every other signal. Delete an override and the
 // whole Dart suite, `flutter analyze` and every GitHub CI job stay green,
@@ -167,7 +168,6 @@ void main() {
       'flutter_inappwebview_android': '1.2.0-beta.3',
       'flutter_inappwebview_ios': '1.2.0-beta.3',
       'flutter_inappwebview_web': '1.2.0-beta.3',
-      'flutter_inappwebview_windows': '0.7.0-beta.3',
     };
 
     for (final entry in expected.entries) {
@@ -267,6 +267,58 @@ void main() {
       isNot(contains('.macOS("10.14")')),
       reason: 'a 10.14 minimum anywhere in this manifest is upstream\'s own '
           'value, which fails the release build with "$failure"',
+    );
+  });
+
+  test('Windows resolves to the patched copy, not the published one', () {
+    // The published destructor frees its texture bridge on the calling
+    // thread the instant it returns, while the engine's raster thread can
+    // still be mid-callback into it — see the vendored package's PATCH.md.
+    final plugin = _pluginFor('windows', 'flutter_inappwebview_windows');
+    expect(plugin, isNotNull);
+    expect(_posixPath(plugin!['path']), contains('packages/flutter_inappwebview_windows_patched'));
+  });
+
+  test('the vendored Windows copy still carries the patched destructor', () {
+    // Resolving to the vendored directory is not the same as the patch being
+    // in it. PATCH.md's re-vendor procedure is "copy the new package over
+    // this directory, re-apply the destructor change if upstream hasn't
+    // fixed the race", and a copy that stops after the first half leaves the
+    // assertion above true. Nothing in ./scripts/test.sh compiles C++, so
+    // this is the only part of the patch a Dart test can see at all.
+    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/custom_platform_view/custom_platform_view.cc';
+    final file = File(sourcePath);
+    if (!file.existsSync()) {
+      fail(
+        'No $sourcePath — the Windows override points at a package with no '
+        'custom_platform_view.cc, so this test cannot answer the question it '
+        'exists to answer.',
+      );
+    }
+    final source = file.readAsStringSync();
+    expect(
+      source,
+      contains('texture_registrar_->UnregisterTexture(texture_id_, [bridge, texture]() {});'),
+      reason: 'deferring texture_bridge_/flutter_texture_ destruction to the '
+          'UnregisterTexture completion callback IS the patch; without it '
+          'the first signal is a Windows-only native crash on window close '
+          '(HALO-290/HALO-NEXT-3), not a test failure',
+    );
+    expect(
+      source,
+      contains('texture_bridge_->Stop();'),
+      reason: 'deferring texture_bridge_ destruction without first stopping '
+          'it re-opens a narrower use-after-free: its capture thread keeps '
+          'calling a frame-available callback that captures the '
+          'CustomPlatformView this destructor is in the middle of '
+          'destroying. See PATCH.md.',
+    );
+    expect(
+      source,
+      isNot(contains('UnregisterTexture(texture_id_, nullptr)')),
+      reason: 'a nullptr callback anywhere in this destructor is upstream\'s '
+          'own unpatched line, which reintroduces the use-after-free',
     );
   });
 }

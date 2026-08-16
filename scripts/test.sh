@@ -509,15 +509,19 @@ changed_subset() {
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
       packages/halo_widgets/*) groups="$groups widgets" ;;
       packages/halo_cli/*) groups="$groups cli" ;;
-      # Neither has tests of its own; app/test/webview_plugin_overrides_test
+      # None has tests of its own; app/test/webview_plugin_overrides_test
       # is what covers them, so `app` is the right group: that the overrides
       # still resolve where they should, that the stub still registers
-      # nothing, and that the vendored macOS Package.swift still carries the
-      # .macOS("10.15") line without which `flutter build macos` fails.
-      # Nothing here compiles Swift or configures CMake, so that last one is a
-      # check on the SOURCE LINE — the build itself is never exercised.
+      # nothing, that the vendored macOS Package.swift still carries the
+      # .macOS("10.15") line without which `flutter build macos` fails, and
+      # that the vendored Windows custom_platform_view.cc still carries its
+      # patched destructor without which the plugin reintroduces the native
+      # crash on window close (HALO-290). Nothing here compiles Swift, C++ or
+      # configures CMake, so those last two are checks on the SOURCE LINE —
+      # the build itself is never exercised.
       packages/flutter_inappwebview_linux_stub/*) groups="$groups app" ;;
       packages/flutter_inappwebview_macos_patched/*) groups="$groups app" ;;
+      packages/flutter_inappwebview_windows_patched/*) groups="$groups app" ;;
       # A package this mapping doesn't know (new or renamed) must not fall
       # into the silent catch-all and read as "docs".
       packages/*)
