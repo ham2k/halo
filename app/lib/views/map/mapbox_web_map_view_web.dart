@@ -74,6 +74,11 @@ class MapboxWebMapView extends StatefulWidget {
 
   final MapZoomController? zoomController;
 
+  /// When set, a marker click reports here instead of opening the built-in
+  /// HTML popup — see map_gl_script.dart's `notifyClicks`. Null for the QSO
+  /// map, which keeps its own popup.
+  final ValueChanged<String>? onMarkerTap;
+
   const MapboxWebMapView(
       {super.key,
       required this.markers,
@@ -82,7 +87,8 @@ class MapboxWebMapView extends StatefulWidget {
       required this.isDark,
       required this.styleUrl,
       required this.styleUrlDark,
-      this.zoomController});
+      this.zoomController,
+      this.onMarkerTap});
 
   @override
   State<MapboxWebMapView> createState() => _MapboxWebMapViewState();
@@ -106,6 +112,10 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   /// the reporter is static, and an error draining during teardown is
   /// still evidence.
   void _onMapEvent(String kind, String message) {
+    if (kind == 'marker-click') {
+      widget.onMarkerTap?.call(message);
+      return;
+    }
     if (kind == 'recovered') {
       if (mounted && _loadFailed) setState(() => _loadFailed = false);
       return;
@@ -147,6 +157,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
         widget.styleUrlDark.toJS,
         widget.isDark.toJS,
         onEvent,
+        (widget.onMarkerTap != null).toJS,
       ]);
     } catch (e, s) {
       // A CDN load failure (offline at map open) or a create() throw (no

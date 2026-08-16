@@ -27,7 +27,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
-import '../../services/windows_webview.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
@@ -35,6 +34,7 @@ import '../map/map_zoom_controller.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
+import '../map/webview_support_probe.dart';
 
 class MapPanel extends StatefulWidget {
   final Operation operation;
@@ -54,27 +54,8 @@ class MapPanel extends StatefulWidget {
   State<MapPanel> createState() => _MapPanelState();
 }
 
-class _MapPanelState extends State<MapPanel> {
+class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> {
   MapProjection _projection = MapProjection.mercator;
-
-  /// Whether the desktop webview backend can run here — false on a Windows
-  /// machine where no WebView2 environment can be created, and where routing
-  /// to the webview would leave the map permanently blank instead of falling
-  /// back to OSM. macOS starts true (WKWebView is part of the OS); Windows
-  /// starts from the cached answer, pessimistically false the first time.
-  /// That first answer costs a cold browser-process spawn, not a registry
-  /// lookup, so the first map open of a session visibly shows OSM and then
-  /// swaps to the webview map — every later one goes straight to the cached answer.
-  bool _webviewSupported = false;
-
-  /// Set once [_maybeProbeWebview] has actually asked — NOT on a platform
-  /// skip, so a pane mounted off macOS/Windows keeps re-checking on every
-  /// dependency change, which costs nothing (the branch returns immediately).
-  /// Guards against stacking a second `.then` on [WindowsWebView.isAvailable]'s
-  /// memoized future when a pane flips visible more than once; it does not
-  /// guard against a second browser-process spawn, which that future already
-  /// rules out.
-  bool _probed = false;
 
   /// Backs the bottom-left zoom buttons (non-mobile only, alongside pinch/scroll
   /// zoom) — the live backend wires its own zoomIn/zoomOut into it each time it's
@@ -84,34 +65,13 @@ class _MapPanelState extends State<MapPanel> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
-      return;
-    }
-    _webviewSupported = WindowsWebView.resolved ?? defaultTargetPlatform != TargetPlatform.windows;
+    initWebviewSupportProbe();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _maybeProbeWebview();
-  }
-
-  /// Kicks off the WebView2 availability probe the first time this pane is
-  /// actually on screen, not merely mounted — a dock group's `IndexedStack`
-  /// builds every pane in it up front, and probing from `initState` would
-  /// spawn the WebView2 browser process for a Map tab nobody has looked at
-  /// yet. Outside a dock, `DockPaneVisibility.of` answers true immediately, so
-  /// this fires on the same frame `initState` used to.
-  void _maybeProbeWebview() {
-    if (_probed) return;
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
-      return;
-    }
-    if (!DockPaneVisibility.of(context)) return;
-    _probed = true;
-    WindowsWebView.isAvailable().then((ok) {
-      if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
-    });
+    maybeProbeWebviewSupport();
   }
 
   // Lines are ~60% black (light) or ~60% white (dark) at any zoom, splitting
@@ -215,7 +175,7 @@ class _MapPanelState extends State<MapPanel> {
           styleUrl: glStyleUrl,
           styleUrlDark: glStyleUrlDark);
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
-        _webviewSupported) {
+        webviewSupported) {
       // Named platform by platform, and through `defaultTargetPlatform` rather
       // than `dart:io`'s `Platform` (which no test can override), so that the
       // Linux exclusion is a rule a test holds down. Widening this branch to

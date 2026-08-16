@@ -41,6 +41,7 @@ import '../extensions_panel.dart';
 import '../../i18n/strings.g.dart';
 import '../../tools/distance_format.dart';
 import '../../tools/operation_title.dart';
+import 'activities_results_map.dart';
 
 
 /// An icon, circled in [color] at 60% opacity when the control declares an
@@ -138,6 +139,12 @@ const _optionsPeekHeight = _optionRowHeight * _peekRows;
 /// grows — see [OperationSheetState._optionsPeekHeightFor].
 const _resultsMinPeekHeight = _twoLineRowHeight * _peekRows;
 
+/// The map presentation's own cap on "Current Activities": tall enough to
+/// read as more than a sliver, bounded so the map — the reason the operator
+/// switched views — still gets most of the height. Internally scrollable
+/// past this, same as the list presentation's own peeking sections.
+const _currentActivitiesMapMaxHeight = _twoLineRowHeight * 2.5;
+
 /// The accordion header's own height: an IconButton (48, Material's minimum
 /// tap target) inside [AccordionSection]'s `Space.sm` vertical padding.
 /// Deliberately a fixed allowance rather than a measurement — it is only
@@ -234,6 +241,16 @@ String? activityRowDetail(Map<String, dynamic> entry) {
   ].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
   return detail.isEmpty ? null : detail;
 }
+
+/// Whether an already-added suggestion should be hidden rather than shown
+/// (faded) — the one rule both the results list (`resultRows`, below) and the
+/// results map (`activitySuggestionMarkers`, activities_results_map.dart)
+/// apply to the same `_suggestions`/`refs` inputs, kept in one place so they
+/// can't quietly disagree. A nearby suggestion already on the operation is
+/// just noise; a SEARCH hit has to stay — dropping what the operator
+/// searched for reads as "no such reference".
+bool suggestionHidesAsAlreadyAdded({required bool alreadyAdded, required bool suggestionsAreSearchResults}) =>
+    alreadyAdded && !suggestionsAreSearchResults;
 
 /// The refs to keep when adding one of [type]: all of them when the type
 /// allows multiple, and otherwise everything BUT that type — a single-ref
@@ -446,6 +463,11 @@ class OperationSheetState extends State<OperationSheet> {
   int _flashToken = 0;
   Timer? _flashTimer;
   final Map<String, GlobalKey> _refRowKeys = {};
+
+  /// Whether the results/suggestions area shows the map toggle's map instead
+  /// of the ordinary list — ephemeral per sheet open, not a persisted
+  /// preference like [_allOptionsExpanded].
+  bool _showResultsMap = false;
 
   late bool _allOptionsExpanded;
   late bool _allOptionsFullyOpened;
@@ -1795,6 +1817,72 @@ class OperationSheetState extends State<OperationSheet> {
     );
   }
 
+  /// The "Current Activities" rows (plus the controls-failed notice, when
+  /// relevant) — shared between the list presentation's `SliverList` and the
+  /// map presentation's plain `Column`, so an operator toggling to the map
+  /// doesn't lose sight of what's already on the operation.
+  List<Widget> _currentActivityRows(ThemeData theme, Color rowColor) {
+    final t = context.t.activitiesView;
+    final refs = _operation.refs;
+    return [
+      if (_controlsState == ControlsLoadState.failed && refs.isNotEmpty) _controlsFailedNotice(theme),
+      for (final ref in refs)
+        Builder(builder: (context) {
+          final control = controlForRefType(_controls, ref['type'] as String?);
+          final detail = activityRowDetail(ref);
+          return Material(
+            type: MaterialType.transparency,
+            child: _flashableRow(
+              ref,
+              ListTile(
+                tileColor: _controlsUnreliable
+                    ? rowColor
+                    : (control == null ? theme.colorScheme.errorContainer.withValues(alpha: 0.4) : rowColor),
+                // Right padding matches the header rows' own horizontal
+                // inset, so the RIGHTMOST trailing button lines up under the
+                // search row's location button — same IconButton defaults
+                // (no custom size/padding) too. Any button added left of it
+                // hangs off that alignment rather than moving it.
+                contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
+                leading: _controlsUnreliable && control == null
+                    ? const Icon(MdiIcons.toyBrick)
+                    : activityRefIcon(_controls, ref['type'] as String?),
+                title: Text(
+                  activityRowTitle(control, ref),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: detail == null ? null : Text(detail),
+                // Tappable only for a type that declares it has something to
+                // edit — a plain ref activity doesn't, so the row stays inert
+                // rather than offering to retype a code its own search
+                // already resolved.
+                onTap: refTypeIsEditable(control) ? () => _editRef(ref) : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // The row has always opened the editor on tap, with
+                    // nothing to say so. This is that affordance made
+                    // visible, not a second way in — same condition as the
+                    // tap above, so the two can never disagree about whether
+                    // a row is configurable.
+                    if (refTypeIsEditable(control))
+                      IconButton(
+                        icon: Icon(MdiIcons.tune, semanticLabel: t.editActivity),
+                        onPressed: () => _editRef(ref),
+                      ),
+                    IconButton(
+                      icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
+                      onPressed: () => _deleteRef(ref),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.t.activitiesView;
@@ -1956,6 +2044,20 @@ class OperationSheetState extends State<OperationSheet> {
                   }
                 }
 
+                // The results map's own "you are here" dot — the same
+                // coordinate and color as the pill above, computed by the
+                // same two branches (operation grid first, then a live GPS
+                // fix) so the dot and the pill can never disagree about
+                // where "here" is. Null exactly when the pill has nothing to
+                // show either (still determining, denied, or an unplaceable
+                // grid) — there's nothing to plot in that state.
+                final currentLocation = _hasOperationGrid
+                    ? gridToLocation(operationGrid)
+                    : (locStatus == LocationStatus.available && widget.services.location.position != null)
+                        ? GridLocation(widget.services.location.position!.latitude,
+                            widget.services.location.position!.longitude)
+                        : null;
+
                 final searchBorder = OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
@@ -2014,6 +2116,14 @@ class OperationSheetState extends State<OperationSheet> {
                               onChanged: _onSearchChanged,
                             ),
                           ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _showResultsMap ? MdiIcons.formatListBulleted : MdiIcons.map,
+                            color: onAccordionColor.withValues(alpha: 0.6),
+                            semanticLabel: _showResultsMap ? t.showResultsList : t.showResultsMap,
+                          ),
+                          onPressed: () => setState(() => _showResultsMap = !_showResultsMap),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(left: Space.md),
@@ -2074,11 +2184,10 @@ class OperationSheetState extends State<OperationSheet> {
                     Builder(builder: (context) {
                       final alreadySelected =
                           refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
-                      // A nearby suggestion for a ref already on the
-                      // operation is just noise, but a SEARCH hit has to
-                      // stay: dropping what you searched for reads as
-                      // "no such reference". Marked, not hidden.
-                      if (alreadySelected && !_suggestionsAreSearchResults) {
+                      if (suggestionHidesAsAlreadyAdded(
+                        alreadyAdded: alreadySelected,
+                        suggestionsAreSearchResults: _suggestionsAreSearchResults,
+                      )) {
                         return const SizedBox.shrink();
                       }
                       final suggestionControl = controlForRefType(_controls, suggestion['type'] as String?);
@@ -2129,6 +2238,50 @@ class OperationSheetState extends State<OperationSheet> {
                     }),
                 ];
 
+                // The map is a sibling of the scroll area, never a sliver
+                // inside it: a platform-view-backed map backend (the GL
+                // webview/web view — see activities_results_map.dart) loses
+                // pointer events to the CustomScrollView's own drag
+                // recognizer when embedded as one of its slivers, so every
+                // tap on a marker is swallowed before the map ever sees it.
+                // OsmMapView's pure-Flutter canvas isn't affected, but
+                // routing every backend through the same sibling structure
+                // keeps this one thing true regardless of which backend a
+                // platform happens to pick.
+                if (_showResultsMap) {
+                  final currentActivityRows = _currentActivityRows(theme, rowColor);
+                  return Column(
+                    children: [
+                      if (currentActivityRows.isNotEmpty)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.textScalerOf(context).scale(_currentActivitiesMapMaxHeight),
+                          ),
+                          child: SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: Column(mainAxisSize: MainAxisSize.min, children: currentActivityRows),
+                            ),
+                          ),
+                        ),
+                      searchBand,
+                      Expanded(
+                        child: ActivitiesResultsMap(
+                          suggestions: _suggestions,
+                          controls: _controls,
+                          refs: refs,
+                          settings: widget.services.settings,
+                          onAdd: _addSuggestion,
+                          suggestionsAreSearchResults: _suggestionsAreSearchResults,
+                          currentLocation: currentLocation,
+                          currentLocationColor: locationColor,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
                 // One ink layer PER ROW: a ListTile's tileColor/splash ink
                 // clips to the nearest Material's bounds, which must be the
                 // row itself for rows scrolled out of this viewport to stop
@@ -2136,70 +2289,9 @@ class OperationSheetState extends State<OperationSheet> {
                 return CustomScrollView(
                   slivers: [
                     SliverList(
-                      delegate: SliverChildListDelegate([
-                    if (_controlsState == ControlsLoadState.failed && refs.isNotEmpty)
-                      _controlsFailedNotice(theme),
-                    for (final ref in refs)
-                      Builder(builder: (context) {
-                        final control = controlForRefType(_controls, ref['type'] as String?);
-                        final detail = activityRowDetail(ref);
-                        return Material(
-                          type: MaterialType.transparency,
-                          child: _flashableRow(
-                            ref,
-                            ListTile(
-                              tileColor: _controlsUnreliable
-                                  ? rowColor
-                                  : (control == null
-                                      ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
-                                      : rowColor),
-                              // Right padding matches the header rows' own
-                              // horizontal inset, so the RIGHTMOST trailing
-                              // button lines up under the search row's
-                              // location button — same IconButton defaults
-                              // (no custom size/padding) too. Any button
-                              // added left of it hangs off that alignment
-                              // rather than moving it.
-                              contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
-                              leading: _controlsUnreliable && control == null
-                                  ? const Icon(MdiIcons.toyBrick)
-                                  : activityRefIcon(_controls, ref['type'] as String?),
-                              title: Text(
-                                activityRowTitle(control, ref),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: detail == null ? null : Text(detail),
-                              // Tappable only for a type that declares it has
-                              // something to edit — a plain ref activity
-                              // doesn't, so the row stays inert rather than
-                              // offering to retype a code its own search
-                              // already resolved.
-                              onTap: refTypeIsEditable(control) ? () => _editRef(ref) : null,
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // The row has always opened the editor on
-                                  // tap, with nothing to say so. This is that
-                                  // affordance made visible, not a second way
-                                  // in — same condition as the tap above, so
-                                  // the two can never disagree about whether a
-                                  // row is configurable.
-                                  if (refTypeIsEditable(control))
-                                    IconButton(
-                                      icon: Icon(MdiIcons.tune, semanticLabel: t.editActivity),
-                                      onPressed: () => _editRef(ref),
-                                    ),
-                                  IconButton(
-                                    icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
-                                    onPressed: () => _deleteRef(ref),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                      ]),
+                      delegate: SliverChildListDelegate(
+                        _currentActivityRows(theme, rowColor),
+                      ),
                     ),
                     // The band pins below the sheet's header once the
                     // activity rows above it scroll away; the results keep

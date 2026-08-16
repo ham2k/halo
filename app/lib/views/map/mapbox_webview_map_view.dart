@@ -49,6 +49,11 @@ class MapboxWebviewMapView extends StatefulWidget {
 
   final MapZoomController? zoomController;
 
+  /// When set, a marker click reports here instead of opening the built-in
+  /// HTML popup — see map_gl_script.dart's `notifyClicks`. Null for the QSO
+  /// map, which keeps its own popup.
+  final ValueChanged<String>? onMarkerTap;
+
   const MapboxWebviewMapView({
     super.key,
     required this.markers,
@@ -58,6 +63,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     required this.styleUrl,
     required this.styleUrlDark,
     this.zoomController,
+    this.onMarkerTap,
   });
 
   @override
@@ -82,6 +88,10 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   /// the reporter is static, and an error draining during teardown is
   /// still evidence.
   void _onMapEvent(String kind, String message) {
+    if (kind == 'marker-click') {
+      widget.onMarkerTap?.call(message);
+      return;
+    }
     if (kind == 'recovered') {
       if (mounted && _loadFailed) setState(() => _loadFailed = false);
       return;
@@ -167,7 +177,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       // the exe (see WindowsWebView).
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
-        data: _html(widget.isDark, widget.styleUrl, widget.styleUrlDark),
+        data: _html(widget.isDark, widget.styleUrl, widget.styleUrlDark, widget.onMarkerTap != null),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
@@ -220,7 +230,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   // callback crosses on its own 'poloMapEvent' handler rather than riding
   // onConsoleMessage: a console line is a debug print, and these have to
   // reach ErrorPolicy.
-  static String _html(bool isDark, String styleUrl, String styleUrlDark) => '''
+  static String _html(bool isDark, String styleUrl, String styleUrlDark, bool notifyClicks) => '''
 <!DOCTYPE html>
 <html>
 <head>
@@ -268,7 +278,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       $isDark,
       function (kind, message) {
         window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
-      });
+      }, $notifyClicks);
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
     window.poloSetProjection = handle.setProjection;

@@ -445,7 +445,12 @@
     "controlsUnavailableTitle": "Activity controls unavailable",
     "controlsUnavailableReason": "Your references are safe, but editing them is unavailable right now.",
     "controlsUnavailableRetry": "Retry",
-    "onlyDisabledMatches": "No matches\nSome available extensions might have results.\nEnable them in Activity Types below."
+    "onlyDisabledMatches": "No matches\nSome available extensions might have results.\nEnable them in Activity Types below.",
+    "showResultsMap": "Show results on a map",
+    "showResultsList": "Show results as a list",
+    "addToOperation": "Add to Operation",
+    "mapEmptyState": "No results to show on the map",
+    "mapEmptyStateHint": "Switch back to the list, or search for something else"
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",

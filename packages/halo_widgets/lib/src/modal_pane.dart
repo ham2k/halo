@@ -152,6 +152,21 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   @override
   String? get barrierLabel => 'Dismiss';
 
+  /// The framework's own auto-inserted `ModalBarrier` gets semantics from
+  /// [barrierDismissible]/[barrierLabel] by default — a `role=button` DOM
+  /// node the size of the whole screen. It's invisible here (our opaque
+  /// transparent-background Scaffold paints over it, and `_buildDialog`'s
+  /// own `GestureDetector` re-implements the tap-to-dismiss it would have
+  /// provided), but its semantics geometry still exists and, with Flutter
+  /// web's accessibility DOM on, sits in front of everything the pane
+  /// contains in browser hit-testing — including a platform view (a
+  /// webview/GL map) the content embeds, swallowing every click meant for
+  /// it before the page ever sees them. False here removes only the
+  /// semantics annotation; [barrierDismissible] (Escape) and our own
+  /// GestureDetector (pointer taps) are untouched.
+  @override
+  bool get semanticsDismissible => false;
+
   @override
   Duration get transitionDuration => const Duration(milliseconds: 250);
 
@@ -257,12 +272,22 @@ class _ModalPaneScaffold extends StatelessWidget {
           // submit is in flight. Deliberate pops (a pane's own Save/Cancel)
           // still call Navigator.pop directly.
           onTap: route._tapOutsideDismissible ? () => Navigator.of(context).maybePop() : null,
+          // Neither this detector nor the card's own below should surface as
+          // an actionable semantics node: with Flutter's web accessibility
+          // DOM on, a `role=button` node sized to the FULL screen/card sits
+          // in front of everything under it in browser hit-testing — including
+          // any platform view (a webview/GL map) the pane's content embeds,
+          // silently swallowing every click meant for it. A screen-reader
+          // user already has the explicit Close button; this pair is pure
+          // gesture plumbing with nothing to announce.
+          excludeFromSemantics: true,
           child: SafeArea(
             child: Center(
               child: GestureDetector(
                 // Taps on the card itself must not fall through to the
                 // barrier handler above.
                 onTap: () {},
+                excludeFromSemantics: true,
                 child: ConstrainedBox(
                   // Bounded, never floored: the card is as tall as its body
                   // asks for, up to the shared max. A body built around
@@ -500,6 +525,12 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
 
   @override
   String? get barrierLabel => 'Dismiss';
+
+  /// See [ModalPaneRoute.semanticsDismissible] — same framework-barrier
+  /// semantics footprint, same fully custom (and here, fully painted-by-hand
+  /// via [_TopModalPaneScaffold]'s own `AnimatedBuilder`) tap-to-dismiss.
+  @override
+  bool get semanticsDismissible => false;
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 600);

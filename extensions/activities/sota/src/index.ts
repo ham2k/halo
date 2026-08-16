@@ -13,7 +13,7 @@
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -148,6 +148,12 @@ interface SOTASummitInfo {
   points: number
   altM: number
   valid: boolean
+  /// The summit's own coordinate — tighter than decoding `locator`.
+  /// Populated from the offline table's `lat`/`lon` columns, or bridged
+  /// from the live API's `latitude`/`longitude` fields (see the network
+  /// branch below).
+  lat?: number
+  lon?: number
 }
 
 const summitCache = new Map<string, SOTASummitInfo | null>()
@@ -181,6 +187,8 @@ async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
         points: row.data.points ?? 0,
         altM: row.data.altitude ?? 0,
         valid: true,
+        lat: row.lat,
+        lon: row.lon,
       }
       summitCache.set(ref, info)
       return info
@@ -198,6 +206,12 @@ async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
     const response = await host.fetch(`${SOTA_SUMMITS_API}/${path}`)
     if (response.status === 200 && response.body && response.body !== 'null') {
       summit = JSON.parse(response.body) as SOTASummitInfo
+      // The live API names these `latitude`/`longitude`, not this
+      // interface's `lat`/`lon` — bridged here rather than renamed
+      // throughout, so the offline branch above (which reads
+      // `row.lat`/`row.lon` straight off the LookupRow) doesn't have to
+      // change shape too.
+      applyLatLonFromApiFields(summit, summit as unknown as Record<string, unknown>)
     }
   } catch {
     return null // network trouble: report nothing, don't cache
@@ -227,6 +241,8 @@ const RefHandler = {
       ref: reference,
       name: summit.name,
       grid: summit.locator,
+      lat: summit.lat,
+      lon: summit.lon,
       location,
       program: 'SOTA',
       label: `SOTA ${reference}: ${summit.name}`,
@@ -325,6 +341,8 @@ const ActivityHook = {
         ref: row.key,
         name: row.name,
         grid: data.grid,
+        lat: row.lat,
+        lon: row.lon,
         location: associationRegion,
         program: 'SOTA',
         label: `SOTA ${row.key}: ${row.name ?? ''}`,

@@ -109,6 +109,7 @@ dependencies:
   # PusherService is typed against it directly so tests can inject a fake
   # in-memory channel instead of a real socket.
   stream_channel: ^2.1.4
+  pointer_interceptor: ^0.10.1+2
 
 dev_dependencies:
   flutter_test:

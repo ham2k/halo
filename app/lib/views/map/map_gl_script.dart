@@ -9,10 +9,16 @@
 // projection logic, so the two can't drift apart.
 //
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
-// onEvent)` returning a handle with `setMarkersJson`, `setLinesJson`,
-// `setProjection`, and `remove`. Data crosses as JSON strings — both callers
-// already have the payload serialized, and strings keep the interop layer
-// trivial on each side.
+// onEvent, notifyClicks)` returning a handle with `setMarkersJson`,
+// `setLinesJson`, `setProjection`, and `remove`. Data crosses as JSON
+// strings — both callers already have the payload serialized, and strings
+// keep the interop layer trivial on each side.
+//
+// `notifyClicks` (default false) is for a caller that wants to render its
+// own reveal/action UI in Flutter instead of this script's built-in HTML
+// popup: a marker click reports through `onEvent('marker-click', id)`
+// rather than opening `showPopup`. The QSO map never sets it, so its popup
+// behavior is unchanged.
 //
 // `onEvent(kind, message)` is the host's error channel: every failure this
 // script can observe goes through it, so each backend can route into
@@ -80,7 +86,7 @@ String mapLibreSpaceBackgroundCss() {
 /// loaded first. Idempotent — safe to inject more than once.
 const mapGlScript = '''
 window.poloMapGl = window.poloMapGl || {
-  create: function (container, style, styleDark, initialDark, onEvent) {
+  create: function (container, style, styleDark, initialDark, onEvent, notifyClicks) {
     const options = {
       container: container,
       // Picking the right style up front avoids setDark() having to swap
@@ -442,7 +448,10 @@ window.poloMapGl = window.poloMapGl || {
       const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight');
       const hits = ready ? map.queryRenderedFeatures(e.point, { layers: MARKER_LAYERS }) : [];
       const marker = hits.length ? markersById[hits[0].properties.id] : null;
-      if (marker) { showPopup(marker); return; }
+      if (marker) {
+        if (notifyClicks) { report('marker-click', marker.id); } else { showPopup(marker); }
+        return;
+      }
       if (hits.length) {
         // A rendered dot with no record means the source and markersById have
         // drifted apart; silently it just reads as a dead click.

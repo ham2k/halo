@@ -17,3 +17,17 @@ export const LOCATION_ACCURACY = {
   VAGUE: 100, // No better than a general state/province.
   NO_LOCATION: 1000,
 } as const
+
+/// Bridges a live API's own `latitude`/`longitude` field names onto a
+/// target carrying the SDK's `lat`/`lon` (POTA's `POTAParkInfo`, SOTA's
+/// `SOTASummitInfo`) — both hand-written activities (with their own network
+/// APIs, unlike the shared `referenceActivity` factory) hit this same
+/// naming mismatch. `typeof`-checked rather than a blind cast: a field
+/// that's absent, or the wrong type because of an API change, degrades to
+/// "no exact coordinate" (the caller's existing fallback to a decoded
+/// grid) instead of writing a non-number into a field callers assume is a
+/// number.
+export function applyLatLonFromApiFields(target: { lat?: number; lon?: number }, raw: Record<string, unknown>): void {
+  if (typeof raw.latitude === "number") target.lat = raw.latitude
+  if (typeof raw.longitude === "number") target.lon = raw.longitude
+}

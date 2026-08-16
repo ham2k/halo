@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), replacing HamDB"
+    - "Operation Setup's Suggestions & Search now has a map toggle next to the search field"
 
 "136":
   changes:

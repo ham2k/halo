@@ -14,7 +14,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -75,6 +75,11 @@ interface POTAParkInfo {
   grid6: string
   locationDesc: string
   active: number
+  /// The park's own coordinate — tighter than decoding `grid6`. Populated
+  /// from the offline table's `lat`/`lon` columns, or bridged from the live
+  /// API's `latitude`/`longitude` fields (see the network branch below).
+  lat?: number
+  lon?: number
 }
 
 const parkCache = new Map<string, POTAParkInfo | null>()
@@ -93,6 +98,8 @@ async function fetchPark(ref: string): Promise<POTAParkInfo | null> {
         grid6: row.data.grid6 ?? '',
         locationDesc: row.data.locationDesc ?? '',
         active: row.flags ?? 1,
+        lat: row.lat,
+        lon: row.lon,
       }
       parkCache.set(ref, info)
       return info
@@ -107,6 +114,12 @@ async function fetchPark(ref: string): Promise<POTAParkInfo | null> {
     const response = await host.fetch(`https://api.pota.app/park/${encodeURIComponent(ref)}`)
     if (response.status === 200 && response.body && response.body !== 'null') {
       park = JSON.parse(response.body) as POTAParkInfo
+      // The live API names these `latitude`/`longitude` (matching the CSV
+      // export's own columns), not this interface's `lat`/`lon` — bridged
+      // here rather than renamed throughout, so the offline branch above
+      // (which reads `row.lat`/`row.lon` straight off the LookupRow) doesn't
+      // have to change shape too.
+      applyLatLonFromApiFields(park, park as unknown as Record<string, unknown>)
     }
   } catch {
     return null // network trouble: report nothing, don't cache
@@ -134,6 +147,8 @@ const RefHandler = {
       ref: reference,
       name: park.name,
       grid: park.grid6,
+      lat: park.lat,
+      lon: park.lon,
       location: park.locationDesc,
       program: 'POTA',
       label: `POTA ${reference}: ${park.name}`,
@@ -240,6 +255,8 @@ const ActivityHook = {
         ref: row.key,
         name: row.name,
         grid: data.grid6,
+        lat: row.lat,
+        lon: row.lon,
         location: data.locationDesc,
         program: 'POTA',
         label: `POTA ${row.key}: ${row.name ?? ''}`,
@@ -276,6 +293,8 @@ const ActivityHook = {
         ref: normalizedSearch,
         name,
         grid: resolved?.grid6,
+        lat: resolved?.lat,
+        lon: resolved?.lon,
         location: resolved?.locationDesc,
         program: 'POTA',
         label: `POTA ${normalizedSearch}: ${name}`,

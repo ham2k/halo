@@ -27,8 +27,18 @@ class OsmMapView extends StatefulWidget {
   final bool isDark;
   final MapZoomController? zoomController;
 
+  /// When set, a marker tap reports here instead of opening the built-in
+  /// [MapPopupCard] callout — mirrors the GL backends' `notifyClicks`. Null
+  /// for the QSO map, which keeps its own callout.
+  final ValueChanged<String>? onMarkerTap;
+
   const OsmMapView(
-      {super.key, required this.markers, this.lines = const [], required this.isDark, this.zoomController});
+      {super.key,
+      required this.markers,
+      this.lines = const [],
+      required this.isDark,
+      this.zoomController,
+      this.onMarkerTap});
 
   @override
   State<OsmMapView> createState() => _OsmMapViewState();
@@ -86,7 +96,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   @override
   Widget build(BuildContext context) {
     final points = [for (final m in widget.markers) LatLng(m.latitude, m.longitude)];
-    final selected = _selectedMarkerId == null
+    final selected = _selectedMarkerId == null || widget.onMarkerTap != null
         ? null
         : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
 
@@ -177,7 +187,9 @@ class _OsmMapViewState extends State<OsmMapView> {
             height: 28 * marker.sizeFactor,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _selectedMarkerId = marker.id),
+              onTap: () => widget.onMarkerTap != null
+                  ? widget.onMarkerTap!(marker.id)
+                  : setState(() => _selectedMarkerId = marker.id),
               child: Center(child: MapCircleMarker(marker: marker)),
             ),
           ),

@@ -566,6 +566,21 @@ class Translations$activitiesView$en {
 
 	/// en: 'No matches Some available extensions might have results. Enable them in Activity Types below.'
 	String get onlyDisabledMatches => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.';
+
+	/// en: 'Show results on a map'
+	String get showResultsMap => 'Show results on a map';
+
+	/// en: 'Show results as a list'
+	String get showResultsList => 'Show results as a list';
+
+	/// en: 'Add to Operation'
+	String get addToOperation => 'Add to Operation';
+
+	/// en: 'No results to show on the map'
+	String get mapEmptyState => 'No results to show on the map';
+
+	/// en: 'Switch back to the list, or search for something else'
+	String get mapEmptyStateHint => 'Switch back to the list, or search for something else';
 }
 
 // Path: loggingControls
@@ -4671,6 +4686,11 @@ extension on Translations {
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
 			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
+			'activitiesView.showResultsMap' => 'Show results on a map',
+			'activitiesView.showResultsList' => 'Show results as a list',
+			'activitiesView.addToOperation' => 'Add to Operation',
+			'activitiesView.mapEmptyState' => 'No results to show on the map',
+			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -4821,13 +4841,13 @@ extension on Translations {
 			'settings.layoutDensityOpts.sparse' => 'Sparse',
 			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
 			'settings.layoutDensityDescription.auto' => 'Chosen from the height of the window',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityDescription.densest' => 'As much on screen as possible',
 			'settings.layoutDensityDescription.dense' => 'Fits more on screen',
 			'settings.layoutDensityDescription.normal' => 'The standard layout',
 			'settings.layoutDensityDescription.sparse' => 'More room around everything',
 			'settings.layoutDensityDescription.sparsest' => 'The most room around everything',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
@@ -5335,13 +5355,13 @@ extension on Translations {
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
 			'switchAccounts.serverRejected' => ({required Object error}) => 'The sync server rejected the request: ${error}',
 			'switchAccounts.noLinkCode' => 'The sync server did not return a link code. Try again later.',
 			'switchAccounts.noConfirmationCode' => 'The sync server did not send a confirmation code. Try again later.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
 			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 

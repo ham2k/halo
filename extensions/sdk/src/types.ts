@@ -221,6 +221,12 @@ export interface Ref {
   label?: string
   shortLabel?: string
   grid?: string
+  /// The entity's own coordinate, when the activity's lookup table has one —
+  /// tighter than decoding [grid] (a 6-character Maidenhead square, up to a
+  /// few km across). Absent for a program with no per-entry coordinate, or
+  /// whose lookup only ever resolved one from `grid` itself.
+  lat?: number
+  lon?: number
   location?: string
   program?: string
 
