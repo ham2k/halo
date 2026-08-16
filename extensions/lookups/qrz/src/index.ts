@@ -1,9 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// QRZ.com XML API lookups. Exercises the parts of the bridge the HamDB
-// extension doesn't: credentials from host storage, session state kept across
-// calls, and re-login on session expiry.
+// QRZ.com XML API lookups. Exercises the parts of the bridge the Ham2K Lookup
+// Service extension doesn't: credentials from host storage, session state
+// kept across calls, and re-login on session expiry.
 
 import { cleanLocationParams } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"

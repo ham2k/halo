@@ -6,7 +6,7 @@
 
 upcoming:
   changes:
-    - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), on by default"
+    - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), replacing HamDB"
 
 "136":
   changes:

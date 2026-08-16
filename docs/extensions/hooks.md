@@ -82,9 +82,9 @@ Return `[]` for "can't answer" (not configured, not found, or `!ctx.online`
 and this source has no offline data) — never throw for expected conditions.
 `callInfo`/`qso`/`operation` are the full QSON-shaped objects (all from
 `@ham2k/lib-qson-tools`'s `CallInfo`/`QSON` types), so e.g. a POTA lookup can
-inspect `qso.refs` for a hunted park reference. Implemented by: `hamdb`,
-`qrz` (`scope: 'general'`), `pota`, `sota` (`scope: 'qso'`, grid of any
-hunted ref on the current QSO), and `call-notes` (`scope: 'general'`,
+inspect `qso.refs` for a hunted park reference. Implemented by: `qrz`,
+`ham2k-lookup` (`scope: 'general'`), `pota`, `sota` (`scope: 'qso'`, grid of
+any hunted ref on the current QSO), and `call-notes` (`scope: 'general'`,
 offline — combined `note`/`emoji` extra fields from the Hams of Note file,
 issue #17).
 

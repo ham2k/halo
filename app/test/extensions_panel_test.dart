@@ -73,6 +73,52 @@ void main() {
     await db.close();
   });
 
+  test('a key naming an extension deleted from the build is pruned, once the index has loaded', () async {
+    // What a migrated install looks like after the extension it toggled is
+    // later removed from the build entirely (not just disabled) — e.g. HamDB.
+    SharedPreferences.setMockInitialValues({
+      'extensionOverrides': '{"gone": false, "pota": true}',
+      'extensionDisabledSince': '{"gone": 1000, "sota": 2000}',
+    });
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    // 'gone' is absent from the index. 'sota' stays disabled throughout (no
+    // override, enabledByDefault: false), so its disabledSince entry must
+    // survive the prune untouched — isolating what's under test from the
+    // pre-existing per-extension stamp/clear loop above.
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air'),
+      ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'Summits on the Air', enabledByDefault: false),
+    ]);
+    HaLoServices(db, settings, extensions: extensions);
+
+    await extensions.applyExtensionAvailability();
+
+    expect(settings.extensionOverrides.containsKey('gone'), isFalse);
+    expect(settings.extensionDisabledSince.containsKey('gone'), isFalse);
+    expect(settings.extensionOverrides['pota'], isTrue, reason: 'a key for a still-known extension is untouched');
+    expect(settings.extensionDisabledSince['sota'], 2000, reason: 'a key for a still-known extension is untouched');
+  });
+
+  test('never prunes before the extension index has loaded — an empty availableExtensions means unloaded, not empty', () async {
+    SharedPreferences.setMockInitialValues({
+      'extensionOverrides': '{"pota": true, "sota": true}',
+    });
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    // No debugSetAvailableExtensions call — availableExtensions is still [].
+    HaLoServices(db, settings, extensions: extensions);
+
+    await extensions.applyExtensionAvailability();
+
+    expect(settings.extensionOverrides, {'pota': true, 'sota': true},
+        reason: 'overrides set before the index loads must survive, not read as naming deleted extensions');
+  });
+
   test('ExtensionInfo.fromJson: a stale metadata-less index degrades to core', () {
     final info = ExtensionInfo.fromJson(const {'key': 'mystery', 'file': 'mystery.js'});
     expect(info.core, isTrue);

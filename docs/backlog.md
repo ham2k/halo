@@ -127,10 +127,10 @@ follow. What's missing is the bar itself and the search over callsigns.
 ## Callsign lookup results are not cached
 
 app-polo caches lookup results in the `lookups` table; HaLo re-queries QRZ/
-HamDB on every enrichment pass (deferred in phase 3, still true — no lookup
-cache exists in `extensions/core/lookups` or `ExtensionService`). Offline
-*datasets* are covered by the `dataFile` hook; this is about per-callsign
-lookup results.
+Ham2K Lookup Service on every enrichment pass (deferred in phase 3, still
+true — no lookup cache exists in `extensions/core/lookups` or
+`ExtensionService`). Offline *datasets* are covered by the `dataFile` hook;
+this is about per-callsign lookup results.
 
 ## Deferred from the 2026-07-14 architecture review
 

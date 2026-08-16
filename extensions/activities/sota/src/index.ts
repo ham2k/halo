@@ -849,9 +849,10 @@ defineExtension({
     registerHook('adifImport', { hook: AdifImportHook, key: 'sota' })
     registerHook('spots', { hook: SpotsHook, key: 'sota' })
     registerHook('account', { hook: AccountHook, key: 'sota' })
-    // Priority 100 — see POTA's identical comment: must run before QRZ (99)
-    // / HamDB (50) so the summit's grid is resolved before a home-QTH
-    // lookup can set callInfo.grid and trip this hook's early-return guard.
+    // Priority 100 — see POTA's identical comment: must run before every
+    // lookup source (QRZ 99, ...) so the summit's grid is resolved before a
+    // home-QTH lookup can set callInfo.grid and trip this hook's
+    // early-return guard.
     registerHook('lookup', { hook: { lookupCall }, key: 'sota', priority: 100 })
     registerHook('dataFile', { hook: sotaDataFile, key: 'sota-all-summits' })
     // Ref-scoped, not 'always' — see POTA's identical comment for why, and for

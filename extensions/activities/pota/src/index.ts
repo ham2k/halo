@@ -616,10 +616,11 @@ defineExtension({
       key: 'pota',
     })
     registerHook('spots', { hook: SpotsHook, key: 'pota' })
-    // Priority 100 — higher than QRZ (99) / HamDB (50), so the POTA park's
-    // grid is resolved BEFORE a home-QTH lookup can set callInfo.grid; the
-    // `if (callInfo.grid) return []` guard below would otherwise skip this
-    // hook once a lower-priority qth-scope grid was already merged in.
+    // Priority 100 — higher than every lookup source (QRZ 99, ...), so the
+    // POTA park's grid is resolved BEFORE a home-QTH lookup can set
+    // callInfo.grid; the `if (callInfo.grid) return []` guard below would
+    // otherwise skip this hook once a lower-priority qth-scope grid was
+    // already merged in.
     registerHook('lookup', { hook: { lookupCall }, key: 'pota', priority: 100 })
     registerHook('dataFile', { hook: potaDataFile, key: 'pota-all-parks' })
     // Scoped to the ref types rather than 'always': paying a full-log bridge

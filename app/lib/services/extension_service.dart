@@ -1492,8 +1492,24 @@ class ExtensionService implements PanelExtensionSource {
   /// the stamp when it's enabled again — the clock DataFileManager's
   /// grace-period purge reads. Only meaningful for extensions that could
   /// own data, but harmless (and simpler) to track for all non-core keys.
+  ///
+  /// Also prunes both this map and `extensionOverrides` of any key absent
+  /// from [availableExtensions] entirely — an extension deleted from the
+  /// build, not merely disabled or gated behind an experiment (which still
+  /// keeps its entry in [availableExtensions]; see [isExtensionAvailable]).
+  /// Without this, a key an install migrated (like a former `hamdb: false`
+  /// override) outlives the extension it named forever: nothing else ever
+  /// visits an unknown key to remove it.
+  ///
+  /// Pruning is skipped while [availableExtensions] is still empty — before
+  /// [loadAvailableExtensions] first resolves, an empty list means "not
+  /// loaded yet", not "nothing exists", and treating it as the latter would
+  /// wipe out overrides set before boot finishes (e.g. ONBOARD_AS picks
+  /// written while the extension index is still loading).
   Future<void> _updateDisabledSince(SettingsService settings) async {
     final disabledSince = {...settings.extensionDisabledSince};
+    final knownKeys = {for (final info in availableExtensions) info.key};
+    final canPrune = availableExtensions.isNotEmpty;
     // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
     // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real
     // time. Travelled, `DEVTT -30d` then disabling an extension writes a stamp
@@ -1513,25 +1529,22 @@ class ExtensionService implements PanelExtensionSource {
         changed = true;
       }
     }
+    if (canPrune) {
+      for (final staleKey in disabledSince.keys.where((key) => !knownKeys.contains(key)).toList()) {
+        disabledSince.remove(staleKey);
+        changed = true;
+      }
+    }
     if (changed) await settings.setExtensionDisabledSince(disabledSince);
+
+    if (canPrune) {
+      final overrides = settings.extensionOverrides;
+      final prunedOverrides = {for (final entry in overrides.entries) if (knownKeys.contains(entry.key)) entry.key: entry.value};
+      if (prunedOverrides.length != overrides.length) await settings.setExtensionOverrides(prunedOverrides);
+    }
   }
 
   Future<void> setExtensionEnabled(String key, bool enabled) => setExtensionsEnabled({key: enabled});
-
-  /// One-time migration (HALO): the Ham2K Lookup Service extension covers
-  /// the same ground HamDB did, so existing installs get HamDB switched off
-  /// once when it ships (SettingsService.consumeHamDbDisabledForLookupServiceMigration
-  /// owns the once-per-install decision). Goes through [setExtensionEnabled]
-  /// — not a direct settings write — so the disable also stamps
-  /// `extensionDisabledSince` (via [_updateDisabledSince]) and restarts the
-  /// runtime if one is already up, the same as a user toggling it by hand.
-  Future<void> migrateHamDbDisabledForLookupService() async {
-    final currentSettings = settings;
-    if (currentSettings == null) return;
-    if (await currentSettings.consumeHamDbDisabledForLookupServiceMigration()) {
-      await setExtensionEnabled('hamdb', false);
-    }
-  }
 
   /// The activated extensions of the LIVE runtime, with versions — served
   /// by the kernel's own `kernel-info` extension (the one place versions

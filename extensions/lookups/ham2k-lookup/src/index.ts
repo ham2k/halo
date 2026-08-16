@@ -19,8 +19,9 @@ const COUNTRY_NAMES: Record<string, string> = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    // Below QRZ (99) and HamDB (50): this service only covers three
-    // countries, so it should fill gaps those leave rather than pre-empt them.
+    // Below QRZ (99): a QRZ account, when configured, is the more complete
+    // and up-to-date source, so this fills gaps QRZ leaves rather than
+    // pre-empting it.
     registerHook('lookup', { hook: { lookupCall }, priority: 10 })
   },
 })

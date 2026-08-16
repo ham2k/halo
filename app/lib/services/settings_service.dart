@@ -142,26 +142,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
-  static const _hamDbDisabledForLookupServiceKey = 'hamDbDisabledForLookupServiceMigration';
-
-  /// Decides, once per install, whether the Ham2K Lookup Service migration
-  /// (ExtensionService.migrateHamDbDisabledForLookupService) still needs to
-  /// switch HamDB off — true at most once per install, never again after.
-  /// Gated on [defaultProfileCallsignDefined] — the same "has this device
-  /// ever been through onboarding" signal [seedSyncEnabledDefault] uses — so
-  /// a genuinely new install, which never had HamDB on for a user to notice
-  /// losing, is left at its manifest default instead.
-  ///
-  /// Deliberately does NOT write the override itself: only ExtensionService
-  /// can apply one and also stamp `extensionDisabledSince` in the same
-  /// motion (see its caller), so a data-purge grace period starts on time
-  /// instead of waiting for the user to next open Settings → Extensions.
-  Future<bool> consumeHamDbDisabledForLookupServiceMigration() async {
-    if (_prefs.getBool(_hamDbDisabledForLookupServiceKey) ?? false) return false;
-    await _prefs.setBool(_hamDbDisabledForLookupServiceKey, true);
-    return defaultProfileCallsignDefined;
-  }
-
   /// When each currently-disabled extension was disabled ({key: epochMillis}).
   /// A disabled extension's downloaded data (data files) is KEPT so a
   /// re-enable is instant; only after it's been disabled for the grace
