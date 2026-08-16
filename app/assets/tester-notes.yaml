@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"139":
   changes:
     - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), replacing HamDB"
     - "Operation Setup's Suggestions & Search now has a map toggle next to the search field"
