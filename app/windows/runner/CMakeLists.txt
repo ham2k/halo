@@ -20,6 +20,14 @@ add_executable(${BINARY_NAME} WIN32
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})
 
+# Emit a PDB for the Release runner (MSVC's default Release flags carry no
+# debug info) so native crashes in our own code — as opposed to a bundled
+# plugin or the Flutter engine — can be symbolicated after upload to Sentry.
+# The PDB lands next to the exe in the build tree; it does not affect
+# optimization, so it costs nothing at runtime.
+target_compile_options(${BINARY_NAME} PRIVATE $<$<CONFIG:Release>:/Zi>)
+target_link_options(${BINARY_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)
+
 # Add preprocessor definitions for the build version.
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")
