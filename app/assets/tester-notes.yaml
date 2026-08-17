@@ -7,7 +7,7 @@
 upcoming:
   changes:
     - "New PURGETESTS command bulk-deletes Test Operations (station call ending /T or /TEST)"
-    - "Android USB serial should (well, "might") work now"
+    - Android USB serial should (well, "might") work now
 
 "139":
   changes:
