@@ -177,6 +177,12 @@ dependency_overrides:
   # slot is where that implementation would go.
   flutter_inappwebview_linux:
     path: ../packages/flutter_inappwebview_linux_stub
+  # Upstream is unmaintained (last release 0.5.2) and its android/build.gradle
+  # still applies AGP via the pre-`plugins{}` `apply plugin:` syntax, which
+  # fails to load `com.android.library` under AGP 9. See the package's
+  # PATCH.md.
+  usb_serial:
+    path: ../packages/usb_serial_patched
 
 flutter:
   # The built-in MaterialIcons font ships ONLY as a safety net for glyphs

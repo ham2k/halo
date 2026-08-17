@@ -522,6 +522,11 @@ changed_subset() {
       packages/flutter_inappwebview_linux_stub/*) groups="$groups app" ;;
       packages/flutter_inappwebview_macos_patched/*) groups="$groups app" ;;
       packages/flutter_inappwebview_windows_patched/*) groups="$groups app" ;;
+      # Same reasoning, for the usb_serial override: app/test/usb_serial_override_test
+      # checks the override resolves and that android/build.gradle still
+      # carries the AGP-9 fix. Nothing here runs Gradle, so that's a check on
+      # the SOURCE LINE — the build itself is never exercised.
+      packages/usb_serial_patched/*) groups="$groups app" ;;
       # A package this mapping doesn't know (new or renamed) must not fall
       # into the silent catch-all and read as "docs".
       packages/*)
