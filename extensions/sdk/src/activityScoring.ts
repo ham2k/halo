@@ -101,6 +101,34 @@ export interface ActivityScoringRules {
   /// whole operation (WWFF's 44 contacts may span days), so the day tally
   /// reports the running total. Defaults to `'daily'`.
   activates?: 'daily' | 'once'
+
+  /// Singular/plural noun for one reference of this program's own kind —
+  /// POTA's is 'park'/'parks', SOTA's 'summit'/'summits' — used in the
+  /// hunting-only summary ("2 parks hunted"). Defaults to the generic
+  /// 'reference'/'references'.
+  ///
+  /// A function, not a bare string, because the word is the program's own
+  /// vocabulary and needs translating — this module's catalog has no way to
+  /// know what a given activity calls its reference, so the activity resolves
+  /// it through its OWN translator (the same `ctx` this module already
+  /// receives) rather than handing over an untranslatable English literal.
+  refNoun?: string | ((ctx: HookContext) => string)
+  refNounPlural?: string | ((ctx: HookContext) => string)
+  /// The QSO-noun for a reference-to-reference contact made while activating
+  /// — POTA calls this "P2P" (park-to-park), SOTA "S2S". Defaults to the
+  /// generic 'ref2ref'. Same translation rule as [refNoun].
+  p2pLabel?: string | ((ctx: HookContext) => string)
+}
+
+/// Resolves a rule field that may be the activity's own translator function
+/// (see [ActivityScoringRules.refNoun]) or a plain string, falling back to
+/// this module's own generic wording when the activity declares neither.
+function resolveRuleText(
+  value: string | ((ctx: HookContext) => string) | undefined,
+  ctx: HookContext,
+  fallback: string,
+): string {
+  return typeof value === 'function' ? value(ctx) : (value ?? fallback)
 }
 
 /// Everything the rules accumulate. A type alias, not an interface, so it stays
@@ -364,27 +392,28 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
 
       const tallies: Record<string, ScoreTally> = {}
       const activatedRefs = perDay ? scoresheet.dayActivatedRefs : scoresheet.activatedRefs
+      const huntedRefs = perDay ? scoresheet.dayHuntedRefs : scoresheet.huntedRefs
+      const huntedQsos = perDay ? scoresheet.dayHuntedQsos : scoresheet.huntedQsos
+
       if (tracksActivation && Object.keys(activatedRefs).length > 0) {
+        // The reference-to-reference credit (POTA's P2P) folds into this
+        // line rather than getting a tally of its own — an activating
+        // operation reads as one program summary, not two.
         tallies.activation = summarizeActivation(
           activatedRefs,
           perDay ? scoresheet.dayActivatedQsos : scoresheet.activatedQsos,
           perDay ? scoresheet.dayDuplicates : scoresheet.duplicates,
+          huntedQsos,
           scope,
           thresholdFor(Object.keys(activatedRefs)),
           rules,
           t,
+          ctx,
         )
-      }
-
-      const huntedRefs = perDay ? scoresheet.dayHuntedRefs : scoresheet.huntedRefs
-      if (Object.keys(huntedRefs).length > 0) {
-        tallies.hunting = summarizeHunting(
-          huntedRefs,
-          perDay ? scoresheet.dayHuntedQsos : scoresheet.huntedQsos,
-          scope,
-          rules,
-          t,
-        )
+      } else if (Object.keys(huntedRefs).length > 0) {
+        // Only for an operation that never activates anything of its own —
+        // otherwise the line above already carries this credit.
+        tallies.hunting = summarizeHunting(huntedRefs, huntedQsos, scope, rules, t, ctx)
       }
 
       return tallies
@@ -399,10 +428,12 @@ function summarizeActivation(
   activatedRefs: Record<string, number>,
   qsos: number,
   duplicates: number,
+  huntedQsos: number,
   scope: 'day' | 'operation',
   qsosToActivate: number,
   rules: ActivityScoringRules,
   t: Translator,
+  ctx: HookContext,
 ): ScoreTally {
   const refKeys = Object.keys(activatedRefs).sort()
   const lowest = Math.min(...refKeys.map((key) => activatedRefs[key]))
@@ -416,15 +447,30 @@ function summarizeActivation(
   else if (refKeys.length < 6) summary = `${fmtInteger(lowest)} ${'✓'.repeat(refKeys.length)}`
   else summary = `${fmtInteger(lowest)} ✓ x ${fmtInteger(refKeys.length)}`
 
-  // Only worth breaking out per reference when there IS more than one: for a
-  // single park the row would just restate the summary beside it.
-  const detail = refKeys.length > 1
-    ? refKeys.map((key) =>
-        activatedRefs[key] >= qsosToActivate
-          ? `✅ **${key}: ${fmtInteger(activatedRefs[key])}**`
-          : `❌ ${key}: ${fmtInteger(activatedRefs[key])}/${fmtInteger(qsosToActivate)}`,
-      )
-    : []
+  // One line per reference, even for a single park: the operation-info
+  // panel's per-day rows show this instead of `summary` (InformationPanel
+  // never renders both for the same tally), so a single-park operation still
+  // needs its own progress line there.
+  const detail = refKeys.map((key) =>
+    activatedRefs[key] >= qsosToActivate
+      ? `✅ **${key}: ${fmtInteger(activatedRefs[key])}**`
+      : `❌ ${key}: ${fmtInteger(activatedRefs[key])}/${fmtInteger(qsosToActivate)}`,
+  )
+
+  // "POTA: 47 activation QSOs, 2 P2P QSOs" — singular/plural by explicit
+  // ternary, not i18next's `count` pluralization, which needs
+  // Intl.PluralRules, absent in QuickJS (core/scoring says the same).
+  const parts = [
+    qsos === 1 ? t('activationQsoOne') : t('activationQsoMany', { formatted: fmtInteger(qsos) }),
+  ]
+  if (huntedQsos > 0) {
+    const p2p = resolveRuleText(rules.p2pLabel, ctx, t('ref2ref'))
+    parts.push(
+      huntedQsos === 1
+        ? t('p2pQsoOne', { label: p2p })
+        : t('p2pQsoMany', { label: p2p, formatted: fmtInteger(huntedQsos) }),
+    )
+  }
 
   return {
     key: 'activation',
@@ -434,33 +480,36 @@ function summarizeActivation(
     activated,
     activatedRefs,
     duplicates,
-    // Singular/plural by explicit ternary, not i18next's `count` pluralization,
-    // which needs Intl.PluralRules — absent in QuickJS (core/scoring says the
-    // same).
-    label: qsos === 1
-      ? t('activatingOne', { program: rules.label })
-      : t('activatingMany', { program: rules.label, formatted: fmtInteger(qsos) }),
+    label: `${rules.label}: ${parts.join(', ')}`,
     summary,
     longSummary: detail.join('\n'),
   }
 }
 
-/// The hunter's tally. Counts REFERENCES, not contacts: one contact with a
-/// station in three parks is three references hunted, which is what the award
-/// programs count.
+/// The hunter's tally, for an operation with no activation of its own to
+/// fold this into. Counts REFERENCES, not contacts: one contact with a
+/// station in three parks is three references hunted, which is what the
+/// award programs count.
 ///
-/// No `summary`: the count is already spelled out in `label` ("3 POTA
-/// References Hunted"), and hunted refs are shown individually as ref icons
-/// on each QSO row — a `summary` would make this tally show up as its own
-/// badge in the day-header's compact summary, duplicating both.
+/// No `summary`: the count is already spelled out in `label` ("2 parks
+/// hunted"), and hunted refs are shown individually as ref icons on each QSO
+/// row — a `summary` would make this tally show up as its own badge in the
+/// day-header's compact summary, duplicating both.
 function summarizeHunting(
   huntedRefs: Record<string, number>,
   qsos: number,
   scope: 'day' | 'operation',
   rules: ActivityScoringRules,
   t: Translator,
+  ctx: HookContext,
 ): ScoreTally {
   const count = Object.keys(huntedRefs).length
+  // The noun ("park"/"parks") is the activity's own translated vocabulary;
+  // the sentence wrapping it ("N ___ hunted") is this module's own, so it
+  // stays translatable even when an activity supplies no noun of its own.
+  const noun = count === 1
+    ? resolveRuleText(rules.refNoun, ctx, t('reference'))
+    : resolveRuleText(rules.refNounPlural, ctx, t('referencesPlural'))
   return {
     key: 'hunting',
     for: scope,
@@ -468,9 +517,6 @@ function summarizeHunting(
     total: count,
     huntedRefs,
     huntedQsos: qsos,
-    label:
-      count === 1
-        ? t('huntedOne', { program: rules.label })
-        : t('huntedMany', { program: rules.label, formatted: fmtInteger(count) }),
+    label: `${rules.label}: ${count === 1 ? t('huntedOne', { noun }) : t('huntedMany', { noun, formatted: fmtInteger(count) })}`,
   }
 }

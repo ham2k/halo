@@ -1,6 +1,11 @@
 {
-  "activatingOne": "Activación {{program}} — 1 QSO",
-  "activatingMany": "Activación {{program}} — {{formatted}} QSOs",
-  "huntedOne": "1 Referencia {{program}} Cazada",
-  "huntedMany": "{{formatted}} Referencias {{program}} Cazadas"
+  "activationQsoOne": "1 QSO de activación",
+  "activationQsoMany": "{{formatted}} QSOs de activación",
+  "p2pQsoOne": "1 QSO {{label}}",
+  "p2pQsoMany": "{{formatted}} QSOs {{label}}",
+  "ref2ref": "ref2ref",
+  "reference": "referencia",
+  "referencesPlural": "referencias",
+  "huntedOne": "1 {{noun}} cazado",
+  "huntedMany": "{{formatted}} {{noun}} cazados"
 }

@@ -115,7 +115,24 @@ void main() {
     // One on-air contact, but counted per reference on both sides: it is
     // submitted as two records, so my own park advances by two...
     expect((summary['activation'] as Map)['activatedRefs'], {'US-0001': 2});
-    // ...and two references are hunted.
-    expect((summary['hunting'] as Map)['huntedRefs'], {'US-9001': 1, 'US-9002': 1});
+    // ...and the P2P credit folds into the activation tally's own label
+    // rather than a separate 'hunting' one.
+    expect(summary['hunting'], isNull);
+    expect((summary['activation'] as Map)['label'], 'POTA: 2 activation QSOs, 2 P2P QSOs');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('hunting parks with no activation of its own reads as parks hunted', () async {
+    final qsos = contacts(1);
+    qsos[0]['refs'] = [
+      {'type': 'pota', 'ref': 'US-9001'},
+      {'type': 'pota', 'ref': 'US-9002'},
+    ];
+
+    final result = await score({'uuid': 'op', 'stationCall': 'N0DEV', 'refs': []}, qsos);
+    final summary = result!['operationSummary'] as Map;
+    expect(summary['activation'], isNull);
+    final hunting = summary['hunting'] as Map;
+    expect(hunting['huntedRefs'], {'US-9001': 1, 'US-9002': 1});
+    expect(hunting['label'], 'POTA: 2 parks hunted');
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

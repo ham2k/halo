@@ -5,5 +5,8 @@
   "dataFileName": "POTA: All Parks",
   "dataFileDescription": "Database of all POTA references",
   "testParkName": "Test Park",
-  "activationControl": "POTA activation"
+  "activationControl": "POTA activation",
+  "park": "park",
+  "parksPlural": "parks",
+  "p2p": "P2P"
 }

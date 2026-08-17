@@ -745,6 +745,14 @@ export interface ScoreTally {
   label?: string
   summary?: string
   longSummary?: string
+  /// `longSummary` is a strikethrough checklist grid — every code in a fixed
+  /// set, `**~~worked~~**` for the ones already had — rather than prose. The
+  /// information panel renders this shape as a monospace grid with worked
+  /// codes at full strength and the rest dimmed, so any scorer with a
+  /// fixed-set checklist of its own (a contest's multiplier list, an
+  /// activity's award grid) can opt into the same treatment core's own
+  /// states-and-provinces checklist uses — set true, not the display detail.
+  grid?: boolean
   total: number
   [extra: string]: JSONValue | undefined
 }

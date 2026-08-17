@@ -33,6 +33,7 @@ Operation _operation() => Operation(
               'dxcc': {
                 'key': 'dxcc',
                 'total': 3,
+                'label': '3 DXCC Entities',
                 'entities': {'K': 5, 'DL': 4, 'JA': 3},
               },
               'bandsAndModes': {
@@ -59,6 +60,49 @@ Operation _operation() => Operation(
       },
     );
 
+/// Two-day operation: `core.qsoCount` per day, plus a day-scoped `pota`
+/// activation tally — mirrors what `mergedDaySections` actually produces
+/// (namespaced `<scorerKey>.<tallyKey>` keys, `for: 'day'` on the tally).
+Operation _twoDayOperation() => Operation(
+      uuid: 'op-days',
+      data: {'stationCall': 'N0DEV', 'refs': []},
+      localData: {
+        'scoring': {
+          'core': {
+            'daySections': [
+              {
+                'day': 100,
+                'scores': {'qsoCount': {'key': 'qsoCount', 'for': 'day', 'total': 3, 'count': 3}},
+              },
+              {
+                'day': 200,
+                'scores': {'qsoCount': {'key': 'qsoCount', 'for': 'day', 'total': 5, 'count': 5}},
+              },
+            ],
+            'operationSummary': {'qsoCount': {'key': 'qsoCount', 'total': 8}},
+          },
+          'pota': {
+            'daySections': [
+              {
+                'day': 100,
+                'scores': {
+                  'activation': {
+                    'key': 'activation',
+                    'for': 'day',
+                    'icon': 'pine-tree',
+                    'total': 3,
+                    'label': 'POTA: 3 activation QSOs',
+                  },
+                },
+              },
+              {'day': 200, 'scores': {}},
+            ],
+            'operationSummary': {},
+          },
+        },
+      },
+    );
+
 Future<void> _pump(
   WidgetTester tester,
   Operation operation, {
@@ -78,16 +122,19 @@ Future<void> _pump(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('a contest summary reaches the pane in full, under the contest\'s own name', (tester) async {
+  testWidgets('a contest summary reaches the pane in full, under its own tally label', (tester) async {
     await _pump(tester, _operation());
 
-    // Headed by what decorateRef called it, not the bare extension key.
-    expect(find.text('CQ WW CW'), findsOneWidget);
+    // No separate per-scorer heading — the tally's own label IS the
+    // section's title, so "cqww" (the bare extension key) never appears.
     expect(find.text('cqww'), findsNothing);
 
-    // The tally's label and score.
+    // The tally's label...
     expect(find.text('18 × 4'), findsOneWidget);
-    expect(find.text('72'), findsOneWidget);
+    // ...but not its bare `summary` score: a tally with a `longSummary` (the
+    // per-band table below) already carries that number, so a redundant "72"
+    // beside the label is left out.
+    expect(find.text('72'), findsNothing);
 
     // The per-band breakdown renders as markdown rather than being dropped or
     // shown as literal asterisks.
@@ -98,14 +145,31 @@ void main() {
     expect(markdown.any((m) => m.softLineBreak == true), isTrue);
   });
 
-  // Core is rendered by hand, outside the loop that renders every other
-  // scorer's tallies — so its own per-band breakdown reaches the pane only
-  // because that hand-rolled block asks for it.
-  testWidgets('core\'s per-band breakdown reaches the pane', (tester) async {
+  testWidgets('core\'s per-band breakdown reaches the pane, through the same generic render as any other scorer', (tester) async {
     await _pump(tester, _operation());
 
     final markdown = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody));
     expect(markdown.any((m) => m.data.contains('**30m**: 10 — CW 6, SSB 4')), isTrue);
+  });
+
+  testWidgets('a tally with no longSummary keeps its score badge', (tester) async {
+    // The opposite case from cqww's: nothing else on the line carries the
+    // number, so it is not redundant here.
+    final operation = Operation(
+      uuid: 'op-3',
+      data: {'stationCall': 'N0DEV'},
+      localData: {
+        'scoring': {
+          'simple-contest': {
+            'operationSummary': {
+              'contest': {'key': 'contest', 'icon': 'flag-checkered', 'label': 'Contest', 'summary': '42'},
+            },
+          },
+        },
+      },
+    );
+    await _pump(tester, operation);
+    expect(find.text('42'), findsOneWidget);
   });
 
   testWidgets(
@@ -143,10 +207,11 @@ void main() {
     },
   );
 
-  testWidgets('core keeps its curated lines, including the duplicate count', (tester) async {
+  testWidgets('the duplicate count still reaches the pane', (tester) async {
     await _pump(tester, _operation());
-    // `duplicates` lives in a tally field, not a label, so a generic render
-    // would silently drop it.
+    // `duplicates` lives in `qsoCount`'s own tally field, not a label, so
+    // it's rendered as its own line rather than through the generic
+    // tally-row loop (which skips `qsoCount` entirely).
     expect(find.textContaining('2'), findsWidgets);
     expect(find.textContaining('Duplicates'), findsOneWidget);
     expect(find.textContaining('DXCC'), findsWidgets);
@@ -158,6 +223,27 @@ void main() {
     expect(find.byType(MarkdownBody), findsNothing);
   });
 
+  testWidgets('a legacy pre-scorer-keyed blob shows no orphaned "Scoring" heading', (tester) async {
+    // The flat `{daySections, operationSummary}` shape `scoring_summaries.dart`
+    // predates the per-scorer nesting: `orderedScorerKeys` sees the two
+    // top-level keys but neither resolves to an actual scorer, so nothing
+    // renders under them — the heading above must not show either.
+    final operation = Operation(
+      uuid: 'op-legacy',
+      data: {'stationCall': 'N0DEV'},
+      localData: {
+        'scoring': {
+          'operationSummary': {'qsoCount': {'key': 'qsoCount', 'total': 4}},
+          'daySections': [
+            {'day': 1, 'scores': {}},
+          ],
+        },
+      },
+    );
+    await _pump(tester, operation);
+    expect(find.text('Scoring'), findsNothing);
+  });
+
   testWidgets('the pane scrolls, so a long contest table cannot push content out of reach', (tester) async {
     await _pump(tester, _operation());
     expect(find.byType(ListView), findsOneWidget);
@@ -167,6 +253,76 @@ void main() {
   testWidgets('never shows the station callsign — the pane is stats and scoring, not identity', (tester) async {
     await _pump(tester, _operation());
     expect(find.text('N0DEV'), findsNothing);
+  });
+
+  testWidgets('a multi-day operation gets a per-day section, one day-scoped tally each', (tester) async {
+    await _pump(tester, _twoDayOperation());
+
+    // Both days' QSO counts reach the pane...
+    expect(find.textContaining('3 QSOs'), findsOneWidget);
+    expect(find.textContaining('5 QSOs'), findsOneWidget);
+    // ...and day one's activity tally, day-scoped, reaches it too.
+    expect(find.text('POTA: 3 activation QSOs'), findsOneWidget);
+  });
+
+  testWidgets('a single-day operation gets no per-day section at all', (tester) async {
+    final operation = Operation(
+      uuid: 'op-oneday',
+      data: {'stationCall': 'N0DEV'},
+      localData: {
+        'scoring': {
+          'core': {
+            'daySections': [
+              {
+                'day': 100,
+                'scores': {'qsoCount': {'key': 'qsoCount', 'for': 'day', 'total': 3, 'count': 3}},
+              },
+            ],
+            'operationSummary': {'qsoCount': {'key': 'qsoCount', 'total': 3}},
+          },
+        },
+      },
+    );
+    await _pump(tester, operation);
+    // The per-day date line would otherwise restate what Operation Totals
+    // already says for a one-day log.
+    expect(find.textContaining('3 QSOs'), findsNothing);
+  });
+
+  testWidgets('grid: true renders monospace with worked entries struck and full-strength', (tester) async {
+    final operation = Operation(
+      uuid: 'op-grid',
+      data: {'stationCall': 'N0DEV'},
+      localData: {
+        'scoring': {
+          'core': {
+            'operationSummary': {
+              'statesAndProvinces': {
+                'key': 'statesAndProvinces',
+                'total': 1,
+                'label': '1 State',
+                'longSummary': 'AL  **~~AK~~**  AZ',
+                'grid': true,
+              },
+            },
+          },
+        },
+      },
+    );
+    await _pump(tester, operation);
+
+    final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+    expect(markdown.styleSheet?.p?.fontFamily, 'RobotoMono');
+    expect(markdown.styleSheet?.del, isNotNull);
+    expect(markdown.styleSheet?.del?.fontFamily, 'RobotoMono');
+  });
+
+  testWidgets('without grid: true, longSummary renders in the plain proportional font', (tester) async {
+    await _pump(tester, _operation());
+
+    final markdown = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody));
+    final cqww = markdown.firstWhere((m) => m.data.contains('20m'));
+    expect(cqww.styleSheet?.p?.fontFamily, isNot('RobotoMono'));
   });
 
   testWidgets('leads with the basic stats block (count/duration, then rate)', (tester) async {

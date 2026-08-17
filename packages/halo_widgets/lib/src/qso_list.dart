@@ -1568,6 +1568,10 @@ class DayHeaderRow extends StatelessWidget {
       final icon = tally['icon'] as String?;
       final summary = tally['summary'] as String?;
       if (icon == null || summary == null || summary.isEmpty) continue;
+      // An activity tally reports `activated: true` once every reference it
+      // covers has cleared its threshold — the badge goes green to say the
+      // goal for this day (or the operation) is already met.
+      final activated = tally['activated'] == true;
       badges.add(
         Padding(
           padding: const EdgeInsets.only(left: Space.md),
@@ -1577,7 +1581,7 @@ class DayHeaderRow extends StatelessWidget {
               Icon(
                 resolveIconName(icon),
                 size: 14,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: activated ? HaLoColors.of(context).important : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: Space.xs),
               Text(summary, style: rowStyle),

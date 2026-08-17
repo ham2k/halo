@@ -1688,6 +1688,90 @@ void main() {
       },
     );
 
+    testWidgets(
+      'a badge for an activity that has met its goal tints green',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final qso = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(
+                qsos: [qso],
+                onSelect: (_) {},
+                daySections: [
+                  {
+                    'day': 0,
+                    'count': 1,
+                    'scores': {
+                      'pota.activation': {
+                        'key': 'activation',
+                        'icon': 'pine-tree',
+                        'summary': '10 ✓',
+                        'activated': true,
+                      },
+                    },
+                  },
+                ],
+              ),
+            ),
+          ),
+        );
+
+        final finder = find.byIcon(MdiIcons.pineTree);
+        final icon = tester.widget<Icon>(finder);
+        final important = HaLoColors.of(tester.element(finder)).important;
+        expect(icon.color, important);
+      },
+    );
+
+    testWidgets(
+      'an activity short of its goal keeps the neutral badge color',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final qso = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(
+                qsos: [qso],
+                onSelect: (_) {},
+                daySections: [
+                  {
+                    'day': 0,
+                    'count': 1,
+                    'scores': {
+                      'pota.activation': {
+                        'key': 'activation',
+                        'icon': 'pine-tree',
+                        'summary': '7/10',
+                        'activated': false,
+                      },
+                    },
+                  },
+                ],
+              ),
+            ),
+          ),
+        );
+
+        final finder = find.byIcon(MdiIcons.pineTree);
+        final icon = tester.widget<Icon>(finder);
+        final theme = Theme.of(tester.element(finder));
+        expect(icon.color, theme.colorScheme.onSurfaceVariant);
+      },
+    );
+
     group('dynamic date label', () {
       const dayMillis = 1000 * 60 * 60 * 24;
       // A Wednesday afternoon, so "this week" cases land on predictable

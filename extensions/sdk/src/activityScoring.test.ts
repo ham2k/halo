@@ -156,23 +156,21 @@ test("a program without n-fers never counts a contact twice", async () => {
 })
 
 test("the two-park contact also earns two hunted references", async () => {
+  // An activating operation folds its P2P credit into the activation tally's
+  // own label instead of a separate `hunting` tally — the mechanics still
+  // land in the scoresheet, which is what this checks.
   const operation = operationActivating('potaActivation', 'US-0001')
   const result = await score(POTA, operation, [qso('W1AW', { hunting: ['US-9001', 'US-9002'] })])
-  const hunting = tally(result.operationSummary, 'hunting')!
-  assert.equal(hunting.total, 2)
-  assert.deepEqual(hunting.huntedRefs, { 'US-9001': 1, 'US-9002': 1 })
+  const sheet = result.scoresheet as { huntedRefs: Record<string, number> }
+  assert.deepEqual(sheet.huntedRefs, { 'US-9001': 1, 'US-9002': 1 })
+  assert.equal(tally(result.operationSummary, 'hunting'), undefined)
 })
 
-test("the hunting tally has no `summary` — its count lives in `label` instead", async () => {
-  // A `summary` would make the QSO list's compact day-header badge row show
-  // it as its own badge, duplicating the per-QSO ref icons that already
-  // show hunted references individually. `label` ("2 POTA References
-  // Hunted") is what the full-detail operation info panel renders instead.
+test("an activating operation's P2P credit folds into the activation label, not a separate tally", async () => {
   const operation = operationActivating('potaActivation', 'US-0001')
   const result = await score(POTA, operation, [qso('W1AW', { hunting: ['US-9001', 'US-9002'] })])
-  const hunting = tally(result.operationSummary, 'hunting')!
-  assert.equal(hunting.summary, undefined)
-  assert.match(hunting.label!, /2 .*Hunted/)
+  const activation = tally(result.operationSummary, 'activation')!
+  assert.equal(activation.label, 'POTA: 2 activation QSOs, 2 ref2ref QSOs')
 })
 
 test("without allowsMultipleReferences only the first hunted ref counts", async () => {
@@ -181,8 +179,8 @@ test("without allowsMultipleReferences only the first hunted ref counts", async 
   const result = await score(SOTA, operation, [
     qso('W1AW', { hunting: ['W1/AM-002', 'W1/AM-003'], huntingType: 'sota' }),
   ])
-  const hunting = tally(result.operationSummary, 'hunting')!
-  assert.deepEqual(hunting.huntedRefs, { 'W1/AM-002': 1 })
+  const sheet = result.scoresheet as { huntedRefs: Record<string, number> }
+  assert.deepEqual(sheet.huntedRefs, { 'W1/AM-002': 1 })
 })
 
 // --- Duplicates and the uniquePer axes --------------------------------------
@@ -367,8 +365,10 @@ test("a fresh reference on a repeat contact earns ref-to-ref but not the activat
   assert.equal(result.qsoScores.q2.dupe, undefined)
   // One contact toward the mill, not two...
   assert.deepEqual(tally(result.operationSummary, 'activation')!.activatedRefs, { 'X00001': 1 })
-  // ...but both mills hunted.
-  assert.deepEqual(tally(result.operationSummary, 'hunting')!.huntedRefs, { 'X09001': 1, 'X09002': 1 })
+  // ...but both mills hunted (folded into the activation tally's label, not
+  // a separate one).
+  const sheet = result.scoresheet as { huntedRefs: Record<string, number> }
+  assert.deepEqual(sheet.huntedRefs, { 'X09001': 1, 'X09002': 1 })
 })
 
 test("WWBOTA is the exception: a fresh bunker does advance the activation", async () => {
@@ -388,18 +388,74 @@ test("the label is singular for one contact", async () => {
   // Intl.PluralRules and QuickJS has none — so this is the only thing keeping
   // the panel from reading "1 QSOs".
   const result = await score(POTA, operationActivating('potaActivation', 'US-0001'), manyCalls(1))
-  assert.equal(tally(result.operationSummary, 'activation')!.label, 'POTA Activation — 1 QSO')
+  assert.equal(tally(result.operationSummary, 'activation')!.label, 'POTA: 1 activation QSO')
 })
 
 test("the label is plural for more than one", async () => {
   const result = await score(POTA, operationActivating('potaActivation', 'US-0001'), manyCalls(2))
-  assert.equal(tally(result.operationSummary, 'activation')!.label, 'POTA Activation — 2 QSOs')
+  assert.equal(tally(result.operationSummary, 'activation')!.label, 'POTA: 2 activation QSOs')
 })
 
-test("a single park gets no per-park breakdown", async () => {
-  // It would only restate the summary sitting next to it.
+test("a hunting-only operation reads as references hunted, by default wording", async () => {
+  // No activation ref at all — nothing to fold the P2P line into, so this is
+  // its own tally with the generic default noun (a program can override it,
+  // see the next test).
+  const result = await score(POTA, { uuid: 'op-1', refs: [] }, [
+    qso('W1AW', { hunting: ['US-9001'] }),
+    qso('K1ABC', { hunting: ['US-9002'] }),
+  ])
+  assert.equal(tally(result.operationSummary, 'hunting')!.label, 'POTA: 2 references hunted')
+})
+
+test("refNoun/refNounPlural/p2pLabel customize the wording", async () => {
+  const POTA_WITH_NOUNS = { ...POTA, refNoun: 'park', refNounPlural: 'parks', p2pLabel: 'P2P' }
+
+  const huntingOnly = await score(POTA_WITH_NOUNS, { uuid: 'op-1', refs: [] }, [
+    qso('W1AW', { hunting: ['US-9001'] }),
+  ])
+  assert.equal(tally(huntingOnly.operationSummary, 'hunting')!.label, 'POTA: 1 park hunted')
+
+  const operation = operationActivating('potaActivation', 'US-0001')
+  const activating = await score(POTA_WITH_NOUNS, operation, [
+    qso('W1AW', { hunting: ['US-9001', 'US-9002'] }),
+  ])
+  assert.equal(
+    tally(activating.operationSummary, 'activation')!.label,
+    'POTA: 2 activation QSOs, 2 P2P QSOs',
+  )
+})
+
+test("a function-valued refNoun/p2pLabel resolves through the activity's OWN ctx, not a fixed string", async () => {
+  // This is how a real activity supplies its noun (extensions/activities/pota
+  // resolves 'park'/'P2P' through its own translator) — a raw string would be
+  // untranslatable, so the resolver must actually call the function with the
+  // ctx it was handed, not just accept the plain-string branch tested above.
+  const seenCtx: HookContext[] = []
+  const POTA_WITH_FN_NOUNS = {
+    ...POTA,
+    refNoun: (c: HookContext) => { seenCtx.push(c); return c.locale === 'es' ? 'parque' : 'park' },
+    refNounPlural: (c: HookContext) => (c.locale === 'es' ? 'parques' : 'parks'),
+    p2pLabel: () => 'P2P',
+  }
+
+  const esCtx: HookContext = { online: false, locale: 'es' }
+  const refTypes = [POTA_WITH_FN_NOUNS.activationType, POTA_WITH_FN_NOUNS.huntingType]
+  const hook = contestScorer(activityScorer(POTA_WITH_FN_NOUNS), { scope: { refTypes } })
+  const result = await hook.scoreQsos(
+    { operation: { uuid: 'op-1', refs: [] }, qsos: [qso('W1AW', { hunting: ['US-9001'] })] },
+    esCtx,
+  )
+
+  assert.equal(tally(result.operationSummary, 'hunting')!.label, 'POTA: 1 parque cazado')
+  assert.equal(seenCtx[0]?.locale, 'es')
+})
+
+test("a single park still gets its own progress line", async () => {
+  // The operation-info panel's per-day rows show this line instead of a
+  // `summary` badge beside the label, so a single-park operation needs one
+  // too — not just the n-fer case.
   const result = await score(POTA, operationActivating('potaActivation', 'US-0001'), manyCalls(3))
-  assert.equal(tally(result.operationSummary, 'activation')!.longSummary, '')
+  assert.equal(tally(result.operationSummary, 'activation')!.longSummary, '❌ US-0001: 3/10')
 })
 
 test("an n-fer does get one, marking which parks are short", async () => {

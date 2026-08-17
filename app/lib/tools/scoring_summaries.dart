@@ -11,14 +11,29 @@
 // indexes directly reads null and silently renders nothing. These helpers
 // are the one place that shape is understood.
 
-/// Scorer keys in display order: `core` first (dupes/DXCC/bands are the
-/// baseline every operation has), then the rest alphabetically. The scorers
-/// themselves arrive via `invokeHookAll`, which guarantees no ordering, so
-/// without this the badge order would drift between runs.
+/// Scorer keys in display order: contests first (what the operator is
+/// primarily there for), then activities (parks and the like), then `core`
+/// last — DXCC/states/bands are background bookkeeping every operation has,
+/// not the reason for this one. The scorers themselves arrive via
+/// `invokeHookAll`, which guarantees no ordering, so without this the badge
+/// order would drift between runs.
 List<String> orderedScorerKeys(Map<String, dynamic>? scoring) {
-  final keys = (scoring ?? const {}).keys.toList()..sort();
+  final all = scoring ?? const {};
+  final keys = all.keys.toList()..sort();
   keys.remove('core');
-  return ['core', ...keys].where((k) => (scoring ?? const {}).containsKey(k)).toList();
+  final contests = keys.where((k) => !_isActivityScorer(all, k)).toList();
+  final activities = keys.where((k) => _isActivityScorer(all, k)).toList();
+  return [...contests, ...activities, 'core'].where(all.containsKey).toList();
+}
+
+/// An activity scorer (POTA, SOTA, ...) is the one shape whose operation
+/// summary carries an `activation` or `hunting` tally — `activityScorer`'s
+/// own output (activityScoring.ts) — which a contest's summary never does.
+/// No scorer-kind flag crosses the JS/Dart boundary, so this is the cheapest
+/// thing that tells the two apart from data already in hand.
+bool _isActivityScorer(Map<String, dynamic> scoring, String scorerKey) {
+  final summary = operationSummaryFor(scoring, scorerKey);
+  return summary != null && (summary.containsKey('activation') || summary.containsKey('hunting'));
 }
 
 /// One scorer's entry, or null if this key holds something else.

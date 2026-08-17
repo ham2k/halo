@@ -98,12 +98,34 @@ void main() {
     expect((scores['zzz-contest.contest'] as Map)['summary'], 'Z');
   });
 
-  test('core sorts first so badge order does not drift with hook ordering', () {
-    // invokeHookAll gives no ordering guarantee, so the display must impose one.
-    expect(orderedScorerKeys({'zebra': {}, 'core': {}, 'alpha': {}}), ['core', 'alpha', 'zebra']);
+  test('core sorts last so badge order does not drift with hook ordering', () {
+    // invokeHookAll gives no ordering guarantee, so the display must impose
+    // one: contests first (what the operator is there for), core's own
+    // DXCC/states/bands bookkeeping last.
+    expect(orderedScorerKeys({'zebra': {}, 'core': {}, 'alpha': {}}), ['alpha', 'zebra', 'core']);
     // An operation with no core scorer (shouldn't happen, but must not throw).
     expect(orderedScorerKeys({'alpha': {}}), ['alpha']);
     expect(orderedScorerKeys(null), isEmpty);
+  });
+
+  test('an activity scorer sorts after contests, still before core', () {
+    // Detected by its own operationSummary carrying an activation/hunting
+    // tally (activityScoring.ts's shape) — no scorer-kind flag crosses the
+    // JS/Dart boundary, so this is what tells the two apart.
+    final mixed = <String, dynamic>{
+      'core': {'operationSummary': {}},
+      'pota': {
+        'operationSummary': {
+          'activation': {'key': 'activation', 'total': 1},
+        },
+      },
+      'cqww': {
+        'operationSummary': {
+          'contest': {'key': 'contest', 'total': 1},
+        },
+      },
+    };
+    expect(orderedScorerKeys(mixed), ['cqww', 'pota', 'core']);
   });
 
   test('the pre-contest flat shape yields nothing rather than throwing', () {

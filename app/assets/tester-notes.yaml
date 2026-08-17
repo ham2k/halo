@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "Worked-before contacts now suggest name/location from your own log (Call History lookup)"
+    - Operation Info's Scoring section now breaks down activity/contest progress per day
 
 "142":
   changes:

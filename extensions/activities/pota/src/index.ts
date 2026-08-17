@@ -615,6 +615,13 @@ const POTA_SCORING = {
   allowsMultipleReferences: true,
   uniquePer: ['band', 'mode', 'day', 'ref'] as const,
   activates: 'daily' as const,
+  // Functions, not literals: "park"/"parks"/"P2P" are POTA's own vocabulary,
+  // resolved through POTA's own translator at summarize time — a raw string
+  // here would be untranslatable, since activityScoring.ts's catalog has no
+  // way to know what a given activity calls its reference.
+  refNoun: (ctx: HookContext) => tFor(ctx)('park'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('parksPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('p2p'),
 }
 
 defineExtension({

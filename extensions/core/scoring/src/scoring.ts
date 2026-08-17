@@ -29,6 +29,7 @@ import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
 import { contestScorer } from "../../../sdk/src/scoring.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
+import { DXCC_BY_PREFIX } from "@ham2k/lib-dxcc-data"
 // Frequency-ordered, and the same list the runtime itself uses — the breakdown
 // reads top-down like a band plan rather than in whatever order QSOs arrived.
 import { EXTENDED_BANDS } from "@ham2k/lib-operation-data"
@@ -273,10 +274,13 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     return {
       qsoCount: summarizeQsoCount(scoresheet, scope === 'day', t),
       dxcc: summarizeDxcc(scoresheet, t),
-      bandsAndModes: summarizeBandsAndModes(scoresheet, t, isDay),
       // Omitted entirely rather than shown empty: an operator outside North
       // America never tracks these, and a badge with no label is a puzzle.
+      // Ordered before bandsAndModes: display reads DXCC, then states, then
+      // bands (scoring_summaries.dart/information_panel.dart follow this
+      // object's own key order).
       ...(places ? { statesAndProvinces: places } : {}),
+      bandsAndModes: summarizeBandsAndModes(scoresheet, t, isDay),
     }
   },
 }
@@ -308,15 +312,39 @@ function summarizeDxcc(sheet: CoreScoresheet, t: Translator): ScoreTally {
     label: count === 1 ? t('oneDxccEntity') : t('manyDxccEntities', { formatted: fmtInteger(count) }),
     // Below five entities the number is noise next to the QSO count.
     summary: count >= 5 ? fmtInteger(count) : '',
+    ...(count > 0 ? { longSummary: dxccBreakdown(sheet.entities) } : {}),
   }
+}
+
+/// Flag, name and (when worked more than once) contact count for every entity
+/// worked, busiest first. `\u00A0` inside an entry keeps its flag/name/count
+/// together on wrap; the plain space between entries is where the markdown
+/// renderer is free to break the line.
+///
+/// `entityPrefixForCall` resolves against the BIGCTY country file;
+/// `DXCC_BY_PREFIX` is `@ham2k/lib-dxcc-data`'s own, separately-maintained
+/// table. Nothing enforces the two agree, so a prefix the first produces and
+/// the second has never heard of falls back to the bare prefix rather than
+/// vanishing — the row count here must always match `dxcc`'s own `total`.
+export function dxccBreakdown(entities: Record<string, number>): string {
+  return Object.keys(entities)
+    .sort((a, b) => entities[b] - entities[a])
+    .map((prefix) => {
+      const entity = DXCC_BY_PREFIX[prefix]
+      const count = entities[prefix]
+      const countTxt = count > 1 ? `\u00A0(${fmtInteger(count)})` : ''
+      const label = entity ? `${entity.flag}\u00A0${entity.name.split(' ').join('\u00A0')}` : prefix
+      return `${label}${countTxt}`
+    })
+    .join(' ')
 }
 
 function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boolean): ScoreTally {
   const bandCount = Object.keys(sheet.bands).length
   const modeCount = Object.keys(sheet.modes).length
   const parts: string[] = []
-  if (bandCount >= 2) parts.push(t('bands', { n: bandCount }))
-  if (modeCount >= 2) parts.push(t('modes', { n: modeCount }))
+  if (bandCount > 0) parts.push(bandCount === 1 ? t('oneBand') : t('manyBands', { n: bandCount }))
+  if (modeCount > 0) parts.push(modeCount === 1 ? t('oneMode') : t('manyModes', { n: modeCount }))
   return {
     key: 'bandsAndModes',
     for: 'operation',
@@ -382,10 +410,15 @@ function summarizeStatesAndProvinces(sheet: CoreScoresheet, t: Translator): Scor
   if (provinceCount > 0) {
     parts.push(provinceCount === 1 ? t('oneProvince') : t('manyProvinces', { n: provinceCount }))
   }
+
+  const grids: string[] = []
+  if (stateCount > 0) grids.push(placesGrid(US_STATES, sheet.states))
+  if (provinceCount > 0) grids.push(placesGrid(CANADIAN_PROVINCES, sheet.provinces))
+
   return {
     key: 'statesAndProvinces',
     for: 'operation',
-    icon: 'map-marker',
+    icon: 'star',
     // Places worked, not contacts: unlike `bandsAndModes` there is no
     // "credits once" subtlety, since a QSO has one state at most.
     total: stateCount + provinceCount,
@@ -397,7 +430,16 @@ function summarizeStatesAndProvinces(sheet: CoreScoresheet, t: Translator): Scor
     // there at all. Below five places the number is noise next to the QSO
     // count, same judgement `dxcc` makes.
     summary: stateCount + provinceCount >= 5 ? fmtInteger(stateCount + provinceCount) : '',
+    longSummary: grids.join('\n\n'),
+    grid: true,
   }
+}
+
+/// A checklist of every code in `all`, worked ones struck through and bold so
+/// the whole grid reads at a glance as what is done versus what is still
+/// open, not just a count.
+function placesGrid(all: Set<string>, worked: Record<string, number>): string {
+  return [...all].map((code) => (worked[code] ? `**~~${code}~~**` : code)).join('  ')
 }
 
 /// The registrable hook. `scope: 'always'` — core scoring applies to every

@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { scoreQso, scoreQsos } from "./scoring.ts"
+import { dxccBreakdown, scoreQso, scoreQsos } from "./scoring.ts"
 import type { HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 // A minimal HookContext whose getQsos returns the given log — the only field
@@ -241,6 +241,51 @@ test("scoreQsos: states and provinces are tallied, and absent for a DX operator"
   assert.equal(theirs.operationSummary.statesAndProvinces, undefined)
 })
 
+test("scoreQsos: the places grid checks off every worked state and province, in order", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "SSB", { uuid: "q1", their: { call: "W1AW", state: "CT" } }),
+        qso("VE3ABC", "20m", "SSB", { uuid: "q2", their: { call: "VE3ABC", state: "ON" } }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  const grid = result.operationSummary.statesAndProvinces.longSummary as string
+  // US_STATES order (Alabama, Alaska, Arizona, Arkansas, ...) with CT struck.
+  assert.ok(grid.startsWith("AL  AK  AZ  AR  CA  CO  **~~CT~~**"))
+  // The provinces grid follows as its own paragraph.
+  assert.ok(grid.includes("**~~ON~~**"))
+})
+
+test("scoreQsos: the DXCC breakdown lists flag, name and count, busiest first", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "SSB", { uuid: "q1" }),
+        qso("DL1ABC", "20m", "SSB", { uuid: "q2" }),
+        qso("DL2XYZ", "20m", "SSB", { uuid: "q3" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(
+    result.operationSummary.dxcc.longSummary,
+    "🇩🇪 Germany (2) 🇺🇸 United States",
+  )
+})
+
+// entityPrefixForCall resolves against BIGCTY; DXCC_BY_PREFIX is a separate,
+// independently-maintained table. Nothing enforces the two agree, so a
+// prefix the first table produces and the second has never heard of must
+// still show up — as its bare prefix — rather than silently shrinking the
+// list below the header count.
+test("dxccBreakdown: a prefix DXCC_BY_PREFIX has never heard of falls back to itself", () => {
+  assert.equal(dxccBreakdown({ K: 2, ZZ99: 1 }), "🇺🇸 United States (2) ZZ99")
+})
+
 // A scoresheet cached before rule 4 landed has no `states`/`provinces` maps and
 // no `ourEntity`. Scoring runs on every keystroke against exactly this cached
 // checkpoint, so reading those unguarded takes the logging panel down.
@@ -286,6 +331,30 @@ test("scoreQso: correcting the station call re-derives our own entity", async ()
 })
 
 // --- Per-band breakdown ----------------------------------------------------
+
+test("scoreQsos: the bands/modes label always shows, singular for one of each", async () => {
+  // The information panel uses this label as the section's own heading, so
+  // a single-band single-mode operation still needs one, not just an empty
+  // string once there are fewer than two of something.
+  const result = await scoreQsos(
+    { operation: usOp, qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" })] },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
+})
+
+test("scoreQsos: operationSummary orders dxcc, then states/provinces, then bands/modes", async () => {
+  // The information panel renders tallies in this object's own key order —
+  // DXCC, then places, then the band/mode breakdown, last.
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1", their: { call: "W1AW", state: "CT" } })],
+    },
+    ctxWithLog([]),
+  )
+  assert.deepEqual(Object.keys(result.operationSummary), ["qsoCount", "dxcc", "statesAndProvinces", "bandsAndModes"])
+})
 
 test("scoreQsos: the band breakdown is one row per band worked, in band-plan order", async () => {
   const result = await scoreQsos(
