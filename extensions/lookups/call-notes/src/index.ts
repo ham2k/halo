@@ -14,9 +14,14 @@
 //    lookup fan-out (extra fields on CallInfoLookup, same widening pattern
 //    as annotate.ts's `flag`).
 //  - `command`: `//KEY` expands a notes entry into the call field — only
-//    when that entry reads as a plain comma list of calls (see
-//    expansionValueFor). Leading "//" never parses as call stacking (a
-//    stack's first segment would be empty), so the two syntaxes coexist.
+//    when that entry, once a leading heading/emoji marker is stripped, reads
+//    as a plain comma list of calls (see expansionValueFor) — a note authored
+//    as `1GM ## VK1GM,VK2ETI` for readability in the note display still
+//    expands. The call field explicitly excludes a field
+//    STARTING with "//" from call stacking (logging_controls.dart's
+//    _pickStackedCall) — without that, a note key that's itself a valid
+//    callsign (the common case) would also read as a stacked call, racing
+//    the expand command with a real lookup/score for the key.
 //  - `callNotes`: in-runtime directory of the noted calls, for other
 //    extensions (see DirectoryHook below).
 //  - `settingsPanel` (HALO-53): lets the operator disable a builtin source

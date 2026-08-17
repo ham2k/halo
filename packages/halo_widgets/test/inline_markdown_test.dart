@@ -179,8 +179,78 @@ void main() {
       expect(_plainTextOf('- [x] QSL confirmed'), '- [x] QSL confirmed');
       expect(_plainTextOf('- [ ] QSL confirmed'), '- [ ] QSL confirmed');
       expect(_plainTextOf('- one\n- two'), '- one - two');
-      expect(_plainTextOf('# Heading'), '# Heading');
       expect(_plainTextOf('---'), '---');
+    });
+
+    // ATX headings are the one block marker kept — unambiguous with nothing
+    // else this widget leaves literal, since "73." and "- [x]" don't start
+    // with "#". Rendered inline (bold, sized) rather than on a block line of
+    // their own.
+    test('renders an ATX heading as bold text with a per-level size delta, marker stripped', () {
+      // inlineMarkdownSpans carries no base style of its own (InlineMarkdownText
+      // supplies one via Text.rich's outer style) — the delta lands on
+      // flagGlyphDefaultFontSize (16) here, same fallback _headingFontSizeDelta
+      // itself uses when a caller's style has no fontSize.
+      TextStyle? styleOf(String input) => _styleIn(inlineMarkdownSpans(input), 'Heading');
+
+      expect(_plainTextOf('# Heading'), 'Heading');
+      expect(styleOf('# Heading')?.fontWeight, FontWeight.w700);
+      expect(styleOf('# Heading')?.fontSize, 20); // 16 + 4
+
+      expect(_plainTextOf('## Heading'), 'Heading');
+      expect(styleOf('## Heading')?.fontSize, 18); // 16 + 2
+
+      expect(_plainTextOf('### Heading'), 'Heading');
+      expect(styleOf('### Heading')?.fontSize, 16); // 16 + 0
+
+      expect(_plainTextOf('#### Heading'), 'Heading');
+      expect(styleOf('#### Heading')?.fontSize, 14); // 16 - 2
+
+      expect(_plainTextOf('##### Heading'), 'Heading');
+      expect(styleOf('##### Heading')?.fontSize, 12); // 16 - 4
+
+      expect(_plainTextOf('###### Heading'), 'Heading');
+      expect(styleOf('###### Heading')?.fontSize, 10); // 16 - 6
+    });
+
+    test('a heading without a space after the marker stays literal, as CommonMark requires', () {
+      expect(_plainTextOf('#nofollow'), '#nofollow');
+    });
+
+    // The delta is relative to the CALLER's actual font size, not a hardcoded
+    // default — a note rendered at 12px must get a 16px heading (12+4), not
+    // flagGlyphDefaultFontSize+4, or a heading in a small control would jump
+    // to a fixed size unrelated to its surroundings.
+    test('the heading size delta is relative to baseFontSize, not a hardcoded default', () {
+      final spans = inlineMarkdownSpans('# Heading', baseFontSize: 12);
+      expect(_styleIn(spans, 'Heading')?.fontSize, 16); // 12 + 4
+    });
+
+    test('nested inline markup inside a heading still parses, and inherits the heading style', () {
+      // Italic, not bold: bold alone wouldn't distinguish "the heading forced
+      // it" from "the emphasis did" — italic only appears if nested inline
+      // parsing actually ran inside the heading's content.
+      final spans = inlineMarkdownSpans('# Welcome *N0DEV*');
+      expect(_plainText(spans), 'Welcome N0DEV');
+      final style = _styleIn(spans, 'N0DEV');
+      expect(style?.fontStyle, FontStyle.italic);
+      expect(style?.fontWeight, FontWeight.w700); // inherited from the heading
+    });
+
+    test('a heading joins onto a preceding paragraph with a space, same as two paragraphs would', () {
+      expect(_plainTextOf('Intro\n# Heading'), 'Intro Heading');
+    });
+
+    // The joining space is not itself heading content — sizing it like the
+    // heading (+4px, bold) would make it a taller glyph than the space that
+    // opens an ordinary two-paragraph join, inflating line height in a
+    // single-line control for no visible reason (a space has no ink to show
+    // the size at).
+    test('the space joining onto a heading keeps the PRECEDING style, not the heading\'s bold/size', () {
+      final spans = inlineMarkdownSpans('Intro\n# Heading', baseFontSize: 14);
+      final joinSpace = _styleIn(spans, ' ');
+      expect(joinSpace?.fontWeight, isNot(FontWeight.w700));
+      expect(joinSpace?.fontSize, isNot(18)); // 14 + 4, the heading's own size
     });
 
     // A setext underline makes ParagraphSyntax discard the paragraph it had
@@ -290,6 +360,29 @@ void main() {
       expect(paragraph.didExceedMaxLines, isTrue, reason: 'should have been truncated, not wrapped');
       expect(paragraph.size.height, lessThan(30), reason: 'a single line');
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a heading size delta is relative to the widget\'s own style, not a hardcoded default',
+        (tester) async {
+      // Regression: baseFontSize must reach _appendNode from widget.style —
+      // without it, a heading in a small control (here 10px) would jump to
+      // flagGlyphDefaultFontSize+4 (20px) instead of 10+4=14px.
+      await tester.pumpWidget(_host(const InlineMarkdownText(
+        '# Small heading',
+        style: TextStyle(fontSize: 10),
+      )));
+
+      final richText = tester.widget<RichText>(find.byType(RichText));
+      TextStyle? styleOf(InlineSpan span) {
+        if (span is TextSpan && span.text == 'Small heading') return span.style;
+        for (final child in (span is TextSpan ? span.children : null) ?? const <InlineSpan>[]) {
+          final found = styleOf(child);
+          if (found != null) return found;
+        }
+        return null;
+      }
+
+      expect(styleOf(richText.text)?.fontSize, 14); // 10 + 4, not 16 + 4
     });
 
     testWidgets('opens a tapped link through onOpenLink', (tester) async {

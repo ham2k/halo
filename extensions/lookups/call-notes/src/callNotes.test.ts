@@ -74,11 +74,35 @@ test('expansionValueFor: comma lists of calls are eligible, uppercased', () => {
   assert.equal(expansionValueFor([{ call: 'DAN', note: 'WD4DAN' }]), 'WD4DAN')
 })
 
-test('expansionValueFor: emoji or free-text spacing disqualifies (issue #17)', () => {
+test('expansionValueFor: free-text prose disqualifies (issue #17)', () => {
   assert.equal(expansionValueFor([{ call: 'K1ABC', note: '👑 James POTA King' }]), null)
   assert.equal(expansionValueFor([{ call: 'K1ABC', note: 'Dan POTA Royalty' }]), null)
-  assert.equal(expansionValueFor([{ call: 'K1ABC', note: '🎉 K1ABC,K2DEF' }]), null)
   assert.equal(expansionValueFor([{ call: 'K1ABC', note: 'WD4DAN,  WD4JMM' }]), null) // two spaces
+})
+
+// A decorative leading marker (a heading OR an emoji) is stripped before the
+// eligibility check, not folded into it — an entry authored with
+// "## VK1GM,VK2ETI" for readability in the note display must expand the same
+// as a bare "VK1GM,VK2ETI" would.
+test('expansionValueFor: a leading heading OR emoji marker is stripped, not disqualifying', () => {
+  assert.equal(expansionValueFor([{ call: 'VK1GM', note: '## VK1GM,VK2ETI,VK2AIT' }]), 'VK1GM,VK2ETI,VK2AIT')
+  assert.equal(expansionValueFor([{ call: 'VK1GM', note: '# VK1GM,VK2ETI' }]), 'VK1GM,VK2ETI')
+  assert.equal(expansionValueFor([{ call: 'K1ABC', note: '🎉 K1ABC,K2DEF' }]), 'K1ABC,K2DEF')
+  // The remainder still has to pass EXPANDABLE — a heading over PROSE stays descriptive.
+  assert.equal(expansionValueFor([{ call: 'VK1GM', note: '## Canberra club roster' }]), null)
+})
+
+// Not chained: combineNotes/_noteParts only ever look for a leading emoji at
+// position 0, so a note starting "## 🎉 …" would go unrecognized as marked
+// there even though this function's own EXPANDABLE test would pass it if
+// both markers were stripped — leaving it ineligible instead keeps "no
+// expansion offered" the one answer both paths agree on for this shape.
+test('expansionValueFor: a heading marker does not also strip a SECOND, emoji marker behind it', () => {
+  assert.equal(expansionValueFor([{ call: 'K1ABC', note: '## 🎉 K1ABC,K2DEF' }]), null)
+})
+
+test('expansionValueFor: a heading marker with no space after it is not a heading, per ATX syntax', () => {
+  assert.equal(expansionValueFor([{ call: 'K1ABC', note: '#K1ABC,K2DEF' }]), null)
 })
 
 test('expansionValueFor: falls through to the first eligible entry', () => {

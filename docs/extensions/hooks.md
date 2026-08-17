@@ -726,11 +726,13 @@ raw readings land in the logged event's `data` and the emoji summary line
 in its `description`. This superseded the original `note-command`
 extension, whose NOTE wrote to the in-progress QSO's notes field instead of
 the timeline), and `call-notes` (`//KEY`
-expands a Callsign Notes entry whose note is a plain comma list of calls
-into the call field via `setCallField` — issue #17; leading "//" never
-parses as call stacking, whose first segment would be empty, so the two
-syntaxes coexist). Future command hooks (spotting, operator change…)
-register in the same category and compete on priority with these.
+expands a Callsign Notes entry whose note — once a leading heading OR emoji
+marker (never both) is stripped — is a plain comma list of calls into the
+call field via `setCallField` — issue #17; the call field explicitly excludes a field
+STARTING with "//" from call stacking, or a note key that's itself a valid
+callsign would also read as a stacked call, so the two syntaxes coexist).
+Future command hooks (spotting, operator change…) register in the same
+category and compete on priority with these.
 
 ### `catalog` — advertising commands to the ⌘K dialog
 

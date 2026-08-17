@@ -889,6 +889,49 @@ void main() {
     expect(logged, isEmpty);
   });
 
+  testWidgets('call stacking: a field STARTING with "//" is never a stack, even when the rest is a valid callsign',
+      (tester) async {
+    // A note-notes expansion key is usually itself a valid callsign (e.g.
+    // "//W1AW"), which would otherwise let _pickStackedCall treat W1AW as a
+    // real candidate and log it on Enter — racing the note-expansion command
+    // with a stray logged QSO. No interpretCommand wired here, so there's
+    // nothing to shadow this: only the stacking guard itself can stop it.
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//W1AW');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, isEmpty);
+  });
+
+  testWidgets('call stacking: a leading space before "//" still reads as note-expansion syntax, not a stack',
+      (tester) async {
+    // The field's own inputFormatters block a literal leading space from
+    // ordinary typing (see _fieldAcceptsSpaces), so this reaches the
+    // controller the way setCallField does — a direct .value assignment,
+    // which bypasses those formatters same as it bypasses onChanged. Command
+    // interpretation evaluates the TRIMMED text (_commandInput), so
+    // _isCallStackField's own check has to trim too, or the two would
+    // disagree about whether " //W1AW" is a stack.
+    await tester.pumpWidget(host());
+
+    // Focuses the field the way ordinary typing would — a direct .value
+    // assignment alone leaves focus untouched, and Enter with no focused
+    // field wouldn't reach _log() at all, proving nothing about the guard.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    callField.controller!.value = const TextEditingValue(
+      text: ' //W1AW',
+      selection: TextSelection.collapsed(offset: 7),
+    );
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, isEmpty);
+  });
+
   testWidgets('a field with both "//" and "," logs via stacking, not as a comma list — "//" takes priority', (tester) async {
     await tester.pumpWidget(host());
 

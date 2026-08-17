@@ -28,11 +28,20 @@ export type CallNotesIndex = Record<string, CallNoteEntry[]>
 const LEADING_EMOJI =
   /^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]+/u
 
-/// Expansion eligibility: the note must read as a plain list of
-/// callsign-like tokens — ASCII letters/digits//- only, commas between
-/// tokens, spaces allowed ONLY right after a comma. Anything with emoji or
-/// free-text spacing is descriptive, not an expansion.
+/// Expansion eligibility: once any leading decoration is stripped (see
+/// expansionValueFor), the note must read as a plain list of callsign-like
+/// tokens — ASCII letters/digits//- only, commas between tokens, spaces
+/// allowed ONLY right after a comma. Anything else in the remainder is
+/// descriptive, not an expansion.
 const EXPANDABLE = /^[A-Za-z0-9/-]+(?:, ?[A-Za-z0-9/-]+)*$/
+
+/// A leading ATX heading marker (`#` through `######`, which InlineMarkdownText
+/// renders) is decoration, same as a leading emoji — stripped before testing
+/// EXPANDABLE, same as LEADING_EMOJI. Requires the trailing whitespace ATX
+/// syntax itself requires (`\s+`, not `\s*`): without it, `#K1ABC,K2DEF`
+/// would strip to an expansion InlineMarkdownText renders literally with the
+/// `#` still showing, not as the heading this stripping assumes it became.
+const LEADING_HEADING = /^#{1,6}\s+/
 
 export function parseCallNotes(body: string): CallNotesIndex {
   const entries: CallNotesIndex = {}
@@ -71,14 +80,29 @@ export function combineNotes(entries: CallNoteEntry[] | undefined): { note: stri
   return { note, emoji: emojis[0] }
 }
 
-/// The value `//KEY` expands to: the first of the key's entries whose note
-/// is expansion-eligible (see EXPANDABLE above), uppercased — e.g. an entry
-/// `DAN WD4DAN,WD4JMM` expands to "WD4DAN,WD4JMM", which the call field
-/// then treats as an ordinary comma-separated call list. Returns
-/// null when no entry qualifies, in which case no expansion is offered.
+/// The value `//KEY` expands to: the first of the key's entries whose note,
+/// once its leading marker (a heading OR an emoji — never both; see below) is
+/// stripped, is expansion-eligible (see EXPANDABLE above) — e.g. an entry
+/// `1GM ## VK1GM,VK2ETI` expands to "VK1GM,VK2ETI", uppercased, which the
+/// call field then treats as an ordinary comma-separated call list. Returns
+/// null when no entry qualifies (after stripping), in which case no
+/// expansion is offered.
+///
+/// Strips AT MOST ONE marker, not both chained: combineNotes and
+/// logging_controls.dart's _noteParts only ever look for a leading emoji at
+/// position 0, so a note starting `## 🎉 …` would expand here (heading
+/// stripped, emoji still leading) while its emoji goes unrecognized as a
+/// marker on the display side. Not chaining leaves that combination
+/// ineligible instead — the same "no expansion offered" outcome the display
+/// side already gives it, rather than two paths disagreeing about a note
+/// this format was never meant to describe.
 export function expansionValueFor(entries: CallNoteEntry[] | undefined): string | null {
   for (const entry of entries ?? []) {
-    const note = entry.note.trim()
+    const trimmed = entry.note.trim()
+    const stripped = LEADING_HEADING.test(trimmed)
+      ? trimmed.replace(LEADING_HEADING, '')
+      : trimmed.replace(LEADING_EMOJI, '')
+    const note = stripped.trim()
     if (EXPANDABLE.test(note)) return note.toUpperCase()
   }
   return null

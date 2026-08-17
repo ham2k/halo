@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
+import 'flags.dart' show flagGlyphDefaultFontSize;
 import 'form_renderer.dart' show FormOpenLink;
 import 'theme.dart' show HaLoColors;
 
@@ -29,10 +30,14 @@ typedef InlineMarkdownOpenLink = FormOpenLink;
 /// destination may contain balanced parens.
 ///
 /// **Block** syntax is deliberately almost entirely off, because this renders
-/// one line of prose rather than a document. `73. tnx`, `- [x] QSL`, `---` and
-/// `# Heading` are content here, not markup, and stay literal; consecutive
-/// paragraphs are joined with a space. See [_parseDocument] for what is kept
-/// and why.
+/// one line of prose rather than a document. `73. tnx`, `- [x] QSL` and `---`
+/// are content here, not markup, and stay literal; consecutive paragraphs are
+/// joined with a space. See [_parseDocument] for what is kept and why.
+///
+/// ATX headings (`# ` through `###### `) are the one block syntax kept and
+/// still rendered inline: bold, with a per-level font-size delta (see
+/// [_headingFontSizeDelta]) rather than a block of its own — there is no room
+/// here for a heading to sit on its own line.
 ///
 /// Use it where the text is one tidy line; keep `MarkdownBody` wherever block
 /// structure actually matters.
@@ -139,6 +144,10 @@ class _InlineMarkdownTextState extends State<InlineMarkdownText> {
       TextSpan(
         children: inlineMarkdownSpans(
           widget.text,
+          // A heading's size delta (see _headingFontSizeDelta) is relative to
+          // THIS — not to whatever ambient style the surrounding row happens
+          // to carry, which the span tree itself has no way to see.
+          baseFontSize: widget.style?.fontSize ?? flagGlyphDefaultFontSize,
           codeStyle: widget.codeStyle,
           // onSurfaceAccent, not colorScheme.primary: a link is text read ON
           // the surface, and this widget's whole point is being embedded in a
@@ -168,8 +177,17 @@ class _InlineMarkdownTextState extends State<InlineMarkdownText> {
 ///
 /// [recognizerFor] supplies the tap recognizer for a link url, or null to leave
 /// the link inert. Prefer [InlineMarkdownText], which owns that lifecycle.
+///
+/// [baseFontSize] is what an ATX heading's per-level delta (see
+/// [_headingFontSizeDelta]) is added to — the cascading per-span `style` this
+/// function builds internally is usually null until emphasis/heading markup
+/// sets it, so a heading has no other way to know the surrounding row's actual
+/// font size. Defaults to [flagGlyphDefaultFontSize], the fallback
+/// `logging_controls.dart`'s note-rendering helpers already use when no
+/// explicit font size is available.
 List<InlineSpan> inlineMarkdownSpans(
   String text, {
+  double baseFontSize = flagGlyphDefaultFontSize,
   TextStyle? codeStyle,
   TextStyle? linkStyle,
   GestureRecognizer? Function(String url)? recognizerFor,
@@ -181,6 +199,7 @@ List<InlineSpan> inlineMarkdownSpans(
     _appendNode(
       node,
       spans,
+      baseFontSize: baseFontSize,
       codeStyle: codeStyle,
       linkStyle: linkStyle,
       recognizerFor: recognizerFor,
@@ -218,7 +237,7 @@ List<String> inlineMarkdownLinkUrls(String text) {
 
 /// Parses [text] as inline markdown in one or more plain paragraphs.
 ///
-/// The **block** syntaxes are deliberately narrowed to three. Running the full
+/// The **block** syntaxes are deliberately narrowed to four. Running the full
 /// GFM block set over a call note or a command description does real damage:
 /// `73. tnx for the QSO` reads as an ordered-list marker, so the `73.` is
 /// eaten; `- [x] QSL` loses the checkbox that carries its meaning; `---`
@@ -232,8 +251,14 @@ List<String> inlineMarkdownLinkUrls(String text) {
 /// [md.LinkReferenceDefinitionSyntax] stays, because reference-style links are
 /// real markup and their definitions are only collected by the block layer;
 /// [md.EmptyBlockSyntax] keeps a blank line from joining two paragraphs.
+/// [md.HeaderSyntax] (ATX only — `# ` through `###### `) stays too: unlike
+/// every syntax excluded above, a `#`-prefixed line is unambiguous heading
+/// markup an author meant, never punctuation or a stray leading digit
+/// (`73.` isn't `#`-shaped). [_appendNode] renders it as bold text with a
+/// per-level size delta rather than the block of its own the tag implies —
+/// see [_headingFontSizeDelta].
 ///
-/// Both of these matter, and neither is decoration:
+/// All of these matter, and none is decoration:
 ///
 /// - [md.ParagraphSyntax] must stay LAST. Its catch-all `canParse` is what
 ///   keeps a `73.` out of an ordered list.
@@ -242,6 +267,9 @@ List<String> inlineMarkdownLinkUrls(String text) {
 ///   scans the whole syntax list regardless of order, and a setext underline
 ///   makes it discard the paragraph it had accumulated. With the defaults on,
 ///   `Nice op\n---` renders as `---` — "Nice op" is deleted outright.
+///   [md.HeaderSyntax] carries no such risk: an ATX header matches on its OWN
+///   line via a leading `#`, never retroactively reinterpreting a prior line
+///   the way a setext underline does, so adding it doesn't reopen that hazard.
 ///
 /// One shape is still swallowed, deliberately: `[QSL]: bureau` is a link
 /// reference definition and renders as nothing, because keeping
@@ -262,6 +290,7 @@ List<md.Node> _parseDocument(String text) => md.Document(
       blockSyntaxes: const [
         md.EmptyBlockSyntax(),
         md.LinkReferenceDefinitionSyntax(),
+        md.HeaderSyntax(),
         md.ParagraphSyntax(),
       ],
       inlineSyntaxes: md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
@@ -285,6 +314,7 @@ void _appendNode(
   md.Node node,
   List<InlineSpan> spans, {
   TextStyle? style,
+  required double baseFontSize,
   TextStyle? codeStyle,
   TextStyle? linkStyle,
   GestureRecognizer? Function(String url)? recognizerFor,
@@ -317,24 +347,48 @@ void _appendNode(
     case 'br':
       spans.add(leaf('\n', style));
       return;
-    // The only block element the narrowed syntax set can produce. Paragraphs
-    // are flattened onto one line, separated by a space so "a\n\nb" reads
-    // "a b" rather than "ab".
+    // The block elements the narrowed syntax set can produce (paragraphs and
+    // ATX headings). Flattened onto one line, separated by a space so
+    // "a\n\nb" reads "a b" rather than "ab".
     case 'p':
-      if (spans.isNotEmpty && !spans.last.toPlainText().endsWith(' ')) {
-        spans.add(leaf(' ', style));
-      }
-      for (final child in node.children ?? const <md.Node>[]) {
-        _appendNode(child, spans,
-            style: style,
-            codeStyle: codeStyle,
-            linkStyle: linkStyle,
-            recognizerFor: recognizerFor,
-            imageBuilder: imageBuilder,
-            onOpenLink: onOpenLink,
-            recognizer: recognizer,
-            href: href);
-      }
+      _appendBlockChildren(node, spans,
+          style: style,
+          joinStyle: style,
+          baseFontSize: baseFontSize,
+          codeStyle: codeStyle,
+          linkStyle: linkStyle,
+          recognizerFor: recognizerFor,
+          imageBuilder: imageBuilder,
+          onOpenLink: onOpenLink,
+          recognizer: recognizer,
+          href: href);
+      return;
+    // A heading renders inline — bold, with a per-level size delta off
+    // [baseFontSize] (NOT off `style?.fontSize`, which is usually null here) —
+    // rather than the block of its own the tag implies; see
+    // _headingFontSizeDelta.
+    case 'h1':
+    case 'h2':
+    case 'h3':
+    case 'h4':
+    case 'h5':
+    case 'h6':
+      final level = int.parse(node.tag.substring(1));
+      final headingStyle = (style ?? const TextStyle()).merge(TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: baseFontSize + _headingFontSizeDelta(level),
+      ));
+      _appendBlockChildren(node, spans,
+          style: headingStyle,
+          joinStyle: style,
+          baseFontSize: baseFontSize,
+          codeStyle: codeStyle,
+          linkStyle: linkStyle,
+          recognizerFor: recognizerFor,
+          imageBuilder: imageBuilder,
+          onOpenLink: onOpenLink,
+          recognizer: recognizer,
+          href: href);
       return;
     // `code` holds its content literally — never re-parsed — but the mono style
     // merges onto the inherited one, so code inside a link keeps the link's
@@ -366,6 +420,7 @@ void _appendNode(
       child,
       children,
       style: childStyle,
+      baseFontSize: baseFontSize,
       codeStyle: codeStyle,
       linkStyle: linkStyle,
       recognizerFor: recognizerFor,
@@ -379,6 +434,63 @@ void _appendNode(
 
   spans.add(TextSpan(children: children));
 }
+
+/// Shared by the `p` and heading cases in [_appendNode]: joins onto the
+/// previous block with a space (so "a\n\nb" reads "a b", not "ab") before
+/// appending [node]'s children under [style].
+///
+/// [joinStyle] styles ONLY that joining space, separately from [style] —
+/// for a heading, [style] is bold and size-bumped, but the space that joins
+/// it to whatever came before is not itself part of the heading's content;
+/// styling it with the heading's own size would make it a tall glyph that
+/// contributes to line height even where the heading text beside it doesn't
+/// end up the line's tallest run. `p` passes the same value for both, since
+/// nothing about a paragraph changes [style] to begin with.
+void _appendBlockChildren(
+  md.Element node,
+  List<InlineSpan> spans, {
+  required TextStyle? style,
+  required TextStyle? joinStyle,
+  required double baseFontSize,
+  required TextStyle? codeStyle,
+  required TextStyle? linkStyle,
+  required GestureRecognizer? Function(String url)? recognizerFor,
+  required Widget Function(MarkdownImageConfig config)? imageBuilder,
+  required InlineMarkdownOpenLink? onOpenLink,
+  required GestureRecognizer? recognizer,
+  required String? href,
+}) {
+  if (spans.isNotEmpty && !spans.last.toPlainText().endsWith(' ')) {
+    // Same leaf shape _appendNode's own `leaf` closure builds — the joining
+    // space rides the same recognizer as the block it opens, matching what a
+    // reader tapping right at the boundary would expect.
+    spans.add(TextSpan(
+      text: ' ',
+      style: joinStyle,
+      recognizer: recognizer,
+      mouseCursor: recognizer == null ? null : SystemMouseCursors.click,
+    ));
+  }
+  for (final child in node.children ?? const <md.Node>[]) {
+    _appendNode(child, spans,
+        style: style,
+        baseFontSize: baseFontSize,
+        codeStyle: codeStyle,
+        linkStyle: linkStyle,
+        recognizerFor: recognizerFor,
+        imageBuilder: imageBuilder,
+        onOpenLink: onOpenLink,
+        recognizer: recognizer,
+        href: href);
+  }
+}
+
+/// The inline font-size delta for an ATX heading level (H1=1 .. H6=6): a
+/// uniform 2px step per level, H1 at +4 down through H6 at -6, H3 neutral —
+/// enough visual weight to read as a heading (bold carries the rest) without
+/// the block-level jump a real one would make in a control built to paint
+/// one line.
+int _headingFontSizeDelta(int level) => 6 - level * 2;
 
 /// An `![alt](uri)` image, sized from a `#WxH` fragment when there is one (which
 /// is how [flagsInMarkdown] carries the glyph size through).

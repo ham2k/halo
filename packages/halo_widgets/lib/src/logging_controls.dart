@@ -2595,6 +2595,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// list, so this also covers the common case.
   List<String> get _callList => _call.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
 
+  /// Whether the call field is using "//" stack syntax (issue #7) — as
+  /// opposed to note-expansion syntax (issue #17), which STARTS with "//"
+  /// and is never a stack regardless of what follows (see
+  /// [_pickStackedCall]'s own doc). The one predicate every stacking-aware
+  /// getter below shares, so the two syntaxes can't drift out of agreement
+  /// about which fields belong to which.
+  ///
+  /// Checks `trimLeft()`, not the raw text: a leading space (`" //W1AW"`)
+  /// must not let stacking treat the note key as a real call to log while
+  /// command interpretation — which evaluates the TRIMMED input — is
+  /// offering to expand the same field.
+  bool get _isCallStackField {
+    final text = _callController.text;
+    return widget.editingQso == null && text.contains('//') && !text.trimLeft().startsWith('//');
+  }
+
   /// Every callsign the field currently holds, under either multi-call
   /// syntax: the comma-separated list, or the "//" stack's segments (which
   /// take priority, per [_callAtCursor]).
@@ -2605,7 +2621,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [_scheduleLookup].
   Iterable<String> get _callsInField {
     final text = _callController.text;
-    final separator = widget.editingQso == null && text.contains('//') ? '//' : ',';
+    final separator = _isCallStackField ? '//' : ',';
     return text.split(separator).map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty);
   }
 
@@ -2620,7 +2636,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// and "//" is the more specific syntax.
   String get _callAtCursor {
     final text = _callController.text;
-    if (widget.editingQso == null && text.contains('//')) {
+    if (_isCallStackField) {
       return _pickStackedCall()?.call ?? _call;
     }
     if (!text.contains(',')) return _call;
@@ -2648,7 +2664,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // list — "//"-separated calls/fragments aren't a single valid callsign,
     // but log is still possible as long as one of the stacked segments is —
     // see _pickStackedCall. Only while composing a new QSO.
-    if (widget.editingQso == null && _callController.text.contains('//')) {
+    if (_isCallStackField) {
       return _pickStackedCall() != null;
     }
     return _callList.isNotEmpty && _callList.every(looksLikeCallsign);
@@ -2686,9 +2702,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// over the comma-separated call list (issue #7) — a field can't
   /// meaningfully be both a stack and a list at once, and "//" is the more
   /// specific syntax.
+  ///
+  /// Never fires for a field that STARTS with "//" — that's note-expansion
+  /// syntax (issue #17), not a stack, and a note key is usually itself a
+  /// valid-looking callsign (e.g. `//W1AW`), which would otherwise make this
+  /// pick W1AW as a real candidate to log while the expand command is also
+  /// live on the same input. See [_isCallStackField].
   ({String call, String remainder})? _pickStackedCall() {
+    if (!_isCallStackField) return null;
     final text = _callController.text;
-    if (!text.contains('//')) return null;
     final segments = text.split('//');
 
     final cursor = _callController.selection.baseOffset;
@@ -8095,6 +8117,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final fontSize = noteStyle?.fontSize ?? flagGlyphDefaultFontSize;
     final spans = inlineMarkdownSpans(
       parts.markdown,
+      baseFontSize: fontSize,
       linkStyle: _noteLinkStyle(theme),
       codeStyle: _noteCodeStyle(fontSize),
       imageBuilder: (config) {
