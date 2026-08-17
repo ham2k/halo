@@ -199,6 +199,16 @@ namespace flutter_inappwebview_plugin
   CustomPlatformView::~CustomPlatformView()
   {
     debugLog("dealloc CustomPlatformView");
+    // The event channel's stream handler captures [this]. Unlike
+    // method_channel_, no caller is required to clear it before the object
+    // is destroyed (UnregisterMethodCallHandler() only covers the method
+    // channel), so without this the messenger keeps a dangling callback
+    // registered after this destructor returns -- a later messenger
+    // callback-map mutation (e.g. another platform view registering) can
+    // then walk into freed memory.
+    if (event_channel_) {
+      event_channel_->SetStreamHandler(nullptr);
+    }
     event_sink_ = nullptr;
     if (texture_bridge_) {
       // Stop() takes texture_bridge_'s own mutex, the same one OnFrameArrived

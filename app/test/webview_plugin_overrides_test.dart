@@ -5,8 +5,8 @@
 // exact pin on the umbrella, the five version pins in `dependency_overrides`
 // that hold the rest of the family still, the three overrides that
 // displace the published Linux, macOS and Windows implementations outright,
-// and the one patched line inside each of the vendored macOS and Windows
-// copies.
+// the one patched line inside the vendored macOS copy, and the two patched
+// hunks inside the vendored Windows copy.
 //
 // All of it is invisible to every other signal. Delete an override and the
 // whole Dart suite, `flutter analyze` and every GitHub CI job stay green,
@@ -319,6 +319,40 @@ void main() {
       isNot(contains('UnregisterTexture(texture_id_, nullptr)')),
       reason: 'a nullptr callback anywhere in this destructor is upstream\'s '
           'own unpatched line, which reintroduces the use-after-free',
+    );
+    expect(
+      source,
+      contains('event_channel_->SetStreamHandler(nullptr);'),
+      reason: 'clearing the event channel\'s stream handler IS the messenger '
+          'callback race patch; without it a dangling [this] capture stays '
+          'registered in the messenger\'s callback map after every dispose '
+          '(HALO-290/HALO-NEXT-59), not a test failure',
+    );
+  });
+
+  test('the vendored Windows copy still unregisters the old view on keep-alive reuse', () {
+    // Same "resolving to the vendored directory is not the same as the patch
+    // being in it" caveat as the destructor test above, for the
+    // in_app_webview_manager.cpp half of the messenger callback race patch
+    // (PATCH.md's "The messenger callback race" section).
+    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/in_app_webview/in_app_webview_manager.cpp';
+    final file = File(sourcePath);
+    if (!file.existsSync()) {
+      fail(
+        'No $sourcePath — the Windows override points at a package with no '
+        'in_app_webview_manager.cpp, so this test cannot answer the question '
+        'it exists to answer.',
+      );
+    }
+    final source = file.readAsStringSync();
+    expect(
+      source,
+      contains('oldPlatformView->UnregisterMethodCallHandler();'),
+      reason: 'unregistering the previous CustomPlatformView before erasing '
+          'it on keep-alive reuse IS the patch; without it the old and new '
+          'platform views race registering channels on the same messenger '
+          '(HALO-290/HALO-NEXT-59), not a test failure',
     );
   });
 }

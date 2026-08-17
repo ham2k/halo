@@ -1,24 +1,38 @@
-# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, one destructor changed
+# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, two files changed
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except
 `windows/custom_platform_view/custom_platform_view.cc`'s
-`CustomPlatformView` destructor.
+`CustomPlatformView` destructor and one hunk in
+`windows/in_app_webview/in_app_webview_manager.cpp`'s `createInAppWebView`.
 
 ```diff
    CustomPlatformView::~CustomPlatformView()
    {
      debugLog("dealloc CustomPlatformView");
-     event_sink_ = nullptr;
-+    if (texture_bridge_) {
-+      texture_bridge_->Stop();
-+      texture_bridge_->SetOnFrameAvailable(nullptr);
++    if (event_channel_) {
++      event_channel_->SetStreamHandler(nullptr);
 +    }
+     event_sink_ = nullptr;
+     if (texture_bridge_) {
+       texture_bridge_->Stop();
+       texture_bridge_->SetOnFrameAvailable(nullptr);
+     }
 -    texture_registrar_->UnregisterTexture(texture_id_, nullptr);
 +    auto bridge = std::shared_ptr<TextureBridge>(std::move(texture_bridge_));
 +    auto texture = std::shared_ptr<flutter::TextureVariant>(std::move(flutter_texture_));
 +    texture_registrar_->UnregisterTexture(texture_id_, [bridge, texture]() {});
    }
+```
+
+```diff
+     if (keepAliveId.has_value() && map_contains(keepAliveWebViews, keepAliveId.value())) {
+-      auto webView = std::move(keepAliveWebViews.at(keepAliveId.value())->view);
+-      keepAliveWebViews.erase(keepAliveId.value());
++      auto oldPlatformView = keepAliveWebViews.at(keepAliveId.value()).get();
++      auto webView = std::move(oldPlatformView->view);
++      oldPlatformView->UnregisterMethodCallHandler();
++      keepAliveWebViews.erase(keepAliveId.value());
 ```
 
 Upstream's `example/` is left out, same as the macOS copy — a whole Flutter
@@ -104,9 +118,58 @@ is a raw pointer into `InAppWebViewManager`'s static `GraphicsContext`
 (`in_app_webview_manager.h`), which nothing in this destructor path
 dereferences — the deferred destructor releases COM references only.
 
+## The messenger callback race (event channel + keep-alive reuse)
+
+The texture-destructor fix above stopped the raster thread from touching a
+freed `CustomPlatformView`, but it left two paths where the plugin's own
+`FlutterBinaryMessenger` registrations (`SetMethodCallHandler`,
+`SetStreamHandler` — every `[this]`-capturing callback the constructor
+installs) could still reference a destroyed `CustomPlatformView`:
+
+1. **The event channel was never unregistered.** `UnregisterMethodCallHandler()`
+   (called explicitly by the `dispose`/`disposeKeepAlive` method handlers in
+   `in_app_webview_manager.cpp`, before erasing the platform view) only
+   clears `method_channel_`. Nothing — not that method, not the destructor —
+   ever called `event_channel_->SetStreamHandler(nullptr)`. Every dispose of
+   a webview-backed pane left a dangling `[this]` capture registered in the
+   messenger's internal callback map.
+2. **The keep-alive reuse path skipped unregistration entirely.**
+   `createInAppWebView`'s keep-alive branch destroys the previous
+   `CustomPlatformView` for a reused `keepAliveId` via
+   `keepAliveWebViews.erase(...)` directly, without calling
+   `UnregisterMethodCallHandler()` first — unlike every other teardown path
+   in this file. The new `CustomPlatformView` constructed right after
+   registers its own method/event channels while the old one's are, per (1),
+   never cleared either.
+
+Sentry evidence (`HALO-290` / `HALO-NEXT-59`): `FlutterDesktopMessengerSetCallback`
+→ `free_base` → `base::internal::flat_tree<T>::erase<T>`,
+`EXCEPTION_ACCESS_VIOLATION_READ`, still recurring on the build that shipped
+the texture-destructor fix. The messenger's channel-name → callback registry
+is a `flat_tree` (sorted vector), not built for a dangling entry to survive a
+later insert/erase that reallocates its backing storage — exactly what a
+leaked `SetStreamHandler` registration, plus a keep-alive reuse that never
+even attempts to clear the old one, sets up.
+
+The fix makes the destructor unregister the event channel unconditionally —
+a safety net, not dependent on any caller remembering to do it. (Not the
+same fix as `ChannelDelegate`'s destructor in `types/channel_delegate.cpp`:
+that one only resets its `shared_ptr<MethodChannel>`, which doesn't
+unregister from the messenger either — the same leak class this patch
+exists to fix, not a precedent it follows.) The keep-alive reuse path now
+also calls `UnregisterMethodCallHandler()` before erasing the old
+`CustomPlatformView` — but only after moving its `view` out first, so the
+method-channel clear it triggers happens while `view` is already null. That
+ordering matters: `UnregisterMethodCallHandler()` reaches into
+`view->channelDelegate` only when `view` is still held, and the reused
+`InAppWebView` needs to keep its delegate's handler intact (no
+`initChannel` runs on this branch) — so this clears only the old
+`CustomPlatformView`'s own method channel, not the delegate `disposeKeepAlive`
+also clears when it destroys the webview outright.
+
 ## Verifying this copy
 
-Everything except the hunk above must match the published package. Diff
+Everything except the two hunks above must match the published package. Diff
 against a freshly extracted archive, **never against `~/.pub-cache`** — a
 build writes generated files into the cached copy too, so contamination on
 both sides cancels out. Run from the repo root:
@@ -119,25 +182,27 @@ diff -r -x example -x PATCH.md \
      "$upstream" packages/flutter_inappwebview_windows_patched
 ```
 
-A clean run prints only the destructor hunk above.
+A clean run prints only the two hunks above.
 
 ## No local verification
 
 Nothing in `./scripts/test.sh` compiles C++ or runs on Windows — this repo
 has no Windows build environment at all outside Codemagic. This copy is
 verified only by a tag-triggered Windows release and Sentry staying quiet
-on the `EXCEPTION_STACK_BUFFER_OVERRUN`/`FAST_FAIL_FATAL_APP_EXIT` signature
-afterward. There was never a local repro for the crash this fixes either
+on the `EXCEPTION_STACK_BUFFER_OVERRUN`/`FAST_FAIL_FATAL_APP_EXIT` and
+`EXCEPTION_ACCESS_VIOLATION`/`FlutterDesktopMessengerSetCallback` signatures
+afterward. There was never a local repro for either crash this fixes
 (HALO-290's prior passes), so this is consistent with how that card has
 been verified throughout.
 
 ## Re-vendoring a newer version
 
-Copy the new package over this directory, drop its `example/`, re-apply the
-destructor change if upstream hasn't fixed the underlying race itself
-(check the destructor first — a fix might land under a different shape),
-update the version above and in the archive URL, and re-run the diff. Do
-not hand-merge — this directory is a copy, not a maintained fork.
+Copy the new package over this directory, drop its `example/`, re-apply
+both hunks if upstream hasn't fixed the underlying races itself (check the
+destructor and the keep-alive branch of `createInAppWebView` first — a fix
+might land under a different shape), update the version above and in the
+archive URL, and re-run the diff. Do not hand-merge — this directory is a
+copy, not a maintained fork.
 
 **If the clock-discipline check flags a file in here, do not fix the
 file.** Same exemption rule as `flutter_inappwebview_macos_patched` — add
@@ -146,7 +211,8 @@ than editing a vendored copy.
 
 ## Deleting this
 
-Drop the directory once an upstream release fixes the same race (check the
-destructor, not just the version number — a bump alone proves nothing) —
-along with **both** `flutter_inappwebview_windows` override entries, the one
-in `app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.
+Drop the directory once an upstream release fixes the same races (check the
+destructor and the keep-alive branch, not just the version number — a bump
+alone proves nothing) — along with **both**
+`flutter_inappwebview_windows` override entries, the one in
+`app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.

@@ -130,7 +130,16 @@ namespace flutter_inappwebview_plugin
       windowClass_.hInstance, nullptr);
 
     if (keepAliveId.has_value() && map_contains(keepAliveWebViews, keepAliveId.value())) {
-      auto webView = std::move(keepAliveWebViews.at(keepAliveId.value())->view);
+      auto oldPlatformView = keepAliveWebViews.at(keepAliveId.value()).get();
+      // The move must stay before UnregisterMethodCallHandler(): that call
+      // only reaches into view->channelDelegate when view is still held, and
+      // the reused InAppWebView keeps its delegate's handler (no initChannel
+      // runs in this branch) -- moving first makes it a no-op there, leaving
+      // only oldPlatformView's own method channel cleared. Unlike
+      // disposeKeepAlive(), which destroys the webview too and unregisters
+      // both.
+      auto webView = std::move(oldPlatformView->view);
+      oldPlatformView->UnregisterMethodCallHandler();
       keepAliveWebViews.erase(keepAliveId.value());
       auto customPlatformView = std::make_unique<CustomPlatformView>(plugin->registrar->messenger(),
         plugin->registrar->texture_registrar(),
