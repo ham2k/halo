@@ -50,6 +50,15 @@
                 <data android:scheme="com.ham2k.polo"/>
                 <data android:scheme="com.ham2k.polo.auth"/>
             </intent-filter>
+            <!-- Puts HaLo in Android's "open with" chooser when a matching
+                 USB-serial adapter is plugged in — see res/xml/device_filter.xml
+                 for which chips. -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

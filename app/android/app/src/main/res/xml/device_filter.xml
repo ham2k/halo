@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drives the "open with" chooser Android shows when a USB device is
+     plugged in (AndroidManifest.xml's USB_DEVICE_ATTACHED intent-filter).
+     Vendor id only, no product id: matches any USB-serial adapter built on
+     these chips, not just the specific one ft891_driver.dart hardcodes
+     (0x10C4/0xEA70 is covered here by the CP210x entry).
+
+     This is the dedicated bridge-chip families, NOT the set of devices HaLo
+     can use as a CAT interface — felHR85/UsbSerial (usb_serial's underlying
+     library) also drives generic CDC/ACM devices under any vendor id, and
+     serial_transport_io.dart offers every attached device with no filtering
+     of its own. Those still work once the app is open; a vendor id outside
+     this list just means Android won't offer HaLo in the chooser for it. -->
+<resources>
+    <!-- FTDI -->
+    <usb-device vendor-id="1027"/>
+    <!-- Silicon Labs CP210x -->
+    <usb-device vendor-id="4292"/>
+    <!-- Prolific PL2303 -->
+    <usb-device vendor-id="1659"/>
+    <!-- WCH CH340/CH341 (older CH341 parts report 0x4348) -->
+    <usb-device vendor-id="6790"/>
+    <usb-device vendor-id="17224"/>
+</resources>
