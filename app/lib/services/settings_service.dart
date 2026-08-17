@@ -1148,6 +1148,25 @@ abstract final class LayoutKeys {
   static const logsDockState = 'logs.dockState';
   static const logsPaneOptions = 'logs.paneOptions';
   static const logsViewOptions = 'logs.viewOptions';
+
+  /// The Logs QSO table's user-dragged column widths, keyed by column id
+  /// (see `_LogsColumnWidths`) — its own key rather than a branch of the dock
+  /// tree, since the table can be resized whether or not the dock around it
+  /// has ever been rearranged.
+  static const logsQsoColumnWidths = 'logs.qsoColumnWidths';
+
+  /// Which of the Logs QSO table's columns are shown at all, keyed by the
+  /// same column ids as [logsQsoColumnWidths] — its own key, not a flag
+  /// folded into the widths map, since a hidden column has no width of its
+  /// own to store.
+  static const logsQsoVisibleColumns = 'logs.qsoVisibleColumns';
+
+  /// The user-dragged left-to-right order of ALL the Logs QSO table's
+  /// columns, Name included (see `_LogsViewState._columnOrder`). Carries one
+  /// value, `order`, a `List<String>` of column ids —
+  /// [SettingsService.layoutData] only stores maps, hence the wrapper key
+  /// rather than the list directly.
+  static const logsQsoColumnOrder = 'logs.qsoColumnOrder';
 }
 
 /// Flow ids for [SettingsService.onboardingShownCount] /

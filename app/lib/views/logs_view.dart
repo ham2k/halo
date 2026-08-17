@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -38,6 +39,139 @@ class LogFilter {
   const LogFilter({this.stationCall});
 
   bool get isEmpty => stationCall == null;
+}
+
+/// Every column the QSO table can show, in header order — the id a
+/// [_LogsColumnWidths] field or a [_LogsViewState._visibleColumns] entry is
+/// keyed by, and what the right-click column menu offers. `name` has no
+/// width of its own (see [_LogsColumnWidths]) but is still a real column for
+/// visibility purposes.
+const _allLogsColumns = ['date', 'time', 'freq', 'mode', 'call', 'name'];
+
+/// User-resizable widths for the QSO table's columns (see
+/// [_LogQsoSummaryRow]) — all six carry a real width, including Name's,
+/// because any of them can end up as the table's trailing column (see
+/// [_LogsTableWidth]), and only the trailing one gets to skip having a fixed
+/// width of its own. Persisted under [LayoutKeys.logsQsoColumnWidths], one
+/// JSON map like every other layout dimension
+/// (`SettingsService.layoutData`).
+class _LogsColumnWidths {
+  static const _min = 32.0;
+
+  final double date;
+  final double time;
+  final double freq;
+  final double mode;
+  final double call;
+  final double name;
+
+  const _LogsColumnWidths({
+    this.date = 92,
+    this.time = 56,
+    this.freq = 78,
+    this.mode = 42,
+    this.call = 100,
+    this.name = 150,
+  });
+
+  double widthOf(String id) => switch (id) {
+        'date' => date,
+        'time' => time,
+        'freq' => freq,
+        'mode' => mode,
+        'call' => call,
+        'name' => name,
+        _ => 0,
+      };
+
+  factory _LogsColumnWidths.fromMap(Map<String, dynamic>? map) {
+    double read(String key, double fallback) => (map?[key] as num?)?.toDouble() ?? fallback;
+    const defaults = _LogsColumnWidths();
+    return _LogsColumnWidths(
+      date: read('date', defaults.date),
+      time: read('time', defaults.time),
+      freq: read('freq', defaults.freq),
+      mode: read('mode', defaults.mode),
+      call: read('call', defaults.call),
+      name: read('name', defaults.name),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {'date': date, 'time': time, 'freq': freq, 'mode': mode, 'call': call, 'name': name};
+
+  _LogsColumnWidths _copyWith(String column, double value) => switch (column) {
+        'date' => _LogsColumnWidths(date: value, time: time, freq: freq, mode: mode, call: call, name: name),
+        'time' => _LogsColumnWidths(date: date, time: value, freq: freq, mode: mode, call: call, name: name),
+        'freq' => _LogsColumnWidths(date: date, time: time, freq: value, mode: mode, call: call, name: name),
+        'mode' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: value, call: call, name: name),
+        'call' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: mode, call: value, name: name),
+        'name' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: mode, call: call, name: value),
+        _ => this,
+      };
+
+  /// Widens or narrows [column] by [delta], clamped so a fast drag can't
+  /// shrink it to nothing (or past it, going negative).
+  _LogsColumnWidths resized(String column, double delta) => _copyWith(column, math.max(_min, widthOf(column) + delta));
+
+  /// Sets [column] to exactly [width] (clamped) — the double-click "auto-fit"
+  /// path, as opposed to [resized]'s relative drag delta.
+  _LogsColumnWidths withWidth(String column, double width) => _copyWith(column, math.max(_min, width));
+}
+
+/// The trailing column's own floor once the table is wide enough to
+/// scroll — below this, "Frederick N Pessaro, Jr" reads as noise, not a
+/// name (and a Call or a Date squeezed this far isn't much better).
+const _logsFlexColumnMinWidth = 120.0;
+
+/// The QSO table's total (scrollable) content width, which column is
+/// currently trailing, and that column's own share of the width — whichever
+/// column [columnOrder] (filtered to [visibleColumns]) puts LAST is the one
+/// that stretches to fill the pane, or holds at [_logsFlexColumnMinWidth]
+/// once the table needs to scroll; every other visible column uses its own
+/// [_LogsColumnWidths] entry. [_QsoListHeaderRow] and [_LogQsoSummaryRow]
+/// both size to [content], inside the SAME [SingleChildScrollView] in
+/// [_QsoListPanel.build], so a column resize or reorder that changes which
+/// column trails moves the header and every row in lockstep rather than
+/// letting them drift out of alignment.
+///
+/// Below the table's natural width, [content] is just [availableWidth] and
+/// [flexWidth] stretches to fill it — the same "fill the pane" behavior the
+/// table had before horizontal scrolling existed. Above it, [content] is the
+/// natural width and [flexWidth] holds at [_logsFlexColumnMinWidth]. Either
+/// way, `Row`'s children sum to EXACTLY [content] minus the outer padding:
+/// no leftover slack for `Row` to distribute (there's no `Expanded` doing
+/// that anymore) and no overflow.
+class _LogsTableWidth {
+  final double content;
+  final double flexWidth;
+  final String? flexId;
+
+  const _LogsTableWidth({required this.content, required this.flexWidth, required this.flexId});
+
+  factory _LogsTableWidth.of({
+    required double availableWidth,
+    required _LogsColumnWidths widths,
+    required Set<String> visibleColumns,
+    required List<String> columnOrder,
+  }) {
+    final visible = [
+      for (final id in columnOrder)
+        if (visibleColumns.contains(id)) id,
+    ];
+    if (visible.isEmpty) return const _LogsTableWidth(content: 0, flexWidth: 0, flexId: null);
+    final flexId = visible.last;
+    // The outer Padding, plus every non-trailing visible column and its OWN
+    // trailing gap — that gap is the header's resize handle, present after
+    // every non-trailing column regardless of what follows it, so this sum
+    // has to count it the same unconditional way or the header and the rows
+    // below it stop lining up the moment a column is hidden or reordered.
+    var fixedWidth = Space.lg * 2;
+    for (final id in visible) {
+      if (id != flexId) fixedWidth += widths.widthOf(id) + Space.lg;
+    }
+    final content = math.max(availableWidth, fixedWidth + _logsFlexColumnMinWidth);
+    return _LogsTableWidth(content: content, flexWidth: content - fixedWidth, flexId: flexId);
+  }
 }
 
 /// The Logs destination (gated behind the `logs` experiment, see
@@ -165,6 +299,19 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   }
 
   LogFilter _filter = const LogFilter();
+  late _LogsColumnWidths _columnWidths;
+
+  /// Which of [_allLogsColumns] the QSO table currently shows — toggled from
+  /// the right-click menu (see [_openColumnMenu]). Never empty: [_toggleColumnVisible]
+  /// refuses to remove the last one, so the table can't end up with no
+  /// columns and no way back short of clearing app data.
+  late Set<String> _visibleColumns;
+
+  /// Left-to-right order of all [_allLogsColumns], Name included — whichever
+  /// ends up trailing (after hiding) is the one [_LogsTableWidth] stretches
+  /// to fill the pane. Dragged from [_QsoListHeaderRow]; see [_reorderColumn].
+  late List<String> _columnOrder;
+
   String? _selectedUuid;
   String _searchQuery = '';
   final _searchController = TextEditingController();
@@ -200,6 +347,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   List<Qso>? _cachedSearchResult;
   List<Qso>? _cachedRangeSource;
   (int, int)? _cachedRange;
+  List<Qso>? _cachedFreqDigitsSource;
+  int? _cachedFreqDigits;
 
   List<Qso> _cachedApplySearch(List<Qso> qsos) {
     if (identical(qsos, _cachedSearchSource) && _searchQuery == _cachedSearchQuery) {
@@ -220,6 +369,14 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     return range;
   }
 
+  int _cachedMaxFreqMhzDigits(List<Qso> list) {
+    if (identical(list, _cachedFreqDigitsSource)) return _cachedFreqDigits!;
+    final digits = _maxFreqMhzDigits(list);
+    _cachedFreqDigitsSource = list;
+    _cachedFreqDigits = digits;
+    return digits;
+  }
+
   /// Shared between the two-pane dock and the narrow single-pane fallback in
   /// [_buildScaffold] — same widget instance under the same key in both, so
   /// crossing the `isTwoPane` boundary reparents the live list (selection,
@@ -238,6 +395,21 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     // fresh each time the destination switches back to it, so `initState` is
     // exactly "a visit started".
     widget.services.track('screen_viewed', {'screen': 'logs'});
+    _columnWidths = _LogsColumnWidths.fromMap(widget.services.settings.layoutData(LayoutKeys.logsQsoColumnWidths));
+    final storedVisibility = widget.services.settings.layoutData(LayoutKeys.logsQsoVisibleColumns);
+    _visibleColumns = {
+      for (final column in _allLogsColumns)
+        if (storedVisibility?[column] != false) column,
+    };
+    // Self-healing rather than all-or-nothing: an id this build no longer
+    // recognizes (a future rename) is dropped instead of discarding the
+    // whole order, and one this build knows but the stored order doesn't
+    // (a future addition) is appended rather than going missing.
+    final storedOrder =
+        (widget.services.settings.layoutData(LayoutKeys.logsQsoColumnOrder)?['order'] as List?)?.cast<String>() ??
+            const [];
+    final knownOrder = storedOrder.where(_allLogsColumns.contains).toList();
+    _columnOrder = [...knownOrder, ..._allLogsColumns.where((column) => !knownOrder.contains(column))];
     _subscribeCallsigns();
   }
 
@@ -282,6 +454,94 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   }
 
   void _toggleSelect(String uuid) => setState(() => _selectedUuid = _selectedUuid == uuid ? null : uuid);
+
+  /// Live-updates the dragged column as the pointer moves; the drag itself
+  /// never touches settings storage — see [_persistColumnWidths], called
+  /// once the pointer lifts, so a fast drag doesn't write prefs every frame.
+  void _resizeColumn(String column, double delta) =>
+      setState(() => _columnWidths = _columnWidths.resized(column, delta));
+
+  void _persistColumnWidths() =>
+      unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsQsoColumnWidths, _columnWidths.toMap()));
+
+  /// Double-click "auto-fit" — sets and persists in one step, unlike a drag's
+  /// [_resizeColumn]/[_persistColumnWidths] pair, since there's no in-between
+  /// pointer-moves stretch to skip writing prefs during.
+  void _autoFitColumn(String column, double width) {
+    setState(() => _columnWidths = _columnWidths.withWidth(column, width));
+    _persistColumnWidths();
+  }
+
+  /// Refuses to remove the last visible column (see [_visibleColumns]'s own
+  /// doc) rather than silently no-opping past the check-menu's own state —
+  /// the operator would see the checkbox uncheck and then, seeing nothing
+  /// change, assume the app is broken rather than that the action was
+  /// disallowed.
+  void _toggleColumnVisible(String column) {
+    if (_visibleColumns.contains(column) && _visibleColumns.length <= 1) return;
+    setState(() {
+      final next = Set<String>.from(_visibleColumns);
+      if (!next.remove(column)) next.add(column);
+      _visibleColumns = next;
+    });
+    unawaited(widget.services.settings.setLayoutData(
+      LayoutKeys.logsQsoVisibleColumns,
+      {for (final column in _allLogsColumns) column: _visibleColumns.contains(column)},
+    ));
+  }
+
+  /// The right-click "manage columns" menu — a single tap toggles one column
+  /// and closes, the same one-shot `showMenu` [_openCallsignPicker] uses for
+  /// its own menu, rather than staying open for several toggles in a row.
+  Future<void> _openColumnMenu(Offset globalPosition) async {
+    final t = context.t.home.logs.columns;
+    String labelFor(String column) => switch (column) {
+          'date' => t.date,
+          'time' => t.time,
+          'freq' => t.freq,
+          'mode' => t.mode,
+          'call' => t.call,
+          'name' => t.name,
+          _ => column,
+        };
+    final selection = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(globalPosition.dx, globalPosition.dy, globalPosition.dx, globalPosition.dy),
+      items: [
+        for (final column in _allLogsColumns)
+          CheckedPopupMenuItem(
+            value: column,
+            checked: _visibleColumns.contains(column),
+            child: Text(labelFor(column)),
+          ),
+      ],
+    );
+    // Same guard [_openCallsignPicker] uses for its own awaited `showMenu` —
+    // the menu can still resolve after this state is disposed (navigate away
+    // mid-pick), and `_toggleColumnVisible`'s `setState` would throw.
+    if (selection != null && mounted) _toggleColumnVisible(selection);
+  }
+
+  /// Drops [dragged] where [droppedOn] currently sits, shifting everything
+  /// between the two over by one — the usual "reorder by dropping onto a
+  /// neighbor" a spreadsheet does, not a plain two-column swap.
+  void _reorderColumn(String dragged, String droppedOn) {
+    if (dragged == droppedOn) return;
+    setState(() {
+      final order = List<String>.from(_columnOrder);
+      // Index AFTER removal, not before: removing `dragged` shifts every
+      // later index down by one, and inserting at the pre-removal index
+      // would land one slot too far right whenever `dragged` started BEFORE
+      // `droppedOn` — the same drop reading as "insert after" going one way
+      // and "insert before" going the other.
+      if (!order.remove(dragged)) return;
+      final targetIndex = order.indexOf(droppedOn);
+      if (targetIndex == -1) return;
+      order.insert(targetIndex, dragged);
+      _columnOrder = order;
+    });
+    unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsQsoColumnOrder, {'order': _columnOrder}));
+  }
 
   List<Qso> _applySearch(List<Qso> qsos) {
     final query = _searchQuery.trim().toLowerCase();
@@ -377,6 +637,15 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         onSelect: _toggleSelect,
         searching: _searchQuery.trim().isNotEmpty,
         loading: !_callsignsLoaded,
+        columnWidths: _columnWidths,
+        onResizeColumn: _resizeColumn,
+        onResizeColumnEnd: _persistColumnWidths,
+        onAutoFitColumn: _autoFitColumn,
+        visibleColumns: _visibleColumns,
+        onShowColumnMenu: _openColumnMenu,
+        columnOrder: _columnOrder,
+        onReorderColumn: _reorderColumn,
+        freqMhzDigits: filtered == null ? 1 : _cachedMaxFreqMhzDigits(filtered),
       ),
     );
     return Scaffold(
@@ -986,13 +1255,20 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       );
 }
 
-/// The middle pane: every QSO the filter and search match, oldest first —
-/// genuinely headerless (the callsign picker, count/date-span and search
-/// field live in the view's own AppBar, see `_LogsViewState._buildTitle`),
-/// so this is just the list plus, while a QSO is selected, the edit panel
-/// pinned above it — always fully visible regardless of where the list
-/// itself happens to be scrolled, the same way a page's header stays put
-/// while its body scrolls underneath.
+/// The middle pane: every QSO the filter and search match, oldest first — the
+/// callsign picker, count/date-span and search field live in the view's own
+/// AppBar (see `_LogsViewState._buildTitle`), so the only header this pane
+/// draws is [_QsoListHeaderRow], labeling and resizing the fixed-width
+/// columns below it. It sits BELOW the edit panel that's pinned above the
+/// list while a QSO is selected — the labels belong to the list, not to
+/// whatever's currently being edited — and, like the list, stays fully
+/// visible regardless of where the list itself happens to be scrolled
+/// VERTICALLY, the same way a page's header stays put while its body scrolls
+/// underneath. HORIZONTALLY the two move together instead: widening the
+/// fixed-width columns can push the table past the pane's own width, so
+/// header and rows share ONE [SingleChildScrollView] (see [_LogsTableWidth]
+/// and this class's own `build`) rather than each carrying its own
+/// independent, and therefore driftable, horizontal offset.
 ///
 /// The list itself is FIXED-extent ([LayoutMetrics.qsoRowHeight], the same
 /// row height [QsoList] declares) so a scrollbar drag resolves to a target
@@ -1023,6 +1299,25 @@ class _QsoListPanel extends StatelessWidget {
   /// would otherwise flash before there's anything to select.
   final bool loading;
 
+  final _LogsColumnWidths columnWidths;
+  final void Function(String column, double delta) onResizeColumn;
+  final VoidCallback onResizeColumnEnd;
+  final void Function(String column, double width) onAutoFitColumn;
+
+  /// See `_LogsViewState._visibleColumns` — which of [_allLogsColumns] are
+  /// shown at all, independent of [columnWidths].
+  final Set<String> visibleColumns;
+  final void Function(Offset globalPosition) onShowColumnMenu;
+
+  /// See `_LogsViewState._columnOrder` — left-to-right order of
+  /// [_allLogsColumns], Name included.
+  final List<String> columnOrder;
+  final void Function(String dragged, String droppedOn) onReorderColumn;
+
+  /// See [_maxFreqMhzDigits] — computed once by `_LogsViewState` over [qsos],
+  /// not per row.
+  final int freqMhzDigits;
+
   const _QsoListPanel({
     required this.services,
     required this.call,
@@ -1032,6 +1327,15 @@ class _QsoListPanel extends StatelessWidget {
     required this.onSelect,
     required this.searching,
     required this.loading,
+    required this.columnWidths,
+    required this.onResizeColumn,
+    required this.onResizeColumnEnd,
+    required this.onAutoFitColumn,
+    required this.visibleColumns,
+    required this.onShowColumnMenu,
+    required this.columnOrder,
+    required this.onReorderColumn,
+    required this.freqMhzDigits,
   });
 
   @override
@@ -1079,28 +1383,386 @@ class _QsoListPanel extends StatelessWidget {
           duration: const Duration(milliseconds: 400),
           sizeCurve: Curves.easeInOut,
         ),
+        // Below the edit panel, not above it — column labels belong to the
+        // list they sit on top of, not to whatever's currently being edited.
         Expanded(
-          child: ListView.builder(
-            itemCount: list.length,
-            itemExtent: rowExtent,
-            itemBuilder: (context, index) {
-              final qso = list[index];
-              return _LogQsoSummaryRow(
-                qso: qso,
-                selected: qso.uuid == selectedUuid,
-                // The selected row's own accent border already marks its
-                // bottom edge (see [_LogQsoSummaryRow]); a divider under it
-                // too would paint over that border, foreground decorations
-                // painting child-to-ancestor. The very last row has nothing
-                // below it to divide from either way.
-                drawDivider: index < list.length - 1 && qso.uuid != selectedUuid,
-                compact: compact,
-                onTap: () => onSelect(qso.uuid),
-              );
-            },
-          ),
+          child: compact
+              // No header, no horizontal scroll, no Name column at this
+              // width — the same boundary the view itself falls back to a
+              // list-only layout at (see `_LogsViewState._buildScaffold`).
+              ? _buildRows(context, list, rowExtent, compact: true, tableWidth: _compactTableWidth)
+              // Measured from a LayoutBuilder, not the SingleChildScrollView
+              // below it — that one's own constraints are unbounded along
+              // the scroll axis, which would make every table "wide enough
+              // to scroll" whether or not it actually was.
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final tableWidth = _LogsTableWidth.of(
+                      availableWidth: constraints.maxWidth,
+                      widths: columnWidths,
+                      visibleColumns: visibleColumns,
+                      columnOrder: columnOrder,
+                    );
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: tableWidth.content,
+                        height: constraints.maxHeight,
+                        child: Column(
+                          children: [
+                            _QsoListHeaderRow(
+                              widths: columnWidths,
+                              visibleColumns: visibleColumns,
+                              columnOrder: columnOrder,
+                              tableWidth: tableWidth,
+                              onResize: onResizeColumn,
+                              onResizeEnd: onResizeColumnEnd,
+                              onAutoFit: (column) => onAutoFitColumn(
+                                column,
+                                _autoFitColumnWidth(column, context, list, freqMhzDigits),
+                              ),
+                              onShowMenu: onShowColumnMenu,
+                              onReorder: onReorderColumn,
+                            ),
+                            Expanded(
+                              child: _buildRows(context, list, rowExtent, compact: false, tableWidth: tableWidth),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
+    );
+  }
+
+  /// Compact never shows Name or a header (see the branch above), so nothing
+  /// in [_LogQsoSummaryRow] ever reads this — a placeholder rather than a
+  /// nullable `tableWidth` param everywhere else has to null-check.
+  static const _compactTableWidth = _LogsTableWidth(content: 0, flexWidth: 0, flexId: null);
+
+  Widget _buildRows(
+    BuildContext context,
+    List<Qso> list,
+    double rowExtent, {
+    required bool compact,
+    required _LogsTableWidth tableWidth,
+  }) =>
+      ListView.builder(
+        itemCount: list.length,
+        itemExtent: rowExtent,
+        itemBuilder: (context, index) {
+          final qso = list[index];
+          return _LogQsoSummaryRow(
+            qso: qso,
+            selected: qso.uuid == selectedUuid,
+            // The selected row's own accent border already marks its bottom
+            // edge (see [_LogQsoSummaryRow]); a divider under it too would
+            // paint over that border, foreground decorations painting
+            // child-to-ancestor. The very last row has nothing below it to
+            // divide from either way.
+            drawDivider: index < list.length - 1 && qso.uuid != selectedUuid,
+            compact: compact,
+            widths: columnWidths,
+            visibleColumns: visibleColumns,
+            columnOrder: columnOrder,
+            freqMhzDigits: freqMhzDigits,
+            tableWidth: tableWidth,
+            onTap: () => onSelect(qso.uuid),
+          );
+        },
+      );
+}
+
+/// Labels [_QsoListPanel]'s columns and carries the drag handles that resize
+/// them, plus a `Draggable`/`DragTarget` pair PER COLUMN LABEL — including
+/// Name's — that reorders them: dropping one onto another moves it there
+/// (see `_LogsViewState._reorderColumn`). Shown only alongside the two-pane,
+/// non-[compact] row layout (see `_QsoListPanel.build`), which is the one
+/// whose widths are user-resizable at all. Column widths and the gap
+/// between them mirror [_LogQsoSummaryRow]'s own non-compact layout exactly,
+/// so labels line up with the data beneath them; whichever column
+/// [_LogsTableWidth] finds trailing skips its own resize handle and just
+/// takes what's left, the same as the row's own trailing cell does. Same
+/// gray background and bottom-border treatment as `DayHeaderRow`
+/// (`QsoList`'s own per-day header in the operation view), for the same
+/// reason: `surface` alone doesn't read as a header against the
+/// plain-`surface` rows below it.
+class _QsoListHeaderRow extends StatelessWidget {
+  final _LogsColumnWidths widths;
+  final Set<String> visibleColumns;
+  final void Function(String column, double delta) onResize;
+  final VoidCallback onResizeEnd;
+
+  /// Snaps a column to the width [_autoFitColumnWidth] computes for it —
+  /// double-clicking its resize handle, the same "auto-fit" gesture
+  /// spreadsheets use.
+  final void Function(String column) onAutoFit;
+
+  /// Right-click anywhere on the row — opens `_LogsViewState._openColumnMenu`
+  /// at the click position, the "which columns are shown" menu.
+  final void Function(Offset globalPosition) onShowMenu;
+
+  /// See [_LogsTableWidth] — computed once by `_QsoListPanel`, shared with
+  /// every [_LogQsoSummaryRow] in the same build so the whole table (inside
+  /// one shared horizontally-scrolling region) stays exactly
+  /// [_LogsTableWidth.content] wide.
+  final _LogsTableWidth tableWidth;
+
+  /// See `_LogsViewState._columnOrder`.
+  final List<String> columnOrder;
+
+  /// A column was dropped onto another — see `_LogsViewState._reorderColumn`.
+  final void Function(String dragged, String droppedOn) onReorder;
+
+  const _QsoListHeaderRow({
+    required this.widths,
+    required this.visibleColumns,
+    required this.onResize,
+    required this.onResizeEnd,
+    required this.onAutoFit,
+    required this.onShowMenu,
+    required this.tableWidth,
+    required this.columnOrder,
+    required this.onReorder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = context.t.home.logs.columns;
+    final labelStyle = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w700,
+    );
+
+    Widget label(String text) => Text(text, style: labelStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
+
+    String labelOf(String id) => switch (id) {
+          'date' => t.date,
+          'time' => t.time,
+          'freq' => t.freq,
+          'mode' => t.mode,
+          'call' => t.call,
+          'name' => t.name,
+          _ => id,
+        };
+
+    Widget handle(String column) => _ColumnResizeHandle(
+          width: Space.lg,
+          onDragUpdate: (delta) => onResize(column, delta),
+          onDragEnd: onResizeEnd,
+          onDoubleTap: () => onAutoFit(column),
+        );
+
+    // Drop target first, `Draggable` inside it: this cell needs to
+    // recognize a drag landing on ITSELF (to swap in) as much as it needs
+    // to start one, and only the outer widget sees `candidateData` to paint
+    // the "drop here" highlight.
+    Widget draggableColumn(String id, double width) {
+      final box = SizedBox(width: width, child: label(labelOf(id)));
+      return DragTarget<String>(
+        onWillAcceptWithDetails: (details) => details.data != id,
+        onAcceptWithDetails: (details) => onReorder(details.data, id),
+        builder: (context, candidates, _) => ColoredBox(
+          color: candidates.isNotEmpty ? theme.colorScheme.primary.withValues(alpha: 0.15) : Colors.transparent,
+          child: Draggable<String>(
+            data: id,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: Material(
+              elevation: 4,
+              color: theme.colorScheme.primary,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
+                child: Text(labelOf(id), style: labelStyle?.copyWith(color: theme.colorScheme.onPrimary)),
+              ),
+            ),
+            childWhenDragging: Opacity(opacity: 0.35, child: box),
+            child: MouseRegion(cursor: SystemMouseCursors.grab, child: box),
+          ),
+        ),
+      );
+    }
+
+    // Every visible column is draggable, including Name — whichever ends up
+    // LAST (the loop's own [tableWidth.flexId]) skips the trailing handle,
+    // since there's nothing after it left to resize against, and takes
+    // [tableWidth.flexWidth] instead of its own stored width.
+    final children = <Widget>[
+      for (final id in columnOrder)
+        if (visibleColumns.contains(id))
+          if (id == tableWidth.flexId)
+            draggableColumn(id, tableWidth.flexWidth)
+          else ...[
+            draggableColumn(id, widths.widthOf(id)),
+            handle(id),
+          ],
+    ];
+
+    return GestureDetector(
+      onSecondaryTapUp: (details) => onShowMenu(details.globalPosition),
+      child: Container(
+        color: theme.colorScheme.surfaceContainerHighest,
+        // `foregroundDecoration`, not `decoration` — same reason `DayHeaderRow`
+        // uses it: `decoration`'s border would inset the child and grow this
+        // row past a plain QSO row's height for the same padding.
+        foregroundDecoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.colorScheme.outline, width: 3)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.xs),
+          child: Row(children: children),
+        ),
+      ),
+    );
+  }
+}
+
+/// A drag handle between two [_QsoListHeaderRow] columns, sized to the same
+/// [Space.lg] gap [_LogQsoSummaryRow] leaves between its own columns. Drives
+/// its drag from a root-level capture overlay rather than its own
+/// hit-testing once the pointer is down — the same technique
+/// [SolidPaneDivider] uses, and for the same reason: this bar is only a
+/// couple of device pixels wide, LogsView has a map webview a fast drag can
+/// cross into, and a native view that steals the pointer-up leaves the drag
+/// stuck "active" forever with no `onDragEnd` ever firing.
+class _ColumnResizeHandle extends StatefulWidget {
+  final double width;
+  final ValueChanged<double> onDragUpdate;
+  final VoidCallback onDragEnd;
+  final VoidCallback onDoubleTap;
+
+  const _ColumnResizeHandle({
+    required this.width,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+    required this.onDoubleTap,
+  });
+
+  @override
+  State<_ColumnResizeHandle> createState() => _ColumnResizeHandleState();
+}
+
+class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
+  bool _hovered = false;
+  bool _dragging = false;
+
+  /// Non-null for the duration of a drag: a root-level, purely visual,
+  /// fully-transparent overlay entry covering the ENTIRE window, above every
+  /// platform view. See [SolidPaneDivider]'s own field doc — same technique,
+  /// same reason: it exists only to claim the pointer route away from a
+  /// native view, not to paint anything.
+  OverlayEntry? _captureOverlay;
+
+  /// The pointer this handle is currently watching, from its
+  /// `PointerDownEvent` to its up/cancel — null the rest of the time.
+  int? _trackingPointer;
+
+  /// Set once the tracked pointer has moved past [_dragSlop] — null before
+  /// that. Distinguishes a real drag (which owns [_captureOverlay] and has
+  /// called `widget.onDragUpdate`) from a plain click still being watched.
+  int? _activePointer;
+  Offset? _downPosition;
+  Offset? _lastPosition;
+
+  static double _dragSlop(PointerDeviceKind kind) =>
+      kind == PointerDeviceKind.touch ? kTouchSlop : kPrecisePointerPanSlop;
+
+  void _handlePointerDown(PointerDownEvent event) {
+    if (_trackingPointer != null) return;
+    if (event.buttons != kPrimaryButton) return;
+    _trackingPointer = event.pointer;
+    _downPosition = event.position;
+    _lastPosition = event.position;
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (event.pointer != _trackingPointer) return;
+    if (_activePointer == null) {
+      if ((event.position - _downPosition!).distance < _dragSlop(event.kind)) return;
+      _activePointer = event.pointer;
+      setState(() => _dragging = true);
+      final overlay = Overlay.of(context, rootOverlay: true);
+      _captureOverlay = OverlayEntry(
+        builder: (context) => const Positioned.fill(child: IgnorePointer(child: ColoredBox(color: Colors.transparent))),
+      );
+      overlay.insert(_captureOverlay!);
+    }
+    final last = _lastPosition!;
+    _lastPosition = event.position;
+    widget.onDragUpdate(event.position.dx - last.dx);
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    if (event.pointer != _trackingPointer) return;
+    _endTracking();
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _trackingPointer) return;
+    _endTracking();
+  }
+
+  // Cancelled the same as completed, deliberately: a cancelled drag still
+  // applied `onDragUpdate` deltas up to this point (`_resizeColumn` already
+  // `setState`d the new width), so skipping `onDragEnd` here would leave
+  // that width applied on screen but never persisted — silently lost on the
+  // next settings reload.
+  void _endTracking() {
+    final wasActive = _activePointer != null;
+    _trackingPointer = null;
+    _activePointer = null;
+    _downPosition = null;
+    _lastPosition = null;
+    // A plain click never started a drag (no overlay, no `onDragUpdate`) —
+    // nothing to end.
+    if (!wasActive) return;
+    _captureOverlay?.remove();
+    _captureOverlay = null;
+    setState(() => _dragging = false);
+    widget.onDragEnd();
+  }
+
+  @override
+  void dispose() {
+    // The overlay outlives a mere rebuild but not the handle itself.
+    _captureOverlay?.remove();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final active = _hovered || _dragging;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeLeftRight,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onDoubleTap: widget.onDoubleTap,
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: _handlePointerDown,
+          onPointerMove: _handlePointerMove,
+          onPointerUp: _handlePointerUp,
+          onPointerCancel: _handlePointerCancel,
+          child: SizedBox(
+            width: widget.width,
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                width: active ? 2 : 1,
+                height: 16,
+                color: active ? theme.colorScheme.primary : theme.dividerColor,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1275,18 +1937,98 @@ String _dateRangeLabel(int minMillis, int maxMillis) {
   return start == end ? start : '$start – $end';
 }
 
+/// The largest MHz-digit count among freq values in [qsos] — 1 when none has
+/// a numeric freq at all. [_LogQsoSummaryRow] left-pads every row's MHz part
+/// to this width (see [_freqField]'s `mhzDigits`), so in a monospace face the
+/// digits land on the same column across rows via the padding spaces
+/// themselves, without needing a fixed-width box or pixel-level alignment —
+/// and a column left-anchored in a wider, user-resized [_LogsColumnWidths]
+/// picks up the leftover width as trailing space rather than pulling the
+/// digits away from Time.
+int _maxFreqMhzDigits(List<Qso> qsos) {
+  var digits = 1;
+  for (final qso in qsos) {
+    final freq = qso.freq;
+    if (freq == null) continue;
+    final mhzLength = freqDisplayParts(freq, hzDigits: 0).mhz.length;
+    if (mhzLength > digits) digits = mhzLength;
+  }
+  return digits;
+}
+
+/// The narrowest [column] can get while still showing, in full, every value
+/// currently in [qsos] AND its own header label — double-clicking a
+/// [_QsoListHeaderRow] handle snaps to this, the same "auto-fit" gesture
+/// spreadsheets use on a header border. Measures with [textWidth] — the same
+/// helper the spots panel uses for the same reason: it lays a string out the
+/// way a real `Text` widget would (ambient style merge, current
+/// `textScaler`), rather than a bare `TextPainter`, which measures at
+/// scale 1.0 and comes out too narrow under any OS/accessibility text
+/// scaling above that. The Call column's font differs from the other mono
+/// columns (bold, larger) and Name isn't mono at all (see
+/// [_LogQsoSummaryRow]'s own `cellContent`), so only a per-column style,
+/// matching what actually renders, is correct for either. `date`/`time` are
+/// fixed-format, so their widest value is a representative sample rather
+/// than anything read from [qsos].
+double _autoFitColumnWidth(String column, BuildContext context, List<Qso> qsos, int freqMhzDigits) {
+  final theme = Theme.of(context);
+  final monoStyle = theme.textTheme.bodyMedium?.copyWith(fontFamily: 'RobotoMono');
+  final callStyle = theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoMono', fontWeight: FontWeight.w800);
+  final nameStyle = theme.textTheme.bodyMedium;
+  final labelStyle = theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700);
+
+  String widest(Iterable<String> values) {
+    var best = '';
+    for (final value in values) {
+      if (value.length > best.length) best = value;
+    }
+    return best;
+  }
+
+  final t = context.t.home.logs.columns;
+  final (dataText, dataStyle, headerText) = switch (column) {
+    'date' => ('0000-00-00', monoStyle, t.date),
+    'time' => ('00:00z', monoStyle, t.time),
+    'freq' => (
+        widest([
+          for (final qso in qsos)
+            if (qso.freq case final khz?)
+              (() {
+                final parts = freqDisplayParts(khz, hzDigits: 0);
+                return '${parts.mhz.padLeft(freqMhzDigits)}.${parts.khz}';
+              })()
+            else
+              ?qso.band,
+        ]),
+        monoStyle,
+        t.freq,
+      ),
+    'mode' => (widest(qsos.map((qso) => qso.mode ?? '')), monoStyle, t.mode),
+    'call' => (widest(qsos.map((qso) => qso.theirCall)), callStyle, t.call),
+    'name' => (widest(qsos.map((qso) => qso.theirName ?? '')), nameStyle, t.name),
+    _ => ('', monoStyle, ''),
+  };
+  final width = math.max(
+    textWidth(context, dataText, dataStyle ?? const TextStyle()),
+    textWidth(context, headerText, labelStyle ?? const TextStyle()),
+  );
+  return math.max(_LogsColumnWidths._min, width);
+}
+
 /// Bolded-MHz/regular-kHz, dot-separated — the same split [QsoList] paints
 /// its own frequency column with, rounded to the kHz (no Hz segment: this
 /// list spans many operations at once, so there's no single QSO set to ask
-/// "does anything here need sub-kHz precision").
-Widget _freqField(double khz, TextStyle? style) {
+/// "does anything here need sub-kHz precision"). [mhzDigits] left-pads the
+/// MHz part with spaces (see [_maxFreqMhzDigits]) so every row in the current
+/// set lines up its digits without the column needing to right-align at all.
+Widget _freqField(double khz, TextStyle? style, {required int mhzDigits}) {
   final parts = freqDisplayParts(khz, hzDigits: 0);
   return Row(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.baseline,
     textBaseline: TextBaseline.alphabetic,
     children: [
-      Text(parts.mhz, style: style?.copyWith(fontWeight: FontWeight.w700)),
+      Text(parts.mhz.padLeft(mhzDigits), style: style?.copyWith(fontWeight: FontWeight.w700)),
       Text('.', style: style),
       Text(parts.khz, style: style),
     ],
@@ -1296,25 +2038,53 @@ Widget _freqField(double khz, TextStyle? style) {
 /// One fixed-height row in [_QsoListPanel]'s list — summary only, no edit
 /// state; selecting a row is [onTap] plus whatever [_QsoListPanel] does with
 /// it, and the actual editing happens in [_LogQsoEditPanel] elsewhere on
-/// screen. Date, time, freq/band, mode, callsign, name — no RST (signal
-/// reports don't earn a column in a cross-operation log) and no other
-/// operation-only columns (QSO#, DX flag/state, activity refs, contest
-/// exchange). Date is first: unlike a single operation's log, a row here can
-/// be from any day.
+/// screen. Up to [_allLogsColumns]' six (whichever [visibleColumns] keeps)
+/// — no RST (signal reports don't earn a column in a cross-operation log)
+/// and no other operation-only columns (QSO#, DX flag/state, activity refs,
+/// contest exchange), neither of which is offered in the column menu at
+/// all. Date is first: unlike a single operation's log, a row here can be
+/// from any day.
 ///
-/// [compact] drops the name column and tightens the rest — the same
-/// single-pane boundary the view itself falls back to a list-only layout at
-/// (see `_LogsViewState._buildScaffold`), where there simply isn't the width
-/// for a sixth column, and the numeric ones (date/time/freq — mode and the
-/// callsign stay put, both short and already tight) go to a condensed cut of
-/// the same mono face rather than a smaller size, which would just make
-/// them harder to read at exactly the width where every column already had
-/// to fight for room.
+/// [compact] drops the name column regardless of [visibleColumns] and
+/// tightens the rest — the same single-pane boundary the view itself falls
+/// back to a list-only layout at (see `_LogsViewState._buildScaffold`),
+/// where there simply isn't the width for a sixth column, and the numeric
+/// ones (date/time/freq — mode and the callsign stay put, both short and
+/// already tight) go to a condensed cut of the same mono face rather than a
+/// smaller size, which would just make them harder to read at exactly the
+/// width where every column already had to fight for room.
 class _LogQsoSummaryRow extends StatelessWidget {
   final Qso qso;
   final bool selected;
   final bool drawDivider;
   final bool compact;
+
+  /// Ignored when [compact] — the compact layout has its own fixed, tighter
+  /// widths (see the class doc), not the user-resized ones from
+  /// [_QsoListHeaderRow], which isn't shown at that width either.
+  final _LogsColumnWidths widths;
+
+  /// See `_LogsViewState._visibleColumns` — a column absent here is skipped
+  /// entirely (box, gap and all), whether or not [compact] would otherwise
+  /// show it.
+  final Set<String> visibleColumns;
+
+  /// See [_maxFreqMhzDigits] — computed once, over the whole displayed set,
+  /// by [_QsoListPanel] rather than per row, so every row pads to the same
+  /// width regardless of its own value.
+  final int freqMhzDigits;
+
+  /// See [_LogsTableWidth] — ignored when [compact], same as [widths].
+  final _LogsTableWidth tableWidth;
+
+  /// See `_LogsViewState._columnOrder` — same left-to-right order
+  /// [_QsoListHeaderRow] draws its labels in, applied here whether or not
+  /// [compact] (a reordered narrow fallback reads the same as the reordered
+  /// full one, even with no header up there to show the order). `compact`
+  /// still drops `name` regardless of where reordering put it — see the
+  /// class doc.
+  final List<String> columnOrder;
+
   final VoidCallback onTap;
 
   const _LogQsoSummaryRow({
@@ -1322,6 +2092,11 @@ class _LogQsoSummaryRow extends StatelessWidget {
     required this.selected,
     required this.drawDivider,
     required this.compact,
+    required this.widths,
+    required this.visibleColumns,
+    required this.freqMhzDigits,
+    required this.tableWidth,
+    required this.columnOrder,
     required this.onTap,
   });
 
@@ -1336,6 +2111,9 @@ class _LogQsoSummaryRow extends StatelessWidget {
     final monoStyle = theme.textTheme.bodyMedium?.copyWith(fontFamily: 'RobotoMono', color: textColor);
     final condensedStyle = compact ? monoStyle?.copyWith(fontFamily: 'RobotoCondensed') : monoStyle;
     final columnGap = compact ? Space.xs : Space.lg;
+    // The compact layout's own fixed widths, always the class's defaults —
+    // see the class doc.
+    final columnWidths = compact ? const _LogsColumnWidths() : widths;
     final freqKHz = qso.freq;
     final callsignText = Text(
       qso.theirCall,
@@ -1343,6 +2121,67 @@ class _LogQsoSummaryRow extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoMono', fontWeight: FontWeight.w800, color: textColor),
     );
+    // Content only, no width yet — the trailing visible column (Call, unless
+    // it's been hidden or reordered away from the end) is `Expanded`, and
+    // everything else's width depends on whether THIS build's
+    // [tableWidth.flexId] happens to land on it, so wrapping happens per
+    // loop iteration below, not here.
+    final cellContent = {
+      'date': Text(date, style: condensedStyle, maxLines: 1, softWrap: false),
+      'time': Text(time, style: condensedStyle),
+      'freq': freqKHz == null
+          ? Text(qso.band ?? '', style: condensedStyle)
+          : _freqField(freqKHz, condensedStyle, mhzDigits: freqMhzDigits),
+      'mode': Text(qso.mode ?? '', style: monoStyle),
+      'call': callsignText,
+      'name': Text(
+        qso.theirName ?? '',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+      ),
+    };
+    final rowChildren = <Widget>[];
+    if (compact) {
+      // The trailing visible column (usually Call, but hiding or reordering
+      // can put another one there) is the one that gets `Expanded` — a
+      // hardcoded `id == 'call'` check left dead space on the right if Call
+      // itself was ever hidden, since nothing else would step up to fill it.
+      final compactVisible = [
+        for (final id in columnOrder)
+          if (id != 'name' && visibleColumns.contains(id)) id,
+      ];
+      final compactFlexId = compactVisible.isEmpty ? null : compactVisible.last;
+      // Gap only BETWEEN what's left after hiding — there's no header here
+      // to stay pixel-aligned with, and the trailing column already soaks up
+      // whatever's left via `Expanded`, so a gap after it would just be dead
+      // space before nothing. `name` is skipped outright — compact drops it
+      // regardless of [visibleColumns] or where reordering put it, see the
+      // class doc.
+      for (final id in compactVisible) {
+        if (rowChildren.isNotEmpty) rowChildren.add(SizedBox(width: columnGap));
+        rowChildren.add(
+          id == compactFlexId
+              ? Expanded(child: cellContent[id]!)
+              : SizedBox(width: columnWidths.widthOf(id), child: cellContent[id]!),
+        );
+      }
+    } else {
+      // Gap unconditionally AFTER every visible NON-TRAILING column —
+      // matching [_QsoListHeaderRow]'s own resize handle, present after
+      // every such column regardless of what follows it (see
+      // [_LogsTableWidth]), so the two stay in lockstep pixel-for-pixel
+      // whichever columns are hidden or reordered. `columnOrder` filtered to
+      // [visibleColumns] always ends on [tableWidth.flexId] by construction
+      // (see [_LogsTableWidth.of]), so this loop's own last iteration is
+      // exactly the one that skips the gap.
+      for (final id in columnOrder) {
+        if (!visibleColumns.contains(id)) continue;
+        final isFlex = id == tableWidth.flexId;
+        rowChildren.add(SizedBox(width: isFlex ? tableWidth.flexWidth : columnWidths.widthOf(id), child: cellContent[id]!));
+        if (!isFlex) rowChildren.add(const SizedBox(width: Space.lg));
+      }
+    }
     // foregroundDecoration paints over the already-laid-out child instead of
     // insetting it (unlike `decoration`, which turns a border into padding)
     // — the same technique [QsoList] uses for its own selected-row accent,
@@ -1365,41 +2204,7 @@ class _LogQsoSummaryRow extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: compact ? Space.sm : Space.lg, vertical: Space.xs),
-            child: Row(
-              children: [
-                SizedBox(width: 92, child: Text(date, style: condensedStyle, maxLines: 1, softWrap: false)),
-                SizedBox(width: columnGap),
-                SizedBox(width: 56, child: Text(time, style: condensedStyle)),
-                SizedBox(width: columnGap),
-                SizedBox(
-                  width: 78,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: freqKHz == null
-                        ? Text(qso.band ?? '', style: condensedStyle, textAlign: TextAlign.right)
-                        : _freqField(freqKHz, condensedStyle),
-                  ),
-                ),
-                SizedBox(width: columnGap),
-                SizedBox(width: 42, child: Text(qso.mode ?? '', style: monoStyle)),
-                SizedBox(width: columnGap),
-                if (compact)
-                  Expanded(child: callsignText)
-                else
-                  SizedBox(width: 100, child: callsignText),
-                if (!compact) ...[
-                  const SizedBox(width: Space.lg),
-                  Expanded(
-                    child: Text(
-                      qso.theirName ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            child: Row(children: rowChildren),
           ),
         ),
       ),

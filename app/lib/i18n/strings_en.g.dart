@@ -1761,6 +1761,7 @@ class Translations$home$logs$en {
 	/// en: 'No QSOs match your search'
 	String get noSearchMatches => 'No QSOs match your search';
 
+	late final Translations$home$logs$columns$en columns = Translations$home$logs$columns$en.internal(_root);
 	late final Translations$home$logs$panels$en panels = Translations$home$logs$panels$en.internal(_root);
 	late final Translations$home$logs$import$en import = Translations$home$logs$import$en.internal(_root);
 }
@@ -3380,6 +3381,33 @@ class Translations$settings$panels$en {
 	String get stationDescription => 'Radios and other equipment';
 }
 
+// Path: home.logs.columns
+class Translations$home$logs$columns$en {
+	Translations$home$logs$columns$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Date'
+	String get date => 'Date';
+
+	/// en: 'Time'
+	String get time => 'Time';
+
+	/// en: 'Frequency'
+	String get freq => 'Frequency';
+
+	/// en: 'Mode'
+	String get mode => 'Mode';
+
+	/// en: 'Call'
+	String get call => 'Call';
+
+	/// en: 'Name'
+	String get name => 'Name';
+}
+
 // Path: home.logs.panels
 class Translations$home$logs$panels$en {
 	Translations$home$logs$panels$en.internal(this._root);
@@ -4407,6 +4435,12 @@ extension on Translations {
 			'home.logs.changeCallsign' => 'Change callsign',
 			'home.logs.searchHint' => 'Search callsign or name',
 			'home.logs.noSearchMatches' => 'No QSOs match your search',
+			'home.logs.columns.date' => 'Date',
+			'home.logs.columns.time' => 'Time',
+			'home.logs.columns.freq' => 'Frequency',
+			'home.logs.columns.mode' => 'Mode',
+			'home.logs.columns.call' => 'Call',
+			'home.logs.columns.name' => 'Name',
 			'home.logs.panels.qsos' => 'QSO Log',
 			'home.logs.panels.qsosDescription' => 'The selected callsign\'s QSOs, across every operation.',
 			'home.logs.panels.info' => 'Info',
@@ -4838,14 +4872,14 @@ extension on Translations {
 			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
 			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
 			'settings.layoutDensity' => 'Layout Density',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.auto' => 'Auto',
 			'settings.layoutDensityOpts.densest' => 'Densest',
 			'settings.layoutDensityOpts.dense' => 'Dense',
 			'settings.layoutDensityOpts.normal' => 'Normal',
 			'settings.layoutDensityOpts.sparse' => 'Sparse',
 			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityDescription.auto' => 'Chosen from the height of the window',
 			'settings.layoutDensityDescription.densest' => 'As much on screen as possible',
 			'settings.layoutDensityDescription.dense' => 'Fits more on screen',
@@ -5352,14 +5386,14 @@ extension on Translations {
 			'switchAccounts.linkAccount' => 'Link account',
 			'switchAccounts.copiedCode' => 'Copied code to clipboard',
 			'switchAccounts.copyCode' => 'Copy code',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:',
 			'switchAccounts.waitingForConfirmation' => 'Waiting for confirmation…',
 			'switchAccounts.sendEmailInstead' => 'Send a confirmation email instead',
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',

@@ -171,6 +171,18 @@ void _mainBody({
   // Web only: undoes the browser's spurious "the view lost focus" reports,
   // which otherwise park every field dead mid-typing. See ViewFocusGuard.
   ViewFocusGuard.install();
+  // Web only: without this, the BROWSER's own right-click menu wins every
+  // time — Flutter never even sees the secondary click to hand it to a
+  // GestureDetector's `onSecondaryTapUp` (currently only the Logs column
+  // menu). This is APP-WIDE — Flutter web has no per-widget way to opt out
+  // of the browser's own context menu — so it also gives up the native
+  // menu everywhere else a right-click would have reached it (a map
+  // webview, text selection), with nothing Flutter-side standing in for it
+  // outside the Logs table. Not awaited: it's a JS interop call that
+  // resolves once the engine's context-menu listener is attached, and
+  // nothing before the first right-click depends on that having happened
+  // yet.
+  if (kIsWeb) unawaited(BrowserContextMenu.disableContextMenu());
   // Web-only, non-release-only: exposes window.__halo for agent inspection
   // (no-op on native and in production release). See config/dev_bridge.dart.
   installDevBridge();

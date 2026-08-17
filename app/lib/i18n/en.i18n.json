@@ -90,6 +90,14 @@
       "changeCallsign": "Change callsign",
       "searchHint": "Search callsign or name",
       "noSearchMatches": "No QSOs match your search",
+      "columns": {
+        "date": "Date",
+        "time": "Time",
+        "freq": "Frequency",
+        "mode": "Mode",
+        "call": "Call",
+        "name": "Name"
+      },
       "panels": {
         "qsos": "QSO Log",
         "qsosDescription": "The selected callsign's QSOs, across every operation.",
