@@ -278,7 +278,7 @@
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },
     "export": {
-      "title": "Export",
+      "title": "Operation Exports",
       "syncedOperation": "Operation is synced",
       "unsyncedOperation": "Operation has unsynced changes",
       "qsosSynced": "All ${total} QSOs are synced",
@@ -443,8 +443,8 @@
     "emptySheet": "Use suggestions & search below to add one",
     "exports": "Exports",
     "exportLogs": "Export Logs",
-    "options": "Options",
-    "optionsTitle": "Operation Options",
+    "tools": "Tools",
+    "toolsTitle": "Operation Tools",
     "operationDetails": "Operation Details",
     "importAdif": "Import QSOs from ADIF",
     "share": "Share",

@@ -266,7 +266,7 @@
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },
     "export": {
-      "title": "Exportar",
+      "title": "Exportaciones de la operación",
       "syncedOperation": "La operación está sincronizada",
       "unsyncedOperation": "La operación tiene cambios sin sincronizar",
       "qsosSynced": "Los ${total} QSOs están sincronizados",
@@ -431,8 +431,8 @@
     "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
     "exports": "Exportar",
     "exportLogs": "Exportar registros",
-    "options": "Opciones",
-    "optionsTitle": "Opciones de la operación",
+    "tools": "Herramientas",
+    "toolsTitle": "Herramientas de la operación",
     "operationDetails": "Detalles de la Operación",
     "importAdif": "Importar QSOs desde ADIF",
     "share": "Compartir",

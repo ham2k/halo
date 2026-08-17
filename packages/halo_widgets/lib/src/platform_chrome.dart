@@ -207,10 +207,10 @@ double? macOSAwareLeadingWidth(BuildContext context) =>
 /// when [isMacOSChromelessWindow]. Pair with [macOSAwareLeadingWidth] as the
 /// AppBar's `leadingWidth`.
 ///
-/// [close] swaps the arrow for a cross, for a view that COVERS what it came
-/// from rather than sitting deeper than it. An arrow promises a step back
-/// along a trail; a view that arrived over the top of everything has no trail
-/// to step back along, and closing it is the only thing the control does.
+/// [close] swaps the plain `BackButton` for a chevron sized and boxed to
+/// match this header's other icons, for a view that COVERS what it came from
+/// rather than sitting deeper than it — dismissal, not a step back along a
+/// navigation trail, even though it reads as one.
 ///
 /// [boxSize], for the close variant, pins the button's own tap box instead of
 /// leaving it to fill whatever the AppBar's leading slot offers — by default
@@ -226,7 +226,7 @@ double? macOSAwareLeadingWidth(BuildContext context) =>
 Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed, bool close = false, double? boxSize}) {
   Widget button = close
       ? IconButton(
-          icon: const Icon(MdiIcons.close),
+          icon: const Icon(MdiIcons.chevronLeft),
           onPressed: onPressed ?? () => Navigator.maybePop(context),
         )
       : BackButton(onPressed: onPressed);

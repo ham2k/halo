@@ -534,11 +534,11 @@ class Translations$activitiesView$en {
 	/// en: 'Export Logs'
 	String get exportLogs => 'Export Logs';
 
-	/// en: 'Options'
-	String get options => 'Options';
+	/// en: 'Tools'
+	String get tools => 'Tools';
 
-	/// en: 'Operation Options'
-	String get optionsTitle => 'Operation Options';
+	/// en: 'Operation Tools'
+	String get toolsTitle => 'Operation Tools';
 
 	/// en: 'Operation Details'
 	String get operationDetails => 'Operation Details';
@@ -1983,8 +1983,8 @@ class Translations$operation$export$en {
 
 	// Translations
 
-	/// en: 'Export'
-	String get title => 'Export';
+	/// en: 'Operation Exports'
+	String get title => 'Operation Exports';
 
 	/// en: 'Operation is synced'
 	String get syncedOperation => 'Operation is synced';
@@ -4619,7 +4619,7 @@ extension on Translations {
 			'operation.layout.panels.websiteOpenExternally' => 'Open in Browser',
 			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'Couldn’t load the page: ${reason}',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
-			'operation.export.title' => 'Export',
+			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
 			'operation.export.qsosSynced' => ({required Object total}) => 'All ${total} QSOs are synced',
@@ -4736,8 +4736,8 @@ extension on Translations {
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
-			'activitiesView.options' => 'Options',
-			'activitiesView.optionsTitle' => 'Operation Options',
+			'activitiesView.tools' => 'Tools',
+			'activitiesView.toolsTitle' => 'Operation Tools',
 			'activitiesView.operationDetails' => 'Operation Details',
 			'activitiesView.importAdif' => 'Import QSOs from ADIF',
 			'activitiesView.share' => 'Share',

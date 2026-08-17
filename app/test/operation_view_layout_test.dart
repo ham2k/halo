@@ -551,12 +551,15 @@ void main() {
 
   testWidgets('the view header stays visible and reachable on narrow too, not just wide', (tester) async {
     // Below ShirtSize.sMax (720): narrow, single-pane. showTopModalPane used
-    // to cover the whole screen at this width, X/Options and all — this pins
-    // that the operation sheet opts out of that and leaves the AppBar
-    // uncovered, matching what wide already looked like, AND that X/Options
-    // are actually reachable while the sheet is up — not just visible —
-    // through live copies drawn above the barrier (headerTrailing), same
-    // mechanism as the accept button (headerLeading).
+    // to cover the whole screen at this width, chevron/Tools and all — this
+    // pins that the operation sheet opts out of that and leaves the AppBar
+    // uncovered, matching what wide already looked like, AND that Tools is
+    // actually reachable while the sheet is up — not just visible — through
+    // a live copy drawn above the barrier (headerTrailing), same mechanism
+    // as the accept button (headerLeading). The chevron itself hides fully
+    // while the sheet is up (see _headerIconsFadeOpacity/_headerIconsInert)
+    // — the accept button is its dismiss control now, not a second copy of
+    // the header's own close control.
     tester.view.physicalSize = const Size(500, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -571,7 +574,7 @@ void main() {
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     // A stub root beneath it, not `home: OperationView(...)` directly —
-    // the (X) copy's own action is popping the view, which needs somewhere
+    // the chevron's own action is popping the view, which needs somewhere
     // to pop TO; the root route of a Navigator refuses to pop at all.
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -588,62 +591,62 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    // Not find.byIcon(MdiIcons.cog) alone: the logging controls' own
-    // settings gear (unlabeled, size 16) shares the same icon glyph.
-    final optionsButton = find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.cog && w.semanticLabel == 'Options');
-    final closeButton = find.byIcon(MdiIcons.close);
-    expect(optionsButton, findsOneWidget);
-    expect(closeButton, findsOneWidget);
+    // Not find.byIcon(MdiIcons.tools) alone: the logging controls' own
+    // settings button (buildTargetSettingsButton, unlabeled) is a distinct
+    // glyph (MdiIcons.tune) today, but matching on the semantic label too
+    // keeps this from silently passing if that ever changes.
+    final toolsButton = find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.tools && w.semanticLabel == 'Tools');
+    final backButton = find.byIcon(MdiIcons.chevronLeft);
+    expect(toolsButton, findsOneWidget);
+    expect(backButton, findsOneWidget);
 
     await tester.tap(find.text('N0CALL Test Op'));
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsOneWidget);
 
-    // Two of each now — the real one (inert, painted over) and the live
-    // copy drawn above the barrier (headerTrailing) — not torn down: a
-    // full-screen sheet used to remove the whole AppBar from view
-    // (showHeader: false, no headerLeading exception for narrow), not
-    // merely paint over it.
-    expect(optionsButton, findsNWidgets(2));
-    expect(closeButton, findsNWidgets(2));
+    // Two of each now — the real one (faded, inert) and the live copy drawn
+    // above the barrier (headerTrailing) — not torn down: a full-screen
+    // sheet used to remove the whole AppBar from view (showHeader: false,
+    // no headerLeading exception for narrow), not merely paint over it.
+    expect(toolsButton, findsNWidgets(2));
+    expect(backButton, findsNWidgets(2));
     // Above the sheet's own top edge, not underneath it — the regression
     // this guards: the sheet used to start at y=0 on narrow, covering the
-    // whole AppBar including these icons.
+    // whole AppBar including this icon.
     final sheetTop = tester.getTopLeft(find.byType(OperationSheet)).dy;
-    expect(tester.getRect(optionsButton.hitTestable()).bottom, lessThanOrEqualTo(sheetTop));
-    expect(tester.getRect(closeButton.hitTestable()).bottom, lessThanOrEqualTo(sheetTop));
+    expect(tester.getRect(toolsButton.hitTestable()).bottom, lessThanOrEqualTo(sheetTop));
+    // Fully hidden, not merely painted over: neither copy takes a tap.
+    expect(backButton.hitTestable(), findsNothing);
 
     // The accept button is reachable through headerLeading, not by falling
     // through to the view behind it (see [TopModalPaneRoute.headerLeading]).
     final acceptButton = find.widgetWithText(FilledButton, 'OK');
     expect(acceptButton.hitTestable(), findsOneWidget);
 
-    // Options: the live copy (headerTrailing) closes the sheet AND opens
+    // Tools: the live copy (headerTrailing) closes the sheet AND opens
     // the dialog — not just a generic dismiss, the way tapping empty
     // header space already does via the barrier's own onDismiss.
-    await tester.tap(optionsButton.hitTestable());
+    await tester.tap(toolsButton.hitTestable());
     await tester.pumpAndSettle();
-    expect(find.byType(OperationSheet), findsNothing, reason: 'Options closed the sheet, not just opened its own dialog on top');
-    final optionsDialog = find.text('Operation Options');
-    expect(optionsDialog, findsOneWidget);
-    Navigator.of(tester.element(optionsDialog)).pop();
+    expect(find.byType(OperationSheet), findsNothing, reason: 'Tools closed the sheet, not just opened its own dialog on top');
+    final toolsDialog = find.text('Operation Tools');
+    expect(toolsDialog, findsOneWidget);
+    Navigator.of(tester.element(toolsDialog)).pop();
     await tester.pumpAndSettle();
 
-    // Re-open, then X: closes the sheet AND the view (both pops fire, per
-    // the developer's call on double-navigation from one tap).
-    await tester.tap(find.text('N0CALL Test Op'));
+    // Sheet closed again: the chevron is back and reachable, and still
+    // closes the view — the same underlying control the sheet borrowed
+    // that corner from, not a separate one.
+    expect(backButton.hitTestable(), findsOneWidget);
+    await tester.tap(backButton.hitTestable());
     await tester.pumpAndSettle();
-    expect(find.byType(OperationSheet), findsOneWidget);
-    await tester.tap(closeButton.hitTestable());
-    await tester.pumpAndSettle();
-    expect(find.byType(OperationSheet), findsNothing);
-    expect(find.byType(OperationView), findsNothing, reason: 'the (X) copy applied its own action (closing the view), not just the sheet');
+    expect(find.byType(OperationView), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets('the (X) button and title sit at the edge on narrow, not on wide', (tester) async {
+  testWidgets('the chevron and title sit at the edge on narrow, not on wide', (tester) async {
     Future<void> pumpAt(double width) async {
       tester.view.physicalSize = Size(width, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -666,14 +669,14 @@ void main() {
 
     addTearDown(tester.view.reset);
 
-    // Narrow: the leading slot is sized to the (X) button alone (40, no
+    // Narrow: the leading slot is sized to the chevron button alone (40, no
     // macOS traffic lights in this test environment) — nothing left over on
     // its right — and the title Row's own left padding drops to zero, so
     // the gap between the button and the title text collapses to just the
     // dots control's own fixed footprint.
     await pumpAt(500);
     expect(tester.widget<AppBar>(find.byType(AppBar)).leadingWidth, 40);
-    final closeRight = tester.getRect(find.byIcon(MdiIcons.close)).right;
+    final closeRight = tester.getRect(find.byIcon(MdiIcons.chevronLeft)).right;
     final narrowTitleLeft = tester.getRect(find.text('N0CALL Test Op')).left;
     final narrowGap = narrowTitleLeft - closeRight;
 
@@ -682,11 +685,11 @@ void main() {
     // holds, plus the title's own inset.
     await pumpAt(1000);
     expect(tester.widget<AppBar>(find.byType(AppBar)).leadingWidth, 56.0);
-    final wideCloseRight = tester.getRect(find.byIcon(MdiIcons.close)).right;
+    final wideCloseRight = tester.getRect(find.byIcon(MdiIcons.chevronLeft)).right;
     final wideTitleLeft = tester.getRect(find.text('N0CALL Test Op')).left;
     final wideGap = wideTitleLeft - wideCloseRight;
 
-    expect(narrowGap, lessThan(wideGap), reason: 'narrow sits the title measurably closer to the (X) button than wide does');
+    expect(narrowGap, lessThan(wideGap), reason: 'narrow sits the title measurably closer to the chevron than wide does');
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));

@@ -285,8 +285,8 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
 	@override String get exports => 'Exportar';
 	@override String get exportLogs => 'Exportar registros';
-	@override String get options => 'Opciones';
-	@override String get optionsTitle => 'Opciones de la operación';
+	@override String get tools => 'Herramientas';
+	@override String get toolsTitle => 'Herramientas de la operación';
 	@override String get operationDetails => 'Detalles de la Operación';
 	@override String get importAdif => 'Importar QSOs desde ADIF';
 	@override String get share => 'Compartir';
@@ -975,7 +975,7 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Exportar';
+	@override String get title => 'Exportaciones de la operación';
 	@override String get syncedOperation => 'La operación está sincronizada';
 	@override String get unsyncedOperation => 'La operación tiene cambios sin sincronizar';
 	@override String qsosSynced({required Object total}) => 'Los ${total} QSOs están sincronizados';
@@ -2348,7 +2348,7 @@ extension on TranslationsEs {
 			'operation.layout.panels.websiteOpenExternally' => 'Abrir en el navegador',
 			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'No se pudo cargar la página: ${reason}',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
-			'operation.export.title' => 'Exportar',
+			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
 			'operation.export.qsosSynced' => ({required Object total}) => 'Los ${total} QSOs están sincronizados',
@@ -2465,8 +2465,8 @@ extension on TranslationsEs {
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.exportLogs' => 'Exportar registros',
-			'activitiesView.options' => 'Opciones',
-			'activitiesView.optionsTitle' => 'Opciones de la operación',
+			'activitiesView.tools' => 'Herramientas',
+			'activitiesView.toolsTitle' => 'Herramientas de la operación',
 			'activitiesView.operationDetails' => 'Detalles de la Operación',
 			'activitiesView.importAdif' => 'Importar QSOs desde ADIF',
 			'activitiesView.share' => 'Compartir',

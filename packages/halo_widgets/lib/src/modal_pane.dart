@@ -575,6 +575,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
     double? left,
     double? right,
     required AlignmentDirectional alignment,
+    required ThemeData theme,
   }) {
     if (!visible || content == null) return null;
     return Positioned(
@@ -582,7 +583,15 @@ class _TopModalPaneScaffold extends StatelessWidget {
       left: left,
       right: right,
       height: height,
-      child: Align(alignment: alignment, child: content),
+      // Content here sits outside the real AppBar (this is a floating
+      // overlay standing in for it), so it needs the same icon color
+      // spelled out explicitly instead of inheriting it — without this,
+      // icons resolve through the ambient default IconTheme instead and
+      // flash a different color than the header they're covering.
+      child: IconTheme.merge(
+        data: IconThemeData(color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary),
+        child: Align(alignment: alignment, child: content),
+      ),
     );
   }
 
@@ -819,6 +828,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
               left: 0,
               right: 0,
               alignment: AlignmentDirectional.centerEnd,
+              theme: theme,
             ),
             // Same reasoning as headerTrailing above, positioned at the same
             // leftInset the card itself uses instead of the trailing edge —
@@ -836,6 +846,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
               height: headerHeight,
               left: isNarrow ? (route.leftInset ?? 0) : (leftInset ?? 0),
               alignment: AlignmentDirectional.centerStart,
+              theme: theme,
             ),
           ],
         ),
