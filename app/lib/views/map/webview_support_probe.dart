@@ -20,7 +20,8 @@ import '../../services/windows_webview.dart';
 /// That first answer costs a cold browser-process spawn, not a registry
 /// lookup, so the first map open of a session visibly shows OSM and then
 /// swaps to the webview map — every later one goes straight to the cached
-/// answer.
+/// answer, but only once this pane is actually visible (see
+/// [maybeProbeWebviewSupport]).
 ///
 /// Call [initWebviewSupportProbe] from `initState` and
 /// [maybeProbeWebviewSupport] from `didChangeDependencies`.
@@ -38,19 +39,27 @@ mixin WebviewSupportProbe<T extends StatefulWidget> on State<T> {
 
   bool get webviewSupported => _webviewSupported;
 
-  void initWebviewSupportProbe() {
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
-      return;
-    }
-    _webviewSupported = WindowsWebView.resolved ?? defaultTargetPlatform != TargetPlatform.windows;
-  }
+  /// Kept only as a call site for symmetry with [maybeProbeWebviewSupport];
+  /// deliberately does nothing. Reading the cached availability here used to
+  /// set [webviewSupported] unconditionally — which meant a pane mounted
+  /// HIDDEN inside a dock group's `IndexedStack` (every pane in a group
+  /// builds up front, see `dock_layout.dart`) built its real `InAppWebView`
+  /// the moment `WindowsWebView.resolved` was already cached `true`, racing
+  /// every other webview-backed pane in the same group doing the same on the
+  /// same frame — the concurrent-GPU-surface-initialization crash class
+  /// Intel's Windows driver is known to hit (flutter/flutter#187747; see
+  /// HALO-290/HALO-NEXT-3). The read now happens in
+  /// [maybeProbeWebviewSupport], gated on [DockPaneVisibility], which has
+  /// `context` and can actually ask.
+  void initWebviewSupportProbe() {}
 
-  /// Kicks off the WebView2 availability probe the first time this pane is
+  /// Kicks off the WebView2 availability check the first time this pane is
   /// actually on screen, not merely mounted — a dock group's `IndexedStack`
-  /// builds every pane in it up front, and probing from `initState` would
-  /// spawn the WebView2 browser process for a pane nobody has looked at yet.
-  /// Outside a dock, `DockPaneVisibility.of` answers true immediately, so
-  /// this fires on the same frame `initState` used to.
+  /// builds every pane in it up front, and answering (or probing) support
+  /// from `initState` would build a real webview, or spawn the WebView2
+  /// browser process, for a pane nobody has looked at yet. Outside a dock,
+  /// `DockPaneVisibility.of` answers true immediately, so this still fires
+  /// on the same frame `initState` used to.
   void maybeProbeWebviewSupport() {
     if (_probed) return;
     if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
@@ -58,6 +67,12 @@ mixin WebviewSupportProbe<T extends StatefulWidget> on State<T> {
     }
     if (!DockPaneVisibility.of(context)) return;
     _probed = true;
+    final resolved = WindowsWebView.resolved;
+    if (resolved != null || defaultTargetPlatform != TargetPlatform.windows) {
+      final supported = resolved ?? true;
+      if (supported != _webviewSupported) setState(() => _webviewSupported = supported);
+      return;
+    }
     WindowsWebView.isAvailable().then((ok) {
       if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
     });
