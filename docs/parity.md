@@ -49,11 +49,11 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
 
 | Gap | PoLo has | HaLo status |
 | --- | --- | --- |
-| **Import** | Per-operation "Add QSOs from ADIF" + global "Import History from ADIF" feeding worked-before detection; QSON import with merge/dedup (`mergeQSOs`) | 🟡 **per-operation import landed**. The parser (HALO-166) turns ADIF into QSON against a ten-logger corpus; "Import QSOs from ADIF" in Operation Options and drag-and-drop onto the operation window drive it (HALO-173), with same-band/supermode/5-minute merging, station-call rewriting and activation hoisting. `adifImport` recovers references for every activity except `custom` — see hooks.md for why it has none. Missing: the **global** "Import History from ADIF" that feeds worked-before detection, and QSON import |
+| **Import** | Per-operation "Add QSOs from ADIF" + global "Import History from ADIF" feeding worked-before detection; QSON import with merge/dedup (`mergeQSOs`) | 🟡 **Per-operation import landed** (HALO-173) and **PoLo's separate "history-only" import isn't needed** — the Logs view's own ADIF import (`logs_view.dart`, `AdifImportService`) writes real QSOs into an operation, same as the per-operation path, so any worked-before detection (Call History, HALO-304) already sees them; there is no reason to duplicate that as a second, history-only store. The parser (HALO-166) turns ADIF into QSON against a ten-logger corpus, with same-band/supermode/5-minute merging, station-call rewriting and activation hoisting. `adifImport` recovers references for every activity except `custom` — see hooks.md for why it has none. Missing: QSON import |
 | **Contest breadth** | 12 contest extensions + Field Day + Winter Field Day + 13 Colonies (15 total) | 🟡 **9 ported** (+FD/WFD since the last sweep). Missing: ARRL VHF (M7), R1/RSGB VHF (M8), GAPOTA (M9), full QSO Parties (M10), 13 Colonies (M12). Next per RFC §7: **M7** — great-circle distance scoring + `grid` input + rover our-grid from segments |
 | **Export breadth** | 29 ADIF variants, 11 Cabrillo, QSON, REG1TEST/EDI; user-editable Handlebars templates for filename **and title and ADIF notes/comments/QSL message**, per-export-type overrides; "ignore lookup data" toggle; Wavelog upload with station selection; **Ham2K File Stash export** (new in 26.7.3) | 🟡 whole-log + per-activity + per-contest ADIF, Cabrillo, private-data switch, QSON dump (dev-mode only, `export_service.dart`). No REG1TEST/EDI, no Wavelog, no File Stash, no user-editable templates (deliberately dropped — `exportNames.ts`), no ignore-lookup-data. Also: PoLo emits `APP_HAM2K_*` app fields (renamed from `X_` in 26.7.2+); HaLo emits none — decide compatibility when import lands |
 | **Activity catalog** | 21 activity dirs + WAB (under `other/`) | 🟡 **18 ported — the catalog is effectively closed.** `fd`/`wfd` shipped as contests; only **13 Colonies** (contest thread, M12) and **WAB squares** remain |
-| **Lookup providers** | QRZ, HamQTH, QRZCALL.EU, HamDB, **Call History** (worked-before from own log + imported ADIF history), Spot History; call-notes with user-added custom note files | 🟡 QRZ + call-notes (**custom files now done**, HALO-53) + spot-history (now also yielding activity refs; 30-min window vs PoLo's 10) + **Call History** (HALO-304 — own log only; identity/location fields, dropping a portable/prefixed location; a manually-typed field outranks every live source, a guessed-only one is outranked by all of them) + **Ham2K Lookup Service** (HaLo-only, not in PoLo — free, US/Canada/Germany, `services.ham2k.net`). HamDB was ported then removed in favor of Ham2K Lookup Service, which covers the same 3 countries; the one regression is grid/lat/lon, which HamDB supplied and Ham2K Lookup Service does not (yet) return. Missing providers: HamQTH, QRZCALL.EU, and Call History's imported-ADIF-history half (needs the global "Import History from ADIF" from the Import row above). Lookup caching explicitly deferred (`lookup_queue_service.dart`) |
+| **Lookup providers** | QRZ, HamQTH, QRZCALL.EU, HamDB, **Call History** (worked-before from own log + imported ADIF history), Spot History; call-notes with user-added custom note files | 🟡 QRZ + call-notes (**custom files now done**, HALO-53) + spot-history (now also yielding activity refs; 30-min window vs PoLo's 10) + **Call History** (HALO-304 — identity/location fields, dropping a portable/prefixed location; a manually-typed field outranks every live source, a guessed-only one is outranked by all of them; "imported ADIF history" needs no separate mechanism — see the Import row above, an ADIF import from the Logs view is already ordinary QSOs) + **Ham2K Lookup Service** (HaLo-only, not in PoLo — free, US/Canada/Germany, `services.ham2k.net`). HamDB was ported then removed in favor of Ham2K Lookup Service, which covers the same 3 countries; the one regression is grid/lat/lon, which HamDB supplied and Ham2K Lookup Service does not (yet) return. Missing providers: HamQTH, QRZCALL.EU. Lookup caching explicitly deferred (`lookup_queue_service.dart`) |
 
 ## 2. Gaps within existing surfaces
 
@@ -219,14 +219,17 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
 
 ## 5. Suggested closing order
 
-1. **ADIF import** (per-operation done; global "Import History from ADIF"
-   still missing); QSON import rides along. Unchanged as the #1 item — it is
-   the only remaining structural ⛔.
-2. ~~**Call History lookup**~~ — done for the own-log half (HALO-304); the
-   imported-ADIF-history half waits on item 1's global import.
+1. ~~**ADIF import**~~ — done. Per-operation (HALO-173) and Logs-view
+   whole-log (`AdifImportService`) both land ordinary QSOs, so there is no
+   separate "history-only" import to build — PoLo's structural ⛔ here
+   doesn't apply to HaLo's shape. QSON import is the one remaining gap, but
+   it's not structural.
+2. ~~**Call History lookup**~~ — done (HALO-304); no imported-ADIF-history
+   half needed, per item 1.
 3. Deep links `/qso`, `/vfo`, `/operation` (WSJT-X bridge).
 4. Segment-creation commands (`START`/`BREAK`/`STOP`) — the scoring and
-   rendering halves already exist; this is the cheapest ⛔ on the list.
+   rendering halves already exist; this is the cheapest remaining ⛔ on the
+   list.
 5. Consume the two remaining dead logging settings (fields-on-top, country
    flags) — they are already stored, surfaced and published; only the views
    are missing.
