@@ -1,0 +1,41 @@
+{
+  "key": "rsgb-vhf-tests",
+  "name": "RSGB VHF Contests",
+  "shortName": "RSGB VHF",
+  "version": "0.0.1",
+  "description": "Great-circle distance, per-band points and grid/district/DXCC bonuses across RSGB's VHF/UHF/microwave contest family, submitted as REG1TEST/EDI",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "flag-checkered",
+  "accentColor": "#00695C",
+  "keywords": [
+    "contest",
+    "vhf",
+    "uhf",
+    "grid",
+    "distance",
+    "reg1test",
+    "edi",
+    "rsgb",
+    "ukac"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:rsgb-vhf-tests",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Concursos VHF de RSGB",
+      "description": "Distancia de gran círculo, puntos por banda y bonos de grid/distrito/DXCC en la familia de concursos VHF/UHF/microondas de RSGB, enviado como REG1TEST/EDI",
+      "keywords": [
+        "concurso",
+        "vhf",
+        "distancia",
+        "rsgb"
+      ]
+    }
+  }
+}

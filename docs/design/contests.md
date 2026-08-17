@@ -1,7 +1,7 @@
 # Contest Extensions — Porting Design (RFC)
 
-**Status:** In progress — **M0–M7 and M11 are shipped** (10 of the 15
-contest-shaped extensions); M8–M10 and M12 remain, see §7. · **Scope:** port
+**Status:** In progress — **M0–M8 and M11 are shipped** (12 of the 15
+contest-shaped extensions); M9–M10 and M12 remain, see §7. · **Scope:** port
 app-polo's 12 contest extensions, plus `fd`, `wfd` and `colonies`, to HaLo
 · **Issue:** #149
 
@@ -54,7 +54,6 @@ and is the recommended first increment.
   `adifFields`) so the first increment adds the *minimum* new surface.
 
 **Non-goals (this RFC)**
-- REG1TEST/EDI export (only the R1/RSGB VHF families need it — deferred, see §7).
 - Shared US-states/provinces/counties datasets (needed by naqp/qp/stateparks —
   deferred to their milestone).
 - QP-Hub / APRS self-spotting from the QSO-parties extension.
@@ -1628,7 +1627,7 @@ log** to settle checkpoint granularity (§5.2).
 | **M5** ✅ | Searchable-options input (`kind: 'options'`) + dated `suggest` ranking (§5.6) | `stateparks` |
 | **M6** ✅ | **Segments** — `event.operation` override, segment-effective operation, scorer selection across segments (§5.1) | — |
 | **M7** ✅ | Great-circle distance scoring + rover our-grid from segments (no new input kind — see below) | `arrl-vhf-tests` |
-| **M8** | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
+| **M8** ✅ | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
 | **M9** | Cross-extension POTA ref synthesis | `georgia-pota` |
 | **M10** | Stateful rolling-location scoring, county-line N×M, bonuses | full `qp` rules |
 | **M11** ✅ | ARRL/RAC section table duplicated into each extension; power multiplier + bonus in setup (§5.9) | `fd`, `wfd` |

@@ -1,0 +1,40 @@
+{
+  "key": "r1-vhf-tests",
+  "name": "IARU R1 VHF Contests",
+  "shortName": "IARU R1 VHF",
+  "version": "0.0.1",
+  "description": "Great-circle distance and per-band points across IARU Region 1's VHF/UHF/microwave contest family, submitted as REG1TEST/EDI",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "flag-checkered",
+  "accentColor": "#6A1B9A",
+  "keywords": [
+    "contest",
+    "vhf",
+    "uhf",
+    "grid",
+    "distance",
+    "reg1test",
+    "edi",
+    "iaru"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:r1-vhf-tests",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Concursos VHF de IARU R1",
+      "description": "Distancia de gran círculo y puntos por banda en la familia de concursos VHF/UHF/microondas de la Región 1 de IARU, enviado como REG1TEST/EDI",
+      "keywords": [
+        "concurso",
+        "vhf",
+        "distancia",
+        "iaru"
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "activityLabel": "Concursos VHF de IARU R1",
+  "setupLabel": "Configuración del concurso VHF",
+  "eventLabel": "Concurso",
+  "gridLabel": "Locator",
+  "ourSerialLabel": "Nuestro #",
+  "theirSerialLabel": "Su #",
+  "unconfigured": "IARU R1 VHF (sin configurar)",
+  "adifExport": "ADIF para {{contest}}",
+  "reg1testExport": "REG1TEST/EDI para {{contest}}",
+  "ourExchangeSubtitle": "Enviando {{grid}}"
+}

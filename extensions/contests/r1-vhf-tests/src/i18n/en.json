@@ -1,0 +1,12 @@
+{
+  "activityLabel": "IARU R1 VHF Contests",
+  "setupLabel": "VHF Contest Setup",
+  "eventLabel": "Contest",
+  "gridLabel": "Grid",
+  "ourSerialLabel": "Our #",
+  "theirSerialLabel": "Their #",
+  "unconfigured": "IARU R1 VHF (not set up)",
+  "adifExport": "ADIF for {{contest}}",
+  "reg1testExport": "REG1TEST/EDI for {{contest}}",
+  "ourExchangeSubtitle": "Sending {{grid}}"
+}

@@ -1,0 +1,13 @@
+{
+  "activityLabel": "RSGB VHF Contests",
+  "setupLabel": "VHF Contest Setup",
+  "eventLabel": "Contest",
+  "gridLabel": "Grid",
+  "ourSerialLabel": "Our #",
+  "theirSerialLabel": "Their #",
+  "districtLabel": "District",
+  "unconfigured": "RSGB VHF (not set up)",
+  "adifExport": "ADIF for {{contest}}",
+  "reg1testExport": "REG1TEST/EDI for {{contest}}",
+  "ourExchangeSubtitle": "Sending {{grid}}"
+}
