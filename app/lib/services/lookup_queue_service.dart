@@ -58,23 +58,6 @@ class LookupQueueService {
   /// Status-bar item key for queue progress.
   static const statusKey = 'lookup_queue_progress';
 
-  /// `source` of the hardcoded offline callsign-annotation lookup step
-  /// (extensions/core/lookups/src/annotate.ts) — the one entry every lookup
-  /// result carries even with no network. Its presence proves nothing about
-  /// online enrichment, so it's ignored when deciding whether a QSO already
-  /// has real lookup data.
-  static const annotationSource = 'callsign-annotation';
-
-  /// `source` values of `lookup` hooks that answer from the local log/DB,
-  /// never the network — a QSO carrying only these has NOT actually been
-  /// enriched online. `call-history` (extensions/lookups/call-history)
-  /// answers on essentially every repeat contact, so without this a QSO
-  /// worked before would look "already looked up" here and never reach
-  /// QRZ/Ham2K Lookup at all — the opposite of what this queue exists for.
-  /// Both its tiers' labels are listed — see buildCallHistoryLookup.ts for
-  /// why they differ.
-  static const _offlineOnlySources = {'Call History', 'Call History (guess)'};
-
   /// How many completed lookups are merged per write burst — see the header
   /// comment on why writes are grouped.
   static const _applyBatchSize = 8;
@@ -156,13 +139,34 @@ class LookupQueueService {
     _showProgress();
   }
 
-  /// Whether the stored record already has lookup data from a real source
-  /// (anything beyond the always-present offline annotation step).
+  /// `source` values that always meant "a real network fetch answered"
+  /// before `online` (LookupResult, extensions/sdk/src/types.ts) existed to
+  /// say so directly. A QSO enriched before this flag shipped has no
+  /// `online` key on any of its stored `their.lookups` entries at all — an
+  /// unqualified flag check alone would read every one of them as
+  /// unenriched and silently re-queue the operator's entire existing log
+  /// for a live QRZ/Ham2K Lookup fetch the moment each QSO is next opened.
+  /// This is a closed, backward-compatibility-only list for data that
+  /// predates the flag: it must never grow — a NEW source proves itself via
+  /// `online: true` on its own results, not by being added here.
+  static const _legacySourcesBeforeOnlineFlag = {'qrz.com', 'services.ham2k.net'};
+
+  /// Whether the stored record already carries an answer that required a
+  /// real network fetch — generically, via `online: true` on the stored
+  /// lookup entry, never by checking which `source` produced it (except for
+  /// the closed legacy set above, for data written before that flag
+  /// existed). A source sets `online` itself, only on a result it could not
+  /// have produced with `ctx.online` false (qrz.com, services.ham2k.net);
+  /// everything else — the offline annotation step, `call-history`,
+  /// `call-notes`, a POTA/SOTA answer that happened to hit their local
+  /// reference-data cache rather than the network — omits it and so never
+  /// counts here, without this queue needing to know any of those sources
+  /// by name.
   bool _hasOnlineLookup(Qso qso) {
     final lookups = ((qso.data['their'] as Map?)?['lookups'] as List?)?.whereType<Map>();
     if (lookups == null) return false;
     return lookups.any((l) =>
-        l['source'] is String && l['source'] != annotationSource && !_offlineOnlySources.contains(l['source']));
+        l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source'])));
   }
 
   void _ensureProcessing() {

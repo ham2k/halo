@@ -173,7 +173,7 @@ void main() {
     final enriched = {
       'guess': {'name': 'ARRL HQ', 'grid': 'FN31pr'},
       'lookups': [
-        {'source': LookupQueueService.annotationSource, 'entityPrefix': 'K'},
+        {'source': 'callsign-annotation', 'entityPrefix': 'K'},
         {'source': 'qrz.com', 'name': 'ARRL HQ', 'grid': 'FN31pr'},
       ],
     };
@@ -193,7 +193,7 @@ void main() {
         return {
           'guess': {'entityPrefix': 'K'},
           'lookups': [
-            {'source': LookupQueueService.annotationSource, 'entityPrefix': 'K'},
+            {'source': 'callsign-annotation', 'entityPrefix': 'K'},
           ],
         };
       }
@@ -221,17 +221,23 @@ void main() {
     expect(storedUnchanged.updatedAtMillis, unchangedStampBefore);
   });
 
-  test('a Call History-only entry does not count as "already looked up online"', () async {
-    // call-history (extensions/lookups/call-history) answers from the log
-    // itself, offline, on essentially every repeat contact — treating its
-    // presence as proof of real enrichment would mean a worked-before QSO
-    // never reaches QRZ/Ham2K Lookup at all.
+  test('an offline lookup entry never counts as "already looked up online" — checked generically, by an `online` flag, never by source name', () async {
+    // Any lookup source can answer offline (the log itself, a local
+    // reference-data cache, notes files…) — this queue must not need to
+    // know any of them by name to tell an offline answer from a real one.
+    // `call-history` (extensions/lookups/call-history) is one concrete
+    // example: it answers on essentially every repeat contact, so treating
+    // its presence as proof of real enrichment would mean a worked-before
+    // QSO never reaches QRZ/Ham2K Lookup at all — but the mechanism this
+    // pins is general, not specific to it.
     final qso = await qsos.add(operation.uuid, {
       'their': {
         'call': 'W1AW',
         'guess': {'name': 'From Last Time'},
         'lookups': [
-          {'source': 'Call History', 'name': 'From Last Time'},
+          // No `online: true` — an entirely made-up source name, to prove
+          // nothing here is special-cased by which source answered.
+          {'source': 'Some Future Offline Source', 'name': 'From Last Time'},
         ],
       },
     });
@@ -242,8 +248,8 @@ void main() {
       return {
         'guess': {'name': 'From QRZ'},
         'lookups': [
-          {'source': 'Call History', 'name': 'From Last Time'},
-          {'source': 'qrz.com', 'name': 'From QRZ'},
+          {'source': 'Some Future Offline Source', 'name': 'From Last Time'},
+          {'source': 'qrz.com', 'name': 'From QRZ', 'online': true},
         ],
       };
     });
@@ -254,13 +260,90 @@ void main() {
     expect((await qsos.get(qso.uuid))!.theirName, 'From QRZ');
   });
 
+  test('an `online: true` entry DOES count as "already looked up online", whatever it is named', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'W1AW',
+        'guess': {'name': 'From Network'},
+        'lookups': [
+          {'source': 'Some Future Network Source', 'name': 'From Network', 'online': true},
+        ],
+      },
+    });
+
+    var calls = 0;
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      calls += 1;
+      return {'guess': {'name': 'Refetched'}};
+    });
+
+    queue.enqueue(qso);
+    await queue.idle;
+    expect(calls, 0);
+  });
+
+  test('a legacy QSO from before the `online` flag existed is not silently re-queued', () async {
+    // A QSO enriched before this flag shipped has no `online` key on ANY of
+    // its stored lookups — without the closed backward-compat fallback,
+    // every already-enriched QSO in an existing log would look unenriched
+    // the moment it was next opened (logging_controls.dart's initState
+    // enqueues on edit-open, not just on an explicit refresh), and this
+    // queue would silently re-hit QRZ for someone's entire log.
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'W1AW',
+        'guess': {'name': 'ARRL HQ'},
+        'lookups': [
+          {'source': 'callsign-annotation', 'entityPrefix': 'K'},
+          {'source': 'qrz.com', 'name': 'ARRL HQ'}, // no `online` key — pre-flag shape
+        ],
+      },
+    });
+
+    var calls = 0;
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      calls += 1;
+      return {'guess': {'name': 'Refetched'}};
+    });
+
+    queue.enqueue(qso);
+    await queue.idle;
+    expect(calls, 0);
+  });
+
+  test('a legacy QSO whose only real source is NOT in the closed backward-compat set still gets a fresh look', () async {
+    // POTA/SOTA never proved online-ness even before this flag existed
+    // (their local-cache-hit answers were always ambiguous) — a QSO whose
+    // only pre-flag lookup came from one of those is correctly treated as
+    // not-yet-proven-online, same as it would be going forward.
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'W1AW',
+        'guess': {'grid': 'FN31pr'},
+        'lookups': [
+          {'source': 'pota', 'grid': 'FN31pr'},
+        ],
+      },
+    });
+
+    var calls = 0;
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      calls += 1;
+      return {'guess': {'name': 'From QRZ'}};
+    });
+
+    queue.enqueue(qso);
+    await queue.idle;
+    expect(calls, 1);
+  });
+
   test('enqueue skips QSOs that already have online lookup data; enqueueAll (force) re-runs them', () async {
     final qso = await qsos.add(operation.uuid, {
       'their': {
         'call': 'W1AW',
         'guess': {'name': 'ARRL HQ'},
         'lookups': [
-          {'source': 'qrz.com', 'name': 'ARRL HQ'},
+          {'source': 'qrz.com', 'name': 'ARRL HQ', 'online': true},
         ],
       },
     });
@@ -271,7 +354,7 @@ void main() {
       return {
         'guess': {'name': 'Refreshed'},
         'lookups': [
-          {'source': 'qrz.com', 'name': 'Refreshed'},
+          {'source': 'qrz.com', 'name': 'Refreshed', 'online': true},
         ],
       };
     });
@@ -294,7 +377,7 @@ void main() {
         'call': 'W1AW',
         'guess': {'name': 'ARRL HQ'},
         'lookups': [
-          {'source': 'qrz.com', 'name': 'ARRL HQ'},
+          {'source': 'qrz.com', 'name': 'ARRL HQ', 'online': true},
         ],
       },
     });

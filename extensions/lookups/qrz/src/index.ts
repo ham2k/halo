@@ -158,10 +158,15 @@ async function lookupCall(
     // `image` rides along as an extra field CallInfoLookup's fixed shape
     // doesn't declare (same widening pattern as annotate.ts's `flag`) — QRZ's
     // profile/QSL-card photo URL, shown in the call-info detail panel.
-    const result: CallInfoLookup & { image?: string } = {
+    const result: CallInfoLookup & { image?: string; online?: boolean } = {
       call: tag(xml, 'call') ?? call,
       source: 'qrz.com',
       scope: 'general',
+      // Reaching here means the fetch above succeeded — every non-empty
+      // result from this hook required the network (the `!ctx.online` guard
+      // above is the only other exit). The background lookup queue reads
+      // this generically, without knowing 'qrz.com' by name.
+      online: true,
       locationScope,
       name: [tag(xml, 'fname'), tag(xml, 'name')].filter((x) => x).join(' '),
       location: [city, state].filter((x) => x).join(', '),

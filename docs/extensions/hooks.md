@@ -74,10 +74,21 @@ interface LookupHook {
   lookupCall(args: { callInfo: AnnotatedCallInfo; qso; operation }, ctx): Promise<LookupResult>
 }
 // AnnotatedCallInfo: CallInfo & {guess?: CallInfo, lookups?: CallInfoLookup[]}
-// LookupResult:      (CallInfoLookup & {locAccuracy?, refs?: RefInfo[]})[] —
+// LookupResult:      (CallInfoLookup & {locAccuracy?, refs?: RefInfo[], online?: boolean})[] —
 //                    zero or more records; [] to skip
 // CallInfoLookup:    CallInfo & {source?, scope?: 'general'|'operation'|'qso', notes?, history?}
 ```
+
+Set `online: true` on a result ONLY when answering it required an actual
+network round-trip — never on one your source could have produced with
+`ctx.online` false. `LookupQueueService._hasOnlineLookup` reads this flag
+generically to decide whether a saved QSO already has a real online answer
+worth not re-fetching; omitting it (the default) is correct for anything
+from local/offline data — a log query, a cached reference file, notes — even
+if that source usually needs the network for OTHER calls (POTA/SOTA's
+`fetchPark`/`fetchSummit` try a local reference-data cache before falling
+back to a live fetch, so they leave it unset rather than risk mistagging a
+cache hit). The one-time offline annotation pre-step never sets it either.
 
 A result's `refs` **proposes** activity references for the QSO being logged.
 The host applies only those whose `type` the QSO does not already carry — a

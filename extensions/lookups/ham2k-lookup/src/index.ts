@@ -77,10 +77,14 @@ async function lookupCall(
   const county = real(record.county)
   const countryCode = real(record.country)
   const [lat, lon] = cleanLocationParams(real(record.lat), real(record.lon))
-  const result: CallInfoLookup = {
+  const result: CallInfoLookup & { online?: boolean } = {
     call: real(record.call) ?? call,
     source: 'services.ham2k.net',
     scope: 'general',
+    // Every non-empty result requires the network (the `!ctx.online` guard
+    // above is the only other exit) — read generically by the background
+    // lookup queue, without knowing this source by name.
+    online: true,
     locationScope,
     name: real(record.name),
     location: [city, state].filter(Boolean).join(', '),

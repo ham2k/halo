@@ -154,6 +154,23 @@ test("notes/history accumulate onto lookups[] regardless of merge outcome", () =
   assert.deepEqual(lookups[1].notes, ["note B"])
 })
 
+test("`online` never leaks into the merged guess — it's meta about the result, not a guessable field", () => {
+  // The background lookup queue (lookup_queue_service.dart) reads `online`
+  // straight off the stored `lookups[]` entries to decide whether a QSO
+  // already has a real network answer. Were this field ever folded into
+  // `guess` like an ordinary property, it would show up as a stray key on
+  // exported/synced QSON.
+  const guess: CallInfo = { call: "X" }
+  const result = { call: "X", source: "qrz.com", scope: "general", name: "Someone", online: true } as CallInfoLookup & {
+    online?: boolean
+  }
+  const { guess: after, lookups } = runLookupPipeline(guess, [result])
+  assert.equal((after as Record<string, unknown>).online, undefined)
+  // But it DOES survive on the raw per-source record, same as notes/history —
+  // that's what the queue actually reads.
+  assert.equal((lookups[0] as Record<string, unknown>).online, true)
+})
+
 test("full pipeline: portable annotation -> qth hamdb -> prefixed qrz ends with locationScope 'portable'", () => {
   const guess: CallInfo = { call: "KI2D/P" }
   const annotation: CallInfoLookup = { call: "KI2D/P", source: "callsign-annotation", scope: "general", locationScope: "portable" }

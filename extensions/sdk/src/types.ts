@@ -76,7 +76,17 @@ import type { CallInfo, CallInfoLookup, AnnotatedCallInfo, RefInfo } from "@ham2
 /// `spot-history` mines out of recent spots). They ride the guess to the
 /// host, which applies only those whose `type` the QSO doesn't already
 /// carry — a lookup never overrides a ref the operator entered.
-export type LookupResult = (CallInfoLookup & { locAccuracy?: number; refs?: RefInfo[] })[]
+///
+/// `online: true` declares that answering THIS result required an actual
+/// network round-trip — set it only on a result a source could not have
+/// produced with `ctx.online` false. The host's background lookup queue
+/// (`LookupQueueService._hasOnlineLookup`) uses this, generically, to decide
+/// whether a QSO already carries a real online answer worth not re-fetching;
+/// omit it (the default) for anything answered from local/offline data (a
+/// log query, a cached file, recent spots) — a QSO whose only lookups are
+/// unmarked is treated as never having reached the network, however many
+/// distinct sources contributed to it.
+export type LookupResult = (CallInfoLookup & { locAccuracy?: number; refs?: RefInfo[]; online?: boolean })[]
 
 /// Registered under category `lookup`. Called once per decoration pass, in
 /// priority order, by the core `lookupService/core` hook's internal

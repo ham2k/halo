@@ -19,6 +19,13 @@ const LOCATION_SCOPE_RANK: Record<string, number> = { qth: 0, prefixed: 1, porta
 const LOCATION_FIELDS = ['locSource', 'lat', 'lon', 'grid', 'city', 'state', 'county', 'country', 'location'] as const
 type LocationField = (typeof LOCATION_FIELDS)[number]
 
+// Meta fields ABOUT a result, never folded into the flat guess merge below —
+// `notes`/`history` accumulate onto `lookups[]` unconditionally instead
+// (mergeLookup.test.ts), `locAccuracy`/`online` are read directly off the
+// stored per-source record (this file's own location-precedence logic;
+// LookupQueueService._hasOnlineLookup).
+const META_FIELDS = new Set(['source', 'scope', 'call', 'notes', 'history', 'locationScope', 'locAccuracy', 'online'])
+
 function scopeRank(scope: CallInfo['locationScope'] | undefined): number {
   return scope ? (LOCATION_SCOPE_RANK[scope] ?? 0) : 0
 }
@@ -87,7 +94,7 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
   //    agreeing on the same grid, which must not count as "written").
   const written = new Set<LocationField>()
   for (const [field, value] of Object.entries(result)) {
-    if (field === 'source' || field === 'scope' || field === 'call' || field === 'notes' || field === 'history' || field === 'locationScope' || field === 'locAccuracy') continue
+    if (META_FIELDS.has(field)) continue
     if (!hasValue(value)) continue
     if (isLocationField(field)) {
       if (scopeRank(resultScope) < scopeRank(next.locationScope)) continue
