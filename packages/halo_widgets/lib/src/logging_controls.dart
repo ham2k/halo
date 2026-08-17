@@ -5706,6 +5706,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _callFocus.requestFocus();
       } else if (map.containsKey('syncAll')) {
         await widget.onCommandAction?.call('syncAll');
+      } else if (map['purgeTests'] is Map) {
+        await widget.onCommandAction?.call('purgeTests', (map['purgeTests'] as Map).cast<String, dynamic>());
       } else if (map['sendSpots'] is Map) {
         // Resolving *who* gets spotted stays here (this widget owns
         // `qsos`/`editingQso`/`radioService`) — the command hook only

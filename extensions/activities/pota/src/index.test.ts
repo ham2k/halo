@@ -166,3 +166,6 @@ test("suggestOperationTitleForPota returns null for an activation ref with no re
   const suggestion = suggestOperationTitleForPota({ type: "potaActivation" }, "potaActivation")
   assert.equal(suggestion, null)
 })
+
+// isTestOperation itself (K-TEST substitution's gate) is shared and tested
+// once in sdk/src/testOperation.test.ts.

@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New PURGETESTS command bulk-deletes Test Operations (station call ending /T or /TEST)"
+
 "139":
   changes:
     - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), replacing HamDB"

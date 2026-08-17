@@ -1295,7 +1295,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
       // The home screen has no open operation, so operation-scoped commands
       // (SEED, NOTE, SPOT) answer with their own error here.
       operationContext: () => null,
-      runAction: (action, params) => runCommandAction(widget.services, action, params),
+      runAction: (action, params) => runCommandAction(widget.services, action, params, context),
       // HomeView stays mounted under every pushed route, so being alive
       // says nothing about being on screen.
       canShowResponse: () => mounted && (ModalRoute.of(context)?.isCurrent ?? false),

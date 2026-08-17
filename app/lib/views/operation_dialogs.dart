@@ -84,9 +84,59 @@ Future<bool> confirmDeleteOperation(
     },
   );
   if (confirmed == true) {
-    await services.operations.softDelete(operation.uuid);
+    // A Test Operation is purged (hard-deleted, QSOs included) rather than
+    // soft-deleted — see `HaLoServices.purgeOperation`.
+    if (operation.isTestOperation) {
+      await services.purgeOperation(operation.uuid);
+    } else {
+      await services.operations.softDelete(operation.uuid);
+    }
     services.track('operation_deleted');
   }
+  return confirmed == true;
+}
+
+/// Confirms the PURGETESTS command: lists every Test Operation this device
+/// holds and asks once for all of them, rather than one dialog per
+/// operation — the point of the command is bulk cleanup. Purging itself is
+/// the caller's job (`runCommandAction` in `main.dart`); this only asks.
+Future<bool> confirmPurgeTestOperations(BuildContext context, List<Operation> testOperations) async {
+  final confirmed = await showHaloDialog<bool>(
+    context: context,
+    builder: (context) {
+      final theme = Theme.of(context);
+      return HaloDialog(
+        title: Text(context.t.dialogs.purgeTestsTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.t.dialogs.purgeTestsBody),
+            const SizedBox(height: Space.sm),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final operation in testOperations)
+                      Text(
+                        '${operation.stationCall} — ${displayTitleFor(context, operation)}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.purgeTestsAction)),
+        ],
+      );
+    },
+  );
   return confirmed == true;
 }
 

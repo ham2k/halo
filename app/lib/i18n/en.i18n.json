@@ -124,7 +124,10 @@
     "activities": "Activities",
     "stationCallsign": "Station Callsign",
     "notes": "Notes",
-    "deleteOperationTitle": "Delete Operation"
+    "deleteOperationTitle": "Delete Operation",
+    "purgeTestsTitle": "Purge Test Operations",
+    "purgeTestsBody": "This permanently deletes these Test Operations and their QSOs. It cannot be undone.",
+    "purgeTestsAction": "Purge"
   },
   "operation": {
     "tabs": {
@@ -145,6 +148,7 @@
     "generalOperation": "General Operation",
     "titleFor": "for ${value}",
     "titleAt": "at ${value}",
+    "testOperationSuffix": "Testing",
     "menu": {
       "showRstFields": "Show RST fields",
       "showStateField": "Show State field",
@@ -1120,6 +1124,13 @@
     "experimentDisabled": "${name} disabled",
     "sentryTestSent": "Test error report sent to Sentry",
     "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only",
+    "noTestOperations": "No Test Operations to purge",
+    "purgeTestsUnavailable": "PURGETESTS needs to show a confirmation dialog, which isn't available here",
+    "testOperationsPurged": {
+      "one": "Purged ${count} Test Operation",
+      "other": "Purged ${count} Test Operations"
+    },
+    "purgeTestsSomeFailed": "Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again",
     "settingOn": "On",
     "settingOff": "Off",
     "settingEmpty": "(empty)",
@@ -1163,7 +1174,6 @@
     "noQsoYet": "No QSO logged yet to spot.",
     "setFrequencyFirst": "Set a frequency first.",
     "nothingToSpot": "Nothing to spot — no extension offers spotting here.",
-    "spottedOn": "Spotted on ${source}",
     "spotFailed": "${source} failed: ${message}",
     "unknownError": "unknown error",
     "notSent": "Spot not sent."

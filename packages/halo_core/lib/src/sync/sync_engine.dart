@@ -539,6 +539,17 @@ class SyncEngine {
       await operations.markSynced(batch.operations);
       await qsos.markSynced(batch.qsos);
 
+      // The deferred half of a Test Operation purge (`OperationsRepository.
+      // purge`): sweeps every operation that is confirmed both `purged` and
+      // `synced`, not just this round's own batch — see `hardDeletePurged`'s
+      // doc for why a batch-scoped sweep would leave a crash-orphaned row
+      // with no way back. Runs on every successful round, push or pull-only,
+      // so a leftover from an earlier round's crash gets caught here too.
+      final purgedUuids = await operations.hardDeletePurged();
+      for (final uuid in purgedUuids) {
+        await qsos.hardDeletePurgedForOperation(uuid);
+      }
+
       final inboundOperations = (response['operations'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       final inboundQsos = (response['qsos'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       if (generation != _generation) return _abandonRound();
@@ -615,12 +626,19 @@ class SyncEngine {
     return {
       if (batch.operations.isNotEmpty)
         'operations': [
-          for (final o in batch.operations) {...o.data, 'uuid': o.uuid, if (o.deleted) 'deleted': true},
+          for (final o in batch.operations)
+            {...o.data, 'uuid': o.uuid, if (o.deleted) 'deleted': true, if (o.purged) 'purged': true},
         ],
       if (batch.qsos.isNotEmpty)
         'qsos': [
           for (final q in batch.qsos)
-            {...q.data, 'uuid': q.uuid, 'operation': q.operationUuid, if (q.deleted) 'deleted': true},
+            {
+              ...q.data,
+              'uuid': q.uuid,
+              'operation': q.operationUuid,
+              if (q.deleted) 'deleted': true,
+              if (q.purged) 'purged': true,
+            },
         ],
       'meta': {
         'operationCount': operationCounts.total,

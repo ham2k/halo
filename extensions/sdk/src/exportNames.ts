@@ -30,6 +30,7 @@
 import type { JSONValue } from "./types"
 import { dateValues, logValues } from "./templateContext.ts"
 import { oneLine, renderTemplate } from "./templates.ts"
+import { isTestOperation } from "./testOperation.ts"
 
 /// The named templates, one per shape a filename can take. Kept as separate
 /// named strings rather than one template with branches, so that each is
@@ -113,6 +114,10 @@ export interface ExportNameParts {
 /// | `ref` | `2026-07-27 N0CALL at US-1234.adi` | `N0CALL@US-1234-20260727.adi` |
 /// | `activity` | `2026-07-27 N0CALL for POTA.adi` | `N0CALL-pota-20260727.adi` |
 /// | neither | `2026-07-27 N0CALL Field Day.adi` | `N0CALL-20260727-field-day.adi` |
+///
+/// A Test Operation (station call ending `/T` or `/TEST`) always gets
+/// "Testing" appended to the modifier, so a file generated for one can't be
+/// mistaken for a real log even after the modifier's other parts collapse.
 export function exportFilename(parts: ExportNameParts): string {
   const millis = parts.startAtMillis && parts.startAtMillis > 0 ? parts.startAtMillis : Date.now()
   const extension = parts.extension.replace(/^\./, "")
@@ -122,6 +127,11 @@ export function exportFilename(parts: ExportNameParts): string {
   // every export in the app would quietly be called `export.adi`.
   const shape: NameShape = `${parts.compact ? "Compact" : "Normal"}${parts.ref ? "Ref" : parts.activity ? "Activity" : ""}Name`
 
+  const modifier = [
+    (parts.modifier ?? "").trim(),
+    isTestOperation(parts.stationCall) ? "Testing" : "",
+  ].filter((part) => part !== "").join(" ")
+
   const stem = oneLine(
     renderTemplate(NAME_TEMPLATES[shape], {
       op: dateValues(millis),
@@ -129,7 +139,7 @@ export function exportFilename(parts: ExportNameParts): string {
         station: String(parts.stationCall ?? "").trim(),
         ref: parts.ref,
         activity: parts.activity,
-        modifier: (parts.modifier ?? "").trim(),
+        modifier,
         extension,
         compact: parts.compact,
       }),

@@ -23,10 +23,12 @@ void main() {
     // every ref, both cache an explicitly-empty suggestion the same way this
     // device would.
     bool cachedAsEmpty = false,
+    String stationCall = '',
   }) =>
       Operation(
         uuid: 'u',
         data: {
+          'stationCall': stationCall,
           'userTitle': userTitle,
           'title': title,
           if (hasRefs)
@@ -174,5 +176,25 @@ void main() {
 
   test('the subtitle is empty when nothing has been suggested', () {
     expect(displaySubtitleFor(operation()), isEmpty);
+  });
+
+  group('Test Operations', () {
+    testWidgets('a /T station call appends "Testing" to the placeholder', (tester) async {
+      final title = await titleFor(tester, operation(stationCall: 'KI2D/T'));
+      expect(title, 'General Operation Testing');
+    });
+
+    testWidgets('a /TEST station call appends "Testing" to a generated title', (tester) async {
+      final title = await titleFor(
+        tester,
+        operation(stationCall: 'KI2D/TEST', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}),
+      );
+      expect(title, 'at K-1234 Testing');
+    });
+
+    testWidgets('a non-test call never gets the suffix', (tester) async {
+      final title = await titleFor(tester, operation(stationCall: 'KI2D'));
+      expect(title, 'General Operation');
+    });
   });
 }

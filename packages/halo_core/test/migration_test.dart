@@ -45,6 +45,10 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  7: [
+    'ALTER TABLE operations DROP COLUMN purged',
+    'ALTER TABLE qsos DROP COLUMN purged',
+  ],
   // v6 changed no schema entities — it backfills revision stamps — so there is
   // nothing to undo. The entry exists so the coverage check passes, and to
   // record that the version was considered.
@@ -271,7 +275,7 @@ void main() {
   });
 
   group('every supported upgrade path', () {
-    for (var from = 1; from <= 5; from++) {
+    for (var from = 1; from <= 6; from++) {
       test('v$from keeps the operator\'s log intact', () async {
         final file = dbFile();
         await createAtVersion(file, from,

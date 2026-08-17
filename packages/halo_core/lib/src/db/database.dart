@@ -24,6 +24,15 @@ class Operations extends Table {
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
 
+  /// Set alongside `deleted` when a Test Operation is deleted
+  /// (`OperationsRepository.purge`, docs: Test Operations): the tombstone
+  /// still pushes through the normal dirty-row sync so other devices learn
+  /// about the deletion, but once that push is acknowledged the row is
+  /// physically removed here rather than kept as a permanent tombstone. A
+  /// device that only ever RECEIVES this flag never acts on it — merging a
+  /// purged operation still just tombstones, same as any other delete.
+  BoolColumn get purged => boolean().withDefault(const Constant(false))();
+
   /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo
   /// convention) so sync can compare revisions without decoding the blob:
   /// `markSynced` only flips rows whose stamp still matches what was sent,
@@ -47,6 +56,10 @@ class Qsos extends Table {
   TextColumn get data => text().withDefault(const Constant('{}'))();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
+
+  /// See `Operations.purged` — set on every QSO of a Test Operation when the
+  /// operation is purged.
+  BoolColumn get purged => boolean().withDefault(const Constant(false))();
 
   /// Cached plugin scoring results so list rendering never waits on the
   /// plugin runtime (DESIGN.md §4). Unused until the scoring hooks land.
@@ -143,7 +156,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -190,6 +203,10 @@ class HaLoDatabase extends _$HaLoDatabase {
             }
             if (from < 6) {
               await _backfillRevisionStamps(m);
+            }
+            if (from < 7) {
+              await m.addColumn(operations, operations.purged);
+              await m.addColumn(qsos, qsos.purged);
             }
           });
         },

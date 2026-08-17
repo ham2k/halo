@@ -33,6 +33,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 
 import 'views/command_dialog.dart';
 import 'views/confirm_device_dialog.dart';
+import 'views/operation_dialogs.dart';
 import 'views/operation_view.dart';
 import 'views/home_navigation_rail.dart';
 import 'views/home_view.dart';
@@ -975,6 +976,21 @@ class HaLoServices {
   /// that can hold one is actually built.
   late final PanelService panels = PanelService(extensions);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
+
+  /// Deletes a Test Operation for real, QSOs included — see
+  /// `OperationsRepository.purge`. Never call for a non-test operation:
+  /// `operation_dialogs.dart`'s delete confirmation and PURGETESTS are the
+  /// only two callers, and both check `Operation.isTestOperation` first.
+  Future<void> purgeOperation(String uuid) async {
+    // One transaction: a crash or throw between the two writes must never
+    // leave the operation tombstoned while its QSOs are still live, or vice
+    // versa — the orphan would then survive every future purge round, since
+    // nothing revisits an operation once it isn't dirty.
+    await db.transaction(() async {
+      await operations.purge(uuid);
+      await qsos.purgeForOperation(uuid);
+    });
+  }
   late final RadioService radio = RadioService(settings.prefs);
   // Station equipment and CAT control, behind the `cat` experiment
   // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
@@ -1897,7 +1913,7 @@ class HaLoServices {
   /// QSY/QRX/SPOTLAST-family commands (`logging_controls.dart`'s
   /// `_dispatchActions`, which already resolved *who* gets spotted —
   /// this only posts and summarizes the per-source result).
-  Future<CommandActionOutcome> _sendSpot(Map<String, dynamic> params) async {
+  Future<CommandActionOutcome?> _sendSpot(Map<String, dynamic> params) async {
     final operation = (params['operation'] as Map?)?.cast<String, dynamic>() ?? const {};
     final qso = (params['qso'] as Map?)?.cast<String, dynamic>();
     final target = params['target'] as String? ?? 'self';
@@ -1918,22 +1934,27 @@ class HaLoServices {
       spotterCall: settings.activeProfile.operatorCall,
     );
 
-    final summaries = <String>[];
-    // One source refusing is bad news even when another accepted: the
-    // operator's next move is to spot the failed one again, and a summary
-    // reading as success is what stops them.
-    var anyFailed = false;
+    // Only failures get a notice — a successful spot already shows in the
+    // Spotting control's per-source status icons, and a "Spotted on X" text
+    // notice on top of that is a confirmation nobody asked to acknowledge.
+    // A refusal still has to surface: it's bad news the operator needs to
+    // see, since the icon alone is easy to miss. Distinct from every source
+    // failing: no result at all (every hookKey missing from `results`) means
+    // the spot never went anywhere, which is its own failure to report.
+    var anyResult = false;
+    final failures = <String>[];
     for (final source in sources) {
       final hookKey = source['hookKey'] as String? ?? '?';
       final result = results[hookKey];
       if (result == null) continue;
-      if (result['ok'] != true) anyFailed = true;
-      summaries.add(result['ok'] == true
-          ? t.spotting.spottedOn(source: hookKey)
-          : t.spotting.spotFailed(source: hookKey, message: result['message'] ?? t.spotting.unknownError));
+      anyResult = true;
+      if (result['ok'] != true) {
+        failures.add(t.spotting.spotFailed(source: hookKey, message: result['message'] ?? t.spotting.unknownError));
+      }
     }
-    if (summaries.isEmpty) return (text: t.spotting.notSent, failed: true);
-    return (text: summaries.join('; '), failed: anyFailed);
+    if (!anyResult) return (text: t.spotting.notSent, failed: true);
+    if (failures.isEmpty) return null;
+    return (text: failures.join('; '), failed: true);
   }
 
   Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {
@@ -1986,15 +2007,59 @@ typedef CommandActionOutcome = ({String text, bool failed});
 /// bar waiting on the answer is.
 ///
 /// Returns true when the action had something to say at all.
+///
+/// [context] is only needed for `purgeTests` (PURGETESTS): unlike every
+/// other action, which [HaLoServices.handleCommandAction] can run with no
+/// UI at all, it has to list the candidates and ask for confirmation before
+/// doing anything irreversible — so it's intercepted here rather than
+/// reaching that switch. Every real call site (home, ⌘K, the logging panel)
+/// has a BuildContext to pass; omitting it only degrades that one command.
 Future<bool> runCommandAction(HaLoServices services, String action,
-    [Map<String, dynamic>? params]) async {
-  final outcome = await services.handleCommandAction(action, params);
+    [Map<String, dynamic>? params, BuildContext? context]) async {
+  final outcome =
+      action == 'purgeTests' ? await _runPurgeTests(services, context) : await services.handleCommandAction(action, params);
   if (outcome == null) return false;
   final sink = services.commandResponseSink;
   if (sink == null || !sink(outcome.text, failed: outcome.failed)) {
     services.statusBar.setMessage(key: 'commandAction', text: outcome.text);
   }
   return true;
+}
+
+/// PURGETESTS: lists every Test Operation this device holds, asks once for
+/// all of them (`confirmPurgeTestOperations`), then purges each — see
+/// `HaLoServices.purgeOperation`. Returns null (no message at all) when the
+/// user cancels, same as any other dismissed dialog.
+Future<CommandActionOutcome?> _runPurgeTests(HaLoServices services, BuildContext? context) async {
+  // Bypasses handleCommandAction's switch (see runCommandAction's doc), so
+  // it has to fire the same usage event that switch's callers get for free.
+  services.track('command_executed', {'command': 'purgeTests'});
+
+  final testOperations = (await services.operations.watchAll().first).where((op) => op.isTestOperation).toList();
+  if (testOperations.isEmpty) return (text: t.commands.noTestOperations, failed: false);
+  if (context == null) return (text: t.commands.purgeTestsUnavailable, failed: true);
+  // The await above is a real gap: the widget that owns `context` (the
+  // command dialog, home view, or logging panel) can be gone by the time it
+  // resolves — e.g. the operator closed ⌘K while this was still listing.
+  if (!context.mounted) return (text: t.commands.purgeTestsUnavailable, failed: true);
+  if (!await confirmPurgeTestOperations(context, testOperations)) return null;
+
+  // Isolated per operation: one purge throwing must not strand the rest
+  // half-purged with no report of how far it got.
+  var purgedCount = 0;
+  for (final operation in testOperations) {
+    try {
+      await services.purgeOperation(operation.uuid);
+      purgedCount++;
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'purgeTests:${operation.uuid}');
+    }
+  }
+  services.track('test_operations_purged', {'count': purgedCount});
+  if (purgedCount < testOperations.length) {
+    return (text: t.commands.purgeTestsSomeFailed(purged: purgedCount, total: testOperations.length), failed: true);
+  }
+  return (text: t.commands.testOperationsPurged(count: purgedCount), failed: false);
 }
 
 

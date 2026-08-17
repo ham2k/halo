@@ -90,6 +90,43 @@ test("an empty operation still gets a usable name", () => {
   assert.ok(!name.startsWith("."), `expected a real stem, got ${name}`)
 })
 
+// Test Operations (station call ending /T or /TEST) always get "Testing"
+// appended, so an exported file can't be mistaken for a real log.
+test("a /T station call appends Testing to the normal form", () => {
+  assert.equal(
+    exportFilename({ stationCall: "N0CALL/T", startAtMillis: JULY_27, extension: "adi" }),
+    "2026-07-27 N0CALL-T Testing.adi",
+  )
+})
+
+test("a /TEST station call appends Testing to the compact form, dashed like the rest of the modifier", () => {
+  assert.equal(
+    exportFilename({ stationCall: "N0CALL/TEST", startAtMillis: JULY_27, extension: "adi", compact: true }),
+    "N0CALL-TEST-20260727-testing.adi",
+  )
+})
+
+test("Testing joins an existing modifier rather than replacing it", () => {
+  assert.equal(
+    exportFilename({ stationCall: "N0CALL/T", modifier: "Full", startAtMillis: JULY_27, extension: "adi" }),
+    "2026-07-27 N0CALL-T Full Testing.adi",
+  )
+})
+
+test("a non-test station call never gets the suffix", () => {
+  assert.equal(
+    exportFilename({ stationCall: "N0CALL", startAtMillis: JULY_27, extension: "adi" }),
+    "2026-07-27 N0CALL.adi",
+  )
+})
+
+test("any comma-separated call being a test call is enough to add the suffix", () => {
+  assert.equal(
+    exportFilename({ stationCall: "N0CALL, N0CALL/T", startAtMillis: JULY_27, extension: "adi" }),
+    "2026-07-27 N0CALL, N0CALL-T Testing.adi",
+  )
+})
+
 test("startMillisOf prefers the first QSO over the operation's own start", () => {
   const operation = { startAtMillisMin: JULY_27 }
   const qsos = [{ startAtMillis: JULY_27 + 5000 }, { startAtMillis: JULY_27 + 1000 }]

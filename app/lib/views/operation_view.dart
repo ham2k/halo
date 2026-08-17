@@ -1401,7 +1401,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   }
 
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
-      runCommandAction(widget.services, action, params);
+      runCommandAction(widget.services, action, params, context);
 
   /// The logging panel's own settings — field visibility, dupe/number
   /// display, a bulk lookup refresh — behind the tune icon, built from

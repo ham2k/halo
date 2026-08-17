@@ -19,6 +19,10 @@ class Operation {
   final bool deleted;
   final bool synced;
 
+  /// See `Operations.purged` (database.dart) — set only alongside [deleted]
+  /// when this operation was purged rather than merely deleted.
+  final bool purged;
+
   /// Device-local state that never syncs — e.g. cached day/operation scoring
   /// summaries written by `ScoringService` under the `scoring` key. Distinct
   /// from `data`, which is the QSON blob that syncs to the server.
@@ -32,6 +36,7 @@ class Operation {
     this.startAtMillisMax,
     this.deleted = false,
     this.synced = false,
+    this.purged = false,
     this.localData = const {},
   });
 
@@ -60,6 +65,12 @@ class Operation {
     ];
     return unique.isEmpty ? const [''] : unique;
   }
+
+  /// True when any of [stationCalls] ends in `/T` or `/TEST` (e.g.
+  /// `KI2D/T`) — the operator's own signal that this operation is for
+  /// testing, not a real activation. Changes title, export filenames,
+  /// spotting and deletion behavior; see docs/design (Test Operations).
+  bool get isTestOperation => stationCalls.any((call) => call.endsWith('/T') || call.endsWith('/TEST'));
 
   /// The user's own title, entered via the operation details dialog —
   /// distinct from [title], which holds the ref-generated one. Empty when
@@ -119,6 +130,9 @@ class Qso {
   final Map<String, dynamic> data;
   final bool deleted;
 
+  /// See `Operation.purged`.
+  final bool purged;
+
   /// Cached scoring results (DESIGN.md §4: the `scoring` hook runs batched
   /// and caches its per-QSO verdicts here, keyed by rule — e.g. `dupe`,
   /// `dxcc`, `bandsAndModes` — so list rendering never waits on the JS
@@ -130,6 +144,7 @@ class Qso {
     required this.operationUuid,
     required this.data,
     this.deleted = false,
+    this.purged = false,
     this.scoreCache,
   });
 

@@ -165,14 +165,29 @@ class OperationsRepository {
     onChange?.call();
   }
 
-  Future<void> softDelete(String uuid) async {
-    // Re-stamps `data.updatedAtMillis` too (not just the flags): the delete
-    // must sync as a revision newer than the record it tombstones, or other
-    // devices' merge comparison would discard it as stale.
+  Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);
+
+  /// Deletes a Test Operation for real: soft-deletes with `purged: true`
+  /// (same tombstone `softDelete` writes, so it disappears from every
+  /// `deleted.equals(false)` query immediately), which then pushes through
+  /// the normal dirty-row sync pipeline. Once that push is acknowledged,
+  /// [SyncEngine] hard-deletes the row (and its QSOs, via
+  /// `QsosRepository.purgeForOperation`) — see `Operations.purged`'s doc.
+  /// Deliberately not offered for a non-test operation: an unrecoverable
+  /// delete is the whole point of a Test Operation existing, not a general
+  /// replacement for [softDelete].
+  Future<void> purge(String uuid) => _writeDeleted(uuid, purged: true);
+
+  /// Shared by [softDelete] and [purge]. Re-stamps `data.updatedAtMillis`
+  /// too (not just the flags): the delete must sync as a revision newer than
+  /// the record it tombstones, or other devices' merge comparison would
+  /// discard it as stale.
+  Future<void> _writeDeleted(String uuid, {required bool purged}) async {
     final now = realNowMillis();
     final operation = await get(uuid);
     var companion = OperationsCompanion(
       deleted: const Value(true),
+      purged: Value(purged),
       synced: const Value(false),
       updatedAtMillis: Value(now),
     );
@@ -181,6 +196,23 @@ class OperationsRepository {
     }
     await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
     onChange?.call();
+  }
+
+  /// The deferred half of [purge]: physically removes every row that is
+  /// `purged` AND `synced` — called by [SyncEngine] after every successful
+  /// round, not scoped to whatever that round just pushed. Scoping it to the
+  /// round's own batch would leave a row stranded forever the moment the app
+  /// dies between `markSynced` committing `synced: true` and this running:
+  /// a row that isn't dirty never appears in a future batch again, so a
+  /// batch-scoped sweep would have no path back to it. An unconditional
+  /// sweep instead catches it on the very next round that succeeds at all —
+  /// self-healing rather than reliant on that one round landing cleanly.
+  Future<List<String>> hardDeletePurged() async {
+    final rows = await (db.select(db.operations)..where((op) => op.purged.equals(true) & op.synced.equals(true))).get();
+    if (rows.isEmpty) return const [];
+    final purgedUuids = rows.map((r) => r.uuid).toList();
+    await (db.delete(db.operations)..where((op) => op.uuid.isIn(purgedUuids))).go();
+    return purgedUuids;
   }
 
   /// Up to `limit` dirty operations, most-recently-active first — the same
@@ -277,6 +309,12 @@ class OperationsRepository {
         if (uuid == null) continue;
         final data = Map<String, dynamic>.from(incoming)..remove('uuid');
         final deleted = data.remove('deleted') == true;
+        // Carried through for informational parity with the sending
+        // device's row, but never acted on here: this device never
+        // hard-deletes on receipt of a sync record, purged or not — only
+        // the device that itself purged the operation ever removes the row
+        // (`SyncEngine`, after its own push is acknowledged).
+        final purged = data.remove('purged') == true;
         _normalizeLegacyStamps(data);
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
 
@@ -294,6 +332,7 @@ class OperationsRepository {
               uuid: Value(uuid),
               data: Value(jsonEncode(data)),
               deleted: Value(deleted),
+              purged: Value(purged),
               synced: const Value(true),
               updatedAtMillis: Value((data['updatedAtMillis'] as num?)?.toInt()),
             ));
@@ -348,6 +387,7 @@ class OperationsRepository {
         startAtMillisMax: row.startAtMillisMax,
         deleted: row.deleted,
         synced: row.synced,
+        purged: row.purged,
         localData: row.localData == null ? const {} : jsonDecode(row.localData!) as Map<String, dynamic>,
       );
 
@@ -371,6 +411,7 @@ Qso _qsoFromRow(QsoRow row) => Qso(
       operationUuid: row.operation,
       data: jsonDecode(row.data) as Map<String, dynamic>,
       deleted: row.deleted,
+      purged: row.purged,
       scoreCache: row.scoreCache,
     );
 
@@ -772,6 +813,44 @@ class QsosRepository {
     if (changed) onChange?.call();
   }
 
+  /// Soft-deletes with `purged: true` every QSO of [operationUuid],
+  /// regardless of its current `deleted` state — the QSO-side half of
+  /// `OperationsRepository.purge`. Unlike a normal operation delete (which
+  /// deliberately leaves QSOs alone, see [historyForCall]'s doc), a purge is
+  /// unrecoverable by design, so touching every QSO row directly is safe:
+  /// there's no "undelete" state left to lose track of.
+  Future<void> purgeForOperation(String operationUuid) async {
+    await db.transaction(() async {
+      final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(operationUuid))).get();
+      for (final row in rows) {
+        // The mirrored column must match `stamped.data`'s own
+        // `updatedAtMillis`, not a separately-captured timestamp — a
+        // divergence here is exactly what makes `markSynced`'s stamp
+        // comparison fail forever and the row re-push in a loop.
+        final stamped = _restamped(_qsoFromRow(row));
+        await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(
+          QsosCompanion(
+            deleted: const Value(true),
+            purged: const Value(true),
+            synced: const Value(false),
+            data: Value(jsonEncode(stamped.data)),
+            updatedAtMillis: Value(stamped.updatedAtMillis),
+          ),
+        );
+      }
+    });
+    onChange?.call();
+  }
+
+  /// See `OperationsRepository.hardDeletePurged` — the QSO-side half, run
+  /// after a purged operation's row has already been hard-deleted so an
+  /// orphaned QSO never outlives its operation.
+  Future<void> hardDeletePurgedForOperation(String operationUuid) async {
+    await (db.delete(db.qsos)
+          ..where((q) => q.operation.equals(operationUuid) & q.purged.equals(true) & q.synced.equals(true)))
+        .go();
+  }
+
   /// A copy of [qso] with a fresh revision stamp in its data — every local
   /// write goes through this so `data.updatedAtMillis` and the mirrored
   /// column never diverge (a divergent pair would make `markSynced`'s
@@ -1056,6 +1135,9 @@ class QsosRepository {
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
         final deleted = data.remove('deleted') == true;
+        // See OperationsRepository.mergeFromSync: carried through, never
+        // acted on by a receiving device.
+        final purged = data.remove('purged') == true;
         _normalizeLegacyStamps(data);
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
 
@@ -1072,7 +1154,7 @@ class QsosRepository {
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
 
         await db.into(db.qsos).insertOnConflictUpdate(
-              _companionFor(qso).copyWith(synced: const Value(true), deleted: Value(deleted)),
+              _companionFor(qso).copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
             );
         affectedOperations.add(operationUuid);
       }

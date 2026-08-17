@@ -1109,7 +1109,6 @@
     "noQsoYet": "Aún no hay QSO registrado para spotear.",
     "setFrequencyFirst": "Primero define una frecuencia.",
     "nothingToSpot": "Nada que spotear — ninguna extensión ofrece spotting aquí.",
-    "spottedOn": "Spot enviado a ${source}",
     "spotFailed": "${source} falló: ${message}",
     "unknownError": "error desconocido",
     "notSent": "Spot no enviado."

@@ -654,8 +654,16 @@ class ExtensionService implements PanelExtensionSource {
     final host = _host;
     if (host == null) return const {};
     final method = qso == null ? 'postSelfSpot' : 'postOtherSpot';
+    // Self-spotting a Test Operation reports `/TEST` (`KI2D/TEST`) rather
+    // than whatever shorter suffix the operation itself uses (`KI2D/T`), so
+    // the spot reads unambiguously to hunters — done once here rather than
+    // in each activity extension, since every one of them builds its own
+    // spotted call straight from `operation.stationCall`.
+    final spotOperation = qso == null && Operation(uuid: '', data: operation).isTestOperation
+        ? {...operation, 'stationCall': _spotCallForTestOperation(operation['stationCall'] as String? ?? '')}
+        : operation;
     final args = qso == null
-        ? {'operation': operation, 'freq': freq, 'mode': mode, 'comment': comment}
+        ? {'operation': spotOperation, 'freq': freq, 'mode': mode, 'comment': comment}
         : {'qso': qso, 'comment': comment, 'spotterCall': spotterCall};
     final entries = await Future.wait(sources.map((source) async {
       final hookKey = source['hookKey'] as String?;
@@ -681,6 +689,17 @@ class ExtensionService implements PanelExtensionSource {
     }
     return {for (final entry in entries) entry.key: entry.value};
   }
+
+  /// Rewrites every comma-separated call's trailing `/T` to `/TEST` — see
+  /// [sendSpot]'s self-spot handling. A call already ending `/TEST` is left
+  /// alone.
+  String _spotCallForTestOperation(String stationCall) => stationCall
+      .split(',')
+      .map((call) {
+        final trimmed = call.trim().toUpperCase();
+        return trimmed.endsWith('/T') ? '${trimmed.substring(0, trimmed.length - 2)}/TEST' : trimmed;
+      })
+      .join(',');
 
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
     final host = _host;

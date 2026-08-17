@@ -804,6 +804,8 @@ class CommandEngine extends ChangeNotifier {
         }
       } else if (map.containsKey('syncAll')) {
         await runAction('syncAll', null);
+      } else if (map['purgeTests'] is Map) {
+        await runAction('purgeTests', (map['purgeTests'] as Map).cast<String, dynamic>());
       } else if (map['devNotice'] is Map) {
         await runAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
       } else if (map['devStatus'] is Map) {

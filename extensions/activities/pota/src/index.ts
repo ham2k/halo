@@ -14,7 +14,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, isTestOperation, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -312,6 +312,12 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
 
+/// The synthetic park a Test Operation always spots under, replacing
+/// whatever real activation refs the operation has — so a test spot never
+/// reads as a real activation to a hunter, and testing the spotting flow
+/// never needs a real park configured.
+const TEST_OPERATION_REF: Ref = { type: ACTIVATION_TYPE, ref: 'K-TEST' }
+
 /// A QSO-scoped grid lookup: any POTA park hunted on THIS qso is a more
 /// specific ("portable") location than a callsign's registered home QTH —
 /// same concept as a `/P` callsign. Returns the park's grid tagged
@@ -471,6 +477,9 @@ const SpotsHook = {
   },
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
+    // A Test Operation always spots under K-TEST (see postSelfSpot), so the
+    // option is offered even when the operation has no real POTA ref at all.
+    if (isTestOperation(operation.stationCall)) return { enabled: true, icon: 'pine-tree' }
     return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: 'pine-tree' } : { enabled: false }
   },
 
@@ -479,9 +488,11 @@ const SpotsHook = {
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, ctx: HookContext): Promise<PostResult> {
-    const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No POTA activation on this operation' }
     const call = String(operation.stationCall ?? '')
+    // K-TEST regardless of the operation's actual refs — see
+    // TEST_OPERATION_REF's doc.
+    const refs = isTestOperation(call) ? [TEST_OPERATION_REF] : refsOfType(operation, ACTIVATION_TYPE)
+    if (refs.length === 0) return { ok: false, message: 'No POTA activation on this operation' }
     return postSpotToPOTA({ call, spotter: call, freq, mode, refs, comment, appName: ctx.appName })
   },
 

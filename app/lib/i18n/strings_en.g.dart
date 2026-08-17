@@ -332,6 +332,15 @@ class Translations$dialogs$en {
 
 	/// en: 'Delete Operation'
 	String get deleteOperationTitle => 'Delete Operation';
+
+	/// en: 'Purge Test Operations'
+	String get purgeTestsTitle => 'Purge Test Operations';
+
+	/// en: 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.'
+	String get purgeTestsBody => 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.';
+
+	/// en: 'Purge'
+	String get purgeTestsAction => 'Purge';
 }
 
 // Path: operation
@@ -366,6 +375,9 @@ class Translations$operation$en {
 
 	/// en: 'at ${value}'
 	String titleAt({required Object value}) => 'at ${value}';
+
+	/// en: 'Testing'
+	String get testOperationSuffix => 'Testing';
 
 	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
 	late final Translations$operation$layout$en layout = Translations$operation$layout$en.internal(_root);
@@ -1017,6 +1029,21 @@ class Translations$commands$en {
 	/// en: 'Sentry is disabled in this build — test error logged locally only'
 	String get sentryTestLocalOnly => 'Sentry is disabled in this build — test error logged locally only';
 
+	/// en: 'No Test Operations to purge'
+	String get noTestOperations => 'No Test Operations to purge';
+
+	/// en: 'PURGETESTS needs to show a confirmation dialog, which isn't available here'
+	String get purgeTestsUnavailable => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here';
+
+	/// en: '(one) {Purged ${count} Test Operation} (other) {Purged ${count} Test Operations}'
+	String testOperationsPurged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Purged ${count} Test Operation',
+		other: 'Purged ${count} Test Operations',
+	);
+
+	/// en: 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again'
+	String purgeTestsSomeFailed({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again';
+
 	/// en: 'On'
 	String get settingOn => 'On';
 
@@ -1157,9 +1184,6 @@ class Translations$spotting$en {
 
 	/// en: 'Nothing to spot — no extension offers spotting here.'
 	String get nothingToSpot => 'Nothing to spot — no extension offers spotting here.';
-
-	/// en: 'Spotted on ${source}'
-	String spottedOn({required Object source}) => 'Spotted on ${source}';
 
 	/// en: '${source} failed: ${message}'
 	String spotFailed({required Object source, required Object message}) => '${source} failed: ${message}';
@@ -4461,6 +4485,9 @@ extension on Translations {
 			'dialogs.stationCallsign' => 'Station Callsign',
 			'dialogs.notes' => 'Notes',
 			'dialogs.deleteOperationTitle' => 'Delete Operation',
+			'dialogs.purgeTestsTitle' => 'Purge Test Operations',
+			'dialogs.purgeTestsBody' => 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.',
+			'dialogs.purgeTestsAction' => 'Purge',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -4477,6 +4504,7 @@ extension on Translations {
 			'operation.generalOperation' => 'General Operation',
 			'operation.titleFor' => ({required Object value}) => 'for ${value}',
 			'operation.titleAt' => ({required Object value}) => 'at ${value}',
+			'operation.testOperationSuffix' => 'Testing',
 			'operation.menu.showRstFields' => 'Show RST fields',
 			'operation.menu.showStateField' => 'Show State field',
 			'operation.menu.showGridField' => 'Show Grid field',
@@ -4868,12 +4896,12 @@ extension on Translations {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutCustomization.title' => 'Enable Layout Customization',
 			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
 			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
 			'settings.layoutDensity' => 'Layout Density',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityOpts.auto' => 'Auto',
 			'settings.layoutDensityOpts.densest' => 'Densest',
 			'settings.layoutDensityOpts.dense' => 'Dense',
@@ -5263,6 +5291,10 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
+			'commands.noTestOperations' => 'No Test Operations to purge',
+			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
+			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
+			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
 			'commands.settingOn' => 'On',
 			'commands.settingOff' => 'Off',
 			'commands.settingEmpty' => '(empty)',
@@ -5298,7 +5330,6 @@ extension on Translations {
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
-			'spotting.spottedOn' => ({required Object source}) => 'Spotted on ${source}',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
@@ -5379,6 +5410,8 @@ extension on Translations {
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithQr' => 'Link with a QR code',
 			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.linkWithEmail' => 'Link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',
 			'switchAccounts.enterEmailPrompt' => 'Enter the email address of the account you want this device to use.',
@@ -5386,8 +5419,6 @@ extension on Translations {
 			'switchAccounts.linkAccount' => 'Link account',
 			'switchAccounts.copiedCode' => 'Copied code to clipboard',
 			'switchAccounts.copyCode' => 'Copy code',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:',
 			'switchAccounts.waitingForConfirmation' => 'Waiting for confirmation…',
 			'switchAccounts.sendEmailInstead' => 'Send a confirmation email instead',

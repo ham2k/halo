@@ -57,13 +57,15 @@ String generatedTitleFor(BuildContext context, Operation operation) {
 /// The operation's display title: the user's own title (set via the
 /// operation dialog), if any, followed by the ref-derived suggestion ("for X
 /// at Y") — or a localized "General Operation" placeholder when neither
-/// contributed anything.
+/// contributed anything. A Test Operation (station call ending in `/T` or
+/// `/TEST`) always gets "Testing" appended, placeholder included, so it
+/// can't be mistaken for a real activation in a list or a title bar.
 String displayTitleFor(BuildContext context, Operation operation) {
   final generated = generatedTitleFor(context, operation);
-  if (operation.userTitle.isNotEmpty) {
-    return generated.isEmpty ? operation.userTitle : '${operation.userTitle} $generated';
-  }
-  return generated.isEmpty ? context.t.operation.generalOperation : generated;
+  final base = operation.userTitle.isNotEmpty
+      ? (generated.isEmpty ? operation.userTitle : '${operation.userTitle} $generated')
+      : (generated.isEmpty ? context.t.operation.generalOperation : generated);
+  return operation.isTestOperation ? '$base ${context.t.operation.testOperationSuffix}' : base;
 }
 
 /// The operation's display subtitle: always the ref-derived detail (there's

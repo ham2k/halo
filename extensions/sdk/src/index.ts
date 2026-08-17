@@ -38,6 +38,7 @@ export * from "./exportNames"
 export * from "./referenceActivity"
 export * from "./templates"
 export * from "./templateContext"
+export * from "./testOperation"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

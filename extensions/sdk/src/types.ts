@@ -963,6 +963,11 @@ export interface CommandAction {
     target?: 'self' | 'last'
   }
   syncAll?: Record<string, never>
+  /// PURGETESTS (`test-ops-commands`): app-side lists Test Operations, asks
+  /// for confirmation, then purges each — see `HaLoServices.purgeOperation`.
+  /// The bare `{}` here just carries the intent through the same
+  /// dispatch path every other action uses.
+  purgeTests?: Record<string, never>
   updateSettings?: {
     developerMode?: boolean
   }

@@ -576,7 +576,6 @@ class _Translations$spotting$es extends Translations$spotting$en {
 	@override String get noQsoYet => 'Aún no hay QSO registrado para spotear.';
 	@override String get setFrequencyFirst => 'Primero define una frecuencia.';
 	@override String get nothingToSpot => 'Nada que spotear — ninguna extensión ofrece spotting aquí.';
-	@override String spottedOn({required Object source}) => 'Spot enviado a ${source}';
 	@override String spotFailed({required Object source, required Object message}) => '${source} falló: ${message}';
 	@override String get unknownError => 'error desconocido';
 	@override String get notSent => 'Spot no enviado.';
@@ -3014,7 +3013,6 @@ extension on TranslationsEs {
 			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
 			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
 			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',
-			'spotting.spottedOn' => ({required Object source}) => 'Spot enviado a ${source}',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
 			'spotting.unknownError' => 'error desconocido',
 			'spotting.notSent' => 'Spot no enviado.',

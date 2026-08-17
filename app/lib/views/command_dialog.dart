@@ -230,7 +230,7 @@ class _CommandDialogState extends State<CommandDialog> {
     _engine = CommandEngine(
       services: widget.services,
       operationContext: () => widget.services.currentOperationContext,
-      runAction: (action, params) => runCommandAction(widget.services, action, params),
+      runAction: (action, params) => runCommandAction(widget.services, action, params, context),
       onExecuted: _onExecuted,
       onResponseExpired: _onResponseExpired,
       // Not just `mounted`: a pop starts the exit transition and only
