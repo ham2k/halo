@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"142":
   changes:
     - "New PURGETESTS command bulk-deletes Test Operations (station call ending /T or /TEST)"
     - Android USB serial should (well, "might") work now
