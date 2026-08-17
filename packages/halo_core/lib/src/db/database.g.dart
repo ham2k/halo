@@ -114,6 +114,21 @@ class $OperationsTable extends Operations
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _purgedLocallyMeta = const VerificationMeta(
+    'purgedLocally',
+  );
+  @override
+  late final GeneratedColumn<bool> purgedLocally = GeneratedColumn<bool>(
+    'purged_locally',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("purged_locally" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _updatedAtMillisMeta = const VerificationMeta(
     'updatedAtMillis',
   );
@@ -136,6 +151,7 @@ class $OperationsTable extends Operations
     deleted,
     synced,
     purged,
+    purgedLocally,
     updatedAtMillis,
   ];
   @override
@@ -212,6 +228,15 @@ class $OperationsTable extends Operations
         purged.isAcceptableOrUnknown(data['purged']!, _purgedMeta),
       );
     }
+    if (data.containsKey('purged_locally')) {
+      context.handle(
+        _purgedLocallyMeta,
+        purgedLocally.isAcceptableOrUnknown(
+          data['purged_locally']!,
+          _purgedLocallyMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_at_millis')) {
       context.handle(
         _updatedAtMillisMeta,
@@ -266,6 +291,10 @@ class $OperationsTable extends Operations
         DriftSqlType.bool,
         data['${effectivePrefix}purged'],
       )!,
+      purgedLocally: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}purged_locally'],
+      )!,
       updatedAtMillis: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}updated_at_millis'],
@@ -295,10 +324,22 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
   /// (`OperationsRepository.purge`, docs: Test Operations): the tombstone
   /// still pushes through the normal dirty-row sync so other devices learn
   /// about the deletion, but once that push is acknowledged the row is
-  /// physically removed here rather than kept as a permanent tombstone. A
-  /// device that only ever RECEIVES this flag never acts on it — merging a
-  /// purged operation still just tombstones, same as any other delete.
+  /// physically removed. `purged` alone doesn't say WHO gets to act on it
+  /// without asking — see [purgedLocally].
   final bool purged;
+
+  /// True only when THIS device is the one that called
+  /// `OperationsRepository.purge` — never set by `mergeFromSync`, which
+  /// leaves it at its default `false` no matter what the incoming record's
+  /// `purged` says. `hardDeletePurged`'s auto-sweep requires this: a
+  /// locally-initiated purge already went through a confirmation dialog on
+  /// this device, so it's safe to remove once synced, but a `purged` flag
+  /// that only ever arrived via sync has not been confirmed HERE and must
+  /// wait for the operator to say so (`OperationsRepository.
+  /// confirmReceivedPurges`) — the whole point of `purged` round-tripping
+  /// through sync at all is so every device eventually asks, not so every
+  /// device silently agrees.
+  final bool purgedLocally;
 
   /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo
   /// convention) so sync can compare revisions without decoding the blob:
@@ -315,6 +356,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     required this.deleted,
     required this.synced,
     required this.purged,
+    required this.purgedLocally,
     this.updatedAtMillis,
   });
   @override
@@ -335,6 +377,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     map['deleted'] = Variable<bool>(deleted);
     map['synced'] = Variable<bool>(synced);
     map['purged'] = Variable<bool>(purged);
+    map['purged_locally'] = Variable<bool>(purgedLocally);
     if (!nullToAbsent || updatedAtMillis != null) {
       map['updated_at_millis'] = Variable<int>(updatedAtMillis);
     }
@@ -358,6 +401,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       deleted: Value(deleted),
       synced: Value(synced),
       purged: Value(purged),
+      purgedLocally: Value(purgedLocally),
       updatedAtMillis: updatedAtMillis == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAtMillis),
@@ -379,6 +423,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       deleted: serializer.fromJson<bool>(json['deleted']),
       synced: serializer.fromJson<bool>(json['synced']),
       purged: serializer.fromJson<bool>(json['purged']),
+      purgedLocally: serializer.fromJson<bool>(json['purgedLocally']),
       updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
     );
   }
@@ -395,6 +440,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       'deleted': serializer.toJson<bool>(deleted),
       'synced': serializer.toJson<bool>(synced),
       'purged': serializer.toJson<bool>(purged),
+      'purgedLocally': serializer.toJson<bool>(purgedLocally),
       'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
     };
   }
@@ -409,6 +455,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     bool? deleted,
     bool? synced,
     bool? purged,
+    bool? purgedLocally,
     Value<int?> updatedAtMillis = const Value.absent(),
   }) => OperationRow(
     uuid: uuid ?? this.uuid,
@@ -424,6 +471,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     deleted: deleted ?? this.deleted,
     synced: synced ?? this.synced,
     purged: purged ?? this.purged,
+    purgedLocally: purgedLocally ?? this.purgedLocally,
     updatedAtMillis: updatedAtMillis.present
         ? updatedAtMillis.value
         : this.updatedAtMillis,
@@ -443,6 +491,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       synced: data.synced.present ? data.synced.value : this.synced,
       purged: data.purged.present ? data.purged.value : this.purged,
+      purgedLocally: data.purgedLocally.present
+          ? data.purgedLocally.value
+          : this.purgedLocally,
       updatedAtMillis: data.updatedAtMillis.present
           ? data.updatedAtMillis.value
           : this.updatedAtMillis,
@@ -461,6 +512,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
           ..write('deleted: $deleted, ')
           ..write('synced: $synced, ')
           ..write('purged: $purged, ')
+          ..write('purgedLocally: $purgedLocally, ')
           ..write('updatedAtMillis: $updatedAtMillis')
           ..write(')'))
         .toString();
@@ -477,6 +529,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     deleted,
     synced,
     purged,
+    purgedLocally,
     updatedAtMillis,
   );
   @override
@@ -492,6 +545,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
           other.deleted == this.deleted &&
           other.synced == this.synced &&
           other.purged == this.purged &&
+          other.purgedLocally == this.purgedLocally &&
           other.updatedAtMillis == this.updatedAtMillis);
 }
 
@@ -505,6 +559,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
   final Value<bool> deleted;
   final Value<bool> synced;
   final Value<bool> purged;
+  final Value<bool> purgedLocally;
   final Value<int?> updatedAtMillis;
   final Value<int> rowid;
   const OperationsCompanion({
@@ -517,6 +572,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
     this.purged = const Value.absent(),
+    this.purgedLocally = const Value.absent(),
     this.updatedAtMillis = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -530,6 +586,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
     this.purged = const Value.absent(),
+    this.purgedLocally = const Value.absent(),
     this.updatedAtMillis = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid);
@@ -543,6 +600,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     Expression<bool>? deleted,
     Expression<bool>? synced,
     Expression<bool>? purged,
+    Expression<bool>? purgedLocally,
     Expression<int>? updatedAtMillis,
     Expression<int>? rowid,
   }) {
@@ -556,6 +614,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
       if (deleted != null) 'deleted': deleted,
       if (synced != null) 'synced': synced,
       if (purged != null) 'purged': purged,
+      if (purgedLocally != null) 'purged_locally': purgedLocally,
       if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
       if (rowid != null) 'rowid': rowid,
     });
@@ -571,6 +630,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     Value<bool>? deleted,
     Value<bool>? synced,
     Value<bool>? purged,
+    Value<bool>? purgedLocally,
     Value<int?>? updatedAtMillis,
     Value<int>? rowid,
   }) {
@@ -584,6 +644,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
       deleted: deleted ?? this.deleted,
       synced: synced ?? this.synced,
       purged: purged ?? this.purged,
+      purgedLocally: purgedLocally ?? this.purgedLocally,
       updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
       rowid: rowid ?? this.rowid,
     );
@@ -619,6 +680,9 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     if (purged.present) {
       map['purged'] = Variable<bool>(purged.value);
     }
+    if (purgedLocally.present) {
+      map['purged_locally'] = Variable<bool>(purgedLocally.value);
+    }
     if (updatedAtMillis.present) {
       map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
     }
@@ -640,6 +704,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
           ..write('deleted: $deleted, ')
           ..write('synced: $synced, ')
           ..write('purged: $purged, ')
+          ..write('purgedLocally: $purgedLocally, ')
           ..write('updatedAtMillis: $updatedAtMillis, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3416,6 +3481,7 @@ typedef $$OperationsTableCreateCompanionBuilder =
       Value<bool> deleted,
       Value<bool> synced,
       Value<bool> purged,
+      Value<bool> purgedLocally,
       Value<int?> updatedAtMillis,
       Value<int> rowid,
     });
@@ -3430,6 +3496,7 @@ typedef $$OperationsTableUpdateCompanionBuilder =
       Value<bool> deleted,
       Value<bool> synced,
       Value<bool> purged,
+      Value<bool> purgedLocally,
       Value<int?> updatedAtMillis,
       Value<int> rowid,
     });
@@ -3485,6 +3552,11 @@ class $$OperationsTableFilterComposer
 
   ColumnFilters<bool> get purged => $composableBuilder(
     column: $table.purged,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get purgedLocally => $composableBuilder(
+    column: $table.purgedLocally,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3548,6 +3620,11 @@ class $$OperationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get purgedLocally => $composableBuilder(
+    column: $table.purgedLocally,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get updatedAtMillis => $composableBuilder(
     column: $table.updatedAtMillis,
     builder: (column) => ColumnOrderings(column),
@@ -3593,6 +3670,11 @@ class $$OperationsTableAnnotationComposer
 
   GeneratedColumn<bool> get purged =>
       $composableBuilder(column: $table.purged, builder: (column) => column);
+
+  GeneratedColumn<bool> get purgedLocally => $composableBuilder(
+    column: $table.purgedLocally,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get updatedAtMillis => $composableBuilder(
     column: $table.updatedAtMillis,
@@ -3640,6 +3722,7 @@ class $$OperationsTableTableManager
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<bool> purged = const Value.absent(),
+                Value<bool> purgedLocally = const Value.absent(),
                 Value<int?> updatedAtMillis = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OperationsCompanion(
@@ -3652,6 +3735,7 @@ class $$OperationsTableTableManager
                 deleted: deleted,
                 synced: synced,
                 purged: purged,
+                purgedLocally: purgedLocally,
                 updatedAtMillis: updatedAtMillis,
                 rowid: rowid,
               ),
@@ -3666,6 +3750,7 @@ class $$OperationsTableTableManager
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<bool> purged = const Value.absent(),
+                Value<bool> purgedLocally = const Value.absent(),
                 Value<int?> updatedAtMillis = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OperationsCompanion.insert(
@@ -3678,6 +3763,7 @@ class $$OperationsTableTableManager
                 deleted: deleted,
                 synced: synced,
                 purged: purged,
+                purgedLocally: purgedLocally,
                 updatedAtMillis: updatedAtMillis,
                 rowid: rowid,
               ),

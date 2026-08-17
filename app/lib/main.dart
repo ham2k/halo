@@ -14,7 +14,7 @@ import 'package:intl/intl.dart';
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
+    show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, setEquals, visibleForTesting, TargetPlatform;
 import 'dart:ui' show AppExitResponse;
 // Prefixed separately from the AppExitResponse import above: some import in
 // this file's graph makes the bare name `TextDirection` resolve to something
@@ -747,6 +747,7 @@ Future<HaLoServices> bootstrap({
   if (syncDeviceKey != null) {
     services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
     services.syncEngine.start();
+    services.watchReceivedTestOperationPurges();
     // Independent of syncEngine.start() above: this registers device
     // identity/the realtime channel regardless of whether the operator has
     // QSO sync enabled — registration pushes no log data, only
@@ -990,6 +991,46 @@ class HaLoServices {
       await operations.purge(uuid);
       await qsos.purgeForOperation(uuid);
     });
+  }
+
+  /// The operator confirmed the "these were removed elsewhere" prompt
+  /// ([watchReceivedTestOperationPurges] below) for [uuids] — hard-deletes them and
+  /// their QSOs. Unlike [purgeOperation], these were never purged on this
+  /// device; `operations.eligibleReceivedPurges` is what actually decides
+  /// which of [uuids] still qualify (re-checked against the database, not
+  /// trusted from whatever was on screen when the operator tapped confirm).
+  ///
+  /// Isolated per operation, like [_runPurgeTests]'s own loop, but ALSO
+  /// atomic per operation (`db.transaction`): the operator confirmed
+  /// removing potentially several at once, and one throwing must not
+  /// silently strand the rest — nor, within a single operation, delete its
+  /// QSOs and then fail before the operation row goes too (or the reverse).
+  /// A transaction is what makes "delete QSOs, then the operation row"
+  /// order actually safe instead of just less likely to go wrong: without
+  /// it, a failure between the two steps still leaves exactly the stranded
+  /// state this exists to prevent.
+  ///
+  /// Returns both `eligible` (how many of [uuids] were still real
+  /// candidates — the rest were dropped legitimately, e.g. the
+  /// callsign-edit escape hatch fired between listing and confirming) and
+  /// `removed` (how many of those actually succeeded). A caller comparing
+  /// `removed` against `uuids.length` instead of `eligible` would read a
+  /// clean run full of legitimate drops as a batch of failures.
+  Future<({int eligible, int removed})> confirmReceivedTestOperationPurges(Iterable<String> uuids) async {
+    final eligibleUuids = await operations.eligibleReceivedPurges(uuids);
+    var removedCount = 0;
+    for (final uuid in eligibleUuids) {
+      try {
+        await db.transaction(() async {
+          await qsos.hardDeleteAllForOperation(uuid);
+          await operations.hardDeleteOperation(uuid);
+        });
+        removedCount++;
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'confirmReceivedTestOperationPurges:$uuid');
+      }
+    }
+    return (eligible: eligibleUuids.length, removed: removedCount);
   }
   late final RadioService radio = RadioService(settings.prefs);
   // Station equipment and CAT control, behind the `cat` experiment
@@ -1426,6 +1467,115 @@ class HaLoServices {
     settings.addListener(_enforceTimeTravelGate);
   }
 
+  StreamSubscription<List<Operation>>? _receivedPurgesSub;
+
+  /// Test Operations purged on another device only tombstone here on
+  /// receipt (`OperationsRepository.mergeFromSync`) — this is what turns
+  /// that into an actual prompt to remove them for real, once the operator
+  /// says so. Reactive rather than tied to a specific sync callback: it
+  /// fires on the app's own boot (a leftover from before this device was
+  /// last open) just as readily as on a live sync round.
+  ///
+  /// NOT started from the constructor: a `HaLoServices` built for a widget
+  /// test never calls this, same as `syncEngine.start()` — a live drift
+  /// stream subscription that outlives the test's `pumpAndSettle` is exactly
+  /// the trap `operation_export_panel_test.dart`'s own doc comment warns
+  /// about, and this app-wide watch would otherwise hang every single test
+  /// that constructs `HaLoServices`, not just the one that needs a real
+  /// stream. The real app calls this once, from `bootstrap()`, alongside
+  /// `syncEngine.start()`.
+  void watchReceivedTestOperationPurges() {
+    _receivedPurgesSub ??= operations.watchReceivedPurgesPending().listen(_onReceivedPurgesPending);
+  }
+
+  static const _receivedPurgesNoticeKey = 'testOperations:receivedPurges';
+
+  /// The uuid set the notice currently reflects, so a `watch()` re-emission
+  /// with the SAME pending operations (any unrelated write to `operations`
+  /// re-fires the stream, not just a change to this query's result) doesn't
+  /// re-show the notice and silently undo an operator's dismissal of it.
+  Set<String> _lastReceivedPurgesShown = const {};
+
+  void _onReceivedPurgesPending(List<Operation> pending) {
+    final uuids = pending.map((op) => op.uuid).toSet();
+    if (uuids.isEmpty) {
+      _lastReceivedPurgesShown = const {};
+      statusBar.dismissNotice(_receivedPurgesNoticeKey);
+      return;
+    }
+    if (setEquals(uuids, _lastReceivedPurgesShown)) return;
+    _lastReceivedPurgesShown = uuids;
+    statusBar.showNotice(
+      key: _receivedPurgesNoticeKey,
+      icon: 'flask-outline',
+      text: t.commands.receivedPurgesPending(count: pending.length),
+      // Not persisted: `StatusBarNotice.persist`'s own doc says why — its
+      // actions can't survive a restart, so a persisted copy would come
+      // back forever as a dead husk with no working Review button once
+      // this session ends.
+      persist: false,
+      actions: [
+        StatusBarAction(
+          label: t.commands.receivedPurgesReview,
+          onTap: () => _confirmReceivedPurgesFromNotice(pending),
+        ),
+      ],
+    );
+  }
+
+  /// `pending` is a snapshot from when the notice was built; the dialog
+  /// itself only asks the operator, and `confirmReceivedTestOperationPurges`
+  /// re-validates every uuid against the database before deleting anything
+  /// — see its own doc for why that matters (the callsign-edit escape
+  /// hatch racing this).
+  void _confirmReceivedPurgesFromNotice(List<Operation> pending) {
+    statusBar.dismissNotice(_receivedPurgesNoticeKey);
+    final context = navigatorKey.currentContext;
+    if (context == null) {
+      // Only reachable by tapping the status-bar action with no navigator up
+      // at all — logged so "I tapped Review and nothing happened" has a
+      // trail, matching `_openConfirmDevicePane`'s treatment of the same gap.
+      debugPrint('[testOperations] receivedPurges review dropped: no navigator context');
+      return;
+    }
+    // Nothing below this line has run yet, so re-showing here is always
+    // correct: `pending` is exactly what's still on the database whenever
+    // this fires before a genuine removal.
+    void reArmNotice() {
+      _lastReceivedPurgesShown = const {};
+      _onReceivedPurgesPending(pending);
+    }
+
+    unawaited(confirmReceivedTestOperationPurgesDialog(context, pending).then((confirmed) async {
+      if (confirmed != true) {
+        // The dismiss above already ran; without this, cancelling — the
+        // common case, an operator tapping Review to look and backing out —
+        // leaves the notice gone for the rest of the session, same as an
+        // unhandled throw would.
+        reArmNotice();
+        return;
+      }
+      try {
+        final result = await confirmReceivedTestOperationPurges(pending.map((op) => op.uuid));
+        // Against `eligible`, not `pending.length`: some of `pending` can be
+        // legitimately gone already (the callsign-edit escape hatch fired
+        // between listing and confirming) without anything having failed.
+        final text = result.removed == result.eligible
+            ? t.commands.testOperationsPurged(count: result.removed)
+            : t.commands.receivedPurgesSomeFailed(removed: result.removed, total: result.eligible);
+        statusBar.setMessage(key: 'commandAction', text: text);
+      } catch (e, st) {
+        // `eligibleReceivedPurges` itself failing (not one of the per-uuid
+        // deletes, which `confirmReceivedTestOperationPurges` already
+        // isolates) — nothing was removed, so `pending` is still exactly
+        // accurate.
+        ErrorReportingService.report(e, st, context: 'confirmReceivedPurgesFromNotice');
+        reArmNotice();
+        statusBar.setMessage(key: 'commandAction', text: t.commands.receivedPurgesFailed);
+      }
+    }));
+  }
+
   void _enforceTimeTravelGate() {
     if (!AppClock.instance.isTravelling || settings.developerMode) return;
     // Said out loud: every clock, QSO default and spot age in the app jumps, and
@@ -1610,6 +1760,7 @@ class HaLoServices {
     // The engine stopped rescheduling itself while travelling, so nothing would
     // pick it up again on its own.
     syncEngine.start();
+    watchReceivedTestOperationPurges();
   }
 
   /// Why this app may not time-travel against its sync account, or null when it
@@ -1716,6 +1867,7 @@ class HaLoServices {
       unawaited(connectLofiRealtime());
     }
     syncEngine.start();
+    watchReceivedTestOperationPurges();
     return true;
   }
 

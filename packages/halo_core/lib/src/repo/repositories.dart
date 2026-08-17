@@ -155,27 +155,53 @@ class OperationsRepository {
   Future<void> saveData(Operation operation) async {
     final now = realNowMillis();
     final data = {...operation.data, 'updatedAtMillis': now};
-    await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(
-      OperationsCompanion(
-        data: Value(jsonEncode(data)),
-        synced: const Value(false),
-        updatedAtMillis: Value(now),
-      ),
+    var companion = OperationsCompanion(
+      data: Value(jsonEncode(data)),
+      synced: const Value(false),
+      updatedAtMillis: Value(now),
     );
+    // A pending purge only makes sense while the operation still reads as a
+    // Test Operation. If the station call was just edited away from /T or
+    // /TEST — fixing a misclassification, or received an update via sync
+    // that no longer flags it — cancel the purge rather than let a now-real
+    // operation's QSOs get hard-deleted out from under the edit. Checked
+    // against the row rather than the in-memory [operation] snapshot: this
+    // must key off whatever `purged` state the DATABASE currently holds.
+    //
+    // Clears `deleted` too, not just `purged`/`purgedLocally`: a purged row
+    // is always also tombstoned (`_writeDeleted`, `mergeFromSync`), and
+    // `watchOperation` doesn't filter on `deleted` — an operation view left
+    // open on this uuid can still reach this save. Leaving `deleted: true`
+    // here would "fix" the misclassification while still losing the
+    // operation from every list that DOES filter on it, with no path back.
+    final existing = await get(operation.uuid);
+    if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
+      companion = companion.copyWith(
+        deleted: const Value(false),
+        purged: const Value(false),
+        purgedLocally: const Value(false),
+      );
+    }
+    await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
     onChange?.call();
   }
 
   Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);
 
   /// Deletes a Test Operation for real: soft-deletes with `purged: true`
-  /// (same tombstone `softDelete` writes, so it disappears from every
-  /// `deleted.equals(false)` query immediately), which then pushes through
-  /// the normal dirty-row sync pipeline. Once that push is acknowledged,
-  /// [SyncEngine] hard-deletes the row (and its QSOs, via
-  /// `QsosRepository.purgeForOperation`) — see `Operations.purged`'s doc.
-  /// Deliberately not offered for a non-test operation: an unrecoverable
-  /// delete is the whole point of a Test Operation existing, not a general
-  /// replacement for [softDelete].
+  /// and `purgedLocally: true` (same tombstone `softDelete` writes, so it
+  /// disappears from every `deleted.equals(false)` query immediately), which
+  /// then pushes through the normal dirty-row sync pipeline. Once that push
+  /// is acknowledged, [SyncEngine] hard-deletes the row (and its QSOs, via
+  /// `QsosRepository.purgeForOperation`) — see `Operations.purged`/
+  /// `purgedLocally`'s docs. Deliberately not offered for a non-test
+  /// operation: an unrecoverable delete is the whole point of a Test
+  /// Operation existing, not a general replacement for [softDelete].
+  ///
+  /// The caller (the delete-confirmation dialog, or PURGETESTS) is what
+  /// makes this "confirmed" — `purgedLocally: true` records that a human
+  /// said yes to it ON THIS DEVICE, which is what lets [hardDeletePurged]
+  /// act on it without asking again.
   Future<void> purge(String uuid) => _writeDeleted(uuid, purged: true);
 
   /// Shared by [softDelete] and [purge]. Re-stamps `data.updatedAtMillis`
@@ -188,6 +214,7 @@ class OperationsRepository {
     var companion = OperationsCompanion(
       deleted: const Value(true),
       purged: Value(purged),
+      purgedLocally: Value(purged),
       synced: const Value(false),
       updatedAtMillis: Value(now),
     );
@@ -198,21 +225,73 @@ class OperationsRepository {
     onChange?.call();
   }
 
-  /// The deferred half of [purge]: physically removes every row that is
-  /// `purged` AND `synced` — called by [SyncEngine] after every successful
-  /// round, not scoped to whatever that round just pushed. Scoping it to the
-  /// round's own batch would leave a row stranded forever the moment the app
-  /// dies between `markSynced` committing `synced: true` and this running:
-  /// a row that isn't dirty never appears in a future batch again, so a
-  /// batch-scoped sweep would have no path back to it. An unconditional
-  /// sweep instead catches it on the very next round that succeeds at all —
-  /// self-healing rather than reliant on that one round landing cleanly.
+  /// The deferred half of a locally-confirmed [purge]: physically removes
+  /// every row that is `purged`, `synced`, AND `purgedLocally` — called by
+  /// [SyncEngine] after every successful round, not scoped to whatever that
+  /// round just pushed. Scoping it to the round's own batch would leave a
+  /// row stranded forever the moment the app dies between `markSynced`
+  /// committing `synced: true` and this running: a row that isn't dirty
+  /// never appears in a future batch again, so a batch-scoped sweep would
+  /// have no path back to it. An unconditional sweep instead catches it on
+  /// the very next round that succeeds at all.
+  ///
+  /// `purgedLocally` is the whole reason this can run with no further
+  /// confirmation: it's only ever set by [purge] on THIS device, which
+  /// already went through the delete-confirmation dialog or PURGETESTS. A
+  /// row this device only received via `mergeFromSync` has `purgedLocally:
+  /// false` and is never touched here — see [watchReceivedPurgesPending].
   Future<List<String>> hardDeletePurged() async {
-    final rows = await (db.select(db.operations)..where((op) => op.purged.equals(true) & op.synced.equals(true))).get();
+    final rows = await (db.select(db.operations)
+          ..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(true)))
+        .get();
     if (rows.isEmpty) return const [];
     final purgedUuids = rows.map((r) => r.uuid).toList();
     await (db.delete(db.operations)..where((op) => op.uuid.isIn(purgedUuids))).go();
     return purgedUuids;
+  }
+
+  /// Operations flagged `purged` that arrived via sync rather than being
+  /// purged on this device (`purgedLocally: false`) — candidates for the
+  /// "these were removed elsewhere" confirmation prompt, never acted on
+  /// without the operator saying so here too. Row-shaped like every other
+  /// read: `deleted` stays true on these (a purged operation is tombstoned
+  /// like any other delete on receipt), so this deliberately does NOT filter
+  /// on `deleted` the way [watchAll] does.
+  Stream<List<Operation>> watchReceivedPurgesPending() {
+    final query = (db.select(db.operations)
+      ..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)));
+    return query.watch().map((rows) => rows.map(_operationFromRow).toList());
+  }
+
+  /// The operator confirmed removing [uuids] after seeing them in the
+  /// "removed elsewhere" prompt — which of them are still real candidates.
+  /// Re-checks `purged`/`synced`/`purgedLocally` against the database rather
+  /// than trusting the caller's list: a row [saveData] un-marked in the
+  /// meantime (the callsign-edit escape hatch) must not be deleted just
+  /// because it was still on screen when the operator tapped confirm.
+  ///
+  /// Read-only, deliberately: it does NOT delete anything itself. The
+  /// caller (`HaLoServices.confirmReceivedTestOperationPurges`) deletes each
+  /// operation's QSOs first, then its row, one uuid at a time — if this
+  /// method deleted every row up front instead, a QSO-deletion failure for
+  /// ANY uuid would stand its operation row already gone while its QSOs
+  /// stayed behind, with no operation left for `watchReceivedPurgesPending`
+  /// to ever surface again. [hardDeleteOperation] is the second half.
+  Future<List<String>> eligibleReceivedPurges(Iterable<String> uuids) async {
+    final list = uuids.toList();
+    if (list.isEmpty) return const [];
+    final rows = await (db.select(db.operations)
+          ..where((op) =>
+              op.uuid.isIn(list) & op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)))
+        .get();
+    return rows.map((r) => r.uuid).toList();
+  }
+
+  /// Physically removes operation [uuid] — see [eligibleReceivedPurges]'s
+  /// doc for why the caller must delete this operation's QSOs BEFORE
+  /// calling this, never after.
+  Future<void> hardDeleteOperation(String uuid) async {
+    await (db.delete(db.operations)..where((op) => op.uuid.equals(uuid))).go();
   }
 
   /// Up to `limit` dirty operations, most-recently-active first — the same
@@ -849,6 +928,20 @@ class QsosRepository {
     await (db.delete(db.qsos)
           ..where((q) => q.operation.equals(operationUuid) & q.purged.equals(true) & q.synced.equals(true)))
         .go();
+  }
+
+  /// Removes every QSO of [operationUuid], no flags checked — for a
+  /// confirmed RECEIVED purge (`OperationsRepository.confirmReceivedPurges`),
+  /// where [hardDeletePurgedForOperation]'s `purged && synced` predicate
+  /// isn't reliable: operations and QSOs arrive in separate sync batches, so
+  /// an operator can confirm as soon as the operation record lands, before
+  /// this operation's QSOs' own purge tombstones have. A QSO left behind by
+  /// that predicate would have no operation row to belong to any more, yet
+  /// would keep surfacing in call history and dupe checks forever. Once the
+  /// operator has agreed the whole operation goes, every QSO under it goes
+  /// too — there is no partial-purge state left to preserve.
+  Future<void> hardDeleteAllForOperation(String operationUuid) async {
+    await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid))).go();
   }
 
   /// A copy of [qso] with a fresh revision stamp in its data — every local

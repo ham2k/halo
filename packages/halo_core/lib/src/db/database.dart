@@ -28,10 +28,22 @@ class Operations extends Table {
   /// (`OperationsRepository.purge`, docs: Test Operations): the tombstone
   /// still pushes through the normal dirty-row sync so other devices learn
   /// about the deletion, but once that push is acknowledged the row is
-  /// physically removed here rather than kept as a permanent tombstone. A
-  /// device that only ever RECEIVES this flag never acts on it — merging a
-  /// purged operation still just tombstones, same as any other delete.
+  /// physically removed. `purged` alone doesn't say WHO gets to act on it
+  /// without asking — see [purgedLocally].
   BoolColumn get purged => boolean().withDefault(const Constant(false))();
+
+  /// True only when THIS device is the one that called
+  /// `OperationsRepository.purge` — never set by `mergeFromSync`, which
+  /// leaves it at its default `false` no matter what the incoming record's
+  /// `purged` says. `hardDeletePurged`'s auto-sweep requires this: a
+  /// locally-initiated purge already went through a confirmation dialog on
+  /// this device, so it's safe to remove once synced, but a `purged` flag
+  /// that only ever arrived via sync has not been confirmed HERE and must
+  /// wait for the operator to say so (`OperationsRepository.
+  /// confirmReceivedPurges`) — the whole point of `purged` round-tripping
+  /// through sync at all is so every device eventually asks, not so every
+  /// device silently agrees.
+  BoolColumn get purgedLocally => boolean().withDefault(const Constant(false))();
 
   /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo
   /// convention) so sync can compare revisions without decoding the blob:
@@ -156,7 +168,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -207,6 +219,9 @@ class HaLoDatabase extends _$HaLoDatabase {
             if (from < 7) {
               await m.addColumn(operations, operations.purged);
               await m.addColumn(qsos, qsos.purged);
+            }
+            if (from < 8) {
+              await m.addColumn(operations, operations.purgedLocally);
             }
           });
         },

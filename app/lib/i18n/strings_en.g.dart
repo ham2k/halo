@@ -341,6 +341,15 @@ class Translations$dialogs$en {
 
 	/// en: 'Purge'
 	String get purgeTestsAction => 'Purge';
+
+	/// en: 'Test Operations Removed Elsewhere'
+	String get receivedPurgesTitle => 'Test Operations Removed Elsewhere';
+
+	/// en: 'These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.'
+	String get receivedPurgesBody => 'These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.';
+
+	/// en: 'Remove'
+	String get receivedPurgesAction => 'Remove';
 }
 
 // Path: operation
@@ -1043,6 +1052,21 @@ class Translations$commands$en {
 
 	/// en: 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again'
 	String purgeTestsSomeFailed({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again';
+
+	/// en: 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again'
+	String receivedPurgesSomeFailed({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again';
+
+	/// en: 'Couldn't remove those Test Operations — try Review again'
+	String get receivedPurgesFailed => 'Couldn\'t remove those Test Operations — try Review again';
+
+	/// en: '(one) {${count} Test Operation was removed on another device} (other) {${count} Test Operations were removed on another device}'
+	String receivedPurgesPending({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} Test Operation was removed on another device',
+		other: '${count} Test Operations were removed on another device',
+	);
+
+	/// en: 'Review'
+	String get receivedPurgesReview => 'Review';
 
 	/// en: 'On'
 	String get settingOn => 'On';
@@ -4488,6 +4512,9 @@ extension on Translations {
 			'dialogs.purgeTestsTitle' => 'Purge Test Operations',
 			'dialogs.purgeTestsBody' => 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.',
 			'dialogs.purgeTestsAction' => 'Purge',
+			'dialogs.receivedPurgesTitle' => 'Test Operations Removed Elsewhere',
+			'dialogs.receivedPurgesBody' => 'These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.',
+			'dialogs.receivedPurgesAction' => 'Remove',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -4893,11 +4920,11 @@ extension on Translations {
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
+			_ => null,
+		} ?? switch (path) {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutCustomization.title' => 'Enable Layout Customization',
 			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
 			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
@@ -5295,6 +5322,10 @@ extension on Translations {
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
+			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again',
+			'commands.receivedPurgesFailed' => 'Couldn\'t remove those Test Operations — try Review again',
+			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Test Operation was removed on another device', other: '${count} Test Operations were removed on another device', ), 
+			'commands.receivedPurgesReview' => 'Review',
 			'commands.settingOn' => 'On',
 			'commands.settingOff' => 'Off',
 			'commands.settingEmpty' => '(empty)',
@@ -5403,6 +5434,8 @@ extension on Translations {
 			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
 			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
@@ -5410,8 +5443,6 @@ extension on Translations {
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithQr' => 'Link with a QR code',
 			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.linkWithEmail' => 'Link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',
 			'switchAccounts.enterEmailPrompt' => 'Enter the email address of the account you want this device to use.',

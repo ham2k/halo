@@ -121,7 +121,8 @@ Future<bool> confirmPurgeTestOperations(BuildContext context, List<Operation> te
                   children: [
                     for (final operation in testOperations)
                       Text(
-                        '${operation.stationCall} — ${displayTitleFor(context, operation)}',
+                        '${operation.stationCall} — ${displayTitleFor(context, operation)} '
+                        '(${context.t.operation.tabs.qsos(count: formatNumber(operation.qsoCount))})',
                         style: theme.textTheme.bodyMedium,
                       ),
                   ],
@@ -133,6 +134,56 @@ Future<bool> confirmPurgeTestOperations(BuildContext context, List<Operation> te
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
         actions: [
           FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.purgeTestsAction)),
+        ],
+      );
+    },
+  );
+  return confirmed == true;
+}
+
+/// Confirms hard-deleting Test Operations that were purged on ANOTHER
+/// device (`OperationsRepository.watchReceivedPurgesPending`) — distinct
+/// from [confirmPurgeTestOperations], which is for ones purged right here.
+/// Receiving a `purged` flag via sync only ever tombstones the operation
+/// (`mergeFromSync`); it never removes rows on its own, precisely so an
+/// operator gets a chance to say no — e.g. if `isTestOperation`'s /T
+/// heuristic misclassified a real operation on the OTHER device, this is
+/// the one remaining chance to notice before it's gone here too.
+Future<bool> confirmReceivedTestOperationPurgesDialog(BuildContext context, List<Operation> pendingOperations) async {
+  final confirmed = await showHaloDialog<bool>(
+    context: context,
+    builder: (context) {
+      final theme = Theme.of(context);
+      return HaloDialog(
+        title: Text(context.t.dialogs.receivedPurgesTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.t.dialogs.receivedPurgesBody),
+            const SizedBox(height: Space.sm),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final operation in pendingOperations)
+                      Text(
+                        '${operation.stationCall} — ${displayTitleFor(context, operation)} '
+                        '(${context.t.operation.tabs.qsos(count: formatNumber(operation.qsoCount))})',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.receivedPurgesAction)),
         ],
       );
     },

@@ -45,6 +45,7 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  8: ['ALTER TABLE operations DROP COLUMN purged_locally'],
   7: [
     'ALTER TABLE operations DROP COLUMN purged',
     'ALTER TABLE qsos DROP COLUMN purged',
@@ -275,7 +276,7 @@ void main() {
   });
 
   group('every supported upgrade path', () {
-    for (var from = 1; from <= 6; from++) {
+    for (var from = 1; from <= 7; from++) {
       test('v$from keeps the operator\'s log intact', () async {
         final file = dbFile();
         await createAtVersion(file, from,
