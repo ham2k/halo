@@ -4,5 +4,8 @@
   "activationControl": "LLOTA activation",
   "huntingControl": "LLOTA",
   "dataFileName": "LLOTA: All References",
-  "dataFileDescription": "Database of all LLOTA references"
+  "dataFileDescription": "Database of all LLOTA references",
+  "lake": "lake",
+  "lakesPlural": "lakes",
+  "l2l": "L2L"
 }

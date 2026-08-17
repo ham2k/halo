@@ -855,6 +855,9 @@ const SOTA_SCORING = {
   allowsMultipleReferences: false,
   uniquePer: ['day', 'ref'] as const,
   activates: 'daily' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('summit'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('summitsPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('s2s'),
 }
 
 defineExtension({

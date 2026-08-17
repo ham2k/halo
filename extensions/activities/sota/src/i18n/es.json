@@ -10,5 +10,8 @@
   "reconnectAction": "Reconectar",
   "accountDescription": "Spots de SOTA",
   "dataFileName": "SOTA: Todas las cumbres",
-  "dataFileDescription": "Base de datos de todas las referencias SOTA"
+  "dataFileDescription": "Base de datos de todas las referencias SOTA",
+  "summit": "cumbre",
+  "summitsPlural": "cumbres",
+  "s2s": "S2S"
 }

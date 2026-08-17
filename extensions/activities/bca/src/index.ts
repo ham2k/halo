@@ -48,6 +48,11 @@ const BCA_SCORING = {
   qsosToActivate: 50,
   uniquePer: ['band', 'mode', 'day'] as const,
   activates: 'once' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('castle'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('castlesPlural'),
+  // Set for consistency even though BCA has no huntingType, so the tally
+  // that would use it (summarizeActivation's P2P line) never runs today.
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('c2c'),
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {

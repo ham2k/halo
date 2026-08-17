@@ -3,5 +3,8 @@
   "unknownReference": "Faro desconocido",
   "activationControl": "Activación ELA",
   "dataFileName": "ELA: Todos los Faros",
-  "dataFileDescription": "Base de datos de todas las referencias ELA"
+  "dataFileDescription": "Base de datos de todas las referencias ELA",
+  "lighthouse": "faro",
+  "lighthousesPlural": "faros",
+  "l2l": "L2L"
 }

@@ -4,5 +4,8 @@
   "activationControl": "MOTA activation",
   "huntingControl": "MOTA",
   "dataFileName": "MOTA: All Mills",
-  "dataFileDescription": "Database of all MOTA references"
+  "dataFileDescription": "Database of all MOTA references",
+  "mill": "mill",
+  "millsPlural": "mills",
+  "m2m": "M2M"
 }

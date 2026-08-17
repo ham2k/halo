@@ -4,5 +4,8 @@
   "activationControl": "Activación WWFF",
   "huntingControl": "WWFF",
   "dataFileName": "WWFF: Todos los Parques",
-  "dataFileDescription": "Base de datos de todas las referencias WWFF"
+  "dataFileDescription": "Base de datos de todas las referencias WWFF",
+  "park": "parque",
+  "parksPlural": "parques",
+  "p2p": "P2P"
 }

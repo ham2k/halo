@@ -73,6 +73,11 @@ const ZLOTA_SCORING = {
   qsosToActivate: zlotaThreshold,
   uniquePer: ['ref'] as const,
   activates: 'once' as const,
+  // No refNoun: ZLOTA covers islands, huts and more under one umbrella with
+  // no single noun, so the generic "reference(s)" wording stays. p2pLabel
+  // doesn't have that problem — one abbreviation covers every contact
+  // between two ZLOTA activators regardless of site kind.
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('z2z'),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({

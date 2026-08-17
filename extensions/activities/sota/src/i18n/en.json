@@ -10,5 +10,8 @@
   "reconnectAction": "Reconnect",
   "accountDescription": "SOTA spots",
   "dataFileName": "SOTA: All Summits",
-  "dataFileDescription": "Database of all SOTA references"
+  "dataFileDescription": "Database of all SOTA references",
+  "summit": "summit",
+  "summitsPlural": "summits",
+  "s2s": "S2S"
 }

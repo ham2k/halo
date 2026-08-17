@@ -4,5 +4,8 @@
   "activationControl": "WWBOTA activation",
   "huntingControl": "WWBOTA",
   "dataFileName": "WWBOTA: All Bunkers",
-  "dataFileDescription": "Database of all WWBOTA references"
+  "dataFileDescription": "Database of all WWBOTA references",
+  "bunker": "bunker",
+  "bunkersPlural": "bunkers",
+  "b2b": "B2B"
 }

@@ -53,6 +53,9 @@ const LLOTA_SCORING = {
   allowsMultipleReferences: true,
   uniquePer: ['band', 'mode', 'day', 'ref'] as const,
   activates: 'daily' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('lake'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('lakesPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('l2l'),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({

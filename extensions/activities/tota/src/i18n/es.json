@@ -4,5 +4,8 @@
   "activationControl": "Activación TOTA",
   "huntingControl": "TOTA",
   "dataFileName": "TOTA: Todas las Torres",
-  "dataFileDescription": "Base de datos de todas las referencias TOTA"
+  "dataFileDescription": "Base de datos de todas las referencias TOTA",
+  "tower": "torre",
+  "towersPlural": "torres",
+  "t2t": "T2T"
 }

@@ -46,6 +46,11 @@ const ELA_SCORING = {
   qsosToActivate: 50,
   uniquePer: ['band', 'mode'] as const,
   activates: 'once' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('lighthouse'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('lighthousesPlural'),
+  // "L2L" is also LLOTA's (lake-to-lake) — deliberately shared, and ELA has
+  // no huntingType, so the tally that would use it never runs today anyway.
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('l2l'),
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {

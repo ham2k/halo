@@ -3,5 +3,8 @@
   "unknownReference": "Castillo desconocido",
   "activationControl": "Activación WCA",
   "dataFileName": "WCA: Todos los Castillos",
-  "dataFileDescription": "Base de datos de todas las referencias WCA"
+  "dataFileDescription": "Base de datos de todas las referencias WCA",
+  "castle": "castillo",
+  "castlesPlural": "castillos",
+  "c2c": "C2C"
 }

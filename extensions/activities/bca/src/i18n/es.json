@@ -3,5 +3,8 @@
   "unknownReference": "Castillo desconocido",
   "activationControl": "Activación BCA",
   "dataFileName": "BCA: Todos los Castillos",
-  "dataFileDescription": "Base de datos de todas las referencias BCA"
+  "dataFileDescription": "Base de datos de todas las referencias BCA",
+  "castle": "castillo",
+  "castlesPlural": "castillos",
+  "c2c": "C2C"
 }

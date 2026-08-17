@@ -3,5 +3,8 @@
   "unknownReference": "Castillo desconocido",
   "activationControl": "Activación ECA",
   "dataFileName": "ECA: Todos los Castillos",
-  "dataFileDescription": "Base de datos de todas las referencias ECA"
+  "dataFileDescription": "Base de datos de todas las referencias ECA",
+  "castle": "castillo",
+  "castlesPlural": "castillos",
+  "c2c": "C2C"
 }

@@ -4,5 +4,8 @@
   "activationControl": "Activación MOTA",
   "huntingControl": "MOTA",
   "dataFileName": "MOTA: Todos los Molinos",
-  "dataFileDescription": "Base de datos de todas las referencias MOTA"
+  "dataFileDescription": "Base de datos de todas las referencias MOTA",
+  "mill": "molino",
+  "millsPlural": "molinos",
+  "m2m": "M2M"
 }

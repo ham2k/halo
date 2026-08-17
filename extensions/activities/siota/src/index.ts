@@ -41,6 +41,9 @@ const SIOTA_SCORING = {
   uniquePer: ['band', 'mode', 'day', 'ref'] as const,
   activates: 'once' as const,
   freshRefRescuesActivation: false,
+  refNoun: (ctx: HookContext) => tFor(ctx)('silo'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('silosPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('s2s'),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({

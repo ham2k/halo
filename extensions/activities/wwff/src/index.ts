@@ -70,6 +70,9 @@ const WWFF_SCORING = {
   allowsMultipleReferences: false,
   uniquePer: ['band', 'mode', 'day'] as const,
   activates: 'once' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('park'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('parksPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('p2p'),
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {

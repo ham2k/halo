@@ -55,6 +55,9 @@ const TOTA_SCORING = {
   allowsMultipleReferences: true,
   uniquePer: ['ref'] as const,
   activates: 'daily' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('tower'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('towersPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('t2t'),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({

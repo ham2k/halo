@@ -53,6 +53,11 @@ const MOTA_SCORING = {
   activates: 'once' as const,
   tracksActivation: false,
   freshRefRescuesActivation: false,
+  refNoun: (ctx: HookContext) => tFor(ctx)('mill'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('millsPlural'),
+  // Set for consistency even though tracksActivation is false, so
+  // summarizeActivation (the only place it would render) never runs today.
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('m2m'),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({

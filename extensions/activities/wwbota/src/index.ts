@@ -70,6 +70,9 @@ const WWBOTA_SCORING = {
   qsosToActivate: bunkerThreshold,
   uniquePer: ['band', 'day', 'ref'] as const,
   activates: 'once' as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)('bunker'),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)('bunkersPlural'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)('b2b'),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({

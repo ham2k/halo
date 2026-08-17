@@ -3,5 +3,8 @@
   "unknownReference": "Unknown castle",
   "activationControl": "BCA activation",
   "dataFileName": "BCA: All Castles",
-  "dataFileDescription": "Database of all BCA references"
+  "dataFileDescription": "Database of all BCA references",
+  "castle": "castle",
+  "castlesPlural": "castles",
+  "c2c": "C2C"
 }

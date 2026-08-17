@@ -4,5 +4,6 @@
   "activationControl": "ZLOTA activation",
   "huntingControl": "ZLOTA",
   "dataFileName": "ZLOTA: All References",
-  "dataFileDescription": "Database of all ZLOTA references"
+  "dataFileDescription": "Database of all ZLOTA references",
+  "z2z": "Z2Z"
 }
