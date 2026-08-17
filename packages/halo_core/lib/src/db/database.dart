@@ -163,12 +163,52 @@ class Sequences extends Table {
   Set<Column> get primaryKey => {operation, label};
 }
 
-@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences])
+/// Raw QSOs captured from another logging program (docs: "Listen for other
+/// apps"), before the operator has decided whether to add them to any
+/// operation's log. App-wide like `Lookups` — a capture isn't tied to an
+/// operation until [addedToOperation] says so, since the listener runs
+/// independently of which operation (if any) is open.
+///
+/// Device-local and never synced: the source program is running on THIS
+/// machine, and a capture is either added to the log (where it syncs as a
+/// normal QSO) or it isn't.
+@DataClassName('InboundCaptureRow')
+@TableIndex(name: 'inbound_captures_dedupe_key', columns: {#dedupeKey}, unique: true)
+class InboundCaptures extends Table {
+  TextColumn get uuid => text()();
+
+  /// The program that sent it, e.g. `n1mm`. Only one exists today, but the
+  /// buffer's shape shouldn't have to change to add a second.
+  TextColumn get source => text()();
+
+  /// A dedup key derived from the capture's own fields (call/band/mode/time),
+  /// so a program that broadcasts the same contact twice doesn't queue it
+  /// twice. Not the primary key: [uuid] is what the UI and
+  /// `addedToOperation` reference, and re-deriving the dedup key on every
+  /// query would be wasted work a plain unique index avoids.
+  TextColumn get dedupeKey => text()();
+
+  /// QSON, same shape `Qso.data` uses — built directly from the capture so
+  /// accepting it is a plain `qsos.add`, not a second translation.
+  TextColumn get data => text()();
+
+  IntColumn get receivedAtMillis => integer()();
+
+  /// Null while pending. Set to the operation's uuid once the operator adds
+  /// it to a log — kept (not deleted) so a re-arriving duplicate broadcast is
+  /// still recognized by [dedupeKey] as already handled.
+  TextColumn get addedToOperation => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {uuid};
+}
+
+@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences, InboundCaptures])
 class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -222,6 +262,16 @@ class HaLoDatabase extends _$HaLoDatabase {
             }
             if (from < 8) {
               await m.addColumn(operations, operations.purgedLocally);
+            }
+            if (from < 9) {
+              await m.createTable(inboundCaptures);
+            }
+            // `createTable` does not create a table's own declared indexes
+            // (see the migration test's note on this trap) — a device that
+            // upgraded to v9 before this index existed needs its own step,
+            // not just adding the annotation and leaving v9's step alone.
+            if (from < 10) {
+              await m.createIndex(inboundCapturesDedupeKey);
             }
           });
         },

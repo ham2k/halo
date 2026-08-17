@@ -392,6 +392,7 @@ class Translations$operation$en {
 	late final Translations$operation$layout$en layout = Translations$operation$layout$en.internal(_root);
 	late final Translations$operation$export$en export = Translations$operation$export$en.internal(_root);
 	late final Translations$operation$spots$en spots = Translations$operation$spots$en.internal(_root);
+	late final Translations$operation$import$en import = Translations$operation$import$en.internal(_root);
 }
 
 // Path: map
@@ -552,9 +553,6 @@ class Translations$activitiesView$en {
 	/// en: 'Operation Details'
 	String get operationDetails => 'Operation Details';
 
-	/// en: 'Import QSOs from ADIF'
-	String get importAdif => 'Import QSOs from ADIF';
-
 	/// en: 'Share'
 	String get share => 'Share';
 
@@ -602,6 +600,9 @@ class Translations$activitiesView$en {
 
 	/// en: 'Switch back to the list, or search for something else'
 	String get mapEmptyStateHint => 'Switch back to the list, or search for something else';
+
+	/// en: 'Imports'
+	String get imports => 'Imports';
 }
 
 // Path: loggingControls
@@ -2192,6 +2193,111 @@ class Translations$operation$spots$en {
 
 	/// en: '${sources} returned an error.'
 	String failedText({required Object sources}) => '${sources} returned an error.';
+}
+
+// Path: operation.import
+class Translations$operation$import$en {
+	Translations$operation$import$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Import Data into Operation'
+	String get title => 'Import Data into Operation';
+
+	/// en: 'Import QSOs from ADIF'
+	String get importAdifAction => 'Import QSOs from ADIF';
+
+	/// en: 'Listen settings'
+	String get settingsButton => 'Listen settings';
+
+	/// en: 'Listen for Other Apps'
+	String get settingsTitle => 'Listen for Other Apps';
+
+	/// en: 'Address'
+	String get protocolAddressLabel => 'Address';
+
+	/// en: 'Port'
+	String get protocolPortLabel => 'Port';
+
+	/// en: 'Enter a port between 1 and 65535'
+	String get protocolPortInvalid => 'Enter a port between 1 and 65535';
+
+	/// en: 'Enter a valid IP address (e.g. 127.0.0.1 or 239.239.0.2)'
+	String get protocolAddressInvalid => 'Enter a valid IP address (e.g. 127.0.0.1 or 239.239.0.2)';
+
+	/// en: 'Receiving data'
+	String get protocolStatusReceiving => 'Receiving data';
+
+	/// en: 'No data received recently'
+	String get protocolStatusNoData => 'No data received recently';
+
+	/// en: 'Couldn't start listening: ${error}'
+	String protocolBindError({required Object error}) => 'Couldn\'t start listening: ${error}';
+
+	/// en: 'N1MM+ Contact Broadcast'
+	String get n1mmProtocolName => 'N1MM+ Contact Broadcast';
+
+	/// en: 'Any (broadcast)'
+	String get n1mmAddressValue => 'Any (broadcast)';
+
+	/// en: 'WSJT-X UDP Server'
+	String get wsjtxProtocolName => 'WSJT-X UDP Server';
+
+	/// en: 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.'
+	String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.';
+
+	/// en: 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.'
+	String get helpWsjtxSetup => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.';
+
+	/// en: 'Listen for QSOs from other apps'
+	String get listenTitle => 'Listen for QSOs from other apps';
+
+	/// en: 'Listening for N1MM+'
+	String get listenDescriptionOnN1mm => 'Listening for N1MM+';
+
+	/// en: 'Listening for WSJT-X'
+	String get listenDescriptionOnWsjtx => 'Listening for WSJT-X';
+
+	/// en: 'Listening for N1MM+ and WSJT-X'
+	String get listenDescriptionOnBoth => 'Listening for N1MM+ and WSJT-X';
+
+	/// en: 'Off'
+	String get listenDescriptionOff => 'Off';
+
+	/// en: 'Add to this operation'
+	String get addToOperationTitle => 'Add to this operation';
+
+	/// en: 'Captured QSOs are added to this operation as they arrive'
+	String get addToOperationDescriptionOn => 'Captured QSOs are added to this operation as they arrive';
+
+	/// en: 'Captured QSOs are held until you turn this on'
+	String get addToOperationDescriptionOff => 'Captured QSOs are held until you turn this on';
+
+	/// en: 'Captured QSOs'
+	String get pendingSectionTitle => 'Captured QSOs';
+
+	/// en: 'Nothing captured yet'
+	String get pendingEmpty => 'Nothing captured yet';
+
+	/// en: 'Logged as ${call}, not this operation's station'
+	String stationMismatch({required Object call}) => 'Logged as ${call}, not this operation\'s station';
+
+	/// en: 'Discard'
+	String get discardAction => 'Discard';
+
+	/// en: 'Include earlier captures?'
+	String get gapDialogTitle => 'Include earlier captures?';
+
+	/// en: '${count} more QSOs were captured earlier, before a gap in the data. Include them too?'
+	String gapDialogBody({required Object count}) => '${count} more QSOs were captured earlier, before a gap in the data. Include them too?';
+
+	/// en: 'Just the recent ones'
+	String get gapDialogRecentOnly => 'Just the recent ones';
+
+	/// en: 'Include all ${count}'
+	String gapDialogIncludeAll({required Object count}) => 'Include all ${count}';
 }
 
 // Path: loggingControls.info
@@ -4719,6 +4825,38 @@ extension on Translations {
 			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} did not respond.',
 			'operation.spots.failedTitle' => 'Spot source error',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
+			'operation.import.title' => 'Import Data into Operation',
+			'operation.import.importAdifAction' => 'Import QSOs from ADIF',
+			'operation.import.settingsButton' => 'Listen settings',
+			'operation.import.settingsTitle' => 'Listen for Other Apps',
+			'operation.import.protocolAddressLabel' => 'Address',
+			'operation.import.protocolPortLabel' => 'Port',
+			'operation.import.protocolPortInvalid' => 'Enter a port between 1 and 65535',
+			'operation.import.protocolAddressInvalid' => 'Enter a valid IP address (e.g. 127.0.0.1 or 239.239.0.2)',
+			'operation.import.protocolStatusReceiving' => 'Receiving data',
+			'operation.import.protocolStatusNoData' => 'No data received recently',
+			'operation.import.protocolBindError' => ({required Object error}) => 'Couldn\'t start listening: ${error}',
+			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
+			'operation.import.n1mmAddressValue' => 'Any (broadcast)',
+			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
+			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
+			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
+			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
+			'operation.import.listenDescriptionOnN1mm' => 'Listening for N1MM+',
+			'operation.import.listenDescriptionOnWsjtx' => 'Listening for WSJT-X',
+			'operation.import.listenDescriptionOnBoth' => 'Listening for N1MM+ and WSJT-X',
+			'operation.import.listenDescriptionOff' => 'Off',
+			'operation.import.addToOperationTitle' => 'Add to this operation',
+			'operation.import.addToOperationDescriptionOn' => 'Captured QSOs are added to this operation as they arrive',
+			'operation.import.addToOperationDescriptionOff' => 'Captured QSOs are held until you turn this on',
+			'operation.import.pendingSectionTitle' => 'Captured QSOs',
+			'operation.import.pendingEmpty' => 'Nothing captured yet',
+			'operation.import.stationMismatch' => ({required Object call}) => 'Logged as ${call}, not this operation\'s station',
+			'operation.import.discardAction' => 'Discard',
+			'operation.import.gapDialogTitle' => 'Include earlier captures?',
+			'operation.import.gapDialogBody' => ({required Object count}) => '${count} more QSOs were captured earlier, before a gap in the data. Include them too?',
+			'operation.import.gapDialogRecentOnly' => 'Just the recent ones',
+			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Include all ${count}',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.loadFailed' => 'The map could not load. Check your connection.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4766,7 +4904,6 @@ extension on Translations {
 			'activitiesView.tools' => 'Tools',
 			'activitiesView.toolsTitle' => 'Operation Tools',
 			'activitiesView.operationDetails' => 'Operation Details',
-			'activitiesView.importAdif' => 'Import QSOs from ADIF',
 			'activitiesView.share' => 'Share',
 			'activitiesView.archive' => 'Archive',
 			'activitiesView.deleteOperation' => 'Delete Operation',
@@ -4783,6 +4920,7 @@ extension on Translations {
 			'activitiesView.addToOperation' => 'Add to Operation',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
+			'activitiesView.imports' => 'Imports',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -4888,6 +5026,8 @@ extension on Translations {
 			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
+			_ => null,
+		} ?? switch (path) {
 			'loggingPanel.statesWorked' => 'States',
 			'loggingPanel.provincesWorked' => 'Provinces',
 			'loggingPanel.duplicates' => 'Duplicates',
@@ -4920,8 +5060,6 @@ extension on Translations {
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
-			_ => null,
-		} ?? switch (path) {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
@@ -5402,6 +5540,8 @@ extension on Translations {
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',
@@ -5434,8 +5574,6 @@ extension on Translations {
 			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
 			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',

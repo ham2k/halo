@@ -45,6 +45,8 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  10: ['DROP INDEX inbound_captures_dedupe_key'],
+  9: ['DROP TABLE inbound_captures'],
   8: ['ALTER TABLE operations DROP COLUMN purged_locally'],
   7: [
     'ALTER TABLE operations DROP COLUMN purged',
@@ -262,6 +264,7 @@ void main() {
           expect(tables.contains('qsos_backup'), version >= 2, reason: 'v$version backups');
           expect(tables.contains('lookups'), version >= 3, reason: 'v$version lookups');
           expect(tables.contains('sequences'), version >= 5, reason: 'v$version sequences');
+          expect(tables.contains('inbound_captures'), version >= 9, reason: 'v$version inbound_captures');
 
           for (final table in ['operations', 'qsos']) {
             final columns = (await db.customSelect('PRAGMA table_info($table)').get())
@@ -276,7 +279,7 @@ void main() {
   });
 
   group('every supported upgrade path', () {
-    for (var from = 1; from <= 7; from++) {
+    for (var from = 1; from <= 9; from++) {
       test('v$from keeps the operator\'s log intact', () async {
         final file = dbFile();
         await createAtVersion(file, from,
@@ -566,6 +569,7 @@ void main() {
       await fresh.close();
 
       expect(upgradedIndexes, contains('qsos_operation_start'));
+      expect(upgradedIndexes, contains('inbound_captures_dedupe_key'));
       expect(upgradedIndexes, freshIndexes);
     });
   });

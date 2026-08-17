@@ -32,6 +32,7 @@ import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
+import 'operation/operation_import_panel.dart';
 import 'operation/spots_panel.dart';
 import '../tools/operation_title.dart';
 import '../i18n/strings.g.dart';
@@ -756,7 +757,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     widget.services.closeOperationContext(_commandContext);
     _unsubscribeSpots?.call();
     widget.services.spots.removeListener(_onSpotsChanged);
-        super.dispose();
+    // "Listen for other apps" stops routing captures here once this view
+    // closes — but only if THIS operation is still the one receiving; a
+    // second OperationView may have taken over already. Unconditional,
+    // deliberately: gating this on `listenForOtherAppsEnabled` looks free
+    // but isn't safe — turning the setting off does not clear
+    // `receivingOperationUuid` (only starts/stops the sockets), so a stale
+    // receiver would survive past this view's close and later silently
+    // catch captures meant for whatever operation is open when listening
+    // is turned back on. Constructing `inboundQsos` here costs a cheap
+    // object and one listener registration — worth it for correctness.
+    widget.services.inboundQsos.stopReceivingFor(widget.operationUuid);
+    super.dispose();
   }
 
   /// Publishes this view's operation into its stack entry, so the ⌘K dialog's
@@ -1188,12 +1200,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     onOptions: () async {
                       final op = _draftOperation ?? operation;
                       await sheetKey.currentState?.saveAndClose();
-                      if (mounted) unawaited(_showOperationOptions(op, includeExport: !isTwoPane));
+                      if (mounted) {
+                        unawaited(_showOperationOptions(op, includeExport: !isTwoPane, includeImport: !isTwoPane));
+                      }
                     },
                     onExport: () async {
                       final op = _draftOperation ?? operation;
                       await sheetKey.currentState?.saveAndClose();
                       if (mounted) unawaited(_export(op));
+                    },
+                    onImport: () async {
+                      final op = _draftOperation ?? operation;
+                      await sheetKey.currentState?.saveAndClose();
+                      if (mounted) unawaited(_import(op));
                     },
                   );
                   return Stack(
@@ -1392,6 +1411,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Future<void> _export(Operation operation) =>
       showOperationExportPanel(context, services: widget.services, operation: operation);
 
+  Future<void> _import(Operation operation) =>
+      showOperationImportPanel(context, services: widget.services, operation: operation);
+
   /// (wide only) Export + Tools — shared between the AppBar's own actions and
   /// their live copy in headerTrailing (see _openOperationSheet): same icons,
   /// only the press handlers differ (immediate here, close-the-sheet-first
@@ -1410,6 +1432,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     required bool isTwoPane,
     required VoidCallback onOptions,
     required VoidCallback onExport,
+    required VoidCallback onImport,
   }) {
     final t = context.t.activitiesView;
     final onHeader = Theme.of(context).appBarTheme.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
@@ -1429,6 +1452,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       mainAxisSize: MainAxisSize.min,
       children: [
         if (isTwoPane) headerButton(icon: MdiIcons.fileExportOutline, label: t.exports, onPressed: onExport),
+        if (isTwoPane) headerButton(icon: MdiIcons.fileImportOutline, label: t.imports, onPressed: onImport),
         headerButton(icon: MdiIcons.tools, label: t.tools, onPressed: onOptions),
       ],
     );
@@ -1445,11 +1469,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// this actually shows. Editing details here saves directly either way
   /// (editOperationDetails' own `save: true` default), not through a draft.
   ///
-  /// [includeExport] adds Export Logs as the top row — narrow layouts drop
-  /// the AppBar's own Export icon for lack of room beside the title, so this
-  /// menu is Export's only way in there; wide layouts keep the icon and
-  /// leave it out here rather than offer the same action twice.
-  Future<void> _showOperationOptions(Operation operation, {bool includeExport = false}) async {
+  /// [includeExport] and [includeImport] add Export Logs / Imports as the
+  /// top rows — narrow layouts drop the AppBar's own Export/Imports icons
+  /// for lack of room beside the title, so this menu is their only way in
+  /// there; wide layouts keep the icons and leave them out here rather than
+  /// offer the same action twice.
+  Future<void> _showOperationOptions(
+    Operation operation, {
+    bool includeExport = false,
+    bool includeImport = false,
+  }) async {
     final t = context.t.activitiesView;
     final theme = Theme.of(context);
     await showHaloDialog<void>(
@@ -1480,17 +1509,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 unawaited(editOperationDetails(context, widget.services.operations, operation));
               },
             ),
-            ListTile(
-              leading: const Icon(MdiIcons.fileImportOutline),
-              title: Text(t.importAdif),
-              // The menu closes first: the picker is a platform sheet, and the
-              // import's own summary dialog belongs to the screen underneath
-              // rather than stacked on a menu that is going away.
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                unawaited(pickAndImportAdif(context, services: widget.services, operation: operation));
-              },
-            ),
+            if (includeImport)
+              ListTile(
+                leading: const Icon(MdiIcons.fileImportOutline),
+                title: Text(t.imports),
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(_import(operation));
+                },
+              ),
             ListTile(
               enabled: false,
               leading: const Icon(MdiIcons.shareVariant),
@@ -2241,9 +2268,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                           context,
                           isTwoPane: isTwoPane,
                           onOptions: () => unawaited(
-                            _showOperationOptions(_draftOperation ?? operation, includeExport: !isTwoPane),
+                            _showOperationOptions(
+                              _draftOperation ?? operation,
+                              includeExport: !isTwoPane,
+                              includeImport: !isTwoPane,
+                            ),
                           ),
                           onExport: () => unawaited(_export(_draftOperation ?? operation)),
+                          onImport: () => unawaited(_import(_draftOperation ?? operation)),
                         ),
                       ),
                     ),

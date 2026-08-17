@@ -397,6 +397,40 @@
       "unavailableText": "${sources} did not respond.",
       "failedTitle": "Spot source error",
       "failedText": "${sources} returned an error."
+    },
+    "import": {
+      "title": "Import Data into Operation",
+      "importAdifAction": "Import QSOs from ADIF",
+      "settingsButton": "Listen settings",
+      "settingsTitle": "Listen for Other Apps",
+      "protocolAddressLabel": "Address",
+      "protocolPortLabel": "Port",
+      "protocolPortInvalid": "Enter a port between 1 and 65535",
+      "protocolAddressInvalid": "Enter a valid IP address (e.g. 127.0.0.1 or 239.239.0.2)",
+      "protocolStatusReceiving": "Receiving data",
+      "protocolStatusNoData": "No data received recently",
+      "protocolBindError": "Couldn't start listening: ${error}",
+      "n1mmProtocolName": "N1MM+ Contact Broadcast",
+      "n1mmAddressValue": "Any (broadcast)",
+      "wsjtxProtocolName": "WSJT-X UDP Server",
+      "helpN1mmSetup": "Config → Configure Ports, Mode Control… → Broadcast Data tab → check \"Enable Broadcasts\" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.",
+      "helpWsjtxSetup": "File → Settings → Reporting tab → UDP Server section → check \"Accept UDP requests\". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.",
+      "listenTitle": "Listen for QSOs from other apps",
+      "listenDescriptionOnN1mm": "Listening for N1MM+",
+      "listenDescriptionOnWsjtx": "Listening for WSJT-X",
+      "listenDescriptionOnBoth": "Listening for N1MM+ and WSJT-X",
+      "listenDescriptionOff": "Off",
+      "addToOperationTitle": "Add to this operation",
+      "addToOperationDescriptionOn": "Captured QSOs are added to this operation as they arrive",
+      "addToOperationDescriptionOff": "Captured QSOs are held until you turn this on",
+      "pendingSectionTitle": "Captured QSOs",
+      "pendingEmpty": "Nothing captured yet",
+      "stationMismatch": "Logged as ${call}, not this operation's station",
+      "discardAction": "Discard",
+      "gapDialogTitle": "Include earlier captures?",
+      "gapDialogBody": "${count} more QSOs were captured earlier, before a gap in the data. Include them too?",
+      "gapDialogRecentOnly": "Just the recent ones",
+      "gapDialogIncludeAll": "Include all ${count}"
     }
   },
   "map": {
@@ -449,7 +483,6 @@
     "tools": "Tools",
     "toolsTitle": "Operation Tools",
     "operationDetails": "Operation Details",
-    "importAdif": "Import QSOs from ADIF",
     "share": "Share",
     "archive": "Archive",
     "deleteOperation": "Delete Operation",
@@ -465,7 +498,8 @@
     "showResultsList": "Show results as a list",
     "addToOperation": "Add to Operation",
     "mapEmptyState": "No results to show on the map",
-    "mapEmptyStateHint": "Switch back to the list, or search for something else"
+    "mapEmptyStateHint": "Switch back to the list, or search for something else",
+    "imports": "Imports"
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",

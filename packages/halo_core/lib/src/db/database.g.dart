@@ -3440,6 +3440,451 @@ class SequencesCompanion extends UpdateCompanion<SequenceRow> {
   }
 }
 
+class $InboundCapturesTable extends InboundCaptures
+    with TableInfo<$InboundCapturesTable, InboundCaptureRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InboundCapturesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dedupeKeyMeta = const VerificationMeta(
+    'dedupeKey',
+  );
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+    'dedupe_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receivedAtMillisMeta = const VerificationMeta(
+    'receivedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> receivedAtMillis = GeneratedColumn<int>(
+    'received_at_millis',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _addedToOperationMeta = const VerificationMeta(
+    'addedToOperation',
+  );
+  @override
+  late final GeneratedColumn<String> addedToOperation = GeneratedColumn<String>(
+    'added_to_operation',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uuid,
+    source,
+    dedupeKey,
+    data,
+    receivedAtMillis,
+    addedToOperation,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inbound_captures';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InboundCaptureRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(
+        _dedupeKeyMeta,
+        dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dedupeKeyMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('received_at_millis')) {
+      context.handle(
+        _receivedAtMillisMeta,
+        receivedAtMillis.isAcceptableOrUnknown(
+          data['received_at_millis']!,
+          _receivedAtMillisMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_receivedAtMillisMeta);
+    }
+    if (data.containsKey('added_to_operation')) {
+      context.handle(
+        _addedToOperationMeta,
+        addedToOperation.isAcceptableOrUnknown(
+          data['added_to_operation']!,
+          _addedToOperationMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uuid};
+  @override
+  InboundCaptureRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InboundCaptureRow(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      dedupeKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedupe_key'],
+      )!,
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+      receivedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}received_at_millis'],
+      )!,
+      addedToOperation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}added_to_operation'],
+      ),
+    );
+  }
+
+  @override
+  $InboundCapturesTable createAlias(String alias) {
+    return $InboundCapturesTable(attachedDatabase, alias);
+  }
+}
+
+class InboundCaptureRow extends DataClass
+    implements Insertable<InboundCaptureRow> {
+  final String uuid;
+
+  /// The program that sent it, e.g. `n1mm`. Only one exists today, but the
+  /// buffer's shape shouldn't have to change to add a second.
+  final String source;
+
+  /// A dedup key derived from the capture's own fields (call/band/mode/time),
+  /// so a program that broadcasts the same contact twice doesn't queue it
+  /// twice. Not the primary key: [uuid] is what the UI and
+  /// `addedToOperation` reference, and re-deriving the dedup key on every
+  /// query would be wasted work a plain unique index avoids.
+  final String dedupeKey;
+
+  /// QSON, same shape `Qso.data` uses — built directly from the capture so
+  /// accepting it is a plain `qsos.add`, not a second translation.
+  final String data;
+  final int receivedAtMillis;
+
+  /// Null while pending. Set to the operation's uuid once the operator adds
+  /// it to a log — kept (not deleted) so a re-arriving duplicate broadcast is
+  /// still recognized by [dedupeKey] as already handled.
+  final String? addedToOperation;
+  const InboundCaptureRow({
+    required this.uuid,
+    required this.source,
+    required this.dedupeKey,
+    required this.data,
+    required this.receivedAtMillis,
+    this.addedToOperation,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['source'] = Variable<String>(source);
+    map['dedupe_key'] = Variable<String>(dedupeKey);
+    map['data'] = Variable<String>(data);
+    map['received_at_millis'] = Variable<int>(receivedAtMillis);
+    if (!nullToAbsent || addedToOperation != null) {
+      map['added_to_operation'] = Variable<String>(addedToOperation);
+    }
+    return map;
+  }
+
+  InboundCapturesCompanion toCompanion(bool nullToAbsent) {
+    return InboundCapturesCompanion(
+      uuid: Value(uuid),
+      source: Value(source),
+      dedupeKey: Value(dedupeKey),
+      data: Value(data),
+      receivedAtMillis: Value(receivedAtMillis),
+      addedToOperation: addedToOperation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addedToOperation),
+    );
+  }
+
+  factory InboundCaptureRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InboundCaptureRow(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      source: serializer.fromJson<String>(json['source']),
+      dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
+      data: serializer.fromJson<String>(json['data']),
+      receivedAtMillis: serializer.fromJson<int>(json['receivedAtMillis']),
+      addedToOperation: serializer.fromJson<String?>(json['addedToOperation']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'source': serializer.toJson<String>(source),
+      'dedupeKey': serializer.toJson<String>(dedupeKey),
+      'data': serializer.toJson<String>(data),
+      'receivedAtMillis': serializer.toJson<int>(receivedAtMillis),
+      'addedToOperation': serializer.toJson<String?>(addedToOperation),
+    };
+  }
+
+  InboundCaptureRow copyWith({
+    String? uuid,
+    String? source,
+    String? dedupeKey,
+    String? data,
+    int? receivedAtMillis,
+    Value<String?> addedToOperation = const Value.absent(),
+  }) => InboundCaptureRow(
+    uuid: uuid ?? this.uuid,
+    source: source ?? this.source,
+    dedupeKey: dedupeKey ?? this.dedupeKey,
+    data: data ?? this.data,
+    receivedAtMillis: receivedAtMillis ?? this.receivedAtMillis,
+    addedToOperation: addedToOperation.present
+        ? addedToOperation.value
+        : this.addedToOperation,
+  );
+  InboundCaptureRow copyWithCompanion(InboundCapturesCompanion data) {
+    return InboundCaptureRow(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      source: data.source.present ? data.source.value : this.source,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+      data: data.data.present ? data.data.value : this.data,
+      receivedAtMillis: data.receivedAtMillis.present
+          ? data.receivedAtMillis.value
+          : this.receivedAtMillis,
+      addedToOperation: data.addedToOperation.present
+          ? data.addedToOperation.value
+          : this.addedToOperation,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InboundCaptureRow(')
+          ..write('uuid: $uuid, ')
+          ..write('source: $source, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('data: $data, ')
+          ..write('receivedAtMillis: $receivedAtMillis, ')
+          ..write('addedToOperation: $addedToOperation')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uuid,
+    source,
+    dedupeKey,
+    data,
+    receivedAtMillis,
+    addedToOperation,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InboundCaptureRow &&
+          other.uuid == this.uuid &&
+          other.source == this.source &&
+          other.dedupeKey == this.dedupeKey &&
+          other.data == this.data &&
+          other.receivedAtMillis == this.receivedAtMillis &&
+          other.addedToOperation == this.addedToOperation);
+}
+
+class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
+  final Value<String> uuid;
+  final Value<String> source;
+  final Value<String> dedupeKey;
+  final Value<String> data;
+  final Value<int> receivedAtMillis;
+  final Value<String?> addedToOperation;
+  final Value<int> rowid;
+  const InboundCapturesCompanion({
+    this.uuid = const Value.absent(),
+    this.source = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+    this.data = const Value.absent(),
+    this.receivedAtMillis = const Value.absent(),
+    this.addedToOperation = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InboundCapturesCompanion.insert({
+    required String uuid,
+    required String source,
+    required String dedupeKey,
+    required String data,
+    required int receivedAtMillis,
+    this.addedToOperation = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uuid = Value(uuid),
+       source = Value(source),
+       dedupeKey = Value(dedupeKey),
+       data = Value(data),
+       receivedAtMillis = Value(receivedAtMillis);
+  static Insertable<InboundCaptureRow> custom({
+    Expression<String>? uuid,
+    Expression<String>? source,
+    Expression<String>? dedupeKey,
+    Expression<String>? data,
+    Expression<int>? receivedAtMillis,
+    Expression<String>? addedToOperation,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (source != null) 'source': source,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+      if (data != null) 'data': data,
+      if (receivedAtMillis != null) 'received_at_millis': receivedAtMillis,
+      if (addedToOperation != null) 'added_to_operation': addedToOperation,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InboundCapturesCompanion copyWith({
+    Value<String>? uuid,
+    Value<String>? source,
+    Value<String>? dedupeKey,
+    Value<String>? data,
+    Value<int>? receivedAtMillis,
+    Value<String?>? addedToOperation,
+    Value<int>? rowid,
+  }) {
+    return InboundCapturesCompanion(
+      uuid: uuid ?? this.uuid,
+      source: source ?? this.source,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+      data: data ?? this.data,
+      receivedAtMillis: receivedAtMillis ?? this.receivedAtMillis,
+      addedToOperation: addedToOperation ?? this.addedToOperation,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (receivedAtMillis.present) {
+      map['received_at_millis'] = Variable<int>(receivedAtMillis.value);
+    }
+    if (addedToOperation.present) {
+      map['added_to_operation'] = Variable<String>(addedToOperation.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InboundCapturesCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('source: $source, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('data: $data, ')
+          ..write('receivedAtMillis: $receivedAtMillis, ')
+          ..write('addedToOperation: $addedToOperation, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$HaLoDatabase extends GeneratedDatabase {
   _$HaLoDatabase(QueryExecutor e) : super(e);
   $HaLoDatabaseManager get managers => $HaLoDatabaseManager(this);
@@ -3451,9 +3896,16 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
   late final $QsosBackupTable qsosBackup = $QsosBackupTable(this);
   late final $LookupsTable lookups = $LookupsTable(this);
   late final $SequencesTable sequences = $SequencesTable(this);
+  late final $InboundCapturesTable inboundCaptures = $InboundCapturesTable(
+    this,
+  );
   late final Index qsosOperationStart = Index(
     'qsos_operation_start',
     'CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)',
+  );
+  late final Index inboundCapturesDedupeKey = Index(
+    'inbound_captures_dedupe_key',
+    'CREATE UNIQUE INDEX inbound_captures_dedupe_key ON inbound_captures (dedupe_key)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3466,7 +3918,9 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     qsosBackup,
     lookups,
     sequences,
+    inboundCaptures,
     qsosOperationStart,
+    inboundCapturesDedupeKey,
   ];
 }
 
@@ -5138,6 +5592,239 @@ typedef $$SequencesTableProcessedTableManager =
       SequenceRow,
       PrefetchHooks Function()
     >;
+typedef $$InboundCapturesTableCreateCompanionBuilder =
+    InboundCapturesCompanion Function({
+      required String uuid,
+      required String source,
+      required String dedupeKey,
+      required String data,
+      required int receivedAtMillis,
+      Value<String?> addedToOperation,
+      Value<int> rowid,
+    });
+typedef $$InboundCapturesTableUpdateCompanionBuilder =
+    InboundCapturesCompanion Function({
+      Value<String> uuid,
+      Value<String> source,
+      Value<String> dedupeKey,
+      Value<String> data,
+      Value<int> receivedAtMillis,
+      Value<String?> addedToOperation,
+      Value<int> rowid,
+    });
+
+class $$InboundCapturesTableFilterComposer
+    extends Composer<_$HaLoDatabase, $InboundCapturesTable> {
+  $$InboundCapturesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get receivedAtMillis => $composableBuilder(
+    column: $table.receivedAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addedToOperation => $composableBuilder(
+    column: $table.addedToOperation,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InboundCapturesTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $InboundCapturesTable> {
+  $$InboundCapturesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get receivedAtMillis => $composableBuilder(
+    column: $table.receivedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addedToOperation => $composableBuilder(
+    column: $table.addedToOperation,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InboundCapturesTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $InboundCapturesTable> {
+  $$InboundCapturesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<int> get receivedAtMillis => $composableBuilder(
+    column: $table.receivedAtMillis,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get addedToOperation => $composableBuilder(
+    column: $table.addedToOperation,
+    builder: (column) => column,
+  );
+}
+
+class $$InboundCapturesTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $InboundCapturesTable,
+          InboundCaptureRow,
+          $$InboundCapturesTableFilterComposer,
+          $$InboundCapturesTableOrderingComposer,
+          $$InboundCapturesTableAnnotationComposer,
+          $$InboundCapturesTableCreateCompanionBuilder,
+          $$InboundCapturesTableUpdateCompanionBuilder,
+          (
+            InboundCaptureRow,
+            BaseReferences<
+              _$HaLoDatabase,
+              $InboundCapturesTable,
+              InboundCaptureRow
+            >,
+          ),
+          InboundCaptureRow,
+          PrefetchHooks Function()
+        > {
+  $$InboundCapturesTableTableManager(
+    _$HaLoDatabase db,
+    $InboundCapturesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InboundCapturesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InboundCapturesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InboundCapturesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uuid = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> dedupeKey = const Value.absent(),
+                Value<String> data = const Value.absent(),
+                Value<int> receivedAtMillis = const Value.absent(),
+                Value<String?> addedToOperation = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InboundCapturesCompanion(
+                uuid: uuid,
+                source: source,
+                dedupeKey: dedupeKey,
+                data: data,
+                receivedAtMillis: receivedAtMillis,
+                addedToOperation: addedToOperation,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uuid,
+                required String source,
+                required String dedupeKey,
+                required String data,
+                required int receivedAtMillis,
+                Value<String?> addedToOperation = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InboundCapturesCompanion.insert(
+                uuid: uuid,
+                source: source,
+                dedupeKey: dedupeKey,
+                data: data,
+                receivedAtMillis: receivedAtMillis,
+                addedToOperation: addedToOperation,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InboundCapturesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $InboundCapturesTable,
+      InboundCaptureRow,
+      $$InboundCapturesTableFilterComposer,
+      $$InboundCapturesTableOrderingComposer,
+      $$InboundCapturesTableAnnotationComposer,
+      $$InboundCapturesTableCreateCompanionBuilder,
+      $$InboundCapturesTableUpdateCompanionBuilder,
+      (
+        InboundCaptureRow,
+        BaseReferences<
+          _$HaLoDatabase,
+          $InboundCapturesTable,
+          InboundCaptureRow
+        >,
+      ),
+      InboundCaptureRow,
+      PrefetchHooks Function()
+    >;
 
 class $HaLoDatabaseManager {
   final _$HaLoDatabase _db;
@@ -5153,4 +5840,6 @@ class $HaLoDatabaseManager {
       $$LookupsTableTableManager(_db, _db.lookups);
   $$SequencesTableTableManager get sequences =>
       $$SequencesTableTableManager(_db, _db.sequences);
+  $$InboundCapturesTableTableManager get inboundCaptures =>
+      $$InboundCapturesTableTableManager(_db, _db.inboundCaptures);
 }

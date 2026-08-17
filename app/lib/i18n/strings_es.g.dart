@@ -288,7 +288,6 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get tools => 'Herramientas';
 	@override String get toolsTitle => 'Herramientas de la operación';
 	@override String get operationDetails => 'Detalles de la Operación';
-	@override String get importAdif => 'Importar QSOs desde ADIF';
 	@override String get share => 'Compartir';
 	@override String get archive => 'Archivar';
 	@override String get deleteOperation => 'Borrar operación';
@@ -2468,7 +2467,6 @@ extension on TranslationsEs {
 			'activitiesView.tools' => 'Herramientas',
 			'activitiesView.toolsTitle' => 'Herramientas de la operación',
 			'activitiesView.operationDetails' => 'Detalles de la Operación',
-			'activitiesView.importAdif' => 'Importar QSOs desde ADIF',
 			'activitiesView.share' => 'Compartir',
 			'activitiesView.archive' => 'Archivar',
 			'activitiesView.deleteOperation' => 'Borrar operación',
@@ -2635,9 +2633,9 @@ extension on TranslationsEs {
 			'settings.layoutDensityDescription.dense' => 'Muestra más en pantalla',
 			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
 			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
+			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			_ => null,
 		} ?? switch (path) {
-			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',

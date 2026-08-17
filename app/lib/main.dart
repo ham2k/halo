@@ -63,6 +63,7 @@ import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/cat/cat_service.dart';
+import 'services/inbound_qso_listener_service.dart';
 import 'services/location_service.dart';
 import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
@@ -757,6 +758,7 @@ Future<HaLoServices> bootstrap({
   } else {
     debugPrint('[boot] no sync device key (secure storage unavailable) — continuing without sync');
   }
+  services.maybeStartInboundQsoListener();
   // Reads the flag rather than this branch: a null device key means storage
   // threw, but saying so out loud keeps the notice tied to the fact it reports
   // instead of to one caller's control flow.
@@ -968,6 +970,7 @@ class HaLoServices {
   late final QsosRepository qsos =
       QsosRepository(db, onChange: () => syncEngine.notifyChanged(), sequences: sequences);
   late final LookupRepository lookups = LookupRepository(db);
+  late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
   late final ExportService exports =
       _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
@@ -1116,6 +1119,31 @@ class HaLoServices {
         statusBar: statusBar,
         lookupReady: () => extensions.ready,
       );
+
+  /// See `InboundQsoListenerService`: listens for another logging program's
+  /// QSOs (N1MM's UDP broadcast protocol) and buffers them until an operator
+  /// adds them to an operation's log. Lazy like the rest, but
+  /// [maybeStartInboundQsoListener] forces it into existence at boot when
+  /// the setting is already on — a `late final` nobody has touched yet would
+  /// otherwise never bind the socket, even though the operator turned
+  /// listening on in a previous session.
+  final InboundQsoListenerService? _inboundQsosOverride;
+  late final InboundQsoListenerService inboundQsos = _inboundQsosOverride ??
+      InboundQsoListenerService(
+        settings: settings,
+        captures: inboundCaptures,
+        qsos: qsos,
+        operations: operations,
+        lookupQueue: lookupQueue,
+      );
+
+  /// Touches [inboundQsos] if listening is already enabled, so a setting
+  /// left on from a previous session resumes without the operator having to
+  /// open the Imports panel first. A no-op otherwise: nothing should bind a
+  /// UDP port on every boot for a feature nobody turned on.
+  void maybeStartInboundQsoListener() {
+    if (settings.listenForOtherAppsEnabled) inboundQsos;
+  }
 
   /// Server-driven feature flags + notices for the active profile callsign
   /// (see FlagsService). Refreshed at boot and whenever the callsign changes
@@ -1427,7 +1455,9 @@ class HaLoServices {
     CatService? cat,
     PusherService? pusher,
     LocationService? location,
+    InboundQsoListenerService? inboundQsos,
   })  : _catOverride = cat,
+        _inboundQsosOverride = inboundQsos,
         _locationOverride = location,
         _pusherOverride = pusher,
         extensions = extensions ?? ExtensionService(),

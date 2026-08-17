@@ -102,5 +102,12 @@
 	     MISSING_EXPORT_COMPLIANCE gate. Revisit if custom crypto is added. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- "Listen for other apps" (HALO-306) binds a UDP socket to hear N1MM
+	     Logger+/WSJT-X on the local network — iOS gates ANY local-subnet
+	     traffic behind this prompt since iOS 14, regardless of whether the
+	     app also advertises a Bonjour service (it doesn't, so no
+	     NSBonjourServices entry is needed alongside this). -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Ham2K Logger listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X on your local network, when you turn that on in an operation's Imports panel.</string>
 </dict>
 </plist>

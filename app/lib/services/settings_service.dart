@@ -64,6 +64,20 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
   static const _lastSeenTesterBuildKey = 'lastSeenTesterBuild';
   static const _shorebirdTrackKey = 'shorebirdTrack';
+  static const _listenForOtherAppsEnabledKey = 'listenForOtherAppsEnabled';
+  static const _n1mmProtocolEnabledKey = 'n1mmProtocolEnabled';
+  static const _n1mmListenPortKey = 'n1mmListenPort';
+  static const _wsjtxProtocolEnabledKey = 'wsjtxProtocolEnabled';
+  static const _wsjtxListenPortKey = 'wsjtxListenPort';
+  static const _wsjtxMulticastGroupKey = 'wsjtxMulticastGroup';
+
+  /// N1MM's own default UDP broadcast port — see "Listen for other apps".
+  static const n1mmDefaultListenPort = 12060;
+
+  /// WSJT-X's own defaults for its UDP protocol (a DIFFERENT protocol from
+  /// N1MM's — multicast, binary — not just a different port).
+  static const wsjtxDefaultListenPort = 2237;
+  static const wsjtxDefaultMulticastGroup = '239.239.0.2';
 
   /// The Shorebird code-push tracks this build can follow, riskiest first
   /// (docs/releases.md §4.3). `stable` is the default and what everyone gets;
@@ -319,6 +333,67 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setSyncEnabled(bool enabled) async {
     await _prefs.setBool(_syncEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// Whether the app listens for other logging programs on the network at
+  /// all, app-wide and independent of which operation (if any) is open —
+  /// see "Listen for other apps". The master switch:
+  /// [InboundQsoListenerService] starts nothing while this is off, whatever
+  /// [n1mmProtocolEnabled]/[wsjtxProtocolEnabled] say. Those two decide
+  /// WHICH protocols run once this is on — an operator who only uses
+  /// WSJT-X shouldn't have N1MM's port bound for no reason.
+  bool get listenForOtherAppsEnabled => _prefs.getBool(_listenForOtherAppsEnabledKey) ?? false;
+
+  Future<void> setListenForOtherAppsEnabled(bool enabled) async {
+    await _prefs.setBool(_listenForOtherAppsEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// Whether N1MM's broadcast protocol specifically is listened to, gated
+  /// by [listenForOtherAppsEnabled]. Defaults on: most operators want every
+  /// protocol this app understands the moment they turn listening on at all.
+  bool get n1mmProtocolEnabled => _prefs.getBool(_n1mmProtocolEnabledKey) ?? true;
+
+  Future<void> setN1mmProtocolEnabled(bool enabled) async {
+    await _prefs.setBool(_n1mmProtocolEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// The UDP port N1MM's broadcast is heard on. Configurable because N1MM's
+  /// own broadcast port can be reconfigured, and more than one
+  /// N1MM-compatible program may share a machine.
+  int get n1mmListenPort => _prefs.getInt(_n1mmListenPortKey) ?? n1mmDefaultListenPort;
+
+  Future<void> setN1mmListenPort(int port) async {
+    await _prefs.setInt(_n1mmListenPortKey, port);
+    notifyListeners();
+  }
+
+  /// See [n1mmProtocolEnabled] — the same per-protocol opt-out for WSJT-X.
+  bool get wsjtxProtocolEnabled => _prefs.getBool(_wsjtxProtocolEnabledKey) ?? true;
+
+  Future<void> setWsjtxProtocolEnabled(bool enabled) async {
+    await _prefs.setBool(_wsjtxProtocolEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// The UDP port WSJT-X's multicast protocol is heard on.
+  int get wsjtxListenPort => _prefs.getInt(_wsjtxListenPortKey) ?? wsjtxDefaultListenPort;
+
+  Future<void> setWsjtxListenPort(int port) async {
+    await _prefs.setInt(_wsjtxListenPortKey, port);
+    notifyListeners();
+  }
+
+  /// The multicast group WSJT-X's UDP Server broadcasts to (its Settings →
+  /// Reporting → UDP Server tab) — configurable because that field is
+  /// itself configurable in WSJT-X, and a station running several rigs may
+  /// use a non-default group to keep instances from colliding.
+  String get wsjtxMulticastGroup => _prefs.getString(_wsjtxMulticastGroupKey) ?? wsjtxDefaultMulticastGroup;
+
+  Future<void> setWsjtxMulticastGroup(String group) async {
+    await _prefs.setString(_wsjtxMulticastGroupKey, group);
     notifyListeners();
   }
 
