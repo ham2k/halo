@@ -111,7 +111,7 @@ const SpotsHook = {
     const apiSpots = JSON.parse(response.body) as WWFFApiSpot[]
 
     return apiSpots.map((spot) => {
-      const freq = spot.frequency_khz
+      const freq = spot.frequency_khz != null ? Number(spot.frequency_khz) : undefined
       const sourceInfo: Record<string, JSONValue> = {}
       if (spot.remarks != null) sourceInfo.comments = spot.remarks
       if (spot.spotter != null) sourceInfo.spotter = spot.spotter.toUpperCase()

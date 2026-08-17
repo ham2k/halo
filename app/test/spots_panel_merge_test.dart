@@ -87,6 +87,76 @@ void main() {
     });
   });
 
+  group('wrong-typed fields (a bridge-crossing extension enforces nothing about JS field types)', () {
+    test('a String freq (the crash this file was named after) degrades to no freq, not a throw', () {
+      final spots = [
+        {
+          'their': {'call': 'K1ABC'},
+          'freq': '14285.0', // numeric string, not a num
+          'spot': {'timeInMillis': 1000},
+        },
+        _spot(call: 'W1XYZ', freq: 14285.0, timeInMillis: 1000),
+      ];
+
+      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots));
+
+      // Neither pass crashed, and the malformed spot's own String freq never
+      // matches the good one's num freq for merge purposes — the two stay
+      // distinct rather than being silently collapsed together.
+      expect(merged, hasLength(2));
+      expect(merged.map((s) => (s['their'] as Map)['call']), containsAll(['K1ABC', 'W1XYZ']));
+    });
+
+    test('a non-Map their field does not throw out of the merge', () {
+      final spots = [
+        {
+          'their': 'K1ABC', // wrong shape entirely
+          'freq': 14285.0,
+          'spot': {'timeInMillis': 1000},
+        },
+      ];
+
+      expect(() => mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots)), returnsNormally);
+    });
+
+    test('a call-less spot already in `merged` is never chosen as a match TARGET either', () {
+      // The mirror of the guard above: that one only stops a call-less spot
+      // from being the spot BEING merged. Without the matching guard on the
+      // `other` side, a later valid spot at the same freq/time/refs matches
+      // against the call-less one already sitting in `merged`, producing
+      // `existingCall = ''` and a dangling ",W1AW" instead of two rows.
+      final spots = [
+        {
+          'their': <String, dynamic>{}, // present but no call
+          'freq': 14285.0,
+          'spot': {'timeInMillis': 1000},
+        },
+        _spot(call: 'W1AW', freq: 14285.05, timeInMillis: 1000),
+      ];
+
+      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots));
+
+      expect(merged, hasLength(2));
+      final calls = merged.map((s) => (s['their'] as Map)['call']).toList();
+      expect(calls, isNot(contains(',W1AW')));
+      expect(calls, contains('W1AW'));
+    });
+
+    test('a non-List refs field does not throw and reads as no refs', () {
+      final spots = [
+        {
+          'their': {'call': 'K1ABC'},
+          'freq': 14285.0,
+          'refs': 'K-0001', // wrong shape entirely
+          'spot': {'timeInMillis': 1000},
+        },
+      ];
+
+      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots));
+      expect(merged.single['refs'], isEmpty);
+    });
+  });
+
   group('mergeSpotsByFreqAndRefs', () {
     test('same freq and identical ref set merges callsigns', () {
       final refs = [

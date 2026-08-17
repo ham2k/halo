@@ -116,7 +116,7 @@ const SpotsHook = {
     return apiSpots
       .filter((spot) => !/QRT/i.test(spot.comments ?? ''))
       .map((spot) => {
-        const freq = spot.frequency
+        const freq = spot.frequency != null ? Number(spot.frequency) : undefined
         const sourceInfo: Record<string, JSONValue> = {}
         if (spot.id != null) sourceInfo.id = spot.id
         if (spot.spotter != null) sourceInfo.spotter = spot.spotter

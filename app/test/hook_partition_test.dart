@@ -8,11 +8,19 @@
 // the buckets are only as meaningful as the split that fills them.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+
+import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
 
 Map<String, dynamic> ok(String key, List<Object?> value) => {'key': key, 'ok': true, 'value': value};
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(ErrorReportingService.resetFailureStreaks);
+  tearDown(ErrorReportingService.resetFailureStreaks);
+
   test('a hook that errored and one that never answered land in different buckets', () {
     // The whole feature rests on this line. Merged, the operator is told to
     // wait out a server that is up and answering 503 — it will still be
@@ -157,5 +165,92 @@ void main() {
     expect(parts.failed, isEmpty);
     expect(parts.succeeded, isEmpty);
     expect(parts.unreachable, isEmpty);
+  });
+
+  group('validSpots', () {
+    // The crash getSpots() exists to prevent: spots_panel.dart's readers
+    // trust `freq` is a num once the item survives here, so a numeric string
+    // from a hook that skipped its own coercion must be dropped before it
+    // reaches the panel, not merely tolerated once there.
+    test('drops a spot with a wrong-typed freq, keeps the rest of that hook and every other', () async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        final items = [
+          {
+            'hookKey': 'wwff',
+            'their': {'call': 'K1ABC'},
+            'freq': '14285.0',
+          },
+          {
+            'hookKey': 'wwff',
+            'their': {'call': 'W1XYZ'},
+            'freq': 14285.0,
+          },
+          {
+            'hookKey': 'pota',
+            'their': {'call': 'G1ABC'},
+            'freq': 7040.0,
+          },
+        ];
+
+        final valid = validSpots(items);
+
+        expect(valid.map((s) => (s['their'] as Map)['call']), ['W1XYZ', 'G1ABC']);
+      }, backend: backend);
+    });
+
+    test('reports the malformed spot once, tagged with the offending source', () async {
+      // Whether that report reaches the operator as a notice, rather than
+      // just the backend, is `malformed-spot-data`'s own disposition —
+      // proved in error_policy_test.dart, not here: report() never calls
+      // notify() on any path this test could exercise, so an empty
+      // `statusBar.activeNotices` here would pass even if that rule were
+      // loosened to `notify`.
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        validSpots([
+          {
+            'hookKey': 'wwff',
+            'their': {'call': 'K1ABC'},
+            'freq': '14285.0',
+          },
+        ]);
+
+        expect(backend.exceptions, hasLength(1));
+        expect(backend.exceptions.single.context, contains('wwff'));
+      }, backend: backend);
+    });
+
+    test('a repeat offender from the same source reports only the first time', () async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        final malformed = {
+          'hookKey': 'wwff',
+          'their': {'call': 'K1ABC'},
+          'freq': '14285.0',
+        };
+
+        validSpots([malformed]);
+        validSpots([malformed]);
+        validSpots([malformed]);
+
+        expect(backend.exceptions, hasLength(1));
+      }, backend: backend);
+    });
+
+    test('a spot simply missing freq is untouched — absence is not a type violation', () async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        final valid = validSpots([
+          {
+            'hookKey': 'wwff',
+            'their': {'call': 'K1ABC'},
+          },
+        ]);
+
+        expect(valid, hasLength(1));
+        expect(backend.exceptions, isEmpty);
+      }, backend: backend);
+    });
   });
 }

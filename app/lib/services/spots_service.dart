@@ -187,18 +187,22 @@ class SpotsService extends ChangeNotifier {
   }
 }
 
-/// The spotted callsign, uppercased, or null when the spot has none — spots
-/// arrive as raw JSON maps from the runtime, so every field access is a
-/// probe rather than a typed read.
+/// A value only if it is already the target type, or null — spot maps arrive
+/// as raw JSON from the extension runtime, which enforces nothing about a JS
+/// hook's declared TypeScript types at runtime, so every field read is a
+/// probe rather than a cast. Shared by [callOfSpot]/[timeOfSpot] here and by
+/// spots_panel.dart's own field readers, which describe this same wire shape.
+Map<String, dynamic>? asSpotMap(dynamic value) => value is Map ? value.cast<String, dynamic>() : null;
+String? asSpotString(dynamic value) => value is String ? value : null;
+num? asSpotNum(dynamic value) => value is num ? value : null;
+
+/// The spotted callsign, uppercased, or null when the spot has none.
 String? callOfSpot(Map<String, dynamic> spot) {
-  final call = (spot['their'] as Map?)?['call'];
-  if (call is! String) return null;
+  final call = asSpotString(asSpotMap(spot['their'])?['call']);
+  if (call == null) return null;
   final trimmed = call.trim().toUpperCase();
   return trimmed.isEmpty ? null : trimmed;
 }
 
 /// When the spot was posted, in epoch milliseconds, or null.
-int? timeOfSpot(Map<String, dynamic> spot) {
-  final time = (spot['spot'] as Map?)?['timeInMillis'];
-  return time is num ? time.toInt() : null;
-}
+int? timeOfSpot(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt();

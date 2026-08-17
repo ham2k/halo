@@ -118,7 +118,8 @@ const SpotsHook = {
     return apiSpots.map((spot) => {
       const references = spot.references ?? []
       // Frequencies arrive in MHz; the rest of HaLo works in kHz.
-      const freqKHz = spot.freq ? spot.freq * 1000 : undefined
+      const freq = Number(spot.freq)
+      const freqKHz = freq ? freq * 1000 : undefined
       // One bunker is worth naming; several are only worth listing, since the
       // names would not fit and app-polo makes the same call.
       const label = references.length === 1

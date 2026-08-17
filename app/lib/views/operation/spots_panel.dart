@@ -35,21 +35,33 @@ const _ageOptionsInMinutes = [15, 30, 60, 180];
 /// `_searchProgressHeight`.
 const _spotsProgressHeight = 4.0;
 
-String? _callOf(Map<String, dynamic> spot) => (spot['their'] as Map?)?['call'] as String?;
+/// A spot map's fields come from a JS extension across the hook bridge,
+/// which enforces nothing about their runtime type — every read below is a
+/// probe (`asSpotString`/`asSpotNum`/`asSpotMap`, spots_service.dart — shared
+/// with `callOfSpot`/`timeOfSpot` there, which describe this same wire
+/// shape), not a trusted cast, so one hook shipping a wrong-typed field
+/// degrades that single field to "absent" instead of throwing out of a
+/// getter every other spot's build depends on. `getSpots` (extension_service.dart)
+/// reports a wrong-typed field once, silently, per source; nothing here does.
+String? _callOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['their'])?['call']);
 /// The individual operator callsigns within a `their.call` — a comma-joined
 /// compound for a multi-op spot (see `mergeSpotsByFreqAndRefs`), a single call
 /// otherwise. Empty segments are dropped. Everything that keys off `_callNotes`
 /// (per single call) must iterate these, not the raw compound string.
 Iterable<String> _callsIn(String? call) => (call ?? '').split(',').where((c) => c.isNotEmpty);
-double? _freqOf(Map<String, dynamic> spot) => (spot['freq'] as num?)?.toDouble();
-String? _bandOf(Map<String, dynamic> spot) => spot['band'] as String?;
-String? _modeOf(Map<String, dynamic> spot) => spot['mode'] as String?;
-List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) =>
-    (spot['refs'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-int _timeOf(Map<String, dynamic> spot) => ((spot['spot'] as Map?)?['timeInMillis'] as num?)?.toInt() ?? 0;
+double? _freqOf(Map<String, dynamic> spot) => asSpotNum(spot['freq'])?.toDouble();
+String? _bandOf(Map<String, dynamic> spot) => asSpotString(spot['band']);
+String? _modeOf(Map<String, dynamic> spot) => asSpotString(spot['mode']);
+List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) {
+  final refs = spot['refs'];
+  if (refs is! List) return const [];
+  return [for (final ref in refs) if (ref is Map) ref.cast<String, dynamic>()];
+}
+
+int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt() ?? 0;
 String? _iconOf(Map<String, dynamic> spot) =>
-    spot['icon'] as String? ?? (spot['spot'] as Map?)?['icon'] as String?;
-String? _labelOf(Map<String, dynamic> spot) => (spot['spot'] as Map?)?['label'] as String?;
+    asSpotString(spot['icon']) ?? asSpotString(asSpotMap(spot['spot'])?['icon']);
+String? _labelOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['spot'])?['label']);
 bool _isDigital(String? mode) => mode != null && _digitalModes.contains(mode.toUpperCase());
 
 /// The three "super modes" ([superModeForMode]) the mode filter groups spots
@@ -124,13 +136,20 @@ List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> sp
     Map<String, dynamic>? match;
     // A call-less spot (a malformed hook result — Spot.their.call is
     // required by the SDK type, but nothing enforces that across the JS
-    // bridge at runtime) is never merged into another's call list, which
-    // would otherwise produce a dangling "CALL," with an empty second call.
+    // bridge at runtime) is never merged into another's call list — checked
+    // here for the spot BEING merged, and in the loop below for a call-less
+    // spot already sitting in `merged` as a would-be TARGET — either
+    // direction would otherwise produce a dangling ",CALL" or "CALL,".
     if (!_isDigital(_modeOf(spot)) && (_callOf(spot)?.isNotEmpty ?? false)) {
       final freq = _freqOf(spot);
       final refs = _refsOf(spot);
       if (freq != null) {
         for (final other in merged) {
+          // The same guard as above, applied to the OTHER side of the merge:
+          // a call-less spot already sitting in `merged` must never be a
+          // match target either, or the appended call lands on an empty
+          // existingCall and produces a dangling ",CALL".
+          if (_callOf(other)?.isNotEmpty != true) continue;
           final otherFreq = _freqOf(other);
           if (otherFreq == null) continue;
           if ((freq - otherFreq).abs() > 0.1) continue;
@@ -144,9 +163,9 @@ List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> sp
       }
     }
     if (match != null) {
-      final existingCall = (match['their'] as Map)['call'] as String;
+      final existingCall = _callOf(match) ?? '';
       final newCall = _callOf(spot) ?? '';
-      match['their'] = {...match['their'] as Map, 'call': '$existingCall,$newCall'};
+      match['their'] = {...?asSpotMap(match['their']), 'call': '$existingCall,$newCall'};
     } else {
       merged.add(spot);
     }
@@ -1845,7 +1864,7 @@ class _SpotTile extends StatelessWidget {
     }
 
     final refs = _refsOf(spot);
-    final refType = refs.isEmpty ? null : refs.first['type'] as String?;
+    final refType = refs.isEmpty ? null : asSpotString(refs.first['type']);
     final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
 
     // Age sits at the top-right of the row, right-aligned, bold when it's the

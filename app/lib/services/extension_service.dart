@@ -93,6 +93,75 @@ const HookPartition emptyHookPartition = (
   failed: <({String key, String? error})>[],
 );
 
+/// A spot from [hookKey] whose `their`/`freq`/`refs`/`spot` field — or
+/// `their.call`/a `refs` entry, one level inside an otherwise right-typed
+/// container — is the wrong type for spots_panel.dart's and
+/// spots_service.dart's readers. The hook bridge enforces nothing about a JS
+/// extension's declared TypeScript types at runtime, so a numeric-string API
+/// field that slips past an extension's own coercion arrives here as a
+/// `String` where every reader expects a `num`. Classified `report` in
+/// [ErrorPolicy]: worth fixing in the offending extension, not worth the
+/// operator's other, unaffected spot sources going quiet or a notice
+/// interrupting them over it.
+class MalformedSpotDataException implements Exception {
+  MalformedSpotDataException(this.hookKey, this.field, this.value);
+  final String hookKey;
+  final String field;
+  final Object? value;
+
+  @override
+  String toString() => 'MalformedSpotDataException: hook "$hookKey" field "$field" is ${value.runtimeType}';
+}
+
+/// The first top-level field on [spot] whose type spots_panel.dart's/
+/// spots_service.dart's readers don't tolerate, or null if every field
+/// present is shaped as expected. `their.call` and each `refs` entry are
+/// checked one level deep — the two places a reader dereferences INTO an
+/// already-right-typed container rather than just reading it.
+String? _malformedSpotField(Map<String, dynamic> spot) {
+  final their = spot['their'];
+  if (their != null && their is! Map) return 'their';
+  if (their is Map && their['call'] != null && their['call'] is! String) return 'their';
+
+  final freq = spot['freq'];
+  if (freq != null && freq is! num) return 'freq';
+
+  final refs = spot['refs'];
+  if (refs != null && refs is! List) return 'refs';
+  if (refs is List && refs.any((r) => r is! Map)) return 'refs';
+
+  final inner = spot['spot'];
+  if (inner != null && inner is! Map) return 'spot';
+  if (inner is Map && inner['timeInMillis'] != null && inner['timeInMillis'] is! num) return 'spot';
+
+  return null;
+}
+
+/// Drops any spot [_malformedSpotField] flags, reporting the first one per
+/// [hookKey] to the crash backend — see [MalformedSpotDataException]. A spot
+/// missing a field outright is untouched; that is an ordinary absence the
+/// readers already handle, not a bridge-contract violation. Public for
+/// `hook_partition_test.dart`.
+List<Map<String, dynamic>> validSpots(List<Map<String, dynamic>> items) {
+  final valid = <Map<String, dynamic>>[];
+  for (final spot in items) {
+    final badField = _malformedSpotField(spot);
+    if (badField != null) {
+      final hookKey = spot['hookKey'] as String? ?? 'unknown';
+      ErrorReportingService.reportIfRepeated(
+        'getSpots:malformed:$hookKey',
+        MalformedSpotDataException(hookKey, badField, spot[badField]),
+        null,
+        context: 'getSpots:malformed:$hookKey',
+        threshold: 1,
+      );
+      continue;
+    }
+    valid.add(spot);
+  }
+  return valid;
+}
+
 /// Whether a hook's failure was the network rather than the service.
 ///
 /// The markers are the ones `ErrorPolicy._isFetchTransportTransient` already
@@ -535,15 +604,17 @@ class ExtensionService implements PanelExtensionSource {
   /// which is the difference between "nobody is activating" and "SOTAwatch
   /// didn't reply" — a distinction the spots alone cannot carry, since a
   /// feed that fails contributes no key to group by.
-  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() =>
-      _collectHookResults(
-        'spots',
-        method: 'fetchSpots',
-        args: const {},
-        debugLabel: 'getSpots',
-        partialOnTimeout: true,
-        failureThreshold: _spotSourceFailureThreshold,
-      );
+  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() async {
+    final parts = await _collectHookResults(
+      'spots',
+      method: 'fetchSpots',
+      args: const {},
+      debugLabel: 'getSpots',
+      partialOnTimeout: true,
+      failureThreshold: _spotSourceFailureThreshold,
+    );
+    return (items: validSpots(parts.items), unreachable: parts.unreachable, failed: parts.failed);
+  }
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's
   /// source filter labels (e.g. `pota` -> "POTA.app"). `sourceName` is a

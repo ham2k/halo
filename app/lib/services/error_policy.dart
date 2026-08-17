@@ -28,6 +28,7 @@ import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
+import 'extension_service.dart' show MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'website_panel_error.dart' show WebsitePanelError;
@@ -227,6 +228,14 @@ class ErrorPolicy {
           'off-grid activation, not a defect',
       disposition: ErrorDisposition.logOnly,
       matches: _isMapErrorWhileOffline,
+    ),
+    ErrorRule(
+      id: 'malformed-spot-data',
+      reason: 'a spots hook returned a field of the wrong type (extension_service.dart\'s '
+          'validSpots) — a defect in that one extension, not something the operator can act on, '
+          'and the spot is already dropped so the panel\'s other sources are unaffected',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is MalformedSpotDataException,
     ),
     ErrorRule(
       id: 'website-panel-offline',

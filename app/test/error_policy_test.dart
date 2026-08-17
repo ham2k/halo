@@ -28,6 +28,7 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 
@@ -471,6 +472,21 @@ void main() {
       expect(
         dispositionFor(TimeoutException('the radio did not answer: pkt4')),
         ErrorDisposition.notify,
+      );
+    });
+  });
+
+  group('malformed spot data', () {
+    // The actual disposition check for extension_service.dart's validSpots():
+    // hook_partition_test.dart only proves the STATUS BAR stayed empty, which
+    // it always does on this path (report() never calls notify() — see
+    // error_reporting_test.dart) regardless of which tier the rule assigns.
+    // Reading the decision straight off ErrorPolicy is what actually catches
+    // the rule being loosened to `notify` by accident.
+    test('reported, not noticed — the operator cannot fix another extension\'s bug', () {
+      expect(
+        dispositionFor(MalformedSpotDataException('wwff', 'freq', '14285.0')),
+        ErrorDisposition.report,
       );
     });
   });
