@@ -987,7 +987,15 @@ class QsosRepository {
   /// one because a QSO can outlive its operation row (an inbound sync batch
   /// can carry QSOs before the operation they belong to arrives) — those
   /// count as present, same as before.
-  Future<List<Qso>> historyForCall(String call) async {
+  ///
+  /// [limit], when given, bounds the SQL query itself (not a post-fetch
+  /// truncation) — for a caller like `call-history`'s lookup source that
+  /// only ever reads the most recent match or two: without it, a station
+  /// worked hundreds of times ships its entire history across the extension
+  /// bridge for an answer that only ever uses the first row. Applied before
+  /// the event-marker filter below, so it is a headroom bound, not an exact
+  /// result count.
+  Future<List<Qso>> historyForCall(String call, {int? limit}) async {
     final normalized = call.trim().toUpperCase();
     if (normalized.isEmpty) return const [];
     final query = db.select(db.qsos).join([
@@ -997,6 +1005,7 @@ class QsosRepository {
           db.qsos.deleted.equals(false) &
           (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
+    if (limit != null) query.limit(limit);
     final rows = await query.get();
     return [
       for (final row in rows.map((r) => _qsoFromRow(r.readTable(db.qsos))))

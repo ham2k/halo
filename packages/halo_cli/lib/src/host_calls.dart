@@ -206,6 +206,32 @@ class CliHostCalls {
             if (_spotCall(spot) == call && _spotMillis(spot) >= cutoff) spot,
         ];
 
+      case 'getHistoryForCall':
+        // Backs `call-history`'s `ctx.getHistoryForCall`. The app answers
+        // across every operation; the CLI only ever has the one log handed
+        // to it via `--qson`/`--qsos`, so that's what this filters — same
+        // "no log access" vs "no match" distinction as `getQsos` above.
+        if (log.qsos == null) return const <Map<String, Object?>>[];
+        // trim(), not just toUpperCase() — matches historyForCall's own
+        // normalization (repositories.dart); the sole caller today already
+        // trims first, but this shouldn't depend on that.
+        final historyCall = (params['call'] as String?)?.trim().toUpperCase();
+        if (historyCall == null) return const <Map<String, Object?>>[];
+        final matches = [
+          for (final qso in log.qsos!)
+            // `band != 'event'` mirrors `Qso.isEvent`/`historyForCall`'s own
+            // exclusion — an event marker is a timeline annotation, not a
+            // contact, and must not stand in as someone's "most recent QSO".
+            if (qso['band'] != 'event' &&
+                ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall)
+              qso,
+        ];
+        matches.sort((a, b) => _startAtMillis(b).compareTo(_startAtMillis(a)));
+        // Same headroom cap as the app's answer (extension_service.dart's
+        // `_historyForCallLimit`) — the extension only ever reads the most
+        // recent match or two.
+        return matches.take(_historyForCallLimit).toList();
+
       case 'dbLookupSelectOne':
         return await lookups?.selectOne(params['category'] as String, params['key'] as String);
       case 'dbLookupSelectAll':
@@ -273,6 +299,18 @@ class CliHostCalls {
     final value = (spot['spot'] as Map?)?['timeInMillis'];
     return value is num ? value.toInt() : 0;
   }
+
+  static int _startAtMillis(Map<String, Object?> qso) {
+    final value = qso['startAtMillis'];
+    return value is num ? value.toInt() : 0;
+  }
+
+  /// Mirrors `ExtensionService._historyForCallLimit` (app/lib/services/
+  /// extension_service.dart) — a bare duplicated literal, not shared code,
+  /// since the two are independent host implementations of the same
+  /// `getHistoryForCall` contract; keep them in sync by hand if either
+  /// changes.
+  static const _historyForCallLimit = 5;
 
   static String _briefly(Map<String, dynamic> params) {
     final text = jsonEncode(params);

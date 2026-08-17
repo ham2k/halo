@@ -116,6 +116,7 @@ const bundles = [
   { key: 'ham2k-lookup', entry: 'lookups/ham2k-lookup/src/index.ts', kind: 'extension' },
   { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },
   { key: 'spot-history', entry: 'lookups/spot-history/src/index.ts', kind: 'extension' },
+  { key: 'call-history', entry: 'lookups/call-history/src/index.ts', kind: 'extension' },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
   { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
   { key: 'wca', entry: 'activities/wca/src/index.ts', kind: 'extension' },

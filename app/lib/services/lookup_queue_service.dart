@@ -65,6 +65,16 @@ class LookupQueueService {
   /// has real lookup data.
   static const annotationSource = 'callsign-annotation';
 
+  /// `source` values of `lookup` hooks that answer from the local log/DB,
+  /// never the network — a QSO carrying only these has NOT actually been
+  /// enriched online. `call-history` (extensions/lookups/call-history)
+  /// answers on essentially every repeat contact, so without this a QSO
+  /// worked before would look "already looked up" here and never reach
+  /// QRZ/Ham2K Lookup at all — the opposite of what this queue exists for.
+  /// Both its tiers' labels are listed — see buildCallHistoryLookup.ts for
+  /// why they differ.
+  static const _offlineOnlySources = {'Call History', 'Call History (guess)'};
+
   /// How many completed lookups are merged per write burst — see the header
   /// comment on why writes are grouped.
   static const _applyBatchSize = 8;
@@ -151,7 +161,8 @@ class LookupQueueService {
   bool _hasOnlineLookup(Qso qso) {
     final lookups = ((qso.data['their'] as Map?)?['lookups'] as List?)?.whereType<Map>();
     if (lookups == null) return false;
-    return lookups.any((l) => l['source'] is String && l['source'] != annotationSource);
+    return lookups.any((l) =>
+        l['source'] is String && l['source'] != annotationSource && !_offlineOnlySources.contains(l['source']));
   }
 
   void _ensureProcessing() {

@@ -54,6 +54,13 @@ export interface HookContext {
   /// `[]` (not null) whenever the cache is cold or the host keeps no spots.
   /// Age is the spot's own `spot.timeInMillis`, not when it was fetched.
   getSpotsForCall?(call: string, maxAgeMinutes?: number): Promise<Spot[]>
+  /// Every non-deleted QSO ever logged with [call] (case-insensitive), across
+  /// every operation, most recent first — the raw QSON `data` for each, same
+  /// shape `getQsos` returns per-QSO. For a source that answers "who is this
+  /// station" from the log itself (`call-history`) rather than a network
+  /// call. Always `[]` when there is no match or the host keeps no log
+  /// access — there is no "unknown call" to distinguish from "no history".
+  getHistoryForCall?(call: string): Promise<Record<string, JSONValue>[]>
 }
 
 export type { CallInfo, CallInfoLookup, AnnotatedCallInfo, RefInfo } from "@ham2k/lib-qson-tools"

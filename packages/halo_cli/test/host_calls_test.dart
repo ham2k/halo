@@ -145,6 +145,70 @@ void main() {
     });
   });
 
+  group('getHistoryForCall', () {
+    test('answers [] with no log, same as no match', () async {
+      expect(await host().call('getHistoryForCall', {'call': 'KI2D'}), isEmpty);
+    });
+
+    test('filters by callsign, case-insensitively, most recent first', () async {
+      final calls = host(
+        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
+          {
+            'their': {'call': 'KI2D'},
+            'startAtMillis': 1000,
+          },
+          {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': 2000,
+          },
+          {
+            'their': {'call': 'KI2D'},
+            'startAtMillis': 3000,
+          },
+        ]),
+      );
+      final result = await calls.call('getHistoryForCall', {'call': 'ki2d'}) as List;
+      expect(result, hasLength(2));
+      expect((result.first as Map)['startAtMillis'], 3000);
+    });
+
+    test('an event marker never stands in as a "most recent QSO"', () async {
+      final calls = host(
+        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
+          {
+            'their': {'call': 'KI2D'},
+            'startAtMillis': 1000,
+          },
+          {
+            'their': {'call': 'KI2D'},
+            'band': 'event',
+            'startAtMillis': 2000,
+          },
+        ]),
+      );
+      final result = await calls.call('getHistoryForCall', {'call': 'KI2D'}) as List;
+      expect(result, hasLength(1));
+      expect((result.single as Map)['startAtMillis'], 1000);
+    });
+
+    test('caps at 5, same headroom as the app answers with', () async {
+      final calls = host(
+        log: LogContext(
+          operation: const {'uuid': 'op-1'},
+          qsos: [
+            for (var i = 0; i < 8; i++)
+              {
+                'their': {'call': 'KI2D'},
+                'startAtMillis': i,
+              },
+          ],
+        ),
+      );
+      final result = await calls.call('getHistoryForCall', {'call': 'KI2D'}) as List;
+      expect(result, hasLength(5));
+    });
+  });
+
   group('getLocation', () {
     test('is refused for an extension that never declared requiresLocation', () async {
       // The manifest capability is the app's gate too. An extension that

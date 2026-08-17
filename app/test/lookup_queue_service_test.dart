@@ -221,6 +221,39 @@ void main() {
     expect(storedUnchanged.updatedAtMillis, unchangedStampBefore);
   });
 
+  test('a Call History-only entry does not count as "already looked up online"', () async {
+    // call-history (extensions/lookups/call-history) answers from the log
+    // itself, offline, on essentially every repeat contact — treating its
+    // presence as proof of real enrichment would mean a worked-before QSO
+    // never reaches QRZ/Ham2K Lookup at all.
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'W1AW',
+        'guess': {'name': 'From Last Time'},
+        'lookups': [
+          {'source': 'Call History', 'name': 'From Last Time'},
+        ],
+      },
+    });
+
+    var calls = 0;
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      calls += 1;
+      return {
+        'guess': {'name': 'From QRZ'},
+        'lookups': [
+          {'source': 'Call History', 'name': 'From Last Time'},
+          {'source': 'qrz.com', 'name': 'From QRZ'},
+        ],
+      };
+    });
+
+    queue.enqueue(qso);
+    await queue.idle;
+    expect(calls, 1);
+    expect((await qsos.get(qso.uuid))!.theirName, 'From QRZ');
+  });
+
   test('enqueue skips QSOs that already have online lookup data; enqueueAll (force) re-runs them', () async {
     final qso = await qsos.add(operation.uuid, {
       'their': {

@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Worked-before contacts now suggest name/location from your own log (Call History lookup)"
+
 "142":
   changes:
     - "New PURGETESTS command bulk-deletes Test Operations (station call ending /T or /TEST)"

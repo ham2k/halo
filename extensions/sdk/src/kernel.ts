@@ -333,6 +333,10 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // HookContext.getSpotsForCall).
     getSpotsForCall: async (call: string, maxAgeMinutes?: number) =>
       ((await dispatchHostCall('getSpotsForCall', { call, maxAgeMinutes })) as Spot[] | null) ?? [],
+    // Cross-operation log read, backing `call-history` — see
+    // HookContext.getHistoryForCall.
+    getHistoryForCall: async (call: string) =>
+      ((await dispatchHostCall('getHistoryForCall', { call })) as Record<string, unknown>[] | null) ?? [],
   }
   return await member.call(record.hook, args, ctx)
 }

@@ -47,6 +47,14 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   reads above it is cheap enough for the lookup path; it resolves `[]`
   whenever the cache is cold or the host keeps no spots. Used by
   `spot-history` to pull a hunted park or summit into the QSO being logged.
+* `getHistoryForCall?(call)` — every non-deleted QSO ever logged with `call`,
+  across every operation, most recent first, as raw QSON — the one log read
+  that is cross-operation rather than scoped to a single one, since it
+  answers "who is this station" from the whole log rather than "what's in
+  this operation". Resolves `[]` for no match or no log access; unlike
+  `getQsos` there is no "unknown call" to distinguish from "no history".
+  Used by `call-history` to fold the most recent past QSO's fields into a
+  lookup result.
 
 Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 
@@ -84,9 +92,16 @@ and this source has no offline data) — never throw for expected conditions.
 `@ham2k/lib-qson-tools`'s `CallInfo`/`QSON` types), so e.g. a POTA lookup can
 inspect `qso.refs` for a hunted park reference. Implemented by: `qrz`,
 `ham2k-lookup` (`scope: 'general'`), `pota`, `sota` (`scope: 'qso'`, grid of
-any hunted ref on the current QSO), and `call-notes` (`scope: 'general'`,
+any hunted ref on the current QSO), `call-notes` (`scope: 'general'`,
 offline — combined `note`/`emoji` extra fields from the Hams of Note file,
-issue #17).
+issue #17), and `call-history` (`scope: 'general'`, offline — the most
+recent past QSO's own identity fields, from `ctx.getHistoryForCall`).
+Registers **twice**, at opposite ends of the priority range, because a
+field the operator actually TYPED on the past QSO and a field that was
+only ever a GUESS on it deserve opposite trust: the typed tier registers
+above every other lookup source (a human verified it), the guessed tier
+below all of them (a stale automated guess must not outrank a fresh live
+one) — see `extensions/lookups/call-history/src/index.ts`.
 
 ## ✅ `recentContextLookup` — live-context lookups
 
