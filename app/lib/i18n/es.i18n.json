@@ -512,7 +512,8 @@
       "noticeBonusStation": "¡Estación Bonus!",
       "noticeMissingExchange": "Sin Intercambio",
       "noticeInvalidExchange": "Intercambio Inválido",
-      "noticeUnknownEvent": "Evento Desconocido"
+      "noticeUnknownEvent": "Evento Desconocido",
+      "noticeOurGrid": "Configure Nuestro Grid"
     }
   },
   "formChrome": {

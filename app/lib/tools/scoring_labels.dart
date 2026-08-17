@@ -45,6 +45,9 @@ String scoreNoticeLabel(BuildContext context, String key) {
     // being lost silently unless the operator is told (M4).
     'missingExchange' => t.noticeMissingExchange,
     'invalidExchange' => t.noticeInvalidExchange,
+    // The operation carries no grid yet — a distance-scoring contest
+    // (arrl-vhf-tests) can't score anything until the operator sets one.
+    'ourGrid' => t.noticeOurGrid,
     // The operation names an event this build doesn't know — a log from a newer
     // app, or next year's event added elsewhere first. Nothing scores, and the
     // operator has to be told why rather than reading a silent zero.

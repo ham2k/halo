@@ -517,7 +517,8 @@
       "noticeBonusStation": "Bonus Station!",
       "noticeMissingExchange": "No Exchange",
       "noticeInvalidExchange": "Bad Exchange",
-      "noticeUnknownEvent": "Unknown Event"
+      "noticeUnknownEvent": "Unknown Event",
+      "noticeOurGrid": "Set Our Grid"
     }
   },
   "formChrome": {

@@ -962,6 +962,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// linger onto the next entry.
   List<Map<String, dynamic>>? _refreshedActivityControls;
 
+  /// Bumped whenever `widget.activityControls`/`operation.refs` change (see
+  /// `didUpdateWidget`) — a per-QSO refresh in flight from BEFORE that change
+  /// captures the generation it started against, and drops its own result on
+  /// return if the generation has since moved on. A callsign lookup that
+  /// started before a ref was added and resolves after must not overwrite
+  /// the fresh operation-level controls with its own stale snapshot.
+  int _activityControlsGeneration = 0;
+
   List<Map<String, dynamic>> get _effectiveActivityControls => _refreshedActivityControls ?? widget.activityControls;
 
   /// The operation resolved into its segments. `widget.qsos` is the whole log,
@@ -1952,6 +1960,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // is being composed.
     if (!identical(oldWidget.activityControls, widget.activityControls) ||
         !identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
+      // A per-QSO callsign-lookup refresh (`_refreshActivityControlsFor`) can
+      // have cached a snapshot of `activityControls` from BEFORE this ref was
+      // added — `_effectiveActivityControls` prefers that cache over
+      // `widget.activityControls`, so without this a contest's exchange field
+      // stays invisible for the rest of the composing session even after the
+      // operation-level refresh above lands, until something else (a wipe, an
+      // edit ending) happens to clear it. The generation bump additionally
+      // catches a refresh that was ALREADY IN FLIGHT when this change
+      // happened — see `_activityControlsGeneration`'s own doc comment.
+      _refreshedActivityControls = null;
+      _activityControlsGeneration++;
+      // `_scheduleLookup` only re-fetches per-QSO controls when the active
+      // call CHANGES (`_lookupFor == activeCall` short-circuits it) — so
+      // clearing the cache here would otherwise silently drop an
+      // already-resolved lookup's guessed field (a suggested grid, say)
+      // for the rest of the composing session, with nothing left to bring
+      // it back except retyping the callsign.
+      if (_lookupFor != null) unawaited(_refreshActivityControlsFor(_lookupFor!));
       unawaited(_refreshSerialPreviews());
     }
     if (oldWidget.controller != widget.controller) {
@@ -6361,8 +6387,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Future<void> _refreshActivityControlsFor(String activeCall) async {
     final refresh = widget.refreshActivityControls;
     if (refresh == null) return;
+    final requestGeneration = _activityControlsGeneration;
     final controls = await refresh(_getCurrentQsoData(callOverride: activeCall));
     if (!mounted || _callAtCursor != activeCall) return;
+    // The operation's own activity/ref set changed while this was in
+    // flight — that fetch was issued against the OLD set, and applying it
+    // now would silently reshadow the fresh `widget.activityControls`
+    // `didUpdateWidget` already installed (see `_activityControlsGeneration`).
+    if (requestGeneration != _activityControlsGeneration) return;
     // Null is "the fetch failed", so the panel keeps the controls it is
     // already showing rather than blanking the QSO in progress.
     if (controls == null) return;

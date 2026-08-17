@@ -1108,6 +1108,7 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeMissingExchange => 'Sin Intercambio';
 	@override String get noticeInvalidExchange => 'Intercambio Inválido';
 	@override String get noticeUnknownEvent => 'Evento Desconocido';
+	@override String get noticeOurGrid => 'Configure Nuestro Grid';
 }
 
 // Path: settings.theme
@@ -2544,6 +2545,7 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeMissingExchange' => 'Sin Intercambio',
 			'loggingControls.info.noticeInvalidExchange' => 'Intercambio Inválido',
 			'loggingControls.info.noticeUnknownEvent' => 'Evento Desconocido',
+			'loggingControls.info.noticeOurGrid' => 'Configure Nuestro Grid',
 			'formChrome.untitled' => '(sin título)',
 			'formChrome.showMore' => 'Mostrar más',
 			'formChrome.showAll' => 'Mostrar todo',
@@ -2634,9 +2636,9 @@ extension on TranslationsEs {
 			'settings.layoutDensityDescription.dense' => 'Muestra más en pantalla',
 			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
 			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
-			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			_ => null,
 		} ?? switch (path) {
+			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',

@@ -1,7 +1,7 @@
 # Contest Extensions — Porting Design (RFC)
 
-**Status:** In progress — **M0–M6 and M11 are shipped** (9 of the 15
-contest-shaped extensions); M7–M10 and M12 remain, see §7. · **Scope:** port
+**Status:** In progress — **M0–M7 and M11 are shipped** (10 of the 15
+contest-shaped extensions); M8–M10 and M12 remain, see §7. · **Scope:** port
 app-polo's 12 contest extensions, plus `fd`, `wfd` and `colonies`, to HaLo
 · **Issue:** #149
 
@@ -765,7 +765,6 @@ type InputDescriptor =
   | TextInputDescriptor         // freeform AND pattern-constrained
   | OptionsInputDescriptor      // searchable set
   | SerialInputDescriptor       // §5.8
-  | GridInputDescriptor         // Maidenhead
 
 interface TextInputDescriptor {
   kind: 'text'
@@ -791,12 +790,6 @@ interface OptionsInputDescriptor {
   multiValue?: { separator: string }  // QSO-party county lines ("ORDES/JEF")
   minCharsForSuggestions?: number     // polo uses 3
 }
-
-interface GridInputDescriptor {
-  kind: 'grid'
-  field: string
-  precision?: 4 | 6 | 8    // ARRL VHF takes 4 or 6; R1/RSGB require 6
-}
 ```
 
 Two rules M1 settled, both of which a contest would otherwise hit:
@@ -819,11 +812,18 @@ Two rules M1 settled, both of which a contest would otherwise hit:
   caps. polo forces uppercase there too. No contest exchange has yet wanted
   `uppercase: false`; free-prose fields like notes are where it belongs.
 
-`grid` earns its own kind for a concrete reason: Maidenhead's case convention
-(`AB12cd`) **cannot be expressed as a find/replace transform**, because regex
-replacement can't change case — polo needs a bespoke transformer for it. A grid
-widget can also later carry the distance/beam-heading affordance the VHF
-distance scoring (M6) wants anyway.
+**Correction at M7 — no `grid` kind was needed.** This RFC originally proposed
+one for a concrete reason: Maidenhead's case convention (`AB12cd`) cannot be
+expressed as a find/replace transform, because regex replacement can't change
+case. That's real, but it only bites at 6+ characters (the lowercase subsquare
+letters) — `arrl-vhf-tests`'s 4-character exchange (`FN31`) has no case
+component at all, so `kind: 'text'` with a Maidenhead-shape `pattern` is
+exactly correct as-is, no bespoke widget required. The catalog-creep rule
+above held: a grid field types and focuses exactly like any other pattern-
+constrained one. Revisit this if `r1-vhf-tests`/`rsgb-vhf-tests` (M8, 6-char
+grids) turn out to need the case-transform after all — `normalizeGrid()`
+already exists in `halo_core` for it (used by the core `their.grid` field),
+so it may still be reachable as a `transforms` pass rather than a new kind.
 
 #### Suggested values from callsign info, lookups, and the log
 
@@ -1627,7 +1627,7 @@ log** to settle checkpoint granularity (§5.2).
 | **M4** ✅ | Form-schema conditional fields (`visibleWhen`, §5.4); `operation-data` deferred for want of a consumer (§5.3) | `iaru-hf`, `naqp` |
 | **M5** ✅ | Searchable-options input (`kind: 'options'`) + dated `suggest` ranking (§5.6) | `stateparks` |
 | **M6** ✅ | **Segments** — `event.operation` override, segment-effective operation, scorer selection across segments (§5.1) | — |
-| **M7** | Great-circle distance scoring + `grid` input + rover our-grid from segments | `arrl-vhf-tests` |
+| **M7** ✅ | Great-circle distance scoring + rover our-grid from segments (no new input kind — see below) | `arrl-vhf-tests` |
 | **M8** | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
 | **M9** | Cross-extension POTA ref synthesis | `georgia-pota` |
 | **M10** | Stateful rolling-location scoring, county-line N×M, bonuses | full `qp` rules |

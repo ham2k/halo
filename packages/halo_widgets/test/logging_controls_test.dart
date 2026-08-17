@@ -2908,6 +2908,98 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Exch'), findsNothing);
     });
+
+    testWidgets('a ref added to the operation is not shadowed by an earlier empty refresh', (tester) async {
+      // The scenario `_refreshedActivityControls` traps: a callsign lookup
+      // resolved BEFORE the contest was added to the operation, caching an
+      // empty per-QSO refresh. Adding the contest gives the operation a fresh
+      // `activityControls` list — that has to win, not the stale cache, or
+      // the exchange field stays invisible for the rest of the session.
+      await pumpTyping(tester, (_) async => const []);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsNothing, reason: 'nothing configured yet');
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['c']),
+            qsosRepository: qsos,
+            activityControls: const [exchange],
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                {'guess': <String, dynamic>{}},
+            // A real per-QSO refresh reads the same operation data the
+            // operation-level one does, so it agrees once the ref exists —
+            // this isn't the fixed-forever-empty callback pumpTyping's other
+            // tests use, because a resolved lookup re-fires this on the ref
+            // add (see the test below), and that has to see the new field
+            // too rather than race the operation-level fetch to install it.
+            refreshActivityControls: (_) async => const [exchange],
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
+          reason: "the operation's own refresh must not be shadowed by the stale per-QSO one");
+    });
+
+    testWidgets('a per-QSO refresh already in flight when a ref is added cannot reshadow it on return',
+        (tester) async {
+      // The race `_activityControlsGeneration` guards, distinct from the test
+      // above: there the stale refresh had already LANDED before the ref was
+      // added. Here it's still IN FLIGHT — issued before, resolving after —
+      // so the generation it started against has to be checked on return, not
+      // just cleared going in.
+      final completers = <Completer<List<Map<String, dynamic>>?>>[];
+      await pumpTyping(tester, (_) {
+        final completer = Completer<List<Map<String, dynamic>>?>();
+        completers.add(completer);
+        return completer.future;
+      });
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 300)); // past the lookup debounce
+      await tester.pump(); // offline lookup resolves, _lookupFor is set, refresh #1 is issued
+      expect(completers, hasLength(1));
+
+      // The ref is added — a fresh `activityControls` identity — WHILE
+      // refresh #1 is still pending. Per the fix above, that also re-issues
+      // a refresh (#2) against the new activityControls, since a lookup is
+      // already resolved for the active call.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['c']),
+            qsosRepository: qsos,
+            activityControls: const [exchange],
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                {'guess': <String, dynamic>{}},
+            refreshActivityControls: (_) {
+              final completer = Completer<List<Map<String, dynamic>>?>();
+              completers.add(completer);
+              return completer.future;
+            },
+          ),
+        ),
+      ));
+      await tester.pump();
+      expect(completers, hasLength(2), reason: 'adding the ref re-issued a refresh for the resolved lookup');
+
+      // Resolve #1 (the stale, pre-ref-add refresh) AFTER #2 (the fresh one)
+      // — the actual race, not just two calls that happen to finish in
+      // issue order.
+      completers[1].complete(const [exchange]);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'the fresh refresh landed');
+
+      completers[0].complete(const []);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
+          reason: 'the stale refresh landing late must not blank the field the fresh one just set');
+    });
   });
 
   group('clearing an exchange', () {

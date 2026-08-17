@@ -117,6 +117,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
+  // `_refreshLoggingControls` now has three independent callers (a ref
+  // change, a draft edit, a runtime-generation retry) that can overlap —
+  // bumped before each fetch and checked on return, so a slower call
+  // started earlier can't clobber a faster one that started later.
+  int _loggingControlsRequestId = 0;
   late bool _showRSTFields = widget.services.settings.showRSTFields;
   late bool _showStateField = widget.services.settings.showStateField;
   late bool _showGridField = widget.services.settings.showGridField;
@@ -523,6 +528,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     super.initState();
     widget.services.track('screen_viewed', {'screen': 'operation'});
     widget.services.settings.addListener(_onSettingsChanged);
+    // A ref-add's own refresh (`_onOperationChanged` below) can race a
+    // runtime restart triggered by enabling the extension in the same
+    // gesture — `_refreshLoggingControls` sees `loadFailed` and, correctly,
+    // keeps the stale controls rather than blanking the panel. Nothing then
+    // retries, so the just-added contest's exchange field stays missing
+    // until something unrelated (a callsign lookup) happens to refresh
+    // after the restart settles. `runtimeGeneration` ticks once the runtime
+    // is actually live again (extension_service.dart), which is the signal
+    // to try once more.
+    widget.services.extensions.runtimeGeneration.addListener(_onRuntimeGenerationChanged);
     _operationSub = widget.services.operations.watchOperation(widget.operationUuid).listen(_onOperationChanged);
     // Non-deleted, non-event set — the same QSOs the scorer sees. A
     // soft-delete/undelete changes this set (and each QSO's updatedAtMillis),
@@ -671,6 +686,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   @override
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
+    widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);
     // Only clear if it's still ours — a newer OperationView may have taken over.
     if (DevBridge.instance.stateProvider == _devBridgeState) {
       DevBridge.instance.stateProvider = null;
@@ -804,19 +820,30 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _maybeScheduleRescore();
   }
 
+  /// Whether the last [_refreshLoggingControls] fetch failed — read by
+  /// [_onRuntimeGenerationChanged] so a generation tick unrelated to any
+  /// pending mismatch (any extension anywhere getting toggled restarts the
+  /// whole runtime) doesn't cost every open operation a round trip for
+  /// nothing.
+  bool _loggingControlsStale = false;
+
   Future<void> _refreshLoggingControls(Operation operation) async {
+    final requestId = ++_loggingControlsRequestId;
     final result = await widget.services.extensions.loggingControls(operation.data);
-    if (!mounted) return;
+    if (!mounted || requestId != _loggingControlsRequestId) return;
     // A fetch that failed says nothing about what the activities want, so the
     // panel keeps what it is already showing rather than blanking a live
     // logging panel because the runtime happened to be restarting.
     //
-    // But the only thing that re-runs this is a REF CHANGE, so a failure here
-    // is always a set that no longer matches the operation — the contest just
-    // added has no exchange field, the POTA ref just removed still has one —
-    // and nothing corrects it until the operation is reopened. Keeping it
-    // quiet would leave the operator staring at the wrong fields with no
-    // account of why, which is the whole defect this change exists to end.
+    // A REF CHANGE is what usually re-runs this, so a failure here is
+    // typically a set that no longer matches the operation — the contest
+    // just added has no exchange field, the POTA ref just removed still has
+    // one. `_onRuntimeGenerationChanged` below is what corrects it once the
+    // runtime that was restarting comes back up; without that retry, nothing
+    // would until the operation is reopened. Keeping the mismatch quiet in
+    // the meantime would leave the operator staring at the wrong fields with
+    // no account of why, which is the whole defect this change exists to end.
+    _loggingControlsStale = result.loadFailed;
     if (result.loadFailed) {
       widget.services.statusBar.setMessage(
         key: 'operation:logging-controls-stale',
@@ -827,6 +854,21 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       widget.services.statusBar.clear('operation:logging-controls-stale');
     }
     setState(() => _loggingControls = result.controls);
+  }
+
+  /// Retries [_refreshLoggingControls] once the extension runtime is live
+  /// again, but only when the last fetch actually failed — every runtime
+  /// restart (any extension anywhere being toggled) ticks the generation,
+  /// and most of those have nothing to do with this operation.
+  void _onRuntimeGenerationChanged() {
+    if (!_loggingControlsStale) return;
+    // `_draftOperation`, not just `_operation` — the Activities/Setup sheet
+    // can still be open with a ref the operator just added, and refreshing
+    // against the committed, ref-less operation instead would overwrite the
+    // draft's own controls with the wrong set.
+    final operation = _draftOperation ?? _operation;
+    if (operation == null) return;
+    unawaited(_refreshLoggingControls(operation));
   }
 
   void _onQsosChanged(List<Qso> qsos) {
@@ -1129,10 +1171,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             if (!mounted) return;
             final previous = _draftOperation;
             setState(() => _draftOperation = updated);
-            // Refs are the only input the title is built from, so nothing
-            // else in the draft is worth a hook fan-out.
+            // Refs are the only input the title (and the logging row's
+            // activity fields) are built from, so nothing else in the draft
+            // is worth a hook fan-out.
+            //
+            // The build method reads `_draftOperation ?? _operation`, so the
+            // LoggingPanel below sees a ref the operator just added
+            // immediately — but its `activityControls` (the descriptor that
+            // actually makes the field render) only ever refreshes off the
+            // COMMITTED operation, via `_onOperationChanged`'s own ref-diff.
+            // A draft edit never reaches the database until the sheet
+            // closes, so without this call that hook never fires for it: the
+            // ref shows on the operation but the field it should turn on
+            // stays missing until something else (any unrelated cause of
+            // `_onOperationChanged` firing, or a per-QSO refresh landing
+            // once a callsign is typed) happens to catch it up.
             if (previous == null || !_sameRefs(previous.data['refs'], updated.data['refs'])) {
               unawaited(_retitleDraft(updated));
+              unawaited(_refreshLoggingControls(updated));
             }
           },
           onEditDetails: () async {

@@ -2245,6 +2245,9 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'Unknown Event'
 	String get noticeUnknownEvent => 'Unknown Event';
+
+	/// en: 'Set Our Grid'
+	String get noticeOurGrid => 'Set Our Grid';
 }
 
 // Path: settings.theme
@@ -4755,6 +4758,7 @@ extension on Translations {
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
+			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',
@@ -4840,9 +4844,9 @@ extension on Translations {
 			'settings.layoutDensityOpts.normal' => 'Normal',
 			'settings.layoutDensityOpts.sparse' => 'Sparse',
 			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
-			'settings.layoutDensityDescription.auto' => 'Chosen from the height of the window',
 			_ => null,
 		} ?? switch (path) {
+			'settings.layoutDensityDescription.auto' => 'Chosen from the height of the window',
 			'settings.layoutDensityDescription.densest' => 'As much on screen as possible',
 			'settings.layoutDensityDescription.dense' => 'Fits more on screen',
 			'settings.layoutDensityDescription.normal' => 'The standard layout',
@@ -5354,9 +5358,9 @@ extension on Translations {
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
-			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
 			'switchAccounts.serverRejected' => ({required Object error}) => 'The sync server rejected the request: ${error}',

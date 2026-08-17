@@ -1,0 +1,10 @@
+{
+  "activityLabel": "ARRL VHF Contests",
+  "setupLabel": "VHF Contest Setup",
+  "eventLabel": "Contest",
+  "gridLabel": "Grid",
+  "unconfigured": "ARRL VHF (not set up)",
+  "adifExport": "ADIF for {{contest}}",
+  "cabrilloExport": "Cabrillo for {{contest}}",
+  "ourExchangeSubtitle": "Sending {{grid}}"
+}
