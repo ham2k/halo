@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"144":
   changes:
     - Callsign-note keys now expand inside a stack too, e.g. "KI2D//1AB"
     - Emoji should now work better on Windows, including flags.
