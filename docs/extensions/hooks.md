@@ -741,7 +741,13 @@ expands a Callsign Notes entry whose note — once a leading heading OR emoji
 marker (never both) is stripped — is a plain comma list of calls into the
 call field via `setCallField` — issue #17; the call field explicitly excludes a field
 STARTING with "//" from call stacking, or a note key that's itself a valid
-callsign would also read as a stacked call, so the two syntaxes coexist).
+callsign would also read as a stacked call, so the two syntaxes coexist. A key
+stacked ALONGSIDE other calls reaches this hook too, but never as a whole-field
+command: the call field asks again with just the segment under the cursor
+("//1AB") and splices the answer back into that segment, so the hook itself
+needs to know nothing about stacks. See
+[logging-fields.md](../design/logging-fields.md) § "More than one call in the
+field" for the order Enter resolves the two syntaxes in).
 Future command hooks (spotting, operator change…) register in the same
 category and compete on priority with these.
 

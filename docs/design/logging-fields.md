@@ -319,6 +319,78 @@ Seeding a default band at onboarding was considered and rejected — a guessed
 band means contacts logged on the *wrong* band, which is worse than being
 asked once.
 
+## More than one call in the field
+
+The callsign field takes three multi-call syntaxes. They are separate
+features that meet on the same Enter, so the order they are resolved in is
+part of the contract, not an implementation detail.
+
+**A comma list logs one QSO per call** — `W1AW,K1ABC` writes two contacts
+sharing every other attribute, each five seconds after the last. The
+displayed serial belongs to the first call only, the one number the operator
+actually read out; everyone after it takes the next in the series. No entry
+inherits another's looked-up name or guess: each is saved bare and gets its
+own background lookup, rather than every call in the list carrying whatever
+was cached for the one the operator happened to be on. A typed grid or state
+still reaches all of them — that is usually a station-wide correction — but a
+typed name is not duplicated, being specific to whoever it was entered for.
+(Editing is the exception: the record being edited keeps everything it
+already had, and only the calls added alongside it are new.) A single call
+with no comma is just a one-item list, so this is also the common path. The
+list is all-or-nothing: one implausible entry and nothing logs.
+
+**`//` stacks calls** — a second station worked in while the first is still
+queued up. `K1ABC//W1AW` holds both, and Enter logs *one* segment: the one
+the cursor is in, or, when that isn't a callsign yet, the first one to its
+left that is. The rest stay in the field for the next contact. Nothing
+carries over between them — logging one wipes the entry fully (refs, notes,
+overrides, reports, manual time) before restoring the remainder, exactly as
+if the operator had just typed it.
+
+A stacked segment may itself be a comma list, and then every call in it logs.
+That shape is what a mid-stack note expansion leaves behind, so treating it
+as un-loggable would strand the operator on a key they had just expanded.
+
+**A note key expands into calls** — `//KEY` looks up a Callsign Notes entry
+whose note reads as a plain comma list of calls and replaces the field with
+it (the `call-notes` extension's `command` hook; see
+[extensions/hooks.md](../extensions/hooks.md)). The same works on one segment
+of a stack: `KI2D//1AB` expands to `KI2D//W1AB,W1AC`, leaving the calls
+already stacked ahead of it untouched.
+
+**An expansion logs nothing.** It is a rewrite of the field that the *next*
+Enter then acts on, and it is exempt from the band-or-frequency refusal
+above — there is no contact yet for a missing band to spoil, and refusing
+would leave the operator unable to even see what the key expands to. The
+cursor stays on the segment that expanded, because that is the segment the
+next Enter has to pick.
+
+The order on Enter, and why each step is where it is:
+
+1. **A whole-field command runs first**, note expansion included. A field
+   that STARTS with `//` is never read as a stack: a note key is usually
+   itself a valid-looking callsign, and stacking would pick it as a real call
+   to log while the expand command was live on the same input.
+2. **Then the segment under the cursor is offered for expansion**, which is
+   the only way a key stacked alongside other calls is ever seen — step 1
+   only ever looks at the whole field.
+3. **Then stacking**, which takes priority over the comma list: a field can't
+   meaningfully be both, and `//` is the more specific syntax.
+4. **Then the comma list**, which a plain single callsign also travels.
+
+**A key expands at most once per composing entry.** In a stack the `//` is
+the separator between calls, not the operator asking to expand, so a note
+keyed on a real callsign — the common case for a stacked segment — would
+otherwise capture that station for good: Enter expands it, and deleting what
+the expansion added and pressing Enter expands it again. Spending the key
+instead means taking the expansion back and pressing Enter logs the call
+itself. That state belongs to the draft, not the session: it resets on
+log/wipe, on the field emptying, and when a QSO context is populated, so the
+next contact typing the same key gets its expansion. It is deliberately *not*
+reset on a keystroke, which would forget the expansion the operator had just
+undone. A whole-field `//KEY` consults none of this — there the `//` is
+explicit.
+
 ## Focus and the secondary controls
 
 **Landing on a pill opens it.** Arriving via Up from a main field, Down from
