@@ -108,6 +108,6 @@
 	     app also advertises a Bonjour service (it doesn't, so no
 	     NSBonjourServices entry is needed alongside this). -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Ham2K Logger listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X on your local network, when you turn that on in an operation's Imports panel.</string>
+	<string>Ham2K Logger finds your other devices on this network to share an operation's log with them, and listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X. Both are off until you turn them on.</string>
 </dict>
 </plist>

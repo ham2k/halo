@@ -66,5 +66,12 @@
 	     We keep network.client, so the separate Downloader XPC isn't needed. -->
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
+	<!-- macOS 15 gates local-network access behind a consent prompt, and a
+	     build with no reason string shows a bare, alarming one. Two features
+	     reach the LAN: capturing QSOs from N1MM+/WSJT-X (HALO-306) and peer
+	     device sync (HALO-310). Both are opt-in and neither is reachable
+	     without the operator turning it on first. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Ham2K Logger finds your other devices on this network to share an operation's log with them, and listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X. Both are off until you turn them on.</string>
 </dict>
 </plist>

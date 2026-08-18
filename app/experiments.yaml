@@ -62,4 +62,19 @@ experiments:
   - key: logs
     name: Logs
     description: A rail destination listing all QSOs across operations, by station callsign.
+  # Direct device-to-device sync over the local network (HALO-310): the Peer
+  # Devices settings panel, and everything under it. With this off nothing
+  # binds a socket, nothing is announced, and this device is invisible to
+  # the network — the gate sits at `HaLoServices.updatePeerSharing`, which
+  # is the only path that starts any of it.
+  #
+  # Gated for two reasons beyond newness. It authenticates nothing: a peer
+  # is admitted on the device id it claims plus the operator confirming it
+  # once, and anything on the same network segment can claim an id it has
+  # seen. And Android's local-network permissions are unverified on real
+  # hardware (HALO-309), so discovery there may simply find nothing.
+  - key: p2p
+    name: Peer Devices
+    description: Share the open operation with your other devices on the same network.
+    aliases: [peers, peer]
 

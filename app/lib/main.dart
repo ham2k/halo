@@ -63,6 +63,8 @@ import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/cat/cat_service.dart';
+import 'services/peer/peer_service.dart';
+import 'views/peer_pairing_dialog.dart';
 import 'services/inbound_qso_listener_service.dart';
 import 'services/location_service.dart';
 import 'services/lookup_queue_service.dart';
@@ -406,6 +408,76 @@ void _openConfirmDevicePane(
       ScaffoldMessenger.of(messengerContext)
           .showSnackBar(SnackBar(content: Text(t.settings.syncPanel.deviceLinked)));
     }));
+}
+
+/// Raises the pairing prompt wherever the operator happens to be.
+///
+/// The Peers panel prompts too, but a device asking to pair is not something
+/// an operator goes looking for — it arrives while they are logging. Without
+/// this the request is silent everywhere except one settings screen, which
+/// looks exactly like peer sync not working.
+void _listenForPeerPairingRequests(HaLoServices services) {
+  services.peerService.addListener(() {
+    final pending = services.peerService.pendingPairing;
+    final peer = pending?.session?.peer;
+    if (peer == null) return;
+    _openPeerPairingPrompt(services, peer.deviceId, peer.deviceName);
+  });
+}
+
+/// True while a prompt is on screen, so the service's own notifications —
+/// one per beacon, several a second — cannot stack a second dialog on top of
+/// the one the operator is reading.
+bool _peerPairingPromptOpen = false;
+
+/// Opens the prompt once there is a navigator to open it onto.
+///
+/// Same cold-start retry as [_openConfirmDevicePane], for the same reason: a
+/// peer can be discovered while the first frame is still being built, and a
+/// dropped prompt leaves a device sitting at `needsPairing` with nothing on
+/// screen to say so. Unlike a QR deep link this one does have a way back —
+/// the Peers panel lists the waiting device — so it gives up quietly.
+void _openPeerPairingPrompt(
+  HaLoServices services,
+  String deviceId,
+  String deviceName, {
+  int attemptsLeft = 20,
+}) {
+  if (_peerPairingPromptOpen) return;
+  final context = navigatorKey.currentContext;
+  if (context == null) {
+    if (attemptsLeft <= 0) {
+      debugPrint('[peer] pairing prompt dropped: no navigator after 5s — '
+          'the Peers panel still lists $deviceId');
+      return;
+    }
+    Timer(const Duration(milliseconds: 250),
+        () => _openPeerPairingPrompt(services, deviceId, deviceName, attemptsLeft: attemptsLeft - 1));
+    return;
+  }
+  _peerPairingPromptOpen = true;
+  // catchError as well as the finally below: a navigator torn down while the
+  // dialog is up completes this future with an ERROR, which `then`'s finally
+  // does not run for — and a latched flag suppresses every future pairing
+  // prompt for the rest of the process.
+  unawaited(showPeerPairingDialog(context, deviceName: deviceName, deviceId: deviceId)
+      .catchError((Object e) {
+    debugPrint('[peer] pairing prompt failed: $e');
+    return null;
+  }).then((allowed) async {
+    try {
+      // Dismissed rather than answered: left pending on purpose, so the
+      // Peers panel still offers it instead of it counting as a refusal.
+      if (allowed == null) return;
+      if (allowed) {
+        await services.peerService.acceptPairing(deviceId);
+      } else {
+        await services.peerService.rejectPairing(deviceId);
+      }
+    } finally {
+      _peerPairingPromptOpen = false;
+    }
+  }));
 }
 
 /// Forces the bundled color-emoji font's glyph data to load AND shape now,
@@ -768,6 +840,8 @@ Future<HaLoServices> bootstrap({
     debugPrint('[boot] no sync device key (secure storage unavailable) — continuing without sync');
   }
   services.maybeStartInboundQsoListener();
+  services.maybeStartPeerSync();
+  _listenForPeerPairingRequests(services);
   // Reads the flag rather than this branch: a null device key means storage
   // threw, but saying so out loud keeps the notice tied to the fact it reports
   // instead of to one caller's control flow.
@@ -974,10 +1048,39 @@ class HaLoServices {
   final UpdateService updates;
   final UpdateCheckService updateCheck;
 
-  late final OperationsRepository operations = OperationsRepository(db, onChange: () => syncEngine.notifyChanged());
+  /// Every local write fans out to BOTH consumers, and both repositories get
+  /// the same lambda — a third repository wired to only one of them would
+  /// leave that consumer silently behind on those writes. `notifyChanged` is
+  /// a no-op on each until it has something to do (sync disabled, or no
+  /// operation being shared), so this costs nothing when neither is running.
+  void _onLocalWrite() {
+    syncEngine.notifyChanged();
+    peerOutbox.notifyChanged();
+  }
+
+  late final OperationsRepository operations = OperationsRepository(db, onChange: _onLocalWrite);
   late final SequencesRepository sequences = SequencesRepository(db);
-  late final QsosRepository qsos =
-      QsosRepository(db, onChange: () => syncEngine.notifyChanged(), sequences: sequences);
+  late final QsosRepository qsos = QsosRepository(db, onChange: _onLocalWrite, sequences: sequences);
+
+  /// The peer-sync outbox (HALO-310). Owned here rather than inside
+  /// [peerService] because the repositories' `onChange` reaches it on every
+  /// local write, including while nothing is being shared — when it does
+  /// nothing at all.
+  late final PeerOutbox peerOutbox = PeerOutbox(db);
+
+  /// LAN peer device sync. Binds nothing until an operation is actually
+  /// shared (`PeerService.setActiveOperation`), so a lazy `late final` that
+  /// nobody touches costs an operator who never uses this exactly nothing.
+  final PeerService? _peerServiceOverride;
+  late final PeerService peerService = _peerServiceOverride ??
+      PeerService(
+        db: db,
+        outbox: peerOutbox,
+        operations: operations,
+        qsos: qsos,
+        localDeviceId: settings.peerDeviceId,
+        localDeviceName: settings.peerDeviceName,
+      );
   late final LookupRepository lookups = LookupRepository(db);
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
@@ -1154,6 +1257,16 @@ class HaLoServices {
     if (settings.listenForOtherAppsEnabled) inboundQsos;
   }
 
+  /// Resumes peer sync when the switch was left on in a previous session —
+  /// the same reason [maybeStartInboundQsoListener] exists: a `late final`
+  /// nobody has touched yet would otherwise never start, even though the
+  /// operator turned it on.
+  void maybeStartPeerSync() {
+    if (settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ && settings.peerSyncEnabled) {
+      updatePeerSharing();
+    }
+  }
+
   /// Server-driven feature flags + notices for the active profile callsign
   /// (see FlagsService). Refreshed at boot and whenever the callsign changes
   /// via [setOperatorCall] — not per operation. The callsign is annotated
@@ -1267,12 +1380,51 @@ class HaLoServices {
   OperationCommandContext openOperationContext(String uuid) {
     final entry = OperationCommandContext(uuid);
     _operationStack.add(entry);
+    updatePeerSharing();
     return entry;
   }
 
   /// Removes [entry] by identity, so a disposing view can never take a
   /// still-live one's place with it.
-  void closeOperationContext(OperationCommandContext entry) => _operationStack.remove(entry);
+  void closeOperationContext(OperationCommandContext entry) {
+    _operationStack.remove(entry);
+    updatePeerSharing();
+  }
+
+  /// Tells peer sync what to share: the front-most open operation while the
+  /// master switch is on, nothing otherwise.
+  ///
+  /// Driven off [_operationStack] rather than hooked into OperationView's
+  /// initState/dispose because the stack already gets nesting right — opening
+  /// operation B from inside A and popping back reveals A again, where a
+  /// dispose-clears-the-slot hook would have left A silently un-shared.
+  ///
+  /// Does NOT touch [peerService] while the feature has never been switched
+  /// on, so an operator who does not use this never constructs it and never
+  /// binds a socket. [_peerSyncTouched] latches once it has, so turning the
+  /// switch back OFF still reaches the service to tear everything down.
+  void updatePeerSharing() {
+    // The experiment gate sits here rather than only on the settings panel:
+    // this is the ONE path that starts discovery, binds a socket or opens a
+    // link, so gating it means an install without the experiment is not
+    // merely missing the UI — it is not on the network at all.
+    final wanted =
+        settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ && settings.peerSyncEnabled;
+    // [_peerSyncTouched] latches so turning the experiment (or the switch)
+    // back OFF still reaches the service to tear everything down, while an
+    // install that never turned it on never constructs it at all.
+    if (!wanted && !_peerSyncTouched) return;
+    _peerSyncTouched = true;
+    final front = _operationStack.isEmpty ? null : _operationStack.last.uuid;
+    // Re-read every time: the name is editable and callsign-derived, so a
+    // value captured once at construction goes stale on a rename or on the
+    // first callsign the operator sets.
+    peerService.localDeviceName = settings.peerDeviceName;
+    unawaited(peerService.setEnabled(wanted));
+    unawaited(peerService.setOpenOperation(front));
+  }
+
+  bool _peerSyncTouched = false;
 
   /// Attaches (or detaches) a logging panel's dispatcher to the innermost open
   /// entry for [uuid]. Looked up rather than passed down so the logging panel
@@ -1465,7 +1617,9 @@ class HaLoServices {
     PusherService? pusher,
     LocationService? location,
     InboundQsoListenerService? inboundQsos,
+    PeerService? peerService,
   })  : _catOverride = cat,
+        _peerServiceOverride = peerService,
         _inboundQsosOverride = inboundQsos,
         _locationOverride = location,
         _pusherOverride = pusher,

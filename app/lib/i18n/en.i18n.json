@@ -827,6 +827,35 @@
       "enable": "Enable Sync",
       "deviceKey": "Device Key"
     },
+    "peers": {
+      "title": "Peer Devices",
+      "enable": "Share with my other devices",
+      "enabledDescription": "Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.",
+      "disabledDescription": "Off. This device is not visible to others on the network and shares nothing.",
+      "thisDevice": "This Device",
+      "deviceName": "Name",
+      "deviceNameHint": "What your other devices call this one",
+      "pairedDevices": "Allowed Devices",
+      "noPairedDevices": "No devices allowed yet. Open the same operation on another device to pair them.",
+      "nearby": "Nearby",
+      "connected": "Connected",
+      "connecting": "Connecting…",
+      "syncing": "Syncing…",
+      "waitingForThem": "Waiting for the other device",
+      "notConnected": "Not connected",
+      "wantsToPair": "wants to share this operation",
+      "allow": "Allow",
+      "reject": "Reject",
+      "forget": "Forget",
+      "forgetTitle": "Forget ${name}?",
+      "forgetBody": "It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.",
+      "pairTitle": "Allow ${name}?",
+      "pairBody": "This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.",
+      "pairIdLabel": "Device ID",
+      "pairWarning": "Only allow a device you recognise. Anything on this network can ask.",
+      "shareNothingOpen": "Open an operation to start sharing it.",
+      "problem": "Can't reach the local network: ${error}"
+    },
     "developerMode": "Developer Mode",
     "syncPanel": {
       "configuration": "Sync Configuration",
@@ -1145,7 +1174,9 @@
       "unavailableTitle": "Some settings are unavailable",
       "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing.",
       "station": "Station Configuration",
-      "stationDescription": "Radios and other equipment"
+      "stationDescription": "Radios and other equipment",
+      "peers": "Peer Devices",
+      "peersDescription": "Share an operation with your other devices on the same network"
     },
     "showMoreSettings": "Show more settings"
   },

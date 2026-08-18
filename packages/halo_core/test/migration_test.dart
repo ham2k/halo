@@ -45,6 +45,12 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  12: ['DROP TABLE peer_trust'],
+  11: [
+    'DROP INDEX peer_events_operation_seq',
+    'DROP TABLE peer_events',
+    'DROP TABLE peer_cursors',
+  ],
   10: ['DROP INDEX inbound_captures_dedupe_key'],
   9: ['DROP TABLE inbound_captures'],
   8: ['ALTER TABLE operations DROP COLUMN purged_locally'],
@@ -265,6 +271,9 @@ void main() {
           expect(tables.contains('lookups'), version >= 3, reason: 'v$version lookups');
           expect(tables.contains('sequences'), version >= 5, reason: 'v$version sequences');
           expect(tables.contains('inbound_captures'), version >= 9, reason: 'v$version inbound_captures');
+          expect(tables.contains('peer_events'), version >= 11, reason: 'v$version peer_events');
+          expect(tables.contains('peer_cursors'), version >= 11, reason: 'v$version peer_cursors');
+          expect(tables.contains('peer_trust'), version >= 12, reason: 'v$version peer_trust');
 
           for (final table in ['operations', 'qsos']) {
             final columns = (await db.customSelect('PRAGMA table_info($table)').get())
@@ -279,7 +288,7 @@ void main() {
   });
 
   group('every supported upgrade path', () {
-    for (var from = 1; from <= 9; from++) {
+    for (var from = 1; from <= 11; from++) {
       test('v$from keeps the operator\'s log intact', () async {
         final file = dbFile();
         await createAtVersion(file, from,
@@ -543,6 +552,30 @@ void main() {
       expect(seq.read<String>('label'), 'cqwpx/serial');
       expect(seq.read<int>('next_value'), 7);
       expect(seq.read<int>('start_value'), 1);
+
+      await db.customStatement(
+        'INSERT INTO peer_events (operation_uuid, kind, record_uuid, updated_at_millis, data) '
+        'VALUES (?, ?, ?, ?, ?)',
+        ['op-1', 'qso', 'qso-1', 1780000000000, '{}'],
+      );
+      final event = await db.customSelect('SELECT * FROM peer_events').getSingle();
+      expect(event.read<String>('kind'), 'qso');
+      expect(event.read<int>('seq'), greaterThan(0));
+
+      await db.customStatement(
+        'INSERT INTO peer_cursors (peer_device_id, operation_uuid, last_applied_seq) VALUES (?, ?, ?)',
+        ['peer-1', 'op-1', 5],
+      );
+      final cursor = await db.customSelect('SELECT * FROM peer_cursors').getSingle();
+      expect(cursor.read<int>('last_applied_seq'), 5);
+
+      await db.customStatement(
+        'INSERT INTO peer_trust (peer_device_id, name, paired_at_millis) VALUES (?, ?, ?)',
+        ['peer-1', 'Phone', 1780000000000],
+      );
+      final trusted = await db.customSelect('SELECT * FROM peer_trust').getSingle();
+      expect(trusted.read<String>('name'), 'Phone');
+      expect(trusted.read<int?>('last_seen_at_millis'), isNull);
     });
 
     test('the indexes a fresh install has are present after an upgrade too', () async {
@@ -570,6 +603,7 @@ void main() {
 
       expect(upgradedIndexes, contains('qsos_operation_start'));
       expect(upgradedIndexes, contains('inbound_captures_dedupe_key'));
+      expect(upgradedIndexes, contains('peer_events_operation_seq'));
       expect(upgradedIndexes, freshIndexes);
     });
   });

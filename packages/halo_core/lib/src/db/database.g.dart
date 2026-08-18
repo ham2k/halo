@@ -3885,6 +3885,1046 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
   }
 }
 
+class $PeerEventsTable extends PeerEvents
+    with TableInfo<$PeerEventsTable, PeerEventRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PeerEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  @override
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+    'seq',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _operationUuidMeta = const VerificationMeta(
+    'operationUuid',
+  );
+  @override
+  late final GeneratedColumn<String> operationUuid = GeneratedColumn<String>(
+    'operation_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordUuidMeta = const VerificationMeta(
+    'recordUuid',
+  );
+  @override
+  late final GeneratedColumn<String> recordUuid = GeneratedColumn<String>(
+    'record_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMillisMeta = const VerificationMeta(
+    'updatedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMillis = GeneratedColumn<int>(
+    'updated_at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    seq,
+    operationUuid,
+    kind,
+    recordUuid,
+    updatedAtMillis,
+    data,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'peer_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PeerEventRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('seq')) {
+      context.handle(
+        _seqMeta,
+        seq.isAcceptableOrUnknown(data['seq']!, _seqMeta),
+      );
+    }
+    if (data.containsKey('operation_uuid')) {
+      context.handle(
+        _operationUuidMeta,
+        operationUuid.isAcceptableOrUnknown(
+          data['operation_uuid']!,
+          _operationUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_operationUuidMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('record_uuid')) {
+      context.handle(
+        _recordUuidMeta,
+        recordUuid.isAcceptableOrUnknown(data['record_uuid']!, _recordUuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordUuidMeta);
+    }
+    if (data.containsKey('updated_at_millis')) {
+      context.handle(
+        _updatedAtMillisMeta,
+        updatedAtMillis.isAcceptableOrUnknown(
+          data['updated_at_millis']!,
+          _updatedAtMillisMeta,
+        ),
+      );
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {seq};
+  @override
+  PeerEventRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PeerEventRow(
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      )!,
+      operationUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation_uuid'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      recordUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}record_uuid'],
+      )!,
+      updatedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_millis'],
+      ),
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+    );
+  }
+
+  @override
+  $PeerEventsTable createAlias(String alias) {
+    return $PeerEventsTable(attachedDatabase, alias);
+  }
+}
+
+class PeerEventRow extends DataClass implements Insertable<PeerEventRow> {
+  final int seq;
+  final String operationUuid;
+
+  /// `'operation'` or `'qso'` — which repository's `mergeFromPeer` the
+  /// catch-up reader hands this row's [data] to.
+  final String kind;
+  final String recordUuid;
+  final int? updatedAtMillis;
+  final String data;
+  const PeerEventRow({
+    required this.seq,
+    required this.operationUuid,
+    required this.kind,
+    required this.recordUuid,
+    this.updatedAtMillis,
+    required this.data,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['seq'] = Variable<int>(seq);
+    map['operation_uuid'] = Variable<String>(operationUuid);
+    map['kind'] = Variable<String>(kind);
+    map['record_uuid'] = Variable<String>(recordUuid);
+    if (!nullToAbsent || updatedAtMillis != null) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis);
+    }
+    map['data'] = Variable<String>(data);
+    return map;
+  }
+
+  PeerEventsCompanion toCompanion(bool nullToAbsent) {
+    return PeerEventsCompanion(
+      seq: Value(seq),
+      operationUuid: Value(operationUuid),
+      kind: Value(kind),
+      recordUuid: Value(recordUuid),
+      updatedAtMillis: updatedAtMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtMillis),
+      data: Value(data),
+    );
+  }
+
+  factory PeerEventRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PeerEventRow(
+      seq: serializer.fromJson<int>(json['seq']),
+      operationUuid: serializer.fromJson<String>(json['operationUuid']),
+      kind: serializer.fromJson<String>(json['kind']),
+      recordUuid: serializer.fromJson<String>(json['recordUuid']),
+      updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
+      data: serializer.fromJson<String>(json['data']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'seq': serializer.toJson<int>(seq),
+      'operationUuid': serializer.toJson<String>(operationUuid),
+      'kind': serializer.toJson<String>(kind),
+      'recordUuid': serializer.toJson<String>(recordUuid),
+      'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
+      'data': serializer.toJson<String>(data),
+    };
+  }
+
+  PeerEventRow copyWith({
+    int? seq,
+    String? operationUuid,
+    String? kind,
+    String? recordUuid,
+    Value<int?> updatedAtMillis = const Value.absent(),
+    String? data,
+  }) => PeerEventRow(
+    seq: seq ?? this.seq,
+    operationUuid: operationUuid ?? this.operationUuid,
+    kind: kind ?? this.kind,
+    recordUuid: recordUuid ?? this.recordUuid,
+    updatedAtMillis: updatedAtMillis.present
+        ? updatedAtMillis.value
+        : this.updatedAtMillis,
+    data: data ?? this.data,
+  );
+  PeerEventRow copyWithCompanion(PeerEventsCompanion data) {
+    return PeerEventRow(
+      seq: data.seq.present ? data.seq.value : this.seq,
+      operationUuid: data.operationUuid.present
+          ? data.operationUuid.value
+          : this.operationUuid,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      recordUuid: data.recordUuid.present
+          ? data.recordUuid.value
+          : this.recordUuid,
+      updatedAtMillis: data.updatedAtMillis.present
+          ? data.updatedAtMillis.value
+          : this.updatedAtMillis,
+      data: data.data.present ? data.data.value : this.data,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerEventRow(')
+          ..write('seq: $seq, ')
+          ..write('operationUuid: $operationUuid, ')
+          ..write('kind: $kind, ')
+          ..write('recordUuid: $recordUuid, ')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(seq, operationUuid, kind, recordUuid, updatedAtMillis, data);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PeerEventRow &&
+          other.seq == this.seq &&
+          other.operationUuid == this.operationUuid &&
+          other.kind == this.kind &&
+          other.recordUuid == this.recordUuid &&
+          other.updatedAtMillis == this.updatedAtMillis &&
+          other.data == this.data);
+}
+
+class PeerEventsCompanion extends UpdateCompanion<PeerEventRow> {
+  final Value<int> seq;
+  final Value<String> operationUuid;
+  final Value<String> kind;
+  final Value<String> recordUuid;
+  final Value<int?> updatedAtMillis;
+  final Value<String> data;
+  const PeerEventsCompanion({
+    this.seq = const Value.absent(),
+    this.operationUuid = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.recordUuid = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
+    this.data = const Value.absent(),
+  });
+  PeerEventsCompanion.insert({
+    this.seq = const Value.absent(),
+    required String operationUuid,
+    required String kind,
+    required String recordUuid,
+    this.updatedAtMillis = const Value.absent(),
+    required String data,
+  }) : operationUuid = Value(operationUuid),
+       kind = Value(kind),
+       recordUuid = Value(recordUuid),
+       data = Value(data);
+  static Insertable<PeerEventRow> custom({
+    Expression<int>? seq,
+    Expression<String>? operationUuid,
+    Expression<String>? kind,
+    Expression<String>? recordUuid,
+    Expression<int>? updatedAtMillis,
+    Expression<String>? data,
+  }) {
+    return RawValuesInsertable({
+      if (seq != null) 'seq': seq,
+      if (operationUuid != null) 'operation_uuid': operationUuid,
+      if (kind != null) 'kind': kind,
+      if (recordUuid != null) 'record_uuid': recordUuid,
+      if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
+      if (data != null) 'data': data,
+    });
+  }
+
+  PeerEventsCompanion copyWith({
+    Value<int>? seq,
+    Value<String>? operationUuid,
+    Value<String>? kind,
+    Value<String>? recordUuid,
+    Value<int?>? updatedAtMillis,
+    Value<String>? data,
+  }) {
+    return PeerEventsCompanion(
+      seq: seq ?? this.seq,
+      operationUuid: operationUuid ?? this.operationUuid,
+      kind: kind ?? this.kind,
+      recordUuid: recordUuid ?? this.recordUuid,
+      updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
+      data: data ?? this.data,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (operationUuid.present) {
+      map['operation_uuid'] = Variable<String>(operationUuid.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (recordUuid.present) {
+      map['record_uuid'] = Variable<String>(recordUuid.value);
+    }
+    if (updatedAtMillis.present) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerEventsCompanion(')
+          ..write('seq: $seq, ')
+          ..write('operationUuid: $operationUuid, ')
+          ..write('kind: $kind, ')
+          ..write('recordUuid: $recordUuid, ')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PeerCursorsTable extends PeerCursors
+    with TableInfo<$PeerCursorsTable, PeerCursorRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PeerCursorsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _peerDeviceIdMeta = const VerificationMeta(
+    'peerDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> peerDeviceId = GeneratedColumn<String>(
+    'peer_device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _operationUuidMeta = const VerificationMeta(
+    'operationUuid',
+  );
+  @override
+  late final GeneratedColumn<String> operationUuid = GeneratedColumn<String>(
+    'operation_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastAppliedSeqMeta = const VerificationMeta(
+    'lastAppliedSeq',
+  );
+  @override
+  late final GeneratedColumn<int> lastAppliedSeq = GeneratedColumn<int>(
+    'last_applied_seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    peerDeviceId,
+    operationUuid,
+    lastAppliedSeq,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'peer_cursors';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PeerCursorRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('peer_device_id')) {
+      context.handle(
+        _peerDeviceIdMeta,
+        peerDeviceId.isAcceptableOrUnknown(
+          data['peer_device_id']!,
+          _peerDeviceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_peerDeviceIdMeta);
+    }
+    if (data.containsKey('operation_uuid')) {
+      context.handle(
+        _operationUuidMeta,
+        operationUuid.isAcceptableOrUnknown(
+          data['operation_uuid']!,
+          _operationUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_operationUuidMeta);
+    }
+    if (data.containsKey('last_applied_seq')) {
+      context.handle(
+        _lastAppliedSeqMeta,
+        lastAppliedSeq.isAcceptableOrUnknown(
+          data['last_applied_seq']!,
+          _lastAppliedSeqMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {peerDeviceId, operationUuid};
+  @override
+  PeerCursorRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PeerCursorRow(
+      peerDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}peer_device_id'],
+      )!,
+      operationUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation_uuid'],
+      )!,
+      lastAppliedSeq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_applied_seq'],
+      )!,
+    );
+  }
+
+  @override
+  $PeerCursorsTable createAlias(String alias) {
+    return $PeerCursorsTable(attachedDatabase, alias);
+  }
+}
+
+class PeerCursorRow extends DataClass implements Insertable<PeerCursorRow> {
+  final String peerDeviceId;
+  final String operationUuid;
+  final int lastAppliedSeq;
+  const PeerCursorRow({
+    required this.peerDeviceId,
+    required this.operationUuid,
+    required this.lastAppliedSeq,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['peer_device_id'] = Variable<String>(peerDeviceId);
+    map['operation_uuid'] = Variable<String>(operationUuid);
+    map['last_applied_seq'] = Variable<int>(lastAppliedSeq);
+    return map;
+  }
+
+  PeerCursorsCompanion toCompanion(bool nullToAbsent) {
+    return PeerCursorsCompanion(
+      peerDeviceId: Value(peerDeviceId),
+      operationUuid: Value(operationUuid),
+      lastAppliedSeq: Value(lastAppliedSeq),
+    );
+  }
+
+  factory PeerCursorRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PeerCursorRow(
+      peerDeviceId: serializer.fromJson<String>(json['peerDeviceId']),
+      operationUuid: serializer.fromJson<String>(json['operationUuid']),
+      lastAppliedSeq: serializer.fromJson<int>(json['lastAppliedSeq']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'peerDeviceId': serializer.toJson<String>(peerDeviceId),
+      'operationUuid': serializer.toJson<String>(operationUuid),
+      'lastAppliedSeq': serializer.toJson<int>(lastAppliedSeq),
+    };
+  }
+
+  PeerCursorRow copyWith({
+    String? peerDeviceId,
+    String? operationUuid,
+    int? lastAppliedSeq,
+  }) => PeerCursorRow(
+    peerDeviceId: peerDeviceId ?? this.peerDeviceId,
+    operationUuid: operationUuid ?? this.operationUuid,
+    lastAppliedSeq: lastAppliedSeq ?? this.lastAppliedSeq,
+  );
+  PeerCursorRow copyWithCompanion(PeerCursorsCompanion data) {
+    return PeerCursorRow(
+      peerDeviceId: data.peerDeviceId.present
+          ? data.peerDeviceId.value
+          : this.peerDeviceId,
+      operationUuid: data.operationUuid.present
+          ? data.operationUuid.value
+          : this.operationUuid,
+      lastAppliedSeq: data.lastAppliedSeq.present
+          ? data.lastAppliedSeq.value
+          : this.lastAppliedSeq,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerCursorRow(')
+          ..write('peerDeviceId: $peerDeviceId, ')
+          ..write('operationUuid: $operationUuid, ')
+          ..write('lastAppliedSeq: $lastAppliedSeq')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(peerDeviceId, operationUuid, lastAppliedSeq);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PeerCursorRow &&
+          other.peerDeviceId == this.peerDeviceId &&
+          other.operationUuid == this.operationUuid &&
+          other.lastAppliedSeq == this.lastAppliedSeq);
+}
+
+class PeerCursorsCompanion extends UpdateCompanion<PeerCursorRow> {
+  final Value<String> peerDeviceId;
+  final Value<String> operationUuid;
+  final Value<int> lastAppliedSeq;
+  final Value<int> rowid;
+  const PeerCursorsCompanion({
+    this.peerDeviceId = const Value.absent(),
+    this.operationUuid = const Value.absent(),
+    this.lastAppliedSeq = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PeerCursorsCompanion.insert({
+    required String peerDeviceId,
+    required String operationUuid,
+    this.lastAppliedSeq = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : peerDeviceId = Value(peerDeviceId),
+       operationUuid = Value(operationUuid);
+  static Insertable<PeerCursorRow> custom({
+    Expression<String>? peerDeviceId,
+    Expression<String>? operationUuid,
+    Expression<int>? lastAppliedSeq,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (peerDeviceId != null) 'peer_device_id': peerDeviceId,
+      if (operationUuid != null) 'operation_uuid': operationUuid,
+      if (lastAppliedSeq != null) 'last_applied_seq': lastAppliedSeq,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PeerCursorsCompanion copyWith({
+    Value<String>? peerDeviceId,
+    Value<String>? operationUuid,
+    Value<int>? lastAppliedSeq,
+    Value<int>? rowid,
+  }) {
+    return PeerCursorsCompanion(
+      peerDeviceId: peerDeviceId ?? this.peerDeviceId,
+      operationUuid: operationUuid ?? this.operationUuid,
+      lastAppliedSeq: lastAppliedSeq ?? this.lastAppliedSeq,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (peerDeviceId.present) {
+      map['peer_device_id'] = Variable<String>(peerDeviceId.value);
+    }
+    if (operationUuid.present) {
+      map['operation_uuid'] = Variable<String>(operationUuid.value);
+    }
+    if (lastAppliedSeq.present) {
+      map['last_applied_seq'] = Variable<int>(lastAppliedSeq.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerCursorsCompanion(')
+          ..write('peerDeviceId: $peerDeviceId, ')
+          ..write('operationUuid: $operationUuid, ')
+          ..write('lastAppliedSeq: $lastAppliedSeq, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PeerTrustTable extends PeerTrust
+    with TableInfo<$PeerTrustTable, PeerTrustRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PeerTrustTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _peerDeviceIdMeta = const VerificationMeta(
+    'peerDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> peerDeviceId = GeneratedColumn<String>(
+    'peer_device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pairedAtMillisMeta = const VerificationMeta(
+    'pairedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> pairedAtMillis = GeneratedColumn<int>(
+    'paired_at_millis',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSeenAtMillisMeta = const VerificationMeta(
+    'lastSeenAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> lastSeenAtMillis = GeneratedColumn<int>(
+    'last_seen_at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    peerDeviceId,
+    name,
+    pairedAtMillis,
+    lastSeenAtMillis,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'peer_trust';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PeerTrustRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('peer_device_id')) {
+      context.handle(
+        _peerDeviceIdMeta,
+        peerDeviceId.isAcceptableOrUnknown(
+          data['peer_device_id']!,
+          _peerDeviceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_peerDeviceIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('paired_at_millis')) {
+      context.handle(
+        _pairedAtMillisMeta,
+        pairedAtMillis.isAcceptableOrUnknown(
+          data['paired_at_millis']!,
+          _pairedAtMillisMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_pairedAtMillisMeta);
+    }
+    if (data.containsKey('last_seen_at_millis')) {
+      context.handle(
+        _lastSeenAtMillisMeta,
+        lastSeenAtMillis.isAcceptableOrUnknown(
+          data['last_seen_at_millis']!,
+          _lastSeenAtMillisMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {peerDeviceId};
+  @override
+  PeerTrustRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PeerTrustRow(
+      peerDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}peer_device_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      pairedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}paired_at_millis'],
+      )!,
+      lastSeenAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_at_millis'],
+      ),
+    );
+  }
+
+  @override
+  $PeerTrustTable createAlias(String alias) {
+    return $PeerTrustTable(attachedDatabase, alias);
+  }
+}
+
+class PeerTrustRow extends DataClass implements Insertable<PeerTrustRow> {
+  final String peerDeviceId;
+  final String name;
+  final int pairedAtMillis;
+  final int? lastSeenAtMillis;
+  const PeerTrustRow({
+    required this.peerDeviceId,
+    required this.name,
+    required this.pairedAtMillis,
+    this.lastSeenAtMillis,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['peer_device_id'] = Variable<String>(peerDeviceId);
+    map['name'] = Variable<String>(name);
+    map['paired_at_millis'] = Variable<int>(pairedAtMillis);
+    if (!nullToAbsent || lastSeenAtMillis != null) {
+      map['last_seen_at_millis'] = Variable<int>(lastSeenAtMillis);
+    }
+    return map;
+  }
+
+  PeerTrustCompanion toCompanion(bool nullToAbsent) {
+    return PeerTrustCompanion(
+      peerDeviceId: Value(peerDeviceId),
+      name: Value(name),
+      pairedAtMillis: Value(pairedAtMillis),
+      lastSeenAtMillis: lastSeenAtMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSeenAtMillis),
+    );
+  }
+
+  factory PeerTrustRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PeerTrustRow(
+      peerDeviceId: serializer.fromJson<String>(json['peerDeviceId']),
+      name: serializer.fromJson<String>(json['name']),
+      pairedAtMillis: serializer.fromJson<int>(json['pairedAtMillis']),
+      lastSeenAtMillis: serializer.fromJson<int?>(json['lastSeenAtMillis']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'peerDeviceId': serializer.toJson<String>(peerDeviceId),
+      'name': serializer.toJson<String>(name),
+      'pairedAtMillis': serializer.toJson<int>(pairedAtMillis),
+      'lastSeenAtMillis': serializer.toJson<int?>(lastSeenAtMillis),
+    };
+  }
+
+  PeerTrustRow copyWith({
+    String? peerDeviceId,
+    String? name,
+    int? pairedAtMillis,
+    Value<int?> lastSeenAtMillis = const Value.absent(),
+  }) => PeerTrustRow(
+    peerDeviceId: peerDeviceId ?? this.peerDeviceId,
+    name: name ?? this.name,
+    pairedAtMillis: pairedAtMillis ?? this.pairedAtMillis,
+    lastSeenAtMillis: lastSeenAtMillis.present
+        ? lastSeenAtMillis.value
+        : this.lastSeenAtMillis,
+  );
+  PeerTrustRow copyWithCompanion(PeerTrustCompanion data) {
+    return PeerTrustRow(
+      peerDeviceId: data.peerDeviceId.present
+          ? data.peerDeviceId.value
+          : this.peerDeviceId,
+      name: data.name.present ? data.name.value : this.name,
+      pairedAtMillis: data.pairedAtMillis.present
+          ? data.pairedAtMillis.value
+          : this.pairedAtMillis,
+      lastSeenAtMillis: data.lastSeenAtMillis.present
+          ? data.lastSeenAtMillis.value
+          : this.lastSeenAtMillis,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerTrustRow(')
+          ..write('peerDeviceId: $peerDeviceId, ')
+          ..write('name: $name, ')
+          ..write('pairedAtMillis: $pairedAtMillis, ')
+          ..write('lastSeenAtMillis: $lastSeenAtMillis')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(peerDeviceId, name, pairedAtMillis, lastSeenAtMillis);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PeerTrustRow &&
+          other.peerDeviceId == this.peerDeviceId &&
+          other.name == this.name &&
+          other.pairedAtMillis == this.pairedAtMillis &&
+          other.lastSeenAtMillis == this.lastSeenAtMillis);
+}
+
+class PeerTrustCompanion extends UpdateCompanion<PeerTrustRow> {
+  final Value<String> peerDeviceId;
+  final Value<String> name;
+  final Value<int> pairedAtMillis;
+  final Value<int?> lastSeenAtMillis;
+  final Value<int> rowid;
+  const PeerTrustCompanion({
+    this.peerDeviceId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.pairedAtMillis = const Value.absent(),
+    this.lastSeenAtMillis = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PeerTrustCompanion.insert({
+    required String peerDeviceId,
+    required String name,
+    required int pairedAtMillis,
+    this.lastSeenAtMillis = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : peerDeviceId = Value(peerDeviceId),
+       name = Value(name),
+       pairedAtMillis = Value(pairedAtMillis);
+  static Insertable<PeerTrustRow> custom({
+    Expression<String>? peerDeviceId,
+    Expression<String>? name,
+    Expression<int>? pairedAtMillis,
+    Expression<int>? lastSeenAtMillis,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (peerDeviceId != null) 'peer_device_id': peerDeviceId,
+      if (name != null) 'name': name,
+      if (pairedAtMillis != null) 'paired_at_millis': pairedAtMillis,
+      if (lastSeenAtMillis != null) 'last_seen_at_millis': lastSeenAtMillis,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PeerTrustCompanion copyWith({
+    Value<String>? peerDeviceId,
+    Value<String>? name,
+    Value<int>? pairedAtMillis,
+    Value<int?>? lastSeenAtMillis,
+    Value<int>? rowid,
+  }) {
+    return PeerTrustCompanion(
+      peerDeviceId: peerDeviceId ?? this.peerDeviceId,
+      name: name ?? this.name,
+      pairedAtMillis: pairedAtMillis ?? this.pairedAtMillis,
+      lastSeenAtMillis: lastSeenAtMillis ?? this.lastSeenAtMillis,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (peerDeviceId.present) {
+      map['peer_device_id'] = Variable<String>(peerDeviceId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (pairedAtMillis.present) {
+      map['paired_at_millis'] = Variable<int>(pairedAtMillis.value);
+    }
+    if (lastSeenAtMillis.present) {
+      map['last_seen_at_millis'] = Variable<int>(lastSeenAtMillis.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerTrustCompanion(')
+          ..write('peerDeviceId: $peerDeviceId, ')
+          ..write('name: $name, ')
+          ..write('pairedAtMillis: $pairedAtMillis, ')
+          ..write('lastSeenAtMillis: $lastSeenAtMillis, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$HaLoDatabase extends GeneratedDatabase {
   _$HaLoDatabase(QueryExecutor e) : super(e);
   $HaLoDatabaseManager get managers => $HaLoDatabaseManager(this);
@@ -3899,6 +4939,9 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
   late final $InboundCapturesTable inboundCaptures = $InboundCapturesTable(
     this,
   );
+  late final $PeerEventsTable peerEvents = $PeerEventsTable(this);
+  late final $PeerCursorsTable peerCursors = $PeerCursorsTable(this);
+  late final $PeerTrustTable peerTrust = $PeerTrustTable(this);
   late final Index qsosOperationStart = Index(
     'qsos_operation_start',
     'CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)',
@@ -3906,6 +4949,10 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
   late final Index inboundCapturesDedupeKey = Index(
     'inbound_captures_dedupe_key',
     'CREATE UNIQUE INDEX inbound_captures_dedupe_key ON inbound_captures (dedupe_key)',
+  );
+  late final Index peerEventsOperationSeq = Index(
+    'peer_events_operation_seq',
+    'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3919,8 +4966,12 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     lookups,
     sequences,
     inboundCaptures,
+    peerEvents,
+    peerCursors,
+    peerTrust,
     qsosOperationStart,
     inboundCapturesDedupeKey,
+    peerEventsOperationSeq,
   ];
 }
 
@@ -5825,6 +6876,580 @@ typedef $$InboundCapturesTableProcessedTableManager =
       InboundCaptureRow,
       PrefetchHooks Function()
     >;
+typedef $$PeerEventsTableCreateCompanionBuilder =
+    PeerEventsCompanion Function({
+      Value<int> seq,
+      required String operationUuid,
+      required String kind,
+      required String recordUuid,
+      Value<int?> updatedAtMillis,
+      required String data,
+    });
+typedef $$PeerEventsTableUpdateCompanionBuilder =
+    PeerEventsCompanion Function({
+      Value<int> seq,
+      Value<String> operationUuid,
+      Value<String> kind,
+      Value<String> recordUuid,
+      Value<int?> updatedAtMillis,
+      Value<String> data,
+    });
+
+class $$PeerEventsTableFilterComposer
+    extends Composer<_$HaLoDatabase, $PeerEventsTable> {
+  $$PeerEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operationUuid => $composableBuilder(
+    column: $table.operationUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordUuid => $composableBuilder(
+    column: $table.recordUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PeerEventsTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $PeerEventsTable> {
+  $$PeerEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operationUuid => $composableBuilder(
+    column: $table.operationUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordUuid => $composableBuilder(
+    column: $table.recordUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PeerEventsTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $PeerEventsTable> {
+  $$PeerEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
+
+  GeneratedColumn<String> get operationUuid => $composableBuilder(
+    column: $table.operationUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get recordUuid => $composableBuilder(
+    column: $table.recordUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+}
+
+class $$PeerEventsTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $PeerEventsTable,
+          PeerEventRow,
+          $$PeerEventsTableFilterComposer,
+          $$PeerEventsTableOrderingComposer,
+          $$PeerEventsTableAnnotationComposer,
+          $$PeerEventsTableCreateCompanionBuilder,
+          $$PeerEventsTableUpdateCompanionBuilder,
+          (
+            PeerEventRow,
+            BaseReferences<_$HaLoDatabase, $PeerEventsTable, PeerEventRow>,
+          ),
+          PeerEventRow,
+          PrefetchHooks Function()
+        > {
+  $$PeerEventsTableTableManager(_$HaLoDatabase db, $PeerEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PeerEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PeerEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PeerEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> seq = const Value.absent(),
+                Value<String> operationUuid = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> recordUuid = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
+                Value<String> data = const Value.absent(),
+              }) => PeerEventsCompanion(
+                seq: seq,
+                operationUuid: operationUuid,
+                kind: kind,
+                recordUuid: recordUuid,
+                updatedAtMillis: updatedAtMillis,
+                data: data,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> seq = const Value.absent(),
+                required String operationUuid,
+                required String kind,
+                required String recordUuid,
+                Value<int?> updatedAtMillis = const Value.absent(),
+                required String data,
+              }) => PeerEventsCompanion.insert(
+                seq: seq,
+                operationUuid: operationUuid,
+                kind: kind,
+                recordUuid: recordUuid,
+                updatedAtMillis: updatedAtMillis,
+                data: data,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PeerEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $PeerEventsTable,
+      PeerEventRow,
+      $$PeerEventsTableFilterComposer,
+      $$PeerEventsTableOrderingComposer,
+      $$PeerEventsTableAnnotationComposer,
+      $$PeerEventsTableCreateCompanionBuilder,
+      $$PeerEventsTableUpdateCompanionBuilder,
+      (
+        PeerEventRow,
+        BaseReferences<_$HaLoDatabase, $PeerEventsTable, PeerEventRow>,
+      ),
+      PeerEventRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PeerCursorsTableCreateCompanionBuilder =
+    PeerCursorsCompanion Function({
+      required String peerDeviceId,
+      required String operationUuid,
+      Value<int> lastAppliedSeq,
+      Value<int> rowid,
+    });
+typedef $$PeerCursorsTableUpdateCompanionBuilder =
+    PeerCursorsCompanion Function({
+      Value<String> peerDeviceId,
+      Value<String> operationUuid,
+      Value<int> lastAppliedSeq,
+      Value<int> rowid,
+    });
+
+class $$PeerCursorsTableFilterComposer
+    extends Composer<_$HaLoDatabase, $PeerCursorsTable> {
+  $$PeerCursorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get peerDeviceId => $composableBuilder(
+    column: $table.peerDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operationUuid => $composableBuilder(
+    column: $table.operationUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastAppliedSeq => $composableBuilder(
+    column: $table.lastAppliedSeq,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PeerCursorsTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $PeerCursorsTable> {
+  $$PeerCursorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get peerDeviceId => $composableBuilder(
+    column: $table.peerDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operationUuid => $composableBuilder(
+    column: $table.operationUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastAppliedSeq => $composableBuilder(
+    column: $table.lastAppliedSeq,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PeerCursorsTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $PeerCursorsTable> {
+  $$PeerCursorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get peerDeviceId => $composableBuilder(
+    column: $table.peerDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get operationUuid => $composableBuilder(
+    column: $table.operationUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastAppliedSeq => $composableBuilder(
+    column: $table.lastAppliedSeq,
+    builder: (column) => column,
+  );
+}
+
+class $$PeerCursorsTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $PeerCursorsTable,
+          PeerCursorRow,
+          $$PeerCursorsTableFilterComposer,
+          $$PeerCursorsTableOrderingComposer,
+          $$PeerCursorsTableAnnotationComposer,
+          $$PeerCursorsTableCreateCompanionBuilder,
+          $$PeerCursorsTableUpdateCompanionBuilder,
+          (
+            PeerCursorRow,
+            BaseReferences<_$HaLoDatabase, $PeerCursorsTable, PeerCursorRow>,
+          ),
+          PeerCursorRow,
+          PrefetchHooks Function()
+        > {
+  $$PeerCursorsTableTableManager(_$HaLoDatabase db, $PeerCursorsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PeerCursorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PeerCursorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PeerCursorsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> peerDeviceId = const Value.absent(),
+                Value<String> operationUuid = const Value.absent(),
+                Value<int> lastAppliedSeq = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PeerCursorsCompanion(
+                peerDeviceId: peerDeviceId,
+                operationUuid: operationUuid,
+                lastAppliedSeq: lastAppliedSeq,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String peerDeviceId,
+                required String operationUuid,
+                Value<int> lastAppliedSeq = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PeerCursorsCompanion.insert(
+                peerDeviceId: peerDeviceId,
+                operationUuid: operationUuid,
+                lastAppliedSeq: lastAppliedSeq,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PeerCursorsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $PeerCursorsTable,
+      PeerCursorRow,
+      $$PeerCursorsTableFilterComposer,
+      $$PeerCursorsTableOrderingComposer,
+      $$PeerCursorsTableAnnotationComposer,
+      $$PeerCursorsTableCreateCompanionBuilder,
+      $$PeerCursorsTableUpdateCompanionBuilder,
+      (
+        PeerCursorRow,
+        BaseReferences<_$HaLoDatabase, $PeerCursorsTable, PeerCursorRow>,
+      ),
+      PeerCursorRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PeerTrustTableCreateCompanionBuilder =
+    PeerTrustCompanion Function({
+      required String peerDeviceId,
+      required String name,
+      required int pairedAtMillis,
+      Value<int?> lastSeenAtMillis,
+      Value<int> rowid,
+    });
+typedef $$PeerTrustTableUpdateCompanionBuilder =
+    PeerTrustCompanion Function({
+      Value<String> peerDeviceId,
+      Value<String> name,
+      Value<int> pairedAtMillis,
+      Value<int?> lastSeenAtMillis,
+      Value<int> rowid,
+    });
+
+class $$PeerTrustTableFilterComposer
+    extends Composer<_$HaLoDatabase, $PeerTrustTable> {
+  $$PeerTrustTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get peerDeviceId => $composableBuilder(
+    column: $table.peerDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pairedAtMillis => $composableBuilder(
+    column: $table.pairedAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSeenAtMillis => $composableBuilder(
+    column: $table.lastSeenAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PeerTrustTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $PeerTrustTable> {
+  $$PeerTrustTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get peerDeviceId => $composableBuilder(
+    column: $table.peerDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pairedAtMillis => $composableBuilder(
+    column: $table.pairedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSeenAtMillis => $composableBuilder(
+    column: $table.lastSeenAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PeerTrustTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $PeerTrustTable> {
+  $$PeerTrustTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get peerDeviceId => $composableBuilder(
+    column: $table.peerDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get pairedAtMillis => $composableBuilder(
+    column: $table.pairedAtMillis,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSeenAtMillis => $composableBuilder(
+    column: $table.lastSeenAtMillis,
+    builder: (column) => column,
+  );
+}
+
+class $$PeerTrustTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $PeerTrustTable,
+          PeerTrustRow,
+          $$PeerTrustTableFilterComposer,
+          $$PeerTrustTableOrderingComposer,
+          $$PeerTrustTableAnnotationComposer,
+          $$PeerTrustTableCreateCompanionBuilder,
+          $$PeerTrustTableUpdateCompanionBuilder,
+          (
+            PeerTrustRow,
+            BaseReferences<_$HaLoDatabase, $PeerTrustTable, PeerTrustRow>,
+          ),
+          PeerTrustRow,
+          PrefetchHooks Function()
+        > {
+  $$PeerTrustTableTableManager(_$HaLoDatabase db, $PeerTrustTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PeerTrustTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PeerTrustTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PeerTrustTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> peerDeviceId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> pairedAtMillis = const Value.absent(),
+                Value<int?> lastSeenAtMillis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PeerTrustCompanion(
+                peerDeviceId: peerDeviceId,
+                name: name,
+                pairedAtMillis: pairedAtMillis,
+                lastSeenAtMillis: lastSeenAtMillis,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String peerDeviceId,
+                required String name,
+                required int pairedAtMillis,
+                Value<int?> lastSeenAtMillis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PeerTrustCompanion.insert(
+                peerDeviceId: peerDeviceId,
+                name: name,
+                pairedAtMillis: pairedAtMillis,
+                lastSeenAtMillis: lastSeenAtMillis,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PeerTrustTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $PeerTrustTable,
+      PeerTrustRow,
+      $$PeerTrustTableFilterComposer,
+      $$PeerTrustTableOrderingComposer,
+      $$PeerTrustTableAnnotationComposer,
+      $$PeerTrustTableCreateCompanionBuilder,
+      $$PeerTrustTableUpdateCompanionBuilder,
+      (
+        PeerTrustRow,
+        BaseReferences<_$HaLoDatabase, $PeerTrustTable, PeerTrustRow>,
+      ),
+      PeerTrustRow,
+      PrefetchHooks Function()
+    >;
 
 class $HaLoDatabaseManager {
   final _$HaLoDatabase _db;
@@ -5842,4 +7467,10 @@ class $HaLoDatabaseManager {
       $$SequencesTableTableManager(_db, _db.sequences);
   $$InboundCapturesTableTableManager get inboundCaptures =>
       $$InboundCapturesTableTableManager(_db, _db.inboundCaptures);
+  $$PeerEventsTableTableManager get peerEvents =>
+      $$PeerEventsTableTableManager(_db, _db.peerEvents);
+  $$PeerCursorsTableTableManager get peerCursors =>
+      $$PeerCursorsTableTableManager(_db, _db.peerCursors);
+  $$PeerTrustTableTableManager get peerTrust =>
+      $$PeerTrustTableTableManager(_db, _db.peerTrust);
 }

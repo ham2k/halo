@@ -203,12 +203,88 @@ class InboundCaptures extends Table {
   Set<Column> get primaryKey => {uuid};
 }
 
-@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences, InboundCaptures])
+/// The device-local outbox for peer device sync (HALO-310) — NOT LoFi cloud
+/// sync, which `synced` alone drives. One append-only row per local write to
+/// an `Operations`/`Qsos` record made while that record's operation is
+/// actively shared with a peer (`PeerOutbox.activeOperationUuid`); `seq`
+/// (SQLite's native rowid) is the per-device monotonic cursor a reconnecting
+/// peer catches up from. `data` is a full record snapshot shaped exactly like
+/// one entry of `mergeFromSync`'s input list (i.e. it round-trips straight
+/// into `mergeFromPeer`), not a diff — so a peer only ever needs the latest
+/// row per `recordUuid`, never a replay of every intermediate edit.
+///
+/// Rows are never deleted by anything in this pass — see HALO-310 for the
+/// retention/pruning follow-up once a real transport exists to know when a
+/// row has reached every peer that will ever ask for it.
+@DataClassName('PeerEventRow')
+@TableIndex(name: 'peer_events_operation_seq', columns: {#operationUuid, #seq})
+class PeerEvents extends Table {
+  IntColumn get seq => integer().autoIncrement()();
+  TextColumn get operationUuid => text()();
+
+  /// `'operation'` or `'qso'` — which repository's `mergeFromPeer` the
+  /// catch-up reader hands this row's [data] to.
+  TextColumn get kind => text()();
+  TextColumn get recordUuid => text()();
+  IntColumn get updatedAtMillis => integer().nullable()();
+  TextColumn get data => text()();
+}
+
+/// Per-peer, per-operation receive-side bookkeeping: the highest [PeerEvents]
+/// `seq` THIS device has already applied FROM [peerDeviceId]'s own outbox —
+/// what a reconnect handshake reports so the peer knows how far back to
+/// replay. Device-local, never synced, like `Sequences`.
+@DataClassName('PeerCursorRow')
+class PeerCursors extends Table {
+  TextColumn get peerDeviceId => text()();
+  TextColumn get operationUuid => text()();
+  IntColumn get lastAppliedSeq => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {peerDeviceId, operationUuid};
+}
+
+/// Peer devices this operator has confirmed, once, on THIS device
+/// (trust-on-first-use — docs: HALO-310 pairing). Presence of a row IS the
+/// trust: a peer announcing [peerDeviceId] is admitted without asking again,
+/// and removing the row un-trusts it.
+///
+/// Device-local and never synced, like `Sequences` and `PeerCursors` — trust
+/// is a statement about what THIS operator confirmed at THIS device, and
+/// syncing it would let one paired device silently vouch for a third.
+///
+/// [name] is what the peer called itself when it paired, kept only so the
+/// list reads as devices rather than uuids. It is self-asserted and must
+/// never be treated as identity — [peerDeviceId] is the only identifier
+/// anything may key off.
+@DataClassName('PeerTrustRow')
+class PeerTrust extends Table {
+  TextColumn get peerDeviceId => text()();
+  TextColumn get name => text()();
+  IntColumn get pairedAtMillis => integer()();
+  IntColumn get lastSeenAtMillis => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {peerDeviceId};
+}
+
+@DriftDatabase(tables: [
+  Operations,
+  Qsos,
+  OperationsBackup,
+  QsosBackup,
+  Lookups,
+  Sequences,
+  InboundCaptures,
+  PeerEvents,
+  PeerCursors,
+  PeerTrust,
+])
 class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -272,6 +348,14 @@ class HaLoDatabase extends _$HaLoDatabase {
             // not just adding the annotation and leaving v9's step alone.
             if (from < 10) {
               await m.createIndex(inboundCapturesDedupeKey);
+            }
+            if (from < 11) {
+              await m.createTable(peerEvents);
+              await m.createTable(peerCursors);
+              await m.createIndex(peerEventsOperationSeq);
+            }
+            if (from < 12) {
+              await m.createTable(peerTrust);
             }
           });
         },

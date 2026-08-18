@@ -20,6 +20,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
 
 const _uuidGenerator = Uuid();
@@ -65,6 +66,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _lastSeenTesterBuildKey = 'lastSeenTesterBuild';
   static const _shorebirdTrackKey = 'shorebirdTrack';
   static const _listenForOtherAppsEnabledKey = 'listenForOtherAppsEnabled';
+  static const _peerSyncEnabledKey = 'peerSyncEnabled';
+  static const _peerDeviceIdKey = 'peerDeviceId';
+  static const _peerDeviceNameKey = 'peerDeviceName';
   static const _n1mmProtocolEnabledKey = 'n1mmProtocolEnabled';
   static const _n1mmListenPortKey = 'n1mmListenPort';
   static const _wsjtxProtocolEnabledKey = 'wsjtxProtocolEnabled';
@@ -347,6 +351,65 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setListenForOtherAppsEnabled(bool enabled) async {
     await _prefs.setBool(_listenForOtherAppsEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// The master switch for peer device sync (HALO-310).
+  ///
+  /// Off by default, and the ONLY thing that opens a socket: with this off
+  /// nothing binds, nothing announces, and this device is invisible to the
+  /// network. On, whichever operation the operator has open is shared
+  /// automatically — there is no per-operation step, so the switch itself is
+  /// the whole consent, which is why it says what it does in the settings
+  /// row rather than only in a help page.
+  bool get peerSyncEnabled => _prefs.getBool(_peerSyncEnabledKey) ?? false;
+
+  Future<void> setPeerSyncEnabled(bool enabled) async {
+    await _prefs.setBool(_peerSyncEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// This install's identifier for peer device sync (HALO-310) — the only
+  /// thing another device's trust is ever keyed on.
+  ///
+  /// Deliberately NOT [syncDeviceKey]. That one is a bearer credential for
+  /// the account's log and lives in the platform keychain; this one is
+  /// broadcast in the clear to every device on the network, so it belongs in
+  /// plain prefs — and a keychain-backed id would leave peer sync dead on a
+  /// headless Linux box with a locked keyring, where `ensureSyncDeviceKey`
+  /// legitimately returns null.
+  ///
+  /// Generated on first read and persisted fire-and-forget. If that write
+  /// were ever to fail the device would come back under a new id and its
+  /// peers would ask to pair again — recoverable, and a much better failure
+  /// than making every caller handle a null identity.
+  String get peerDeviceId {
+    final cached = _cachedPeerDeviceId;
+    if (cached != null) return cached;
+    final existing = _prefs.getString(_peerDeviceIdKey);
+    if (existing != null && existing.isNotEmpty) return _cachedPeerDeviceId = existing;
+    final generated = _uuidGenerator.v4();
+    _cachedPeerDeviceId = generated;
+    unawaited(_prefs.setString(_peerDeviceIdKey, generated));
+    return generated;
+  }
+
+  String? _cachedPeerDeviceId;
+
+  /// What this device calls itself to peers. Shown beside [peerDeviceId] in
+  /// the pairing prompt so an operator can tell their laptop from their
+  /// phone — self-asserted, and never trusted as identity by the receiving
+  /// side.
+  String get peerDeviceName {
+    final stored = _prefs.getString(_peerDeviceNameKey);
+    if (stored != null && stored.isNotEmpty) return stored;
+    final call = operatorCall;
+    final platform = platformName();
+    return call.isEmpty ? platform : '$call ($platform)';
+  }
+
+  Future<void> setPeerDeviceName(String name) async {
+    await _prefs.setString(_peerDeviceNameKey, name.trim());
     notifyListeners();
   }
 

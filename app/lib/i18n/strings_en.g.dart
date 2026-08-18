@@ -980,6 +980,7 @@ class Translations$settings$en {
 	String get operatorCall => 'Operator Callsign';
 
 	late final Translations$settings$sync$en sync = Translations$settings$sync$en.internal(_root);
+	late final Translations$settings$peers$en peers = Translations$settings$peers$en.internal(_root);
 
 	/// en: 'Developer Mode'
 	String get developerMode => 'Developer Mode';
@@ -2673,6 +2674,96 @@ class Translations$settings$sync$en {
 	String get deviceKey => 'Device Key';
 }
 
+// Path: settings.peers
+class Translations$settings$peers$en {
+	Translations$settings$peers$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Peer Devices'
+	String get title => 'Peer Devices';
+
+	/// en: 'Share with my other devices'
+	String get enable => 'Share with my other devices';
+
+	/// en: 'Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.'
+	String get enabledDescription => 'Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.';
+
+	/// en: 'Off. This device is not visible to others on the network and shares nothing.'
+	String get disabledDescription => 'Off. This device is not visible to others on the network and shares nothing.';
+
+	/// en: 'This Device'
+	String get thisDevice => 'This Device';
+
+	/// en: 'Name'
+	String get deviceName => 'Name';
+
+	/// en: 'What your other devices call this one'
+	String get deviceNameHint => 'What your other devices call this one';
+
+	/// en: 'Allowed Devices'
+	String get pairedDevices => 'Allowed Devices';
+
+	/// en: 'No devices allowed yet. Open the same operation on another device to pair them.'
+	String get noPairedDevices => 'No devices allowed yet. Open the same operation on another device to pair them.';
+
+	/// en: 'Nearby'
+	String get nearby => 'Nearby';
+
+	/// en: 'Connected'
+	String get connected => 'Connected';
+
+	/// en: 'Connecting…'
+	String get connecting => 'Connecting…';
+
+	/// en: 'Syncing…'
+	String get syncing => 'Syncing…';
+
+	/// en: 'Waiting for the other device'
+	String get waitingForThem => 'Waiting for the other device';
+
+	/// en: 'Not connected'
+	String get notConnected => 'Not connected';
+
+	/// en: 'wants to share this operation'
+	String get wantsToPair => 'wants to share this operation';
+
+	/// en: 'Allow'
+	String get allow => 'Allow';
+
+	/// en: 'Reject'
+	String get reject => 'Reject';
+
+	/// en: 'Forget'
+	String get forget => 'Forget';
+
+	/// en: 'Forget ${name}?'
+	String forgetTitle({required Object name}) => 'Forget ${name}?';
+
+	/// en: 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.'
+	String get forgetBody => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.';
+
+	/// en: 'Allow ${name}?'
+	String pairTitle({required Object name}) => 'Allow ${name}?';
+
+	/// en: 'This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.'
+	String get pairBody => 'This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.';
+
+	/// en: 'Device ID'
+	String get pairIdLabel => 'Device ID';
+
+	/// en: 'Only allow a device you recognise. Anything on this network can ask.'
+	String get pairWarning => 'Only allow a device you recognise. Anything on this network can ask.';
+
+	/// en: 'Open an operation to start sharing it.'
+	String get shareNothingOpen => 'Open an operation to start sharing it.';
+
+	/// en: 'Can't reach the local network: ${error}'
+	String problem({required Object error}) => 'Can\'t reach the local network: ${error}';
+}
+
 // Path: settings.syncPanel
 class Translations$settings$syncPanel$en {
 	Translations$settings$syncPanel$en.internal(this._root);
@@ -3533,6 +3624,12 @@ class Translations$settings$panels$en {
 
 	/// en: 'Radios and other equipment'
 	String get stationDescription => 'Radios and other equipment';
+
+	/// en: 'Peer Devices'
+	String get peers => 'Peer Devices';
+
+	/// en: 'Share an operation with your other devices on the same network'
+	String get peersDescription => 'Share an operation with your other devices on the same network';
 }
 
 // Path: home.logs.columns
@@ -5162,6 +5259,33 @@ extension on Translations {
 			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
+			'settings.peers.title' => 'Peer Devices',
+			'settings.peers.enable' => 'Share with my other devices',
+			'settings.peers.enabledDescription' => 'Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.',
+			'settings.peers.disabledDescription' => 'Off. This device is not visible to others on the network and shares nothing.',
+			'settings.peers.thisDevice' => 'This Device',
+			'settings.peers.deviceName' => 'Name',
+			'settings.peers.deviceNameHint' => 'What your other devices call this one',
+			'settings.peers.pairedDevices' => 'Allowed Devices',
+			'settings.peers.noPairedDevices' => 'No devices allowed yet. Open the same operation on another device to pair them.',
+			'settings.peers.nearby' => 'Nearby',
+			'settings.peers.connected' => 'Connected',
+			'settings.peers.connecting' => 'Connecting…',
+			'settings.peers.syncing' => 'Syncing…',
+			'settings.peers.waitingForThem' => 'Waiting for the other device',
+			'settings.peers.notConnected' => 'Not connected',
+			'settings.peers.wantsToPair' => 'wants to share this operation',
+			'settings.peers.allow' => 'Allow',
+			'settings.peers.reject' => 'Reject',
+			'settings.peers.forget' => 'Forget',
+			'settings.peers.forgetTitle' => ({required Object name}) => 'Forget ${name}?',
+			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
+			'settings.peers.pairTitle' => ({required Object name}) => 'Allow ${name}?',
+			'settings.peers.pairBody' => 'This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.',
+			'settings.peers.pairIdLabel' => 'Device ID',
+			'settings.peers.pairWarning' => 'Only allow a device you recognise. Anything on this network can ask.',
+			'settings.peers.shareNothingOpen' => 'Open an operation to start sharing it.',
+			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
@@ -5444,6 +5568,8 @@ extension on Translations {
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'Radios and other equipment',
+			'settings.panels.peers' => 'Peer Devices',
+			'settings.panels.peersDescription' => 'Share an operation with your other devices on the same network',
 			'settings.showMoreSettings' => 'Show more settings',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
@@ -5511,6 +5637,8 @@ extension on Translations {
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
@@ -5540,8 +5668,6 @@ extension on Translations {
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',

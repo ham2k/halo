@@ -473,6 +473,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
+	@override late final _Translations$settings$peers$es peers = _Translations$settings$peers$es._(_root);
 	@override String get developerMode => 'Modo Desarrollador';
 	@override late final _Translations$settings$syncPanel$es syncPanel = _Translations$settings$syncPanel$es._(_root);
 	@override late final _Translations$settings$accounts$es accounts = _Translations$settings$accounts$es._(_root);
@@ -1285,6 +1286,42 @@ class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	@override String get deviceKey => 'Clave del Dispositivo';
 }
 
+// Path: settings.peers
+class _Translations$settings$peers$es extends Translations$settings$peers$en {
+	_Translations$settings$peers$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Dispositivos';
+	@override String get enable => 'Compartir con mis otros dispositivos';
+	@override String get enabledDescription => 'Tus otros dispositivos en esta red pueden ver la operación que tengas abierta, y los contactos se sincronizan entre ellos mientras registras. Cada dispositivo debe autorizarse una vez.';
+	@override String get disabledDescription => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.';
+	@override String get thisDevice => 'Este dispositivo';
+	@override String get deviceName => 'Nombre';
+	@override String get deviceNameHint => 'Cómo llaman tus otros dispositivos a este';
+	@override String get pairedDevices => 'Dispositivos autorizados';
+	@override String get noPairedDevices => 'Todavía no hay dispositivos autorizados. Abre la misma operación en otro dispositivo para vincularlos.';
+	@override String get nearby => 'Cerca';
+	@override String get connected => 'Conectado';
+	@override String get connecting => 'Conectando…';
+	@override String get syncing => 'Sincronizando…';
+	@override String get waitingForThem => 'Esperando al otro dispositivo';
+	@override String get notConnected => 'Sin conexión';
+	@override String get wantsToPair => 'quiere compartir esta operación';
+	@override String get allow => 'Permitir';
+	@override String get reject => 'Rechazar';
+	@override String get forget => 'Olvidar';
+	@override String forgetTitle({required Object name}) => '¿Olvidar ${name}?';
+	@override String get forgetBody => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.';
+	@override String pairTitle({required Object name}) => '¿Permitir ${name}?';
+	@override String get pairBody => 'Este dispositivo está en tu red y quiere compartir la operación que tienes abierta. Los contactos se sincronizarán en ambos sentidos mientras ambos la tengan abierta.';
+	@override String get pairIdLabel => 'ID del dispositivo';
+	@override String get pairWarning => 'Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.';
+	@override String get shareNothingOpen => 'Abre una operación para empezar a compartirla.';
+	@override String problem({required Object error}) => 'No se puede acceder a la red local: ${error}';
+}
+
 // Path: settings.syncPanel
 class _Translations$settings$syncPanel$es extends Translations$settings$syncPanel$en {
 	_Translations$settings$syncPanel$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1611,6 +1648,8 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get unavailableText => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.';
 	@override String get station => 'Configuración de Estación';
 	@override String get stationDescription => 'Radios y otros equipos';
+	@override String get peers => 'Dispositivos';
+	@override String get peersDescription => 'Comparte una operación con tus otros dispositivos en la misma red';
 }
 
 // Path: home.logs.panels
@@ -2719,6 +2758,33 @@ extension on TranslationsEs {
 			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Habilitar Sincronización',
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
+			'settings.peers.title' => 'Dispositivos',
+			'settings.peers.enable' => 'Compartir con mis otros dispositivos',
+			'settings.peers.enabledDescription' => 'Tus otros dispositivos en esta red pueden ver la operación que tengas abierta, y los contactos se sincronizan entre ellos mientras registras. Cada dispositivo debe autorizarse una vez.',
+			'settings.peers.disabledDescription' => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.',
+			'settings.peers.thisDevice' => 'Este dispositivo',
+			'settings.peers.deviceName' => 'Nombre',
+			'settings.peers.deviceNameHint' => 'Cómo llaman tus otros dispositivos a este',
+			'settings.peers.pairedDevices' => 'Dispositivos autorizados',
+			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos autorizados. Abre la misma operación en otro dispositivo para vincularlos.',
+			'settings.peers.nearby' => 'Cerca',
+			'settings.peers.connected' => 'Conectado',
+			'settings.peers.connecting' => 'Conectando…',
+			'settings.peers.syncing' => 'Sincronizando…',
+			'settings.peers.waitingForThem' => 'Esperando al otro dispositivo',
+			'settings.peers.notConnected' => 'Sin conexión',
+			'settings.peers.wantsToPair' => 'quiere compartir esta operación',
+			'settings.peers.allow' => 'Permitir',
+			'settings.peers.reject' => 'Rechazar',
+			'settings.peers.forget' => 'Olvidar',
+			'settings.peers.forgetTitle' => ({required Object name}) => '¿Olvidar ${name}?',
+			'settings.peers.forgetBody' => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.',
+			'settings.peers.pairTitle' => ({required Object name}) => '¿Permitir ${name}?',
+			'settings.peers.pairBody' => 'Este dispositivo está en tu red y quiere compartir la operación que tienes abierta. Los contactos se sincronizarán en ambos sentidos mientras ambos la tengan abierta.',
+			'settings.peers.pairIdLabel' => 'ID del dispositivo',
+			'settings.peers.pairWarning' => 'Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.',
+			'settings.peers.shareNothingOpen' => 'Abre una operación para empezar a compartirla.',
+			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
@@ -2964,6 +3030,8 @@ extension on TranslationsEs {
 			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
+			'settings.panels.peers' => 'Dispositivos',
+			'settings.panels.peersDescription' => 'Comparte una operación con tus otros dispositivos en la misma red',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
@@ -3119,6 +3187,8 @@ extension on TranslationsEs {
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se importará', other: '${formatted} se importarán', ), 
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} contacto nuevo', other: '${formatted} contactos nuevos', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se combinará con un contacto existente', other: '${formatted} se combinarán con contactos existentes', ), 

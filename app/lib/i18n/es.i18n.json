@@ -772,6 +772,35 @@
       "enable": "Habilitar Sincronización",
       "deviceKey": "Clave del Dispositivo"
     },
+    "peers": {
+      "title": "Dispositivos",
+      "enable": "Compartir con mis otros dispositivos",
+      "enabledDescription": "Tus otros dispositivos en esta red pueden ver la operación que tengas abierta, y los contactos se sincronizan entre ellos mientras registras. Cada dispositivo debe autorizarse una vez.",
+      "disabledDescription": "Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.",
+      "thisDevice": "Este dispositivo",
+      "deviceName": "Nombre",
+      "deviceNameHint": "Cómo llaman tus otros dispositivos a este",
+      "pairedDevices": "Dispositivos autorizados",
+      "noPairedDevices": "Todavía no hay dispositivos autorizados. Abre la misma operación en otro dispositivo para vincularlos.",
+      "nearby": "Cerca",
+      "connected": "Conectado",
+      "connecting": "Conectando…",
+      "syncing": "Sincronizando…",
+      "waitingForThem": "Esperando al otro dispositivo",
+      "notConnected": "Sin conexión",
+      "wantsToPair": "quiere compartir esta operación",
+      "allow": "Permitir",
+      "reject": "Rechazar",
+      "forget": "Olvidar",
+      "forgetTitle": "¿Olvidar ${name}?",
+      "forgetBody": "Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.",
+      "pairTitle": "¿Permitir ${name}?",
+      "pairBody": "Este dispositivo está en tu red y quiere compartir la operación que tienes abierta. Los contactos se sincronizarán en ambos sentidos mientras ambos la tengan abierta.",
+      "pairIdLabel": "ID del dispositivo",
+      "pairWarning": "Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.",
+      "shareNothingOpen": "Abre una operación para empezar a compartirla.",
+      "problem": "No se puede acceder a la red local: ${error}"
+    },
     "developerMode": "Modo Desarrollador",
     "syncPanel": {
       "configuration": "Configuración de sincronización",
@@ -1049,7 +1078,9 @@
       "unavailableTitle": "Algunos ajustes no están disponibles",
       "unavailableText": "El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.",
       "station": "Configuración de Estación",
-      "stationDescription": "Radios y otros equipos"
+      "stationDescription": "Radios y otros equipos",
+      "peers": "Dispositivos",
+      "peersDescription": "Comparte una operación con tus otros dispositivos en la misma red"
     },
     "showMoreSettings": "Mostrar más ajustes"
   },

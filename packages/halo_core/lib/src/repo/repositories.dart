@@ -433,6 +433,57 @@ class OperationsRepository {
     return watermark;
   }
 
+  /// Applies operation records received from a peer device over the direct
+  /// LAN/BLE/relay channel (HALO-310) — sibling to [mergeFromSync], NOT a
+  /// caller of it: same uuid-keyed upsert and [_inboundIsStale] staleness
+  /// gate, but left `synced: false` and DOES fire [onChange]. A record a
+  /// peer originated has not reached the LoFi server from ANY device yet —
+  /// the device that logged it may never regain internet access itself, so
+  /// this device must still offer to push it once its own turn to sync
+  /// comes, which is exactly what LoFi cloud sync's dirty-flag machinery
+  /// already does for free once `synced` is false here too.
+  Future<void> mergeFromPeer(List<Map<String, dynamic>> operations) async {
+    final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
+    await db.transaction(() async {
+      final existingRows = incomingUuids.isEmpty
+          ? const <OperationRow>[]
+          : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
+      final existingByUuid = {for (final r in existingRows) r.uuid: r};
+
+      for (final incoming in operations) {
+        final uuid = incoming['uuid'] as String?;
+        if (uuid == null) continue;
+        final data = Map<String, dynamic>.from(incoming)..remove('uuid');
+        final deleted = data.remove('deleted') == true;
+        // Same as mergeFromSync: informational only, never acted on by a
+        // receiving device — only the device that itself purged the
+        // operation ever removes the row.
+        final purged = data.remove('purged') == true;
+        _normalizeLegacyStamps(data);
+
+        final existing = existingByUuid[uuid];
+        if (existing != null &&
+            _inboundIsStale(
+              existingUpdatedAtMillis: existing.updatedAtMillis,
+              existingSynced: existing.synced,
+              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+            )) {
+          continue;
+        }
+
+        await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
+              uuid: Value(uuid),
+              data: Value(jsonEncode(data)),
+              deleted: Value(deleted),
+              purged: Value(purged),
+              synced: const Value(false),
+              updatedAtMillis: Value((data['updatedAtMillis'] as num?)?.toInt()),
+            ));
+      }
+    });
+    onChange?.call();
+  }
+
   /// Marks every operation dirty, deleted ones included — used when
   /// "combining" local data into a newly linked account (DESIGN.md's sync
   /// reconciliation flow): the account has no idea this device's data
@@ -988,6 +1039,7 @@ class QsosRepository {
         operationUuid: qso.operationUuid,
         data: {...qso.data, 'updatedAtMillis': realNowMillis()},
         deleted: qso.deleted,
+        purged: qso.purged,
         scoreCache: qso.scoreCache,
       );
 
@@ -1312,6 +1364,55 @@ class QsosRepository {
     sequences?.invalidate();
     // No onChange() here — see OperationsRepository.mergeFromSync.
     return watermark;
+  }
+
+  /// Applies QSOs received from a peer device (HALO-310) — see
+  /// `OperationsRepository.mergeFromPeer`'s doc for why this is a sibling of
+  /// [mergeFromSync] rather than a caller of it: same upsert/staleness shape,
+  /// but left `synced: false` and fires [onChange] so this device still
+  /// offers the record to LoFi cloud sync on its own next round.
+  Future<void> mergeFromPeer(List<Map<String, dynamic>> qsos) async {
+    final affectedOperations = <String>{};
+    final incomingUuids = [for (final m in qsos) m['uuid']].whereType<String>().toList();
+    await db.transaction(() async {
+      final existingRows = incomingUuids.isEmpty
+          ? const <QsoRow>[]
+          : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
+      final existingByUuid = {for (final r in existingRows) r.uuid: r};
+
+      for (final incoming in qsos) {
+        final uuid = incoming['uuid'] as String?;
+        final operationUuid = incoming['operation'] as String?;
+        if (uuid == null || operationUuid == null) continue;
+
+        final data = Map<String, dynamic>.from(incoming)..remove('operation');
+        final deleted = data.remove('deleted') == true;
+        final purged = data.remove('purged') == true;
+        _normalizeLegacyStamps(data);
+
+        final existing = existingByUuid[uuid];
+        if (existing != null &&
+            _inboundIsStale(
+              existingUpdatedAtMillis: existing.updatedAtMillis,
+              existingSynced: existing.synced,
+              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+            )) {
+          continue;
+        }
+
+        final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
+        await db.into(db.qsos).insertOnConflictUpdate(
+              _companionFor(qso).copyWith(deleted: Value(deleted), purged: Value(purged)),
+            );
+        affectedOperations.add(operationUuid);
+      }
+      for (final operationUuid in affectedOperations) {
+        await refreshOperationCounters(operationUuid);
+      }
+    });
+    // A peer's QSO may carry a serial this device's allocator has never seen.
+    sequences?.invalidate();
+    onChange?.call();
   }
 
   /// See `OperationsRepository.resetSyncedStatus`.

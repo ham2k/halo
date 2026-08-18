@@ -45,6 +45,7 @@ import '../settings/settings_registry.dart';
 import 'confirm_device_dialog.dart';
 import 'experiments_pane.dart';
 import 'extensions_panel.dart';
+import 'peers_panel.dart';
 import 'station_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
@@ -287,6 +288,16 @@ class _SettingsViewState extends State<SettingsView> {
           icon: MdiIcons.cat,
           order: _stationPanelOrder,
           description: t.settings.panels.stationDescription,
+        ),
+      // Between Sync (10) and Accounts (20): both are about where the log
+      // goes — cloud first, then the devices beside you.
+      if (settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */)
+        _SettingsPanelEntry(
+          key: 'peers',
+          title: t.settings.panels.peers,
+          icon: MdiIcons.lan,
+          order: 15,
+          description: t.settings.panels.peersDescription,
         ),
       ..._fixedCorePanels(t),
       // After the extension-contributed panels (default order 50): data
@@ -596,6 +607,8 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
       content = _AllSettingsPanel(services: services);
     case 'sync':
       content = _SyncPanel(services: services);
+    case 'peers':
+      content = PeersPanel(services: services);
     case 'accounts':
       content = _AccountsPanel(services: services);
     case 'data_files':
