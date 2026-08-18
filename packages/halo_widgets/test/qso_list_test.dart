@@ -1474,6 +1474,79 @@ void main() {
   );
 
   testWidgets(
+    'the RST cell is wide enough to fit "599 599" without clipping',
+    (tester) async {
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op-1',
+        data: {
+          'our': {'sent': '599'},
+          'their': {'call': 'W1AW', 'sent': '599'},
+          'mode': 'CW',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      final finder = find.text('599 599');
+      expect(finder, findsOneWidget);
+      final text = tester.widget<Text>(finder);
+      final style = DefaultTextStyle.of(tester.element(finder)).style.merge(text.style);
+      final painter = TextPainter(
+        text: TextSpan(text: '599 599', style: style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final intrinsicWidth = painter.width;
+      painter.dispose();
+      // A fixed-width column narrower than this clips the text instead of
+      // failing loudly, so the box has to be measured against, not eyeballed.
+      expect(tester.getSize(finder).width, greaterThanOrEqualTo(intrinsicWidth));
+    },
+  );
+
+  testWidgets(
+    'the RST column still fits "599 599" even when every report in the log is shorter',
+    (tester) async {
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op-1',
+        data: {
+          'our': {'sent': '59'},
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      final finder = find.text('59 59');
+      expect(finder, findsOneWidget);
+      final style = DefaultTextStyle.of(tester.element(finder)).style.merge(tester.widget<Text>(finder).style);
+      final painter = TextPainter(
+        text: TextSpan(text: '599 599', style: style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final floorWidth = painter.width;
+      painter.dispose();
+      expect(tester.getSize(finder).width, greaterThanOrEqualTo(floorWidth));
+    },
+  );
+
+  testWidgets(
     'HALO-143: switchSentRcvd puts the received report first, matching the entry row',
     (tester) async {
       // The cell carries no labels, so the two reports are indistinguishable

@@ -65,9 +65,6 @@ const double _fitSlack = 1;
 /// The Mode column, wide enough for the longest mode name shown.
 const double _modeWidth = 42;
 
-/// The signal-report column ("59 59").
-const double _rstWidth = 68;
-
 /// One ref badge's icon — the unknown-type avatar (radius 8) is the widest
 /// of the two shapes, so it sets the column's per-type cost.
 const double _refIconWidth = 16;
@@ -225,6 +222,10 @@ bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls
   return kind == 'text' || kind == 'serial' || kind == 'options' || kind == 'form';
 }
 
+/// The RST column's guaranteed minimum — CW/RTTY's 3-digit RS(T) on both
+/// sides.
+const String _rstMinSample = '599 599';
+
 /// The list-wide numbering, column widths and day-grouping [_QsoListState]
 /// computes with an O(qsos) pass — walking every QSO plus a handful of real
 /// text-layout measurements. Cached against [_QsoListMetricsKey] so an
@@ -237,6 +238,7 @@ class _QsoListMetrics {
   final double callsignWidth;
   final double dxStateWidth;
   final double freqWidth;
+  final double rstWidth;
   final double exchangeWidth;
   final double refsWidth;
   final int hzDigits;
@@ -250,6 +252,7 @@ class _QsoListMetrics {
     required this.callsignWidth,
     required this.dxStateWidth,
     required this.freqWidth,
+    required this.rstWidth,
     required this.exchangeWidth,
     required this.refsWidth,
     required this.hzDigits,
@@ -770,6 +773,7 @@ class _QsoListState extends State<QsoList> {
     final callsignWidth = metrics.callsignWidth;
     final dxStateWidth = metrics.dxStateWidth;
     final freqWidth = metrics.freqWidth;
+    final rstWidth = metrics.rstWidth;
     final exchangeWidth = metrics.exchangeWidth;
     final refsWidth = metrics.refsWidth;
     final hzDigits = metrics.hzDigits;
@@ -1044,7 +1048,7 @@ class _QsoListState extends State<QsoList> {
                   ],
                   if (plan.showRst)
                     SizedBox(
-                      width: _rstWidth,
+                      width: rstWidth,
                       child: Text(
                         widget.switchSentRcvd
                             ? '${qso.receivedRST ?? ''} ${qso.sentRST ?? ''}'
@@ -1121,7 +1125,7 @@ class _QsoListState extends State<QsoList> {
       (id: _Column.numbers, earned: showQsoNumbers, width: numberWidth + _columnGap),
       (id: _Column.dxState, earned: dxStateWidth > 0, width: dxStateWidth + _columnGap),
       (id: _Column.mode, earned: usesMultipleModes, width: _modeWidth + _columnGap),
-      (id: _Column.rst, earned: showRSTFields, width: _rstWidth),
+      (id: _Column.rst, earned: showRSTFields, width: rstWidth),
       (id: _Column.refs, earned: refsWidth > 0, width: refsWidth),
       (id: _Column.exchange, earned: exchangeWidth > 0, width: exchangeWidth + _columnGap),
     ];
@@ -1286,6 +1290,8 @@ _QsoListMetrics _computeMetrics({
   // list-wide width and stay aligned even on rows that lack them (#354).
   var longestBand = '';
   var longestExchange = '';
+  // Seeded at the floor, then widened for anything longer a QSO actually holds.
+  var longestRst = _rstMinSample;
   // Only the single longest flag and longest state ever matter for
   // dxStateWidth below — tracking them here costs the same cheap
   // length comparison as longestCall, deferring the two (not N) actual
@@ -1312,6 +1318,8 @@ _QsoListMetrics _computeMetrics({
     if (q.freq == null && (q.band?.length ?? 0) > longestBand.length) longestBand = q.band!;
     final exchange = q.theirExchange;
     if (exchange != null && exchange.length > longestExchange.length) longestExchange = exchange;
+    final rstPair = '${q.sentRST ?? ''} ${q.receivedRST ?? ''}';
+    if (rstPair.length > longestRst.length) longestRst = rstPair;
     final mode = q.mode;
     if (mode != null) modesUsed.add(mode);
     final dxState = _dxStateContentFor(q, ourEntityPrefix);
@@ -1368,6 +1376,7 @@ _QsoListMetrics _computeMetrics({
     if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
   }
   final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);
+  final rstWidth = textWidth(context, longestRst, monoDim);
   // The their-exchange column (after the signal reports) reserves width only
   // when some QSO actually carries an exchange, like DX/State above (#354).
   final exchangeWidth = longestExchange.isEmpty ? 0.0 : textWidth(context, longestExchange, monoDim);
@@ -1404,6 +1413,7 @@ _QsoListMetrics _computeMetrics({
     callsignWidth: callsignWidth,
     dxStateWidth: dxStateWidth,
     freqWidth: freqWidth,
+    rstWidth: rstWidth,
     exchangeWidth: exchangeWidth,
     refsWidth: refsWidth,
     hzDigits: hzDigits,
