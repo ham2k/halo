@@ -1,10 +1,12 @@
-# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, two files changed
+# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, three files changed
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except
 `windows/custom_platform_view/custom_platform_view.cc`'s
-`CustomPlatformView` destructor and one hunk in
-`windows/in_app_webview/in_app_webview_manager.cpp`'s `createInAppWebView`.
+`CustomPlatformView` destructor, one hunk in
+`windows/in_app_webview/in_app_webview_manager.cpp`'s `createInAppWebView`,
+and `windows/webview_environment/webview_environment.cpp`'s
+`WebViewEnvironment` destructor.
 
 ```diff
    CustomPlatformView::~CustomPlatformView()
@@ -33,6 +35,16 @@ to the published one except
 +      auto webView = std::move(oldPlatformView->view);
 +      oldPlatformView->UnregisterMethodCallHandler();
 +      keepAliveWebViews.erase(keepAliveId.value());
+```
+
+```diff
+   WebViewEnvironment::~WebViewEnvironment()
+   {
+     debugLog("dealloc WebViewEnvironment");
++    if (channelDelegate) {
++      channelDelegate->UnregisterMethodCallHandler();
++    }
+     if (environment_) {
 ```
 
 Upstream's `example/` is left out, same as the macOS copy — a whole Flutter
@@ -141,6 +153,25 @@ installs) could still reference a destroyed `CustomPlatformView`:
    in this file. The new `CustomPlatformView` constructed right after
    registers its own method/event channels while the old one's are, per (1),
    never cleared either.
+3. **`WebViewEnvironment` had the same gap as (1), for its own channel.**
+   `~WebViewEnvironment()` never unregistered its `channelDelegate`'s method
+   channel — same missing-safety-net shape as the event channel above, just
+   on a different owner. `ChannelDelegate` (`types/channel_delegate.cpp`) is
+   the shared base every delegate type in this plugin uses, and its own
+   destructor only resets a `shared_ptr<MethodChannel>`, never calling
+   `SetMethodCallHandler(nullptr)` — so the bug class is systemic across
+   every subclass unless each owner explicitly unregisters before tearing
+   one down. `InAppWebView`'s own teardown already does this correctly for
+   every delegate it owns (`webMessageChannels_`, `webMessageListeners_`,
+   `printJobManager`, `webNotificationControllers_`,
+   `findInteractionController`, plus its own `WebViewChannelDelegate` via (1)
+   and this file's other unregister call sites) — `WebViewEnvironment` was
+   the one owner that didn't. Not reachable on HaLo's current map/webview
+   hot path (HaLo builds exactly one static `WebViewEnvironment` for the
+   whole app lifetime and never disposes/recreates it), but real: this
+   plugin's own `"dispose"` method handler
+   (`webview_environment_channel_delegate.cpp`) erases the environment live,
+   with the handler still registered.
 
 Sentry evidence (`HALO-290` / `HALO-NEXT-59`): `FlutterDesktopMessengerSetCallback`
 → `free_base` → `base::internal::flat_tree<T>::erase<T>`,
@@ -165,11 +196,15 @@ ordering matters: `UnregisterMethodCallHandler()` reaches into
 `InAppWebView` needs to keep its delegate's handler intact (no
 `initChannel` runs on this branch) — so this clears only the old
 `CustomPlatformView`'s own method channel, not the delegate `disposeKeepAlive`
-also clears when it destroys the webview outright.
+also clears when it destroys the webview outright. `WebViewEnvironment`'s
+destructor gets the same unconditional-safety-net treatment as the event
+channel — `channelDelegate->UnregisterMethodCallHandler()`, not left to a
+caller — since (unlike `CustomPlatformView`'s `view`) nothing about
+`WebViewEnvironment`'s teardown needs its delegate's handler to survive.
 
 ## Verifying this copy
 
-Everything except the two hunks above must match the published package. Diff
+Everything except the three hunks above must match the published package. Diff
 against a freshly extracted archive, **never against `~/.pub-cache`** — a
 build writes generated files into the cached copy too, so contamination on
 both sides cancels out. Run from the repo root:
@@ -182,7 +217,7 @@ diff -r -x example -x PATCH.md \
      "$upstream" packages/flutter_inappwebview_windows_patched
 ```
 
-A clean run prints only the two hunks above.
+A clean run prints only the three hunks above.
 
 ## No local verification
 
@@ -198,11 +233,14 @@ been verified throughout.
 ## Re-vendoring a newer version
 
 Copy the new package over this directory, drop its `example/`, re-apply
-both hunks if upstream hasn't fixed the underlying races itself (check the
-destructor and the keep-alive branch of `createInAppWebView` first — a fix
-might land under a different shape), update the version above and in the
-archive URL, and re-run the diff. Do not hand-merge — this directory is a
-copy, not a maintained fork.
+all three hunks if upstream hasn't fixed the underlying races itself (check
+`CustomPlatformView`'s destructor, the keep-alive branch of
+`createInAppWebView`, and `WebViewEnvironment`'s destructor first — a fix
+might land under a different shape, and check whether `ChannelDelegate`
+itself finally unregisters in its own destructor, which would obsolete all
+three hunks at once), update the version above and in the archive URL, and
+re-run the diff. Do not hand-merge — this directory is a copy, not a
+maintained fork.
 
 **If the clock-discipline check flags a file in here, do not fix the
 file.** Same exemption rule as `flutter_inappwebview_macos_patched` — add
@@ -211,8 +249,7 @@ than editing a vendored copy.
 
 ## Deleting this
 
-Drop the directory once an upstream release fixes the same races (check the
-destructor and the keep-alive branch, not just the version number — a bump
-alone proves nothing) — along with **both**
-`flutter_inappwebview_windows` override entries, the one in
-`app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.
+Drop the directory once an upstream release fixes the same races (check all
+three hunks, not just the version number — a bump alone proves nothing) —
+along with **both** `flutter_inappwebview_windows` override entries, the
+one in `app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.

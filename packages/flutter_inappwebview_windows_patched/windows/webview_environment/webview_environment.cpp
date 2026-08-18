@@ -311,6 +311,15 @@ namespace flutter_inappwebview_plugin
   WebViewEnvironment::~WebViewEnvironment()
   {
     debugLog("dealloc WebViewEnvironment");
+    // ChannelDelegate's own destructor only resets its shared_ptr<MethodChannel>
+    // -- it never calls SetMethodCallHandler(nullptr) -- so without this the
+    // messenger keeps a dangling channelDelegate-capturing callback registered
+    // after this destructor returns, the same use-after-free shape
+    // custom_platform_view.cc's destructor guards against for its event
+    // channel. See PATCH.md.
+    if (channelDelegate) {
+      channelDelegate->UnregisterMethodCallHandler();
+    }
     if (environment_) {
       environment_->remove_NewBrowserVersionAvailable(newBrowserVersionAvailableToken_);
       if (auto environment5 = environment_.try_query<ICoreWebView2Environment5>()) {

@@ -5,7 +5,7 @@
 // exact pin on the umbrella, the five version pins in `dependency_overrides`
 // that hold the rest of the family still, the three overrides that
 // displace the published Linux, macOS and Windows implementations outright,
-// the one patched line inside the vendored macOS copy, and the two patched
+// the one patched line inside the vendored macOS copy, and the three patched
 // hunks inside the vendored Windows copy.
 //
 // All of it is invisible to every other signal. Delete an override and the
@@ -353,6 +353,33 @@ void main() {
           'it on keep-alive reuse IS the patch; without it the old and new '
           'platform views race registering channels on the same messenger '
           '(HALO-290/HALO-NEXT-59), not a test failure',
+    );
+  });
+
+  test('the vendored Windows copy still unregisters WebViewEnvironment on teardown', () {
+    // Same "resolving to the vendored directory is not the same as the patch
+    // being in it" caveat as the other two Windows-patch tests, for the
+    // webview_environment.cpp third of the messenger callback race patch
+    // (PATCH.md's "The messenger callback race" section).
+    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/webview_environment/webview_environment.cpp';
+    final file = File(sourcePath);
+    if (!file.existsSync()) {
+      fail(
+        'No $sourcePath — the Windows override points at a package with no '
+        'webview_environment.cpp, so this test cannot answer the question '
+        'it exists to answer.',
+      );
+    }
+    final source = file.readAsStringSync();
+    expect(
+      source,
+      contains('channelDelegate->UnregisterMethodCallHandler();'),
+      reason: 'unregistering channelDelegate in ~WebViewEnvironment() IS the '
+          'patch; without it a dangling channelDelegate capture stays '
+          'registered in the messenger\'s callback map after the '
+          'environment is destroyed (HALO-290/HALO-NEXT-59), not a test '
+          'failure',
     );
   });
 }
