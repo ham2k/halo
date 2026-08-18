@@ -398,6 +398,17 @@ class OperationsRepository {
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
 
         final existing = existingByUuid[uuid];
+        // A purge tombstone for an operation this device doesn't have
+        // describes nothing to remove, so it must never CREATE a row. The
+        // server keeps a purged record for good and re-delivers it (its
+        // `syncedAtMillis` lands within a millisecond of the watermark
+        // tracked for the next pull), so inserting one resurrects the very
+        // operation whose removal the operator just confirmed here — a
+        // notice that comes back every sync round, forever. It would also
+        // ask a device that never had the operation to confirm removing
+        // it. Updating an EXISTING row is still right: that is what raises
+        // the prompt in the first place.
+        if (existing == null && purged) continue;
         if (existing != null &&
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
@@ -944,6 +955,30 @@ class QsosRepository {
     await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid))).go();
   }
 
+  /// Removes every purged QSO whose operation no longer exists on this
+  /// device — QSOs whose own purge tombstone arrived after the operation
+  /// they belong to was already gone (removed here through the
+  /// received-purge confirmation, or hard-deleted by
+  /// `OperationsRepository.hardDeletePurged` after this device's own purge
+  /// synced). Nothing else can ever reach them: every other purge sweep is
+  /// keyed by an operation uuid that has to still be there to be found, so
+  /// without this they are unreclaimable — invisible (a purged QSO always
+  /// carries `deleted: true`, which every read filters on) yet growing the
+  /// database for the life of the install, with no operation left to name
+  /// them in any future sweep.
+  ///
+  /// Safe precisely because a QSO is only ever purged as part of its whole
+  /// operation ([purgeForOperation] is the only writer of `purged`): an
+  /// orphaned purged QSO always belongs to an operation someone confirmed
+  /// removing. Still gated on `synced`, so a local purge that hasn't
+  /// reached the server yet keeps its tombstone to push.
+  Future<int> hardDeletePurgedOrphans() async {
+    final liveOperations = db.selectOnly(db.operations)..addColumns([db.operations.uuid]);
+    return (db.delete(db.qsos)
+          ..where((q) => q.purged.equals(true) & q.synced.equals(true) & q.operation.isNotInQuery(liveOperations)))
+        .go();
+  }
+
   /// A copy of [qso] with a fresh revision stamp in its data — every local
   /// write goes through this so `data.updatedAtMillis` and the mirrored
   /// column never diverge (a divergent pair would make `markSynced`'s
@@ -1244,6 +1279,13 @@ class QsosRepository {
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
 
         final existing = existingByUuid[uuid];
+        // Never create a row from a purge tombstone — see
+        // `OperationsRepository.mergeFromSync` for why re-delivery makes
+        // this load-bearing. A QSO is only ever purged as part of its whole
+        // operation (`purgeForOperation` is the only writer), so a
+        // tombstone for a QSO this device doesn't have never stands for a
+        // contact worth keeping.
+        if (existing == null && purged) continue;
         if (existing != null &&
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,

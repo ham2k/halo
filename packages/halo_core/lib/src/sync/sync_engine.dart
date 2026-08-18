@@ -188,6 +188,11 @@ class SyncEngine {
   /// and reset once it moves — see `_processResponseMeta`.
   int _backfillLimitBoost = 1;
 
+  /// Whether this run has already swept orphaned purged QSOs
+  /// (`QsosRepository.hardDeletePurgedOrphans`) — see its call site for why
+  /// that sweep is not run on every round.
+  bool _sweptPurgedOrphans = false;
+
   /// True once the boost has hit its cap without the cursor moving: the
   /// loop then falls back to the ordinary delay instead of hammering the
   /// server with an identical full-page request at zero delay.
@@ -549,12 +554,28 @@ class SyncEngine {
       for (final uuid in purgedUuids) {
         await qsos.hardDeletePurgedForOperation(uuid);
       }
-
       final inboundOperations = (response['operations'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       final inboundQsos = (response['qsos'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       if (generation != _generation) return _abandonRound();
       final opWatermark = inboundOperations.isEmpty ? null : await operations.mergeFromSync(inboundOperations);
       final qsoWatermark = inboundQsos.isEmpty ? null : await qsos.mergeFromSync(inboundQsos);
+
+      // The QSOs the `hardDeletePurgedForOperation` loop above can no longer
+      // reach: their operation row is already gone (an earlier round's
+      // sweep, or an operator confirming a received purge) and their own
+      // purge tombstone only arrives in a later batch — so this runs AFTER
+      // the merge that can create one, not before it, or every orphan waits
+      // a whole round (and outlives a session that ends first).
+      //
+      // Gated, unlike the sweeps above: it scans the QSO table, which is the
+      // big one, and a small-batch round fires seconds after every logged
+      // QSO. An inbound purge tombstone is the only thing that can strand a
+      // new orphan, and the once-per-run pass picks up anything left by an
+      // earlier version or a round that never came back.
+      if (!_sweptPurgedOrphans || inboundQsos.any((q) => q['purged'] == true)) {
+        _sweptPurgedOrphans = true;
+        await qsos.hardDeletePurgedOrphans();
+      }
 
       if (generation != _generation) return _abandonRound();
       await _processResponseMeta(

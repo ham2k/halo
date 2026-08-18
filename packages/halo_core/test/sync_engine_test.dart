@@ -1172,4 +1172,56 @@ void main() {
       expect(authNoticeCount, 1, reason: 'there is real local data at risk, so this must still surface');
     });
   });
+
+  // A QSO's purge tombstone arrives in a later batch than the operation it
+  // belongs to, so it can land after that operation's row is already gone
+  // (the operator confirmed a received purge, or an earlier round's sweep
+  // removed it). Every other purge sweep takes an operation uuid that has to
+  // still exist to be found, so the round is the only place these can ever
+  // be reclaimed.
+  group('orphaned purged QSOs', () {
+    /// A purged, synced QSO whose operation row no longer exists.
+    Future<Qso> makeOrphan(String call) async {
+      final op = await operations.create(stationCall: 'KI2D/T');
+      final qso = await qsos.add(op.uuid, {'their': {'call': call}, 'startAtMillis': 1000});
+      await qsos.purgeForOperation(op.uuid);
+      await qsos.markSynced([(await qsos.get(qso.uuid))!]);
+      await operations.hardDeleteOperation(op.uuid);
+      return qso;
+    }
+
+    setUp(() {
+      transport.responder = (method, args) => {'account': {'uuid': 'acct-1'}};
+    });
+
+    test('a round reclaims orphans left behind by an earlier run', () async {
+      final orphan = await makeOrphan('W1AW');
+
+      await engine.runOneRound();
+
+      expect(await qsos.get(orphan.uuid), isNull);
+    });
+
+    test('the sweep does not run on every round — only an inbound purge can strand a new orphan', () async {
+      // The sweep scans the whole QSO table, and a small-batch round fires
+      // seconds after every logged QSO, so it is gated. Nothing but an
+      // inbound purge tombstone creates an orphan, and the once-per-run pass
+      // above has already been spent by this point.
+      await engine.runOneRound();
+      final orphan = await makeOrphan('W1AW');
+
+      await engine.runOneRound();
+      expect(await qsos.get(orphan.uuid), isNotNull, reason: 'nothing arrived that could have stranded anything');
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'qsos': [
+              {'uuid': 'inbound-qso', 'operation': 'gone-op', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+            ],
+          };
+      await engine.runOneRound();
+
+      expect(await qsos.get(orphan.uuid), isNull, reason: 'an inbound purge tombstone re-arms the sweep');
+    });
+  });
 }

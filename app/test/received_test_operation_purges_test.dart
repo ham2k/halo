@@ -39,8 +39,14 @@ void main() {
     final services = await buildServices();
     services.watchReceivedTestOperationPurges();
 
+    // The live record first: a purge tombstone on its own never creates a
+    // row (OperationsRepository.mergeFromSync), so a device only ever gets
+    // this notice for an operation it actually had.
     await services.operations.mergeFromSync([
-      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+    ]);
+    await services.operations.mergeFromSync([
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
     ]);
     await tester.pump();
 
@@ -61,8 +67,14 @@ void main() {
     final services = await buildServices();
     services.watchReceivedTestOperationPurges();
 
+    // The live record first: a purge tombstone on its own never creates a
+    // row (OperationsRepository.mergeFromSync), so a device only ever gets
+    // this notice for an operation it actually had.
     await services.operations.mergeFromSync([
-      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+    ]);
+    await services.operations.mergeFromSync([
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
     ]);
     await tester.pump();
     services.statusBar.dismissNotice(noticeKey);
@@ -90,8 +102,14 @@ void main() {
     final services = await buildServices();
     services.watchReceivedTestOperationPurges();
 
+    // The live record first: a purge tombstone on its own never creates a
+    // row (OperationsRepository.mergeFromSync), so a device only ever gets
+    // this notice for an operation it actually had.
     await services.operations.mergeFromSync([
-      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+    ]);
+    await services.operations.mergeFromSync([
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
     ]);
     // Synced normally, with no purged flag of its own — the gap this pins.
     await services.qsos.mergeFromSync([
@@ -110,8 +128,14 @@ void main() {
     final services = await buildServices();
     services.watchReceivedTestOperationPurges();
 
+    // The live record first: a purge tombstone on its own never creates a
+    // row (OperationsRepository.mergeFromSync), so a device only ever gets
+    // this notice for an operation it actually had.
     await services.operations.mergeFromSync([
-      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+    ]);
+    await services.operations.mergeFromSync([
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
     ]);
     await tester.pump();
 
@@ -136,5 +160,31 @@ void main() {
     expect(services.statusBar.activeNotices.where((n) => n.key == noticeKey), isNotEmpty,
         reason: 'cancelling — backing out after a look, the common case — must re-arm the notice, '
             'not leave it dismissed for the rest of the session');
+  });
+
+  testWidgets('a re-delivered purge tombstone does not bring the notice back after the operator removed it',
+      (tester) async {
+    // The server keeps a purged record for good and re-delivers it on later
+    // pulls, so a removal that only deletes local rows is undone within a
+    // round or two: the operation reappears and the notice with it, which is
+    // exactly what the operator just said no to.
+    final services = await buildServices();
+    services.watchReceivedTestOperationPurges();
+
+    await services.operations.mergeFromSync([
+      {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+    ]);
+    const tombstone = {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2};
+    await services.operations.mergeFromSync([tombstone]);
+    await tester.pump();
+
+    expect(await services.confirmReceivedTestOperationPurges(['remote-op']), (eligible: 1, removed: 1));
+    await tester.pump();
+
+    await services.operations.mergeFromSync([tombstone]);
+    await tester.pump();
+
+    expect(await services.operations.get('remote-op'), isNull);
+    expect(services.statusBar.activeNotices.where((n) => n.key == noticeKey), isEmpty);
   });
 }
