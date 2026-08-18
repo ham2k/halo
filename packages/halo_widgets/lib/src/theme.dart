@@ -27,6 +27,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'density.dart';
 import 'layout.dart';
@@ -358,6 +359,39 @@ const String emojiFontAssetPath = 'assets/fonts/NotoColorEmoji.ttf';
 /// A `TextStyle` for rendering a single emoji glyph (e.g. a DXCC entity's
 /// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace.
 TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fontFamily: emojiFontFamily);
+
+/// `MarkdownStyleSheet.fromTheme`, with [emojiFontFamily] added as a fallback
+/// to every block style that can carry running text.
+///
+/// Any markdown a user or an extension wrote can name a country with its flag,
+/// or open with a pictograph. Body text is Roboto, which resolves no emoji at
+/// all on web — CanvasKit shapes text itself and never reaches for an OS font
+/// — so without the fallback those glyphs are simply absent, with no error and
+/// nothing in the log.
+///
+/// Every heading level, the blockquote and both table styles are listed
+/// individually on purpose: `copyWith(p:)` reaches `li`, `pre` and `table`,
+/// which share the `p` style, and NOTHING else — so a flag in a heading or a
+/// table cell goes missing while the paragraph beside it renders.
+///
+/// [p] overrides the paragraph style before the fallback is applied, for the
+/// call sites that tint or weight their body text.
+MarkdownStyleSheet markdownStyleSheetWithEmoji(ThemeData theme, {TextStyle? p}) {
+  TextStyle? withEmoji(TextStyle? style) => style?.copyWith(fontFamilyFallback: const [emojiFontFamily]);
+  final base = MarkdownStyleSheet.fromTheme(theme);
+  return base.copyWith(
+    p: withEmoji(p ?? base.p),
+    h1: withEmoji(base.h1),
+    h2: withEmoji(base.h2),
+    h3: withEmoji(base.h3),
+    h4: withEmoji(base.h4),
+    h5: withEmoji(base.h5),
+    h6: withEmoji(base.h6),
+    blockquote: withEmoji(base.blockquote),
+    tableHead: withEmoji(base.tableHead),
+    tableBody: withEmoji(base.tableBody),
+  );
+}
 
 /// Height cap for dropdown overlays — [DropdownMenu.menuHeight] /
 /// [DropdownButton.menuMaxHeight]. Two limits, whichever is smaller: the

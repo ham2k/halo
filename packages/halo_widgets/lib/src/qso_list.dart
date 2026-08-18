@@ -1344,14 +1344,11 @@ _QsoListMetrics _computeMetrics({
   // line (HALO-258).
   final numberWidth = showQsoNumbers ? textWidth(context, formatNumber(maxNumber), mono) : 0.0;
   final callsignWidth = longestCall.isEmpty ? 0.0 : textWidth(context, longestCall, callStyle);
-  // On the image fallback (flagEmojiNeedsImageFallback), every flag renders
-  // at the same fixed SVG size regardless of which entity it is, so that's
-  // the width to reserve instead of measuring emoji glyph text.
-  final flagWidth = longestFlag.isEmpty
-      ? 0.0
-      : flagEmojiNeedsImageFallback
-          ? flagGlyphDefaultFontSize * 4 / 3
-          : textWidth(context, longestFlag, emojiStyle());
+  // Names the size the glyph actually paints at — qso_list's flagGlyph call
+  // takes the default, so measuring emojiStyle()'s own default instead would
+  // agree only by coincidence.
+  final flagWidth =
+      longestFlag.isEmpty ? 0.0 : textWidth(context, longestFlag, emojiStyle(fontSize: flagGlyphDefaultFontSize));
   final stateWidth = longestState.isEmpty ? 0.0 : textWidth(context, longestState, monoDim);
   final dxStateWidth = flagWidth > stateWidth ? flagWidth : stateWidth;
 

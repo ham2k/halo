@@ -17,7 +17,6 @@ dependencies:
   # publisher deep-compares nested maps, which foundation's mapEquals can't.
   collection: any
   flutter_markdown: ^0.7.0
-  flutter_svg: ^2.3.0
   intl: ^0.20.2
   # Same parser flutter_markdown uses, so InlineMarkdownText and MarkdownBody
   # agree on syntax instead of carrying two dialects. Already resolved here as

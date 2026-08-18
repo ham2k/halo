@@ -1178,7 +1178,8 @@ class _CommandDialogState extends State<CommandDialog> {
           Expanded(
             child: MarkdownBody(
               data: message,
-              styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+              styleSheet: markdownStyleSheetWithEmoji(
+                theme,
                 p: theme.textTheme.bodyMedium?.copyWith(
                   // The field's own size, in plain logical pixels — UiScale
                   // scales the whole tree (docs/design/ui-scaling.md); never

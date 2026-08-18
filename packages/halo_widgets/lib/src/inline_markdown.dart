@@ -78,10 +78,9 @@ class InlineMarkdownText extends StatefulWidget {
   /// enclosing row instead of being swallowed by an inert link.
   final InlineMarkdownOpenLink? onOpenLink;
 
-  /// Renders `![alt](uri)` images as inline spans. Pass
-  /// [flagMarkdownImageBuilder] at any site showing call-note or
-  /// scoring-summary text, which [flagsInMarkdown] may have rewritten into
-  /// `flag:` image references. Images are dropped when this is null.
+  /// Renders `![alt](uri)` images as inline spans. Images are dropped when
+  /// this is null, which is what a caller wants for markdown that carries no
+  /// images of its own — a call note, a scoring summary.
   final Widget Function(MarkdownImageConfig config)? imageBuilder;
 
   final int? maxLines;
@@ -492,8 +491,7 @@ void _appendBlockChildren(
 /// one line.
 int _headingFontSizeDelta(int level) => 6 - level * 2;
 
-/// An `![alt](uri)` image, sized from a `#WxH` fragment when there is one (which
-/// is how [flagsInMarkdown] carries the glyph size through).
+/// An `![alt](uri)` image, sized from a `#WxH` fragment when there is one.
 ///
 /// A `WidgetSpan` cannot carry a [GestureRecognizer] the way a [TextSpan] can,
 /// so an image inside a link gets its own detector — otherwise the image half

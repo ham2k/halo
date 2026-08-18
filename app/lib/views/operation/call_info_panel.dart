@@ -259,9 +259,8 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
         if (notes.isNotEmpty) ...[
           _sectionTitle(theme, t.notes),
           MarkdownBody(
-            data: flagsInMarkdown(notes.join('\n\n'), fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14),
-            sizedImageBuilder: flagMarkdownImageBuilder,
-            styleSheet: MarkdownStyleSheet.fromTheme(theme),
+            data: notes.join('\n\n'),
+            styleSheet: markdownStyleSheetWithEmoji(theme),
             // Stays a MarkdownBody — notes are joined with blank lines, so this
             // is genuinely a block.
             onTapLink: (_, href, _) {

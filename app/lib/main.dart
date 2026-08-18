@@ -410,9 +410,18 @@ void _openConfirmDevicePane(
 
 /// Forces the bundled color-emoji font's glyph data to load AND shape now,
 /// instead of on whichever `Text` — or text *measurement* — happens to need
-/// it first (see [bootstrap]'s call site). Never throws — a failed/slow
-/// warm-up just means the cost lands wherever it would have without this at
-/// all; not worth surfacing as a boot error over.
+/// it first (see [bootstrap]'s call site).
+///
+/// Never throws, but the report is not ceremony: every flag in the app is a
+/// glyph from this font and nothing renders one without it, so a load that
+/// fails takes the feature with it rather than merely moving a cost.
+///
+/// It detects only an ABSENT asset, which is the loud case. A font that is
+/// present and wrong — truncated, or a build with no flag glyphs — loads
+/// here without complaint, because FontLoader accepts bytes it cannot decode
+/// and `layout()` never throws for a missing glyph. That case is caught
+/// before it ships, by app/test/emoji_font_asset_test.dart reading the
+/// artifact, since at runtime it has no signal at all.
 Future<void> _preloadEmojiFont() async {
   try {
     // FontLoader needs the family name to register under (matching what

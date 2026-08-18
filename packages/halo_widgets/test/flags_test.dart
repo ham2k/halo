@@ -1,130 +1,69 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// flags.dart's Windows image fallback (APP-29) hinges on flagIconCode
-// decoding a flag emoji into flag-icons' filename vocabulary correctly — get
-// that wrong and either the fallback silently no-ops (still broken on
-// Windows) or points at a nonexistent asset. These tests pin the two shapes
-// DXCC flags actually take (a plain regional-indicator pair, and the
-// tag-sequence subdivision flags for England/Scotland/Wales/N. Ireland) and
-// the platform gate that decides whether the fallback engages at all.
+// A flag emoji composes into one glyph everywhere — but only in the bundled
+// color-emoji font. Left to the ambient text style it falls to Roboto, and
+// from there to whatever the platform substitutes: Segoe UI Emoji on Windows,
+// which has no flag glyphs and draws the bare letters "US", and nothing at all
+// on web. Applying emojiFontFamily IS the whole fix, and it is unconditional —
+// no platform branch — so these assert only that the font reaches the glyph.
 
-import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
-  group('flagIconCode', () {
-    test('decodes a regional-indicator pair into a lowercase ISO code', () {
-      expect(flagIconCode('🇺🇸'), 'us');
-      expect(flagIconCode('🇨🇦'), 'ca');
-    });
+  Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
-    // Black flag + Unicode tag characters (0xE0000-offset ASCII) spelling the
-    // subdivision code + the cancel tag (U+E007F) — built from code points
-    // rather than pasted, since the tag characters are invisible and a typo
-    // wouldn't be visible in source.
-    String tagFlag(String code) =>
-        String.fromCharCodes([0x1F3F4, ...code.codeUnits.map((c) => c + 0xE0000), 0xE007F]);
-
-    test('decodes England/Scotland/Wales/N. Ireland tag-sequence flags into flag-icons subdivision codes', () {
-      // Matches @ham2k/lib-dxcc-data's dxccByCode.json exactly (dxccCode 223,
-      // 279, 294, 265).
-      expect(flagIconCode(tagFlag('gbeng')), 'gb-eng');
-      expect(flagIconCode(tagFlag('gbsct')), 'gb-sct');
-      expect(flagIconCode(tagFlag('gbwls')), 'gb-wls');
-      expect(flagIconCode(tagFlag('gbnir')), 'gb-nir');
-    });
-
-    test('returns null for a non-flag emoji or an incomplete tag sequence', () {
-      expect(flagIconCode('🎉'), isNull);
-      expect(flagIconCode(''), isNull);
-      // A black flag with no tag sequence (or an unterminated one) at all —
-      // must not be mistaken for a subdivision flag.
-      expect(flagIconCode('🏴'), isNull);
-    });
-  });
+  // Built from code points rather than pasted: the tag characters are
+  // invisible, so a typo would not show in source.
+  String tagFlag(String code) =>
+      String.fromCharCodes([0x1F3F4, ...code.codeUnits.map((c) => c + 0xE0000), 0xE007F]);
 
   group('flagGlyph', () {
-    Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
+    testWidgets('renders the emoji in the bundled font', (tester) async {
+      await tester.pumpWidget(host(flagGlyph('🇺🇸')));
 
-    testWidgets('renders the emoji glyph directly off Windows', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-      try {
-        await tester.pumpWidget(host(flagGlyph('🇺🇸')));
-        expect(find.text('🇺🇸'), findsOneWidget);
-        expect(find.byType(SvgPicture), findsNothing);
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
+      // Without this the glyph is Roboto's, which resolves to letter boxes on
+      // Windows and to nothing on web — the bug this whole path exists to
+      // prevent, and invisible to a test that only looks for the string.
+      expect(tester.widget<Text>(find.text('🇺🇸')).style?.fontFamily, emojiFontFamily);
     });
 
-    testWidgets('renders the bundled SVG on Windows for a decodable flag', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-      try {
-        await tester.pumpWidget(host(flagGlyph('🇺🇸')));
-        expect(find.byType(SvgPicture), findsOneWidget);
-        expect(find.text('🇺🇸'), findsNothing);
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
+    testWidgets('a tag-sequence subdivision flag goes through the same path', (tester) async {
+      final england = tagFlag('gbeng');
+      await tester.pumpWidget(host(flagGlyph(england)));
+
+      expect(tester.widget<Text>(find.text(england)).style?.fontFamily, emojiFontFamily);
     });
 
-    testWidgets('still falls back to plain emoji text on Windows for a flag shape with no bundled SVG', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-      try {
-        await tester.pumpWidget(host(flagGlyph('🎉')));
-        expect(find.text('🎉'), findsOneWidget);
-        expect(find.byType(SvgPicture), findsNothing);
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
+    testWidgets('a non-flag pictograph is rendered too, not dropped', (tester) async {
+      // flagGlyph is the call note's leading-glyph renderer as well, so it
+      // must not assume its argument decodes as a flag at all.
+      await tester.pumpWidget(host(flagGlyph('🎉')));
+
+      expect(tester.widget<Text>(find.text('🎉')).style?.fontFamily, emojiFontFamily);
+    });
+
+    testWidgets('the requested size and glow reach the glyph', (tester) async {
+      await tester.pumpWidget(host(flagGlyph('🇺🇸', fontSize: 24, shadows: const [Shadow(blurRadius: 3)])));
+
+      final style = tester.widget<Text>(find.text('🇺🇸')).style;
+      expect(style?.fontSize, 24);
+      expect(style?.shadows, hasLength(1));
     });
   });
 
-  group('flagsInMarkdown', () {
-    test('leaves text unchanged off Windows', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-      try {
-        expect(flagsInMarkdown('Worked 🇺🇸 for a new one!'), 'Worked 🇺🇸 for a new one!');
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
-    });
+  group('flagSpan', () {
+    testWidgets('carries the surrounding style size into the glyph', (tester) async {
+      await tester.pumpWidget(host(Text.rich(TextSpan(children: [
+        flagSpan('🇺🇸', style: const TextStyle(fontSize: 20)),
+        const TextSpan(text: ' United States'),
+      ]))));
 
-    test('rewrites a flag emoji into a sized flag: image reference on Windows', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-      try {
-        expect(flagsInMarkdown('Worked 🇺🇸 for a new one!', fontSize: 12), 'Worked ![flag](flag:us#16x12) for a new one!');
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
-    });
-
-    test('leaves a flag shape with no bundled SVG untouched even on Windows', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-      try {
-        expect(flagsInMarkdown('🎉 congrats!'), '🎉 congrats!');
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
-    });
-  });
-
-  group('flagMarkdownImageBuilder', () {
-    test('renders the bundled SVG for a flag: uri', () {
-      final widget = flagMarkdownImageBuilder(
-        MarkdownImageConfig(uri: Uri.parse('flag:gb-eng'), width: 20, height: 15),
-      );
-      expect(widget, isA<SvgPicture>());
-    });
-
-    test('renders nothing for any other uri scheme', () {
-      final widget = flagMarkdownImageBuilder(MarkdownImageConfig(uri: Uri.parse('https://example.com/x.png')));
-      expect(widget, isA<SizedBox>());
+      final style = tester.widget<Text>(find.text('🇺🇸')).style;
+      expect(style?.fontFamily, emojiFontFamily);
+      expect(style?.fontSize, 20);
     });
   });
 }

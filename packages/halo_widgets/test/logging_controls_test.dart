@@ -1183,20 +1183,19 @@ void main() {
       expect(wraps.note.dy, lessThan(wraps.pill.dy), reason: 'and sit above them');
     });
 
-    // The imageSizes/placeholders pairing in _measureNoteWidth is unreachable
-    // on CI through flagsInMarkdown — it is a no-op unless the platform needs
-    // the flag fallback — so this note carries the image markup explicitly. A
-    // placeholder count that disagrees with the WidgetSpan count asserts inside
-    // TextPainter, and that assert is in the logging panel's build path.
-    testWidgets('a note carrying an image measures without a placeholder assert', (tester) async {
+    // A flag in the middle of a note is rendered as text, not rewritten into
+    // an image, so the note's style is the only thing that can resolve it —
+    // and Roboto resolves no emoji on web at all. Asserting the fallback
+    // rather than the glyph: a widget test cannot see which font painted.
+    testWidgets('a note carrying a flag styles it in the bundled emoji font', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
             radioService: tunedRadio,
-            key: const ValueKey('image-note'),
+            key: const ValueKey('flag-note'),
             operation: operation,
             qsosRepository: qsos,
-            lookup: guessLookup({'note': 'from ![flag](flag:us#19x14) with **love**'}),
+            lookup: guessLookup({'note': 'from 🇺🇸 with **love**'}),
             scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
                 {'notices': ['newDXCC'], 'alerts': <String>[]},
           ),
@@ -1207,7 +1206,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('love', findRichText: true), findsOneWidget);
+      // The note paints as spans (InlineMarkdownText), so the style rides the
+      // root TextSpan rather than a Text widget.
+      final note = find.textContaining('love', findRichText: true);
+      expect(note, findsOneWidget);
+      expect(tester.widget<RichText>(note).text.style?.fontFamilyFallback, contains(emojiFontFamily));
     });
 
     testWidgets('scoreQso notices render as line-3 pills', (tester) async {

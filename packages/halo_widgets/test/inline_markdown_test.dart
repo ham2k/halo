@@ -123,9 +123,10 @@ void main() {
       expect(inlineMarkdownLinkUrls('no links here'), isEmpty);
     });
 
-    // flagsInMarkdown rewrites flag emoji into `flag:` image references on the
-    // platforms that need the fallback; a span renderer that dropped them would
-    // silently lose every flag on Windows.
+    // No call site passes an imageBuilder today, so nothing else exercises
+    // this branch — but the `#WxH` sizing is the contract a future one would
+    // rely on, and a renderer that dropped the span would lose the image
+    // silently.
     test('renders an image through the builder, sized from its #WxH fragment', () {
       MarkdownImageConfig? seen;
       final spans = inlineMarkdownSpans(
@@ -142,9 +143,8 @@ void main() {
       expect(seen?.height, 9);
     });
 
-    // This is what flagsInMarkdown actually produces on Windows when a note's
-    // link label starts with a flag — it must stay one tappable link. Built
-    // WITH an imageBuilder, or the image span the defect lives in never exists.
+    // An image inside a link label must stay ONE tappable link. Built WITH an
+    // imageBuilder, or the image span the defect lives in never exists.
     test('handles an image nested inside a link label', () {
       const input = '[![flag](flag:us#19x14) QRZ](https://qrz.com/db/K1ABC)';
       expect(inlineMarkdownLinkUrls(input), ['https://qrz.com/db/K1ABC']);
