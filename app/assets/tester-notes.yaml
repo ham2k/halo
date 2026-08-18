@@ -6,10 +6,10 @@
 
 upcoming:
   changes:
+    - Listen for other apps (WSJT-X, N1MM+) in the "Imports" section of Operation view
     - "Worked-before contacts now suggest name/location from your own log (Call History lookup)"
     - Operation Info's Scoring section now breaks down activity/contest progress per day
     - "Android: plugging in a USB-serial CAT adapter now offers to open HaLo"
-    - "New Imports button: ADIF import, plus 'Listen for other apps' to capture QSOs from N1MM+/WSJT-X"
 
 "142":
   changes:
