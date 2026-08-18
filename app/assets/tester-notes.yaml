@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"143":
   changes:
     - Listen for other apps (WSJT-X, N1MM+) in the "Imports" section of Operation view
     - "Worked-before contacts now suggest name/location from your own log (Call History lookup)"
