@@ -27,6 +27,14 @@ void main() {
   Map<String, Object?> readConfig() =>
       (jsonDecode(File(configPath).readAsStringSync()) as Map).cast<String, Object?>();
 
+  /// Names a throwaway `--cache` alongside `--config`: without it the run
+  /// falls back to `defaultCacheDir()` and opens the DEVELOPER'S own
+  /// reference database — see account_test.dart's own `run` for what that
+  /// costs. `--config` alone is deliberately still exercised below by the
+  /// tests about `--config` itself, which pass their own argument lists.
+  Future<int> run(List<String> args) =>
+      runHaloExt(['--config', configPath, '--cache', '${temp.path}/cache', ...args]);
+
   group('the environment overrides one run, never the file', () {
     test('a HALO_SETTING_ override is not written back by an unrelated save', () {
       // Same rule the secrets already followed. Without it, one
@@ -54,14 +62,18 @@ void main() {
     test('a writer may CREATE the file it was pointed at', () async {
       // `--config ci.json account set …` is the documented CI path. Requiring
       // the file to exist first made it impossible to ever produce one.
-      expect(await runHaloExt(['--config', configPath, 'account', 'set', 'qrz', 'username=N0DEV']), 0);
+      expect(await run(['account', 'set', 'qrz', 'username=N0DEV']), 0);
       expect(File(configPath).existsSync(), isTrue);
     });
 
     test('a reader still refuses a path that is not there', () async {
       // The typo guard: proceeding with empty credentials looks exactly like
       // an extension that has none.
-      expect(await runHaloExt(['--config', '${temp.path}/nope.json', 'account', 'list']), 2);
+      expect(
+        await runHaloExt(
+            ['--config', '${temp.path}/nope.json', '--cache', '${temp.path}/cache', 'account', 'list']),
+        2,
+      );
     });
 
     test('a config that is not a JSON object is a config error, not a crash', () {
@@ -90,7 +102,7 @@ void main() {
 
     test('on the command line', () async {
       final stored = File(configPath)..writeAsStringSync('{}');
-      expect(await runHaloExt(['--config', configPath, 'account', 'set', 'qrz', 'passwrod=hunter2']), 2);
+      expect(await run(['account', 'set', 'qrz', 'passwrod=hunter2']), 2);
       expect(stored.readAsStringSync(), isNot(contains('passwrod')));
     });
 

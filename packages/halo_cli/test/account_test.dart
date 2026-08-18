@@ -27,7 +27,15 @@ void main() {
   });
   tearDown(() => temp.deleteSync(recursive: true));
 
-  Future<int> run(List<String> args) => runHaloExt(['--config', configPath, ...args]);
+  /// Every invocation names a throwaway `--cache` as well as a `--config`.
+  /// Without it the run falls back to `defaultCacheDir()` — the DEVELOPER'S
+  /// own `~/.cache/ham2k/halo-cli` — and opens the reference database there.
+  /// A machine whose cache a newer build has already migrated then fails
+  /// every test here on a schema error, with nothing in the failure naming
+  /// the cache as the reason. It is also a real file this suite would
+  /// otherwise create and leave behind on a machine that has never synced.
+  Future<int> run(List<String> args) =>
+      runHaloExt(['--config', configPath, '--cache', '${temp.path}/cache', ...args]);
 
   Map<String, Object?> storedFor(String kvKey) {
     final json = jsonDecode(File(configPath).readAsStringSync()) as Map<String, Object?>;
