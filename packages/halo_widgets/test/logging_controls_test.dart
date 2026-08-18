@@ -932,28 +932,40 @@ void main() {
     expect(logged, isEmpty);
   });
 
-  testWidgets('a field with both "//" and "," logs via stacking, not as a comma list — "//" takes priority', (tester) async {
+  testWidgets('call stacking: a stacked segment that is a comma list logs every call in it', (tester) async {
+    // "W1AW//K1ABC,N2XYZ" splits into "W1AW" and "K1ABC,N2XYZ"; the cursor
+    // sits in the second. That segment is the shape a mid-stack note
+    // expansion leaves behind, so it has to log as a list rather than be
+    // skipped for failing looksLikeCallsign whole — otherwise an operator
+    // could expand a key and then never log what it expanded to.
     await tester.pumpWidget(host());
 
-    // "W1AW//K1ABC,N2XYZ": _pickStackedCall only ever splits on "//", so
-    // there are exactly two segments — "W1AW" and "K1ABC,N2XYZ" (the call
-    // field's own formatter strips spaces, so no space survives after the
-    // comma either way). Cursor at the end sits in the second segment,
-    // which fails looksLikeCallsign whole (it's not a single callsign,
-    // it's comma-joined text), so the scan falls back to "W1AW" — one QSO
-    // logged via stacking, not a comma-list batch.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW//K1ABC,N2XYZ');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
-    final logged = await waitForQsos(tester, 1);
-    expect(logged, hasLength(1));
-    expect(logged.single.theirCall, 'W1AW');
+    final logged = await waitForQsos(tester, 2);
+    expect(logged.map((q) => q.theirCall).toList(), ['K1ABC', 'N2XYZ']);
 
-    // The remainder (the other stacked segment, still comma-joined) stays
-    // in the field — comma-list logic never engaged for this Enter press.
+    // Only the picked segment leaves the field; the rest of the stack stays.
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-    expect(callField.controller!.text, 'K1ABC,N2XYZ');
+    expect(callField.controller!.text, 'W1AW');
+  });
+
+  testWidgets('call stacking: a stacked segment with any implausible entry is skipped, not logged', (tester) async {
+    // The comma list a segment holds is all-or-nothing, same rule a
+    // top-level list follows — a half-typed second call must not drag the
+    // segment into logging, it must fall back to scanning left.
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW//K1ABC,QQQ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'K1ABC,QQQ');
   });
 
   testWidgets('editing a QSO with a comma-separated call list updates the original and adds new QSOs for the rest', (tester) async {
@@ -6267,6 +6279,272 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     final logged = await waitForQsos(tester, 2);
     expect(logged.map((q) => q.theirCall).toSet(), {'WD4DAN', 'WD4JMM'});
+  });
+
+  group('note expansion inside a call stack', () {
+    // A note key stacked alongside other calls ("KI2D//DAN") never reaches
+    // command interpretation as a whole-field command — the field isn't
+    // "//DAN", it's a stack. The panel asks the same hook about just the
+    // segment under the cursor and splices the answer back into it, so
+    // Enter expands and the NEXT Enter logs.
+    Future<Map<String, dynamic>?> fakeExpandCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != '//DAN') return null;
+      return {
+        'describe': 'Expand to WD4DAN,WD4JMM?',
+        'commands': [
+          {
+            'setCallField': {'text': 'WD4DAN,WD4JMM'},
+          },
+        ],
+      };
+    }
+
+    TextField callField(WidgetTester tester) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+
+    testWidgets('Enter expands the segment under the cursor and logs nothing', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Only the one segment is replaced — the call already stacked ahead of
+      // it survives untouched, which a whole-field setCallField would wipe.
+      expect(callField(tester).controller!.text, 'KI2D//WD4DAN,WD4JMM');
+      expect(await waitForQsos(tester, 1), isEmpty);
+
+      // The cursor has to land back on the expanded segment: stacking picks
+      // the segment the cursor is in, so anywhere else and the next Enter
+      // would log KI2D instead of what was just expanded.
+      expect(callField(tester).controller!.selection.baseOffset, 'KI2D//WD4DAN,WD4JMM'.length);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 2);
+      expect(logged.map((q) => q.theirCall).toList(), ['WD4DAN', 'WD4JMM']);
+      expect(callField(tester).controller!.text, 'KI2D');
+    });
+
+    testWidgets('a stacked segment with no note of its own logs the ordinary way', (tester) async {
+      // The expansion probe runs on every stacked Enter; when the hook
+      // declines, stacking has to proceed exactly as before rather than
+      // swallowing the keypress.
+      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+      expect(callField(tester).controller!.text, 'KI2D');
+    });
+
+    testWidgets('the expansion is previewed while typing, before Enter', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+
+      expect(find.textContaining('Expand to WD4DAN,WD4JMM?'), findsOneWidget);
+    });
+
+    testWidgets('the expanded field keeps focus, so the next Enter still knows which segment', (tester) async {
+      // An unfocused field reports NO selection, and the no-selection
+      // fallback is the last segment — in a three-segment stack that is a
+      // different call than the one just expanded, so the second Enter would
+      // log the wrong QSO entirely.
+      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN//W1AW');
+      // Put the cursor in the middle segment, the one holding the key.
+      callField(tester).controller!.selection = const TextSelection.collapsed(offset: 9);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(callField(tester).controller!.text, 'KI2D//WD4DAN,WD4JMM//W1AW');
+      expect(callField(tester).focusNode!.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 2);
+      expect(logged.map((q) => q.theirCall).toList(), ['WD4DAN', 'WD4JMM']);
+      expect(callField(tester).controller!.text, 'KI2D//W1AW');
+    });
+
+    testWidgets('nothing is asked to EXECUTE for a stacked call that expands to nothing', (tester) async {
+      // The probe runs on every stacked Enter, ordinary calls included. An
+      // execute-time interpretation is allowed side effects of its own (a
+      // network fetch, a batch of generated QSOs), so a speculative one whose
+      // answer is then thrown away is a real action nobody asked for.
+      final executed = <String>[];
+      Future<Map<String, dynamic>?> recording(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
+        if (execute) executed.add(input.trim().toUpperCase());
+        return fakeExpandCommand(input, operation, qso, execute);
+      }
+
+      await tester.pumpWidget(host(interpretCommand: recording));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await waitForQsos(tester, 1);
+      expect(executed, isEmpty);
+
+      // ...but a segment that DOES expand still gets the executable
+      // interpretation, whose `commands` are the real ones — a hook is free
+      // to leave the preview's cheap.
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(executed, ['//DAN']);
+    });
+
+    testWidgets('a cursor moved while the hook answers cannot make the splice land on another segment', (tester) async {
+      // The probe is a JS runtime round trip; a click or arrow key during it
+      // moves the cursor without touching the text, so a staleness guard that
+      // only compares text would let the answer for one segment overwrite a
+      // completely different call.
+      final gate = Completer<void>();
+      Future<Map<String, dynamic>?> slowExpand(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
+        if (input.trim().toUpperCase() == '//DAN') await gate.future;
+        return fakeExpandCommand(input, operation, qso, execute);
+      }
+
+      await tester.pumpWidget(host(interpretCommand: slowExpand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DAN//W1AW');
+      callField(tester).controller!.selection = const TextSelection.collapsed(offset: 3); // in "DAN"
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      // The operator clicks into the other segment while the hook is thinking.
+      callField(tester).controller!.selection = const TextSelection.collapsed(offset: 9);
+      await tester.pump();
+      gate.complete();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(callField(tester).controller!.text, 'WD4DAN,WD4JMM//W1AW');
+    });
+
+    group('a key that is also a real callsign', () {
+      // The escape hatch. A stacked segment's "//" is a separator, not the
+      // operator asking to expand — so a note keyed on a real callsign would
+      // otherwise capture that station forever: Enter expands, deleting what
+      // the expansion added and pressing Enter expands again, and the call
+      // can never be logged on its own.
+      Future<Map<String, dynamic>?> expandsW1AW(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
+        if (input.trim().toUpperCase() != '//W1AW') return null;
+        return {
+          'describe': 'Expand to W1AW,W1AX?',
+          'commands': [
+            {
+              'setCallField': {'text': 'W1AW,W1AX'},
+            },
+          ],
+        };
+      }
+
+      testWidgets('taking the expansion back and pressing Enter again logs the call itself', (tester) async {
+        await tester.pumpWidget(host(interpretCommand: expandsW1AW));
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(callField(tester).controller!.text, 'K1ABC//W1AW,W1AX');
+
+        // The operator deletes what the expansion added, putting the segment
+        // back exactly as typed, and submits again.
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pump();
+
+        // ...and is not offered the same expansion a second time, which
+        // would contradict what Enter is now about to do.
+        expect(find.textContaining('Expand to'), findsNothing);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 2);
+        expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+        expect(callField(tester).controller!.text, 'K1ABC');
+      });
+
+      testWidgets('the hatch lasts only for the entry it was used on', (tester) async {
+        // Spent state belongs to the draft, not the session — the next
+        // contact typing the same key must get its expansion.
+        await tester.pumpWidget(host(interpretCommand: expandsW1AW));
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await waitForQsos(tester, 1);
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N2XYZ//W1AW');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(callField(tester).controller!.text, 'N2XYZ//W1AW,W1AX');
+      });
+    });
+
+    testWidgets('a repeated Enter racing the probe logs one QSO, not two', (tester) async {
+      // Key auto-repeat fires well inside an extension round trip, and the
+      // probe now sits between _log's entry guard and the point it commits to
+      // logging — so both presses can be inside that window at once.
+      final gate = Completer<void>();
+      Future<Map<String, dynamic>?> slowExpand(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
+        if (input.trim().startsWith('//')) await gate.future;
+        return null; // nothing expands — this Enter is an ordinary stacked log
+      }
+
+      await tester.pumpWidget(host(interpretCommand: slowExpand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      gate.complete();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final logged = await waitForQsos(tester, 2);
+      expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+    });
   });
 
   testWidgets('a callsign note takes the name slot on the call-info line', (tester) async {

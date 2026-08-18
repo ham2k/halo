@@ -22,6 +22,11 @@
 //    _pickStackedCall) — without that, a note key that's itself a valid
 //    callsign (the common case) would also read as a stacked call, racing
 //    the expand command with a real lookup/score for the key.
+//    A key stacked ALONGSIDE other calls ("KI2D//1AB") never reaches this
+//    hook as a whole-field command; the call field asks again with just the
+//    segment under the cursor ("//1AB") and splices the answer back into
+//    that segment (logging_controls.dart's _expandStackedNote), so nothing
+//    here needs to know about stacks.
 //  - `callNotes`: in-runtime directory of the noted calls, for other
 //    extensions (see DirectoryHook below).
 //  - `settingsPanel` (HALO-53): lets the operator disable a builtin source

@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Callsign-note keys now expand inside a stack too, e.g. "KI2D//1AB"
+
 "143":
   changes:
     - Listen for other apps (WSJT-X, N1MM+) in the "Imports" section of Operation view

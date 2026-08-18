@@ -1071,6 +1071,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
+  /// The mid-stack expansion input ("//W1AW") already spent on the draft
+  /// being composed — a key expands AT MOST ONCE per entry.
+  ///
+  /// The escape hatch for a note key that is also a real callsign, the
+  /// common case for a stacked segment: without it, restoring the segment
+  /// to the key (deleting what the expansion added) and pressing Enter just
+  /// expands it again, so that station could never be logged on its own. A
+  /// whole-field "//KEY" needs no such hatch and doesn't consult this —
+  /// there the "//" is the operator explicitly asking to expand, where in a
+  /// stack it's only the separator between calls.
+  ///
+  /// Reset wherever the draft itself is (log/wipe, the field emptying, a QSO
+  /// context being populated), so the same key expands freely on the next
+  /// entry — never on a mere keystroke, which would defeat the hatch by
+  /// forgetting the expansion the operator just undid.
+  String? _lastExpandedInput;
+
   Timer? _executeMessageTimer;
   String? _commandMessage;
   final Map<String, dynamic> _currentQsoExtra = {};
@@ -2298,6 +2315,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // callsign.
     _currentInterpretation = null;
     _retainedInterpretation = null;
+    _lastExpandedInput = null;
     _commandMessage = null;
   }
 
@@ -2503,6 +2521,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _commandMessage = null;
       _currentInterpretation = null;
       _retainedInterpretation = null;
+      _lastExpandedInput = null;
     });
     _populating = false;
   }
@@ -2612,8 +2631,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// Every callsign the field currently holds, under either multi-call
-  /// syntax: the comma-separated list, or the "//" stack's segments (which
-  /// take priority, per [_callAtCursor]).
+  /// syntax: the comma-separated list, or the "//" stack's segments — each
+  /// of which may itself be a comma list ("KI2D//W1AB,W1AC"), so a stack is
+  /// split on both separators, not just "//".
   ///
   /// This is what tells a call being CORRECTED — it leaves the field — from
   /// one merely being typed alongside others, which moves the cursor off it
@@ -2621,8 +2641,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [_scheduleLookup].
   Iterable<String> get _callsInField {
     final text = _callController.text;
-    final separator = _isCallStackField ? '//' : ',';
-    return text.split(separator).map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty);
+    final segments = _isCallStackField ? text.split('//') : [text];
+    return segments
+        .expand((segment) => segment.split(','))
+        .map((s) => s.trim().toUpperCase())
+        .where((s) => s.isNotEmpty);
   }
 
   /// The single call that's actually relevant right now — the whole field
@@ -2637,11 +2660,39 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   String get _callAtCursor {
     final text = _callController.text;
     if (_isCallStackField) {
-      return _pickStackedCall()?.call ?? _call;
+      final picked = _pickStackedCall();
+      if (picked == null) return _call;
+      // A stacked segment can itself be a comma list ("KI2D//W1AB,W1AC") —
+      // follow the cursor inside it exactly as a top-level list does, but
+      // only when the cursor is actually in that segment: the scan-left
+      // fallback picks a segment the cursor never entered, and there the
+      // first call is the best answer available.
+      final stack = _stackSegments();
+      if (picked.index == stack.cursorIndex) {
+        // Floored at 0, but only once there IS a selection: a cursor parked
+        // between the two slashes belongs to the segment that follows, and a
+        // bare subtraction would hand over a negative offset, which reads as
+        // "no selection" and picks the segment's LAST comma entry instead of
+        // its first. A genuinely unfocused field keeps its own negative
+        // offset, where that last-entry fallback is the intended answer.
+        final cursor = _callController.selection.baseOffset;
+        return _commaSegmentAtCursor(
+          stack.segments[picked.index],
+          cursor < 0 ? cursor : math.max(0, cursor - stack.starts[picked.index]),
+        );
+      }
+      return picked.calls.first;
     }
-    if (!text.contains(',')) return _call;
+    return _commaSegmentAtCursor(text, _callController.selection.baseOffset);
+  }
+
+  /// The comma-separated segment of [text] that [cursor] — an offset into
+  /// [text] — sits in, uppercased and trimmed. A cursor outside the text
+  /// (negative, i.e. no selection) falls back to the LAST segment, the one
+  /// an unfocused field was most recently typing into.
+  String _commaSegmentAtCursor(String text, int cursor) {
+    if (!text.contains(',')) return text.trim().toUpperCase();
     final segments = text.split(',');
-    final cursor = _callController.selection.baseOffset;
     var index = segments.length - 1;
     if (cursor >= 0) {
       var offset = 0;
@@ -2655,6 +2706,33 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
     }
     return segments[index].trim().toUpperCase();
+  }
+
+  /// The "//"-separated segments of the call field, each one's start offset
+  /// in the field text, and the index of the segment holding the cursor
+  /// (the last segment when there is no selection). The single place that
+  /// locates the cursor within a stack, so stacking, the cursor's own call
+  /// and mid-stack note expansion can't disagree about which segment the
+  /// operator is on.
+  ({List<String> segments, List<int> starts, int cursorIndex}) _stackSegments() {
+    final segments = _callController.text.split('//');
+    final starts = <int>[];
+    var offset = 0;
+    for (final segment in segments) {
+      starts.add(offset);
+      offset += segment.length + 2; // the "//" separator
+    }
+    final cursor = _callController.selection.baseOffset;
+    var cursorIndex = segments.length - 1;
+    if (cursor >= 0) {
+      for (var i = 0; i < segments.length; i++) {
+        if (cursor <= starts[i] + segments[i].length) {
+          cursorIndex = i;
+          break;
+        }
+      }
+    }
+    return (segments: segments, starts: starts, cursorIndex: cursorIndex);
   }
 
   double? get _freq => parseFreq(_freqController.text);
@@ -2696,45 +2774,132 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Call stacking (issue #7): the call field holds "//"-separated calls or
   /// fragments (e.g. "K1ABC//W1AW" — a second call typed in while the first
   /// is still queued up). Scanning left from the cursor, picks the first
-  /// segment that's a valid callsign and returns it alongside the remaining
+  /// segment that reads as a callsign — or as a comma-separated list of
+  /// them, the shape a mid-stack note expansion leaves behind
+  /// ("KI2D//W1AB,W1AC") — and returns its calls alongside the remaining
   /// segments (still "//"-joined) to leave in the field for the next QSO.
-  /// Only applies to new QSOs, not editing an existing one. Takes priority
-  /// over the comma-separated call list (issue #7) — a field can't
-  /// meaningfully be both a stack and a list at once, and "//" is the more
-  /// specific syntax.
+  /// Every call in the picked segment logs, exactly as a top-level comma
+  /// list does; the segment leaves the field either way. Only applies to
+  /// new QSOs, not editing an existing one.
   ///
   /// Never fires for a field that STARTS with "//" — that's note-expansion
   /// syntax (issue #17), not a stack, and a note key is usually itself a
   /// valid-looking callsign (e.g. `//W1AW`), which would otherwise make this
   /// pick W1AW as a real candidate to log while the expand command is also
   /// live on the same input. See [_isCallStackField].
-  ({String call, String remainder})? _pickStackedCall() {
+  ({List<String> calls, String remainder, int index})? _pickStackedCall() {
     if (!_isCallStackField) return null;
-    final text = _callController.text;
-    final segments = text.split('//');
-
-    final cursor = _callController.selection.baseOffset;
-    var cursorSegment = segments.length - 1;
-    if (cursor >= 0) {
-      var offset = 0;
-      for (var i = 0; i < segments.length; i++) {
-        offset += segments[i].length;
-        if (cursor <= offset) {
-          cursorSegment = i;
-          break;
-        }
-        offset += 2; // the "//" separator
-      }
-    }
-
-    for (var i = cursorSegment; i >= 0; i--) {
-      final candidate = segments[i].trim().toUpperCase();
-      if (looksLikeCallsign(candidate)) {
-        final remainder = [...segments]..removeAt(i);
-        return (call: candidate, remainder: remainder.join('//'));
+    final stack = _stackSegments();
+    for (var i = stack.cursorIndex; i >= 0; i--) {
+      final calls = stack.segments[i]
+          .split(',')
+          .map((s) => s.trim().toUpperCase())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (calls.isNotEmpty && calls.every(looksLikeCallsign)) {
+        final remainder = [...stack.segments]..removeAt(i);
+        return (calls: calls, remainder: remainder.join('//'), index: i);
       }
     }
     return null;
+  }
+
+  /// Note expansion inside a stack (issue #17 × issue #7): asks the command
+  /// hooks to expand the segment under the cursor, and splices the result
+  /// back into just that segment — "KI2D//1AB" becomes "KI2D//W1AB,W1AC",
+  /// which the NEXT Enter logs as a stacked call list. Returns whether it
+  /// expanded anything, in which case this Enter logs nothing at all.
+  ///
+  /// A whole-field "//KEY" never reaches here: it isn't a stack
+  /// ([_isCallStackField]), and [_log]'s ordinary command path already
+  /// interprets it and replaces the field wholesale. This exists because
+  /// that path only ever sees the WHOLE field, so a key stacked alongside
+  /// other calls would never be offered for expansion at all.
+  Future<bool> _expandStackedNote() async {
+    if (widget.editingQso != null || widget.interpretCommand == null || !_isCallStackField) return false;
+    // Captured BEFORE the round trips below and reused for the splice, never
+    // recomputed after them: the cursor can move without the text changing
+    // (a click, an arrow key), and offsets taken afterwards would splice the
+    // answer for the segment the hook was asked about into whichever segment
+    // the cursor had since wandered into — destroying a call that was never
+    // part of this expansion.
+    final stack = _stackSegments();
+    final input = _expansionInputFor(stack);
+    if (input == null) return false;
+    final before = _callController.text;
+    final qsoData = _getCurrentQsoData();
+
+    // Preview first (`execute: false`), same discipline as the whole-field
+    // command path: this probe runs on EVERY stacked Enter, the ordinary
+    // "K1ABC//W1AW" that expands nothing included, and an execute-time
+    // interpretation is allowed side effects of its own — a network fetch, a
+    // batch of generated QSOs (see CommandHook.interpret's `execute` doc).
+    // Only once the preview says this really is an expansion is it worth
+    // asking for the executable one, whose `commands` are the real ones.
+    final preview = await widget.interpretCommand!(input, _operationDataForCommands, qsoData);
+    if (!mounted || _callController.text != before) return false;
+    if (_expandedCallText(preview) == null) return false;
+
+    final executable = await widget.interpretCommand!(input, _operationDataForCommands, qsoData, true);
+    // Stale — the field changed while awaiting a JS runtime round trip, so
+    // the captured segment offsets no longer describe this text.
+    if (!mounted || _callController.text != before) return false;
+    final text = _expandedCallText(executable);
+    if (text == null) return false;
+
+    final segments = [...stack.segments];
+    segments[stack.cursorIndex] = text;
+    // The cursor stays on the segment it expanded, at its end — that's the
+    // segment the next Enter has to pick, and [_pickStackedCall] reads the
+    // cursor to decide. Focus goes with it for the same reason: an unfocused
+    // field reports no selection at all, and the fallback there is the LAST
+    // segment, which in a three-segment stack is a different call entirely.
+    _callController.value = TextEditingValue(
+      text: segments.join('//'),
+      selection: TextSelection.collapsed(offset: stack.starts[stack.cursorIndex] + text.length),
+    );
+    _callFocus.requestFocus();
+    _lastExpandedInput = input;
+    return true;
+  }
+
+  /// The command input that would expand [stack]'s cursor segment ("//1AB"),
+  /// or null when that segment is empty. Split out so the Enter path can ask
+  /// about the segments it captured before its own awaits, while the typing
+  /// preview asks about the live ones.
+  String? _expansionInputFor(({List<String> segments, List<int> starts, int cursorIndex}) stack) {
+    final key = stack.segments[stack.cursorIndex].trim();
+    if (key.isEmpty) return null;
+    final input = '//$key';
+    // Already spent on this draft — see [_lastExpandedInput]. Checked here,
+    // in the one place both the Enter path and the typing preview build
+    // their input, so the preview can't go on offering an expansion Enter
+    // will no longer perform.
+    return input == _lastExpandedInput ? null : input;
+  }
+
+  /// The command input that would expand the stacked segment under the
+  /// cursor right now, or null when the field isn't a stack, no command
+  /// hooks are wired, or the cursor sits on an empty segment.
+  String? get _stackExpansionInput {
+    if (widget.editingQso != null || widget.interpretCommand == null) return null;
+    if (!_isCallStackField) return null;
+    return _expansionInputFor(_stackSegments());
+  }
+
+  /// The replacement text an interpretation's `setCallField` action carries,
+  /// or null for anything else. Only that one action can be spliced into a
+  /// single stacked segment; every other action is field-wide (or has
+  /// nothing to do with the call field at all) and stays the whole-field
+  /// command path's business.
+  String? _expandedCallText(Map<String, dynamic>? interpretation) {
+    if (interpretation == null || interpretation['error'] is String) return null;
+    final commands = interpretation['commands'];
+    if (commands is! List || commands.length != 1) return null;
+    final action = commands.single;
+    if (action is! Map || action['setCallField'] is! Map) return null;
+    final text = (action['setCallField'] as Map)['text'];
+    return (text is String && text.trim().isNotEmpty) ? text : null;
   }
 
   void _onFreqChanged() {
@@ -6243,6 +6408,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           _lookupResult = null;
           _refreshedActivityControls = null;
           _retainedInterpretation = null;
+          _lastExpandedInput = null;
         });
       }
       return;
@@ -6251,6 +6417,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Command shortcuts only apply while composing a new QSO — see _log().
     if (widget.editingQso == null && widget.interpretCommand != null) {
       final rawInput = _commandInput;
+      final expansionInput = _stackExpansionInput;
       _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
         final qsoData = _getCurrentQsoData();
         final result = await widget.interpretCommand!(
@@ -6260,6 +6427,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         );
         if (!mounted || _call != call) return;
         _applyInterpretationResult(result);
+        // A key stacked alongside other calls ("KI2D//1AB") is never a
+        // command in its own right, so the whole-field interpretation above
+        // came back null — preview what Enter would expand the segment
+        // under the cursor to (see [_expandStackedNote]). Only the describe
+        // MESSAGE is adopted, never the interpretation itself: `_log`
+        // executes a retained interpretation against the whole field, which
+        // would replace the entire stack instead of the one segment.
+        if (result != null || expansionInput == null) return;
+        final expansion = await widget.interpretCommand!(
+          expansionInput,
+          _operationDataForCommands,
+          qsoData,
+        );
+        if (!mounted || _call != call || _stackExpansionInput != expansionInput) return;
+        if (_expandedCallText(expansion) == null) return;
+        setState(() {
+          _commandMessage = expansion!['describe'] as String?;
+        });
+        _notifyCommandMessage(_commandMessage);
       });
     }
 
@@ -6510,6 +6696,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _commandMessage = null;
       _currentInterpretation = null;
       _retainedInterpretation = null;
+      _lastExpandedInput = null;
     });
     _notifyCommandMessage(null);
   }
@@ -6802,6 +6989,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
     }
 
+    // Note expansion inside a stack (see [_expandStackedNote]): "KI2D//1AB"
+    // becomes "KI2D//W1AB,W1AC" and logs NOTHING this time round. Placed
+    // above every gate below, including the band/frequency one, because an
+    // expansion writes no QSO — there is nothing yet for a missing band to
+    // spoil, and refusing here would leave the operator unable to even see
+    // what the key expands to.
+    if (await _expandStackedNote()) return;
+    // That probe is a real suspension point (a JS runtime round trip) sitting
+    // between the entry guard and `_isLogging = true` below — so a repeated
+    // Enter that cleared the entry guard before it can now be inside the very
+    // same window, and both would go on to log the same QSO. Exactly the race
+    // the command path above re-checks for, for exactly the same reason: key
+    // auto-repeat fires well inside an extension round trip.
+    if (!mounted || _isLogging || _call != call) return;
+
     final editingQso = widget.editingQso;
 
     // Viewing a deleted QSO: the save button is disabled, but Enter is
@@ -6875,40 +7077,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return;
     }
 
-    // Call stacking (issue #7): "//" picks one callsign out of the stack and
-    // logs just that one. No information carries over between stacked
-    // calls — this wipes exactly like an ordinary log (refs, notes,
-    // overrides, RSTs, manual time all reset), then restores the rest of
-    // the stack into the now-empty call field, same as if the operator had
-    // just typed it. Only while composing a new QSO — same restriction as
-    // command shortcuts above.
-    if (editingQso == null) {
-      final stacked = _pickStackedCall();
-      if (stacked != null) {
-        _isLogging = true;
-        try {
-          if (_vfoDebounce != null) {
-            _vfoDebounce!.cancel();
-            _vfoDebounce = null;
-            _pushVfoToRadioService();
-          }
-          final qso = await widget.qsosRepository.add(
-            widget.operation.uuid,
-            await _decorated(_getCurrentQsoData(callOverride: stacked.call)),
-            serialSequences: _serialSequences,
-          );
-          widget.onLogged?.call(qso);
-          widget.enqueueLookup?.call(qso);
-
-          _wipe();
-          _callController.text = stacked.remainder;
-        } finally {
-          _isLogging = false;
-        }
-        return;
-      }
-    }
-
     if (!_canLog) {
       _callFocus.requestFocus();
       return;
@@ -6920,9 +7088,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // after the last (issue #7) — a single call is just a one-item list,
       // so `baseData`'s own startAtMillis/editingQso.startAtMillis is
       // preserved exactly for that common case.
-      final calls = _callList;
+      //
+      // Call stacking (issue #7) feeds the same path: "//" picks ONE segment
+      // out of the stack (which may itself be a comma list) and logs only
+      // its calls, then leaves the rest of the stack in the field below.
+      // Everything else is identical to a typed list, deliberately — no
+      // information carries over between stacked calls either way.
+      final stacked = editingQso == null ? _pickStackedCall() : null;
+      final calls = stacked?.calls ?? _callList;
       final isList = calls.length > 1;
-      final baseData = _getCurrentQsoData();
+      // `their.call` for the whole batch comes from `dataFor` below, but the
+      // cached lookup only rides along when `_getCurrentQsoData` is asked
+      // about the call it was made for — the raw stacked field text never
+      // matches it.
+      final baseData = _getCurrentQsoData(callOverride: stacked?.calls.first);
       final baseStartAtMillis =
           (baseData['startAtMillis'] as int?) ?? nowMillis();
 
@@ -6998,6 +7177,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           widget.enqueueLookup?.call(qso);
         }
         _wipe();
+        // The un-logged rest of the stack goes straight back into the
+        // now-empty field, as if the operator had just typed it.
+        if (stacked != null) _callController.text = stacked.remainder;
       }
 
       // A single rescoring pass after the whole batch, not a score check per
