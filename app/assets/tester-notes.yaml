@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - Callsign-note keys now expand inside a stack too, e.g. "KI2D//1AB"
+    - Emoji should now work better on Windows, including flags.
 
 "143":
   changes:
