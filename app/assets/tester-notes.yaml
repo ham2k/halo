@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "iOS/Android: Check for Updates now finds new builds and opens the store"
+
 "144":
   changes:
     - Callsign-note keys now expand inside a stack too, e.g. "KI2D//1AB"

@@ -12,6 +12,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart' show HaLoServices;
@@ -43,6 +44,11 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
   bool _checking = false;
   UpdateCheckOutcome _outcome = UpdateCheckOutcome.upToDate;
 
+  /// Where the last check says to go, when it says to go anywhere — the store
+  /// page on mobile. Null on desktop, where Sparkle/WinSparkle run their own
+  /// install UI and a second link would compete with it.
+  Uri? _destination;
+
   bool get _applicable => updateCheckAppliesTo(widget.services);
 
   @override
@@ -55,11 +61,19 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
     setState(() => _checking = true);
 
     var outcome = _outcome;
+    Uri? destination;
     try {
       outcome = await widget.services.updateCheck.check(
         updates: widget.services.updates,
         statusBar: widget.services.statusBar,
       );
+      // Inside the same try, not after it: this reaches the same
+      // distribution-specific APIs (a store lookup runs a platform channel),
+      // and a throw out here would strand the row on the spinner just as
+      // surely — the very thing the catch below exists to prevent.
+      if (outcome == UpdateCheckOutcome.updateAvailable) {
+        destination = await widget.services.updateCheck.updateDestination();
+      }
     } catch (e, st) {
       // The injected UpdateCheckService may reach into distribution-specific
       // APIs (Shorebird/Sparkle) this row knows nothing about; an unexpected
@@ -73,7 +87,27 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
     setState(() {
       _checking = false;
       _outcome = outcome;
+      _destination = destination;
     });
+  }
+
+  /// Deliberately not openExternalUrl (services/link_opener.dart): its scheme
+  /// allowlist exists to fence URLs authored OUTSIDE the app — extensions,
+  /// community call notes — and `market:` / `itms-beta:` are exactly the
+  /// schemes it is right to refuse there. This URL is built by the update
+  /// check itself, so it needs no fence, and widening that one would weaken
+  /// every extension-authored link along with it.
+  Future<void> _openDestination(Uri destination) async {
+    // The row's only action, so a silent no-op is the worst available
+    // outcome: launchUrl RETURNS false when nothing handles the scheme and
+    // THROWS when the platform refuses, and neither is visible to an operator
+    // watching a tap do nothing.
+    try {
+      if (await launchUrl(destination, mode: LaunchMode.externalApplication)) return;
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'update-check-row-launch');
+    }
+    debugPrint('[update-check] nothing handled $destination');
   }
 
   @override
@@ -89,6 +123,8 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
             UpdateCheckOutcome.reloadToUpdate => context.t.updates.reloadToUpdate,
           };
 
+    final destination = _destination;
+
     return ListTile(
       leading: const Icon(MdiIcons.cellphoneArrowDown),
       title: Text(context.t.updates.checkForUpdates),
@@ -99,8 +135,10 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(MdiIcons.refresh),
-      onTap: _checking ? null : _check,
+          // Once there is somewhere to go, going there IS the action —
+          // re-checking would only confirm what the row already says.
+          : Icon(destination == null ? MdiIcons.refresh : MdiIcons.openInNew),
+      onTap: _checking ? null : (destination == null ? _check : () => unawaited(_openDestination(destination))),
       mouseCursor: SystemMouseCursors.click,
     );
   }

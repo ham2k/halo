@@ -32,6 +32,10 @@ import 'update_service.dart';
 enum UpdateCheckOutcome { upToDate, updateAvailable, restartToApply, reloadToUpdate }
 
 abstract class UpdateCheckService {
+  /// Subclasses [extend] rather than implement, so they inherit
+  /// [updateDestination]'s default instead of each restating "nowhere to go".
+  const UpdateCheckService();
+
   /// Whether there's anything at all worth checking on this build/platform.
   /// [updates] is passed in (rather than held) since it's HaLoServices' own
   /// Shorebird-backed [UpdateService], constructed alongside everything else
@@ -40,12 +44,22 @@ abstract class UpdateCheckService {
   bool isApplicable({required UpdateService updates});
 
   Future<UpdateCheckOutcome> check({required UpdateService updates, required StatusBarService statusBar});
+
+  /// Where to send the operator to act on the update the last [check]
+  /// reported, or null when there is nowhere to send them — either because
+  /// nothing is available, or because the mechanism handles the whole job
+  /// itself. Sparkle and WinSparkle are the latter: they present their own
+  /// download-and-install UI, so the row must NOT also offer a link.
+  ///
+  /// Only meaningful straight after a [check]; an implementation answers from
+  /// what that call found rather than by looking again.
+  Future<Uri?> updateDestination() async => null;
 }
 
 /// The OSS default: a plain web-deploy build-SHA freshness check. No-op
 /// (never applicable) everywhere else, since Shorebird/Sparkle backends are
 /// distribution-specific and not meaningful to check for in this repo alone.
-class WebFreshnessUpdateCheckService implements UpdateCheckService {
+class WebFreshnessUpdateCheckService extends UpdateCheckService {
   const WebFreshnessUpdateCheckService();
 
   @override

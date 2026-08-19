@@ -530,6 +530,49 @@ Silent/unattended binary updates require the artifacts to be trusted by the OS:
 Without this, updaters are blocked and the auto-update story fails. Budget setup
 time for certificates, notarization, and stapling before wiring the updater.
 
+### 3.4 The approval manifest — what a store will actually serve
+
+The download manifests (`halo-<edition>/<platform>.json`, written by
+`app_dist/ci/publish-download.sh`) record what CI
+**built and submitted**. For the first minutes-to-hours of a mobile release that
+is ahead of what anyone can install: Play needs roughly half an hour to serve an
+uploaded release to its track, and an iOS build waits on processing and Beta App
+Review. Prompting off those files means telling someone an update exists and then
+sending them to a store page with no Update button.
+
+So a second, separate object records the last build a store will actually serve:
+
+```
+halo-<edition>/approved.json
+  { "edition": "next",
+    "platforms": { "ios":     { "version": "26.9.0", "build": 144, "approvedAt": "…Z" },
+                   "android": { "version": "26.9.0", "build": 144, "approvedAt": "…Z" } } }
+```
+
+Separate rather than a field inside `<platform>.json`, because each of those is
+rewritten whole by every build of its platform (that is what keeps parallel
+tag-triggered builds from clobbering each other) — a value written alongside one
+would not survive the next build. This file is the one exception to that rule and
+is therefore read-modify-written, over the S3 API rather than the CDN.
+
+Per edition, so `approved` needs no qualifier: for Next it means "on the testing
+track, installable by testers", for Regular it means READY_FOR_SALE. Written by
+`app_dist/ci/publish-approved.sh`.
+
+**`approvedAt` may be in the future**, and that is the mechanism, not a wart. The
+app treats an entry as installable only once the stamp has passed, which lets
+Android record its own approval up front — `build-android.sh` calls the script
+with a 30-minute offset the moment the Play submit succeeds, needing no polling
+and no manual step. iOS has no such predictable interval, so its entry is written
+by hand for now (a later job can derive it from the App Store Connect API's
+`betaAppReviewSubmission` / `appStoreState`, which CI is already credentialed
+for).
+
+The app compares on **`build`**, not on `version`: the build number is a single
+monotonic integer across every platform and edition (§2.2), while a version holds
+still for a whole release cycle as the build climbs beneath it. `version` in this
+file is for display.
+
 ---
 
 ## 4. Code-push plane — Shorebird
