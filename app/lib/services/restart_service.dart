@@ -8,8 +8,10 @@
 // notice is informational ("restart to apply") with no button.
 
 import 'dart:io';
+import 'dart:ui' show AppExitResponse, AppExitType;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show ServicesBinding;
 
 class RestartService {
   const RestartService();
@@ -74,8 +76,41 @@ class RestartService {
       debugPrint('[restart] could not spawn the relauncher: $e');
       return;
     }
-    // Let pending DB writes flush, then exit so the waiting helper relaunches.
-    await Future<void>.delayed(const Duration(milliseconds: 150));
-    exit(0);
+    // Quit through the framework rather than exit(0): that path runs the app's
+    // exit hook (main.dart's shutdownOnExit), which says goodbye to the radios
+    // and CLOSES THE DATABASE. Killing the process with SQLite still open
+    // leaves the closing to the VM's own teardown, where it aborts — a crash
+    // report from an app that had just relaunched itself perfectly well — and
+    // drops whatever the write queue still held, which no fixed delay here
+    // could do better than guess at.
+    //
+    // Reaching either line below means the exit was refused — an observer
+    // cancelled, the embedder has no exit channel (the platform method
+    // returns null, which reads as a cancel), or the call threw. Force it
+    // anyway: the relauncher is already spawned and polling for this pid, so
+    // an app left running here reappears as a surprise relaunch whenever the
+    // operator eventually quits. The `finally` is what guarantees that — a
+    // throwing platform channel would otherwise escape into an `unawaited`
+    // caller and leave both the app and that helper alive.
+    //
+    // Console-only, and deliberately: a forced exit means the hook never ran
+    // and this process is going down with the database open after all, which
+    // is worth seeing while developing and unactionable to an operator whose
+    // app is already gone.
+    try {
+      final response = await ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+      // `exit` here does NOT mean the exit happened — the platform answered
+      // and left this process running, which is indistinguishable from a
+      // refusal in every way that matters to the line below. A `cancel` is the
+      // one that says an observer (or an embedder with no exit channel, which
+      // reads the same) turned it down, and only that one skipped the hook.
+      debugPrint(response == AppExitResponse.cancel
+          ? '[restart] the exit was refused; forcing it with the database still open'
+          : '[restart] the exit did not terminate this process; forcing it');
+    } catch (e) {
+      debugPrint('[restart] the framework could not be asked to exit ($e); forcing it');
+    } finally {
+      exit(0);
+    }
   }
 }

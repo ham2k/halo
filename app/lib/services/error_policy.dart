@@ -31,6 +31,7 @@ import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'extension_service.dart' show MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
+import 'unclean_quit.dart' show UncleanDatabaseQuit;
 import 'website_panel_error.dart' show WebsitePanelError;
 
 /// What the app does with an error, from quietest to loudest. Each tier
@@ -100,6 +101,13 @@ class ErrorDecision {
 
 class ErrorPolicy {
   ErrorPolicy._();
+
+  /// Set once the app has committed to quitting (main.dart's
+  /// `shutdownOnExit`), which is the only moment the database is ever closed.
+  /// Read by the `database-closed-on-exit` rule below: without this, the same
+  /// "closed database" StateError raised MID-SESSION — a real defect — would
+  /// be quietened along with the harmless ones.
+  static bool appIsExiting = false;
 
   /// Pretend we are on web, for the tests — `kIsWeb` is a compile-time false in
   /// the VM the tests run in, so without this seam the one predicate that only
@@ -244,6 +252,24 @@ class ErrorPolicy {
           'that is the absence of coverage, not a defect',
       disposition: ErrorDisposition.logOnly,
       matches: _isWebsitePanelErrorWhileOffline,
+    ),
+    ErrorRule(
+      id: 'database-closed-on-exit',
+      reason: 'a write landed after the database was closed on the way out — usually a sync '
+          'round or a peer event whose reply arrived during the quit, but the operator\'s own '
+          'last edit counts too: once the close has run, no write of any origin has anywhere '
+          'to go, and saying so in a notice the process outlives by milliseconds helps nobody',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isDatabaseClosedOnExit,
+    ),
+    ErrorRule(
+      id: 'unclean-database-quit',
+      reason: 'the PREVIOUS run could not finish closing the database, so writes it still had '
+          'queued went with it. Uploaded rather than noticed: what was lost is already lost, a '
+          'boot is the worst moment to hand someone a fright they cannot act on, and it is the '
+          'rate across installs that says whether the quit path is sound',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is UncleanDatabaseQuit,
     ),
   ];
 
@@ -527,12 +553,40 @@ class ErrorPolicy {
     return true;
   }
 
-  /// Test seam: forget the once-per-session log state and the web override.
-  /// Not marked `@visibleForTesting` because ErrorReportingService's own
-  /// reset calls it — that state belongs to a session, and tests reset a
-  /// session through one door.
+  /// Matches drift's post-close complaints, and only while quitting.
+  ///
+  /// Their timing is what makes them harmless, not their text: nothing but
+  /// the exit hook ever closes the database, so mid-session these would mean
+  /// something closed it that shouldn't have — which stays loud.
+  ///
+  /// The FIRST message is the one the shipped app raises, and the only one
+  /// worth checking a change against: `driftDatabase()` runs SQLite on a
+  /// background isolate, so a write past the close never reaches the executor
+  /// that would raise either of the others — it fails at the isolate channel.
+  /// The other two are the in-process shapes, which tests and any future
+  /// same-isolate connection raise instead.
+  ///
+  /// drift's own `ConnectionClosedException` — a request already in flight
+  /// when the channel closes — is deliberately NOT matched: it isn't exported
+  /// from `package:drift`, and matching it by `toString()` would mean calling
+  /// that on an object we haven't type-checked, which this file must never do
+  /// (an app object whose `toString()` throws would take the error handler
+  /// down with it).
+  static bool _isDatabaseClosedOnExit(Object error, FlutterErrorDetails? details) {
+    if (!appIsExiting || error is! StateError) return false;
+    final message = error.message;
+    return message.contains('over isolate channel, but the connection was closed') ||
+        message.contains('re-open a database after closing it') ||
+        message.contains('has already been closed');
+  }
+
+  /// Test seam: forget the once-per-session log state, the web override and
+  /// the exiting flag. Not marked `@visibleForTesting` because
+  /// ErrorReportingService's own reset calls it — that state belongs to a
+  /// session, and tests reset a session through one door.
   static void resetForTesting() {
     _oncePerSessionLogged.clear();
     debugTreatAsWeb = null;
+    appIsExiting = false;
   }
 }

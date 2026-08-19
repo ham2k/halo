@@ -561,4 +561,44 @@ void main() {
       expect(lines.single, contains('operation_view.dart:120:5'));
     });
   });
+
+  group('a database closed on the way out', () {
+    // Hand-copied from drift, and therefore proof of nothing about the
+    // wording: what the SHIPPED connection type raises is pinned in
+    // shutdown_on_exit_test.dart, against a real background isolate. These
+    // two exist to pin the SCOPING below — that the exemption turns on the
+    // quit and not on the message.
+    final reopen = StateError(
+      "Can't re-open a database after closing it. Please create a new database connection and open "
+      'that instead.',
+    );
+    final closed = StateError('This database or transaction runner has already been closed and may '
+        'not be used anymore.');
+    final remote = StateError('Tried to send Request (id = 18): StatementMethod.select: SELECT 1 '
+        'with [] over isolate channel, but the connection was closed!');
+
+    test('is console-only once the app has committed to quitting', () {
+      // Nothing else closes the database, so the quit is the only moment a
+      // sync round or a peer event can lose this race — and an upload blaming
+      // sync for a write that had nowhere to go is noise, not a defect.
+      ErrorPolicy.appIsExiting = true;
+      expect(dispositionFor(reopen), ErrorDisposition.logOnly);
+      expect(dispositionFor(closed), ErrorDisposition.logOnly);
+      expect(dispositionFor(remote), ErrorDisposition.logOnly);
+    });
+
+    test('mid-session, the same error is still loud', () {
+      // The timing is the entire exemption. Something closing the database
+      // while the app is running is a defect of ours, and quietening it on
+      // the message alone would hide exactly that.
+      expect(dispositionFor(reopen), ErrorDisposition.notify);
+      expect(dispositionFor(closed), ErrorDisposition.notify);
+      expect(dispositionFor(remote), ErrorDisposition.notify);
+    });
+
+    test('an unrelated StateError during the quit stays loud', () {
+      ErrorPolicy.appIsExiting = true;
+      expect(dispositionFor(StateError('boom')), ErrorDisposition.notify);
+    });
+  });
 }
