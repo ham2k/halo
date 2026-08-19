@@ -254,6 +254,15 @@ TextStyle haloMonoStyle(
 }) {
   return TextStyle(
     fontFamily: 'RobotoMono',
+    // Named here rather than left to the ambient style, because this is used
+    // as a SPAN style too (InlineMarkdownText's codeStyle). A span style that
+    // names a font family tells the engine it specifies the whole list —
+    // ParagraphBuilder.pushStyle builds it from that style alone — so the
+    // paragraph's [Roboto, NotoColorEmoji] is replaced by [RobotoMono], and an
+    // emoji inside backticks resolves to nothing. As a `Text` style it merges
+    // with the ambient one and this is redundant; as a span it is the only
+    // thing standing between a flag in a note and a blank.
+    fontFamilyFallback: const [emojiFontFamily],
     fontSize: fontSize ?? 14.0,
     fontWeight: fontWeight,
     color: color,
@@ -737,13 +746,32 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
   // still wins the fallback. So a symbol used as decoration renders
   // differently, which is why the app uses MDI icons for that job.
   //
-  // It is the app-wide half of a fix whose other half is withEmojiFallback:
-  // markdown stylesheets are built by flutter_markdown from `theme.textTheme`
-  // and inherit this, but the sites that override a block style with a
-  // hand-built TextStyle do not, which is what that helper and
-  // markdown_emoji_font_test.dart cover. A style built from a bare
-  // `TextStyle(...)` rather than from the theme — haloMonoStyle among them —
-  // is outside both, and has to name emojiFontFamily itself.
+  // It reaches further than the styles built from here. `Text` merges its own
+  // style onto the ambient DefaultTextStyle, so a bare `TextStyle` that names a
+  // fontFamily and leaves fontFamilyFallback null KEEPS this one — haloMonoStyle
+  // included, which is why the QSO list's mono columns resolve emoji without
+  // naming the font. _layoutSpans folds in the same ambient style, so
+  // textWidth/spansWidth measure with the fallback that paints. Only
+  // `inherit: false`, which nothing here uses, opts out.
+  //
+  // Two things escape it. A TextPainter built directly has no widget tree to
+  // merge from, so it gets exactly the style it is handed: the emoji-font
+  // preload passes emojiStyle deliberately, and the logo title and caution-tape
+  // label measure fixed app-authored strings. shrinkToFitText looks like one
+  // and is not — it merges the ambient style itself before measuring, which is
+  // what keeps the operation titles and extension panel titles it sizes
+  // correct, so that merge is load-bearing rather than incidental.
+  //
+  // The other is a SPAN style that names a font family. ParagraphBuilder
+  // .pushStyle builds the family list from that style alone, so naming a
+  // family replaces the paragraph's list rather than extending it, and the
+  // widget-level merge never enters into it. haloMonoStyle names the fallback
+  // itself for exactly this reason.
+  //
+  // withEmojiFallback is the other half, for markdown: flutter_markdown builds
+  // its stylesheet from `theme.textTheme` and inherits this, but a call site
+  // that overrides a block style with a hand-built TextStyle replaces it
+  // outright. markdown_emoji_font_test.dart is what keeps those covered.
   final textTheme = _withTabularFigures(
     ThemeData(brightness: brightness).textTheme.apply(
       fontFamily: 'Roboto',

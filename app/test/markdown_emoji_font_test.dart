@@ -226,6 +226,19 @@ void main() {
         // measurement helper is paired with.
         final signature = _signatureOf(source, block);
         if (named.any((n) => RegExp('\\b$n\\b').hasMatch(signature))) continue;
+
+        // EVERY style that names a font family has to carry the fallback, not
+        // just one of them. A span style naming a family replaces the
+        // paragraph's whole family list (ParagraphBuilder.pushStyle builds it
+        // from that style alone), so a covered `style:` does nothing for an
+        // uncovered `codeStyle:` beside it — the shape that hid an unresolved
+        // emoji inside backticks.
+        final namesFamily = named.where((n) => bound(n).contains('fontFamily') || covered(n, hops: 2));
+        if (namesFamily.isNotEmpty && !namesFamily.every((n) => covered(n))) {
+          final line = '\n'.allMatches(source.substring(0, render.start)).length + 1;
+          offenders.add('$path:$line');
+          continue;
+        }
         if (named.any((n) => covered(n))) continue;
         final line = '\n'.allMatches(source.substring(0, render.start)).length + 1;
         offenders.add('$path:$line');

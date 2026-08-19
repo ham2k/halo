@@ -37,6 +37,15 @@ void main() {
 
       expect(style.fontFamily, 'RobotoMono');
       expect(style.fontFeatures, contains(const FontFeature.tabularFigures()));
+      // Names the emoji fallback ITSELF, which is redundant for a `Text` (the
+      // ambient style supplies it) and load-bearing for a span: this is
+      // InlineMarkdownText's codeStyle, and ParagraphBuilder.pushStyle builds
+      // the family list from the span's own style, so naming a family replaces
+      // the paragraph's list rather than extending it. Without this, an emoji
+      // inside backticks in a spot note resolves to nothing on web — silently,
+      // and only there. The markdown convention test cannot see this: it
+      // resolves style names within a file, and this style lives here.
+      expect(style.fontFamilyFallback, contains(emojiFontFamily));
     });
 
     testWidgets('does not pre-scale fontSize by the ambient text scaler', (tester) async {
@@ -115,6 +124,62 @@ void main() {
           reason: 'appBarTheme.titleTextStyle ($brightness) drops the emoji fallback',
         );
       }
+    });
+
+    // The theme's fallback is only as good as its reach. Every style in the app
+    // that names a fontFamily of its own — haloMonoStyle above all, which the
+    // QSO list's mono columns and the spots panel build from — depends on
+    // `Text` merging onto the ambient DefaultTextStyle to keep it. Nothing in
+    // the widget itself says so, so a change to how the theme supplies
+    // DefaultTextStyle would drop the fallback from every one of them at once,
+    // silently: the glyph just stops painting, on web with no error at all.
+    testWidgets('a bare fontFamily style keeps the theme fallback, painted and measured', (tester) async {
+      late double spaced;
+      late double plain;
+
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Scaffold(
+          body: Column(
+            children: [
+              Builder(
+                builder: (context) => Text('K1ABC', style: haloMonoStyle(context, fontSize: 14)),
+              ),
+              // Measurement folds in the ambient style for the same reason
+              // painting does, and letterSpacing is the probe for it:
+              // haloMonoStyle never sets one, so a helper that ignored the
+              // ambient style would measure these two identically. Glyph
+              // COVERAGE cannot be asserted here at all — the test
+              // environment's font maps every codepoint, so a flag measures
+              // the same width with the fallback and without it.
+              DefaultTextStyle.merge(
+                style: const TextStyle(letterSpacing: 8),
+                child: Builder(builder: (context) {
+                  spaced = textWidth(context, 'K1ABC', haloMonoStyle(context, fontSize: 14));
+                  return const SizedBox.shrink();
+                }),
+              ),
+              Builder(builder: (context) {
+                plain = textWidth(context, 'K1ABC', haloMonoStyle(context, fontSize: 14));
+                return const SizedBox.shrink();
+              }),
+            ],
+          ),
+        ),
+      ));
+
+      final painted = tester.renderObject<RenderParagraph>(find.byType(RichText).first).text.style!;
+      expect(painted.fontFamily, 'RobotoMono', reason: 'the mono family still wins');
+      expect(
+        painted.fontFamilyFallback,
+        contains(emojiFontFamily),
+        reason: 'a bare TextStyle lost the ambient emoji fallback — every mono column with it',
+      );
+      expect(
+        spaced,
+        greaterThan(plain),
+        reason: 'textWidth ignored the ambient style, so it measures without the fallback that paints',
+      );
     });
 
     test('app bar title uses Roboto Slab at Black (w900), matching app-polo', () {
