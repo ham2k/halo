@@ -16,6 +16,7 @@ const _metrics = <String, double Function(LayoutMetrics)>{
   'qsoRowPaddingV': _qsoRowPaddingV,
   'sectionHeaderHeight': _sectionHeaderHeight,
   'spotTilePaddingV': _spotTilePaddingV,
+  'spotTileLineGap': _spotTileLineGap,
   'statusBarCollapsed': _statusBarCollapsed,
   'statusBarRow': _statusBarRow,
   'chipStripClosedGap': _chipStripClosedGap,
@@ -31,6 +32,7 @@ double _qsoRowHeight(LayoutMetrics m) => m.qsoRowHeight;
 double _qsoRowPaddingV(LayoutMetrics m) => m.qsoRowPaddingV;
 double _sectionHeaderHeight(LayoutMetrics m) => m.sectionHeaderHeight;
 double _spotTilePaddingV(LayoutMetrics m) => m.spotTilePaddingV;
+double _spotTileLineGap(LayoutMetrics m) => m.spotTileLineGap;
 double _statusBarCollapsed(LayoutMetrics m) => m.statusBarCollapsed;
 double _statusBarRow(LayoutMetrics m) => m.statusBarRow;
 double _chipStripClosedGap(LayoutMetrics m) => m.chipStripClosedGap;
@@ -272,7 +274,7 @@ void main() {
       // `toString` on a Dart object lists no fields, so the guard is the
       // count: LayoutMetrics' constructor parameters and _metrics must agree.
       // Bump both together — a metric missing here escapes every rule below.
-      expect(_metrics.length, 13, reason: 'add the new LayoutMetrics field to _metrics');
+      expect(_metrics.length, 14, reason: 'add the new LayoutMetrics field to _metrics');
     });
 
     test('every metric increases strictly across the whole ladder', () {
@@ -327,6 +329,7 @@ void main() {
       expect(m.qsoRowPaddingV, 4);
       expect(m.sectionHeaderHeight, 28);
       expect(m.spotTilePaddingV, 6);
+      expect(m.spotTileLineGap, 2);
       expect(m.statusBarCollapsed, 28);
       expect(m.statusBarRow, 36);
       expect(m.chipStripClosedGap, 14);

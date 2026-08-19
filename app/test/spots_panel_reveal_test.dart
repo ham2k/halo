@@ -77,7 +77,7 @@ List<Map<String, dynamic>> _board(int count) => [
     ];
 
 /// The same board, every spot carrying a reference label. Those rows paint a
-/// few pixels TALLER than [spotRowHeight] — the label line draws at the
+/// few pixels TALLER than a plain one — the label line draws at the
 /// callsign's size rather than the mode's — so the estimate drifts by roughly
 /// a row for every twenty, and only the measured correction lands it.
 List<Map<String, dynamic>> _labelledBoard(int count) => [
@@ -167,7 +167,9 @@ void main() {
     required HaLoServices services,
     required ValueNotifier<bool> visible,
     double textScale = 1.0,
+    ValueNotifier<LayoutDensity>? density,
   }) async {
+    final densityNotifier = density ?? ValueNotifier(LayoutDensity.normal);
     tester.view.physicalSize = const Size(500, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -177,13 +179,19 @@ void main() {
             theme: buildHaLoTheme(Brightness.light),
             home: MediaQuery(
               data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-              child: Scaffold(
-                body: SpotsPanel(
-                  operation: operation,
-                  services: services,
-                  logRevision: 'r1',
-                  visible: visible,
-                  callInfo: callInfo,
+              child: ValueListenableBuilder(
+                valueListenable: densityNotifier,
+                builder: (_, density, _) => LayoutDensityScope(
+                  density: density,
+                  child: Scaffold(
+                    body: SpotsPanel(
+                      operation: operation,
+                      services: services,
+                      logRevision: 'r1',
+                      visible: visible,
+                      callInfo: callInfo,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -335,6 +343,36 @@ void main() {
       expect(find.text('K0250').hitTestable(), findsOneWidget);
     });
 
+    // The scale is a whole-row ratio, but the OS text scale it stands for
+    // stretches only the text — the tile's padding and line gap are the two
+    // things the density ladder moves, and neither grows with it. So a scale
+    // learned at one rung is wrong at the next, and the calibration row that
+    // could re-learn it is only mounted near the top of a list this operator
+    // has long since scrolled past. Carrying the stretch across the change is
+    // what lands this; leave the scale alone and every summed row is ~6% short.
+    testWidgets('reveals a far row at an OS text scale of 1.3 after the density changes',
+        (tester) async {
+      final services = await servicesWith(_board(300));
+      final density = ValueNotifier(LayoutDensity.sparsest);
+      final setCall = await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        textScale: 1.3,
+        density: density,
+      );
+
+      // Learn the scale at the roomiest rung, then drop to the tightest — the
+      // widest gap the ladder offers, and the direction a window resize takes.
+      await setCall(_entering('K0010'));
+      density.value = LayoutDensity.densest;
+      await tester.pump();
+
+      await setCall(_entering('K0250'));
+
+      expect(find.text('K0250').hitTestable(), findsOneWidget);
+    });
+
     testWidgets('a call with no spot on the board scrolls nowhere', (tester) async {
       final services = await servicesWith(_board(60));
       final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true));
@@ -352,27 +390,44 @@ void main() {
   // is exactly what silently breaks every offset the reveal sums.
   group('the declared row heights', () {
     Future<double> pitchOf(WidgetTester tester, List<Map<String, dynamic>> board,
-        {Set<String> notedCalls = const {}}) async {
+        {Set<String> notedCalls = const {}, LayoutDensity density = LayoutDensity.normal}) async {
       final services = await servicesWith(board, notedCalls: notedCalls);
-      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), density: ValueNotifier(density));
       return tester.getRect(find.text('K0002')).top - tester.getRect(find.text('K0001')).top;
     }
 
-    testWidgets('a plain row paints what spotRowHeightFor declares', (tester) async {
-      expect(await pitchOf(tester, _board(6)), closeTo(spotRowHeightFor(hasLabel: false, hasEmoji: false), 0.5));
-    });
+    // Every rung, not just `normal`: the tile's padding is the one thing that
+    // moves with the density, so a tile left on a constant would keep passing
+    // at `normal` while every other rung's reveal scrolled to the wrong place.
+    for (final density in LayoutDensity.values) {
+      testWidgets('a plain row paints what spotRowHeightFor declares at $density', (tester) async {
+        expect(
+          await pitchOf(tester, _board(6), density: density),
+          closeTo(spotRowHeightFor(metrics: density.metrics, hasLabel: false, hasEmoji: false), 0.5),
+        );
+      });
 
-    testWidgets('a labelled row paints what spotRowHeightFor declares', (tester) async {
-      expect(await pitchOf(tester, _labelledBoard(6)), closeTo(spotRowHeightFor(hasLabel: true, hasEmoji: false), 0.5));
-    });
+      testWidgets('a labelled row paints what spotRowHeightFor declares at $density', (tester) async {
+        expect(
+          await pitchOf(tester, _labelledBoard(6), density: density),
+          closeTo(spotRowHeightFor(metrics: density.metrics, hasLabel: true, hasEmoji: false), 0.5),
+        );
+      });
+    }
 
     // The emoji stretches a line that is already there rather than adding one,
     // so it is worth about a pixel — a plausible-looking three would drift a
-    // row every twenty-five noted spots.
-    testWidgets('a noted row paints what spotRowHeightFor declares', (tester) async {
-      expect(await pitchOf(tester, _board(6), notedCalls: {'K0001'}),
-          closeTo(spotRowHeightFor(hasLabel: false, hasEmoji: true), 0.5));
-    });
+    // row every twenty-five noted spots. Checked at both ends of the ladder
+    // like the other two shapes: the claim that the emoji does not answer to
+    // density is only worth anything if some rung other than `normal` tests it.
+    for (final density in [LayoutDensity.densest, LayoutDensity.normal, LayoutDensity.sparsest]) {
+      testWidgets('a noted row paints what spotRowHeightFor declares at $density', (tester) async {
+        expect(
+          await pitchOf(tester, _board(6), notedCalls: {'K0001'}, density: density),
+          closeTo(spotRowHeightFor(metrics: density.metrics, hasLabel: false, hasEmoji: true), 0.5),
+        );
+      });
+    }
   });
 
   group('visibility', () {

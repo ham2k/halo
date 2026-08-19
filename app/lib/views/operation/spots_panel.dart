@@ -413,38 +413,69 @@ Color currentQsoHighlight(ColorScheme scheme, {required bool editing}) => Color.
       0.5,
     )!;
 
-/// A spot row's height, divider included, at an OS text scale of 1.0 —
-/// declared rather than measured, like `LayoutMetrics`' own row heights and
+/// Everything a spot row is made of EXCEPT its density-driven spacing: the two
+/// text lines [_SpotTile] paints, and the hairline divider (which is a
+/// foreground decoration and so costs no height). The tile's padding and the
+/// gap between the two lines both come off the ladder and are added on top.
+///
+/// Declared rather than measured, like `LayoutMetrics`' own row heights and
 /// for the same reason: the reveal has to know where a row it cannot see would
 /// be.
 ///
-/// These are a BASELINE, not the final answer. The OS accessibility text-scale
+/// A BASELINE, not the final answer. The OS accessibility text-scale
 /// preference composes on top of the app's own Font Scale
-/// (docs/design/ui-scaling.md rule 3), and a tile that is two text lines inside
-/// constant padding grows with it — 50 becomes 61 at a text scale of 1.3.
-/// [_SpotsPanelState._rowHeightScale] measures that stretch off a real row and
-/// applies it to every value here.
-///
-/// The three values are additive because they land on different lines of the
-/// tile, and none of them answers to density: [_SpotTile]'s padding is a plain
-/// constant, unlike the QSO row's ladder. Keep them in step with what that
-/// tile paints — every pixel of disagreement is multiplied by the number of
-/// rows above the one being revealed.
-const spotRowHeight = 50.0;
+/// (docs/design/ui-scaling.md rule 3), and the text lines stretch with it while
+/// the spacing around them does not — the `normal` rung's 50pt row becomes 61
+/// at a text scale of 1.3. [_SpotsPanelState._rowHeightScale] measures that
+/// stretch off a real row and applies it to every value here.
+const _spotRowContentHeight = 36.0;
 
 /// A reference label draws its line at the callsign's size rather than the
 /// mode's, and a note emoji is taller than the callsign beside it. Both
 /// measured; the emoji is worth barely a pixel because it stretches a line
-/// that is already there, where the label adds one.
+/// that is already there, where the label adds one. Neither answers to
+/// density — they are text, not spacing.
 const _spotRowLabelHeight = 3.0;
 const _spotRowEmojiHeight = 1.0;
 
-/// The height [_SpotTile] paints for a row with these features. Public for
-/// `spots_panel_current_qso_test.dart`.
-double spotRowHeightFor({required bool hasLabel, required bool hasEmoji}) =>
-    spotRowHeight +
+/// The height [_SpotTile] paints for a row with these features, at [metrics].
+/// Public for `spots_panel_current_qso_test.dart`.
+///
+/// [LayoutMetrics.spotTilePaddingV] is the tile's own padding, top and bottom,
+/// and [LayoutMetrics.spotTileLineGap] the space between its two lines, so this
+/// must stay the exact arithmetic the tile itself performs — every pixel of
+/// disagreement is multiplied by the number of rows above the one being
+/// revealed.
+double spotRowHeightFor({
+  required LayoutMetrics metrics,
+  required bool hasLabel,
+  required bool hasEmoji,
+}) =>
+    metrics.spotTilePaddingV * 2 +
+    metrics.spotTileLineGap +
+    _spotRowContentHeight +
     (hasLabel ? _spotRowLabelHeight : 0) +
     (hasEmoji ? _spotRowEmojiHeight : 0);
+
+/// A row scale learned at [from], re-expressed for [to]. Public for
+/// `spots_panel_current_qso_test.dart`.
+///
+/// The scale is a whole-row ratio (measured over declared), but the OS text
+/// scale it stands for stretches only the row's TEXT — the tile's padding and
+/// line gap are logical pixels and do not move with it. Those two are exactly
+/// what the density ladder changes, so a scale learned at one rung is wrong at
+/// the next, by more the further apart they are. Recovering the text's painted
+/// height and re-dividing is what keeps it right.
+///
+/// Converted rather than reset to 1.0: the calibration row is only mounted near
+/// the top of the list, so an operator scrolled deep into a board would keep a
+/// scale of 1.0 — wrong by the whole text scale, which is far worse than the
+/// rung-to-rung error this exists to remove.
+double spotRowScaleFor(double scale, {required LayoutMetrics from, required LayoutMetrics to}) {
+  double spacing(LayoutMetrics m) => m.spotTilePaddingV * 2 + m.spotTileLineGap;
+  final text = (spacing(from) + _spotRowContentHeight) * scale - spacing(from);
+  return (spacing(to) + text) / (spacing(to) + _spotRowContentHeight);
+}
 
 /// Where the row for [currentCall] sits in a sectioned spots list: the scroll
 /// offset it begins at, and the height it paints. Null when no spot matches.
@@ -737,6 +768,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// one the headers paint with.
   late LayoutMetrics _metrics;
 
+  /// Whether [_metrics] holds a reading yet — `late` cannot be asked. The
+  /// FIRST `didChangeDependencies` has no previous rung to convert a scale
+  /// from, and reading `_metrics` to find that out would throw.
+  bool _metricsSet = false;
+
   /// The dock's half of [_onScreen], cached for the same reason as [_metrics]
   /// — the reveal runs from post-frame callbacks. True outside a dock, where
   /// a built pane is a visible one.
@@ -752,7 +788,15 @@ class _SpotsPanelState extends State<SpotsPanel> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _metrics = LayoutDensity.metricsOf(context);
+    final metrics = LayoutDensity.metricsOf(context);
+    // A density change moves the spacing [_rowHeightScale] was measured
+    // against, so carry the learned text stretch across rather than leaving a
+    // ratio that now belongs to the previous rung — see [spotRowScaleFor].
+    if (_metricsSet && !identical(metrics, _metrics)) {
+      _rowHeightScale = spotRowScaleFor(_rowHeightScale, from: _metrics, to: metrics);
+    }
+    _metrics = metrics;
+    _metricsSet = true;
     // [_revealedCall] is deliberately left alone in both directions, matching
     // the tab half in `_onVisibilityChanged`: a call typed while this pane was
     // behind another is already pending, because [_armReveal] returns before
@@ -1438,6 +1482,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// board whose note lookups have not landed yet is summed a few pixels short
   /// per noted row — which is what [_correctRevealFor] is left to close.
   double _spotRowHeightOf(Map<String, dynamic> spot) => spotRowHeightFor(
+        metrics: _metrics,
         hasLabel: _labelOf(spot) != null,
         hasEmoji: _noteEmojiOf(spot) != null,
       );
@@ -1794,6 +1839,7 @@ class _SpotTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final haloColors = HaLoColors.of(context);
+    final metrics = LayoutDensity.metricsOf(context);
 
     // The row-wide accents, applied by folding them into the two base styles
     // every field below derives from. app-polo's SpotItem spreads a
@@ -1950,12 +1996,16 @@ class _SpotTile extends StatelessWidget {
       // content inset grows by the split's grab-strip clearance on the left
       // and the real device inset on both edges
       // so nothing interactive sits under the divider overlay or a cutout.
-      padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 6),
+      padding: PaneSafeArea.symmetricOf(
+        context,
+        horizontal: 12,
+        vertical: metrics.spotTilePaddingV,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           line(freqField, callLine),
-          const SizedBox(height: Space.xxs),
+          SizedBox(height: metrics.spotTileLineGap),
           line(Text(_modeOf(spot) ?? '', style: accented(proportional, modeAccent) ?? proportional), labelLine),
         ],
       ),

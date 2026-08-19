@@ -105,17 +105,108 @@ void main() {
   group('spotRowHeightFor', () {
     // Additive because the two features land on different lines of the tile.
     // This says nothing about whether the constants match the widget — see
-    // spots_panel_reveal_test.dart, which measures real rows against them.
+    // spots_panel_reveal_test.dart, which measures real rows against them at
+    // every density.
     test('a label and an emoji each add their own height, and stack', () {
-      final plain = spotRowHeightFor(hasLabel: false, hasEmoji: false);
-      final labelled = spotRowHeightFor(hasLabel: true, hasEmoji: false);
-      final noted = spotRowHeightFor(hasLabel: false, hasEmoji: true);
-      final both = spotRowHeightFor(hasLabel: true, hasEmoji: true);
+      final metrics = LayoutDensity.normal.metrics;
+      final plain = spotRowHeightFor(metrics: metrics, hasLabel: false, hasEmoji: false);
+      final labelled = spotRowHeightFor(metrics: metrics, hasLabel: true, hasEmoji: false);
+      final noted = spotRowHeightFor(metrics: metrics, hasLabel: false, hasEmoji: true);
+      final both = spotRowHeightFor(metrics: metrics, hasLabel: true, hasEmoji: true);
 
-      expect(plain, spotRowHeight);
       expect(labelled, greaterThan(plain));
       expect(noted, greaterThan(plain));
       expect(both, closeTo(labelled + noted - plain, 0.001));
+    });
+
+    test('a denser layout makes every row shorter, by its spacing alone', () {
+      // The reveal sums declared heights, so a ladder the tile does not
+      // actually follow scrolls to the wrong place with nothing to catch it.
+      // Mutation check: read a fixed metric here and the strict ordering goes.
+      for (var i = 0; i < LayoutDensity.values.length - 1; i++) {
+        final tighter = LayoutDensity.values[i].metrics;
+        final roomier = LayoutDensity.values[i + 1].metrics;
+        for (final hasLabel in [false, true]) {
+          for (final hasEmoji in [false, true]) {
+            expect(
+              spotRowHeightFor(metrics: tighter, hasLabel: hasLabel, hasEmoji: hasEmoji),
+              lessThan(spotRowHeightFor(metrics: roomier, hasLabel: hasLabel, hasEmoji: hasEmoji)),
+            );
+          }
+        }
+        // The label and emoji lines are text, not spacing, so the whole
+        // difference between two rungs is the tile's padding and the gap
+        // between its two lines — nothing else on the row moves.
+        expect(
+          spotRowHeightFor(metrics: roomier, hasLabel: true, hasEmoji: true) -
+              spotRowHeightFor(metrics: tighter, hasLabel: true, hasEmoji: true),
+          closeTo(
+            (roomier.spotTilePaddingV - tighter.spotTilePaddingV) * 2 +
+                (roomier.spotTileLineGap - tighter.spotTileLineGap),
+            0.001,
+          ),
+        );
+      }
+    });
+
+    test('normal is the pre-density row height', () {
+      // 50 is what every row was before the tile joined the ladder; changing
+      // it is a change to what existing operators see, not a density tweak.
+      expect(
+        spotRowHeightFor(metrics: LayoutDensity.normal.metrics, hasLabel: false, hasEmoji: false),
+        50,
+      );
+    });
+  });
+
+  group('spotRowScaleFor', () {
+    // The scale stands for the OS text scale, which stretches the row's TEXT
+    // and leaves the tile's padding and line gap — the two things the ladder
+    // moves — at their logical-pixel sizes. So the invariant across a rung
+    // change is the painted height of the text, not the ratio itself.
+    double textHeightAt(LayoutMetrics m, double scale) =>
+        spotRowHeightFor(metrics: m, hasLabel: false, hasEmoji: false) * scale -
+        (m.spotTilePaddingV * 2 + m.spotTileLineGap);
+
+    test('carries the text stretch across every pair of rungs', () {
+      // 1.158 is what a real 1.3 text scale calibrates to at `normal`, per
+      // spots_panel_reveal_test's measurements. Mutation check: return `scale`
+      // unchanged and every pair but the identity ones fails.
+      const learned = 1.158;
+      for (final from in LayoutDensity.values) {
+        for (final to in LayoutDensity.values) {
+          final converted = spotRowScaleFor(learned, from: from.metrics, to: to.metrics);
+          expect(
+            textHeightAt(to.metrics, converted),
+            closeTo(textHeightAt(from.metrics, learned), 0.001),
+            reason: '$from -> $to',
+          );
+        }
+      }
+    });
+
+    test('an unstretched row stays unstretched, whatever the rung', () {
+      // No OS text scale in play is the common case; a conversion that drifted
+      // off 1.0 would put every board slightly wrong for the majority of users.
+      for (final from in LayoutDensity.values) {
+        for (final to in LayoutDensity.values) {
+          expect(spotRowScaleFor(1.0, from: from.metrics, to: to.metrics), closeTo(1.0, 0.001));
+        }
+      }
+    });
+
+    test('a tighter rung needs a LARGER scale for the same stretch', () {
+      // The fixed spacing shrinks while the stretched text does not, so the
+      // stretch is a bigger share of a denser row. Getting this backwards
+      // would double the error instead of removing it.
+      expect(
+        spotRowScaleFor(1.158, from: LayoutMetrics.normal, to: LayoutMetrics.densest),
+        greaterThan(1.158),
+      );
+      expect(
+        spotRowScaleFor(1.158, from: LayoutMetrics.normal, to: LayoutMetrics.sparsest),
+        lessThan(1.158),
+      );
     });
   });
 

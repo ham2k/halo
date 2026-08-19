@@ -219,6 +219,13 @@ class LayoutMetrics {
   /// A spot tile's vertical padding.
   final double spotTilePaddingV;
 
+  /// The gap between a spot tile's two text lines.
+  ///
+  /// Goes to zero at the tightest rung: the two lines carry different type and
+  /// sit at different indents, so they stay legible touching, and on a
+  /// landscape phone every pixel is a fraction of a row.
+  final double spotTileLineGap;
+
   /// The status footer's collapsed height, and one row of its expanded list.
   final double statusBarCollapsed;
   final double statusBarRow;
@@ -263,6 +270,7 @@ class LayoutMetrics {
     required this.qsoRowPaddingV,
     required this.sectionHeaderHeight,
     required this.spotTilePaddingV,
+    required this.spotTileLineGap,
     required this.statusBarCollapsed,
     required this.statusBarRow,
     required this.chipStripClosedGap,
@@ -283,6 +291,7 @@ class LayoutMetrics {
     qsoRowPaddingV: 4,
     sectionHeaderHeight: 28,
     spotTilePaddingV: 6,
+    spotTileLineGap: 2,
     statusBarCollapsed: 28,
     statusBarRow: 36,
     chipStripClosedGap: 14,
@@ -299,6 +308,7 @@ class LayoutMetrics {
     qsoRowPaddingV: 1,
     sectionHeaderHeight: 22,
     spotTilePaddingV: 3,
+    spotTileLineGap: 0,
     statusBarCollapsed: 22,
     statusBarRow: 27,
     chipStripClosedGap: 5,
@@ -315,6 +325,7 @@ class LayoutMetrics {
     qsoRowPaddingV: 2,
     sectionHeaderHeight: 24,
     spotTilePaddingV: 4,
+    spotTileLineGap: 1,
     statusBarCollapsed: 24,
     statusBarRow: 30,
     chipStripClosedGap: 8,
@@ -331,6 +342,7 @@ class LayoutMetrics {
     qsoRowPaddingV: 7,
     sectionHeaderHeight: 34,
     spotTilePaddingV: 9,
+    spotTileLineGap: 3,
     statusBarCollapsed: 32,
     statusBarRow: 42,
     chipStripClosedGap: 18,
@@ -347,6 +359,7 @@ class LayoutMetrics {
     qsoRowPaddingV: 10,
     sectionHeaderHeight: 40,
     spotTilePaddingV: 12,
+    spotTileLineGap: 4,
     statusBarCollapsed: 36,
     statusBarRow: 48,
     chipStripClosedGap: 22,
