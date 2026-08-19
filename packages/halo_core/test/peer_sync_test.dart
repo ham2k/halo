@@ -136,8 +136,10 @@ void main() {
 
       final events = await outbox.eventsSince(op.uuid, 0);
       final existingEvents = events.where((e) => e.recordUuid == existing.uuid);
-      expect(existingEvents, hasLength(2), reason: 'the pre-import snapshot, then the import\'s update');
-      expect(existingEvents.last.data, contains('"notes":"merged by import"'));
+      // One row, not two: pruning collapses the pre-import snapshot into the
+      // import's update, which is all a peer needs.
+      expect(existingEvents, hasLength(1));
+      expect(existingEvents.single.data, contains('"notes":"merged by import"'));
 
       final inserted = events.singleWhere((e) => e.data.contains('K1ABC'));
       expect(inserted.kind, 'qso');
@@ -152,8 +154,9 @@ void main() {
       await outbox.scanNow();
 
       final opEvents = (await outbox.eventsSince(op.uuid, 0)).where((e) => e.kind == 'operation');
-      expect(opEvents, hasLength(2), reason: 'the creation snapshot, then the rename');
-      expect(opEvents.last.data, contains('Renamed'));
+      // The creation snapshot is superseded by the rename and pruned away.
+      expect(opEvents, hasLength(1));
+      expect(opEvents.single.data, contains('Renamed'));
     });
 
     test('eventsSince only returns events strictly newer than the given seq', () async {
@@ -173,21 +176,26 @@ void main() {
       expect(caughtUp.single.recordUuid, second.uuid);
     });
 
-    test('switching the active operation resets the watermark, so re-sharing re-snapshots everything', () async {
+    test('re-sharing an unchanged operation emits nothing new', () async {
+      // What suppresses the re-emit is [_alreadyRecorded] — every record's
+      // current stamp is already on a row — NOT the watermark, which the
+      // setter deliberately resets to 0 so the operation is re-read. Asserting
+      // on the seqs, not just the count: new rows carrying the same records
+      // would satisfy a count and still hand the peer its whole log again.
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
       final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
       await outbox.scanNow();
-      final firstRoundCount = (await outbox.eventsSince(op.uuid, 0)).length;
+      final before = await outbox.eventsSince(op.uuid, 0);
 
       outbox.activeOperationUuid = null; // stop sharing
       outbox.activeOperationUuid = op.uuid; // and start again, nothing else changed
       await outbox.scanNow();
 
-      final events = await outbox.eventsSince(op.uuid, 0);
-      expect(events.length, greaterThan(firstRoundCount),
-          reason: 'restart re-emits the operation and QSO even though neither changed since');
-      expect(events.where((e) => e.recordUuid == qso.uuid), hasLength(2));
+      final after = await outbox.eventsSince(op.uuid, 0);
+      expect(after.map((e) => e.seq), before.map((e) => e.seq),
+          reason: 'a restart must not re-emit rows a peer already has');
+      expect(after.where((e) => e.recordUuid == qso.uuid), hasLength(1));
     });
 
     test('notifyChanged debounces into one scan', () async {
@@ -238,6 +246,194 @@ void main() {
 
       final eventsB = await outbox.eventsSince(opB.uuid, 0);
       expect(eventsB.map((e) => e.recordUuid), containsAll([opB.uuid, qsoB.uuid]));
+    });
+  });
+
+  group('pruning keeps the outbox bounded without stranding a peer', () {
+    late HaLoDatabase db;
+    late OperationsRepository operations;
+    late QsosRepository qsos;
+    late PeerOutbox outbox;
+
+    setUp(() {
+      db = HaLoDatabase(NativeDatabase.memory());
+      outbox = PeerOutbox(db);
+      operations = OperationsRepository(db);
+      qsos = QsosRepository(db);
+    });
+
+    tearDown(() async {
+      outbox.dispose();
+      await db.close();
+    });
+
+    Future<int> rowCount() async =>
+        (await db.customSelect('SELECT COUNT(*) c FROM peer_events').getSingle()).read<int>('c');
+
+    test('editing one QSO many times leaves one row, not one per edit', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      outbox.activeOperationUuid = op.uuid;
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await outbox.scanNow();
+
+      for (var i = 0; i < 8; i++) {
+        final current = (await qsos.watchForOperation(op.uuid).first).single;
+        await qsos.update(Qso(
+          uuid: current.uuid,
+          operationUuid: op.uuid,
+          data: {...current.data, 'notes': 'edit $i'},
+        ));
+        await outbox.scanNow();
+      }
+
+      // One row for the operation, one for the QSO — not one per edit.
+      expect(await rowCount(), 2);
+      final events = await outbox.eventsSince(op.uuid, 0);
+      expect(events.singleWhere((e) => e.recordUuid == qso.uuid).data, contains('edit 7'),
+          reason: 'the surviving row must be the NEWEST snapshot, not the first');
+    });
+
+    test('a re-share sends nothing to a peer that was already caught up', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      outbox.activeOperationUuid = op.uuid;
+      for (var i = 0; i < 5; i++) {
+        await qsos.add(op.uuid, {'their': {'call': 'W${i}AW'}, 'startAtMillis': 1000 + i});
+      }
+      await outbox.scanNow();
+      final caughtUpAt = (await outbox.eventsSince(op.uuid, 0)).last.seq;
+
+      // Closing and re-opening must not re-snapshot: a peer already at
+      // `caughtUpAt` has every record, and a fresh row per record would hand
+      // it the whole log a second time.
+      outbox.activeOperationUuid = null;
+      outbox.activeOperationUuid = op.uuid;
+      await outbox.scanNow();
+
+      expect(await outbox.eventsSince(op.uuid, caughtUpAt), isEmpty,
+          reason: 're-sharing an unchanged operation must transfer nothing');
+    });
+
+    test('a brand-new peer still receives the whole operation after pruning', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      outbox.activeOperationUuid = op.uuid;
+      final first = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await outbox.scanNow();
+      // Edit it repeatedly so the early rows are pruned away.
+      for (var i = 0; i < 3; i++) {
+        final current = (await qsos.watchForOperation(op.uuid).first).single;
+        await qsos.update(Qso(
+          uuid: current.uuid,
+          operationUuid: op.uuid,
+          data: {...current.data, 'notes': 'edit $i'},
+        ));
+        await outbox.scanNow();
+      }
+      final second = await qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      await outbox.scanNow();
+
+      // Cursor 0 is what a peer that has never synced this operation asks
+      // with — it must still get complete current state.
+      final fromScratch = await outbox.eventsSince(op.uuid, 0);
+      expect(fromScratch.map((e) => e.recordUuid).toSet(), {op.uuid, first.uuid, second.uuid});
+      expect(fromScratch.firstWhere((e) => e.recordUuid == first.uuid).data, contains('edit 2'));
+    });
+
+    test('a record sharing the watermark millisecond is still picked up', () async {
+      // Deterministic, not timing-dependent: the tie is FORCED by writing the
+      // stamp directly, because whether two ordinary edits land in the same
+      // millisecond depends on how fast the machine is — and a test that only
+      // catches this on a fast machine is worse than none.
+      final op = await operations.create(stationCall: 'KI2D');
+      outbox.activeOperationUuid = op.uuid;
+      final first = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await outbox.scanNow();
+
+      final stamp = (await qsos.get(first.uuid))!.updatedAtMillis!;
+      final second = await qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      // Force the second QSO onto the exact millisecond the scan stopped at.
+      await db.customStatement(
+        'UPDATE qsos SET updated_at_millis = ? WHERE uuid = ?',
+        [stamp, second.uuid],
+      );
+      await outbox.scanNow();
+
+      final events = await outbox.eventsSince(op.uuid, 0);
+      expect(events.map((e) => e.recordUuid), contains(second.uuid),
+          reason: 'a strict > on the watermark drops a record sharing that millisecond, '
+              'and a persisted watermark makes that miss permanent');
+    });
+
+    test('an existing cursor stays valid across a prune — seq is never reused', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      outbox.activeOperationUuid = op.uuid;
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await outbox.scanNow();
+      final seqBefore = (await outbox.eventsSince(op.uuid, 0)).map((e) => e.seq).reduce((a, b) => a > b ? a : b);
+
+      final current = (await qsos.watchForOperation(op.uuid).first).single;
+      await qsos.update(Qso(uuid: current.uuid, operationUuid: op.uuid, data: {...current.data, 'notes': 'later'}));
+      await outbox.scanNow();
+
+      final after = await outbox.eventsSince(op.uuid, seqBefore);
+      expect(after.map((e) => e.recordUuid), [qso.uuid],
+          reason: 'a peer at the old cursor must be handed the newer snapshot, not nothing');
+      expect(after.single.seq, greaterThan(seqBefore),
+          reason: 'a recycled rowid would put the new row BELOW the cursor and hide it forever');
+    });
+
+    test('a record with NO revision stamp still reaches the outbox', () async {
+      // Pre-stamp records are real — the v6 backfill migration exists for
+      // them, and anything synced from an old app-polo log can carry a null
+      // stamp. Deduping on a null lookup silently drops every one of them,
+      // on every scan, including a first share.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await db.customStatement('UPDATE qsos SET updated_at_millis = NULL WHERE uuid = ?', [qso.uuid]);
+
+      outbox.activeOperationUuid = op.uuid;
+      await outbox.scanNow();
+
+      expect((await outbox.eventsSince(op.uuid, 0)).map((e) => e.recordUuid), contains(qso.uuid));
+    });
+
+    test('a record gated by a faster peer\'s stamp is picked up when sharing restarts', () async {
+      // A record arriving from a peer (or from cloud sync) carries THAT
+      // device's stamp, which can sit ahead of this device's clock and gate
+      // local writes made before it catches up. The watermark reset is what
+      // heals that; deriving the watermark from the outbox instead would make
+      // the miss permanent.
+      final op = await operations.create(stationCall: 'KI2D');
+      final ahead = realNowMillis() + 90000;
+      await qsos.mergeFromPeer([
+        {'uuid': 'from-fast-peer', 'operation': op.uuid, 'their': {'call': 'K1ABC'}, 'updatedAtMillis': ahead},
+      ]);
+      outbox.activeOperationUuid = op.uuid;
+      await outbox.scanNow();
+
+      final local = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await outbox.scanNow();
+
+      outbox.activeOperationUuid = null;
+      outbox.activeOperationUuid = op.uuid;
+      await outbox.scanNow();
+
+      expect((await outbox.eventsSince(op.uuid, 0)).map((e) => e.recordUuid), contains(local.uuid));
+    });
+
+    test('pruning is scoped to the scanned operation, never a neighbour', () async {
+      final shared = await operations.create(stationCall: 'KI2D', userTitle: 'Shared');
+      final other = await operations.create(stationCall: 'KI2D', userTitle: 'Other');
+      outbox.activeOperationUuid = other.uuid;
+      await qsos.add(other.uuid, {'their': {'call': 'K1ABC'}});
+      await outbox.scanNow();
+      final otherRows = (await outbox.eventsSince(other.uuid, 0)).length;
+
+      outbox.activeOperationUuid = shared.uuid;
+      await qsos.add(shared.uuid, {'their': {'call': 'W1AW'}});
+      await outbox.scanNow();
+
+      expect((await outbox.eventsSince(other.uuid, 0)).length, otherRows,
+          reason: "scanning one operation must not touch another's rows");
     });
   });
 

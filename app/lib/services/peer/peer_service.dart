@@ -82,6 +82,7 @@ class PeerService extends ChangeNotifier {
     // while both sides are connected does not cross until the link drops
     // and the reconnect's catch-up happens to pick it up.
     outbox.onScanned = () => unawaited(_pushToPeers());
+    outbox.log = (message) => debugPrint('[peer] $message');
   }
 
   final HaLoDatabase db;

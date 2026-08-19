@@ -213,9 +213,16 @@ class InboundCaptures extends Table {
 /// into `mergeFromPeer`), not a diff — so a peer only ever needs the latest
 /// row per `recordUuid`, never a replay of every intermediate edit.
 ///
-/// Rows are never deleted by anything in this pass — see HALO-310 for the
-/// retention/pruning follow-up once a real transport exists to know when a
-/// row has reached every peer that will ever ask for it.
+/// Pruned to the newest row per [recordUuid] after every scan
+/// (`PeerOutbox._pruneSuperseded`), which is what keeps this bounded at
+/// roughly one row per record rather than growing with every edit. Safe
+/// precisely because a row is a full snapshot: the row that superseded a
+/// deleted one carries a higher [seq], so a peer catching up from any cursor
+/// still receives that record's current state.
+///
+/// [seq] must therefore stay `AUTOINCREMENT` — SQLite would otherwise recycle
+/// the rowid of a pruned row, and a peer's stored cursor (`PeerCursors`)
+/// would silently start pointing into the wrong part of the log.
 @DataClassName('PeerEventRow')
 @TableIndex(name: 'peer_events_operation_seq', columns: {#operationUuid, #seq})
 class PeerEvents extends Table {
