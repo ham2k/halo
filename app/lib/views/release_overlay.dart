@@ -253,7 +253,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
     // Flutter's default TextTheme picks for the (fixed, but still
     // technically light) `theme` above.
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
-    final notesStyleSheet = MarkdownStyleSheet.fromTheme(theme).copyWith(
+    final notesStyleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
       p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
       listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
       strong: theme.textTheme.bodyMedium?.copyWith(
@@ -261,7 +261,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
         fontWeight: FontWeight.bold,
         color: Colors.black,
       ),
-    );
+    ));
 
     // "What's new in this release" is bold via markdown's `**...**` rather
     // than a separate Text, so `strong` above is the only place its

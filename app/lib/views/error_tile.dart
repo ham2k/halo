@@ -35,11 +35,24 @@ class HaLoErrorTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              '⚠︎ Something went wrong here',
-              style: TextStyle(color: Color(0xFFB3261E), fontSize: 12, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
+            // An MDI glyph, not a warning-sign character: the app bundles no
+            // font with a monochrome one, so the character resolves through
+            // the colour-emoji fallback and paints a colour triangle at emoji
+            // metrics beside 12pt text.
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(MdiIcons.alert, size: 12, color: Color(0xFFB3261E)),
+                SizedBox(width: Space.xs),
+                Flexible(
+                  child: Text(
+                    'Something went wrong here',
+                    style: TextStyle(color: Color(0xFFB3261E), fontSize: 12, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             // The exception itself is only useful (and only safe to show)
             // during development; release users get the neutral label plus

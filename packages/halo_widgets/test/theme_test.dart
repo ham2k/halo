@@ -75,6 +75,48 @@ void main() {
       }
     });
 
+    test('every text style falls back to the emoji font, in both brightnesses', () {
+      // Roboto has no emoji at all. Without this fallback an emoji anywhere in
+      // the app resolves to nothing on web — CanvasKit shapes text itself and
+      // never reaches for an OS font — and on Windows to whatever Segoe UI
+      // Emoji substitutes, which for a flag is the bare letters "US". The
+      // failure is invisible: no error, no log, and correct-looking code.
+      //
+      // A fallback engages only where the primary font lacks the glyph, so
+      // this costs nothing for text that has none.
+      for (final brightness in Brightness.values) {
+        final t = buildHaLoTheme(brightness).textTheme;
+        // Spans the roles emoji actually turn up in: body copy, notice and
+        // status titles, list labels, and the large styles an overlay uses.
+        final styles = {
+          'bodyLarge': t.bodyLarge,
+          'bodyMedium': t.bodyMedium,
+          'bodySmall': t.bodySmall,
+          'titleSmall': t.titleSmall,
+          'titleMedium': t.titleMedium,
+          'labelSmall': t.labelSmall,
+          'headlineSmall': t.headlineSmall,
+        };
+        styles.forEach((name, style) {
+          expect(
+            style!.fontFamilyFallback,
+            contains(emojiFontFamily),
+            reason: '$name ($brightness) drops the emoji fallback',
+          );
+        });
+
+        // AppBar and DefaultTextStyle REPLACE the ambient style rather than
+        // merging with it, so this one does not inherit the fallback above —
+        // and HaloDialog titles read from it, carrying extension- and
+        // notice-authored text whose body markdown already resolves emoji.
+        expect(
+          buildHaLoTheme(brightness).appBarTheme.titleTextStyle?.fontFamilyFallback,
+          contains(emojiFontFamily),
+          reason: 'appBarTheme.titleTextStyle ($brightness) drops the emoji fallback',
+        );
+      }
+    });
+
     test('app bar title uses Roboto Slab at Black (w900), matching app-polo', () {
       final theme = buildHaLoTheme(Brightness.light);
       expect(theme.appBarTheme.titleTextStyle!.fontFamily, 'RobotoSlab');

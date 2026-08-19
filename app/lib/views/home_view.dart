@@ -1461,14 +1461,14 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                         Expanded(
                           child: MarkdownBody(
                             data: commandMessage,
-                            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                            styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
                               p: theme.textTheme.bodyLarge?.copyWith(
                                 color: _engine.isConfirmation
                                     ? theme.colorScheme.onPrimary
                                     : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
                                 fontWeight: FontWeight.w600,
                               ),
-                            ),
+                            )),
                           ),
                         ),
                       ],

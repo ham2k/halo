@@ -846,7 +846,7 @@ MarkdownStyleSheet _noticeMarkdownStyle(ThemeData theme, Color onNotice) {
   final body = theme.textTheme.bodyMedium?.copyWith(color: onNotice);
   final faint = onNotice.withValues(alpha: 0.08);
   final rule = onNotice.withValues(alpha: 0.3);
-  return MarkdownStyleSheet.fromTheme(theme).copyWith(
+  return withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
     p: body,
     listBullet: body,
     blockquote: body,
@@ -874,7 +874,7 @@ MarkdownStyleSheet _noticeMarkdownStyle(ThemeData theme, Color onNotice) {
     blockquoteDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
     tableBorder: TableBorder.all(color: rule),
     horizontalRuleDecoration: BoxDecoration(border: Border(top: BorderSide(width: 5, color: rule))),
-  );
+  ));
 }
 
 /// One notice, as a "post-it" card: icon+title row, markdown body, action

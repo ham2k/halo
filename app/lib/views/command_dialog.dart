@@ -1135,8 +1135,13 @@ class _CommandDialogState extends State<CommandDialog> {
 
   /// Shared by both subtitle branches, so the markdown and plain renderings of
   /// a row measure and read identically.
-  TextStyle? _subtitleStyle(ThemeData theme, Color foreground) =>
-      theme.textTheme.bodySmall?.copyWith(color: foreground.withValues(alpha: 0.75));
+  /// Names the emoji font rather than relying on the theme's own fallback:
+  /// a row's subtitle is an extension's `describe` text, and this style is
+  /// what the markdown rendering of it resolves glyphs through.
+  TextStyle? _subtitleStyle(ThemeData theme, Color foreground) => theme.textTheme.bodySmall?.copyWith(
+        color: foreground.withValues(alpha: 0.75),
+        fontFamilyFallback: const [emojiFontFamily],
+      );
 
   Widget _emptyState(ThemeData theme, Translations t) => Padding(
         padding: const EdgeInsets.fromLTRB(Space.xl, Space.xs, Space.xl, Space.xl),
@@ -1178,8 +1183,7 @@ class _CommandDialogState extends State<CommandDialog> {
           Expanded(
             child: MarkdownBody(
               data: message,
-              styleSheet: markdownStyleSheetWithEmoji(
-                theme,
+              styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
                 p: theme.textTheme.bodyMedium?.copyWith(
                   // The field's own size, in plain logical pixels — UiScale
                   // scales the whole tree (docs/design/ui-scaling.md); never
@@ -1188,7 +1192,7 @@ class _CommandDialogState extends State<CommandDialog> {
                   color: isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
-              ),
+              )),
             ),
           ),
         ],

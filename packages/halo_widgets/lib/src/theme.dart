@@ -360,36 +360,47 @@ const String emojiFontAssetPath = 'assets/fonts/NotoColorEmoji.ttf';
 /// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace.
 TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fontFamily: emojiFontFamily);
 
-/// `MarkdownStyleSheet.fromTheme`, with [emojiFontFamily] added as a fallback
-/// to every block style that can carry running text.
+/// [base] with [emojiFontFamily] added as a fallback to every style that can
+/// carry running text.
 ///
 /// Any markdown a user or an extension wrote can name a country with its flag,
 /// or open with a pictograph. Body text is Roboto, which resolves no emoji at
 /// all on web — CanvasKit shapes text itself and never reaches for an OS font
 /// — so without the fallback those glyphs are simply absent, with no error and
-/// nothing in the log.
+/// nothing in the log. On Windows the platform substitutes Segoe UI Emoji,
+/// which has no flag glyphs and draws the letters "US".
 ///
-/// Every heading level, the blockquote and both table styles are listed
-/// individually on purpose: `copyWith(p:)` reaches `li`, `pre` and `table`,
-/// which share the `p` style, and NOTHING else — so a flag in a heading or a
-/// table cell goes missing while the paragraph beside it renders.
+/// Takes a whole sheet rather than building one, so it composes with the call
+/// sites that style more than paragraphs: applying this LAST is what covers a
+/// bespoke `strong` or `listBullet` too.
 ///
-/// [p] overrides the paragraph style before the fallback is applied, for the
-/// call sites that tint or weight their body text.
-MarkdownStyleSheet markdownStyleSheetWithEmoji(ThemeData theme, {TextStyle? p}) {
-  TextStyle? withEmoji(TextStyle? style) => style?.copyWith(fontFamilyFallback: const [emojiFontFamily]);
-  final base = MarkdownStyleSheet.fromTheme(theme);
+/// Every style is listed individually on purpose: `copyWith(p:)` reaches `li`,
+/// `pre` and `table`, which share the `p` style, and NOTHING else — so a flag
+/// in a heading or a table cell goes missing while the paragraph beside it
+/// renders. `markdown_emoji_font_test.dart` is what keeps a new renderer from
+/// skipping this.
+MarkdownStyleSheet withEmojiFallback(MarkdownStyleSheet base) {
+  // Appends, like _withTabularFigures does with fontFeatures: a style that
+  // already names a fallback keeps it, and the emoji font goes last.
+  TextStyle? f(TextStyle? style) =>
+      style?.copyWith(fontFamilyFallback: [...?style.fontFamilyFallback, emojiFontFamily]);
   return base.copyWith(
-    p: withEmoji(p ?? base.p),
-    h1: withEmoji(base.h1),
-    h2: withEmoji(base.h2),
-    h3: withEmoji(base.h3),
-    h4: withEmoji(base.h4),
-    h5: withEmoji(base.h5),
-    h6: withEmoji(base.h6),
-    blockquote: withEmoji(base.blockquote),
-    tableHead: withEmoji(base.tableHead),
-    tableBody: withEmoji(base.tableBody),
+    p: f(base.p),
+    a: f(base.a),
+    code: f(base.code),
+    h1: f(base.h1),
+    h2: f(base.h2),
+    h3: f(base.h3),
+    h4: f(base.h4),
+    h5: f(base.h5),
+    h6: f(base.h6),
+    em: f(base.em),
+    strong: f(base.strong),
+    del: f(base.del),
+    blockquote: f(base.blockquote),
+    listBullet: f(base.listBullet),
+    tableHead: f(base.tableHead),
+    tableBody: f(base.tableBody),
   );
 }
 
@@ -713,8 +724,33 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
           outlineVariant: Color(0xFFDCE6E8),
         );
 
+  // Every theme-derived style names the bundled color-emoji font as a
+  // fallback, so an emoji anywhere in the app resolves to a glyph.
+  //
+  // This is NOT invisible to text that already rendered. The bundled Roboto is
+  // a 927-codepoint subset, and NotoColorEmoji covers 168 BMP codepoints it
+  // lacks — ⌚ ▶ ☀ ⚠ ✅ ✈ ❌ ➡ ⬅ ⭐ among them. Those used to fall through to
+  // whatever the platform served, monochrome and in text metrics; this entry
+  // jumps that queue, so they now paint as colour bitmaps with emoji metrics,
+  // taller and wider on the line. A variation selector does not opt out: VS15
+  // asks for text presentation, and a font that only has the colour glyph
+  // still wins the fallback. So a symbol used as decoration renders
+  // differently, which is why the app uses MDI icons for that job.
+  //
+  // It is the app-wide half of a fix whose other half is withEmojiFallback:
+  // markdown stylesheets are built by flutter_markdown from `theme.textTheme`
+  // and inherit this, but the sites that override a block style with a
+  // hand-built TextStyle do not, which is what that helper and
+  // markdown_emoji_font_test.dart cover. A style built from a bare
+  // `TextStyle(...)` rather than from the theme — haloMonoStyle among them —
+  // is outside both, and has to name emojiFontFamily itself.
   final textTheme = _withTabularFigures(
-    ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto'),
+    ThemeData(brightness: brightness).textTheme.apply(
+      fontFamily: 'Roboto',
+      // Replacing rather than appending would silently drop a fallback added
+      // later — a CJK face, say — from every style at once.
+      fontFamilyFallback: const [emojiFontFamily],
+    ),
   );
 
   final haloColors = isDark ? HaLoColors.dark : HaLoColors.light;
@@ -761,6 +797,12 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       toolbarHeight: 48.0,
       titleSpacing: 4.0,
       titleTextStyle: TextStyle(
+        // HaloDialog titles read from here, and they carry extension- and
+        // notice-authored text — a notice titled "🇺🇸 US operators" would
+        // otherwise render its body's flag and not its title's. AppBar and
+        // DefaultTextStyle REPLACE rather than merge, so the textTheme
+        // fallback above does not reach this.
+        fontFamilyFallback: const [emojiFontFamily],
         fontFamily: 'RobotoSlab',
         fontSize: 18,
         fontWeight: FontWeight

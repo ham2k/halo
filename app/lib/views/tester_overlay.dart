@@ -245,7 +245,7 @@ class _TesterPanel extends StatelessWidget {
     // tripping flutter_markdown's assertion).
     final theme = Theme.of(context);
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
-    final notesStyleSheet = MarkdownStyleSheet.fromTheme(theme).copyWith(
+    final notesStyleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
       p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
       listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
       strong: theme.textTheme.bodyMedium?.copyWith(
@@ -253,7 +253,7 @@ class _TesterPanel extends StatelessWidget {
         fontWeight: FontWeight.bold,
         color: Colors.black,
       ),
-    );
+    ));
 
     // The standing warning leads, then each pending build's notes, newest
     // first — a tester several builds behind catches up in one read.

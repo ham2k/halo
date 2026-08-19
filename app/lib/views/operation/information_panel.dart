@@ -266,7 +266,7 @@ class InformationPanel extends StatelessWidget {
   Widget _tallyDetail(BuildContext context, String detail, {required bool isGrid}) {
     final theme = Theme.of(context);
     final bodyStyle = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-    final styleSheet = MarkdownStyleSheet.fromTheme(theme).copyWith(
+    final styleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
       p: isGrid
           ? bodyStyle.copyWith(
               fontFamily: 'RobotoMono',
@@ -290,7 +290,7 @@ class InformationPanel extends StatelessWidget {
               decoration: TextDecoration.lineThrough,
             )
           : null,
-    );
+    ));
     return Padding(
       padding: const EdgeInsets.only(top: Space.xs),
       child: MarkdownBody(data: detail, softLineBreak: true, styleSheet: styleSheet),

@@ -2182,7 +2182,10 @@ class ExtensionService implements PanelExtensionSource {
       builder: (dialogContext) => HaloDialog(
         wide: true,
         title: title != null ? Text(title) : null,
-        content: MarkdownBody(data: text),
+        content: MarkdownBody(
+          data: text,
+          styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext))),
+        ),
         cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
         actions: [
           for (final action in actions)

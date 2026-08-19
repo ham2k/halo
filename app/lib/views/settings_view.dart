@@ -3133,7 +3133,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final markdown = _combinedReleaseNotesMarkdown(releases);
-    final styleSheet = MarkdownStyleSheet.fromTheme(Theme.of(context));
+    final styleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(context)));
     return GestureDetector(
       key: const Key('aboutReleaseNotesPreview'),
       behavior: HitTestBehavior.opaque,
@@ -3778,7 +3778,7 @@ class _AccountPaneState extends State<_AccountPane> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (preface != null && preface.isNotEmpty) ...[
-                    MarkdownBody(data: preface),
+                    MarkdownBody(data: preface, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme))),
                     const SizedBox(height: Space.md),
                   ],
                   if (field['type'] == 'secret')
@@ -3805,7 +3805,7 @@ class _AccountPaneState extends State<_AccountPane> {
                     ),
                   if (postface != null && postface.isNotEmpty) ...[
                     const SizedBox(height: Space.md),
-                    MarkdownBody(data: postface),
+                    MarkdownBody(data: postface, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme))),
                   ],
                 ],
               ),
@@ -3844,7 +3844,10 @@ class _AccountPaneState extends State<_AccountPane> {
                         height: 20,
                         child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
                       )
-                    : MarkdownBody(data: _testResult ?? '—'),
+                    : MarkdownBody(
+                        data: _testResult ?? '—',
+                        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme)),
+                      ),
               ),
             ),
             const SizedBox(width: Space.md),

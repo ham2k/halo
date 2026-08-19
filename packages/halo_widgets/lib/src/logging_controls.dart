@@ -7826,14 +7826,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (message != null) {
       return MarkdownBody(
         data: message,
-        styleSheet: markdownStyleSheetWithEmoji(
-          theme,
+        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
           // The info area sits on the panel's tertiaryContainer fill.
           p: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onTertiaryContainer,
             fontWeight: FontWeight.w500,
           ),
-        ),
+        )),
       );
     }
 

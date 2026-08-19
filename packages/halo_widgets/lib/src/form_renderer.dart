@@ -813,7 +813,13 @@ class FormRendererState extends State<FormRenderer> {
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
     final devModeColor = _devModeColor(el);
-    final styleSheet = devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor));
+    // Extension-authored copy, so it needs the emoji font; the dev-mode tint
+    // keeps the bare sheet it always used, with only the fallback added.
+    final styleSheet = withEmojiFallback(
+      devModeColor == null
+          ? MarkdownStyleSheet.fromTheme(theme)
+          : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
+    );
     if (el['collapsible'] == true) {
       return Theme(
         data: theme.copyWith(dividerColor: Colors.transparent),

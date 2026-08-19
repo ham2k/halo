@@ -260,7 +260,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
           _sectionTitle(theme, t.notes),
           MarkdownBody(
             data: notes.join('\n\n'),
-            styleSheet: markdownStyleSheetWithEmoji(theme),
+            styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme)),
             // Stays a MarkdownBody — notes are joined with blank lines, so this
             // is genuinely a block.
             onTapLink: (_, href, _) {

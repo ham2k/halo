@@ -111,6 +111,7 @@ class PanelContentView extends StatelessWidget {
           child: MarkdownBody(
             data: content.content,
             selectable: true,
+            styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(context))),
             // The same link policy as a status-bar notice's: http(s) and
             // mailto leave for the OS browser, anything else is ignored.
             onTapLink: (text, href, title) {
