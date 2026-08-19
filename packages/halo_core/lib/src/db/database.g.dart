@@ -4952,7 +4952,11 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
   );
   late final Index peerEventsOperationSeq = Index(
     'peer_events_operation_seq',
-    'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
+    'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq, record_uuid, updated_at_millis)',
+  );
+  late final Index peerEventsOperationRecord = Index(
+    'peer_events_operation_record',
+    'CREATE INDEX peer_events_operation_record ON peer_events (operation_uuid, record_uuid)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -4972,6 +4976,7 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     qsosOperationStart,
     inboundCapturesDedupeKey,
     peerEventsOperationSeq,
+    peerEventsOperationRecord,
   ];
 }
 

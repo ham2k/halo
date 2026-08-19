@@ -45,6 +45,15 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  // Undoing a WIDENED index means putting the narrow one back, not dropping
+  // it: v12 had an index of this name, just with two fewer columns. A bare
+  // drop here would leave the fixture without it and the upgrade would then
+  // be checked against a shape no released build ever had.
+  13: [
+    'DROP INDEX peer_events_operation_record',
+    'DROP INDEX peer_events_operation_seq',
+    'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
+  ],
   12: ['DROP TABLE peer_trust'],
   11: [
     'DROP INDEX peer_events_operation_seq',
@@ -70,6 +79,13 @@ const _undoToGetPreviousVersion = <int, List<String>>{
   3: ['DROP TABLE lookups'],
   2: ['DROP TABLE operations_backup', 'DROP TABLE qsos_backup'],
 };
+
+/// The newest version `every supported upgrade path` starts a fixture from.
+/// A literal, unlike every other version reference here, because that group
+/// builds its tests while the file is being declared — before `setUpAll` has
+/// read `schemaVersion` into `currentVersion`. `the upgrade-path loop reaches
+/// the newest version` is what keeps the two in step.
+const _highestUpgradeFrom = 12;
 
 /// The schema every fresh install must produce. Regenerate with
 /// `dart run tool/dump_schema.dart` after a deliberate schema change — and ask
@@ -250,6 +266,16 @@ void main() {
       );
     });
 
+    test('the upgrade-path loop reaches the newest version', () {
+      // Same silent failure as the undo map above, from the other side: a
+      // version bump that leaves this literal behind stops building the test
+      // that upgrades FROM the version just superseded — so the newest step
+      // is exercised from nothing, and the file goes green anyway.
+      expect(_highestUpgradeFrom, currentVersion - 1,
+          reason: 'schemaVersion is $currentVersion — _highestUpgradeFrom must be '
+              '${currentVersion - 1} or the newest upgrade path builds no test');
+    });
+
     test('walking back really does reach each version', () async {
       for (var version = 1; version < currentVersion; version++) {
         // Asserted before the file is closed: reopening is what triggers the
@@ -282,13 +308,40 @@ void main() {
             expect(columns.contains('updated_at_millis'), version >= 4,
                 reason: 'v$version $table stamps');
           }
+
+          // Indexes too, and by definition — because one of them CHANGED
+          // shape rather than appearing. An undo that drops the current
+          // `peer_events_operation_seq` without putting the narrow one back
+          // leaves a fixture no released build ever wrote, and the upgrade
+          // under test then has nothing to convert.
+          final indexes = {
+            for (final r in await db
+                .customSelect("SELECT name, sql FROM sqlite_master WHERE type = 'index' "
+                    "AND sql IS NOT NULL AND name NOT LIKE 'sqlite_%'")
+                .get())
+              r.read<String>('name'): r.read<String>('sql').replaceAll(RegExp(r'\s+'), ' ').trim()
+          };
+          expect(indexes.containsKey('inbound_captures_dedupe_key'), version >= 10,
+              reason: 'v$version dedupe index');
+          expect(indexes.containsKey('peer_events_operation_record'), version >= 13,
+              reason: 'v$version prune index');
+          if (version >= 11) {
+            expect(
+              indexes['peer_events_operation_seq'],
+              version >= 13
+                  ? 'CREATE INDEX peer_events_operation_seq ON peer_events '
+                      '(operation_uuid, seq, record_uuid, updated_at_millis)'
+                  : 'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
+              reason: 'v$version outbox index shape',
+            );
+          }
         });
       }
     });
   });
 
   group('every supported upgrade path', () {
-    for (var from = 1; from <= 11; from++) {
+    for (var from = 1; from <= _highestUpgradeFrom; from++) {
       test('v$from keeps the operator\'s log intact', () async {
         final file = dbFile();
         await createAtVersion(file, from,
@@ -583,6 +636,14 @@ void main() {
       // does not create a table's indexes — so an index added to a future
       // table without an explicit step would leave upgraded installs
       // table-scanning while fresh ones stay fast.
+      //
+      // Names are the whole job here. Comparing DEFINITIONS instead would add
+      // nothing: this fixture starts at v1, so it takes every step in order
+      // and any index it holds is already the current shape by the end. An
+      // index whose columns change under a name that stays the same is caught
+      // by `v$from produces the schema a fresh install gets`, which runs
+      // drift's comparator from each version in turn — including the ones
+      // that already had the old shape.
       Future<List<String>> indexesOf(HaLoDatabase db) async => (await db
               .customSelect("SELECT name FROM sqlite_master WHERE type = 'index' "
                   "AND name NOT LIKE 'sqlite_%' ORDER BY name")
@@ -604,6 +665,7 @@ void main() {
       expect(upgradedIndexes, contains('qsos_operation_start'));
       expect(upgradedIndexes, contains('inbound_captures_dedupe_key'));
       expect(upgradedIndexes, contains('peer_events_operation_seq'));
+      expect(upgradedIndexes, contains('peer_events_operation_record'));
       expect(upgradedIndexes, freshIndexes);
     });
   });

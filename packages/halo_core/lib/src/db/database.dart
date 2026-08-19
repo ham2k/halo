@@ -223,8 +223,29 @@ class InboundCaptures extends Table {
 /// [seq] must therefore stay `AUTOINCREMENT` — SQLite would otherwise recycle
 /// the rowid of a pruned row, and a peer's stored cursor (`PeerCursors`)
 /// would silently start pointing into the wrong part of the log.
+///
+/// Neither index below is the shape it looks like it should be, and both are
+/// on the path that runs after every logged contact:
+///
+/// - `peer_events_operation_seq` leads on `(operationUuid, seq)` because that
+///   is what `PeerOutbox.eventsSince` seeks on; those two may not be
+///   reordered. [recordUuid] and [updatedAtMillis] trail them purely as
+///   payload, so `PeerOutbox._alreadyRecorded` is answered from the index
+///   alone. Drop them and SQLite seeks into the table once per entry — and
+///   since [data] is a full snapshot, only a couple of rows share a page, so
+///   reading two small columns costs about what reading the whole operation
+///   costs.
+/// - `peer_events_operation_record` is what lets `_pruneSuperseded` seek the
+///   records a scan touched. Scoping that statement to their uuids does NOT
+///   by itself avoid walking the operation: an `IN` list only drives seeks if
+///   [recordUuid] is indexed. Without this index the prune costs grow with
+///   the operation's size rather than with the handful of records edited.
 @DataClassName('PeerEventRow')
-@TableIndex(name: 'peer_events_operation_seq', columns: {#operationUuid, #seq})
+@TableIndex(
+  name: 'peer_events_operation_seq',
+  columns: {#operationUuid, #seq, #recordUuid, #updatedAtMillis},
+)
+@TableIndex(name: 'peer_events_operation_record', columns: {#operationUuid, #recordUuid})
 class PeerEvents extends Table {
   IntColumn get seq => integer().autoIncrement()();
   TextColumn get operationUuid => text()();
@@ -291,7 +312,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -363,6 +384,16 @@ class HaLoDatabase extends _$HaLoDatabase {
             }
             if (from < 12) {
               await m.createTable(peerTrust);
+            }
+            // Widening an index means REPLACING it. `createIndex` issues a
+            // bare `CREATE INDEX` with no `IF NOT EXISTS`, and every install
+            // that took v11 already holds the narrow shape under this name —
+            // so without the drop this step throws, and with a drop bolted on
+            // later but no version bump it would never run at all.
+            if (from < 13) {
+              await m.drop(peerEventsOperationSeq);
+              await m.createIndex(peerEventsOperationSeq);
+              await m.createIndex(peerEventsOperationRecord);
             }
           });
         },

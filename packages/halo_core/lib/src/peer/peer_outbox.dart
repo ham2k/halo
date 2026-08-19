@@ -301,10 +301,12 @@ class PeerOutbox {
   /// record of every operation ever shared.
   Future<void> _pruneSuperseded(String operationUuid, Set<String> recordUuids) async {
     // Scoped to the records this scan just wrote, because those are the only
-    // ones that can have gained a superseding row. Grouping the WHOLE
-    // operation instead cannot use the `(operation_uuid, seq)` index, so it
-    // costs a scan-and-sort of every outbox row of that operation per logged
-    // contact — on the same path that then pushes to peers.
+    // ones that can have gained a superseding row. The scoping is what makes
+    // this cost scale with the records edited rather than with the operation,
+    // but only because `peer_events_operation_record` exists: an `IN` list
+    // over an UNindexed column drives no seeks, so without that index this
+    // statement walks every outbox row of the operation — twice, once per arm
+    // — per logged contact, on the same path that then pushes to peers.
     //
     // Chunked: each uuid is two bound variables here, and a first share of a
     // large operation would otherwise blow past SQLite's variable limit.
