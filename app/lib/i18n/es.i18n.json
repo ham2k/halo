@@ -120,7 +120,14 @@
     "purgeTestsLooseQsos": {
       "one": "Más ${count} contacto de prueba que no pertenece a ninguna operación.",
       "other": "Más ${count} contactos de prueba que no pertenecen a ninguna operación."
-    }
+    },
+    "syncAllTitle": "¿Reemplazar el log de este dispositivo?",
+    "syncAllBody": "SYNCALL respalda y borra ${qsos} de este dispositivo, y luego vuelve a descargar el log de la cuenta desde el servidor. El respaldo queda en la base de datos de este dispositivo.",
+    "syncAllUnsynced": {
+      "one": "${n} QSO aún no se ha sincronizado — el servidor nunca lo recibió y NO va a volver.",
+      "other": "${n} QSOs aún no se han sincronizado — el servidor nunca los recibió y NO van a volver."
+    },
+    "syncAllAction": "Borrar y Resincronizar"
   },
   "operation": {
     "tabs": {
@@ -494,6 +501,8 @@
     "spotNoFreq": "Primero define una frecuencia para spotear",
     "spotComment": "Comentario",
     "bandOrFreqRequired": "Define una frecuencia o banda antes de registrar",
+    "saveFailed": "No se pudo guardar: ${error}",
+    "deleteFailed": "No se pudo borrar: ${error}",
     "info": {
       "noQsos": "Aún no hay QSOs... ¡a la carga!",
       "qsoCountOne": "1 QSO",
@@ -1120,7 +1129,8 @@
     "settingExpectsOneOf": "uno de: ${choices}",
     "settingExpectsNumber": "un número",
     "settingVanished": "«${label}» ya no está disponible",
-    "settingNotStored": "«${label}» no aceptó ese valor"
+    "settingNotStored": "«${label}» no aceptó ese valor",
+    "syncAllUnavailable": "SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí"
   },
   "commandDialog": {
     "hint": "Busca indicativos o escribe un comando",
@@ -1228,7 +1238,9 @@
     "build": "build ${build}"
   },
   "notices": {
-    "emptyHistory": "Aún no hay avisos"
+    "emptyHistory": "Aún no hay avisos",
+    "webStorageInMemory": "Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.",
+    "webStorageUnreliable": "Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado."
   },
   "syncAccount": {
     "anonymous": "Cuenta anónima (#${id})",

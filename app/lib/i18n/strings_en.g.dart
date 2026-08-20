@@ -348,6 +348,21 @@ class Translations$dialogs$en {
 	/// en: 'Purge'
 	String get purgeTestsAction => 'Purge';
 
+	/// en: 'Replace this device's log?'
+	String get syncAllTitle => 'Replace this device\'s log?';
+
+	/// en: 'SYNCALL backs up and clears ${qsos} from this device, then downloads the account's log again from the server. The backup stays in this device's database.'
+	String syncAllBody({required Object qsos}) => 'SYNCALL backs up and clears ${qsos} from this device, then downloads the account\'s log again from the server. The backup stays in this device\'s database.';
+
+	/// en: '(one) {${n} QSO has not been synced yet — the server never received it, and it will NOT come back.} (other) {${n} QSOs have not been synced yet — the server never received them, and they will NOT come back.}'
+	String syncAllUnsynced({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${n} QSO has not been synced yet — the server never received it, and it will NOT come back.',
+		other: '${n} QSOs have not been synced yet — the server never received them, and they will NOT come back.',
+	);
+
+	/// en: 'Wipe and Resync'
+	String get syncAllAction => 'Wipe and Resync';
+
 	/// en: 'Test Operations Removed Elsewhere'
 	String get receivedPurgesTitle => 'Test Operations Removed Elsewhere';
 
@@ -718,6 +733,12 @@ class Translations$loggingControls$en {
 	/// en: 'Set a frequency or band before logging'
 	String get bandOrFreqRequired => 'Set a frequency or band before logging';
 
+	/// en: 'Could not save: ${error}'
+	String saveFailed({required Object error}) => 'Could not save: ${error}';
+
+	/// en: 'Could not delete: ${error}'
+	String deleteFailed({required Object error}) => 'Could not delete: ${error}';
+
 	late final Translations$loggingControls$info$en info = Translations$loggingControls$info$en.internal(_root);
 }
 
@@ -1051,6 +1072,9 @@ class Translations$commands$en {
 
 	/// en: 'PURGETESTS needs to show a confirmation dialog, which isn't available here'
 	String get purgeTestsUnavailable => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here';
+
+	/// en: 'SYNCALL needs to show a confirmation dialog, which isn't available here'
+	String get syncAllUnavailable => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here';
 
 	/// en: '(one) {Purged ${count} Test Operation} (other) {Purged ${count} Test Operations}'
 	String testOperationsPurged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
@@ -1462,6 +1486,12 @@ class Translations$notices$en {
 
 	/// en: 'No notices yet'
 	String get emptyHistory => 'No notices yet';
+
+	/// en: 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.'
+	String get webStorageInMemory => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.';
+
+	/// en: 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.'
+	String get webStorageUnreliable => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.';
 }
 
 // Path: syncAccount
@@ -2265,6 +2295,9 @@ class Translations$operation$import$en {
 
 	/// en: 'Couldn't start listening: ${error}'
 	String protocolBindError({required Object error}) => 'Couldn\'t start listening: ${error}';
+
+	/// en: 'Incoming QSOs could not be saved and are being retried: ${error}'
+	String captureFailed({required Object error}) => 'Incoming QSOs could not be saved and are being retried: ${error}';
 
 	/// en: 'N1MM+ Contact Broadcast'
 	String get n1mmProtocolName => 'N1MM+ Contact Broadcast';
@@ -4769,6 +4802,10 @@ extension on Translations {
 			'dialogs.purgeTestsBody' => 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.',
 			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Plus ${count} test contact that belongs to no operation.', other: 'Plus ${count} test contacts that belong to no operation.', ), 
 			'dialogs.purgeTestsAction' => 'Purge',
+			'dialogs.syncAllTitle' => 'Replace this device\'s log?',
+			'dialogs.syncAllBody' => ({required Object qsos}) => 'SYNCALL backs up and clears ${qsos} from this device, then downloads the account\'s log again from the server. The backup stays in this device\'s database.',
+			'dialogs.syncAllUnsynced' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO has not been synced yet — the server never received it, and it will NOT come back.', other: '${n} QSOs have not been synced yet — the server never received them, and they will NOT come back.', ), 
+			'dialogs.syncAllAction' => 'Wipe and Resync',
 			'dialogs.receivedPurgesTitle' => 'Test Operations Removed Elsewhere',
 			'dialogs.receivedPurgesBody' => 'These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.',
 			'dialogs.receivedPurgesAction' => 'Remove',
@@ -4995,6 +5032,7 @@ extension on Translations {
 			'operation.import.protocolStatusReceiving' => 'Receiving data',
 			'operation.import.protocolStatusNoData' => 'No data received recently',
 			'operation.import.protocolBindError' => ({required Object error}) => 'Couldn\'t start listening: ${error}',
+			'operation.import.captureFailed' => ({required Object error}) => 'Incoming QSOs could not be saved and are being retried: ${error}',
 			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
 			'operation.import.n1mmAddressValue' => 'Any (broadcast)',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
@@ -5113,6 +5151,8 @@ extension on Translations {
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
 			'loggingControls.spotComment' => 'Comment',
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
+			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
+			'loggingControls.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
@@ -5169,6 +5209,8 @@ extension on Translations {
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
@@ -5176,8 +5218,6 @@ extension on Translations {
 			'qsoEditForm.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.bandOrModeWarning' => 'Please make sure your band and mode are correct',
-			_ => null,
-		} ?? switch (path) {
 			'qsoList.today' => 'Today',
 			'qsoList.yesterday' => 'Yesterday',
 			'qsoList.tomorrow' => 'Tomorrow',
@@ -5646,6 +5686,7 @@ extension on Translations {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noTestOperations' => 'No Test Operations to purge',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
+			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
@@ -5682,6 +5723,8 @@ extension on Translations {
 			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
 			'staleness.quitAndReopen' => 'Quit the app and open it again to apply it.',
@@ -5690,8 +5733,6 @@ extension on Translations {
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
@@ -5750,6 +5791,8 @@ extension on Translations {
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
+			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
+			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',

@@ -30,7 +30,7 @@ import type {
 } from "@ham2k/halo-extension-sdk"
 
 import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
-import { loFiErrorMessage, normalizedEmail } from "./errors.ts"
+import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normalizedEmail } from "./errors.ts"
 import { tFor } from "./i18n.ts"
 import { attachReportContext, buildReportPayload } from "./report.ts"
 import type { ReportContext, ReportPayload } from "./report.ts"
@@ -327,6 +327,13 @@ async function request(
         response.status,
       )
     }
+    // A 2xx whose body isn't JSON is a proxy or error page, not the server
+    // — parseJson folded it into `{}` above, and callers persist what this
+    // returns (getAccountData's snapshot lands in settings). A plain Error,
+    // not LoFiRequestError, so sync's backup capture still fires.
+    if (isUnparseableBody(response.body)) {
+      throw new Error(`LoFi returned HTTP ${response.status} with an unparseable body`)
+    }
     return json
   }
   throw new Error('LoFi authentication failed')
@@ -349,7 +356,16 @@ function parseJson(body: string): Record<string, JSONValue> {
 // still reaches onError/crash reporting.
 async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncResponse> {
   try {
-    return (await request('POST', 'v1/sync', payload as unknown as JSONValue)) as SyncResponse
+    const response = (await request('POST', 'v1/sync', payload as unknown as JSONValue)) as SyncResponse
+    // A 2xx whose body isn't a recognizable sync reply is a FAILURE, not a
+    // success — see isRecognizableSyncResponse for the trap (a proxy's
+    // 200-with-HTML would otherwise mark the pushed batch synced forever).
+    // Thrown as a plain Error, not LoFiRequestError, so shouldCaptureToBackup
+    // also spools the payload to the backup service.
+    if (!isRecognizableSyncResponse(response)) {
+      throw new Error('LoFi sync returned an unrecognizable response (not a sync reply)')
+    }
+    return response
   } catch (e) {
     if (e instanceof LoFiRequestError && e.status === 422) return { error: e.message, error_status: e.status }
 

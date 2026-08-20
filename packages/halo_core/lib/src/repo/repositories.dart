@@ -19,6 +19,7 @@ import '../db/database.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
+import '../models/qso_merge.dart';
 import 'write_policy.dart';
 
 const _uuidGenerator = Uuid();
@@ -846,6 +847,14 @@ class QsosRepository {
     required String operationUuid,
     List<Map<String, dynamic>> inserts = const [],
     List<Qso> updates = const [],
+    // The plan-time snapshots the updates were merged from, by uuid. Any
+    // row that moved past its snapshot between planning and this write (a
+    // sync pull landing while the import's confirm dialog sat open) gets
+    // its update re-merged against the row as it is NOW
+    // ([mergeConcurrentEdit]), so the concurrent revision's fields survive
+    // wherever the file didn't touch them. An update without a snapshot
+    // writes as given.
+    Map<String, Qso> updateBases = const {},
     // `false` for a caller writing one operation across many chunked calls
     // (a large import) — the counters only need to be right after the LAST
     // chunk, so the intermediate ones pass `false` here and the caller runs
@@ -961,12 +970,48 @@ class QsosRepository {
         final existingUuids = <String>{};
         for (var i = 0; i < updateUuids.length; i += _inClauseChunkSize) {
           final chunk = updateUuids.sublist(i, math.min(i + _inClauseChunkSize, updateUuids.length));
-          final rows = await (db.selectOnly(db.qsos)
-                ..addColumns([db.qsos.uuid])
-                ..where(db.qsos.uuid.isIn(chunk)))
-              .map((row) => row.read(db.qsos.uuid)!)
-              .get();
-          existingUuids.addAll(rows);
+          if (updateBases.isEmpty) {
+            // No snapshots to reconcile against: the uuid projection is all
+            // the check needs. Selecting full rows here would jsonDecode
+            // every target's blob inline, mid-transaction — the same decode
+            // [historyForCalls] routes through an isolate above 200 rows —
+            // and a single corrupt blob would abort a batch whose UPDATE
+            // would have overwritten it anyway.
+            final rows = await (db.selectOnly(db.qsos)
+                  ..addColumns([db.qsos.uuid])
+                  ..where(db.qsos.uuid.isIn(chunk)))
+                .map((row) => row.read(db.qsos.uuid)!)
+                .get();
+            existingUuids.addAll(rows);
+            continue;
+          }
+          // Re-merge any target that moved past its plan-time snapshot —
+          // see [updateBases]. Inside the same transaction as the write, so
+          // the row read here is the row the batch below overwrites.
+          final rows = await (db.select(db.qsos)..where((q) => q.uuid.isIn(chunk))).get();
+          for (final row in rows) {
+            existingUuids.add(row.uuid);
+            final base = updateBases[row.uuid];
+            if (base == null) continue;
+            // `edited` is the already-stamped planned update — byte-identical
+            // to the caller's data apart from `updatedAtMillis`, which the
+            // outer restamp below overwrites anyway.
+            final planned = stampedByUuid[row.uuid]!;
+            final Qso current;
+            try {
+              current = _qsoFromRow(row);
+            } catch (_) {
+              // A corrupt stored blob can't be merged with — write the
+              // planned update as-is, which replaces the bad blob.
+              continue;
+            }
+            if (current.data['updatedAtMillis'] == base.data['updatedAtMillis']) continue;
+            stampedByUuid[row.uuid] = _restamped(Qso(
+              uuid: row.uuid,
+              operationUuid: planned.operationUuid,
+              data: mergeConcurrentEdit(base: base.data, current: current.data, edited: planned.data),
+            ));
+          }
         }
         await db.batch((batch) {
           for (final uuid in existingUuids) {
@@ -983,10 +1028,29 @@ class QsosRepository {
     return written;
   }
 
-  Future<void> update(Qso qso) async {
+  /// [basedOn] is the record the editor loaded — the snapshot [qso]'s data
+  /// was composed from. When given, the row is re-read inside the
+  /// transaction and, if something else (a sync pull, a peer merge, a
+  /// background lookup) moved it past that snapshot while the editor sat
+  /// open, the concurrent revision's fields survive wherever this edit
+  /// didn't touch them ([mergeConcurrentEdit]). Without the re-read, the
+  /// whole-record write reverts the concurrent revision — and, restamped
+  /// newer, the reversion wins on every device at the next sync. Same
+  /// reasoning as [_writeDeleted]'s re-read.
+  Future<void> update(Qso qso, {Qso? basedOn}) async {
     await _refuseStoredQso(qso.uuid);
-    final stamped = _restamped(qso);
+    var stamped = _restamped(qso);
     await db.transaction(() async {
+      if (basedOn != null) {
+        final current = await get(qso.uuid);
+        if (current != null && current.data['updatedAtMillis'] != basedOn.data['updatedAtMillis']) {
+          stamped = _restamped(Qso(
+            uuid: qso.uuid,
+            operationUuid: qso.operationUuid,
+            data: mergeConcurrentEdit(base: basedOn.data, current: current.data, edited: qso.data),
+          ));
+        }
+      }
       await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped));
       await refreshOperationCounters(stamped.operationUuid);
     });
@@ -1428,6 +1492,28 @@ class QsosRepository {
     final pendingCount = (await pendingQuery.getSingle()).read(count) ?? 0;
 
     return (total: totalCount, pending: pendingCount);
+  }
+
+  /// How many CONTACTS the server has not received — [syncCounts]'s `total`
+  /// rule with `synced == false` added. Distinct from `pending`, which
+  /// counts every dirty ROW (tombstones and event markers included) because
+  /// it answers the sync loop's "anything to push?"; this one gates
+  /// destructive wipe flows, where the number shown to the operator must
+  /// mean "logged QSOs that exist nowhere else". A dirty tombstone is
+  /// un-pushed state too, but its loss direction is a resurrection, not a
+  /// vanished contact — counting it would make the warning wrong in both
+  /// magnitude and direction.
+  Future<int> unsyncedContactCount() async {
+    final count = db.qsos.uuid.count();
+    final query = db.selectOnly(db.qsos).join([
+      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+    ])
+      ..addColumns([count])
+      ..where(db.qsos.synced.equals(false) &
+          db.qsos.deleted.equals(false) &
+          _isContact &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+    return (await query.getSingle()).read(count) ?? 0;
   }
 
   /// Same as [syncCounts], but scoped to one operation's (non-deleted) rows,

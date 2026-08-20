@@ -1147,7 +1147,12 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       }
       for (var i = 0; i < updates.length; i += chunkSize) {
         final chunk = updates.sublist(i, math.min(i + chunkSize, updates.length));
-        written += await widget.services.qsos.writeBatch(operationUuid: operationUuid, updates: chunk, refreshCounters: false);
+        // The whole plan's bases ride along with every chunk — writeBatch
+        // only consults the uuids it is writing, and without them a row
+        // that moved while the confirm dialog sat open is clobbered with
+        // the stale plan-time fold (see `updateBases`).
+        written += await widget.services.qsos
+            .writeBatch(operationUuid: operationUuid, updates: chunk, updateBases: plan.mergeBases, refreshCounters: false);
         if (totalPlanned > 0) progress.value = written / totalPlanned;
         detail.value = importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned));
       }
@@ -2250,10 +2255,18 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   /// button becomes the actual delete until Undo puts it back.
   bool _pendingDelete = false;
 
+  /// The row as this panel loaded it — the snapshot the controllers were
+  /// seeded from, and the `basedOn` the save passes. `widget.qso` cannot
+  /// serve: the parent re-resolves it by uuid from the watched stream on
+  /// every build, so after a sync pull lands mid-edit it IS the new row —
+  /// its stamp equals the stored one, and update()'s concurrent-edit merge
+  /// would self-disable in exactly the case it exists for.
+  late final Qso _loadedQso;
+
   @override
   void initState() {
     super.initState();
-    final qso = widget.qso;
+    final qso = _loadedQso = widget.qso;
     final start = qso.startAtMillis == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(qso.startAtMillis!, isUtc: true);
@@ -2302,7 +2315,11 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   }
 
   Future<void> _save() async {
-    final qso = widget.qso;
+    // Composed from the SNAPSHOT the form was seeded from, not the live
+    // `widget.qso` — the edit is "what the operator saw plus what they
+    // typed", and update()'s merge below reconciles it against whatever the
+    // row holds by now.
+    final qso = _loadedQso;
     setState(() => _saving = true);
     try {
       final their = <String, dynamic>{...?(qso.data['their'] as Map?)?.cast<String, dynamic>()};
@@ -2342,7 +2359,10 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
         },
         scoreCache: qso.scoreCache,
       );
-      await widget.services.qsos.update(updated);
+      // `basedOn` is the same snapshot: if a sync pull moved the row while
+      // the panel sat open, only the fields edited here overwrite it (see
+      // mergeConcurrentEdit).
+      await widget.services.qsos.update(updated, basedOn: _loadedQso);
     } catch (e, stack) {
       ErrorReportingService.report(e, stack, context: 'logsQsoEdit:save');
       if (mounted) {

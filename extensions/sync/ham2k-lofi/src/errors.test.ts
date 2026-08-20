@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { loFiErrorMessage, normalizedEmail } from './errors.ts'
+import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normalizedEmail } from './errors.ts'
 
 describe('loFiErrorMessage', () => {
   it('reads the top-level error the permission endpoints render', () => {
@@ -76,5 +76,44 @@ describe('normalizedEmail', () => {
     assert.equal(normalizedEmail(null as never), undefined)
     assert.equal(normalizedEmail('   '), undefined)
     assert.equal(normalizedEmail(42 as never), undefined)
+  })
+})
+
+describe('isRecognizableSyncResponse', () => {
+  // The trap: a proxy or maintenance page answering 200-with-HTML parses to
+  // `{}`, which has no `error` field — without this predicate the engine
+  // marks the pushed batch synced on a reply the server never wrote, and
+  // those QSOs never push again.
+  it('rejects the {} an unparseable 2xx body produces', () => {
+    assert.equal(isRecognizableSyncResponse({}), false)
+  })
+
+  it('accepts a normal sync reply (SyncController#sync always renders success/meta/account)', () => {
+    assert.equal(isRecognizableSyncResponse({ success: true, meta: {}, account: { uuid: 'a' } }), true)
+  })
+
+  it('accepts a cooldown reply, which still carries success and meta counts', () => {
+    assert.equal(isRecognizableSyncResponse({ success: true, meta: { qsos: { records_left: 3 } } }), true)
+  })
+
+  it('accepts a reply carrying only one of the expected keys, so a server that trims its response does not read as an outage', () => {
+    assert.equal(isRecognizableSyncResponse({ meta: {} }), true)
+    assert.equal(isRecognizableSyncResponse({ account: { uuid: 'a' } }), true)
+  })
+})
+
+describe('isUnparseableBody', () => {
+  // The trap: a proxy's 200-with-HTML parses to {}, which endpoints read as
+  // a valid empty reply and persist over good data (the account snapshot).
+  it('flags HTML and other garbage', () => {
+    assert.equal(isUnparseableBody('<html><body>Maintenance</body></html>'), true)
+    assert.equal(isUnparseableBody('Bad gateway'), true)
+  })
+
+  it('lets real JSON and genuinely empty replies through', () => {
+    assert.equal(isUnparseableBody('{"success":true}'), false)
+    assert.equal(isUnparseableBody('{}'), false)
+    assert.equal(isUnparseableBody(''), false)
+    assert.equal(isUnparseableBody('  '), false)
   })
 })

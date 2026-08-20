@@ -144,6 +144,7 @@ Future<void> importAdifFile(
         operationUuid: operation.uuid,
         inserts: plan.additions,
         updates: plan.merges,
+        updateBases: plan.mergeBases,
       );
     } catch (e, stack) {
       _reportFailure(services, 'adifImport:write', e, stack, t.failed(filename: filename, error: '$e'));

@@ -637,4 +637,78 @@ void main() {
       expect((newer['their'] as Map).containsKey('name'), isFalse);
     });
   });
+
+  group('mergeConcurrentEdit', () {
+    // The trap: a whole-record save composed from a stale snapshot reverting
+    // a concurrent revision's fields — and, restamped newer, winning on
+    // every device. Only the fields the editor actually changed may
+    // overwrite; everything else must keep the concurrent value.
+    test('fields the editor did not touch keep the concurrent revision', () {
+      final base = {
+        'uuid': 'q1',
+        'their': {'call': 'W1AW', 'sent': '59'},
+        'notes': 'original',
+      };
+      final current = {
+        'uuid': 'q1',
+        'their': {'call': 'W1AW', 'sent': '59', 'name': 'Hiram'},
+        'notes': 'original',
+        'grid': 'FN31',
+      };
+      final edited = {
+        'uuid': 'q1',
+        'their': {'call': 'W1AW', 'sent': '55'},
+        'notes': 'edited here',
+      };
+      final merged = mergeConcurrentEdit(base: base, current: current, edited: edited);
+      expect((merged['their'] as Map)['sent'], '55', reason: 'the edit itself must land');
+      expect((merged['their'] as Map)['name'], 'Hiram', reason: 'the concurrent name correction must survive');
+      expect(merged['notes'], 'edited here');
+      expect(merged['grid'], 'FN31', reason: 'a concurrent top-level addition must survive');
+    });
+
+    test('a field the editor removed stays removed, even when the concurrent revision changed it', () {
+      final base = {'uuid': 'q1', 'notes': 'old', 'mode': 'SSB'};
+      final current = {'uuid': 'q1', 'notes': 'concurrently changed', 'mode': 'SSB'};
+      final edited = {'uuid': 'q1', 'mode': 'SSB'};
+      final merged = mergeConcurrentEdit(base: base, current: current, edited: edited);
+      expect(merged.containsKey('notes'), isFalse);
+    });
+
+    test('a field the concurrent revision removed stays removed when the editor did not touch it', () {
+      final base = {'uuid': 'q1', 'notes': 'old', 'mode': 'SSB'};
+      final current = {'uuid': 'q1', 'mode': 'SSB'};
+      final edited = {'uuid': 'q1', 'notes': 'old', 'mode': 'CW'};
+      final merged = mergeConcurrentEdit(base: base, current: current, edited: edited);
+      expect(merged.containsKey('notes'), isFalse);
+      expect(merged['mode'], 'CW');
+    });
+
+    test('refs are one value: an edited ref list wins wholesale, an untouched one keeps current', () {
+      final base = {
+        'refs': [{'type': 'pota', 'ref': 'US-0001'}],
+      };
+      final current = {
+        'refs': [{'type': 'pota', 'ref': 'US-0002'}],
+      };
+      final untouched = mergeConcurrentEdit(base: base, current: current, edited: {
+        'refs': [{'type': 'pota', 'ref': 'US-0001'}],
+      });
+      expect((untouched['refs'] as List).single, {'type': 'pota', 'ref': 'US-0002'});
+
+      final editedWins = mergeConcurrentEdit(base: base, current: current, edited: {
+        'refs': [{'type': 'pota', 'ref': 'US-0003'}],
+      });
+      expect((editedWins['refs'] as List).single, {'type': 'pota', 'ref': 'US-0003'});
+    });
+
+    test('the result shares no mutable structure with its inputs', () {
+      final current = {
+        'their': {'call': 'W1AW', 'name': 'Hiram'},
+      };
+      final merged = mergeConcurrentEdit(base: const {}, current: current, edited: const {});
+      (merged['their'] as Map)['name'] = 'changed';
+      expect((current['their'] as Map)['name'], 'Hiram');
+    });
+  });
 }

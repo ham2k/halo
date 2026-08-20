@@ -205,6 +205,13 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 		one: 'Más ${count} contacto de prueba que no pertenece a ninguna operación.',
 		other: 'Más ${count} contactos de prueba que no pertenecen a ninguna operación.',
 	);
+	@override String get syncAllTitle => '¿Reemplazar el log de este dispositivo?';
+	@override String syncAllBody({required Object qsos}) => 'SYNCALL respalda y borra ${qsos} de este dispositivo, y luego vuelve a descargar el log de la cuenta desde el servidor. El respaldo queda en la base de datos de este dispositivo.';
+	@override String syncAllUnsynced({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${n} QSO aún no se ha sincronizado — el servidor nunca lo recibió y NO va a volver.',
+		other: '${n} QSOs aún no se han sincronizado — el servidor nunca los recibió y NO van a volver.',
+	);
+	@override String get syncAllAction => 'Borrar y Resincronizar';
 }
 
 // Path: operation
@@ -345,6 +352,8 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get spotNoFreq => 'Primero define una frecuencia para spotear';
 	@override String get spotComment => 'Comentario';
 	@override String get bandOrFreqRequired => 'Define una frecuencia o banda antes de registrar';
+	@override String saveFailed({required Object error}) => 'No se pudo guardar: ${error}';
+	@override String deleteFailed({required Object error}) => 'No se pudo borrar: ${error}';
 	@override late final _Translations$loggingControls$info$es info = _Translations$loggingControls$info$es._(_root);
 }
 
@@ -520,6 +529,7 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String get settingExpectsNumber => 'un número';
 	@override String settingVanished({required Object label}) => '«${label}» ya no está disponible';
 	@override String settingNotStored({required Object label}) => '«${label}» no aceptó ese valor';
+	@override String get syncAllUnavailable => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí';
 }
 
 // Path: commandDialog
@@ -698,6 +708,8 @@ class _Translations$notices$es extends Translations$notices$en {
 
 	// Translations
 	@override String get emptyHistory => 'Aún no hay avisos';
+	@override String get webStorageInMemory => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.';
+	@override String get webStorageUnreliable => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.';
 }
 
 // Path: syncAccount
@@ -2279,6 +2291,10 @@ extension on TranslationsEs {
 			'dialogs.notes' => 'Notas',
 			'dialogs.deleteOperationTitle' => 'Borrar operación',
 			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Más ${count} contacto de prueba que no pertenece a ninguna operación.', other: 'Más ${count} contactos de prueba que no pertenecen a ninguna operación.', ), 
+			'dialogs.syncAllTitle' => '¿Reemplazar el log de este dispositivo?',
+			'dialogs.syncAllBody' => ({required Object qsos}) => 'SYNCALL respalda y borra ${qsos} de este dispositivo, y luego vuelve a descargar el log de la cuenta desde el servidor. El respaldo queda en la base de datos de este dispositivo.',
+			'dialogs.syncAllUnsynced' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO aún no se ha sincronizado — el servidor nunca lo recibió y NO va a volver.', other: '${n} QSOs aún no se han sincronizado — el servidor nunca los recibió y NO van a volver.', ), 
+			'dialogs.syncAllAction' => 'Borrar y Resincronizar',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -2581,6 +2597,8 @@ extension on TranslationsEs {
 			'loggingControls.spotNoFreq' => 'Primero define una frecuencia para spotear',
 			'loggingControls.spotComment' => 'Comentario',
 			'loggingControls.bandOrFreqRequired' => 'Define una frecuencia o banda antes de registrar',
+			'loggingControls.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
+			'loggingControls.deleteFailed' => ({required Object error}) => 'No se pudo borrar: ${error}',
 			'loggingControls.info.noQsos' => 'Aún no hay QSOs... ¡a la carga!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
@@ -2689,14 +2707,14 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
 			'settings.layoutCustomization.title' => 'Personalización de Disposición',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
 			'settings.layoutCustomization.descriptionOff' => 'La vista de registro usa su disposición estándar',
 			'settings.layoutDensity' => 'Densidad del Diseño',
 			'settings.layoutDensityOpts.auto' => 'Automática',
 			'settings.layoutDensityOpts.densest' => 'Muy compacta',
 			'settings.layoutDensityOpts.dense' => 'Compacta',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityOpts.normal' => 'Normal',
 			'settings.layoutDensityOpts.sparse' => 'Amplia',
 			'settings.layoutDensityOpts.sparsest' => 'Muy amplia',
@@ -3086,6 +3104,7 @@ extension on TranslationsEs {
 			'commands.settingExpectsNumber' => 'un número',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.settingNotStored' => ({required Object label}) => '«${label}» no aceptó ese valor',
+			'commands.syncAllUnavailable' => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí',
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',
@@ -3168,6 +3187,8 @@ extension on TranslationsEs {
 			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'Aún no hay avisos',
+			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
+			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})',
@@ -3200,6 +3221,8 @@ extension on TranslationsEs {
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
 			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
 			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.emailSent' => ({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.',
 			'switchAccounts.resendEmail' => 'Reenviar email',
 			'switchAccounts.qrPrompt' => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.',
@@ -3209,8 +3232,6 @@ extension on TranslationsEs {
 			'switchAccounts.serverRejected' => ({required Object error}) => 'El servidor de sincronización rechazó la solicitud: ${error}',
 			'switchAccounts.noLinkCode' => 'El servidor de sincronización no devolvió un código de vinculación. Inténtalo más tarde.',
 			'switchAccounts.noConfirmationCode' => 'El servidor de sincronización no envió un código de confirmación. Inténtalo más tarde.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.switchNotAccepted' => 'Esa cuenta no aceptó el cambio. Prueba a vincularla con una dirección de email.',
 			'switchAccounts.requestFailed' => 'Algo salió mal al contactar el servidor de sincronización. Inténtalo más tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 

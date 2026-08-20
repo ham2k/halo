@@ -1295,6 +1295,10 @@ export interface SyncResponse {
   qsos?: Record<string, JSONValue>[]
   meta?: Record<string, JSONValue>
   account?: Record<string, JSONValue>
+  /// A transport that can receive a 2xx it didn't earn (a proxy or error
+  /// page in front of the real server) uses this to tell a genuine reply
+  /// from garbage before the engine marks the batch synced.
+  success?: boolean
   error?: string
   error_status?: number
 }

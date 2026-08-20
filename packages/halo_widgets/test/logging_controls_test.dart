@@ -99,6 +99,8 @@ void main() {
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
     String? bandOrFreqRequiredLabel,
+    QsosRepository? qsosRepository,
+    void Function(Object error, StackTrace stackTrace)? onWriteError,
     int? ourItuRegion,
     String? ourCountryCode,
     String defaultReportCW = '',
@@ -111,7 +113,8 @@ void main() {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
       operation: operation,
-      qsosRepository: qsos,
+      qsosRepository: qsosRepository ?? qsos,
+      onWriteError: onWriteError,
       keyboardAccessory: keyboardAccessory,
       qsos: existing,
       enqueueLookup: enqueueLookup,
@@ -833,6 +836,44 @@ void main() {
 
     final logged = await waitForQsos(tester, 1);
     expect(logged, isEmpty);
+  });
+
+  // The traps these two exist to catch: _log() letting an insert failure
+  // escape to the zone handler (the panel looks like it logged while the QSO
+  // is gone, and the generic notice shows at most once per session), wiping
+  // the typed fields anyway, or leaving already-committed calls in the field
+  // so the retry logs them twice.
+  testWidgets('a failed insert keeps the typed call, says so in the panel, and reports the error', (tester) async {
+    final errors = <Object>[];
+    await tester.pumpWidget(host(
+      qsosRepository: _FailingQsosRepository(db),
+      onWriteError: (e, _) => errors.add(e),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, isEmpty);
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'W1AW');
+    expect(find.textContaining('Could not save'), findsOneWidget);
+    expect(errors, hasLength(1));
+  });
+
+  testWidgets('a mid-list insert failure keeps only the unlogged calls, so a retry cannot duplicate', (tester) async {
+    await tester.pumpWidget(host(qsosRepository: _FailingQsosRepository(db, addsBeforeFailure: 1)));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC,N2XYZ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'K1ABC,N2XYZ');
+    expect(find.textContaining('Could not save'), findsOneWidget);
   });
 
   testWidgets('call stacking: "//" logs the last stacked call and leaves the rest for the next QSO', (tester) async {
@@ -10567,6 +10608,25 @@ void main() {
 /// this package, in the Flutter app rather than halo_widgets) — just
 /// enough of `VfoStore` to verify LoggingControls seeds from and writes
 /// back to it, without a real SharedPreferences-backed store.
+/// [add] starts throwing after [addsBeforeFailure] successful inserts — the
+/// disk-full / closed-database stand-in for the write-failure tests.
+class _FailingQsosRepository extends QsosRepository {
+  _FailingQsosRepository(HaLoDatabase db, {this.addsBeforeFailure = 0}) : super(db);
+  final int addsBeforeFailure;
+  int _adds = 0;
+
+  @override
+  Future<Qso> add(
+    String operationUuid,
+    Map<String, dynamic> qsoData, {
+    List<SequenceDescriptor> serialSequences = const [],
+  }) {
+    if (_adds >= addsBeforeFailure) throw StateError('disk full');
+    _adds++;
+    return super.add(operationUuid, qsoData, serialSequences: serialSequences);
+  }
+}
+
 class _FakeVfoStore extends ChangeNotifier implements VfoStore {
   Vfo _vfoA = const Vfo();
 

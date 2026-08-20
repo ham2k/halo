@@ -160,6 +160,47 @@ void main() {
     ]);
   });
 
+  test('update with basedOn keeps a concurrent sync revision where the edit did not touch it', () async {
+    // The trap: an editor sitting open for minutes while a sync pull moves
+    // the row. Saving the whole snapshot back — restamped newer — reverts
+    // the pulled revision AND wins on every device at the next round.
+    final op = await operations.create(stationCall: 'KI2D');
+    final qso = await qsos.add(op.uuid, {
+      'our': {'call': 'KI2D'},
+      'their': {'call': 'W1AW', 'sent': '59'},
+      'band': '20m',
+    });
+    final snapshot = (await qsos.get(qso.uuid))!;
+
+    await qsos.mergeFromSync([
+      {
+        ...snapshot.data,
+        'operation': op.uuid,
+        'their': <String, dynamic>{...snapshot.data['their'] as Map, 'name': 'Hiram'},
+        'updatedAtMillis': (snapshot.data['updatedAtMillis'] as int) + 60000,
+      },
+    ]);
+
+    // The operator's own edit, composed from the stale snapshot.
+    await qsos.update(
+      Qso(
+        uuid: qso.uuid,
+        operationUuid: op.uuid,
+        data: {
+          ...snapshot.data,
+          'their': <String, dynamic>{...snapshot.data['their'] as Map, 'sent': '55'},
+        },
+      ),
+      basedOn: snapshot,
+    );
+
+    final stored = (await qsos.get(qso.uuid))!;
+    expect((stored.data['their'] as Map)['sent'], '55');
+    expect((stored.data['their'] as Map)['name'], 'Hiram');
+    // And the merged result is a fresh local revision that will push.
+    expect(stored.data['updatedAtMillis'], isNot(snapshot.data['updatedAtMillis']));
+  });
+
   group('writeBatch', () {
     Map<String, dynamic> qsoData(String call, {String? uuid}) => {
           if (uuid != null) 'uuid': uuid,
@@ -316,6 +357,44 @@ void main() {
 
       final stored = (await qsos.watchForOperation(op.uuid).first).single;
       expect(stored.startAtMillis, 1721736000000);
+    });
+
+    test('an update whose row moved past its plan-time snapshot is re-merged, not clobbered', () async {
+      // The trap: a sync pull landing while the import's confirm dialog sits
+      // open. Writing the plan-time merge wholesale — restamped newer —
+      // would revert the pulled revision on every device.
+      final op = await operations.create(stationCall: 'KI2D');
+      final target = await qsos.add(op.uuid, qsoData('W1AW'));
+      final snapshot = (await qsos.get(target.uuid))!;
+
+      // Concurrent remote revision: a name correction, strictly newer stamp.
+      await qsos.mergeFromSync([
+        {
+          ...snapshot.data,
+          'operation': op.uuid,
+          'their': <String, dynamic>{...snapshot.data['their'] as Map, 'name': 'Hiram'},
+          'updatedAtMillis': (snapshot.data['updatedAtMillis'] as int) + 60000,
+        },
+      ]);
+
+      // The plan's merge, folded from the snapshot: the file adds a grid.
+      final planned = Qso(
+        uuid: target.uuid,
+        operationUuid: op.uuid,
+        data: {
+          ...snapshot.data,
+          'their': <String, dynamic>{...snapshot.data['their'] as Map, 'grid': 'FN31pr'},
+        },
+      );
+      await qsos.writeBatch(
+        operationUuid: op.uuid,
+        updates: [planned],
+        updateBases: {target.uuid: snapshot},
+      );
+
+      final stored = (await qsos.get(target.uuid))!;
+      expect((stored.data['their'] as Map)['grid'], 'FN31pr', reason: "the file's own addition must land");
+      expect((stored.data['their'] as Map)['name'], 'Hiram', reason: 'the pulled name correction must survive');
     });
 
     test('an empty batch writes nothing and fires no change', () async {

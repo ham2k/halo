@@ -132,6 +132,13 @@
       "other": "Plus ${count} test contacts that belong to no operation."
     },
     "purgeTestsAction": "Purge",
+    "syncAllTitle": "Replace this device's log?",
+    "syncAllBody": "SYNCALL backs up and clears ${qsos} from this device, then downloads the account's log again from the server. The backup stays in this device's database.",
+    "syncAllUnsynced": {
+      "one": "${n} QSO has not been synced yet — the server never received it, and it will NOT come back.",
+      "other": "${n} QSOs have not been synced yet — the server never received them, and they will NOT come back."
+    },
+    "syncAllAction": "Wipe and Resync",
     "receivedPurgesTitle": "Test Operations Removed Elsewhere",
     "receivedPurgesBody": "These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.",
     "receivedPurgesAction": "Remove"
@@ -424,6 +431,7 @@
       "protocolStatusReceiving": "Receiving data",
       "protocolStatusNoData": "No data received recently",
       "protocolBindError": "Couldn't start listening: ${error}",
+      "captureFailed": "Incoming QSOs could not be saved and are being retried: ${error}",
       "n1mmProtocolName": "N1MM+ Contact Broadcast",
       "n1mmAddressValue": "Any (broadcast)",
       "wsjtxProtocolName": "WSJT-X UDP Server",
@@ -549,6 +557,8 @@
     "spotNoFreq": "First set a frequency to spot",
     "spotComment": "Comment",
     "bandOrFreqRequired": "Set a frequency or band before logging",
+    "saveFailed": "Could not save: ${error}",
+    "deleteFailed": "Could not delete: ${error}",
     "info": {
       "noQsos": "No QSOs yet... let's get on the air!",
       "qsoCountOne": "1 QSO",
@@ -1208,6 +1218,7 @@
     "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only",
     "noTestOperations": "No Test Operations to purge",
     "purgeTestsUnavailable": "PURGETESTS needs to show a confirmation dialog, which isn't available here",
+    "syncAllUnavailable": "SYNCALL needs to show a confirmation dialog, which isn't available here",
     "testOperationsPurged": {
       "one": "Purged ${count} Test Operation",
       "other": "Purged ${count} Test Operations"
@@ -1344,7 +1355,9 @@
     "build": "build ${build}"
   },
   "notices": {
-    "emptyHistory": "No notices yet"
+    "emptyHistory": "No notices yet",
+    "webStorageInMemory": "This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.",
+    "webStorageUnreliable": "This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on."
   },
   "syncAccount": {
     "anonymous": "Anonymous Account (#${id})",

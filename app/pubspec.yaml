@@ -124,6 +124,10 @@ dev_dependencies:
   # allowlist — see link_opener_test.dart. Same rule as fake_async: transitive
   # via url_launcher, but imported directly, so declared directly.
   plugin_platform_interface: ^2.1.8
+  # Opening a database snapshot WITHOUT the app's drift stack, to prove it
+  # is a usable backup — see database_snapshot_service_test.dart. Same rule
+  # as fake_async: transitive via drift, but imported directly.
+  sqlite3: ^2.4.0
   url_launcher_platform_interface: ^2.3.2
   # Faking the native updater to pin AutoUpdateService's once-per-process
   # setFeedURL contract — see auto_update_service_test.dart. Same rule again:

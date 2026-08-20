@@ -346,6 +346,9 @@ class LookupQueueService {
           deleted: current.deleted,
           scoreCache: current.scoreCache,
         ),
+        // `current` was just read, but the row can still move in the gap — an
+        // operator edit landing mid-lookup must not be reverted by this write.
+        basedOn: current,
       );
     } on WriteRefused catch (refusal) {
       debugPrint('[lookups] enrichment skipped for ${current.uuid}: $refusal');

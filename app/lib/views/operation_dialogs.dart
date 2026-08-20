@@ -152,6 +152,44 @@ Future<bool> confirmPurgeTestOperations(
   return confirmed == true;
 }
 
+/// SYNCALL's gate. Distinct from the Sync panel's "Replace" dialog in what
+/// it emphasizes: the backfill can only return what the server holds, so
+/// the unsynced count — rows the server never received, which will NOT come
+/// back — is called out explicitly in error color rather than folded into
+/// the total.
+Future<bool> confirmFullResyncDialog(BuildContext context, {required int qsoCount, required int unsyncedCount}) async {
+  final confirmed = await showHaloDialog<bool>(
+    context: context,
+    builder: (context) {
+      final theme = Theme.of(context);
+      return HaloDialog(
+        title: Text(context.t.dialogs.syncAllTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.t.dialogs.syncAllBody(
+              qsos: context.t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
+            )),
+            if (unsyncedCount > 0) ...[
+              const SizedBox(height: Space.sm),
+              Text(
+                context.t.dialogs.syncAllUnsynced(count: unsyncedCount, n: formatNumber(unsyncedCount)),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.syncAllAction)),
+        ],
+      );
+    },
+  );
+  return confirmed == true;
+}
+
 /// Confirms hard-deleting Test Operations that were purged on ANOTHER
 /// device (`OperationsRepository.watchReceivedPurgesPending`) — distinct
 /// from [confirmPurgeTestOperations], which is for ones purged right here.

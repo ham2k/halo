@@ -414,3 +414,82 @@ int? _millis(Object? value) {
 
 int? _minOf(int? a, int? b) => a == null ? b : (b == null ? a : (a < b ? a : b));
 int? _maxOf(int? a, int? b) => a == null ? b : (b == null ? a : (a > b ? a : b));
+
+/// Three-way merge for a concurrent edit: [edited] was composed from [base],
+/// but the stored row has since moved on to [current] (a sync pull, a peer
+/// merge, a background lookup landing). Fields the editor actually changed —
+/// different in [edited] than in [base], additions and removals included —
+/// keep the edit; every other field keeps [current], so the concurrent
+/// revision survives wherever this edit didn't touch it. Without this,
+/// writing [edited] wholesale reverts the concurrent revision — and,
+/// restamped newer, the reversion wins on every device at the next sync.
+///
+/// `their`/`our` merge per FIELD, one level deep: edits are field-scoped
+/// there, and treating the whole map as one value would make a local edit to
+/// `their.sent` discard a concurrent correction to `their.name`. Every other
+/// key — `refs` included — is one value: a half-merged ref list is worse
+/// than a decided winner.
+///
+/// The result shares no mutable structure with any input, same as
+/// [mergeQsos].
+Map<String, dynamic> mergeConcurrentEdit({
+  required Map<String, dynamic> base,
+  required Map<String, dynamic> current,
+  required Map<String, dynamic> edited,
+}) =>
+    _threeWayLevel(base, current, edited, mergeParties: true);
+
+Map<String, dynamic> _threeWayLevel(
+  Map<String, dynamic> base,
+  Map<String, dynamic> current,
+  Map<String, dynamic> edited, {
+  required bool mergeParties,
+}) {
+  final result = <String, dynamic>{};
+  // A key living only in [base] was removed on both sides — it never
+  // appears. A key only in [current] is an untouched concurrent addition
+  // (kept); one only in [edited] is the editor's own addition (kept).
+  for (final key in {...current.keys, ...edited.keys}) {
+    if (mergeParties && (key == 'their' || key == 'our')) {
+      final merged = _threeWayLevel(
+        _mapValue(base[key]),
+        _mapValue(current[key]),
+        _mapValue(edited[key]),
+        mergeParties: false,
+      );
+      if (merged.isNotEmpty) result[key] = merged;
+      continue;
+    }
+    final editorChanged = base.containsKey(key) != edited.containsKey(key) || !_deepEquals(base[key], edited[key]);
+    if (editorChanged) {
+      if (edited.containsKey(key)) result[key] = _deepCopy(edited[key]);
+      // Removed by the editor: stays removed.
+    } else if (current.containsKey(key)) {
+      result[key] = _deepCopy(current[key]);
+    }
+    // Untouched by the editor and removed in [current]: stays removed.
+  }
+  return result;
+}
+
+Map<String, dynamic> _mapValue(Object? value) =>
+    value is Map ? value.cast<String, dynamic>() : const <String, dynamic>{};
+
+bool _deepEquals(Object? a, Object? b) {
+  if (identical(a, b)) return true;
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      if (!b.containsKey(entry.key) || !_deepEquals(entry.value, b[entry.key])) return false;
+    }
+    return true;
+  }
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_deepEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}

@@ -25,6 +25,12 @@ class AdifImportPlan {
   /// [planAdifImport] on why that matters.
   final List<Qso> merges;
 
+  /// The plan-time snapshot each merge was folded from, by uuid — handed to
+  /// `writeBatch` as `updateBases` so a row that moves while the confirm
+  /// dialog sits open (a sync pull, an edit) is re-merged against its
+  /// current state instead of being overwritten with this stale fold.
+  final Map<String, Qso> mergeBases;
+
   /// How many existing contacts the file matched at least one record
   /// against — including ones [merges] leaves out because folding in the
   /// file's data changed nothing. A re-import of an unchanged file matches
@@ -112,6 +118,7 @@ class AdifImportPlan {
     required this.filename,
     this.additions = const [],
     this.merges = const [],
+    this.mergeBases = const {},
     this.alreadyLoggedCount = 0,
     this.unusable = const [],
     this.undated = const [],
@@ -275,6 +282,7 @@ AdifImportPlan planAdifImport({
   }
 
   final merges = <Qso>[];
+  final mergeBases = <String, Qso>{};
   // The targets as they are TODAY. The merged records already carry the
   // imposed station call, so they cannot answer "whose call is about to
   // change".
@@ -303,6 +311,7 @@ AdifImportPlan planAdifImport({
       deleted: target.deleted,
       scoreCache: target.scoreCache,
     ));
+    mergeBases[target.uuid] = target;
   }
 
   // After matching, and over the merge TARGETS rather than the whole log:
@@ -320,6 +329,7 @@ AdifImportPlan planAdifImport({
     filename: filename,
     additions: [for (final group in fresh) group.folded],
     merges: merges,
+    mergeBases: mergeBases,
     alreadyLoggedCount: byExisting.length,
     unusable: unusable,
     undated: undated,

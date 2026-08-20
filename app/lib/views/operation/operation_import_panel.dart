@@ -198,6 +198,17 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
           ),
         ),
         const Divider(height: 1),
+        // A capture insert failure means a QSO the source program will never
+        // resend is sitting in a memory-only retry queue — the loudest thing
+        // in this panel, for as long as it stays unresolved.
+        if (widget.services.inboundQsos.captureError != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, 0),
+            child: Text(
+              t.captureFailed(error: widget.services.inboundQsos.captureError!),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            ),
+          ),
         StreamBuilder<List<InboundCaptureRow>>(
           stream: widget.services.inboundCaptures.watchPending(),
           builder: (context, snapshot) {

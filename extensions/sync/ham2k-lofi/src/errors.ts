@@ -51,3 +51,38 @@ export function normalizedEmail(value: JSONValue | undefined): string | undefine
   const normalized = value.trim().toLowerCase()
   return normalized || undefined
 }
+
+/// Whether a 2xx `/v1/sync` body is a reply the server actually wrote.
+///
+/// A trusted proxy, CDN error page, or maintenance page can answer 200 with
+/// HTML, which `parseJson` turns into `{}` — and a `{}` handed back to
+/// SyncEngine has no `error` field, so the engine would mark the whole
+/// pushed batch synced on the word of a response the server never wrote.
+/// Those QSOs would never push again; a later wipe or device loss makes
+/// that permanent. The real reply always carries `success`, `meta` and
+/// `account` (api-lofi SyncController#sync — its cooldown branch included),
+/// so requiring any one of them costs a genuine reply nothing.
+export function isRecognizableSyncResponse(response: {
+  success?: boolean
+  meta?: Record<string, JSONValue>
+  account?: Record<string, JSONValue>
+}): boolean {
+  return response.success === true || response.meta != null || response.account != null
+}
+
+/// Whether a response body is garbage that `JSON.parse` refuses — the
+/// signature of a proxy, CDN error page, or maintenance page answering a
+/// 2xx it didn't earn. `parseJson` folds that case into `{}`, which most
+/// endpoints then read as a valid-but-empty reply and PERSIST (the account
+/// snapshot, for one) — so `request` treats it as a transport failure
+/// instead. An empty body and a literal `{}` are not garbage: they are the
+/// server actually saying nothing.
+export function isUnparseableBody(body: string): boolean {
+  if (body.trim() === '') return false
+  try {
+    JSON.parse(body)
+    return false
+  } catch {
+    return true
+  }
+}

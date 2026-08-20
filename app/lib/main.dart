@@ -54,6 +54,7 @@ import 'config/secrets.dart';
 import 'config/version.dart';
 import 'services/app_storage.dart';
 import 'services/auto_update_service.dart';
+import 'services/database_snapshot_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
@@ -85,6 +86,7 @@ import 'services/spots_status_reporter.dart';
 import 'services/status_bar_service.dart';
 import 'services/view_focus_guard.dart';
 import 'services/web_popup.dart';
+import 'services/web_storage_persistence.dart';
 import 'settings/core_settings_groups.dart';
 import 'settings/settings_command.dart';
 import 'settings/settings_registry.dart';
@@ -740,12 +742,17 @@ Future<HaLoServices> bootstrap({
   // left in an older location, which SettingsService.load() below depends on
   // — once shared_preferences has read its file, it caches it.
   await initializeAppStorage();
+  // What drift's web worker actually negotiated — read by
+  // [reportWebStorageHealth] once the (lazy) database has opened, so boot
+  // can warn when the browser degraded to storage that can lose the log.
+  WasmDatabaseResult? webDbResult;
   final db = HaLoDatabase(driftDatabase(
     name: kDatabaseName,
     web: kIsWeb
         ? DriftWebOptions(
             sqlite3Wasm: Uri.parse('sqlite3.wasm'),
             driftWorker: Uri.parse('drift_worker.js'),
+            onResult: (result) => webDbResult = result,
           )
         : null,
     // drift resolves this lazily, right before opening the file — which is
@@ -935,7 +942,58 @@ Future<HaLoServices> bootstrap({
     debugPrint('[boot] failed to fetch feature flags: $e');
   }));
 
+  // Fire-and-forget like the boot steps above: neither the persistence
+  // request nor the health warning is worth delaying first paint for.
+  if (kIsWeb) unawaited(reportWebStorageHealth(services, () => webDbResult));
+
+  if (!kIsWeb) {
+    // Rotating file-level backups (see DatabaseSnapshotService's header).
+    // Delayed well past boot: the first `VACUUM INTO` rides the statement
+    // queue, and first paint must not wait behind a whole-file copy.
+    final snapshots = DatabaseSnapshotService(db, dataDirectory: appDataDirectory);
+    Timer(const Duration(minutes: 2), snapshots.start);
+  }
+
   return services;
+}
+
+/// Web only: requests the persistent-storage grant and warns when drift's
+/// worker degraded to storage that can lose the log.
+///
+/// Native builds keep the database in a real file the OS never evicts; on
+/// web BOTH halves of durability are opt-in. Without
+/// `navigator.storage.persist()` the browser may evict the whole origin
+/// under storage pressure (and Safari expires script-writable storage after
+/// seven days of disuse) — wiping every QSO that never synced. And drift
+/// silently falls back to `unsafeIndexedDb` (two tabs clobber each other)
+/// or `inMemory` (gone at tab close) when the worker handshake degrades;
+/// the chosen implementation is only observable through
+/// `DriftWebOptions.onResult`. The SELECT 1 forces the lazy database open
+/// so that callback has fired before [result] is read.
+Future<void> reportWebStorageHealth(HaLoServices services, WasmDatabaseResult? Function() result) async {
+  // A false is normal on browsers that gate the grant behind engagement
+  // heuristics, and asking again next boot is free — so no notice for it;
+  // only the storage fallbacks below are worth an operator's attention.
+  unawaited(requestPersistentWebStorage());
+  try {
+    await services.db.customSelect('SELECT 1').get();
+  } catch (_) {
+    return; // a database that can't even open reports through boot, not here
+  }
+  final negotiated = result();
+  if (negotiated == null) return;
+  debugPrint('[web-storage] using ${negotiated.chosenImplementation}'
+      '${negotiated.missingFeatures.isEmpty ? '' : ', missing ${negotiated.missingFeatures}'}');
+  switch (negotiated.chosenImplementation) {
+    case WasmStorageImplementation.inMemory:
+      services.statusBar.showNotice(key: 'webStorage', icon: 'database-alert', text: t.notices.webStorageInMemory);
+    case WasmStorageImplementation.unsafeIndexedDb:
+      services.statusBar.showNotice(key: 'webStorage', icon: 'database-alert', text: t.notices.webStorageUnreliable);
+    case WasmStorageImplementation.opfsShared:
+    case WasmStorageImplementation.opfsLocks:
+    case WasmStorageImplementation.sharedIndexedDb:
+      break;
+  }
 }
 
 /// How long boot will wait for the extension runtime, its panel catalog, and
@@ -1363,6 +1421,7 @@ class HaLoServices {
         qsos: qsos,
         operations: operations,
         lookupQueue: lookupQueue,
+        statusBar: statusBar,
       );
 
   /// Touches [inboundQsos] if listening is already enabled, so a setting
@@ -2108,25 +2167,18 @@ class HaLoServices {
     return true;
   }
 
-  /// Handles a named command action from the call field — `SYNCALL` (see
-  /// `extensions/sync/ham2k-lofi`) and the `dev-commands` extension's
-  /// DEVNOTICE/DEVSTATUS/DEVPROGRESS/RELOAD. Returns a message for the
-  /// caller to show in a SnackBar, or null for nothing — the dev-command
-  /// cases return null since their `confirm` text already shows in the
-  /// call field, and the status bar item itself is the visible result.
+  /// Handles a named command action from the call field — the `dev-commands`
+  /// extension's DEVNOTICE/DEVSTATUS/DEVPROGRESS/RELOAD and friends.
+  /// (`SYNCALL` and PURGETESTS are intercepted in [runCommandAction] instead:
+  /// both must confirm with the operator before doing anything irreversible,
+  /// which needs a BuildContext this switch deliberately runs without.)
+  /// Returns a message for the caller to show in a SnackBar, or null for
+  /// nothing — the dev-command cases return null since their `confirm` text
+  /// already shows in the call field, and the status bar item itself is the
+  /// visible result.
   Future<CommandActionOutcome?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     track('command_executed', {'command': action});
     switch (action) {
-      case 'syncAll':
-        if (!settings.syncEnabled) return (text: t.commands.enableSyncFirst, failed: true);
-        // A refusal has to be reported: this command backs up and WIPES the
-        // local log before refilling it from the server, so "started" against a
-        // clock that bars sync would be the operator watching their log vanish
-        // with nothing that would refill it (docs/design/time.md §4).
-        if (!await syncEngine.forceFullResync()) {
-          return (text: 'A full resync needs the real clock — run DEVTT first', failed: true);
-        }
-        return (text: t.commands.fullResyncStarted, failed: false);
       case 'reloadDataFiles':
         final p = params ?? const {};
         final target = (p['target'] as String?)?.toUpperCase();
@@ -2397,16 +2449,20 @@ typedef CommandActionOutcome = ({String text, bool failed});
 ///
 /// Returns true when the action had something to say at all.
 ///
-/// [context] is only needed for `purgeTests` (PURGETESTS): unlike every
-/// other action, which [HaLoServices.handleCommandAction] can run with no
-/// UI at all, it has to list the candidates and ask for confirmation before
-/// doing anything irreversible — so it's intercepted here rather than
-/// reaching that switch. Every real call site (home, ⌘K, the logging panel)
-/// has a BuildContext to pass; omitting it only degrades that one command.
+/// [context] is only needed for `purgeTests` (PURGETESTS) and `syncAll`
+/// (SYNCALL): unlike every other action, which
+/// [HaLoServices.handleCommandAction] can run with no UI at all, both have
+/// to ask for confirmation before doing anything irreversible — so they're
+/// intercepted here rather than reaching that switch. Every real call site
+/// (home, ⌘K, the logging panel) has a BuildContext to pass; omitting it
+/// only degrades those two commands.
 Future<bool> runCommandAction(HaLoServices services, String action,
     [Map<String, dynamic>? params, BuildContext? context]) async {
-  final outcome =
-      action == 'purgeTests' ? await _runPurgeTests(services, context) : await services.handleCommandAction(action, params);
+  final outcome = switch (action) {
+    'purgeTests' => await _runPurgeTests(services, context),
+    'syncAll' => await _runSyncAll(services, context),
+    _ => await services.handleCommandAction(action, params),
+  };
   if (outcome == null) return false;
   final sink = services.commandResponseSink;
   if (sink == null || !sink(outcome.text, failed: outcome.failed)) {
@@ -2479,6 +2535,40 @@ Future<CommandActionOutcome?> _runPurgeTests(HaLoServices services, BuildContext
   if (contactsFailed) return (text: t.commands.purgeTestsContactsFailed, failed: true);
   if (parts.isEmpty) return (text: t.commands.purgeTestsNothingToDo, failed: false);
   return (text: parts.join(' · '), failed: false);
+}
+
+/// SYNCALL: backs up and WIPES the local log, then refills it from the
+/// server (`SyncEngine.forceFullResync`) — intercepted like PURGETESTS
+/// because it must confirm before doing anything irreversible. The backfill
+/// can only return what the server holds: any row it never received (a
+/// failed push, a long-offline device) does NOT come back, and the operator
+/// most likely to type SYNCALL — "sync looks stuck, force it" — is exactly
+/// the one most likely to be holding such rows, so the dialog names the
+/// unsynced count outright. Returns null when the user cancels, same as any
+/// other dismissed dialog.
+Future<CommandActionOutcome?> _runSyncAll(HaLoServices services, BuildContext? context) async {
+  // Bypasses handleCommandAction's switch, so it fires the same usage event.
+  services.track('command_executed', {'command': 'syncAll'});
+  if (!services.settings.syncEnabled) return (text: t.commands.enableSyncFirst, failed: true);
+  if (context == null) return (text: t.commands.syncAllUnavailable, failed: true);
+  final counts = await services.qsos.syncCounts();
+  // NOT `counts.pending`: that number counts every dirty row — tombstones
+  // and event markers included — and a dialog warning "N QSOs will not come
+  // back" with a number the operator can see is wrong teaches them to
+  // distrust the one gate on this wipe.
+  final unsynced = await services.qsos.unsyncedContactCount();
+  // The awaits above are a real gap — same reasoning as _runPurgeTests.
+  if (!context.mounted) return (text: t.commands.syncAllUnavailable, failed: true);
+  if (!await confirmFullResyncDialog(context, qsoCount: counts.total, unsyncedCount: unsynced)) return null;
+
+  // A refusal has to be reported: this command backs up and WIPES the
+  // local log before refilling it from the server, so "started" against a
+  // clock that bars sync would be the operator watching their log vanish
+  // with nothing that would refill it (docs/design/time.md §4).
+  if (!await services.syncEngine.forceFullResync()) {
+    return (text: 'A full resync needs the real clock — run DEVTT first', failed: true);
+  }
+  return (text: t.commands.fullResyncStarted, failed: false);
 }
 
 

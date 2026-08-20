@@ -14,6 +14,7 @@ import '../../config/dev_bridge.dart';
 import '../../main.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/cat/equipment.dart';
+import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
@@ -810,6 +811,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             spotNoFreqLabel: context.t.loggingControls.spotNoFreq,
             spotCommentHint: context.t.loggingControls.spotComment,
             bandOrFreqRequiredLabel: context.t.loggingControls.bandOrFreqRequired,
+            saveFailedLabel: (error) => context.t.loggingControls.saveFailed(error: error.toString()),
+            deleteFailedLabel: (error) => context.t.loggingControls.deleteFailed(error: error.toString()),
+            onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
             editingQso: _selectedQso,
             suggestedQso: widget.suggestedQso,
             logRequest: widget.logRequest,

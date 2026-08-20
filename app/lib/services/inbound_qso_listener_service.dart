@@ -25,10 +25,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+import '../i18n/strings.g.dart';
 import 'cat/transports/udp_broadcast.dart';
 import 'error_reporting_service.dart';
 import 'lookup_queue_service.dart';
 import 'settings_service.dart';
+import 'status_bar_service.dart';
 import 'udp_multicast.dart';
 
 class InboundQsoListenerService extends ChangeNotifier {
@@ -38,12 +40,23 @@ class InboundQsoListenerService extends ChangeNotifier {
   final OperationsRepository operations;
   final LookupQueueService lookupQueue;
 
+  /// Where a capture failure gets ANNOUNCED. Listening runs app-wide off a
+  /// setting, usually with the Imports panel closed — a warning that only
+  /// renders inside that panel is invisible exactly when it matters, and
+  /// the queued QSOs are unreplayable. Optional only for tests.
+  final StatusBarService? statusBar;
+
+  /// How long a failed capture waits before its retry — tests shrink it.
+  final Duration captureRetryInterval;
+
   InboundQsoListenerService({
     required this.settings,
     required this.captures,
     required this.qsos,
     required this.operations,
     required this.lookupQueue,
+    this.statusBar,
+    this.captureRetryInterval = const Duration(seconds: 5),
   }) {
     settings.addListener(_onSettingsChanged);
     _onSettingsChanged();
@@ -74,6 +87,29 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// error doesn't linger after the operator fixes the setting that caused it.
   String? n1mmError;
   String? wsjtxError;
+
+  /// Why the most recent capture insert failed, if any failure is still
+  /// unresolved (a successful retry clears it). Same reasoning as
+  /// [n1mmError]: `.report` never shows anything on screen, and a capture
+  /// that fails to write is a QSO the source program will never resend —
+  /// without this (and the retry queue behind it) a database error at the
+  /// moment a datagram arrives loses the QSO invisibly. Rendered by the
+  /// Imports panel AND pushed to the status bar ([_setCaptureError]) — the
+  /// panel is usually closed while listening runs.
+  String? captureError;
+
+  /// Captures whose insert threw, held in memory and retried on a timer.
+  /// The queue does not survive a quit — but the failing resource IS the
+  /// database, so there is nowhere durable to spool them; the visible
+  /// [captureError] is what turns "lost invisibly" into "lost loudly" in
+  /// the worst case.
+  final List<({String source, String dedupeKey, Map<String, dynamic> qso})> _captureRetryQueue = [];
+  Timer? _captureRetryTimer;
+
+  /// A retry drain can be mid-flight when [dispose] runs (the timer nulls
+  /// itself at entry, so cancel can't reach it) — this is what keeps that
+  /// drain from notifying a disposed notifier or re-arming a leaked timer.
+  bool _disposed = false;
 
   /// The operation currently receiving captures as they arrive, or null if
   /// none is. Set by the Imports panel when the operator turns "add to this
@@ -190,7 +226,7 @@ class InboundQsoListenerService extends ChangeNotifier {
     // the console for as long as listening stays on.
     if (info == null) return;
     _log('N1MM', info.qso);
-    unawaited(_captureRaw(source: n1mmSource, dedupeKey: n1mmDedupeKey(info), qso: info.qso));
+    unawaited(captureIncoming(source: n1mmSource, dedupeKey: n1mmDedupeKey(info), qso: info.qso));
   }
 
   void _onWsjtxDatagram(Uint8List data) {
@@ -208,7 +244,7 @@ class InboundQsoListenerService extends ChangeNotifier {
     // this is silent for the same reason N1MM's RadioInfo is.
     if (info == null) return;
     _log('WSJT-X', info.qso);
-    unawaited(_captureRaw(source: wsjtxSource, dedupeKey: wsjtxDedupeKey(info), qso: info.qso));
+    unawaited(captureIncoming(source: wsjtxSource, dedupeKey: wsjtxDedupeKey(info), qso: info.qso));
   }
 
   void _log(String source, Map<String, dynamic> qso) {
@@ -216,14 +252,79 @@ class InboundQsoListenerService extends ChangeNotifier {
     debugPrint('[inbound-qso] captured ($source) ${their['call']} on ${qso['band']}/${qso['mode']}');
   }
 
-  Future<void> _captureRaw({required String source, required String dedupeKey, required Map<String, dynamic> qso}) async {
-    final row = await captures.capture(source: source, dedupeKey: dedupeKey, qsoData: qso);
+  @visibleForTesting
+  Future<void> captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso}) async {
+    final InboundCaptureRow row;
+    try {
+      row = await captures.capture(source: source, dedupeKey: dedupeKey, qsoData: qso);
+    } catch (e, st) {
+      // A streak report, not one per attempt: the retry loop below re-enters
+      // here every interval, and a device already refusing writes gains
+      // nothing from a Sentry upload per tick.
+      ErrorReportingService.reportIfRepeated(_captureFailureKey, e, st, context: 'InboundQsoListenerService:capture');
+      _captureRetryQueue.add((source: source, dedupeKey: dedupeKey, qso: qso));
+      _setCaptureError(e.toString());
+      _scheduleCaptureRetry();
+      return;
+    }
+    ErrorReportingService.recordSuccess(_captureFailureKey);
     // A resent duplicate datagram for a capture already added is returned
     // by `capture()` as the SAME existing row, `addedToOperation` included —
     // routing it through `addToOperation` again would log the QSO twice.
     if (row.addedToOperation != null) return;
     final receiving = receivingOperationUuid;
     if (receiving != null) await addToOperation(receiving, [row]);
+  }
+
+  static const _captureFailureKey = 'inbound-capture';
+  static const _captureNoticeKey = 'inboundQsos:captureFailed';
+
+  /// The failure is announced on the status bar as well as the panel field:
+  /// listening runs app-wide with the Imports panel usually closed, and a
+  /// warning only that panel renders is invisible exactly when the queued,
+  /// unreplayable QSOs are at risk.
+  void _setCaptureError(String? error) {
+    if (captureError == error) return;
+    captureError = error;
+    if (error == null) {
+      statusBar?.dismissNotice(_captureNoticeKey);
+    } else {
+      statusBar?.showNotice(key: _captureNoticeKey, icon: 'database-alert', text: t.operation.import.captureFailed(error: error), persist: false);
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  /// Re-inserts everything in [_captureRetryQueue], re-queueing (and
+  /// re-arming the timer) for whatever fails again. `capture()`'s
+  /// unique-index dedupe makes a retry of an entry that actually committed
+  /// harmless. A fixed short interval, no backoff: the queue only exists
+  /// while the database is refusing writes, and each attempt is one cheap
+  /// local insert.
+  void _scheduleCaptureRetry() {
+    _captureRetryTimer ??= Timer(captureRetryInterval, () async {
+      _captureRetryTimer = null;
+      final batch = List.of(_captureRetryQueue);
+      _captureRetryQueue.clear();
+      for (var i = 0; i < batch.length; i++) {
+        final entry = batch[i];
+        try {
+          await captureIncoming(source: entry.source, dedupeKey: entry.dedupeKey, qso: entry.qso);
+        } catch (e, st) {
+          // captureIncoming's own catch covers the insert; a throw here is
+          // the post-insert routing (addToOperation) — the entry itself IS
+          // durably captured and visible as pending, but the REST of the
+          // batch must not be dropped with the queue already cleared.
+          ErrorReportingService.reportIfRepeated(_captureFailureKey, e, st, context: 'InboundQsoListenerService:retryRoute');
+          _captureRetryQueue.addAll(batch.sublist(i + 1));
+          if (!_disposed) _scheduleCaptureRetry();
+          return;
+        }
+        if (_disposed) return;
+      }
+      if (_captureRetryQueue.isEmpty && captureError != null) {
+        _setCaptureError(null);
+      }
+    });
   }
 
   /// Adds [rows] to [operationUuid]'s log, applying the operation's own
@@ -279,9 +380,11 @@ class InboundQsoListenerService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     settings.removeListener(_onSettingsChanged);
     _stopN1mm();
     _stopWsjtx();
+    _captureRetryTimer?.cancel();
     super.dispose();
   }
 }

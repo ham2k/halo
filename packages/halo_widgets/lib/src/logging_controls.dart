@@ -676,6 +676,24 @@ class LoggingControls extends StatefulWidget {
   /// would carry neither a band nor a frequency (HALO-24) — see [_log].
   final String? bandOrFreqRequiredLabel;
 
+  /// Shown in the info area when a QSO write throws ([_log]'s catch blocks) —
+  /// "Could not save: <error>". Without an explicit in-panel message a failed
+  /// save is near-silent (the global handler's generic notice shows at most
+  /// once per session) while the panel keeps looking functional, so an
+  /// operator on a full disk loses every QSO from the first failure on
+  /// without ever being told. The typed fields survive: the wipe only runs
+  /// after every write commits. Null keeps the English default.
+  final String Function(Object error)? saveFailedLabel;
+
+  /// Same, for a staged delete whose write throws.
+  final String Function(Object error)? deleteFailedLabel;
+
+  /// A QSO write failed. The panel has already shown [saveFailedLabel] /
+  /// [deleteFailedLabel]; this is the host's hook to report the error
+  /// (Sentry/console). The error does NOT also escape to the zone handler,
+  /// so a host that leaves this unwired records nothing.
+  final void Function(Object error, StackTrace stackTrace)? onWriteError;
+
   /// Logging view "..." menu toggles (ham2k/halo-dist#1) — gate the
   /// Sent/Rcvd RST fields and add optional inline State/Grid fields. The
   /// underlying data (State/Grid) is always editable via the "More" pane
@@ -835,6 +853,9 @@ class LoggingControls extends StatefulWidget {
     this.spotTooLateLabel,
     this.spotNoFreqLabel,
     this.bandOrFreqRequiredLabel,
+    this.saveFailedLabel,
+    this.deleteFailedLabel,
+    this.onWriteError,
     this.spotCommentHint,
     this.showRSTFields = true,
     this.showStateField = false,
@@ -7002,6 +7023,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ));
   }
 
+  /// A QSO write threw: surface it in the info area (the same channel a
+  /// command error uses — never a toast over the logging UI) and hand it to
+  /// the host to report. The caller decides what field bookkeeping
+  /// accompanies it; the fields themselves are never wiped on failure.
+  void _reportWriteFailure(Object e, StackTrace stack, {bool delete = false}) {
+    widget.onWriteError?.call(e, stack);
+    if (!mounted) return;
+    // A confirm-clear timer from an earlier command would wipe this message
+    // moments after it appears — the failure owns the slot now.
+    _executeMessageTimer?.cancel();
+    setState(() {
+      _commandMessage = delete
+          ? (widget.deleteFailedLabel?.call(e) ?? 'Could not delete: $e')
+          : (widget.saveFailedLabel?.call(e) ?? 'Could not save: $e');
+    });
+    _notifyCommandMessage(_commandMessage);
+  }
+
   Future<void> _log() async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
     // The write policy specifically, NOT `_fieldsLocked`: this method is also
@@ -7116,7 +7155,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
           final commands = executable['commands'];
           if (commands is List) {
-            await _dispatchActions(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
+            try {
+              await _dispatchActions(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
+            } catch (e, stack) {
+              // A command's actions can write QSOs (e.g. a SEED batch) — a
+              // throw mid-dispatch must not vanish into the zone handler
+              // while the panel looks like the command ran.
+              _reportWriteFailure(e, stack);
+            }
           }
         } finally {
           _isLogging = false;
@@ -7150,11 +7196,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _isLogging = true;
       try {
         await widget.qsosRepository.softDelete(editingQso);
-        widget.onQsoDeleted?.call(editingQso);
-        widget.onEditCanceled?.call();
+      } catch (e, stack) {
+        // The row is untouched and the delete stays staged — say so and let
+        // the operator retry or cancel, instead of the editor silently
+        // closing over a QSO that never actually deleted.
+        _reportWriteFailure(e, stack, delete: true);
+        return;
       } finally {
         _isLogging = false;
       }
+      widget.onQsoDeleted?.call(editingQso);
+      widget.onEditCanceled?.call();
       return;
     }
 
@@ -7169,11 +7221,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             operationUuid: widget.operation.uuid,
             data: _eventDataForSave(editingQso),
           ),
+          basedOn: editingQso,
         );
-        widget.onEditCanceled?.call();
+      } catch (e, stack) {
+        // Editor stays open with the typed values — nothing committed.
+        _reportWriteFailure(e, stack);
+        return;
       } finally {
         _isLogging = false;
       }
+      widget.onEditCanceled?.call();
       return;
     }
 
@@ -7279,20 +7336,41 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
 
       if (editingQso != null) {
-        await widget.qsosRepository.update(
-          Qso(
-            uuid: editingQso.uuid,
-            operationUuid: widget.operation.uuid,
-            data: await _decorated(dataFor(calls.first, 0)),
-          ),
-        );
+        try {
+          // `basedOn` is the snapshot this edit was composed from: if a sync
+          // pull moved the row while the editor sat open, only the fields
+          // actually edited here overwrite it (see mergeConcurrentEdit).
+          await widget.qsosRepository.update(
+            Qso(
+              uuid: editingQso.uuid,
+              operationUuid: widget.operation.uuid,
+              data: await _decorated(dataFor(calls.first, 0)),
+            ),
+            basedOn: editingQso,
+          );
+        } catch (e, stack) {
+          // Nothing committed — the editor stays open with every typed value.
+          _reportWriteFailure(e, stack);
+          return;
+        }
         for (var i = 1; i < calls.length; i++) {
           // The base data carries the edited QSO's own uuid (baseData came
           // from its record) — strip it so add() generates a fresh one for
           // this new QSO instead of colliding with the original.
           final data = dataFor(calls[i], i)..remove('uuid');
-          final qso = await widget.qsosRepository
-              .add(widget.operation.uuid, await _decorated(data), serialSequences: _serialSequences);
+          final Qso qso;
+          try {
+            qso = await widget.qsosRepository
+                .add(widget.operation.uuid, await _decorated(data), serialSequences: _serialSequences);
+          } catch (e, stack) {
+            // Calls before [i] are already committed: keep the edited
+            // record's own call plus only the still-unlogged ones in the
+            // field, so retrying the Enter can't log the committed ones
+            // twice.
+            _callController.text = [calls.first, ...calls.sublist(i)].join(',');
+            _reportWriteFailure(e, stack);
+            return;
+          }
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
@@ -7307,8 +7385,29 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           _pushVfoToRadioService();
         }
         for (var i = 0; i < calls.length; i++) {
-          final qso = await widget.qsosRepository
-              .add(widget.operation.uuid, await _decorated(dataFor(calls[i], i)), serialSequences: _serialSequences);
+          final Qso qso;
+          try {
+            qso = await widget.qsosRepository
+                .add(widget.operation.uuid, await _decorated(dataFor(calls[i], i)), serialSequences: _serialSequences);
+          } catch (e, stack) {
+            // Nothing is wiped on failure — the fields keep every typed
+            // value. With calls already committed (i > 0), the field is
+            // rewritten to only the unlogged ones (plus the untouched rest
+            // of a stack), cursor on them, so retrying the Enter can't log
+            // the committed calls twice.
+            if (i > 0) {
+              final unlogged = calls.sublist(i).join(',');
+              final text = stacked == null || stacked.remainder.isEmpty
+                  ? unlogged
+                  : '$unlogged//${stacked.remainder}';
+              _callController.value = TextEditingValue(
+                text: text,
+                selection: TextSelection.collapsed(offset: unlogged.length),
+              );
+            }
+            _reportWriteFailure(e, stack);
+            return;
+          }
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
