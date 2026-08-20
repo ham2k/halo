@@ -1984,7 +1984,9 @@ class _SpotTile extends StatelessWidget {
     // The dim is folded into every colour rather than wrapped around the row in
     // an `Opacity`: that widget forces a saveLayer per row, and on a board where
     // most spots are worked that is a compositing layer for every visible row on
-    // every frame of a scroll.
+    // every frame of a scroll. EVERY colour the row paints has to go through
+    // [faded] for that to hold — one that skips it is a part of the row that
+    // does not dim, and wrapping the row to catch it dims everything twice.
     final dim = worked ? 0.6 : (isSelf ? 0.7 : 1.0);
     Color faded(Color color) => dim == 1.0 ? color : color.withValues(alpha: color.a * dim);
 
@@ -2095,7 +2097,14 @@ class _SpotTile extends StatelessWidget {
               ),
               if (noteEmoji != null) ...[
                 const SizedBox(width: Space.xs),
-                Text(noteEmoji!, style: emojiStyle()),
+                // The one thing on the row a colour cannot dim: an emoji is
+                // painted by the font, not by its style. So it gets the layer
+                // the rest of the row deliberately avoids — and only rows that
+                // actually carry a note pay for it, which is a small minority
+                // rather than every visible row of a scroll.
+                dim == 1.0
+                    ? Text(noteEmoji!, style: emojiStyle())
+                    : Opacity(opacity: dim, child: Text(noteEmoji!, style: emojiStyle())),
               ],
             ],
           ),
@@ -2114,7 +2123,7 @@ class _SpotTile extends StatelessWidget {
               Icon(
                 resolveIconName(refIcon),
                 size: mono.fontSize,
-                color: refAccent ?? (isSelf ? baseColor : theme.colorScheme.outline),
+                color: refAccent ?? (isSelf ? baseColor : outlineColor),
               ),
               const SizedBox(width: Space.xs),
               Expanded(
@@ -2148,16 +2157,11 @@ class _SpotTile extends StatelessWidget {
       ),
     );
 
-    // app-polo's SpotItem dims these two cases through its text styles; here
-    // one layer covers the icon too, which carries the same accent.
-    final dimmed = worked ? 0.6 : (isSelf ? 0.7 : null);
-    final body = dimmed == null ? tile : Opacity(opacity: dimmed, child: tile);
-
     final row = onTap == null
-        ? body
+        ? tile
         : Material(
             color: Colors.transparent,
-            child: InkWell(onTap: onTap, child: body),
+            child: InkWell(onTap: onTap, child: tile),
           );
     // The divider and the slide both live in the panel's `_SlidableSpotRow`
     // wrapper, not here: a tile's KEY changes as it becomes the current row,

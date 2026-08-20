@@ -612,6 +612,35 @@ void main() {
       expect(find.byIcon(MdiIcons.backspace), findsNothing);
     });
 
+    // A row is dimmed by folding the factor into every colour it paints. The
+    // trap is that this is invisible when it goes wrong: wrapping the row in an
+    // `Opacity` as well still looks "dimmed", just twice as much, and nothing
+    // in the suite noticed for two rounds of review. So assert the ARITHMETIC —
+    // one factor, not two — rather than that the row looks faded.
+    testWidgets('a worked row is dimmed exactly once', (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      final theme = buildHaLoTheme(Brightness.light);
+      double alphaOf(String call) =>
+          tester.widget<Text>(find.text(call)).style!.color!.a;
+
+      final live = alphaOf('K0001');
+      expect(live, closeTo(theme.colorScheme.onSurface.a, 0.001), reason: 'sanity: undimmed to start');
+
+      await slide(tester, 'K0001', -400);
+
+      expect(alphaOf('K0001'), closeTo(theme.colorScheme.onSurface.a * 0.6, 0.001),
+          reason: 'one 0.6, not 0.6 squared');
+      // Mutation check: restore the Opacity wrapper and this still passes — the
+      // style colour is unchanged by it — so the layer has to be checked too.
+      expect(
+        tester.widgetList<Opacity>(find.ancestor(of: find.text('K0001'), matching: find.byType(Opacity))),
+        isEmpty,
+        reason: 'no second dim wrapped around the row',
+      );
+    });
+
     testWidgets('a spot taken off the board can still be logged', (tester) async {
       // Working a station twice is the operator's call to make, not this
       // panel's to prevent — a second contact on another band or mode is an
