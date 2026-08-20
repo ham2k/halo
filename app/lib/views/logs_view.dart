@@ -20,6 +20,7 @@ import '../services/adif_import_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
+import '../services/status_bar_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
 import 'home_navigation_rail.dart';
@@ -1205,6 +1206,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     widget.services.statusBar.setMessage(
       key: 'logsAdifImport:status',
       text: t.imported(count: written, filename: file.name, formatted: formatNumber(written)),
+      dismissAfter: StatusBarService.completedDismissDelay,
     );
     // The repository counts rows actually affected, so a merge target
     // deleted while the confirm dialog was open shows up here — same

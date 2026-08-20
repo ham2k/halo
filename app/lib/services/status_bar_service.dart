@@ -16,7 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _historyKey = 'statusBarNoticeHistory';
 const _maxHistory = 50;
 const _maxItems = 50;
-const _progressCompleteDismissDelay = Duration(seconds: 5);
 
 /// A single-line message or progress bar shown in the footer. Transient —
 /// never persisted, cleared by the caller via [StatusBarService.clear] or
@@ -159,9 +158,17 @@ class StatusBarService extends ChangeNotifier {
   /// Most-recent-first, including dismissed notices.
   List<StatusBarNotice> get history => _notices.reversed.toList();
 
-  void setMessage({required String key, String? icon, String? title, String? text}) {
+  /// How long a completion message lingers before dismissing itself — shared
+  /// by every self-clearing item so "done" reads the same everywhere.
+  static const completedDismissDelay = Duration(seconds: 5);
+
+  /// With [dismissAfter], the message clears itself once that much time has
+  /// passed — for completion messages ("Imported N contacts") that would
+  /// otherwise sit in the footer until something happened to replace them.
+  /// Without it the message stays until cleared or replaced.
+  void setMessage({required String key, String? icon, String? title, String? text, Duration? dismissAfter}) {
     final now = nowLocal();
-    _items[key] = StatusBarItem(
+    final item = StatusBarItem(
       key: key,
       icon: icon,
       title: title,
@@ -169,8 +176,10 @@ class StatusBarService extends ChangeNotifier {
       createdAt: _items[key]?.createdAt ?? now,
       updatedAt: now,
     );
+    _items[key] = item;
     _capItems();
     notifyListeners();
+    if (dismissAfter != null) _dismissLater(item, dismissAfter);
   }
 
   /// Bounds `_items` the same way `_notices`/history are bounded, evicting
@@ -188,7 +197,7 @@ class StatusBarService extends ChangeNotifier {
   /// unless it's been replaced or cleared by then.
   void setProgress({required String key, String? icon, String? title, String? text, double? value}) {
     final now = nowLocal();
-    _items[key] = StatusBarItem(
+    final item = StatusBarItem(
       key: key,
       icon: icon,
       title: title,
@@ -201,15 +210,21 @@ class StatusBarService extends ChangeNotifier {
       createdAt: _items[key]?.createdAt ?? now,
       updatedAt: now,
     );
+    _items[key] = item;
     _capItems();
     notifyListeners();
 
-    if (value != null && value >= 1.0) {
-      Future.delayed(_progressCompleteDismissDelay, () {
-        final current = _items[key];
-        if (current != null && (current.progressValue ?? 0) >= 1.0) clear(key);
-      });
-    }
+    if (value != null && value >= 1.0) _dismissLater(item, completedDismissDelay);
+  }
+
+  /// Clears [item]'s key after [delay] — unless a later post holds the key by
+  /// then. The timer belongs to the POSTING, not the key: matched by identity,
+  /// because any looser guard lets a stale timer from an earlier completion
+  /// dismiss the next completion on the same key moments after it appears.
+  void _dismissLater(StatusBarItem item, Duration delay) {
+    Future.delayed(delay, () {
+      if (identical(_items[item.key], item)) clear(item.key);
+    });
   }
 
   void clear(String key) {

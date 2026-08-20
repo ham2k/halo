@@ -447,10 +447,13 @@ class DataFileManager {
   /// changed, not the source data, so an unchanged server response still
   /// needs reprocessing. Returns how many data files matched the filter.
   ///
-  /// [notifyOnFailure] forwards to [processDataFile] — the boot/onboarding
+  /// [notifyOnFailure] forwards to [processDataFile] — the boot and reconnect
   /// callers of this method pass `false` so an offline device doesn't raise a
-  /// persistent notice on every single unattended sync; a
-  /// user-driven caller (Update All, RELOAD) leaves it at the default `true`.
+  /// persistent notice on every single unattended sync; an attended caller
+  /// (Update All, RELOAD, onboarding) leaves it at the default `true`.
+  /// The same flag marks the pass unattended for progress purposes: known
+  /// files refresh silently on such a pass, while a first download still
+  /// shows its progress (see [processDataFile]'s `showProgress`).
   Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) {
     // One pass at a time, whoever started it. [_runSerializedSync] only
     // coalesces its own listener triggers; direct callers (boot, RELOAD,
@@ -529,7 +532,11 @@ class DataFileManager {
         final isStale = unjudgeable || age > maxAgeDays * 24 * 60 * 60 * 1000;
 
         if (force || isStale || lastUpdateTime == 0) {
-          await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure);
+          // Unattended passes (boot, reconnect — the notifyOnFailure:false
+          // callers) refresh quietly; a first download still narrates itself
+          // even then, because until it lands its feature simply isn't there.
+          await processDataFile(key, def,
+              force: force, notifyOnFailure: notifyOnFailure, showProgress: notifyOnFailure || lastUpdateTime == 0);
           // Stamped REAL while the age above is judged on the app clock, which
           // is what makes travel useful here without leaving a mess: travelling
           // forward makes files look stale and refetches them, and the stamp it
@@ -556,16 +563,25 @@ class DataFileManager {
   /// Natively parses and processes a data file based on its `fetchType`.
   ///
   /// [notifyOnFailure] gates the persistent status-bar notice below — off
-  /// for the unattended background path ([syncAllDataFiles]'s boot/onboarding
-  /// callers), which would otherwise raise the same alert on every single
-  /// offline boot; on (the default) for every user-driven caller (a Refresh
-  /// tap, Update All, RELOAD), which is the one place users actually need to
-  /// see it.
-  Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true}) async {
+  /// for the unattended background passes ([syncAllDataFiles]'s boot and
+  /// reconnect callers), which would otherwise raise the same alert on every
+  /// single offline boot; on (the default) for every attended caller (a
+  /// Refresh tap, Update All, RELOAD, onboarding — which counts on the
+  /// notice), which is the one place users actually need to see it.
+  ///
+  /// [showProgress] gates the transient progress items ("Downloading…", the
+  /// chunk counts, "Imported N records") — off when an unattended sweep
+  /// re-downloads a file the device already has, so a routine app start
+  /// doesn't narrate itself in the footer. A file's FIRST download keeps the
+  /// progress even unattended ([syncAllDataFiles] decides per file): until it
+  /// lands, its feature is missing, which is worth narrating. Failure notices
+  /// are [notifyOnFailure]'s to gate, never this.
+  Future<void> processDataFile(String key, Map<String, dynamic> def,
+      {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
 
-    statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
+    if (showProgress) statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
     final String? body;
     final String fetchType;
     try {
@@ -603,11 +619,11 @@ class DataFileManager {
 
     try {
       if (fetchType == 'csv') {
-        await _processCsv(key, def, body);
+        await _processCsv(key, def, body, showProgress: showProgress);
       } else if (fetchType == 'json') {
-        await _processJson(key, def, body);
+        await _processJson(key, def, body, showProgress: showProgress);
       } else if (fetchType == 'raw') {
-        await _processRaw(key, def, body);
+        await _processRaw(key, def, body, showProgress: showProgress);
       }
     } catch (e) {
       statusBar?.clear(statusKey);
@@ -634,7 +650,7 @@ class DataFileManager {
     }
   }
 
-  Future<void> _processCsv(String key, Map<String, dynamic> def, String body) async {
+  Future<void> _processCsv(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
     final category = def['category'] as String? ?? key;
     final csvOpts = def['csvOptions'] as Map<dynamic, dynamic>? ?? const {};
     final hasHeaders = csvOpts['hasHeaders'] as bool? ?? true;
@@ -669,10 +685,10 @@ class DataFileManager {
     }
 
     await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapCsvBatch', 'rows', parsedRows,
-        extraArgs: headers == null ? null : {'headers': headers});
+        extraArgs: headers == null ? null : {'headers': headers}, showProgress: showProgress);
   }
 
-  Future<void> _processJson(String key, Map<String, dynamic> def, String body) async {
+  Future<void> _processJson(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
     final category = def['category'] as String? ?? key;
     final jsonOpts = def['jsonOptions'] as Map<dynamic, dynamic>? ?? const {};
     final rootPath = jsonOpts['rootPath'] as String?;
@@ -691,10 +707,11 @@ class DataFileManager {
       throw FormatException('Resolved target at rootPath is neither Array nor Object');
     }
 
-    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapJsonBatch', 'entries', entriesToProcess);
+    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapJsonBatch', 'entries', entriesToProcess,
+        showProgress: showProgress);
   }
 
-  Future<void> _processRaw(String key, Map<String, dynamic> def, String body) async {
+  Future<void> _processRaw(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
     final host = extensions.host;
     if (host == null) return;
 
@@ -729,6 +746,7 @@ class DataFileManager {
       args: processedJson,
     );
 
+    if (!showProgress) return;
     final statusKey = 'dataFile:$key';
     final label = _labelFor(key, def);
     final count = processedJson is List ? processedJson.length : null;
@@ -977,6 +995,7 @@ class DataFileManager {
     String mappingArgKey,
     List<dynamic> items, {
     Map<String, dynamic>? extraArgs,
+    required bool showProgress,
   }) async {
     final host = extensions.host;
     if (host == null) return;
@@ -990,12 +1009,14 @@ class DataFileManager {
       final end = start + chunkSize < items.length ? start + chunkSize : items.length;
       final chunk = items.sublist(start, end);
 
-      statusBar?.setProgress(
-        key: statusKey,
-        title: label,
-        text: t.dataFiles.recordsProgress(end: end, total: items.length),
-        value: items.isEmpty ? 1.0 : end / items.length,
-      );
+      if (showProgress) {
+        statusBar?.setProgress(
+          key: statusKey,
+          title: label,
+          text: t.dataFiles.recordsProgress(end: end, total: items.length),
+          value: items.isEmpty ? 1.0 : end / items.length,
+        );
+      }
 
       // Invoke chunk mapper in QuickJS
       //
@@ -1061,8 +1082,10 @@ class DataFileManager {
     // Clean up any stale records not updated in this run
     await lookups.deleteCategoryStale(category, updatedFlag);
 
-    statusBar?.setProgress(
-        key: statusKey, title: label, text: t.dataFiles.importedRecords(count: imported, label: label), value: 1.0);
+    if (showProgress) {
+      statusBar?.setProgress(
+          key: statusKey, title: label, text: t.dataFiles.importedRecords(count: imported, label: label), value: 1.0);
+    }
   }
 
 }

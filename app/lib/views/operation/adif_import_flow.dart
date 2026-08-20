@@ -22,6 +22,7 @@ import '../../services/adif_import_plan.dart';
 import '../../services/adif_import_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extension_service.dart' show ExtensionInfo;
+import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
 import '../../main.dart' show HaLoServices;
 
@@ -167,6 +168,7 @@ Future<void> importAdifFile(
     statusBar.setMessage(
       key: 'adifImport:status',
       text: t.imported(count: written, filename: filename, formatted: formatNumber(written)),
+      dismissAfter: StatusBarService.completedDismissDelay,
     );
     // The repository counts rows actually affected, so a merge target deleted
     // while the dialog was open shows up here. Approving "70 new, 4 merging"

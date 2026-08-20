@@ -504,6 +504,76 @@ REF-002,Summit Two,45.56,-122.78
     expect(notice.title, t.dataFiles.downloadFailedTitle(name: 'Flaky File'));
   });
 
+  // The unattended sweeps (boot, reconnect) refresh files the device already
+  // has; narrating each one in the footer turns every app start into a wall
+  // of "Downloading… / Imported N records" for data nothing asked about. A
+  // FIRST download is different: until it lands, its feature is simply
+  // missing, so even an unattended pass says so. The mutation these three
+  // exist to catch is the gate drifting to all-or-nothing — silencing first
+  // downloads along with the refreshes, or narrating refreshes again.
+  group('DataFileManager: unattended sync progress', () {
+    late StatusBarService statusBar;
+    late TestDataFileManager m;
+    late Set<String> postedKeys;
+
+    setUp(() {
+      statusBar = StatusBarService(prefs);
+      final mockHost = MockExtensionHost({
+        'dataFile:*:getDefinition': [
+          {
+            'key': 'sweep-file',
+            'ok': true,
+            'value': {
+              'key': 'sweep-file',
+              'name': 'Sweep File',
+              'url': 'https://example.com/sweep.csv',
+              'maxAgeInDays': 10,
+              'fetchType': 'csv',
+              'category': 'sweep',
+              'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+            },
+          },
+        ],
+        'dataFile:sweep-file:mapCsvBatch': (args) =>
+            zipCsvRows(args).map((row) => {'key': row['ref'], 'name': row['name']}).toList(),
+      });
+      m = TestDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(mockHost),
+        prefs: prefs,
+        statusBar: statusBar,
+      )..mockDownloadBody = 'ref,name\nS-1,Swept\n';
+      // itemForKey after the fact can't tell "never posted" from "posted and
+      // cleared", so record every key that ever appears.
+      postedKeys = {};
+      statusBar.addListener(() => postedKeys.addAll(statusBar.items.map((i) => i.key)));
+    });
+
+    test('a known-but-stale file refreshes silently on an unattended pass', () async {
+      await prefs.setInt('data_file_updated_sweep-file', 1);
+
+      await m.syncAllDataFiles(notifyOnFailure: false);
+
+      expect(await lookups.getLookup('sweep', 'S-1'), isNotNull, reason: 'silent must not mean skipped');
+      expect(postedKeys.where((k) => k.startsWith('dataFile:')), isEmpty);
+    });
+
+    test('a first download narrates itself even on an unattended pass', () async {
+      await m.syncAllDataFiles(notifyOnFailure: false);
+
+      final item = statusBar.itemForKey('dataFile:sweep-file');
+      expect(item?.text, t.dataFiles.importedRecords(count: 1, label: 'Sweep File'));
+    });
+
+    test('a user-driven pass (Update All, RELOAD) keeps progress for known files', () async {
+      await prefs.setInt('data_file_updated_sweep-file', 1);
+
+      await m.syncAllDataFiles(force: true);
+
+      expect(statusBar.itemForKey('dataFile:sweep-file'), isNotNull);
+    });
+  });
+
   test('DataFileManager: listDataFiles reports definitions sorted by name with last-download time', () async {
     final host = MockExtensionHost({
       'dataFile:*:getDefinition': [
