@@ -1446,15 +1446,7 @@ class _SyncPanelState extends State<_SyncPanel> {
       // engine's account-identity gating raises the combine/replace banner
       // immediately instead of on the next loop tick.
       //
-      // A round the OPERATOR just asked for owes them an answer when it can't
-      // run: travelled, this returns without a word, so the reconciliation
-      // banner they are waiting to answer simply never appears and the account
-      // looks linked-and-idle.
-      if (widget.services.syncEngine.travelRefusesSync) {
-        _notify(_syncNeedsRealClock);
-      } else {
-        unawaited(widget.services.syncEngine.runOneRound());
-      }
+      unawaited(widget.services.syncEngine.runOneRound());
       unawaited(_refreshSyncAccount());
     }
   }
@@ -1569,7 +1561,8 @@ class _SyncPanelState extends State<_SyncPanel> {
 
   /// Developer-facing and in English, like the DEVTT command it names — this is
   /// only reachable with developer mode on (docs/design/time.md §4).
-  static const _syncNeedsRealClock = 'Sync is unavailable while time travelling — run DEVTT first';
+  static const _syncNeedsRealClock =
+      'Linking or replacing an account is refused while time travelling — run DEVTT first';
 
   Future<void> _replaceAccount() async {
     final opCount = (await widget.services.operations.syncCounts()).total;

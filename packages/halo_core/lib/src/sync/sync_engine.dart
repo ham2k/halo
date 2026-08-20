@@ -215,20 +215,21 @@ class SyncEngine {
 
   /// Whether sync may run at all right now.
   ///
-  /// `settings.enabled` AND a real clock: a travelled clock must never reach
-  /// the server (docs/design/time.md §4). Deliberately a live check in the one
-  /// place every path already consults, rather than switching the persisted
-  /// `enabled` setting off and back on — a dev tool writing the operator's sync
-  /// preference leaves it wrong for good if the app is quit before travel ends,
-  /// and there is no surface that would explain it.
-  bool get _mayRun => settings.enabled && !travelRefusesSync;
+  /// Ordinary rounds run while the clock is travelled. What a travelled
+  /// session may WRITE is constrained instead — only test data (`WritePolicy`,
+  /// docs/design/time.md §4) — so everything it can produce is identifiable
+  /// and purgeable, and revision stamps are on the real clock regardless.
+  /// A clock check here would protect nothing the write gate does not, and
+  /// would make sync itself untestable on a travelled clock.
+  bool get _mayRun => settings.enabled;
 
-  /// Whether the app clock is time-travelled, which bars sync outright.
+  /// Whether the app clock is time-travelled, which bars the DESTRUCTIVE entry
+  /// points ([forceFullResync], [resolveAccountChange]) — not ordinary rounds.
   ///
-  /// Public because the DESTRUCTIVE entry points ([forceFullResync],
-  /// [resolveAccountChange]) have to refuse before they act, not merely fail to
-  /// schedule the round that would repair them — and because a caller that a
-  /// human just asked for a sync owes them an explanation rather than silence.
+  /// Those two wipe local data and rely on the round they schedule to refill
+  /// it. That is a different hazard from the one the write gate covers: it is
+  /// about a dev tool triggering a wipe at all, not about which records get
+  /// written, so it stays.
   bool get travelRefusesSync => AppClock.instance.isTravelling;
 
   void start() {

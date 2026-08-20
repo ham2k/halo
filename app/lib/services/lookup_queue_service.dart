@@ -320,22 +320,36 @@ class LookupQueueService {
     const eq = DeepCollectionEquality();
     if (eq.equals(newGuess, their['guess']) && eq.equals(newLookups, their['lookups'])) return;
 
-    await qsos.update(
-      Qso(
-        uuid: current.uuid,
-        operationUuid: current.operationUuid,
-        data: {
-          ...current.data,
-          'their': {
-            ...their,
-            'guess': ?newGuess,
-            'lookups': ?newLookups,
+    // Enrichment is a write like any other, so the travelled clock refuses it
+    // on a real contact. Caught rather than propagated only so one refused
+    // contact does not stop the queue for every other one — the refusal
+    // stands, the enrichment is simply not applied.
+    //
+    // The batch counter counts contacts ATTEMPTED, so a travelled bulk
+    // re-lookup over real contacts still runs to "N of N" having written
+    // nothing. Acceptable only because travel is developer-only and every
+    // refusal is on the console; a progress bar that means something else to
+    // an ordinary operator would not be.
+    try {
+      await qsos.update(
+        Qso(
+          uuid: current.uuid,
+          operationUuid: current.operationUuid,
+          data: {
+            ...current.data,
+            'their': {
+              ...their,
+              'guess': ?newGuess,
+              'lookups': ?newLookups,
+            },
           },
-        },
-        deleted: current.deleted,
-        scoreCache: current.scoreCache,
-      ),
-    );
+          deleted: current.deleted,
+          scoreCache: current.scoreCache,
+        ),
+      );
+    } on WriteRefused catch (refusal) {
+      debugPrint('[lookups] enrichment skipped for ${current.uuid}: $refusal');
+    }
   }
 
   void _showProgress() {

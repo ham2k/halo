@@ -116,7 +116,11 @@
     "activities": "Actividades",
     "stationCallsign": "Indicativo de la estación",
     "notes": "Notas",
-    "deleteOperationTitle": "Borrar operación"
+    "deleteOperationTitle": "Borrar operación",
+    "purgeTestsLooseQsos": {
+      "one": "Más ${count} contacto de prueba que no pertenece a ninguna operación.",
+      "other": "Más ${count} contactos de prueba que no pertenecen a ninguna operación."
+    }
   },
   "operation": {
     "tabs": {

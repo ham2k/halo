@@ -250,7 +250,23 @@ class InboundQsoListenerService extends ChangeNotifier {
     try {
       for (final row in pending) {
         final data = (stationCall == null || stationCall.isEmpty) ? row.qso : qsoForStation(row.qso, stationCall);
-        final qso = await qsos.add(operationUuid, data);
+        // A travelled clock may not log into a real operation. The capture
+        // stays in `inbound_captures` unmarked — dropping it would lose a
+        // contact another program already believes it logged — and shows in
+        // the operation's Imports panel, which is where the operator picks it
+        // up. Nothing re-drives the backlog on its own: a later datagram
+        // carries only its own row, so the panel is the recovery path.
+        //
+        // Logged rather than reported: the refusal notice says "add /T or
+        // /TEST to the station callsign", which is advice for someone who just
+        // typed a contact, not for a program that sent one.
+        final Qso qso;
+        try {
+          qso = await qsos.add(operationUuid, data);
+        } on WriteRefused catch (refusal) {
+          debugPrint('[inbound-qso] refused into $operationUuid, left pending: $refusal');
+          break;
+        }
         added.add(qso);
         addedUuids.add(row.uuid);
       }

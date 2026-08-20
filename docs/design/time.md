@@ -1,6 +1,6 @@
 # The App Clock — one "now", and how to move it
 
-> Status: as-built · Last updated: 2026-08-08
+> Status: as-built · Last updated: 2026-08-19
 
 A logger is an application about time. Every QSO carries a timestamp, duplicate
 checking is a time window, contests open and close, spots and data files go
@@ -55,9 +55,11 @@ keep these tables complete, because they are what an audit greps against:
 | `sync_engine.dart` — `backfillFrom` | Leaves as `syncedUntilMillis`; the server pages backwards from it |
 | `data_file_manager.dart` — `data_file_updated_*` | Persists, and outlives the travel that wrote it |
 | `switch_accounts_dialog.dart` — the challenge clock | Compared against the server's `challenge_expires_at` |
+| `peer_trust.dart` — `pairedAtMillis`, `lastSeenAtMillis` | Per-peer, and outlives the session that paired |
+| `extension_service.dart` — `extensionDisabledSince` | Persists; it gates a 7-day purge grace window |
 
-This is the case that bites hardest, and being unable to sync *while*
-travelling does not cover it: **the stamp persists**. It sits in the database
+This is the case that bites hardest, and no bar on *running* sync ever covered
+it: **the stamp persists**. It sits in the database
 long after the offset is gone and reaches the server the moment sync resumes,
 where it wins or loses every conflict against another device for the length of
 that offset — silently discarding the operator's real edits on whichever device
@@ -78,6 +80,9 @@ clock is the entire point of the feature.
 | `sync_engine.dart` — debounce window | Same |
 | `main.dart` — panel-catalog boot budget, DEVHAMMER's run length | Real work, real seconds |
 | `dev_log.dart` — event timestamps | Read against the operator's own wall clock |
+| `peer_outbox.dart` — scan debounce window | Its remainder becomes a `Timer` duration |
+| `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
+| `weather_panel.dart` — fetch-attempt throttle | Rate limiting a real request |
 
 A `Timer` fires on real time and knows nothing about travel, so any duration
 handed to one has to be measured on the same clock it will be counted on.
@@ -186,38 +191,56 @@ Travel is a developer tool that writes to a real log, so:
   enforced by one `settings` listener in `HaLoServices`, so it holds no matter
   which surface turned it off. Resetting still works without developer mode, so
   nobody is stranded on a fake clock.
-- **A real sync account refuses travel**, and the check **fails closed**. An
-  `email` or `pending_email` on the LoFi `current_account` means a real account
-  with real logs; `/TEST` as a callsign SEGMENT (`N0DEV/TEST`, never
-  `W1AW/TESTER`) is the deliberate opt-out. An anonymous account is fine, since
-  nothing else shares it. Sync switched ON with no account payload in hand is
-  **refused**: `syncState['accountData']` is a cache of the last successful
-  fetch, so a launch that hasn't fetched yet leaves it absent while a real
-  account sits behind it, and "absent" read as "anonymous" is the same wrong
-  answer as no check at all.
-- **Sync does not run while travelling** — and the operator's `syncEnabled`
-  setting is **not touched** to achieve it. The two DESTRUCTIVE entry points
-  refuse *before* they act: `forceFullResync` (the `SYNCALL` command) and
-  `resolveAccountChange` each back up and WIPE local data and then rely on the
-  round they schedule to refill it, and that round is exactly what the bar stops
-  — so refusing late would empty the live tables with no UI onto the backups and
-  nothing that would ever refill them. Both return `false` when refused, and
-  every caller reports it; a manual round asked for by a human does too, rather
-  than no-op'ing silently. `SyncEngine._mayRun` is
-  `settings.enabled && !AppClock.instance.isTravelling`, checked live in the one
-  place every path through the engine already consults. A dev tool that switched
-  the persisted preference off instead would leave it off for good if the app
-  were quit before travel ended — the clock resets itself on launch, a `false` in
-  prefs does not — with nothing on screen attributing the silent loss of sync to
-  the clock. Nothing is remembered, so nothing can be restored wrongly.
-  Separately, turning sync ON is refused while travelling, in
-  `HaLoServices.setSyncEnabled`, so every surface (the Sync panel, the All
-  Settings row, a settings command) hits the same refusal — the declarative form
-  system has no "disabled" flag, so this is what makes it an invariant rather
-  than a convention. The Sync row explains itself, and listens to
-  `ClockTravel.instance` as well as to settings: ending travel writes no setting,
-  so a row listening only to settings would keep saying "unavailable" over a
-  control that works again.
+- **Only TEST data may be written while travelling.** This is the guard rail
+  the others used to substitute for. `WritePolicy` (`halo_core/src/repo/
+  write_policy.dart`) refuses every operator-initiated write to a record that
+  is not test data: editing or deleting a real operation, logging into one,
+  editing or deleting a real contact, and bulk-importing into one. A record is
+  test data when its station call carries `T` or `TEST` as a whole segment
+  (`isTestCall` — `KI2D/T`, `KI2D/TEST`, `KI2D/T/P`, never `W1AW/TESTER`);
+  neither is a standard modifier, those being `/P`, `/M`, `/MM`, `/AM`. A
+  contact counts when EITHER its operation is a test operation or its own call
+  is a test call, which is what lets an operation-less contact be written at
+  all.
+
+  Three properties make it hold:
+
+  - It judges the **stored** record, never the incoming edit. Judging the edit
+    would let one that adds `/TEST` to a real operation write its own
+    permission slip, and every write after it.
+  - Its **mirror** is refused too: `/TEST` cannot be cleared from an operation
+    while travelling. That one is for the operator rather than the log —
+    allowing it would commit the edit and then lock them out of the operation
+    on the very next write.
+  - An operation **created** while travelling is marked rather than refused,
+    per comma-separated callsign. An operation is judged by its stored call and
+    there is nothing stored yet to judge, so a refusal there would be
+    unescapable; a call-less operation becomes `/TEST`, which is deliberately
+    still a test call.
+
+  **Inbound records are never refused.** Receiving real data is fine — the gate
+  is about what this device authors — and refusing there would break sync
+  itself the moment a developer travelled.
+- **Sync runs normally while travelling**, LoFi and peer alike, because
+  everything a travelled session can produce is identifiable and purgeable. The
+  two DESTRUCTIVE entry points still refuse *before* they act: `forceFullResync`
+  (the `SYNCALL` command) and `resolveAccountChange` each back up and WIPE local
+  data and then rely on a later round to refill it. That is a different hazard
+  from the one the write gate covers — it is about a dev tool triggering a wipe
+  at all, not about which records a round carries — so `travelRefusesSync`
+  survives for exactly those two, and both return `false` when refused with
+  every caller reporting it. The operator's `syncEnabled` setting is never
+  written by any of this: a dev tool that switched a persisted preference off
+  would leave it off for good if the app were quit before travel ended, with
+  nothing on screen attributing the silent loss of sync to the clock.
+- **The sync account is not consulted.** Travel used to be refused against an
+  email-identified account, with `/TEST` on the account callsign as the opt-out.
+  That gate is gone: it keyed on the account, which is informative only, while
+  what actually needed bounding was the write. It also depended on
+  `syncState['accountData']`, a cache refreshed only when the operator opens
+  Settings › Sync — so it failed closed on absence but **open on staleness**,
+  which is the wrong way round for a check standing between a dev tool and
+  somebody's real log.
 - **It is visible.** A status-bar item stands for as long as travel does,
   showing how far the clock is from real time and how fast it is running —
   `+5m at 100x`. It shows the offset and factor rather than a fake time, because
@@ -239,20 +262,22 @@ Travel is a developer tool that writes to a real log, so:
   `WallClock` arms no timer until something listens, so an app that never
   travels pays nothing.
 
-Being unable to sync while travelling is **not** what protects the sync data,
-and the first version of this design wrongly assumed it was: a revision stamp
-PERSISTS, so it reaches the server whenever sync next resumes, long after the
-offset is gone. That is why `updatedAtMillis` and the sequence stamps read the
-real clock (§1) — the bar on running sync and the real-clock stamps cover
-different halves of the same problem, and neither substitutes for the other.
+Two things this design got wrong before, both worth keeping in view because the
+shape of the mistake recurs:
 
-One residual is known and accepted: a QSO's `startAtMillis` travels, by design,
-so QSOs logged while travelled carry travelled times and *will* reach the server
-once travel ends. The account gate (above) is what bounds that — and it bounds it
-to accounts with no email, which the Switch Accounts QR flow can still have
-shared with another device. A developer time-travelling against a linked
-anonymous account should expect future-dated QSOs to show up on the other
-device.
+**Real-clock stamps and a bar on sync cover different halves.** A revision stamp
+PERSISTS, so it reaches the server whenever sync next resumes, long after the
+offset is gone — barring sync never protected it. That is why `updatedAtMillis`
+and the sequence stamps read the real clock (§1), and it is why removing the bar
+costs nothing: the stamps were always the part that mattered.
+
+**A travelled `startAtMillis` on a REAL contact was the actual exposure**, and
+it was accepted rather than fixed. QSO times travel by design, so a contact
+logged while travelled carried a fabricated time into a real log and reached the
+server once travel ended, indistinguishable from a genuine one. The write gate
+is what closes it: a travelled session cannot author a real contact at all, so
+the worst it can now produce is an obviously-fake `/TEST` operation that the
+Test Operation purge machinery removes and propagates.
 
 ---
 
@@ -338,7 +363,8 @@ Each layer is tested where its failure would actually appear:
 | The sandbox really travelling, in the engine that ships | `packages/halo_extension_host/test/sandbox_clock_test.dart` |
 | The UI heartbeat's cadence and floor | `packages/halo_widgets/test/wall_clock_test.dart` |
 | The `Date` substitution's whole surface | `extensions/sdk/src/appClock.test.ts` |
-| Sync actually not reaching the transport while travelled | `packages/halo_core/test/sync_engine_test.dart` |
+| Ordinary rounds running while travelled, and the destructive pair still refusing | `packages/halo_core/test/sync_engine_test.dart` |
+| **The write gate** — what a travelled session may author, and its escape hatches | `packages/halo_core/test/travel_write_gate_test.dart` |
 
 The sandbox test runs the real kernel and the real clock-dashboard bundle
 deliberately. Replacing a global `Date` either works completely or fails

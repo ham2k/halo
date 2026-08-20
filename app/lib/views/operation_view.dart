@@ -994,9 +994,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       fieldCapitalization: TextCapitalization.characters,
     );
     if (result == null || result.trim().isEmpty) return;
-    // Operation first: it's the local, can't-fail write. setOperatorCall
-    // also pushes sync credentials (keychain + extension bridge), and a
-    // failure there must not leave the operation callsign-less.
+    // Profile first, because the operation write is the one that can fail:
+    // `WritePolicy` refuses it on a travelled clock, and an operation created
+    // while travelling is born `/TEST`, so the very callsign this prompt
+    // exists to collect is one the gate declines to store. Sequencing the
+    // operation first would take the profile write down with it and leave the
+    // operator with neither.
+    await widget.services.setOperatorCall(result);
     await widget.services.operations.saveData(
       Operation(
         uuid: operation.uuid,
@@ -1007,7 +1011,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         localData: operation.localData,
       ),
     );
-    await widget.services.setOperatorCall(result);
   }
 
   /// Tap on the compact call-info area: on wide layouts the detail

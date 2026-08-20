@@ -10416,6 +10416,72 @@ void main() {
       );
     });
   });
+
+  // The write gate refuses at the repository, which tells the operator AFTER
+  // they typed a contact that it did not land. Locking the form is what makes
+  // it never typeable — the difference between a refusal and a lost contact.
+  group('an unwritable operation locks the form', () {
+    tearDown(AppClock.instance.reset);
+
+    /// How many of the panel's entry fields accept input right now.
+    ///
+    /// Counted across every TextField rather than singling one out: "the
+    /// fields are disabled" is the actual claim, and an assertion on one
+    /// field would pass while the rest of the row stayed typeable.
+    int enabledFields(WidgetTester tester) =>
+        tester.widgetList<TextField>(find.byType(TextField)).where((f) => f.enabled ?? true).length;
+
+    testWidgets('every entry field is disabled while the clock is travelled', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      expect(enabledFields(tester), greaterThan(0),
+          reason: 'sanity: a real operation is writable on a real clock');
+
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      await tester.pump();
+
+      expect(enabledFields(tester), 0);
+    });
+
+    testWidgets('the panel says why, in the operator\'s words', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      await tester.pump();
+
+      expect(find.textContaining('only test operations and contacts can be changed'), findsOneWidget);
+    });
+
+    testWidgets('it unlocks again when the clock comes back', (tester) async {
+      // The half a listener-less implementation gets wrong: locking on travel
+      // is easy to notice, staying locked afterwards is not.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      await tester.pump();
+      expect(enabledFields(tester), 0);
+
+      AppClock.instance.reset();
+      await tester.pump();
+
+      expect(enabledFields(tester), greaterThan(0));
+    });
+
+    testWidgets('a TEST operation stays typeable while travelled', (tester) async {
+      // The gate is about which records may be written, not about travel
+      // itself — a panel that locked regardless would make the feature
+      // useless for the one thing it exists to allow.
+      await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'stationCall': 'KI2D/T'}));
+      operation = (await operations.get(operation.uuid))!;
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      await tester.pump();
+
+      expect(enabledFields(tester), greaterThan(0));
+    });
+  });
 }
 
 /// In-memory stand-in for the app's `RadioService` (which lives outside

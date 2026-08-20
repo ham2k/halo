@@ -9,6 +9,21 @@ import 'dart:convert';
 
 import 'operation_title.dart';
 
+/// Whether [call] carries `T` or `TEST` as a whole SEGMENT — `KI2D/T`,
+/// `KI2D/TEST`, `KI2D/T/P`, but never `W1AW/TESTER`.
+///
+/// The one definition of "this is test data", shared by [Operation.isTestOperation]
+/// and by the travelled clock's write gate. Segments, not a suffix: a
+/// substring match would opt `W1AW/TESTER` in, and matching only the LAST
+/// segment would miss `KI2D/T/P`, where the operator said `T` and then added
+/// a portable modifier.
+///
+/// Both `T` and `TEST` count. Neither is a standard modifier — those are
+/// `/P`, `/M`, `/MM`, `/AM` — so nothing a real operator signs with is
+/// swept in by accident.
+bool isTestCall(String call) =>
+    call.toUpperCase().split('/').any((segment) => segment == 'T' || segment == 'TEST');
+
 /// A logging session: one station, one setup, one stretch of time.
 class Operation {
   final String uuid;
@@ -66,11 +81,11 @@ class Operation {
     return unique.isEmpty ? const [''] : unique;
   }
 
-  /// True when any of [stationCalls] ends in `/T` or `/TEST` (e.g.
-  /// `KI2D/T`) — the operator's own signal that this operation is for
-  /// testing, not a real activation. Changes title, export filenames,
-  /// spotting and deletion behavior; see docs/design (Test Operations).
-  bool get isTestOperation => stationCalls.any((call) => call.endsWith('/T') || call.endsWith('/TEST'));
+  /// True when any of [stationCalls] is a test call — the operator's own
+  /// signal that this operation is for testing, not a real activation.
+  /// Changes title, export filenames, spotting and deletion behavior, and is
+  /// what the travelled clock may write to at all; see [isTestCall].
+  bool get isTestOperation => stationCalls.any(isTestCall);
 
   /// The user's own title, entered via the operation details dialog —
   /// distinct from [title], which holds the ref-generated one. Empty when

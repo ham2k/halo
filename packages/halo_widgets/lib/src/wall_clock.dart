@@ -137,15 +137,6 @@ class ClockTravel extends ChangeNotifier {
 
   static final ClockTravel instance = ClockTravel._();
 
-  /// Announces that something was REFUSED because of the clock, without the
-  /// clock itself having changed.
-  ///
-  /// The declarative settings form holds an optimistic value for a field until
-  /// something its group listens to fires, so a sync toggle whose commit was
-  /// refused would otherwise keep rendering ON over a sync that is off. Nothing
-  /// about the clock moved, so [AppClock] has nothing to report — this is the
-  /// same audience being told the answer was no.
-  void notifyRefused() => notifyListeners();
 }
 
 /// Rebuilds [builder] once per second, in the same frame as every other

@@ -32,6 +32,7 @@ a session with a repeating error must not bury the operator's real notices.
 
 | rule | disposition | why |
 | --- | --- | --- |
+| `write-refused` | `logOnly` | The app declined a write rather than failing at one — a travelled clock over a record that is not test data (`WritePolicy`, [time.md §4](time.md)). An expected outcome carrying its own operator-facing reason, so it is never uploaded and never wears the generic "Something went wrong" notice; `ErrorReportingService.noticeWriteRefused` shows the reason instead, keyed so repeats replace rather than stack. Reaching a global handler at all means a write site did not deal with its own refusal, which is what the console line is for. |
 | `web-focus-traversal-null` | `ignore` | An unsound `!` in Flutter's own `ReadingOrderTraversalPolicy`, thrown on every browser focus change on web (ham2k/halo-dist#271). |
 | `renderflex-overflow` | `logOnly` | A debug-only layout assertion; release builds clip silently and never throw it. Flutter already stripes the offending widget on screen. |
 | `set-state-during-build` | `logOnly` | A build-ordering bug of ours, invisible to the operator: the frame renders stale, the next one is correct. Repeats on every rebuild, so uploading it would bury real crashes. |

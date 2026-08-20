@@ -1946,15 +1946,6 @@ class HaLoServices {
   /// test can find the item rather than matching on its text.
   static const timeTravelStatusKey = 'clock:timeTravel';
 
-  /// True while travel is holding sync off — what the Sync settings disable
-  /// themselves on (see `SyncSettingsGroup`).
-  ///
-  /// Holding it off is [SyncEngine]'s own live check, not a write to the
-  /// operator's `syncEnabled` setting: a dev tool that switches a persisted
-  /// preference off leaves it wrong for good if the app is quit before travel
-  /// ends, and nothing on screen would attribute that to the clock.
-  bool get timeTravelHoldsSyncOff => AppClock.instance.isTravelling;
-
   /// DEVTT: moves the app clock (docs/design/time.md).
   ///
   /// Both gates live here rather than in the command hook, because neither the
@@ -1973,8 +1964,13 @@ class HaLoServices {
       return (text: 'Time travel needs developer mode', failed: true);
     }
 
-    final refusal = _syncAccountTimeTravelRefusal();
-    if (refusal != null) return (text: refusal, failed: true);
+    // Deliberately no sync-account gate: what the account is called says
+    // nothing about what this session can damage, because `WritePolicy` admits
+    // only test data while the clock is travelled. Keying on the account would
+    // also mean reading `syncState['accountData']`, a cache refreshed only when
+    // the operator opens Settings › Sync — a check that fails closed on absence
+    // but open on staleness, which is the wrong way round for anything standing
+    // between a dev tool and somebody's real log.
 
     // Applied BEFORE anything is changed on its behalf: `travel` refuses an
     // out-of-range offset or speed, and a refusal that had already switched
@@ -2072,51 +2068,6 @@ class HaLoServices {
     watchReceivedTestOperationPurges();
   }
 
-  /// Why this app may not time-travel against its sync account, or null when it
-  /// may.
-  ///
-  /// An account identified by an email address is a REAL account with real logs
-  /// on the server, so a `/TEST` callsign is the deliberate opt-out — an account
-  /// registered for exactly this.
-  ///
-  /// An email-less account is allowed, and that is a JUDGEMENT, not a proof of
-  /// safety: the Switch Accounts QR flow links precisely an anonymous account, so
-  /// one can be shared with another device. What makes it acceptable is that the
-  /// values which would corrupt that device's merge — the revision stamps — are
-  /// on the real clock regardless (`realNowMillis`). What still crosses is a
-  /// travelled `startAtMillis` on QSOs logged while travelled, which is the
-  /// feature working as intended and shows up as future-dated QSOs on the other
-  /// device. See docs/design/time.md §4's residual.
-  ///
-  /// **Fails CLOSED.** This is the check that stands between a dev tool and
-  /// somebody's real log, so it refuses whenever it cannot PROVE the account is
-  /// safe — including when sync is on but the account payload isn't in hand.
-  /// `syncState['accountData']` is a cache of the last successful fetch, so a
-  /// launch that hasn't fetched yet, or one where the server was unreachable,
-  /// leaves it absent (see `settings_view`'s `syncAccountData`) — and "absent"
-  /// read as "anonymous" is the same wrong answer as no check at all. An app
-  /// with sync switched off has no account to protect and is allowed.
-  String? _syncAccountTimeTravelRefusal() {
-    final account = (settings.syncState['accountData'] as Map?)?['current_account'];
-    if (account is! Map) {
-      if (!settings.syncEnabled) return null;
-      return 'Time travel is refused: sync is on but this account has not been read yet,'
-          ' so it cannot be shown to be a test account. Open Settings › Sync, or turn sync off.';
-    }
-    String field(String key) => (account[key] as String?)?.trim() ?? '';
-    final identified = field('email').isNotEmpty || field('pending_email').isNotEmpty;
-    if (!identified) return null;
-    if (_isTestCall(field('call'))) return null;
-    return 'Time travel is refused: the sync account ${field('email').isNotEmpty ? field('email') : field('pending_email')}'
-        ' is a real account. Use an account whose callsign carries /TEST.';
-  }
-
-  /// Whether [call] carries `/TEST` as a whole SEGMENT — `N0DEV/TEST`, not
-  /// `W1AW/TESTER`. A substring match would opt a real callsign in by accident,
-  /// and this is the opt-out for the one guard protecting real logs.
-  static bool _isTestCall(String call) =>
-      call.toUpperCase().split('/').any((segment) => segment == 'TEST');
-
   String _travelSuffix() {
     final label = AppClock.instance.travelLabel;
     return label == null ? '' : ' ($label)';
@@ -2131,29 +2082,6 @@ class HaLoServices {
   /// otherwise fire a `sync_enabled` analytics event and install an account
   /// watcher for a sync that is off).
   Future<bool> setSyncEnabled(bool enabled) async {
-    // Sync stays off for as long as the clock is travelled, whichever surface
-    // asks (the Sync panel, the All Settings row, a settings command): a
-    // travelled `updatedAtMillis` would win or lose every conflict against the
-    // server for as long as the offset stands. Refusing HERE rather than
-    // disabling each control is what makes that an invariant instead of a
-    // convention. `_endTimeTravel` resets the clock BEFORE restoring sync, so
-    // it isn't caught by this.
-    if (enabled && AppClock.instance.isTravelling) {
-      statusBar.showNotice(
-        key: 'clock:timeTravelHoldsSync',
-        icon: 'clock-alert',
-        title: 'Sync is off while time travelling',
-        text: 'The clock is set to ${AppClock.instance.travelLabel}. Run DEVTT to return to real time,'
-            ' then turn sync back on.',
-        persist: false,
-      );
-      // The declarative settings form keeps an optimistic value until something
-      // it listens to changes; ClockTravel is in that merge, so this is what
-      // makes the All Settings row snap back to OFF instead of showing a sync
-      // that isn't running.
-      ClockTravel.instance.notifyRefused();
-      return false;
-    }
     await settings.setSyncEnabled(enabled);
     if (!enabled) return true;
     // Boot skips credential setup when the keyring is locked
@@ -2491,19 +2419,26 @@ Future<bool> runCommandAction(HaLoServices services, String action,
 /// all of them (`confirmPurgeTestOperations`), then purges each — see
 /// `HaLoServices.purgeOperation`. Returns null (no message at all) when the
 /// user cancels, same as any other dismissed dialog.
+///
+/// Test contacts belonging to NO operation go too. Nothing else can reach
+/// them: this command walks operations and the received-purge prompt is keyed
+/// on operation uuids, so without this they accumulate and sync forever. A
+/// travelled clock can author exactly these — a test call is the only thing
+/// identifying a contact with no operation to belong to.
 Future<CommandActionOutcome?> _runPurgeTests(HaLoServices services, BuildContext? context) async {
   // Bypasses handleCommandAction's switch (see runCommandAction's doc), so
   // it has to fire the same usage event that switch's callers get for free.
   services.track('command_executed', {'command': 'purgeTests'});
 
   final testOperations = (await services.operations.watchAll().first).where((op) => op.isTestOperation).toList();
-  if (testOperations.isEmpty) return (text: t.commands.noTestOperations, failed: false);
+  final looseQsos = await services.qsos.testQsosWithoutOperation();
+  if (testOperations.isEmpty && looseQsos.isEmpty) return (text: t.commands.noTestOperations, failed: false);
   if (context == null) return (text: t.commands.purgeTestsUnavailable, failed: true);
   // The await above is a real gap: the widget that owns `context` (the
   // command dialog, home view, or logging panel) can be gone by the time it
   // resolves — e.g. the operator closed ⌘K while this was still listing.
   if (!context.mounted) return (text: t.commands.purgeTestsUnavailable, failed: true);
-  if (!await confirmPurgeTestOperations(context, testOperations)) return null;
+  if (!await confirmPurgeTestOperations(context, testOperations, looseQsoCount: looseQsos.length)) return null;
 
   // Isolated per operation: one purge throwing must not strand the rest
   // half-purged with no report of how far it got.
@@ -2516,11 +2451,34 @@ Future<CommandActionOutcome?> _runPurgeTests(HaLoServices services, BuildContext
       ErrorReportingService.report(e, st, context: 'purgeTests:${operation.uuid}');
     }
   }
-  services.track('test_operations_purged', {'count': purgedCount});
+  // Isolated from the loop above for the same reason, and counted separately:
+  // the two are different things to the operator, and one number cannot stand
+  // for both. `purgeQsos` reports what it actually wrote, not what was asked.
+  var purgedContacts = 0;
+  var contactsFailed = false;
+  if (looseQsos.isNotEmpty) {
+    try {
+      purgedContacts = await services.qsos.purgeQsos(looseQsos.map((qso) => qso.uuid));
+    } catch (e, st) {
+      contactsFailed = true;
+      ErrorReportingService.report(e, st, context: 'purgeTests:looseQsos');
+    }
+  }
+  services.track('test_operations_purged', {'count': purgedCount, 'contacts': purgedContacts});
+
+  // Every branch names what it actually did. Reporting only the operations —
+  // "Purged 0 Test Operations" after tombstoning five contacts the operator
+  // just confirmed — reads as a command that silently failed.
+  final parts = <String>[
+    if (purgedCount > 0) t.commands.testOperationsPurged(count: purgedCount),
+    if (purgedContacts > 0) t.commands.testContactsPurged(count: purgedContacts),
+  ];
   if (purgedCount < testOperations.length) {
     return (text: t.commands.purgeTestsSomeFailed(purged: purgedCount, total: testOperations.length), failed: true);
   }
-  return (text: t.commands.testOperationsPurged(count: purgedCount), failed: false);
+  if (contactsFailed) return (text: t.commands.purgeTestsContactsFailed, failed: true);
+  if (parts.isEmpty) return (text: t.commands.purgeTestsNothingToDo, failed: false);
+  return (text: parts.join(' · '), failed: false);
 }
 
 

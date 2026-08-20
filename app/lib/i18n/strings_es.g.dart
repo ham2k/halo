@@ -201,6 +201,10 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	@override String get stationCallsign => 'Indicativo de la estación';
 	@override String get notes => 'Notas';
 	@override String get deleteOperationTitle => 'Borrar operación';
+	@override String purgeTestsLooseQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Más ${count} contacto de prueba que no pertenece a ninguna operación.',
+		other: 'Más ${count} contactos de prueba que no pertenecen a ninguna operación.',
+	);
 }
 
 // Path: operation
@@ -2256,6 +2260,7 @@ extension on TranslationsEs {
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
 			'dialogs.notes' => 'Notas',
 			'dialogs.deleteOperationTitle' => 'Borrar operación',
+			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Más ${count} contacto de prueba que no pertenece a ninguna operación.', other: 'Más ${count} contactos de prueba que no pertenecen a ninguna operación.', ), 
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -2672,9 +2677,9 @@ extension on TranslationsEs {
 			'settings.layoutDensityDescription.dense' => 'Muestra más en pantalla',
 			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
 			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
-			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			_ => null,
 		} ?? switch (path) {
+			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',
@@ -3186,9 +3191,9 @@ extension on TranslationsEs {
 			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
-			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se importará', other: '${formatted} se importarán', ), 
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} contacto nuevo', other: '${formatted} contactos nuevos', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se combinará con un contacto existente', other: '${formatted} se combinarán con contactos existentes', ), 

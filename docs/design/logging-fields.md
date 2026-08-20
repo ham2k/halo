@@ -88,6 +88,24 @@ Two consequences worth knowing before changing any of this:
   are measured against the fields' own font, so OS text scaling widens them
   rather than eating into them.
 
+## When the form is read-only
+
+Everything below assumes the form accepts input. It does not always: the entry
+row locks whole, fields and save and keyboard shortcuts alike, and the reason
+appears where the call-info area normally sits. Three things lock it —
+
+- a **staged delete**, where Delete has been tapped and not yet saved;
+- an **already-deleted QSO** loaded for restore;
+- an **operation this device may not write to** — a travelled clock over a
+  non-test operation today (`WritePolicy`, [time.md §4](time.md)), and a
+  shared operation this device only reads once that exists.
+
+Locked means locked *before* the focus rules apply, not instead of them: no
+field takes focus, so none of the movement below has anywhere to go. That is
+deliberate for the third case in particular — a refusal raised when the
+operator presses Enter would tell them a contact they had already typed did
+not land, which is the thing this prevents.
+
 ## Which field has focus
 
 The callsign field is the default: if no other field is focused, focus

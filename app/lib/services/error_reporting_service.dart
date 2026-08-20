@@ -34,6 +34,8 @@ import 'dart:async';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
 
+import 'package:halo_core/halo_core.dart';
+
 import 'error_policy.dart';
 import 'error_reporting_backend.dart';
 import '../views/error_tile.dart';
@@ -82,6 +84,7 @@ class ErrorReportingService {
       // Uncaught async error with no backend (or its init broken): log +
       // notice. Reaching a zone handler means it never propagates, so a
       // stray async error can't take down a logging session mid-contact.
+      if (error is WriteRefused) noticeWriteRefused(error);
       final decision = ErrorPolicy.decide(error);
       if (!decision.disposition.uploads) {
         ErrorPolicy.logDecision(decision, error, stackTrace: stackTrace);
@@ -98,6 +101,7 @@ class ErrorReportingService {
   /// known-harmless error stays out of the backend however it was caught.
   static void report(Object error, StackTrace? stackTrace, {String? context}) {
     debugPrint('[error-reporting] ${context ?? 'caught'}: $error\n${stackTrace ?? ''}');
+    if (error is WriteRefused) noticeWriteRefused(error);
     final decision = ErrorPolicy.decide(error);
     if (!decision.disposition.uploads) {
       ErrorPolicy.logDecision(decision, error);
@@ -183,6 +187,11 @@ class ErrorReportingService {
     // handler, when active, is already in this chain; preserve it.
     final previousOnError = FlutterError.onError;
     FlutterError.onError = (details) {
+      // A refused write reaching the framework handler is a write attempted
+      // from a build or gesture callback. Its reason goes on screen, and the
+      // policy still decides everything else — it is the only thing that may.
+      final refusal = details.exception;
+      if (refusal is WriteRefused) noticeWriteRefused(refusal);
       final decision = ErrorPolicy.decide(details.exception, details: details);
       // Below the upload tier the chain stops here: no framework dump, no
       // backend capture (previousOnError is where a real backend's hook
@@ -203,6 +212,36 @@ class ErrorReportingService {
     // failed widget's slot shows the tile, the rest of the app keeps
     // working (see views/error_tile.dart).
     ErrorWidget.builder = (details) => HaLoErrorTile(details: details);
+  }
+
+  /// Show a refused write as its own notice, carrying the reason.
+  ///
+  /// Separate from [notify] on both counts that matter: it is not
+  /// once-per-session, because a refusal is a thing the operator can act on
+  /// and then hit again; and it says WHY rather than "Something went wrong",
+  /// because "Add /T to the station callsign" is the whole point. Keyed, so
+  /// repeats replace rather than stack.
+  ///
+  /// Here rather than at the write sites: `WritePolicy` guards a dozen of
+  /// them across the app and two packages, and a refusal surfaced at eleven of
+  /// them is a silent no-op at the twelfth.
+  static void noticeWriteRefused(WriteRefused refusal) {
+    final statusBar = _statusBar;
+    if (statusBar == null) {
+      // Bootstrap, a widget test, a headless run. Saying nothing here is how a
+      // refused write becomes indistinguishable from one that succeeded.
+      debugPrint('[write-policy] refused with no status bar to say so: ${refusal.reason}');
+      return;
+    }
+    scheduleMicrotask(() {
+      statusBar.showNotice(
+        key: 'write-policy:refused',
+        icon: 'clock-alert',
+        title: 'Change not saved',
+        text: refusal.reason,
+        persist: false,
+      );
+    });
   }
 
   /// Queue the once-per-session StatusBar notice (if the bar is attached).

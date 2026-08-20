@@ -175,120 +175,65 @@ void main() {
     });
   });
 
-  group('the sync account gate', () {
-    test('an anonymous account may travel', () async {
-      final services = await buildServices(currentAccount: {'uuid': 'abc12345'});
-      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
-      expect(outcome!.failed, isFalse);
-    });
-
-    test('no account data and no sync may travel', () async {
-      final services = await buildServices();
-      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
-      expect(outcome!.failed, isFalse);
-    });
-
-    // Fails CLOSED. `accountData` is a cache of the last successful fetch, so a
-    // launch that hasn't fetched yet — or one where the server was unreachable —
-    // leaves it absent while a REAL account sits behind it. Read as "anonymous",
-    // that is the same wrong answer as having no check at all.
-    test('sync on with no account data yet is refused, not assumed anonymous', () async {
-      final services = await buildServices(syncEnabled: true);
-      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
-      expect(outcome!.failed, isTrue);
-      expect(outcome.text, contains('not been read yet'));
-      expect(AppClock.instance.isTravelling, isFalse);
-    });
-
-    test('an email-identified account is refused', () async {
+  // Travel is permitted whatever the sync account is, including a real
+  // email-identified one: `WritePolicy` admits only test data while the clock
+  // is travelled, so the account's identity says nothing about what the
+  // session can damage. These pin that, because the obvious "safer" instinct
+  // is to re-add a gate here — and it would key on a cached `accountData`
+  // payload that fails closed on absence but open on staleness.
+  group('travel and the sync account', () {
+    test('a real, email-identified account no longer refuses travel', () async {
       final services = await buildServices(
-        currentAccount: {'uuid': 'abc12345', 'email': 'ham@example.com', 'call': 'N0DEV'},
-      );
-      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
-
-      expect(outcome!.failed, isTrue);
-      expect(outcome.text, contains('ham@example.com'));
-      expect(AppClock.instance.isTravelling, isFalse);
-    });
-
-    test('a pending email counts as identified', () async {
-      // The address is unconfirmed but the account is real and already has an
-      // owner on the way — treating "pending" as anonymous would be the
-      // permissive reading of an ambiguous state, and this gate exists to be
-      // the strict one.
-      final services = await buildServices(
-        currentAccount: {'uuid': 'abc12345', 'pending_email': 'ham@example.com'},
-      );
-      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
-      expect(outcome!.failed, isTrue);
-    });
-
-    test('a /TEST callsign opts back in', () async {
-      final services = await buildServices(
-        currentAccount: {'uuid': 'abc12345', 'email': 'ham@example.com', 'call': 'N0DEV/TEST'},
+        syncEnabled: true,
+        currentAccount: {'uuid': 'abc12345', 'email': 'ki2d@example.com', 'call': 'KI2D'},
       );
       final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
       expect(outcome!.failed, isFalse);
       expect(AppClock.instance.isTravelling, isTrue);
     });
 
-    test('the /TEST check is case-insensitive', () async {
-      final services = await buildServices(
-        currentAccount: {'uuid': 'abc12345', 'email': 'ham@example.com', 'call': 'n0dev/test'},
-      );
-      expect((await travel(services, {'deltaMillis': 3600000}))!.failed, isFalse);
+    test('sync on with no account payload in hand travels too', () async {
+      // Nothing is keyed off the account, so an absent payload cannot be
+      // misread as "anonymous": there is no question here to get wrong.
+      final services = await buildServices(syncEnabled: true);
+      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
+      expect(outcome!.failed, isFalse);
     });
 
-    // The opt-out is the `/TEST` SEGMENT, not the letters anywhere in the call.
-    // A substring match opts a real callsign in by accident, and this is the
-    // guard standing between a dev tool and somebody's real log.
-    for (final call in ['N0TEST', 'W1AW/TESTER', 'TEST1ABC', 'N0DEV/TESTING']) {
-      test('$call does not opt in', () async {
-        final services = await buildServices(
-          currentAccount: {'uuid': 'abc12345', 'email': 'ham@example.com', 'call': call},
-        );
-        expect((await travel(services, {'deltaMillis': 3600000}))!.failed, isTrue);
-      });
-    }
-
-    test('/TEST anywhere in the call, as its own segment, opts in', () async {
-      final services = await buildServices(
-        currentAccount: {'uuid': 'abc12345', 'email': 'ham@example.com', 'call': 'N0DEV/TEST/P'},
-      );
-      expect((await travel(services, {'deltaMillis': 3600000}))!.failed, isFalse);
+    test('an anonymous account still travels', () async {
+      final services = await buildServices(currentAccount: {'uuid': 'abc12345'});
+      final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
+      expect(outcome!.failed, isFalse);
     });
   });
 
   group('sync while travelling', () {
-    // An anonymous account, so the fail-closed account gate permits travel at
-    // all: sync ON with no account payload is refused outright (see above), so
-    // these tests would otherwise be asserting about a travel that never
-    // happened.
     Future<HaLoServices> withSync() =>
         buildServices(syncEnabled: true, currentAccount: {'uuid': 'abc12345'});
 
-    test('sync stops running, without touching the operator\'s setting', () async {
+    test('sync keeps running, and the operator\'s setting is untouched', () async {
       final services = await withSync();
       expect(services.settings.syncEnabled, isTrue, reason: 'sanity: sync started on');
 
       await travel(services, {'deltaMillis': const Duration(days: 1).inMilliseconds});
 
-      // The PERSISTED preference is untouched on purpose. A dev tool that writes
-      // it leaves it wrong for good if the app is quit before travel ends — the
-      // clock resets itself on launch, a `false` in prefs does not, and nothing
-      // on screen would attribute the silent loss of sync to time travel.
+      // Both halves matter. The setting was never written — a dev tool that
+      // writes it leaves it wrong for good if the app is quit before travel
+      // ends — and nothing holds sync off any more either, because what a
+      // travelled session may write is bounded instead.
       expect(services.settings.syncEnabled, isTrue);
-      // What actually holds it off is SyncEngine's own live check.
-      expect(services.timeTravelHoldsSyncOff, isTrue);
+      expect(services.syncEngine.travelRefusesSync, isTrue,
+          reason: 'the flag survives for the destructive pair, which still refuse');
     });
 
-    test('sync resumes on its own after a reset', () async {
-      final services = await withSync();
+    test('sync can be turned ON while travelling, from any surface', () async {
+      final services = await buildServices();
       await travel(services, {'deltaMillis': const Duration(days: 1).inMilliseconds});
-      await travel(services, {'reset': true});
 
+      await services.setSyncEnabled(true);
       expect(services.settings.syncEnabled, isTrue);
-      expect(services.timeTravelHoldsSyncOff, isFalse);
+      expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('clock:timeTravelHoldsSync')),
+          reason: 'the refusal notice went with the refusal');
     });
 
     test('stepping the clock costs the operator nothing', () async {
@@ -311,18 +256,7 @@ void main() {
 
       expect(outcome!.failed, isTrue);
       expect(services.settings.syncEnabled, isTrue);
-      expect(services.timeTravelHoldsSyncOff, isFalse);
-    });
-
-    test('sync cannot be turned on while travelling, from any surface', () async {
-      final services = await buildServices();
-      await travel(services, {'deltaMillis': const Duration(days: 1).inMilliseconds});
-
-      await services.setSyncEnabled(true);
-      expect(services.settings.syncEnabled, isFalse,
-          reason: 'the refusal is in setSyncEnabled, so every caller hits it');
-      // Refused silently would read as a broken toggle.
-      expect(services.statusBar.activeNotices.map((n) => n.key), contains('clock:timeTravelHoldsSync'));
+      expect(AppClock.instance.isTravelling, isFalse);
     });
   });
 

@@ -24,6 +24,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+import 'package:halo_core/halo_core.dart' show WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -128,6 +129,17 @@ class ErrorPolicy {
   /// Every exemption the app makes, in order. Anything not matched here is
   /// treated as a real, unknown error: logged, uploaded, and noticed.
   static final List<ErrorRule> rules = [
+    ErrorRule(
+      id: 'write-refused',
+      reason: 'the app declined a write rather than failing at one — a travelled clock over a '
+          'record that is not test data (WritePolicy). An expected outcome with an operator-facing '
+          'reason of its own, so it is never uploaded and never wears the generic "Something went '
+          'wrong" notice; the reason is shown by ErrorReportingService.noticeWriteRefused. Reaching '
+          'a global handler at all means a write site did not deal with its own refusal, which is '
+          'what the console line is for',
+      disposition: ErrorDisposition.logOnly,
+      matches: (error, _) => error is WriteRefused,
+    ),
     ErrorRule(
       id: 'web-focus-traversal-null',
       reason: 'Flutter web focus-traversal null on view-focus change (ham2k/halo-dist#271); '

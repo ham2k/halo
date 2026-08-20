@@ -339,6 +339,12 @@ class Translations$dialogs$en {
 	/// en: 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.'
 	String get purgeTestsBody => 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.';
 
+	/// en: '(one) {Plus ${count} test contact that belongs to no operation.} (other) {Plus ${count} test contacts that belong to no operation.}'
+	String purgeTestsLooseQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Plus ${count} test contact that belongs to no operation.',
+		other: 'Plus ${count} test contacts that belong to no operation.',
+	);
+
 	/// en: 'Purge'
 	String get purgeTestsAction => 'Purge';
 
@@ -1054,6 +1060,18 @@ class Translations$commands$en {
 
 	/// en: 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again'
 	String purgeTestsSomeFailed({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again';
+
+	/// en: '(one) {Purged ${count} test contact with no operation} (other) {Purged ${count} test contacts with no operation}'
+	String testContactsPurged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Purged ${count} test contact with no operation',
+		other: 'Purged ${count} test contacts with no operation',
+	);
+
+	/// en: 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again'
+	String get purgeTestsContactsFailed => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again';
+
+	/// en: 'Nothing was purged'
+	String get purgeTestsNothingToDo => 'Nothing was purged';
 
 	/// en: 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again'
 	String receivedPurgesSomeFailed({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again';
@@ -4714,6 +4732,7 @@ extension on Translations {
 			'dialogs.deleteOperationTitle' => 'Delete Operation',
 			'dialogs.purgeTestsTitle' => 'Purge Test Operations',
 			'dialogs.purgeTestsBody' => 'This permanently deletes these Test Operations and their QSOs. It cannot be undone.',
+			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Plus ${count} test contact that belongs to no operation.', other: 'Plus ${count} test contacts that belong to no operation.', ), 
 			'dialogs.purgeTestsAction' => 'Purge',
 			'dialogs.receivedPurgesTitle' => 'Test Operations Removed Elsewhere',
 			'dialogs.receivedPurgesBody' => 'These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.',
@@ -5122,9 +5141,9 @@ extension on Translations {
 			'qsoList.eventEnded' => 'Operation ended',
 			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
-			'loggingPanel.dxccEntities' => 'DXCC entities',
 			_ => null,
 		} ?? switch (path) {
+			'loggingPanel.dxccEntities' => 'DXCC entities',
 			'loggingPanel.statesWorked' => 'States',
 			'loggingPanel.provincesWorked' => 'Provinces',
 			'loggingPanel.duplicates' => 'Duplicates',
@@ -5586,6 +5605,9 @@ extension on Translations {
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
+			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
+			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
+			'commands.purgeTestsNothingToDo' => 'Nothing was purged',
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again',
 			'commands.receivedPurgesFailed' => 'Couldn\'t remove those Test Operations — try Review again',
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Test Operation was removed on another device', other: '${count} Test Operations were removed on another device', ), 
@@ -5633,12 +5655,12 @@ extension on Translations {
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',

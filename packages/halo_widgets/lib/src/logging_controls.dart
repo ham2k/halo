@@ -1608,11 +1608,33 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
   bool _pendingDelete = false;
 
-  /// Whether the form is a read-only view: a staged delete, or an
-  /// already-deleted QSO awaiting restore (ham2k/halo-dist#59). Every
-  /// input path — fields, save, keyboard shortcuts — must consult this,
-  /// not `_pendingDelete` alone.
-  bool get _fieldsLocked => _pendingDelete || (widget.editingQso?.deleted ?? false);
+  /// Why this operation may not be written right now, or null when it may —
+  /// a travelled clock over a non-test operation today, a shared operation
+  /// this device only reads later (`WritePolicy`).
+  ///
+  /// Live rather than cached: the answer changes when the clock does, and
+  /// `ClockTravel` is what rebuilds this widget when it happens.
+  WriteRefused? get _writeRefusal => WritePolicy.forOperation(widget.operation);
+
+  /// Travel started or ended, so whether this operation is writable may have
+  /// changed. Guarded on `mounted` because `ClockTravel` is a process-wide
+  /// singleton and the notification can land mid-teardown.
+  void _onClockTravelChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Whether the form is a read-only view: a staged delete, an
+  /// already-deleted QSO awaiting restore (ham2k/halo-dist#59), or an
+  /// operation that may not be written at all. Every input path — fields,
+  /// save, keyboard shortcuts — must consult this, not `_pendingDelete`
+  /// alone.
+  ///
+  /// The write policy belongs HERE rather than at the two `qsosRepository`
+  /// calls: those throw, which tells the operator after the fact that the
+  /// contact they typed did not land. Locking the form means it was never
+  /// typeable, which is the difference between a refusal and a lost contact.
+  bool get _fieldsLocked =>
+      _pendingDelete || (widget.editingQso?.deleted ?? false) || _writeRefusal != null;
 
   /// Editing an event/annotation row (NOTE, TODO, BREAK, …) rather than a
   /// contact — the main fields swap for [_buildEventFields], built from the
@@ -1748,6 +1770,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
     // `virtualKeyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
     WidgetsBinding.instance.addObserver(this);
+    // `_writeRefusal` is derived from the clock, which moves without anything
+    // here changing. Without this the panel stays typeable after DEVTT until
+    // some unrelated rebuild happens to notice — and stays locked after the
+    // clock comes back.
+    ClockTravel.instance.addListener(_onClockTravelChanged);
     _bandDropdownFocus = _dropdownCommitFocusNode(
       commit: _commitBandDropdownText,
       clearFilter: () => _bandFilter = '',
@@ -2538,6 +2565,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.onDispatcherChanged?.call(null);
     widget.controller?.detach();
     widget.radioUpdates?.removeListener(_onRadioVfoChanged);
+    ClockTravel.instance.removeListener(_onClockTravelChanged);
     WidgetsBinding.instance.removeObserver(this);
     _lookupDebounce?.cancel();
     _scoreDebounce?.cancel();
@@ -6752,6 +6780,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// editing session — the caller clears its selection and the list row
   /// loses its strikethrough via the repository watch.
   Future<void> _handleRestoreTap(Qso editingQso) async {
+    // Restore sits OUTSIDE `_fieldsLocked` on purpose — a deleted QSO is
+    // always locked, and undoing that is the button's whole job — so the
+    // write policy has to be consulted here in its own right.
+    final refusal = _writeRefusal;
+    if (refusal != null) return;
     if (_isLogging) return;
     _isLogging = true;
     try {
@@ -6839,7 +6872,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // no staged-until-save step, since restoring isn't destructive.
       icon = MdiIcons.deleteRestore;
       actionLabel = widget.restoreLabel ?? 'Restore';
-      onPressed = () => _handleRestoreTap(editingQso);
+      // Disabled rather than merely refused: restore is the one action that
+      // deliberately survives `_fieldsLocked` (a deleted QSO is always
+      // locked), so without this it is the only enabled control on an
+      // otherwise read-only form, and tapping it would do nothing.
+      onPressed = _writeRefusal != null ? null : () => _handleRestoreTap(editingQso);
     } else if (_pendingDelete) {
       icon = MdiIcons.undo;
       actionLabel = widget.undoDeleteLabel ?? 'Undo delete';
@@ -6878,6 +6915,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   Future<void> _log() async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
+    // The write policy specifically, NOT `_fieldsLocked`: this method is also
+    // how a staged delete is committed and a deleted QSO saved, both of which
+    // lock the form on purpose and are handled by their own branches below.
+    //
+    // Fields being disabled is not enough on its own — the panel binds Enter
+    // at its own level (`CallbackShortcuts`), so a contact still sitting in
+    // the controllers can be submitted from anywhere in the subtree after the
+    // form locks under the operator, which running DEVTT from the command bar
+    // does exactly.
+    if (_writeRefusal != null) return;
 
     // Check command — shortcuts (band/freq/mode, etc.) only apply while
     // composing a new QSO. A real callsign is exceedingly unlikely to
@@ -7998,7 +8045,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// content changes (mode, lookup result, notices), but is stable across the
   /// stats line's 1 Hz clock tick, so only real content changes cross-fade.
   String _infoAreaSignature({required bool fieldsLocked, required bool deletedQso}) {
-    if (fieldsLocked) return 'locked:$deletedQso';
+    // The refusal is part of the signature because it can clear while the
+    // form stays locked for another reason — travel ending over a staged
+    // delete — and the warning text changes without `fieldsLocked` moving.
+    if (fieldsLocked) return 'locked:$deletedQso:${_writeRefusal != null}';
     if (_commandMessage != null) return 'message'; // message text updates in place
     // Coarse on purpose: only the call itself keys the cross-fade. Lookup and
     // score results stream in as in-place updates (no switch), so the panel
@@ -8010,8 +8060,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The read-only warning shown in place of the info area for a staged-delete
   /// or already-deleted QSO (ham2k/halo-dist#59).
   Widget _buildLockedWarning(ThemeData theme, bool deletedQso) {
+    // Checked first: a staged delete on a QSO whose operation is also
+    // unwritable would otherwise promise a deletion that cannot be saved.
+    final refusal = _writeRefusal;
     final kind = widget.editingQso?.eventKind?.toUpperCase();
-    final warning = (kind != null)
+    final warning = (refusal != null)
+        ? refusal.reason
+        : (kind != null)
         ? (deletedQso
             ? (widget.deletedEventWarning?.call(kind) ?? 'Deleted $kind')
             : (widget.pendingDeleteEventWarning?.call(kind) ?? '$kind will be deleted when you save'))

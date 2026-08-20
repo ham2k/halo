@@ -26,5 +26,6 @@ export 'src/peer/peer_session.dart';
 export 'src/peer/peer_trust.dart';
 export 'src/repo/repositories.dart';
 export 'src/repo/sequences.dart';
+export 'src/repo/write_policy.dart';
 export 'src/sync/sync_engine.dart';
 export 'src/wsjtx/wsjtx_qso_logged.dart';

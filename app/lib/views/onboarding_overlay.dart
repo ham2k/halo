@@ -328,17 +328,18 @@ class _OnboardingContentState extends State<_OnboardingContent> {
 
     // 2. Trigger a sync round immediately.
     //
-    // Reachable travelled, via DEVTT then DEVONBOARD: sync cannot run on a
-    // travelled clock, so neither the round below nor the reconciliation further
-    // down would do anything, and this flow would close reporting success with
-    // nothing pulled and an unanswered account banner left behind. Say so and
-    // leave the clock to the developer rather than half-linking.
+    // Reachable travelled, via DEVTT then DEVONBOARD. Rounds themselves run on
+    // a travelled clock now, but the reconciliation this flow ends in
+    // (`resolveAccountChange`) still refuses — it WIPES local data and relies
+    // on a later round to refill it, which is not something a dev tool should
+    // trigger by accident. Without this the flow would close reporting success
+    // having reconciled nothing, leaving an unanswered account banner behind.
     if (widget.services.syncEngine.travelRefusesSync) {
       widget.services.statusBar.showNotice(
         key: 'clock:onboardingNeedsRealClock',
         icon: 'clock-alert',
         title: 'Account not linked',
-        text: 'Sync cannot run while time travelling, so this account was not reconciled.'
+        text: 'Linking an account replaces local data, which is refused while time travelling.'
             ' Run DEVTT to return to real time, then link it from Settings › Sync.',
         persist: false,
       );

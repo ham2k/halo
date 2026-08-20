@@ -19,6 +19,7 @@ import '../db/database.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
+import 'write_policy.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -88,11 +89,15 @@ class OperationsRepository {
 
   OperationsRepository(this.db, {this.onChange});
 
+  /// Creating is never refused while the clock is travelled — the station call
+  /// is marked instead, by [markedForTravel]. A refusal here would be
+  /// unescapable: an operation is judged test data by its stored callsign, and
+  /// there is nothing stored yet to judge.
   Future<Operation> create({required String stationCall, String userTitle = ''}) async {
     final operation = Operation(
       uuid: _uuidGenerator.v4(),
       data: {
-        'stationCall': stationCall.toUpperCase(),
+        'stationCall': markedForTravel(stationCall.toUpperCase()),
         'userTitle': userTitle,
         // The creation DATE is what the operator reads, so it travels; the
         // revision stamp is what another device compares against, so it does
@@ -152,9 +157,18 @@ class OperationsRepository {
         .map((row) => row == null ? null : _operationFromRow(row));
   }
 
+  /// Throws [WriteRefused] while the clock is travelled unless BOTH the stored
+  /// operation and the edit are test data — see [WritePolicy].
   Future<void> saveData(Operation operation) async {
     final now = realNowMillis();
     final data = {...operation.data, 'updatedAtMillis': now};
+    // Read before anything is written, and judged on the STORED row: an edit
+    // that adds /TEST to a real operation must not be the thing that lets
+    // itself through.
+    final existing = await get(operation.uuid);
+    final refusal = WritePolicy.forOperation(existing) ??
+        WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
+    if (refusal != null) throw refusal;
     var companion = OperationsCompanion(
       data: Value(jsonEncode(data)),
       synced: const Value(false),
@@ -174,7 +188,6 @@ class OperationsRepository {
     // open on this uuid can still reach this save. Leaving `deleted: true`
     // here would "fix" the misclassification while still losing the
     // operation from every list that DOES filter on it, with no path back.
-    final existing = await get(operation.uuid);
     if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
       companion = companion.copyWith(
         deleted: const Value(false),
@@ -211,6 +224,11 @@ class OperationsRepository {
   Future<void> _writeDeleted(String uuid, {required bool purged}) async {
     final now = realNowMillis();
     final operation = await get(uuid);
+    // Deleting a real operation is a write to real data like any other, so it
+    // is refused while travelling. The Test Operation purge flow is unaffected
+    // — everything it touches is test data by definition.
+    final refusal = WritePolicy.forOperation(operation);
+    if (refusal != null) throw refusal;
     var companion = OperationsCompanion(
       deleted: const Value(true),
       purged: Value(purged),
@@ -610,6 +628,60 @@ class QsosRepository {
 
   QsosRepository(this.db, {this.onChange, this.sequences});
 
+  /// Throws [WriteRefused] if a NEW contact in [operationUuid] may not be
+  /// written right now — see [WritePolicy].
+  ///
+  /// [ourCall] is consulted only when [operationUuid] is empty: a contact
+  /// inside an operation is made with that operation's station call, so the
+  /// operation decides. For a contact with no operation the declared call is
+  /// the only identity there is, exactly as a new operation's own callsign is
+  /// (`markedForTravel`).
+  ///
+  /// Reads nothing at all unless the clock is travelled, so the ordinary
+  /// logging path pays for this with one boolean.
+  Future<void> _refuseNewQso(String operationUuid, {String ourCall = ''}) async {
+    if (!AppClock.instance.isTravelling) return;
+    final refusal = WritePolicy.forQso(
+      operation: await _operationFor(operationUuid),
+      ourCall: operationUuid.isEmpty ? ourCall : '',
+    );
+    if (refusal != null) throw refusal;
+  }
+
+  /// Throws [WriteRefused] if the STORED contact [uuid] may not be written.
+  ///
+  /// Judged on the row in the database, never on the caller's copy. The
+  /// caller's is a selection-time snapshot — the same one [_writeDeleted]
+  /// already refuses to trust for its own write — and an edit that declared
+  /// `our.call` as a test call would otherwise be its own permission slip,
+  /// admitting a rewrite of a real contact's times in a single step.
+  ///
+  /// A row that is gone is not refused: the write below finds nothing and
+  /// does nothing, which is the same outcome by a quieter route.
+  Future<void> _refuseStoredQso(String uuid) async {
+    if (!AppClock.instance.isTravelling) return;
+    final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
+    if (row == null) return;
+    final stored = _qsoFromRow(row);
+    final refusal = WritePolicy.forQso(
+      operation: await _operationFor(stored.operationUuid),
+      ourCall: stored.operationUuid.isEmpty ? stored.ourCall : '',
+    );
+    if (refusal != null) throw refusal;
+  }
+
+  /// The stored operation [uuid] names, or null when it names none.
+  ///
+  /// Only the station call is read, so the row is decoded here rather than
+  /// reaching for `OperationsRepository` — this repository holds none, and the
+  /// derived columns play no part in the judgement.
+  Future<Operation?> _operationFor(String uuid) async {
+    if (uuid.isEmpty) return null;
+    final row = await (db.select(db.operations)..where((op) => op.uuid.equals(uuid))).getSingleOrNull();
+    if (row == null) return null;
+    return Operation(uuid: row.uuid, data: jsonDecode(row.data) as Map<String, dynamic>);
+  }
+
   /// Settles the serial on [qso]'s ref.
   ///
   /// A number already on the ref WINS — it is what the logging panel showed the
@@ -673,6 +745,7 @@ class QsosRepository {
     data['updatedAtMillis'] = realNowMillis();
 
     var qso = Qso(uuid: data['uuid'] as String, operationUuid: operationUuid, data: data);
+    await _refuseNewQso(operationUuid, ourCall: qso.ourCall);
 
     await db.transaction(() async {
       // Serial numbers are allocated HERE — once, at commit, atomically with
@@ -780,6 +853,11 @@ class QsosRepository {
     bool refreshCounters = true,
   }) async {
     if (inserts.isEmpty && updates.isEmpty) return 0;
+    // Judged on the operation alone, unlike [add] — a bulk write names one
+    // operation, and letting individual test-called records through would
+    // land them inside a real operation, where nothing can find them again:
+    // every cleanup path this feature relies on works per operation.
+    await _refuseNewQso(operationUuid);
 
     final toInsert = <Qso>[];
     for (final data in inserts) {
@@ -906,6 +984,7 @@ class QsosRepository {
   }
 
   Future<void> update(Qso qso) async {
+    await _refuseStoredQso(qso.uuid);
     final stamped = _restamped(qso);
     await db.transaction(() async {
       await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped));
@@ -935,6 +1014,7 @@ class QsosRepository {
   /// revision since; restamping the snapshot would clobber those edits on
   /// every device.
   Future<void> _writeDeleted(Qso qso, {required bool deleted}) async {
+    await _refuseStoredQso(qso.uuid);
     var changed = false;
     await db.transaction(() async {
       final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).getSingleOrNull();
@@ -954,6 +1034,73 @@ class QsosRepository {
     if (changed) onChange?.call();
   }
 
+  /// Live test contacts that belong to no operation.
+  ///
+  /// Purging works per operation everywhere else — `purgeTestOperations` walks
+  /// operations, and the received-purge prompt is keyed on operation uuids —
+  /// so a contact with no operation is reachable by none of it. The travelled
+  /// clock can author exactly these (a test call is the only thing identifying
+  /// one), which is what makes the omission a leak rather than a corner.
+  ///
+  /// Filtered in Dart, not SQL: [isTestCall] matches `/`-separated SEGMENTS,
+  /// which no LIKE pattern expresses, and the set being scanned is contacts
+  /// with no operation at all — bounded by what this device authored loose,
+  /// not by the size of the log.
+  Future<List<Qso>> testQsosWithoutOperation() async {
+    final rows = await (db.select(db.qsos)
+          ..where((q) => q.operation.equals('') & q.purged.equals(false)))
+        .get();
+    return (await _qsosFromRows(rows)).where((qso) => isTestCall(qso.ourCall)).toList();
+  }
+
+  /// Tombstones [uuids] as purged, the same two-step [purgeForOperation]
+  /// applies: the row stays until sync has carried the tombstone, and
+  /// [hardDeletePurgedOrphans] removes it after that.
+  ///
+  /// Only ever called with contacts that have no operation, and only for TEST
+  /// data — see `testQsosWithoutOperation`. A contact with no operation is
+  /// ordinary data that happens to belong to nothing, and purging one is the
+  /// operator's explicit act, never a consequence of having no operation.
+  ///
+  /// Removal is not prompt, and does not have to be: the row is `deleted` as
+  /// well as `purged` from the moment this returns, so nothing shows it. The
+  /// hard delete waits for a sync round that runs the gated sweep — in
+  /// practice the first round of a later session — and on a device with sync
+  /// switched off it never comes at all, since `synced` never becomes true.
+  /// That is the same deal [purgeForOperation] and `hardDeletePurged` have
+  /// always made for operations.
+  Future<int> purgeQsos(Iterable<String> uuids) async {
+    final ids = uuids.toList();
+    if (ids.isEmpty) return 0;
+    var purged = 0;
+    await db.transaction(() async {
+      for (final uuid in ids) {
+        final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
+        if (row == null) continue;
+        // Re-checked inside the transaction, not trusted from the caller's
+        // list: that list is built before a confirmation dialog the operator
+        // may sit on indefinitely, and sync rounds run while travelling now,
+        // so an inbound edit can give a row an operation — or a real call —
+        // in between. A purge is unrecoverable and invisible once done.
+        final stored = _qsoFromRow(row);
+        if (stored.operationUuid.isNotEmpty || !isTestCall(stored.ourCall)) continue;
+        final stamped = _restamped(_qsoFromRow(row));
+        await (db.update(db.qsos)..where((q) => q.uuid.equals(uuid))).write(
+          QsosCompanion(
+            deleted: const Value(true),
+            purged: const Value(true),
+            synced: const Value(false),
+            data: Value(jsonEncode(stamped.data)),
+            updatedAtMillis: Value(stamped.updatedAtMillis),
+          ),
+        );
+        purged++;
+      }
+    });
+    if (purged > 0) onChange?.call();
+    return purged;
+  }
+
   /// Soft-deletes with `purged: true` every QSO of [operationUuid],
   /// regardless of its current `deleted` state — the QSO-side half of
   /// `OperationsRepository.purge`. Unlike a normal operation delete (which
@@ -961,6 +1108,7 @@ class QsosRepository {
   /// unrecoverable by design, so touching every QSO row directly is safe:
   /// there's no "undelete" state left to lose track of.
   Future<void> purgeForOperation(String operationUuid) async {
+    await _refuseNewQso(operationUuid);
     await db.transaction(() async {
       final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(operationUuid))).get();
       for (final row in rows) {
@@ -1023,6 +1171,12 @@ class QsosRepository {
   /// orphaned purged QSO always belongs to an operation someone confirmed
   /// removing. Still gated on `synced`, so a local purge that hasn't
   /// reached the server yet keeps its tombstone to push.
+  /// "Orphan" here means PURGED and already pushed — never merely
+  /// operation-less. All three conditions are load-bearing, and the name
+  /// invites dropping the first one: a contact with no operation, or one
+  /// whose operation was deleted, is ordinary data and must survive this
+  /// however long it sits there. Only an explicit purge marks a contact for
+  /// removal, and `synced` is what proves the other devices have been told.
   Future<int> hardDeletePurgedOrphans() async {
     final liveOperations = db.selectOnly(db.operations)..addColumns([db.operations.uuid]);
     return (db.delete(db.qsos)
@@ -1333,10 +1487,10 @@ class QsosRepository {
         final existing = existingByUuid[uuid];
         // Never create a row from a purge tombstone — see
         // `OperationsRepository.mergeFromSync` for why re-delivery makes
-        // this load-bearing. A QSO is only ever purged as part of its whole
-        // operation (`purgeForOperation` is the only writer), so a
-        // tombstone for a QSO this device doesn't have never stands for a
-        // contact worth keeping.
+        // this load-bearing. A tombstone for a QSO this device does not have
+        // stands for nothing worth keeping, whichever writer produced it:
+        // `purgeForOperation` when a whole operation goes, or `purgeQsos` for
+        // a test contact belonging to no operation.
         if (existing == null && purged) continue;
         if (existing != null &&
             _inboundIsStale(

@@ -127,6 +127,10 @@
     "deleteOperationTitle": "Delete Operation",
     "purgeTestsTitle": "Purge Test Operations",
     "purgeTestsBody": "This permanently deletes these Test Operations and their QSOs. It cannot be undone.",
+    "purgeTestsLooseQsos": {
+      "one": "Plus ${count} test contact that belongs to no operation.",
+      "other": "Plus ${count} test contacts that belong to no operation."
+    },
     "purgeTestsAction": "Purge",
     "receivedPurgesTitle": "Test Operations Removed Elsewhere",
     "receivedPurgesBody": "These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.",
@@ -1199,6 +1203,12 @@
       "other": "Purged ${count} Test Operations"
     },
     "purgeTestsSomeFailed": "Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again",
+    "testContactsPurged": {
+      "one": "Purged ${count} test contact with no operation",
+      "other": "Purged ${count} test contacts with no operation"
+    },
+    "purgeTestsContactsFailed": "Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again",
+    "purgeTestsNothingToDo": "Nothing was purged",
     "receivedPurgesSomeFailed": "Removed ${removed} of ${total} Test Operations — the rest failed; try Review again",
     "receivedPurgesFailed": "Couldn't remove those Test Operations — try Review again",
     "receivedPurgesPending": {

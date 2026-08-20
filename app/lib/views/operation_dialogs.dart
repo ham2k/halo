@@ -100,7 +100,11 @@ Future<bool> confirmDeleteOperation(
 /// holds and asks once for all of them, rather than one dialog per
 /// operation — the point of the command is bulk cleanup. Purging itself is
 /// the caller's job (`runCommandAction` in `main.dart`); this only asks.
-Future<bool> confirmPurgeTestOperations(BuildContext context, List<Operation> testOperations) async {
+Future<bool> confirmPurgeTestOperations(
+  BuildContext context,
+  List<Operation> testOperations, {
+  int looseQsoCount = 0,
+}) async {
   final confirmed = await showHaloDialog<bool>(
     context: context,
     builder: (context) {
@@ -129,6 +133,13 @@ Future<bool> confirmPurgeTestOperations(BuildContext context, List<Operation> te
                 ),
               ),
             ),
+            // Named separately rather than folded into the list above: these
+            // belong to no operation, so there is no row they could sit under,
+            // and the operator is agreeing to delete them too.
+            if (looseQsoCount > 0) ...[
+              const SizedBox(height: Space.sm),
+              Text(context.t.dialogs.purgeTestsLooseQsos(count: looseQsoCount)),
+            ],
           ],
         ),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),

@@ -72,12 +72,15 @@ void main() {
     await db.close();
   });
 
-  // Sync must not reach the server while the app clock is time-travelled
-  // (docs/design/time.md §4). Asserted against the ENGINE, on the transport it
-  // would use — an assertion on `AppClock.isTravelling` would only restate the
-  // clock's own state and would still pass if `_mayRun` were simplified back to
-  // `settings.enabled`, or if a new entry point checked `enabled` directly.
-  group('time travel bars sync', () {
+  // Ordinary rounds RUN on a travelled clock; only the destructive pair
+  // refuse (docs/design/time.md §4). What a travelled session may write is
+  // constrained instead — `WritePolicy` admits only test data — so a bar here
+  // would protect nothing, while making sync itself untestable travelled.
+  //
+  // Asserted against the ENGINE, on the transport it would use: an assertion
+  // on `AppClock.isTravelling` would restate the clock's own state and pass
+  // whatever the engine did with it.
+  group('time travel and sync', () {
     tearDown(AppClock.instance.reset);
 
     Future<void> dirtyRow() async {
@@ -85,33 +88,34 @@ void main() {
       await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
     }
 
-    test('no round reaches the transport while travelled', () async {
+    test('an ordinary round reaches the transport while travelled', () async {
       await dirtyRow();
       AppClock.instance.travel(delta: const Duration(days: 3));
 
       await engine.runOneRound(smallBatch: false);
+
+      expect(transport.calls, isNotEmpty,
+          reason: 'the clock no longer bars a round — the write gate bounds what can be in it');
+    });
+
+    test('the loop keeps running too, not just a hand-driven round', () async {
+      // `start`/`notifyChanged` is a second entry point into the same engine,
+      // and the bar this replaced lived where both of them passed through.
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      await dirtyRow();
       engine.start();
       engine.notifyChanged();
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(transport.calls, isEmpty, reason: 'a travelled clock must never reach the server');
+      expect(transport.calls, isNotEmpty);
     });
 
-    test('and a round runs again once the clock is back', () async {
-      await dirtyRow();
-      AppClock.instance.travel(delta: const Duration(days: 3));
-      await engine.runOneRound(smallBatch: false);
-      expect(transport.calls, isEmpty, reason: 'sanity: refused while travelled');
-
-      AppClock.instance.reset();
-      await engine.runOneRound(smallBatch: false);
-      expect(transport.calls, isNotEmpty, reason: 'the bar lifts with the clock');
-    });
-
-    // The destructive pair have to refuse BEFORE they act: each wipes local data
-    // into the backup tables and relies on the round it schedules to refill it,
-    // and that round is exactly what the bar above stops. Refusing late leaves
-    // the live tables empty with nothing that would ever refill them.
+    // The destructive pair still refuse while travelled, and have to do it
+    // BEFORE they act: each wipes local data into the backup tables and relies
+    // on a later round to refill it. That is a different hazard from the one
+    // the write gate covers — it is about a dev tool triggering a wipe at all,
+    // not about which records a round may carry — which is why removing the
+    // bar on ordinary rounds did not remove these.
     test('forceFullResync refuses without wiping anything', () async {
       await dirtyRow();
       final before = (await operations.syncCounts()).total;

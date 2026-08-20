@@ -900,10 +900,12 @@ class SyncSettingsGroup extends SettingsGroup {
     if (settings.syncEnabled) {
       account = syncAccountLabel(settings.syncState['accountData']);
     }
-    // Developer-only and in English, like the DEVTT command it describes: the
-    // form system has no "disabled" flag, so what makes sync unavailable while
-    // the clock is travelled is HaLoServices.setSyncEnabled refusing it — this
-    // row only says so (docs/design/time.md).
+    // Sync RUNS while the clock is travelled — what a travelled session may
+    // write is bounded instead (docs/design/time.md §4) — so this row no
+    // longer claims otherwise. It still names the offset, because a developer
+    // reading "sync is on" while the clock sits days out deserves to see both
+    // facts in one place. Developer-only and in English, like the DEVTT
+    // command it names.
     final travelLabel = AppClock.instance.travelLabel;
     return [
       _toggle(
@@ -911,7 +913,7 @@ class SyncSettingsGroup extends SettingsGroup {
         label: t.settings.sync.enable,
         icon: 'cloud-sync',
         description: travelLabel != null
-            ? 'Unavailable while time travelling ($travelLabel)'
+            ? 'Time travelling ($travelLabel) — only test data is written'
             : (account.isEmpty ? null : account),
         value: settings.syncEnabled,
       ),
