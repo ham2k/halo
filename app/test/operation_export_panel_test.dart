@@ -28,6 +28,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/export_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/operation/operation_export_panel.dart';
 
 void main() {
@@ -173,6 +174,10 @@ void main() {
       expect(exports.generated, hasLength(1));
       expect(exports.generated.single.map((o) => o['exportType']), ['adif']);
       expect(exports.sharedFiles, hasLength(1));
+
+      // The success message's dismiss timer is still pending; left unflushed,
+      // the framework fails the test at teardown.
+      await tester.pump(StatusBarService.completedDismissDelay);
     });
 
     // Regression: with the button in CheckboxListTile's `secondary` slot, that
@@ -229,6 +234,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(exports.generated.single.map((o) => o['exportType']), ['pota-adif:US-1234']);
+
+      // Asserted, not just flushed: a bare pump passes whether or not the
+      // Save arm schedules its dismiss — this is what fails if it stops.
+      await tester.pump(StatusBarService.completedDismissDelay);
+      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty,
+          reason: 'the Save success message must dismiss itself');
     });
 
     testWidgets('flipping the filename setting relists, and keeps the ticks', (tester) async {
@@ -347,6 +358,10 @@ void main() {
 
       expect(exports.sharedOrigin, isNotNull);
       expect(exports.sharedOrigin!.isEmpty, isFalse);
+
+      await tester.pump(StatusBarService.completedDismissDelay);
+      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty,
+          reason: 'a success is a result to notice, not a message to keep');
     });
 
     // With developer mode on, the QSON dump used to arrive untagged and form
@@ -428,6 +443,10 @@ void main() {
       expect(exports.generated, hasLength(1));
       expect(exports.generated.single.single['stationCall'], 'W1AW',
           reason: "N0CALL's ticked export must not ride along");
+
+      await tester.pump(StatusBarService.completedDismissDelay);
+      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty,
+          reason: 'the group Save success message must dismiss itself');
     });
 
     // Both calls offer the same hookKey/exportType pair, so a selection key

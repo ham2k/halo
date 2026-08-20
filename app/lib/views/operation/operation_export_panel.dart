@@ -28,6 +28,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
 import '../../i18n/strings.g.dart';
+import '../../services/status_bar_service.dart';
 
 /// What this platform calls getting a file out of the app, and how it does
 /// it. The verbs are not interchangeable — "Save" on iOS would promise a
@@ -392,7 +393,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           // Null means the operator cancelled the picker — their choice, not
           // an outcome worth announcing.
           if (path != null) {
-            statusBar.setMessage(key: 'export:status', text: t.operation.export.saveSuccess(path: path));
+            statusBar.setMessage(
+              key: 'export:status',
+              text: t.operation.export.saveSuccess(path: path),
+              dismissAfter: StatusBarService.completedDismissDelay,
+            );
           }
         case ExportAction.share:
         case ExportAction.export:
@@ -403,6 +408,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
             statusBar.setMessage(
               key: 'export:status',
               text: t.operation.export.shareSuccess(count: files.length),
+              dismissAfter: StatusBarService.completedDismissDelay,
             );
           }
         case ExportAction.download:
@@ -410,6 +416,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           statusBar.setMessage(
             key: 'export:status',
             text: t.operation.export.downloadSuccess(count: files.length),
+            dismissAfter: StatusBarService.completedDismissDelay,
           );
       }
     } catch (e) {
