@@ -23,15 +23,23 @@ import 'dart:convert';
 /// changing the meaning of an existing field does.
 ///
 /// The handshake refuses a peer whose version differs at all, rather than
-/// attempting a compatibility range: there is exactly one version in the
-/// wild today, and "refuse and say so" is a better failure than two devices
+/// attempting a compatibility range: the population is one operator's own
+/// devices, and "refuse and say so" is a better failure than two devices
 /// silently disagreeing about what a field means.
-const int peerProtocolVersion = 1;
+///
+/// v2: sessions bind to the paired DEVICE, not to one operation.
+/// `hello.operationUuid` became optional, [sharing] moves an established
+/// session between operations in place, and the sync messages name their
+/// operation explicitly. A v1 peer would read an omitted `operationUuid` as
+/// a malformed hello and an `events` batch without knowing which cursor it
+/// belongs to — both are misreads of existing fields, which is exactly what
+/// this constant exists to be bumped for.
+const int peerProtocolVersion = 2;
 
 /// Message types. `t` on every envelope.
 abstract final class PeerMessageType {
   /// Opens the session, both directions, unprompted: version, who I am, and
-  /// which operation I am offering to share.
+  /// which operation I am sharing right now, if any.
   static const hello = 'hello';
 
   /// "I have decided you may send me data." Sent once this side either
@@ -50,6 +58,31 @@ abstract final class PeerMessageType {
 
   /// "I durably applied everything through `seq`."
   static const ack = 'ack';
+
+  /// The sender's shared operation changed — to another operation, or to
+  /// none. What moves an ESTABLISHED session between operations without
+  /// tearing it down: the pair stays connected for ephemeral traffic, and
+  /// the durable sync engages only while both sides share the same one.
+  static const sharing = 'sharing';
+
+  /// Ephemeral, latest-value-wins, never persisted (HALO-310's data-class
+  /// model): the sender's current GPS fix. A missed one costs nothing — the
+  /// next fix supersedes it, and a newly established session is sent a
+  /// snapshot.
+  static const position = 'position';
+
+  /// Ephemeral: the sender's designated radio as it stands — frequency and
+  /// mode only. Power and rig staleness do NOT cross yet, so a controller
+  /// holds the last value it heard when the far rig goes away, exactly as
+  /// the owner's own panel does.
+  static const catStatus = 'catStatus';
+
+  /// A request to tune the SENDER OF catStatus's radio. Honored only from a
+  /// trusted, established peer — this is the message that makes the
+  /// no-authentication posture (header above) load-bearing, and why it must
+  /// never ride a transport that admits anyone but the operator's own
+  /// paired devices.
+  static const catSet = 'catSet';
 }
 
 /// Why a session was refused. On the wire so the far side can SAY why to its
@@ -57,7 +90,6 @@ abstract final class PeerMessageType {
 /// one that was never there.
 abstract final class PeerRefusal {
   static const protocolVersion = 'protocolVersion';
-  static const differentOperation = 'differentOperation';
   static const sameDevice = 'sameDevice';
   static const notTrusted = 'notTrusted';
 }
@@ -96,33 +128,102 @@ class PeerMessage {
   static PeerMessage hello({
     required String deviceId,
     required String deviceName,
-    required String operationUuid,
+    String? operationUuid,
+    List<String> capabilities = const [],
   }) =>
       PeerMessage(PeerMessageType.hello, {
         'v': peerProtocolVersion,
         'deviceId': deviceId,
         'deviceName': deviceName,
-        'operationUuid': operationUuid,
+        'operationUuid': ?operationUuid,
+        if (capabilities.isNotEmpty) 'caps': capabilities,
       });
+
+  /// Null means "sharing nothing now" — a real state, not an error.
+  static PeerMessage sharing(String? operationUuid) => PeerMessage(
+      PeerMessageType.sharing, {'operationUuid': ?operationUuid});
 
   static PeerMessage trusted() => const PeerMessage(PeerMessageType.trusted);
 
   static PeerMessage refuse(String reason) => PeerMessage(PeerMessageType.refuse, {'reason': reason});
 
-  static PeerMessage catchUp(int sinceSeq) => PeerMessage(PeerMessageType.catchUp, {'sinceSeq': sinceSeq});
+  /// The sync messages each name their operation. A session outlives any one
+  /// operation now, so "the shared operation" is a moving target: a batch
+  /// still in flight when [sharing] moves the session must land against the
+  /// cursor it was requested for, never whichever operation is current by
+  /// the time it arrives.
+  static PeerMessage catchUp(String operationUuid, int sinceSeq) =>
+      PeerMessage(PeerMessageType.catchUp, {'operationUuid': operationUuid, 'sinceSeq': sinceSeq});
 
   /// [events] entries are `{seq, kind, data}` — `kind` naming which
   /// repository's `mergeFromPeer` applies `data`, exactly as `PeerEvents`
   /// stores them.
-  static PeerMessage eventsBatch(List<Map<String, dynamic>> events, {required bool hasMore}) =>
-      PeerMessage(PeerMessageType.events, {'events': events, 'hasMore': hasMore});
+  static PeerMessage eventsBatch(String operationUuid, List<Map<String, dynamic>> events,
+          {required bool hasMore}) =>
+      PeerMessage(
+          PeerMessageType.events, {'operationUuid': operationUuid, 'events': events, 'hasMore': hasMore});
 
-  static PeerMessage ack(int seq) => PeerMessage(PeerMessageType.ack, {'seq': seq});
+  static PeerMessage ack(String operationUuid, int seq) =>
+      PeerMessage(PeerMessageType.ack, {'operationUuid': operationUuid, 'seq': seq});
+
+  static PeerMessage position({
+    required double latitude,
+    required double longitude,
+    double? accuracyMeters,
+    required int atMillis,
+  }) =>
+      PeerMessage(PeerMessageType.position, {
+        'lat': latitude,
+        'lon': longitude,
+        'acc': ?accuracyMeters,
+        'at': atMillis,
+      });
+
+  /// Null unless this is a well-formed [PeerMessageType.position].
+  PeerPositionPayload? get positionOrNull {
+    if (type != PeerMessageType.position) return null;
+    final lat = (fields['lat'] as num?)?.toDouble();
+    final lon = (fields['lon'] as num?)?.toDouble();
+    final at = (fields['at'] as num?)?.toInt();
+    if (lat == null || lon == null || at == null) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return PeerPositionPayload(
+      latitude: lat,
+      longitude: lon,
+      accuracyMeters: (fields['acc'] as num?)?.toDouble(),
+      atMillis: at,
+    );
+  }
+
+  static PeerMessage catStatus({double? freqKHz, String? mode}) =>
+      PeerMessage(PeerMessageType.catStatus, {'freqKHz': ?freqKHz, 'mode': ?mode});
+
+  static PeerMessage catSet({double? freqKHz, String? mode}) =>
+      PeerMessage(PeerMessageType.catSet, {'freqKHz': ?freqKHz, 'mode': ?mode});
+
+  /// Null unless this is a well-formed [PeerMessageType.catStatus] or
+  /// [PeerMessageType.catSet] — one reader for both, since they carry the
+  /// same VFO shape and differ only in direction.
+  PeerVfoPayload? get vfoOrNull {
+    if (type != PeerMessageType.catStatus && type != PeerMessageType.catSet) return null;
+    final freqKHz = (fields['freqKHz'] as num?)?.toDouble();
+    final mode = fields['mode'];
+    if (freqKHz == null && mode is! String) return null;
+    if (freqKHz != null && (freqKHz <= 0 || !freqKHz.isFinite)) return null;
+    return PeerVfoPayload(freqKHz: freqKHz, mode: mode is String && mode.isNotEmpty ? mode : null);
+  }
 
   int? get intSeq => (fields['seq'] as num?)?.toInt();
   int? get intSinceSeq => (fields['sinceSeq'] as num?)?.toInt();
   bool get hasMore => fields['hasMore'] == true;
   String? get reason => fields['reason'] as String?;
+
+  /// Null both when absent and when blank: an empty operation uuid means
+  /// nothing anywhere else in the app, so it must not mean something here.
+  String? get operationUuid {
+    final value = fields['operationUuid'];
+    return value is String && value.isNotEmpty ? value : null;
+  }
 
   /// The `events` payload, with anything malformed dropped rather than
   /// throwing — a peer that sends one unreadable entry should cost that
@@ -141,14 +242,14 @@ class PeerMessage {
     if (type != PeerMessageType.hello) return null;
     final version = (fields['v'] as num?)?.toInt();
     final deviceId = fields['deviceId'];
-    final operationUuid = fields['operationUuid'];
     if (version == null || deviceId is! String || deviceId.isEmpty) return null;
-    if (operationUuid is! String || operationUuid.isEmpty) return null;
+    final caps = fields['caps'];
     return PeerHello(
       protocolVersion: version,
       deviceId: deviceId,
       deviceName: (fields['deviceName'] as String?) ?? '',
       operationUuid: operationUuid,
+      capabilities: caps is List ? caps.whereType<String>().toList() : const [],
     );
   }
 }
@@ -159,14 +260,54 @@ class PeerHello {
 
   /// Self-asserted, for display only — never key anything off this.
   final String deviceName;
-  final String operationUuid;
+
+  /// What the peer was sharing when it said hello — its CURRENT sharing
+  /// arrives via [PeerMessageType.sharing] and lives on the session, so
+  /// nothing but the session's own bookkeeping should read this. Null when
+  /// it had nothing open.
+  final String? operationUuid;
+
+  /// Self-declared feature offers (`gps`, `cat`) — what the Peers panel
+  /// shows and the CAT picker keys off. Advisory: honoring a capability is
+  /// still gated on trust, never on this list.
+  final List<String> capabilities;
 
   const PeerHello({
     required this.protocolVersion,
     required this.deviceId,
     required this.deviceName,
-    required this.operationUuid,
+    this.operationUuid,
+    this.capabilities = const [],
   });
+}
+
+/// A peer's GPS fix. [atMillis] is the SENDER's real wall clock at the fix —
+/// display it as an age with the usual cross-device-skew salt, never compare
+/// it against the local clock for anything load-bearing.
+class PeerPositionPayload {
+  final double latitude;
+  final double longitude;
+  final double? accuracyMeters;
+  final int atMillis;
+
+  const PeerPositionPayload({
+    required this.latitude,
+    required this.longitude,
+    this.accuracyMeters,
+    required this.atMillis,
+  });
+}
+
+/// A VFO on the wire — a radio owner's report (`catStatus`) or a
+/// controller's request (`catSet`). Frequencies are kHz with decimals, the
+/// app-wide convention past the driver boundary (docs/design/cat.md), and
+/// [mode] is already concrete: SSB is resolved to USB/LSB before anything
+/// reaches a radio, so nothing here re-litigates it.
+class PeerVfoPayload {
+  final double? freqKHz;
+  final String? mode;
+
+  const PeerVfoPayload({this.freqKHz, this.mode});
 }
 
 /// One outbox row in flight.

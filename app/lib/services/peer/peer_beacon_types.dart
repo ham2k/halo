@@ -5,11 +5,12 @@
 // what a listener hands back. Kept out of the `_io`/`_stub` pair so the stub,
 // the tests and any UI can name these types without pulling in `dart:io`.
 
-/// One device announcing "I am here, sharing this operation, dial me at this
-/// port". Deliberately tiny: a beacon goes out every few seconds to every
-/// device on the segment, and it carries no log content — only enough for a
-/// listener to decide whether to open a real link, where the handshake and
-/// trust check actually happen (see `PeerSession`).
+/// One device announcing "I am here, dial me at this port" — plus which
+/// operation it is sharing, if any. Deliberately tiny: a beacon goes out
+/// every few seconds to every device on the segment, and it carries no log
+/// content — only enough for a listener to decide whether to open a real
+/// link, where the handshake and trust check actually happen (see
+/// `PeerSession`).
 ///
 /// [address] is never carried IN the payload; it is read from the datagram's
 /// sender. A device behind NAT, or one that moved networks since it composed
@@ -25,8 +26,11 @@ class PeerBeacon {
   /// treat it as identity.
   final String deviceName;
 
-  /// Which operation this device is offering to share.
-  final String operationUuid;
+  /// Which operation this device is offering to share — null when none is
+  /// open. Informational only since sessions bind to the device: nothing
+  /// filters on it, and the real sharing state travels in the session's own
+  /// `sharing` messages.
+  final String? operationUuid;
 
   /// Where to dial it for the real link.
   final int port;
@@ -38,7 +42,7 @@ class PeerBeacon {
   const PeerBeacon({
     required this.deviceId,
     required this.deviceName,
-    required this.operationUuid,
+    this.operationUuid,
     required this.port,
     this.address,
   });
@@ -47,7 +51,7 @@ class PeerBeacon {
         'halo': 'peer',
         'deviceId': deviceId,
         'deviceName': deviceName,
-        'operationUuid': operationUuid,
+        'operationUuid': ?operationUuid,
         'port': port,
       };
 
@@ -60,12 +64,11 @@ class PeerBeacon {
     final operationUuid = json['operationUuid'];
     final port = (json['port'] as num?)?.toInt();
     if (deviceId is! String || deviceId.isEmpty) return null;
-    if (operationUuid is! String || operationUuid.isEmpty) return null;
     if (port == null || port <= 0 || port > 65535) return null;
     return PeerBeacon(
       deviceId: deviceId,
       deviceName: (json['deviceName'] as String?) ?? '',
-      operationUuid: operationUuid,
+      operationUuid: operationUuid is String && operationUuid.isNotEmpty ? operationUuid : null,
       port: port,
       address: address,
     );

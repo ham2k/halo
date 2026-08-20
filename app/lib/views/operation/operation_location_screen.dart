@@ -200,8 +200,21 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     final location = widget.services.location;
     final refsWithGrid = widget.operation.refs.where((r) => (r['grid'] as String?)?.isNotEmpty == true).toList();
 
+    // The LOCAL problem stays visible under a serving peer fix: with the
+    // grid alone, this screen would be the operator's last surface that
+    // could say their own GPS is denied — until the peer walks away and it
+    // fails with no warning given.
+    final localProblem = location.positionIsFromPeer
+        ? switch (location.localStatus) {
+            LocationStatus.permissionDenied => t.permissionDenied,
+            LocationStatus.permissionBlocked => t.permissionBlocked,
+            LocationStatus.unavailable => t.gpsUnavailable,
+            _ => null,
+          }
+        : null;
     final gpsSubtitle = switch (location.status) {
-      LocationStatus.available => location.grid ?? '',
+      LocationStatus.available =>
+        localProblem == null ? (location.grid ?? '') : '${location.grid ?? ''} — $localProblem',
       LocationStatus.unknown || LocationStatus.determining => t.locating,
       LocationStatus.permissionDenied => t.permissionDenied,
       LocationStatus.permissionBlocked => t.permissionBlocked,
@@ -238,7 +251,13 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           SectionHeader(t.suggestedLocations),
           ListTile(
             leading: Icon(MdiIcons.crosshairsGps),
-            title: Text(t.deviceGps),
+            // A fix served on a peer's behalf is named as such — calling the
+            // phone's position "Device GPS" would tell the operator this
+            // machine can do something it cannot.
+            title: Text(switch (location.peerPositionDeviceName) {
+              final device? => t.peerGps(device: device),
+              null => t.deviceGps,
+            }),
             subtitle: Text(gpsSubtitle),
             onTap: location.grid == null ? null : () => _adoptGrid(location.grid!, 'gps'),
           ),

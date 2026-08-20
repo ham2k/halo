@@ -136,7 +136,9 @@ class _PeersPanelState extends State<PeersPanel> {
             widget.services.updatePeerSharing();
           },
         ),
-        if (enabled && _peers.activeOperationUuid == null)
+        // Devices connect regardless now — this hint is about the QSO sync,
+        // which still follows whichever operation is open.
+        if (enabled && _peers.sharedOperationUuid == null)
           ListTile(
             leading: Icon(MdiIcons.informationOutline),
             title: Text(t.shareNothingOpen),
@@ -196,6 +198,9 @@ class _PeersPanelState extends State<PeersPanel> {
     final t = context.t.settings.peers;
     return switch (runtime.session?.state) {
       PeerSessionState.live => t.connected,
+      // Established, sync idle: the link is UP — reading it as "Not
+      // connected" would tell the operator their working pair is broken.
+      PeerSessionState.connected => t.connectedIdle,
       PeerSessionState.syncing => t.syncing,
       PeerSessionState.handshaking => t.connecting,
       PeerSessionState.needsPairing => '${runtime.beacon.deviceName} ${t.wantsToPair}',
@@ -208,7 +213,8 @@ class _PeersPanelState extends State<PeersPanel> {
   /// forbids those outright).
   Widget _statusDot(BuildContext context, PeerRuntime runtime) {
     final theme = Theme.of(context);
-    final live = runtime.session?.state == PeerSessionState.live;
+    final live = runtime.session?.state == PeerSessionState.live ||
+        runtime.session?.state == PeerSessionState.connected;
     final busy = runtime.session?.state == PeerSessionState.syncing ||
         runtime.session?.state == PeerSessionState.handshaking;
     final color = live

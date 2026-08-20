@@ -676,6 +676,7 @@ class _Translations$operationLocationScreen$es extends Translations$operationLoc
 	@override String get gridInvalid => 'Necesita 4, 6, 8 o 10 caracteres, como FN31pr';
 	@override String get suggestedLocations => 'Ubicaciones sugeridas';
 	@override String get deviceGps => 'GPS del dispositivo';
+	@override String peerGps({required Object device}) => 'GPS de ${device}';
 	@override String get locating => 'Localizando…';
 	@override String get gpsUnavailable => 'Ubicación no disponible';
 	@override String get permissionDenied => 'Permiso de ubicación denegado';
@@ -1316,15 +1317,16 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	// Translations
 	@override String get title => 'Dispositivos';
 	@override String get enable => 'Compartir con mis otros dispositivos';
-	@override String get enabledDescription => 'Tus otros dispositivos en esta red pueden ver la operación que tengas abierta, y los contactos se sincronizan entre ellos mientras registras. Cada dispositivo debe autorizarse una vez.';
+	@override String get enabledDescription => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.';
 	@override String get disabledDescription => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.';
 	@override String get thisDevice => 'Este dispositivo';
 	@override String get deviceName => 'Nombre';
 	@override String get deviceNameHint => 'Cómo llaman tus otros dispositivos a este';
 	@override String get pairedDevices => 'Dispositivos autorizados';
-	@override String get noPairedDevices => 'Todavía no hay dispositivos autorizados. Abre la misma operación en otro dispositivo para vincularlos.';
+	@override String get noPairedDevices => 'Todavía no hay dispositivos autorizados. Activa la sincronización entre dispositivos en otro dispositivo de esta red para vincularlos.';
 	@override String get nearby => 'Cerca';
 	@override String get connected => 'Conectado';
+	@override String get connectedIdle => 'Conectado — abre la misma operación para sincronizarla';
 	@override String get connecting => 'Conectando…';
 	@override String get syncing => 'Sincronizando…';
 	@override String get waitingForThem => 'Esperando al otro dispositivo';
@@ -2811,15 +2813,16 @@ extension on TranslationsEs {
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.peers.title' => 'Dispositivos',
 			'settings.peers.enable' => 'Compartir con mis otros dispositivos',
-			'settings.peers.enabledDescription' => 'Tus otros dispositivos en esta red pueden ver la operación que tengas abierta, y los contactos se sincronizan entre ellos mientras registras. Cada dispositivo debe autorizarse una vez.',
+			'settings.peers.enabledDescription' => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.',
 			'settings.peers.disabledDescription' => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.',
 			'settings.peers.thisDevice' => 'Este dispositivo',
 			'settings.peers.deviceName' => 'Nombre',
 			'settings.peers.deviceNameHint' => 'Cómo llaman tus otros dispositivos a este',
 			'settings.peers.pairedDevices' => 'Dispositivos autorizados',
-			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos autorizados. Abre la misma operación en otro dispositivo para vincularlos.',
+			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos autorizados. Activa la sincronización entre dispositivos en otro dispositivo de esta red para vincularlos.',
 			'settings.peers.nearby' => 'Cerca',
 			'settings.peers.connected' => 'Conectado',
+			'settings.peers.connectedIdle' => 'Conectado — abre la misma operación para sincronizarla',
 			'settings.peers.connecting' => 'Conectando…',
 			'settings.peers.syncing' => 'Sincronizando…',
 			'settings.peers.waitingForThem' => 'Esperando al otro dispositivo',
@@ -3175,6 +3178,7 @@ extension on TranslationsEs {
 			'operationLocationScreen.gridInvalid' => 'Necesita 4, 6, 8 o 10 caracteres, como FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Ubicaciones sugeridas',
 			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
+			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS de ${device}',
 			'operationLocationScreen.locating' => 'Localizando…',
 			'operationLocationScreen.gpsUnavailable' => 'Ubicación no disponible',
 			'operationLocationScreen.permissionDenied' => 'Permiso de ubicación denegado',
@@ -3220,10 +3224,10 @@ extension on TranslationsEs {
 			'switchAccounts.linkAccount' => 'Vincular cuenta',
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',
 			'switchAccounts.copyCode' => 'Copiar código',
-			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
-			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
+			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
 			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
 			'switchAccounts.emailSent' => ({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.',
 			'switchAccounts.resendEmail' => 'Reenviar email',

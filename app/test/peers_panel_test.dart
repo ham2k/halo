@@ -122,7 +122,7 @@ void main() {
         beaconPort: await freePort(),
       );
       addTearDown(() async {
-        await peer.setOpenOperation(null);
+        await peer.setEnabled(false);
         peer.dispose();
       });
       return HaLoServices(db, settings,
@@ -134,7 +134,7 @@ void main() {
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
       // Not merely "no UI": nothing may bind, announce, or be reachable.
-      expect(withPeer.peerService.activeOperationUuid, isNull);
+      expect(withPeer.peerService.running, isFalse);
     });
 
     test('with the experiment on, the same state does start sharing', () async {
@@ -143,7 +143,8 @@ void main() {
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.activeOperationUuid, 'op-1');
+      expect(withPeer.peerService.running, isTrue);
+      expect(withPeer.peerService.sharedOperationUuid, 'op-1');
     });
 
     test('turning the experiment back off tears down a running session', () async {
@@ -152,12 +153,12 @@ void main() {
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.activeOperationUuid, 'op-1');
+      expect(withPeer.peerService.running, isTrue);
 
       await settings.setExperimentEnabled('p2p', false);
       withPeer.updatePeerSharing();
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.activeOperationUuid, isNull,
+      expect(withPeer.peerService.running, isFalse,
           reason: 'a device already on the network must leave it when the gate closes');
     });
   });

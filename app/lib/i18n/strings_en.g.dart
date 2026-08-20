@@ -1427,6 +1427,9 @@ class Translations$operationLocationScreen$en {
 	/// en: 'Device GPS'
 	String get deviceGps => 'Device GPS';
 
+	/// en: 'GPS from ${device}'
+	String peerGps({required Object device}) => 'GPS from ${device}';
+
 	/// en: 'Locating…'
 	String get locating => 'Locating…';
 
@@ -2753,8 +2756,8 @@ class Translations$settings$peers$en {
 	/// en: 'Share with my other devices'
 	String get enable => 'Share with my other devices';
 
-	/// en: 'Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.'
-	String get enabledDescription => 'Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.';
+	/// en: 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.'
+	String get enabledDescription => 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.';
 
 	/// en: 'Off. This device is not visible to others on the network and shares nothing.'
 	String get disabledDescription => 'Off. This device is not visible to others on the network and shares nothing.';
@@ -2771,14 +2774,17 @@ class Translations$settings$peers$en {
 	/// en: 'Allowed Devices'
 	String get pairedDevices => 'Allowed Devices';
 
-	/// en: 'No devices allowed yet. Open the same operation on another device to pair them.'
-	String get noPairedDevices => 'No devices allowed yet. Open the same operation on another device to pair them.';
+	/// en: 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.'
+	String get noPairedDevices => 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.';
 
 	/// en: 'Nearby'
 	String get nearby => 'Nearby';
 
 	/// en: 'Connected'
 	String get connected => 'Connected';
+
+	/// en: 'Connected — open the same operation to sync it'
+	String get connectedIdle => 'Connected — open the same operation to sync it';
 
 	/// en: 'Connecting…'
 	String get connecting => 'Connecting…';
@@ -5367,15 +5373,16 @@ extension on Translations {
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.peers.title' => 'Peer Devices',
 			'settings.peers.enable' => 'Share with my other devices',
-			'settings.peers.enabledDescription' => 'Your other devices on this network can see the operation you have open, and its contacts sync between them as you log. Each device has to be allowed once.',
+			'settings.peers.enabledDescription' => 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.',
 			'settings.peers.disabledDescription' => 'Off. This device is not visible to others on the network and shares nothing.',
 			'settings.peers.thisDevice' => 'This Device',
 			'settings.peers.deviceName' => 'Name',
 			'settings.peers.deviceNameHint' => 'What your other devices call this one',
 			'settings.peers.pairedDevices' => 'Allowed Devices',
-			'settings.peers.noPairedDevices' => 'No devices allowed yet. Open the same operation on another device to pair them.',
+			'settings.peers.noPairedDevices' => 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.',
 			'settings.peers.nearby' => 'Nearby',
 			'settings.peers.connected' => 'Connected',
+			'settings.peers.connectedIdle' => 'Connected — open the same operation to sync it',
 			'settings.peers.connecting' => 'Connecting…',
 			'settings.peers.syncing' => 'Syncing…',
 			'settings.peers.waitingForThem' => 'Waiting for the other device',
@@ -5725,9 +5732,9 @@ extension on Translations {
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
-			'expiredBuild.dismiss' => 'Continue anyway',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.dismiss' => 'Continue anyway',
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
@@ -5781,6 +5788,7 @@ extension on Translations {
 			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',
+			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',

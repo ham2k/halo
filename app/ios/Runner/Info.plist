@@ -55,7 +55,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Used to suggest nearby activities (parks, summits) and set the operation's grid square.</string>
+	<string>Used to suggest nearby activities (parks, summits), set the operation's grid square, and — when peer device sync is on — share your position with your own paired devices.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

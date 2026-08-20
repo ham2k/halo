@@ -391,6 +391,35 @@ is channelized USB by international agreement despite being below 10 MHz. The ba
 frequency when there is one and from `vfoA.band` when there isn't — a manual band pick leaves exactly
 that state behind, and resolving it without the fallback answered USB on 40 m.
 
+### A paired device's panel, over the peer link
+
+Peer device sync's ephemeral channel carries the VFO between paired devices
+(`PeerChannels`, `app/lib/services/peer/peer_channels.dart`): the phone at the
+picnic table sees — and tunes — the radio plugged into the laptop.
+
+It is a bridge through `RadioService`, deliberately NOT a peer-backed
+equipment node in the registry. Everything in this document above the
+`EquipmentSession` boundary is transport-blind, so feeding `vfoA` directly
+inherits the whole two-direction machinery — the origin tag, the per-node
+exchange record, the store's no-op dropping, Smart VFO Snap — where a
+registry node would need a live session injected into a const-constructed
+transport map and the radio1 reconnect loops taught about session lifetimes.
+The accepted cost: the remote radio has no Station-panel entry, and control
+engages automatically.
+
+Roles come from `radio1` itself, read fresh per message. A device with a
+designated radio is the **owner**: it broadcasts `vfoA` as `catStatus` on
+change, honors an inbound `catSet` by applying it as a `user` move — the
+same funnel a local keystroke takes, echo guards included — and ignores
+reports from elsewhere, because two sources writing `vfoA` fight and the
+operator's own rig must win. A device without one is a **controller**: its
+display follows the owner's reports (applied as `radio` origin), its
+operator's tunes are forwarded, and it ignores tune requests — with two
+controllers in a pair, honoring one would re-forward it as a `user` move,
+forever. Only trusted, established sessions carry any of this
+(`peer_session.dart`'s gates), which is what stands between the network and
+a transmitter.
+
 ### The persist was the hot spot
 
 `RadioService.setVfo` used to call `notifyListeners()` **and** an unawaited full SharedPreferences

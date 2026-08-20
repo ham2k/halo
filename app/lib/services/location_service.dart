@@ -85,9 +85,64 @@ class LocationService extends ChangeNotifier {
   // has released it.
   int _listenerCount = 0;
 
-  LocationStatus get status => _status;
-  Position? get position => _position;
-  String? get grid => _position == null ? null : locationToGrid6(_position!.latitude, _position!.longitude);
+  Position? _peerPosition;
+  String? _peerPositionDeviceId;
+  String? _peerPositionDeviceName;
+
+  /// A paired device's fix, offered as a FALLBACK (HALO-334): it answers only
+  /// while this device's own hardware cannot — [LocationStatus.unavailable]
+  /// or either permission status. A device with a working GPS never silently
+  /// shows someone else's position, and the moment the local receiver
+  /// delivers, it wins again with nothing to clear.
+  ///
+  /// One slot, latest wins. [deviceId] names the providing peer so its
+  /// disconnect can clear exactly its own fix and nothing newer.
+  void setPeerPosition(Position? position, {String? deviceId, String? deviceName}) {
+    // A clear only clears the peer whose fix is actually standing — a
+    // disconnect notice arriving after another peer already superseded the
+    // fix must not blank the newer one.
+    if (position == null && deviceId != null && deviceId != _peerPositionDeviceId) return;
+    _peerPosition = position;
+    _peerPositionDeviceId = position == null ? null : deviceId;
+    _peerPositionDeviceName = position == null ? null : deviceName;
+    notifyListeners();
+  }
+
+  bool get _localCannotDeliver =>
+      _status == LocationStatus.unavailable ||
+      _status == LocationStatus.permissionDenied ||
+      _status == LocationStatus.permissionBlocked;
+
+  /// True when [position] is currently answering with a peer's fix rather
+  /// than this device's own — what the outbound share reads so a relayed fix
+  /// is never re-broadcast, and what the UI reads to say whose position it
+  /// is showing.
+  bool get positionIsFromPeer => _localCannotDeliver && _peerPosition != null;
+
+  /// The name of the device whose fix [position] is serving, when
+  /// [positionIsFromPeer] — for the Location screen's tile, which must not
+  /// call a peer's position "Device GPS".
+  String? get peerPositionDeviceName => positionIsFromPeer ? _peerPositionDeviceName : null;
+
+  /// Which peer's fix is HELD — serving or latent behind a working local
+  /// GPS. The router reads this to clear a disconnected peer's fix, which
+  /// must happen either way: a latent stale fix would otherwise surface the
+  /// moment the local receiver failed, hours later.
+  String? get peerPositionProviderId => _peerPositionDeviceId;
+
+  LocationStatus get status => positionIsFromPeer ? LocationStatus.available : _status;
+
+  /// The device's OWN hardware truth, unmasked by a serving peer fix. The
+  /// surfaces that let the operator FIX their local GPS (grant permission,
+  /// open settings) key off this: a peer standing in makes [status] read
+  /// `available`, and remediation keyed on that disappears exactly while a
+  /// peer hides the problem — resurfacing the moment the peer walks away.
+  LocationStatus get localStatus => _status;
+  Position? get position => positionIsFromPeer ? _peerPosition : _position;
+  String? get grid {
+    final resolved = position;
+    return resolved == null ? null : locationToGrid6(resolved.latitude, resolved.longitude);
+  }
 
   // [start] and [getCurrentPosition] can both ask for permission at once (the
   // Activities view starting the live stream while a WEATHER command with no
@@ -298,14 +353,40 @@ class LocationService extends ChangeNotifier {
 
     try {
       final permission = await _resolvePermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return null;
-      if (!await Geolocator.isLocationServiceEnabled()) return null;
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        return _peerPosition;
+      }
+      if (!await Geolocator.isLocationServiceEnabled()) return _peerPosition;
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.reduced, timeLimit: Duration(seconds: 5)),
       );
     } catch (e) {
+      // The peer fix answers the failure cases the same way it backs the
+      // stream: only when this device's own read could not deliver.
       debugPrint('[location] getCurrentPosition failed: $e');
-      return null;
+      return _peerPosition;
     }
+  }
+
+  /// [start], but only if the OS permission is ALREADY granted — never
+  /// prompting. For a caller acting on its own initiative rather than the
+  /// operator's (peer sharing coming up), where a permission dialog out of
+  /// nowhere would read as the app spying. Answers whether it started.
+  Future<bool> startIfPermitted() async {
+    if (_devStatus != null || _devLocation != null) {
+      await start();
+      return true;
+    }
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.whileInUse && permission != LocationPermission.always) {
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[location] permission check failed: $e');
+      return false;
+    }
+    await start();
+    return true;
   }
 }

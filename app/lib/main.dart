@@ -67,6 +67,8 @@ import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/unclean_quit.dart';
 import 'services/cat/cat_service.dart';
+import 'services/cat/equipment.dart' show EquipmentStatus;
+import 'services/peer/peer_channels.dart';
 import 'services/peer/peer_service.dart';
 import 'views/peer_pairing_dialog.dart';
 import 'services/inbound_qso_listener_service.dart';
@@ -1242,9 +1244,9 @@ class HaLoServices {
   /// nothing at all.
   late final PeerOutbox peerOutbox = PeerOutbox(db);
 
-  /// LAN peer device sync. Binds nothing until an operation is actually
-  /// shared (`PeerService.setActiveOperation`), so a lazy `late final` that
-  /// nobody touches costs an operator who never uses this exactly nothing.
+  /// LAN peer device sync. Binds nothing until the master switch turns it
+  /// on, so a lazy `late final` that nobody touches costs an operator who
+  /// never uses this exactly nothing.
   final PeerService? _peerServiceOverride;
   late final PeerService peerService = _peerServiceOverride ??
       PeerService(
@@ -1255,6 +1257,21 @@ class HaLoServices {
         localDeviceId: settings.peerDeviceId,
         localDeviceName: settings.peerDeviceName,
       );
+
+  /// Routes the sessions' ephemeral channel (GPS, CAT next) between
+  /// [peerService] and the app services that produce and consume it. Its
+  /// construction is what plugs the channel in, so [updatePeerSharing]
+  /// touches it before starting anything — lazily, like the service itself.
+  late final PeerChannels peerChannels = PeerChannels(
+    peers: peerService,
+    location: location,
+    radio: radio,
+    hasLocalRadio: () => cat.radio1 != null,
+    radioIsLive: () {
+      final uuid = cat.radio1;
+      return uuid != null && cat.stateFor(uuid).status == EquipmentStatus.connected;
+    },
+  );
   late final LookupRepository lookups = LookupRepository(db);
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
@@ -1595,6 +1612,11 @@ class HaLoServices {
     // value captured once at construction goes stale on a rename or on the
     // first callsign the operator sets.
     peerService.localDeviceName = settings.peerDeviceName;
+    peerService.localCapabilities = () => [if (cat.radio1 != null) 'cat'];
+    // Touched for its side effect: the lazy field's construction is what
+    // wires the ephemeral channel, and a session established before that
+    // would drop its GPS snapshot into an unplugged callback.
+    peerChannels;
     unawaited(peerService.setEnabled(wanted));
     unawaited(peerService.setOpenOperation(front));
   }

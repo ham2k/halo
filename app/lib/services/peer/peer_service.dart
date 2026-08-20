@@ -8,10 +8,12 @@
 // field — the lesson docs/design/cat.md draws from app-polo's singleton
 // connection state, which is what made a second device impossible there.
 //
-// SCOPE. Only while an operation is actively shared ([activeOperationUuid])
-// does anything bind, announce, or connect. Turning sharing off tears the
-// whole lot down, so an operator who never uses this pays nothing but a null
-// check, and no socket is open that the operator did not ask for.
+// SCOPE. Only while the master switch is on does anything bind, announce,
+// or connect; turning it off tears the whole lot down, so an operator who
+// never uses this pays nothing but a null check, and no socket is open that
+// the operator did not ask for. Sessions bind to the paired DEVICE (HALO-334)
+// and stay up across operation switches — the open operation only decides
+// which log, if any, the durable sync carries ([sharedOperationUuid]).
 
 import 'dart:async';
 
@@ -99,6 +101,12 @@ class PeerService extends ChangeNotifier {
   /// the operator callsign, which is empty on a device constructed before
   /// onboarding finishes.
   String localDeviceName;
+
+  /// What this device offers peers (`cat` when a radio is designated) —
+  /// read fresh at each session's construction, since the answer changes
+  /// with the station setup. Advisory only: every consumer still gates on
+  /// trust, never on this list.
+  List<String> Function()? localCapabilities;
   final int beaconPort;
 
   final Map<String, PeerRuntime> _peers = {};
@@ -109,8 +117,36 @@ class PeerService extends ChangeNotifier {
   final Set<PeerSession> _unidentifiedSessions = {};
   Map<String, PeerRuntime> get peers => Map.unmodifiable(_peers);
 
-  String? _activeOperationUuid;
-  String? get activeOperationUuid => _activeOperationUuid;
+  /// Whether discovery/announcement is up — the applied form of the master
+  /// switch, distinct from [_enabled] (the intent) only while [_apply] is in
+  /// flight.
+  bool _running = false;
+  bool get running => _running;
+
+  /// The operation offered to the durable sync, or null when none is open.
+  /// Independent of [running]: paired devices stay connected for ephemeral
+  /// traffic with nothing shared at all.
+  String? get sharedOperationUuid => _openOperationUuid;
+
+  /// Ephemeral traffic from any established session — GPS fixes, CAT status,
+  /// tune requests — with the sending peer's claimed device id. Set by the
+  /// app layer; per-concern routing lives there, not here, so this service
+  /// does not grow a dependency on every feature that rides the channel.
+  void Function(String peerDeviceId, PeerMessage message)? onEphemeral;
+
+  /// Fired when a session becomes established — the moment to send that
+  /// peer the current latest-value snapshots (position, VFO), which it
+  /// missed by not being there when they were last broadcast.
+  void Function(PeerSession session)? onSessionEstablished;
+
+  /// Sends [message] to every established session. Lossy by design: a peer
+  /// mid-handshake simply misses it and is caught up by its establish-time
+  /// snapshot.
+  void broadcastEphemeral(PeerMessage message) {
+    for (final runtime in _peers.values.toList()) {
+      runtime.session?.sendEphemeral(message);
+    }
+  }
 
   PeerBeaconSocket? _beaconSocket;
   PeerLinkServer? _linkServer;
@@ -145,8 +181,13 @@ class PeerService extends ChangeNotifier {
 
   /// The master switch (`SettingsService.peerSyncEnabled`). Off tears
   /// everything down: no socket bound, no beacon sent, this device invisible.
+  ///
+  /// No unchanged-value early return here or in [setOpenOperation]: these are
+  /// declarative inputs to one idempotent reconciler ([_applyNow]), and
+  /// skipping it because THIS input did not change also skips reconciling
+  /// the other — which is exactly how a device with the switch on and no
+  /// operation open would never start at all.
   Future<void> setEnabled(bool enabled) async {
-    if (_enabled == enabled) return;
     _enabled = enabled;
     await _apply();
   }
@@ -158,7 +199,6 @@ class PeerService extends ChangeNotifier {
   /// is what makes the field case work — open the app on a second device and
   /// it joins, with nothing to remember to switch on per activation.
   Future<void> setOpenOperation(String? operationUuid) async {
-    if (_openOperationUuid == operationUuid) return;
     _openOperationUuid = operationUuid;
     await _apply();
   }
@@ -177,24 +217,64 @@ class PeerService extends ChangeNotifier {
   /// half-knowing the rule.
   Future<void> _apply() {
     final next = _applyTail.then((_) => _applyNow());
-    _applyTail = next.catchError((Object _) {});
+    // Every production caller fires this unawaited, so this handler is the
+    // ONLY place a reconciliation failure can surface. Swallowing it here
+    // leaves `_running` claiming a state the sockets are not in, with the
+    // panel showing the switch on over a device that is invisible and deaf —
+    // the exact "indistinguishable from an empty room" failure [error]
+    // exists to prevent.
+    _applyTail = next.catchError((Object e, StackTrace st) {
+      error = 'Peer sync failed: $e';
+      debugPrint('[peer] apply FAILED: $e');
+      ErrorReportingService.report(e, st, context: 'PeerService:apply');
+      notifyListeners();
+    });
     return next;
   }
 
   Future<void> _applyNow() async {
-    final wanted = _enabled ? _openOperationUuid : null;
-    if (_activeOperationUuid == wanted) return;
-    await _stop();
-    _activeOperationUuid = wanted;
-    outbox.activeOperationUuid = wanted;
-    if (wanted != null) {
-      // Capture what the operation ALREADY holds before anyone can connect.
-      // The outbox only records what a scan finds, and setting the active
-      // operation resets its watermark — so without this first scan an
-      // operation with an existing log has nothing for a peer to catch up
-      // on, and only QSOs logged from here on would ever cross.
-      await outbox.scanNow();
-      await _start();
+    final shared = _enabled ? _openOperationUuid : null;
+    if (outbox.activeOperationUuid != shared) {
+      outbox.activeOperationUuid = shared;
+      if (shared != null) {
+        // Capture what the operation ALREADY holds before any peer asks.
+        // The outbox only records what a scan finds, and setting the active
+        // operation resets its watermark — so without this first scan an
+        // operation with an existing log has nothing for a peer to catch up
+        // on, and only QSOs logged from here on would ever cross.
+        try {
+          await outbox.scanNow();
+        } catch (e, st) {
+          // Reset, so the next apply retries the capture instead of seeing
+          // "already assigned" and skipping it forever. Left assigned, a
+          // peer joining specifically to READ this log would catch up
+          // against an empty outbox with every panel reading live — and if
+          // nothing is ever logged again, that stays permanent.
+          outbox.activeOperationUuid = null;
+          error = 'Could not prepare the operation for sharing: $e';
+          ErrorReportingService.report(e, st, context: 'PeerService:initialScan');
+        }
+      }
+    }
+
+    if (_enabled != _running) {
+      if (_enabled) {
+        _running = true;
+        await _start();
+      } else {
+        _running = false;
+        await _stop();
+      }
+    }
+
+    // Sessions survive the operation switch — that is the point of binding
+    // them to the device. Each is told what this side now shares, and the
+    // durable sync engages or idles inside the session accordingly.
+    for (final runtime in _peers.values.toList()) {
+      await runtime.session?.setSharing(shared);
+    }
+    for (final session in _unidentifiedSessions.toList()) {
+      await session.setSharing(shared);
     }
     notifyListeners();
   }
@@ -279,7 +359,20 @@ class PeerService extends ChangeNotifier {
     }
     _linkSubscription = _linkServer?.connections.listen(_onInboundLink);
 
-    final socket = await openPeerBeaconSocket(port: beaconPort);
+    // `openPeerBeaconSocket` catches its own bind, but enabling broadcast on
+    // the bound socket can still throw (a sandbox refusing SO_BROADCAST) —
+    // and out of here it would leave `_running` true over a device that is
+    // deaf, with nothing on screen saying so.
+    final PeerBeaconSocket socket;
+    try {
+      socket = await openPeerBeaconSocket(port: beaconPort);
+    } catch (e, st) {
+      error = 'Discovery failed: $e';
+      debugPrint('[peer] beacon socket FAILED: $e');
+      ErrorReportingService.report(e, st, context: 'PeerService:beaconSocket');
+      notifyListeners();
+      return;
+    }
     _beaconSocket = socket;
     _beaconSubscription = socket.beacons.listen(
       _onBeacon,
@@ -296,7 +389,7 @@ class PeerService extends ChangeNotifier {
     // console says what it is doing — see docs/design/error-reporting.md on
     // why ErrorReportingService alone is not enough for an operator or a
     // developer standing in a field.
-    debugPrint('[peer] sharing $_activeOperationUuid as "$localDeviceName" ($localDeviceId), '
+    debugPrint('[peer] up as "$localDeviceName" ($localDeviceId), sharing ${_openOperationUuid ?? 'nothing'}, '
         'listening on ${_linkServer?.port}, beacons on $beaconPort');
     _announce();
     _announceTimer = Timer.periodic(_announceInterval, (_) => _announce());
@@ -305,7 +398,7 @@ class PeerService extends ChangeNotifier {
   }
 
   Future<void> _stop() async {
-    if (_activeOperationUuid != null) debugPrint('[peer] stopped sharing $_activeOperationUuid');
+    debugPrint('[peer] peer sync stopped');
     _announceTimer?.cancel();
     _announceTimer = null;
     _sweepTimer?.cancel();
@@ -334,28 +427,24 @@ class PeerService extends ChangeNotifier {
     _beaconSocket = null;
     await _linkServer?.close();
     _linkServer = null;
-    outbox.activeOperationUuid = null;
-    _activeOperationUuid = null;
   }
 
   void _announce() {
-    final operationUuid = _activeOperationUuid;
     final port = _linkServer?.port;
     // Nothing to advertise without somewhere to dial back to. A device whose
     // listen bind failed stays silent rather than announcing a port it isn't
     // on: a peer dialling that would just time out, repeatedly.
-    if (operationUuid == null || port == null) return;
+    if (port == null) return;
     _beaconSocket?.announce(PeerBeacon(
       deviceId: localDeviceId,
       deviceName: localDeviceName,
-      operationUuid: operationUuid,
+      operationUuid: _openOperationUuid,
       port: port,
     ));
   }
 
   void _onBeacon(PeerBeacon beacon) {
     if (beacon.deviceId == localDeviceId) return; // our own, heard back
-    if (beacon.operationUuid != _activeOperationUuid) return;
     if (beacon.address == null) return;
 
     final existing = _peers[beacon.deviceId];
@@ -389,7 +478,7 @@ class PeerService extends ChangeNotifier {
   bool _weDial(String peerDeviceId) => localDeviceId.compareTo(peerDeviceId) < 0;
 
   Future<void> _maybeDial(PeerRuntime runtime) async {
-    if (_activeOperationUuid == null) return;
+    if (!_running) return;
     if (!_weDial(runtime.beacon.deviceId)) return;
     if (runtime.isConnected) return;
     // A runtime synthesized from an inbound session (rather than a beacon)
@@ -405,7 +494,7 @@ class PeerService extends ChangeNotifier {
       // Superseded while the dial was in flight — a teardown, a revoke, or a
       // newer beacon. Closing the link we just opened is the only way it
       // gets released.
-      if (attempt != runtime.attemptSeq || _activeOperationUuid == null) {
+      if (attempt != runtime.attemptSeq || !_running) {
         await link.close();
         return;
       }
@@ -432,8 +521,7 @@ class PeerService extends ChangeNotifier {
   }
 
   void _onInboundLink(PeerLink link) {
-    final operationUuid = _activeOperationUuid;
-    if (operationUuid == null) {
+    if (!_running) {
       unawaited(link.close());
       return;
     }
@@ -445,8 +533,7 @@ class PeerService extends ChangeNotifier {
   }
 
   void _attach(PeerRuntime? runtime, PeerLink link) {
-    final operationUuid = _activeOperationUuid;
-    if (operationUuid == null) {
+    if (!_running) {
       unawaited(link.close());
       return;
     }
@@ -454,13 +541,19 @@ class PeerService extends ChangeNotifier {
       link: link,
       localDeviceId: localDeviceId,
       localDeviceName: localDeviceName,
-      operationUuid: operationUuid,
+      localCapabilities: localCapabilities?.call() ?? const [],
+      sharedOperationUuid: _openOperationUuid,
       outbox: outbox,
       cursors: cursors,
       trust: trust,
       operations: operations,
       qsos: qsos,
       onChanged: _onSessionChanged,
+      onEphemeral: (session, message) {
+        final deviceId = session.peer?.deviceId;
+        if (deviceId != null) onEphemeral?.call(deviceId, message);
+      },
+      onEstablished: (session) => onSessionEstablished?.call(session),
       log: (message) => debugPrint('[peer] $message'),
     );
     if (runtime != null) {
@@ -508,7 +601,7 @@ class PeerService extends ChangeNotifier {
         runtime.session = null;
         // A refusal is a decision, not a fault — retrying it would just
         // re-refuse in a loop. A plain close is worth reconnecting for.
-        if (session.state == PeerSessionState.closed && _activeOperationUuid != null) {
+        if (session.state == PeerSessionState.closed && _running) {
           runtime.failures++;
           _scheduleRetry(runtime);
         }
