@@ -372,6 +372,14 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final statusBar = widget.services.statusBar;
     setState(() => _busy = true);
     try {
+      // The iPad share sheet is a popover and needs an anchor rect; the
+      // panel's own bounds serve for every share trigger in it. Captured
+      // before the awaits: a layout change during the export leaves the rect
+      // stale, which UIKit answers by clamping — a misplaced popover, not a
+      // failure.
+      final box = context.findRenderObject() as RenderBox?;
+      final shareOrigin =
+          box == null || !box.hasSize ? null : box.localToGlobal(Offset.zero) & box.size;
       final files = await exports.generateExports(widget.operation, options);
       widget.services.track('operation_exported', {
         'formats': options.map((o) => o['format'] ?? o['key'] ?? '?').join(','),
@@ -391,7 +399,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           // Only when the operator actually shared. Reporting unconditionally
           // would announce a completed share for a sheet they dismissed —
           // asserting an outcome that didn't happen.
-          if (await exports.shareFiles(files)) {
+          if (await exports.shareFiles(files, sharePositionOrigin: shareOrigin)) {
             statusBar.setMessage(
               key: 'export:status',
               text: t.operation.export.shareSuccess(count: files.length),

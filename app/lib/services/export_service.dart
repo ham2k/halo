@@ -9,6 +9,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show Rect;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as p;
@@ -414,7 +415,11 @@ class ExportService {
   /// answer that means they didn't — `unavailable` is what Android returns
   /// when the share succeeded but the chosen target can't be named, so it
   /// counts as success rather than as a failure to report.
-  Future<bool> shareFiles(List<Map<String, dynamic>> files) async {
+  ///
+  /// [sharePositionOrigin] anchors the share sheet, which on iPadOS is a
+  /// popover: without an anchor rect, share_plus throws a PlatformException
+  /// there instead of presenting anything. Other platforms ignore it.
+  Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async {
     if (files.isEmpty) return false;
     final tempDir = await getTemporaryDirectory();
     final filenames = _uniqueFilenames(files);
@@ -424,7 +429,9 @@ class ExportService {
       await File(path).writeAsString(files[i]['content'] as String);
       paths.add(XFile(path, mimeType: files[i]['mimeType'] as String?));
     }
-    final result = await SharePlus.instance.share(ShareParams(files: paths));
+    final result = await SharePlus.instance.share(
+      ShareParams(files: paths, sharePositionOrigin: sharePositionOrigin),
+    );
     return result.status != ShareResultStatus.dismissed;
   }
 }

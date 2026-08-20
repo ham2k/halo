@@ -344,6 +344,9 @@ void main() {
 
       final message = services.statusBar.items.firstWhere((i) => i.key == 'export:status');
       expect(message.text, contains('Shared 1 file'));
+
+      expect(exports.sharedOrigin, isNotNull);
+      expect(exports.sharedOrigin!.isEmpty, isFalse);
     });
 
     // With developer mode on, the QSON dump used to arrive untagged and form
@@ -510,7 +513,8 @@ class _MultiCallExportService extends ExportService {
   Future<String?> saveToDisk(List<Map<String, dynamic>> files) async => '/tmp/exports';
 
   @override
-  Future<bool> shareFiles(List<Map<String, dynamic>> files) async => true;
+  Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async =>
+      true;
 }
 
 /// Supplies activity controls (for their accent colors) without a runtime.
@@ -618,9 +622,16 @@ class _FakeExportService extends ExportService {
   /// it without picking a target.
   bool shareSucceeds = true;
 
+  /// The anchor the panel passed. iPadOS refuses to present the share popover
+  /// without one, so the share test asserts it arrived — dropping the
+  /// argument at the call site re-breaks iPad while every other platform
+  /// stays green.
+  Rect? sharedOrigin;
+
   @override
-  Future<bool> shareFiles(List<Map<String, dynamic>> files) async {
+  Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async {
     sharedFiles.addAll(files);
+    sharedOrigin = sharePositionOrigin;
     return shareSucceeds;
   }
 }
