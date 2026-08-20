@@ -385,7 +385,17 @@
       "unavailableTitle": "Spots no disponibles",
       "unavailableText": "${sources} no respondieron.",
       "failedTitle": "Error en fuente de spots",
-      "failedText": "${sources} devolvieron un error."
+      "failedText": "${sources} devolvieron un error.",
+      "slideLogIt": "Registrar",
+      "slideIgnore": "Ignorar",
+      "slideRestore": "Restaurar",
+      "logConflict": {
+        "title": "El panel de registro está ocupado",
+        "editingBody": "Estás editando un contacto registrado. ¿Registrar este spot, o volver y terminar la edición?",
+        "composingBody": "Empezaste a ingresar un contacto. ¿Registrar este spot, o volver y terminar lo que escribías?",
+        "goBack": "Volver",
+        "clearAndLog": "Borrar y registrar spot"
+      }
     }
   },
   "map": {

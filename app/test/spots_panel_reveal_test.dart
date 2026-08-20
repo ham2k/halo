@@ -168,6 +168,8 @@ void main() {
     required ValueNotifier<bool> visible,
     double textScale = 1.0,
     ValueNotifier<LayoutDensity>? density,
+    void Function(Map<String, dynamic> qso, {bool reveal})? onSuggestQso,
+    ValueChanged<Map<String, dynamic>>? onLogQso,
   }) async {
     final densityNotifier = density ?? ValueNotifier(LayoutDensity.normal);
     tester.view.physicalSize = const Size(500, 600);
@@ -190,6 +192,8 @@ void main() {
                       logRevision: 'r1',
                       visible: visible,
                       callInfo: callInfo,
+                      onSuggestQso: onSuggestQso,
+                      onLogQso: onLogQso,
                     ),
                   ),
                 ),
@@ -428,6 +432,300 @@ void main() {
         );
       });
     }
+  });
+
+// The slide is the only gesture in the app that acts on a row, and both of
+  // its ends are destructive in their own way: one logs a contact, the other
+  // strikes a station off the board. What these pin is that neither happens
+  // by accident, and that the row's declared geometry survives a widget that
+  // moves it sideways.
+  group('sliding a row', () {
+    /// Drags the row for [call] horizontally by [dx] and releases. Note that
+    /// `kTouchSlop` (18) is consumed before the recognizer starts moving the
+    /// row, so the DISPLACEMENT is about 18 less than [dx] — which is why the
+    /// resting-open drags below are larger than the 36pt peek threshold
+    /// rather than just over it.
+    Future<void> slide(WidgetTester tester, String call, double dx) async {
+      final gesture = await tester.startGesture(tester.getCenter(find.text(call)));
+      // In steps, because the commit threshold is watched per drag frame — a
+      // single jump past it would pass even if the crossing were never seen.
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(Offset(dx / 10, 0));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a short drag right rests open and suggests, without logging', (tester) async {
+      final services = await servicesWith(_board(6));
+      final suggested = <Map<String, dynamic>>[];
+      final reveals = <bool>[];
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {
+          suggested.add(qso);
+          reveals.add(reveal);
+        },
+        onLogQso: logged.add,
+      );
+
+      await slide(tester, 'K0001', 120);
+
+      expect(suggested.single['their'], {'call': 'K0001'}, reason: 'opening fills the fields');
+      // The whole point of the gesture on a narrow window: the operator is
+      // working the spots list, so nothing may surface the logging panel and
+      // take it away mid-slide.
+      expect(reveals, [false], reason: 'a slide must never navigate away');
+      expect(logged, isEmpty, reason: 'a short drag only offers the button');
+      expect(find.byIcon(MdiIcons.upload), findsOneWidget, reason: 'the action is icon-only');
+    });
+
+    testWidgets('the QSO is not suggested until the drag means it', (tester) async {
+      final services = await servicesWith(_board(6));
+      final suggested = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
+        onLogQso: (_) {},
+      );
+
+      // Past kTouchSlop but short of the 36pt peek threshold: the row has
+      // moved a little and nothing has been chosen. Suggesting on the first
+      // pixel of movement would retune the radio on a twitch.
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 5; i++) {
+        await gesture.moveBy(const Offset(9, 0));
+        await tester.pump();
+      }
+      expect(suggested, isEmpty, reason: 'still under the peek threshold');
+
+      for (var i = 0; i < 5; i++) {
+        await gesture.moveBy(const Offset(9, 0));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(suggested.single['their'], {'call': 'K0001'});
+      expect(suggested, hasLength(1), reason: 'once per open, not once per drag frame');
+    });
+
+    testWidgets('the action icon crosses its well once the drag is armed', (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
+
+      double iconDx() => tester.getCenter(find.byIcon(MdiIcons.upload)).dx;
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      // Open, but short of the commit point — the icon sits at the OUTER edge.
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      final resting = iconDx();
+
+      // Past half the 500pt row: the icon rides across to sit against the row
+      // it is about to act on.
+      for (var i = 0; i < 20; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      final armed = iconDx();
+
+      expect(armed, greaterThan(resting),
+          reason: 'the icon moved toward the row, not merely with the widening well');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a drag past half the row logs it on release', (tester) async {
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: logged.add,
+      );
+
+      // The panel is 500 wide, so 400 is comfortably past the half-width
+      // commit point. Mutation check: drop the threshold test in _onDragEnd
+      // and the short-drag case above logs too.
+      await slide(tester, 'K0001', 400);
+
+      expect(logged.single['their'], {'call': 'K0001'});
+    });
+
+    testWidgets('tapping the revealed button logs it', (tester) async {
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: logged.add,
+      );
+
+      await slide(tester, 'K0001', 120);
+      await tester.tap(find.byIcon(MdiIcons.upload));
+      await tester.pumpAndSettle();
+
+      expect(logged.single['their'], {'call': 'K0001'});
+    });
+
+    testWidgets('sliding left far enough strikes the row through, and again restores it',
+        (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      bool struck() => tester
+          .widgetList<Text>(find.descendant(of: find.text('K0001'), matching: find.byType(Text)))
+          .followedBy([tester.widget<Text>(find.text('K0001'))])
+          .any((t) => t.style?.decoration == TextDecoration.lineThrough);
+
+      expect(struck(), isFalse, reason: 'nothing has been ignored yet');
+
+      await slide(tester, 'K0001', -400);
+      expect(struck(), isTrue, reason: 'an ignored spot reads as a worked one');
+
+      // Reversible on purpose: a mis-slide that could not be undone would
+      // make the gesture something an operator learns to avoid.
+      await slide(tester, 'K0001', -400);
+      expect(struck(), isFalse);
+    });
+
+    testWidgets('ignoring one spot leaves its neighbours alone', (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      await slide(tester, 'K0001', -400);
+
+      expect(
+        tester.widget<Text>(find.text('K0002')).style?.decoration,
+        isNot(TextDecoration.lineThrough),
+        reason: 'the ignore set is keyed by call, not applied to the list',
+      );
+    });
+
+    /// How far [call]'s row is displaced from where it sits closed. Measured
+    /// against a row that is certainly shut, because the list itself may have
+    /// scrolled: counting "Log it" buttons cannot tell an open SECOND row
+    /// from a first row that never closed.
+    double openDx(WidgetTester tester, String call, {required String closed}) =>
+        tester.getTopLeft(find.text(call)).dx - tester.getTopLeft(find.text(closed)).dx;
+
+    // The real sequence a slide sets off: opening the row suggests the QSO,
+    // the logging panel fills, and the call comes back as this panel's
+    // `callInfo` — which makes the slid row the CURRENT one and moves
+    // `_currentRowKey`, a GlobalKey, onto the very row under the finger.
+    // A GlobalKey landing on a widget re-parents its element, and an element
+    // that is deactivated mid-gesture takes the drag down with it.
+    testWidgets('the drag survives the slid row becoming the current QSO', (tester) async {
+      final services = await servicesWith(_board(6));
+      final setCall = await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
+
+      final closedAt = tester.getTopLeft(find.text('K0003')).dx;
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 5; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      // Mid-drag, exactly as the logging panel's round trip does it.
+      await setCall(_entering('K0001'));
+      for (var i = 0; i < 5; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text('K0001')).dx - closedAt, greaterThan(0),
+          reason: 'the row stayed open — the re-key did not cancel the drag');
+    });
+
+    testWidgets('a scroll during a drag does not take the row out from under the finger',
+        (tester) async {
+      final services = await servicesWith(_board(60));
+      final suggested = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
+        onLogQso: (_) {},
+      );
+
+      final closedAt = tester.getTopLeft(find.text('K0003')).dx;
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 6; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      final beforeScroll = tester.getTopLeft(find.text('K0001')).dx - closedAt;
+      expect(beforeScroll, greaterThan(0));
+
+      // What crossing the peek can arm: suggesting the QSO makes this the
+      // current row, and revealing it scrolls — which used to close every open
+      // row, this one included, mid-gesture.
+      tester.widget<Scrollable>(find.byType(Scrollable).first).controller?.jumpTo(20);
+      await tester.pump();
+
+      for (var i = 0; i < 6; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(suggested, hasLength(1),
+          reason: 'the row was never reset, so the peek was not re-crossed');
+    });
+
+    testWidgets('opening a second row closes the first, and the second ends up open',
+        (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'K0001', 120);
+      expect(openDx(tester, 'K0001', closed: 'K0003'), greaterThan(0));
+
+      await slide(tester, 'K0002', 120);
+
+      // Two rows sitting open at once means two armed actions and no way to
+      // tell which one a press belongs to — but closing the old one may not
+      // cost the new one its drag, which is the failure this pins: the second
+      // slide was interrupted mid-gesture and the row snapped back shut.
+      expect(openDx(tester, 'K0001', closed: 'K0003'), 0, reason: 'the first row closed');
+      expect(openDx(tester, 'K0002', closed: 'K0003'), greaterThan(0),
+          reason: 'the second row is open — its slide was not suspended by the first closing');
+    });
   });
 
   group('visibility', () {

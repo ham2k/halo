@@ -83,6 +83,11 @@ class LoggingPanel extends StatefulWidget {
 
   final Map<String, dynamic>? suggestedQso;
 
+  /// All passed straight through to [LoggingControls] — see its docs.
+  final ({int serial, Map<String, dynamic> qso})? logRequest;
+  final Future<bool> Function({required bool editing})? confirmLogOverwrite;
+  final bool suggestedQsoIsTentative;
+
   /// Forwards LoggingControls' command output up to the operation view,
   /// which shows it on the Info pane (the wide layout is the operation
   /// view's job — see docs/design/layouts.md).
@@ -122,6 +127,9 @@ class LoggingPanel extends StatefulWidget {
     this.ourItuRegion,
     this.ourCountryCode,
     this.suggestedQso,
+    this.logRequest,
+    this.confirmLogOverwrite,
+    this.suggestedQsoIsTentative = false,
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
     this.onQsoChanged,
@@ -804,6 +812,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             bandOrFreqRequiredLabel: context.t.loggingControls.bandOrFreqRequired,
             editingQso: _selectedQso,
             suggestedQso: widget.suggestedQso,
+            logRequest: widget.logRequest,
+            confirmLogOverwrite: widget.confirmLogOverwrite,
+            suggestedQsoIsTentative: widget.suggestedQsoIsTentative,
             onEditCanceled: () => setState(() => _selectedQso = null),
             onNavigateToQsoList: _handleNavigateToQsoList,
             onLogged: (qso) {

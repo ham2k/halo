@@ -31,8 +31,11 @@ double _strengthOf(Color color, {required Color surface, required Color containe
   return (value - from) / (to - from);
 }
 
-({String label, List<Map<String, dynamic>> spots}) _section(String label, List<String> calls) =>
-    (label: label, spots: [for (final call in calls) _spot(call)]);
+/// A section's spots. The label is taken but unused: `locateCurrentSpotRow`
+/// sums geometry and never reads it, and the tests read better naming the
+/// band they mean.
+List<Map<String, dynamic>> _section(String label, List<String> calls) =>
+    [for (final call in calls) _spot(call)];
 
 void main() {
   group('locateCurrentSpotRow', () {
@@ -75,8 +78,8 @@ void main() {
     test('names the row by position, so a pinned duplicate names only one tile', () {
       final shared = _spot('K1ABC');
       final found = locateCurrentSpotRow([
-        (label: 'Calls of Note', spots: [shared]),
-        (label: '20m', spots: [_spot('W2DEF'), shared]),
+        [shared],                          // Calls of Note
+        [_spot('W2DEF'), shared],          // 20m
       ], currentCall: 'K1ABC', headerHeight: 30, heightOf: (_) => 40);
 
       expect((found!.section, found.index), (0, 0));

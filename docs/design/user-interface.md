@@ -593,6 +593,62 @@ on macOS, which has no DOM — and none in a widget test either, because
 rather than a DOM element, so no browser focus event ever fires. Test the
 invariant (the sections are still mounted) rather than the symptom.
 
+## Row gestures
+
+A list row may be **slid** horizontally to reveal one action per side. The
+spots list is the only one that does today; anything that adopts it matches
+this shape rather than inventing a second dialect.
+
+The gesture has **two thresholds**, and the hand must be able to tell them
+apart without looking:
+
+- **The peek**, half an action well's width. Past it the row rests open on
+  release with the action's icon exposed to tap, and any *preparatory* effect
+  happens now — the spots list makes the row's station the suggested QSO here.
+  A light `HapticFeedback.selectionClick` marks it. Nothing preparatory may
+  fire before this point: on the first pixel of travel, a twitch during a
+  scroll would retune the radio.
+- **The commit**, half the ROW's width. Releasing past it performs the action
+  outright, without the icon ever being pressed. A heavier
+  `HapticFeedback.heavyImpact` marks it, in **both** directions — reversing
+  back under the threshold is a promise that release will no longer act, and
+  it deserves the same weight that promised it would. Crossing it also slides
+  the icon across its well to sit against the row it will act on, which is the
+  visible half of the same statement.
+
+Actions are **icons alone**, with the word carried as a `Semantics` label —
+there are no tooltips in this app. Only **one row is open at a time**, and
+scrolling closes whatever was open: a row left open under a thumb that has
+moved on is an armed action over whatever has since scrolled into its place.
+
+**A slide may not destroy work the operator cannot see.** The panel a slide
+acts on is not the one being looked at, so anything the action would overwrite
+— an edit in progress, a part-typed entry — earns a prompt offering to go back
+to it or to clear it and proceed, and "go back" surfaces the panel so the
+operator lands on what they kept. The reversible half of the gesture is held to
+a stricter rule still: a *peek*, which may yet be dragged back, is dropped
+rather than applied when it would overwrite, since applying it also moves the
+VFO and so retunes a connected radio.
+
+**A slide never navigates.** The operator sliding a row is working the list
+they are looking at, and surfacing another pane — which a *tap* on the same
+row legitimately does — takes it out from under them mid-gesture. On a narrow
+window that is the whole difference between the two interactions.
+
+Two structural constraints, both of which draw blood when ignored:
+
+- **The gesture must live above any key that changes.** A row whose widget key
+  changes has its subtree discarded, and a discarded subtree takes the drag's
+  `State` and its live recogniser with it — the row snaps shut mid-slide. In
+  the spots list the tile takes a `GlobalKey` on becoming the current QSO,
+  which is a thing sliding it *causes*, so the slide wraps the tile rather
+  than living inside it.
+- **Sliding may not change a row's height.** Where a list declares row heights
+  for scroll arithmetic it cannot measure (`spotRowHeightFor`), the action
+  layer is `Positioned.fill` and the content moves by a `Transform`, so
+  neither contributes layout. The divider stays outside the slide: the ruling
+  between rows does not move with the row.
+
 ## Number Formatting
 
 All numbers displayed in the user interface (including QSO counts, QSO row index numbers, scoring summaries, statistics tallies, and general quantities) must be formatted with thousands separators to enhance readability.

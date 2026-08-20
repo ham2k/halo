@@ -498,12 +498,77 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// resolved.
   bool? _wasTwoPane;
 
-  void _suggestQso(Map<String, dynamic> qso) {
-    setState(() => _suggestedQso = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat));
+  /// [reveal] false fills the fields and leaves the operator where they are —
+  /// what sliding a spot row open does. The spots list is the thing being
+  /// worked in that gesture, and on a narrow window surfacing the logging
+  /// panel would take it away mid-slide. A row TAP still reveals: there the
+  /// operator has chosen the station and wants the fields.
+  void _suggestQso(Map<String, dynamic> qso, {bool reveal = true}) {
+    setState(() {
+      _suggestedQso = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
+      // A slide peek is the one suggestion the operator has not committed to.
+      _suggestedQsoIsTentative = !reveal;
+    });
+    if (!reveal) return;
     // On two-pane layouts the logging pane is already visible on the left —
     // and tab 0 is Info there, so switching would be wrong twice over. In
     // dock mode the user may have tabbed the logging pane behind others, so
     // surface it (no-op when it's already visible).
+    _revealLoggingPanel();
+  }
+
+  /// The spots list's slid-right action, carrying the QSO it means to log —
+  /// see `LoggingControls.logRequest`. The serial is what makes a repeat of
+  /// the same spot a new request.
+  ({int serial, Map<String, dynamic> qso})? _logRequest;
+
+  /// Whether [_suggestedQso] came from a gesture the operator can still take
+  /// back — see `LoggingControls.suggestedQsoIsTentative`.
+  bool _suggestedQsoIsTentative = false;
+
+  /// Log a spot outright, without surfacing the logging panel: the operator
+  /// stays on the spots list and the contact is logged behind it.
+  void _logQsoFromSpot(Map<String, dynamic> qso) {
+    final zeroBeat = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
+    setState(() {
+      _suggestedQso = zeroBeat;
+      _logRequest = (serial: (_logRequest?.serial ?? 0) + 1, qso: zeroBeat);
+    });
+  }
+
+  /// The logging panel has work a slid spot would destroy. Ask, rather than
+  /// letting a gesture made on another surface throw it away — and on "go
+  /// back", surface the panel so the operator lands on the thing they kept.
+  Future<bool> _confirmLogOverwrite({required bool editing}) async {
+    final t = context.t;
+    final clear = await showHaloDialog<bool>(
+      context: context,
+      builder: (context) => HaloDialog(
+        title: Text(t.operation.spots.logConflict.title),
+        content: Text(
+          editing ? t.operation.spots.logConflict.editingBody : t.operation.spots.logConflict.composingBody,
+        ),
+        cancel: TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(t.operation.spots.logConflict.goBack),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(t.operation.spots.logConflict.clearAndLog),
+          ),
+        ],
+      ),
+    );
+    if (clear == true) return true;
+    // Kept what they had — so put them in front of it. Without this the
+    // operator is left on the spots list wondering what their choice did.
+    if (mounted) _revealLoggingPanel();
+    return false;
+  }
+
+  /// Surface the logging panel wherever this layout keeps it.
+  void _revealLoggingPanel() {
     if (!ShirtSize.of(context).isTwoPane) {
       _tabController?.animateTo(0);
     } else if (_customLayout) {
@@ -2023,6 +2088,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             ourItuRegion: _ourItuRegion,
             ourCountryCode: _ourCountryCode,
             suggestedQso: _suggestedQso,
+            suggestedQsoIsTentative: _suggestedQsoIsTentative,
+            logRequest: _logRequest,
+            confirmLogOverwrite: _confirmLogOverwrite,
             onCallInfoChanged: (info) {
               // Entering a call is logging-panel use, and it is the one
               // interaction the pointer listener below cannot see: the call
@@ -2085,6 +2153,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 operation: operation,
                 services: widget.services,
                 onSuggestQso: _suggestQso,
+                onLogQso: _logQsoFromSpot,
                 logRevision: _logRevisionFor(qsos),
                 qsos: qsos,
                 // Same payload the map panel highlights from, so the two panes

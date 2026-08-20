@@ -1071,6 +1071,10 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String unavailableText({required Object sources}) => '${sources} no respondieron.';
 	@override String get failedTitle => 'Error en fuente de spots';
 	@override String failedText({required Object sources}) => '${sources} devolvieron un error.';
+	@override String get slideLogIt => 'Registrar';
+	@override String get slideIgnore => 'Ignorar';
+	@override String get slideRestore => 'Restaurar';
+	@override late final _Translations$operation$spots$logConflict$es logConflict = _Translations$operation$spots$logConflict$es._(_root);
 }
 
 // Path: loggingControls.info
@@ -1807,6 +1811,20 @@ class _Translations$operation$spots$filters$es extends Translations$operation$sp
 	@override String get sourceError => 'Error';
 }
 
+// Path: operation.spots.logConflict
+class _Translations$operation$spots$logConflict$es extends Translations$operation$spots$logConflict$en {
+	_Translations$operation$spots$logConflict$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'El panel de registro está ocupado';
+	@override String get editingBody => 'Estás editando un contacto registrado. ¿Registrar este spot, o volver y terminar la edición?';
+	@override String get composingBody => 'Empezaste a ingresar un contacto. ¿Registrar este spot, o volver y terminar lo que escribías?';
+	@override String get goBack => 'Volver';
+	@override String get clearAndLog => 'Borrar y registrar spot';
+}
+
 // Path: settings.logging.leftieMode
 class _Translations$settings$logging$leftieMode$es extends Translations$settings$logging$leftieMode$en {
 	_Translations$settings$logging$leftieMode$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -2464,6 +2482,14 @@ extension on TranslationsEs {
 			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} no respondieron.',
 			'operation.spots.failedTitle' => 'Error en fuente de spots',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} devolvieron un error.',
+			'operation.spots.slideLogIt' => 'Registrar',
+			'operation.spots.slideIgnore' => 'Ignorar',
+			'operation.spots.slideRestore' => 'Restaurar',
+			'operation.spots.logConflict.title' => 'El panel de registro está ocupado',
+			'operation.spots.logConflict.editingBody' => 'Estás editando un contacto registrado. ¿Registrar este spot, o volver y terminar la edición?',
+			'operation.spots.logConflict.composingBody' => 'Empezaste a ingresar un contacto. ¿Registrar este spot, o volver y terminar lo que escribías?',
+			'operation.spots.logConflict.goBack' => 'Volver',
+			'operation.spots.logConflict.clearAndLog' => 'Borrar y registrar spot',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.loadFailed' => 'No se pudo cargar el mapa. Verifica tu conexión.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -2669,6 +2695,8 @@ extension on TranslationsEs {
 			'settings.layoutDensityOpts.auto' => 'Automática',
 			'settings.layoutDensityOpts.densest' => 'Muy compacta',
 			'settings.layoutDensityOpts.dense' => 'Compacta',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.normal' => 'Normal',
 			'settings.layoutDensityOpts.sparse' => 'Amplia',
 			'settings.layoutDensityOpts.sparsest' => 'Muy amplia',
@@ -2677,8 +2705,6 @@ extension on TranslationsEs {
 			'settings.layoutDensityDescription.dense' => 'Muestra más en pantalla',
 			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
 			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
@@ -3183,6 +3209,8 @@ extension on TranslationsEs {
 			'switchAccounts.serverRejected' => ({required Object error}) => 'El servidor de sincronización rechazó la solicitud: ${error}',
 			'switchAccounts.noLinkCode' => 'El servidor de sincronización no devolvió un código de vinculación. Inténtalo más tarde.',
 			'switchAccounts.noConfirmationCode' => 'El servidor de sincronización no envió un código de confirmación. Inténtalo más tarde.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.switchNotAccepted' => 'Esa cuenta no aceptó el cambio. Prueba a vincularla con una dirección de email.',
 			'switchAccounts.requestFailed' => 'Algo salió mal al contactar el servidor de sincronización. Inténtalo más tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
@@ -3191,8 +3219,6 @@ extension on TranslationsEs {
 			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se importará', other: '${formatted} se importarán', ), 
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} contacto nuevo', other: '${formatted} contactos nuevos', ), 

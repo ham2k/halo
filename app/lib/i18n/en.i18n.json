@@ -400,7 +400,17 @@
       "unavailableTitle": "Spots unavailable",
       "unavailableText": "${sources} did not respond.",
       "failedTitle": "Spot source error",
-      "failedText": "${sources} returned an error."
+      "failedText": "${sources} returned an error.",
+      "slideLogIt": "Log it",
+      "slideIgnore": "Ignore",
+      "slideRestore": "Restore",
+      "logConflict": {
+        "title": "Logging panel is busy",
+        "editingBody": "You're editing a logged contact. Log this spot instead, or go back and finish the edit?",
+        "composingBody": "You've started entering a contact. Log this spot instead, or go back and finish what you were typing?",
+        "goBack": "Go back",
+        "clearAndLog": "Clear and log spot"
+      }
     },
     "import": {
       "title": "Import Data into Operation",

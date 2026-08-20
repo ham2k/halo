@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "iOS/Android: Check for Updates now finds new builds and opens the store"
+    - Swipe a spot row right to log it, left to set it aside
 
 "144":
   changes:

@@ -447,6 +447,33 @@ class LoggingControls extends StatefulWidget {
   /// detection below) is passed in.
   final Map<String, dynamic>? suggestedQso;
 
+  /// A request to log a QSO outright, as if the submit button had been
+  /// pressed — the spots list's slid-right action, which ends in a logged
+  /// contact without the logging panel being looked at.
+  ///
+  /// Carries the QSO rather than relying on [suggestedQso] having been applied
+  /// first: when the operator is mid-edit the suggestion is suppressed, so a
+  /// request that trusted the fields would log whatever they happened to hold.
+  /// The serial is what makes a repeat of the same spot a new request.
+  final ({int serial, Map<String, dynamic> qso})? logRequest;
+
+  /// Asked before a [logRequest] destroys work in this panel — an edit in
+  /// progress ([editingQso]) or a part-typed entry. True means "clear it and
+  /// log the spot"; false means the operator chose to go back to what they
+  /// had, and the caller has surfaced this panel for them.
+  ///
+  /// The dialog belongs to the caller: this file holds no strings, and where
+  /// "go back" NAVIGATES to is a question only the app can answer.
+  final Future<bool> Function({required bool editing})? confirmLogOverwrite;
+
+  /// Whether [suggestedQso] is a tentative offer rather than a choice already
+  /// made — a spot row slid open far enough to peek, which the operator may
+  /// still drag back. A tentative suggestion is dropped rather than applied
+  /// when it would overwrite an edit or a part-typed entry: applying it moves
+  /// the VFO (retuning a connected radio) and replaces the fields, neither of
+  /// which a gesture that was never completed may do.
+  final bool suggestedQsoIsTentative;
+
   /// Fires when an editing session ends without necessarily going through
   /// `onLogged` — a save of an existing QSO, a delete, or an explicit
   /// revert. The caller (which owns the selected-QSO state) clears its
@@ -735,6 +762,9 @@ class LoggingControls extends StatefulWidget {
     this.onDispatcherChanged,
     this.editingQso,
     this.suggestedQso,
+    this.logRequest,
+    this.confirmLogOverwrite,
+    this.suggestedQsoIsTentative = false,
     this.onEditCanceled,
     this.onNavigateToQsoList,
     this.settings,
@@ -1988,6 +2018,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // First, before any of the guards below can return: see [_handleLogRequest].
+    final request = widget.logRequest;
+    if (request != null && request.serial != oldWidget.logRequest?.serial) {
+      unawaited(_handleLogRequest(request.qso));
+    }
     // Withdraw from the controller we actually published to. `deactivate` only
     // ever sees the CURRENT one, so without this a swapped controller keeps a
     // row nothing can ever take back.
@@ -2118,6 +2153,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // a spot tap landing in the same frame would otherwise let one silently
     // suppress the other.
     if (widget.suggestedQso != null && !identical(oldWidget.suggestedQso, widget.suggestedQso)) {
+      // A gesture the operator can still drag back may not take the fields or
+      // the VFO from work already in progress — see [suggestedQsoIsTentative].
+      if (widget.suggestedQsoIsTentative && _hasComposedValues) return;
       _resetEditingSessionState();
       _applySuggestedQso(widget.suggestedQso!);
       _spotSources = const [];
@@ -2132,6 +2170,57 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // (docs/design/logging-fields.md's mobile carve-out).
       if (!isMobilePlatform || hardwareKeyboardAttached.value) _callFocus.requestFocus();
     }
+
+    // A request held back until the edit it had to clear is gone — see
+    // [_handleLogRequest]. By here `editingQso` is null, so the fields are
+    // this panel's own again and the spot can take them.
+    final pending = _pendingLogRequest;
+    if (pending != null && widget.editingQso == null) {
+      _pendingLogRequest = null;
+      unawaited(_applyAndLog(pending));
+    }
+  }
+
+  /// A [LoggingControls.logRequest] that is waiting for an edit to be
+  /// cancelled before it can be applied. `onEditCanceled` reaches the parent
+  /// and comes back as a widget update, so the fields are not this panel's to
+  /// fill until that lands.
+  Map<String, dynamic>? _pendingLogRequest;
+
+  /// Handles a log request from outside — the spots list's slide.
+  ///
+  /// Runs BEFORE `didUpdateWidget`'s editing guards, deliberately: those
+  /// return early whenever a QSO is selected for editing, which is an ordinary
+  /// two-pane state, and a request swallowed there is a contact the operator
+  /// was told had been logged. The serial only changes once, so nothing
+  /// retries it.
+  Future<void> _handleLogRequest(Map<String, dynamic> qso) async {
+    final editing = widget.editingQso != null;
+    if (editing || _hasComposedValues) {
+      // Something here would be destroyed. Never silently: the operator is
+      // looking at the spots list, and the work at risk is on a surface they
+      // cannot see from there.
+      final clear = await widget.confirmLogOverwrite?.call(editing: editing) ?? false;
+      if (!mounted || !clear) return;
+      if (editing) {
+        // Comes back as a widget update with `editingQso` null; the request
+        // waits for it rather than filling fields that still belong to the edit.
+        widget.onEditCanceled?.call();
+        _pendingLogRequest = qso;
+        return;
+      }
+      _wipe();
+    }
+    await _applyAndLog(qso);
+  }
+
+  /// Fills the fields from [qso] and submits them, in that order and with no
+  /// frame between: `_log` reads the live field state, so anything that let a
+  /// build in between would log what the fields held before the spot landed.
+  Future<void> _applyAndLog(Map<String, dynamic> qso) async {
+    _resetEditingSessionState();
+    _applySuggestedQso(qso);
+    await _log();
   }
 
   /// Editing-session bookkeeping that must never leak from one QSO context

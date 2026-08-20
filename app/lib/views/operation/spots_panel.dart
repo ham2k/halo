@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -502,7 +503,7 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
 /// caller keying rows by it would put one GlobalKey on two tiles. Public for
 /// `spots_panel_current_qso_test.dart`.
 ({int section, int index, double top, double height})? locateCurrentSpotRow(
-  List<({String label, List<Map<String, dynamic>> spots})> sections, {
+  List<List<Map<String, dynamic>>> sections, {
   String? currentCall,
   required double headerHeight,
   required double Function(Map<String, dynamic> spot) heightOf,
@@ -511,7 +512,7 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
   for (final (sectionIndex, section) in sections.indexed) {
     // Its own section's header sits above it, so this one counts too.
     top += headerHeight;
-    for (final (index, spot) in section.spots.indexed) {
+    for (final (index, spot) in section.indexed) {
       final height = heightOf(spot);
       if (spotIsCurrentQso(spot, currentCall: currentCall)) {
         return (section: sectionIndex, index: index, top: top, height: height);
@@ -598,7 +599,13 @@ double? spotScrollTarget({
 class SpotsPanel extends StatefulWidget {
   final Operation operation;
   final HaLoServices services;
-  final ValueChanged<Map<String, dynamic>>? onSuggestQso;
+  final void Function(Map<String, dynamic> qso, {bool reveal})? onSuggestQso;
+
+  /// Log this QSO outright — the spot row's slid-right action. Distinct from
+  /// [onSuggestQso], which only fills the fields and leaves the operator to
+  /// press Log: this one IS the press, so the row's gesture ends in a logged
+  /// contact without the logging panel ever having to be looked at.
+  final ValueChanged<Map<String, dynamic>>? onLogQso;
 
   /// Changes whenever the operation's log does. Spots are scored against that
   /// log, so working a station has to restrike its spot immediately — a plain
@@ -644,6 +651,7 @@ class SpotsPanel extends StatefulWidget {
     required this.logRevision,
     required this.visible,
     this.onSuggestQso,
+    this.onLogQso,
     this.qsos = const [],
     this.callInfo,
   });
@@ -768,6 +776,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// one the headers paint with.
   late LayoutMetrics _metrics;
 
+  /// Calls the operator has slid away this session. In memory deliberately:
+  /// an ignore is a "not this one, right now" about a board that turns over
+  /// every few minutes, not a fact about the station worth outliving the app.
+  /// Keyed by callsign alone, so the same operator re-spotted on another
+  /// frequency stays ignored — which is the case the gesture exists for.
+  final Set<String> _ignoredCalls = {};
+
+  /// Keeps one row's actions open at a time.
+  final _SlideGroup _slideGroup = _SlideGroup();
+
   /// Whether [_metrics] holds a reading yet — `late` cannot be asked. The
   /// FIRST `didChangeDependencies` has no previous rung to convert a scale
   /// from, and reading `_metrics` to find that out would throw.
@@ -866,6 +884,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _scoreDebounce?.cancel();
     _unsubscribeSpots?.call();
     _scrollController.dispose();
+    _slideGroup.dispose();
     super.dispose();
   }
 
@@ -1400,6 +1419,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final sections = [
       for (final section in rawSections)
         (
+          key: section.key,
           label:
               '${_sectionLabel(t, section.key)} - ${t.operation.spots.spotsCount(count: section.spots.length)}',
           spots: section.spots,
@@ -1446,33 +1466,93 @@ class _SpotsPanelState extends State<SpotsPanel> {
                     child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
                   ),
                 ]))
-          : ListView(
+          : NotificationListener<ScrollStartNotification>(
+              // A row left open under a thumb that has moved on to scrolling
+              // is a row whose action is still armed over whatever slid into
+              // its place.
+              onNotification: (_) {
+                _slideGroup.closeAll();
+                return false;
+              },
+              child: ListView(
               controller: _scrollController,
               children: [
                 for (final (sectionIndex, section) in sections.indexed) ...[
                   _SpotsSectionHeader(section.label),
                   for (final (index, spot) in section.spots.indexed)
                     if (_flagsFor(spot) case final flags)
-                      _SpotTile(
-                        key: _isCurrentRow(sectionIndex, index)
-                            ? _currentRowKey
-                            : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
-                        spot: spot,
-                        noteEmoji: _noteEmojiOf(spot),
-                        hzDigits: hzDigits,
-                        leftWidth: leftWidth,
-                        sortByAge: _sortBy == 'time',
-                        activityControls: _activityControls,
-                        worked: flags.worked,
-                        isSelf: flags.isSelf,
-                        notices: flags.notices,
-                        highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
-                        onTap: widget.onSuggestQso == null
+                      // The slide wraps the tile rather than living inside it,
+                      // and carries a key of its OWN that never changes. The
+                      // tile's key does change — it takes `_currentRowKey` on
+                      // becoming the current QSO, which is exactly what a
+                      // slide causes — and a widget whose key changes has its
+                      // subtree discarded. A gesture in there dies mid-drag.
+                      _SlidableSpotRow(
+                        // Keyed on the SECTION's key, not its label: the label
+                        // carries the section's spot count, so keying on it
+                        // would change every row's key on any poll that adds
+                        // or drops one spot — discarding the slide State of
+                        // every row in the section, which is the failure this
+                        // wrapper exists to prevent. The spot's own time
+                        // separates two rows for one call on one frequency,
+                        // which the merge passes allow when they are more
+                        // than 30 minutes apart.
+                        key: ValueKey('${section.key}|${_callOf(spot)}|${_freqOf(spot)}|${_timeOf(spot)}'),
+                        group: _slideGroup,
+                        background: theme.colorScheme.surface,
+                        leading: widget.onLogQso == null
                             ? null
-                            : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
+                            : _SlideAction(
+                                icon: MdiIcons.upload,
+                                label: t.operation.spots.slideLogIt,
+                                // The logging panel's own submit accent and
+                                // glyph: the gesture ends in the act that
+                                // button performs, so it may not look like a
+                                // different one.
+                                background: theme.colorScheme.tertiary,
+                                foreground: theme.colorScheme.onTertiary,
+                                onPressed: () => _logSpot(spot),
+                                // Opening fills the logging fields with this
+                                // spot, so what the commit is about to log is
+                                // on screen before it is logged.
+                                onRevealed: widget.onSuggestQso == null
+                                    ? null
+                                    : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false),
+                              ),
+                        trailing: _SlideAction(
+                          icon: _isIgnored(spot) ? MdiIcons.restore : MdiIcons.eraser,
+                          label: _isIgnored(spot)
+                              ? t.operation.spots.slideRestore
+                              : t.operation.spots.slideIgnore,
+                          background: theme.colorScheme.surfaceContainerHighest,
+                          foreground: theme.colorScheme.onSurface,
+                          onPressed: () => _toggleIgnored(spot),
+                        ),
+                        child: _SpotTile(
+                          key: _isCurrentRow(sectionIndex, index)
+                              ? _currentRowKey
+                              : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
+                          spot: spot,
+                          noteEmoji: _noteEmojiOf(spot),
+                          hzDigits: hzDigits,
+                          leftWidth: leftWidth,
+                          sortByAge: _sortBy == 'time',
+                          activityControls: _activityControls,
+                          // An ignored spot reads exactly like a worked one:
+                          // the operator's judgement that they are done with
+                          // it is the same statement scoring makes.
+                          worked: flags.worked || _isIgnored(spot),
+                          isSelf: flags.isSelf,
+                          notices: flags.notices,
+                          highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
+                          onTap: widget.onSuggestQso == null
+                              ? null
+                              : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
+                        ),
                       ),
                 ],
               ],
+              ),
             ),
     );
   }
@@ -1486,6 +1566,42 @@ class _SpotsPanelState extends State<SpotsPanel> {
         hasLabel: _labelOf(spot) != null,
         hasEmoji: _noteEmojiOf(spot) != null,
       );
+
+  /// Whether this spot has been slid away this session. Every operator on a
+  /// merged multi-op spot must be ignored for the row to read as ignored —
+  /// the same "all of them" rule scoring applies to `worked`, so one
+  /// dismissed operator cannot hide a station still worth working.
+  bool _isIgnored(Map<String, dynamic> spot) {
+    final calls = _operatorCallsOf(spot);
+    return calls.isNotEmpty && calls.every(_ignoredCalls.contains);
+  }
+
+  /// Slid left: ignore every operator on the spot, or restore them all.
+  void _toggleIgnored(Map<String, dynamic> spot) {
+    final calls = _operatorCallsOf(spot);
+    if (calls.isEmpty) return;
+    setState(() {
+      if (calls.every(_ignoredCalls.contains)) {
+        _ignoredCalls.removeAll(calls);
+      } else {
+        _ignoredCalls.addAll(calls);
+      }
+    });
+  }
+
+  /// Slid right past the commit point, or its button pressed: hand the spot
+  /// to the logging panel as the QSO to log. The panel does the logging —
+  /// re-deriving RST, `our`, timestamps and the command path here would be a
+  /// second implementation of the thing the operator can already see.
+  void _logSpot(Map<String, dynamic> spot) {
+    widget.onLogQso?.call(suggestedQsoFromSpot(spot));
+  }
+
+  /// The individual operators on a spot. A merged multi-op spot carries them
+  /// comma-joined in `their.call` (see `mergeSpotsByFreqAndRefs`), which is
+  /// why this cannot just read that field as one key.
+  List<String> _operatorCallsOf(Map<String, dynamic> spot) =>
+      (_callOf(spot) ?? '').split(',').map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toList();
 
   /// Whether the tile at `(section, index)` is the current QSO's row, and so
   /// carries [_currentRowKey].
@@ -1501,11 +1617,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// the headers are text in constant padding like the rows, and a sum that
   /// scaled only one of the two would drift by a header on every section.
   void _locateCurrentRow(
-    List<({String label, List<Map<String, dynamic>> spots})> sections,
+    List<({String key, String label, List<Map<String, dynamic>> spots})> sections,
     String? currentCall,
   ) {
     final found = locateCurrentSpotRow(
-      sections,
+      [for (final section in sections) section.spots],
       currentCall: currentCall,
       headerHeight: _metrics.sectionHeaderHeight * _rowHeightScale,
       heightOf: (spot) => _spotRowHeightOf(spot) * _rowHeightScale,
@@ -2022,18 +2138,331 @@ class _SpotTile extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(onTap: onTap, child: body),
           );
+    // The divider and the slide both live in the panel's `_SlidableSpotRow`
+    // wrapper, not here: a tile's KEY changes as it becomes the current row,
+    // which discards this subtree, and a gesture cannot survive inside
+    // something that gets discarded mid-drag.
+    return highlight == null ? row : ColoredBox(color: highlight!, child: row);
+  }
+}
+
+/// One of the two actions a spot row slides to reveal.
+class _SlideAction {
+  final IconData icon;
+  final String label;
+  final Color background;
+  final Color foreground;
+  final VoidCallback onPressed;
+
+  /// Fired once when this side first comes into view during a drag — before
+  /// anything is committed. What separates "showing you what this would do"
+  /// from doing it.
+  final VoidCallback? onRevealed;
+
+  const _SlideAction({
+    required this.icon,
+    required this.label,
+    required this.background,
+    required this.foreground,
+    required this.onPressed,
+    this.onRevealed,
+  });
+}
+
+/// How much of a row an action panel occupies when the row rests open. Sized
+/// for a tap target around a bare icon — the actions carry no label, so this
+/// is a button's width rather than a word's, and the row's own height (which
+/// shrinks with the density) never enters into it.
+const _slideActionWidth = 72.0;
+
+/// How far a drag must travel before the row will rest open on release —
+/// and, on the way past it, the point at which the spot becomes the suggested
+/// QSO. Both meanings are the same moment on purpose: it is where the gesture
+/// stops being a twitch and starts being a choice of station.
+const _slidePeekThreshold = _slideActionWidth / 2;
+
+/// The share of the row's WIDTH a drag must pass for release to fire the
+/// action outright rather than resting open. Half is the point where the
+/// gesture stops reading as "show me the button" and starts reading as "do
+/// it" — and it is far enough from [_slidePeekThreshold] that settling open
+/// is never a near-miss of firing.
+const _slideCommitFraction = 0.5;
+
+/// Which rows are open, so only ever one is. A row registers itself as it
+/// opens and the previous one closes; the panel also clears the group when
+/// the list scrolls, since a row left hanging open under the operator's
+/// thumb is a row whose action they did not choose to keep armed.
+class _SlideGroup extends ChangeNotifier {
+  _SlidableSpotRowState? _open;
+
+  void opened(_SlidableSpotRowState row) {
+    if (identical(_open, row)) return;
+    _open?.close();
+    _open = row;
+  }
+
+  void closed(_SlidableSpotRowState row) {
+    if (identical(_open, row)) _open = null;
+  }
+
+  void closeAll() {
+    _open?.close();
+    _open = null;
+  }
+}
+
+/// A spot row that slides horizontally to reveal one action on each side.
+///
+/// Wraps only the row's CONTENT: the divider and the row's outer box stay
+/// still, so a sliding row moves within a list whose ruling does not. The
+/// action layer is `Positioned.fill` inside a `Stack` sized by the content,
+/// and the content moves by a `Transform` — neither changes the row's height,
+/// which `spotRowHeightFor` declares and the reveal's scroll arithmetic sums
+/// for rows it cannot see.
+///
+/// The content carries its own opaque background because the actions sit
+/// BEHIND it; a transparent row would show the action it has not uncovered.
+class _SlidableSpotRow extends StatefulWidget {
+  /// Revealed by dragging right (sits against the leading edge), and by
+  /// dragging left respectively. A null side does not drag.
+  final _SlideAction? leading;
+  final _SlideAction? trailing;
+
+  /// Painted behind the row's content WHILE IT IS DISPLACED, so the action
+  /// layer only shows where the content has actually moved off it. A row at
+  /// rest paints no fill of its own, exactly as it did before it could slide.
+  final Color background;
+
+  final _SlideGroup group;
+  final Widget child;
+
+  const _SlidableSpotRow({
+    super.key,
+    required this.group,
+    required this.background,
+    required this.child,
+    this.leading,
+    this.trailing,
+  });
+
+  @override
+  State<_SlidableSpotRow> createState() => _SlidableSpotRowState();
+}
+
+class _SlidableSpotRowState extends State<_SlidableSpotRow> {
+  /// How far the content is currently displaced. Positive reveals [leading].
+  double _dx = 0;
+
+  /// Whether the drag is currently past the commit threshold. Kept so the
+  /// haptic fires on the CROSSING rather than per drag frame, in both
+  /// directions: reversing back under the threshold is a promise that release
+  /// will no longer fire, and it deserves the same tick that promised it would.
+  bool _pastCommit = false;
+
+  /// Which side has passed the peek threshold, so [_SlideAction.onRevealed]
+  /// and its tick fire once per open rather than on every drag frame.
+  int _revealedSign = 0;
+
+  /// Whether a finger is down. The displacement follows the finger exactly
+  /// while it is, and eases to its resting place once it lifts — one value,
+  /// two durations, rather than a controller this row would have to own and
+  /// tear down as the list recycles it.
+  bool _dragging = false;
+
+  @override
+  void dispose() {
+    widget.group.closed(this);
+    super.dispose();
+  }
+
+  /// Slides shut without firing anything — what the group calls on the row
+  /// that was open when another one opens.
+  void close() {
+    if (!mounted || _dx == 0) return;
+    // Never while the finger is down. Crossing the peek suggests the QSO,
+    // which can arm the panel's own reveal scroll, whose ScrollStartNotification
+    // closes open rows — including this one. Zeroing the displacement there
+    // would restart the drag from nothing under a finger that never lifted:
+    // the row jumps back, can no longer reach the commit point, and re-crossing
+    // the peek suggests a second time. It also deregisters the row, so it can
+    // come to rest open with the group believing nothing is.
+    if (_dragging) return;
+    _animateTo(0);
+  }
+
+  void _animateTo(double target) {
+    setState(() {
+      _dragging = false;
+      _dx = target;
+    });
+    if (target == 0) {
+      widget.group.closed(this);
+      _pastCommit = false;
+      _revealedSign = 0;
+    }
+  }
+
+  void _onDragStart(DragStartDetails details) {
+    setState(() => _dragging = true);
+    widget.group.opened(this);
+  }
+
+  void _onDragUpdate(DragUpdateDetails details, double width) {
+    final max = widget.leading == null ? 0.0 : width;
+    final min = widget.trailing == null ? 0.0 : -width;
+    final next = (_dx + (details.primaryDelta ?? 0)).clamp(min, max);
+    // Two thresholds, two different weights of feedback, so the hand can tell
+    // them apart without looking: a light tick where the station is picked up,
+    // a heavier one where releasing would act on it.
+    final sign = next.abs() < _slidePeekThreshold ? 0 : (next > 0 ? 1 : -1);
+    if (sign != _revealedSign) {
+      _revealedSign = sign;
+      if (sign != 0) {
+        HapticFeedback.selectionClick();
+        (sign > 0 ? widget.leading : widget.trailing)?.onRevealed?.call();
+      }
+    }
+    final past = next.abs() >= width * _slideCommitFraction;
+    if (past != _pastCommit) {
+      // On the way out this says "release now and it happens"; on the way back
+      // it says it no longer will. Both deserve saying, and both are the
+      // heavier of the two so neither is mistaken for the peek.
+      HapticFeedback.heavyImpact();
+      _pastCommit = past;
+    }
+    setState(() => _dx = next);
+  }
+
+  void _onDragEnd(DragEndDetails details, double width) {
+    final action = _dx > 0 ? widget.leading : widget.trailing;
+    if (_pastCommit && action != null) {
+      // Fire on release, then slide shut — the row has done its job and
+      // leaving the button sitting there invites a second press.
+      _animateTo(0);
+      action.onPressed();
+      return;
+    }
+    // Far enough to mean it: rest open with the button exposed to tap.
+    // Anything shorter was a stray horizontal wobble during a scroll.
+    if (_dx.abs() >= _slidePeekThreshold) {
+      _animateTo(_dx > 0 ? _slideActionWidth : -_slideActionWidth);
+    } else {
+      _animateTo(0);
+    }
+  }
+
+  Widget _actionPanel(
+    _SlideAction action, {
+    required bool leading,
+    required double width,
+    required double revealed,
+  }) {
+    // Grows with the drag, so past the commit threshold the action fills the
+    // row and reads as the thing about to happen rather than as a button
+    // waiting to be pressed.
+    revealed = revealed.clamp(0.0, width);
+    final past = revealed >= width * _slideCommitFraction;
+    // Past the commit point the icon crosses its well to sit against the row
+    // it will act on — the same edge the row is being dragged by. Before it,
+    // the icon rests at the outer edge like the button it still is. The move
+    // is the visible half of what the heavy tick says: this is armed now.
+    final alignment = leading
+        ? (past ? Alignment.centerRight : Alignment.centerLeft)
+        : (past ? Alignment.centerLeft : Alignment.centerRight);
+    return Align(
+      alignment: leading ? Alignment.centerLeft : Alignment.centerRight,
+      child: SizedBox(
+        width: revealed,
+        child: Material(
+          color: action.background,
+          child: InkWell(
+            onTap: () {
+              _animateTo(0);
+              action.onPressed();
+            },
+            // The label is a screen-reader one only: these are bare icons, and
+            // this repo has no tooltips (a `tooltip:` anywhere in lib fails a
+            // source-scanning test), so Semantics is where the word lives.
+            child: Semantics(
+              label: action.label,
+              button: true,
+              child: ClipRect(
+                child: AnimatedAlign(
+                  alignment: alignment,
+                  duration: const Duration(milliseconds: 150),
+                  curve: Curves.easeOut,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                    child: Icon(action.icon, color: action.foreground, size: 22),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // A hairline divider between rows, painted over the row's bottom edge
     // (foreground) so it adds no height — lighter than the section header's
-    // 3px rule so rows read as subdivisions within a group.
-    return DecoratedBox(
-      position: DecorationPosition.foreground,
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
-      ),
-      // Outside the InkWell's Material, so the fill still shows on a row with
-      // no tap handler, and edge to edge like the divider above it.
-      child: highlight == null ? row : ColoredBox(color: highlight!, child: row),
-    );
+    // 3px rule so rows read as subdivisions within a group. OUTSIDE the
+    // slide, so the ruling between rows stays put while a row moves under it.
+    Widget ruled(Widget child) => DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+          ),
+          child: child,
+        );
+
+    if (widget.leading == null && widget.trailing == null) return ruled(widget.child);
+    return ruled(LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return GestureDetector(
+          // Horizontal only — the enclosing ListView keeps the vertical axis,
+          // and the narrow layout's TabBarView has page-swiping disabled, so
+          // nothing else is competing for this drag.
+          onHorizontalDragStart: _onDragStart,
+          onHorizontalDragUpdate: (d) => _onDragUpdate(d, width),
+          onHorizontalDragEnd: (d) => _onDragEnd(d, width),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: _dx),
+            // Zero while the finger is down, so the row tracks it exactly
+            // rather than lagging behind its own gesture.
+            duration: _dragging ? Duration.zero : const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            // The panel behind is sized from the SAME animating value as the
+            // row in front, so the two stay edge to edge through a snap
+            // instead of the panel jumping to its target while the row eases.
+            builder: (context, dx, child) => Stack(
+              children: [
+                // Only while there is something to see: an idle row pays for
+                // no extra layer, which matters on a board scrolled fast.
+                if (dx != 0)
+                  Positioned.fill(
+                    child: dx > 0
+                        ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
+                        : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
+                  ),
+                Transform.translate(
+                  offset: Offset(dx, 0),
+                  // Opaque ONLY while displaced: the actions sit behind the
+                  // row, so a transparent row would show the one it has not
+                  // uncovered — but a row at rest must paint exactly what it
+                  // painted before it could slide, down to having no fill.
+                  child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
+                ),
+              ],
+            ),
+            child: widget.child,
+          ),
+        );
+      },
+    ));
   }
 }
 

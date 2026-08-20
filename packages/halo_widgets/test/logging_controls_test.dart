@@ -105,6 +105,8 @@ void main() {
     bool switchSentRcvd = false,
     bool jumpAfterRST = false,
     ThemeData? appTheme,
+    ({int serial, Map<String, dynamic> qso})? logRequest,
+    Future<bool> Function({required bool editing})? confirmLogOverwrite,
   }) {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
@@ -135,6 +137,8 @@ void main() {
       onEditCanceled: onEditCanceled,
       onNavigateToQsoList: onNavigateToQsoList,
       suggestedQso: suggestedQso,
+      logRequest: logRequest,
+      confirmLogOverwrite: confirmLogOverwrite,
       suggestSpotSources: suggestSpotSources,
       sendSpot: sendSpot,
       showStateField: showStateField,
@@ -10481,6 +10485,81 @@ void main() {
 
       expect(enabledFields(tester), greaterThan(0));
     });
+  });
+
+  // The slid-right spot action reaches this panel as `logRequest`. Its whole
+  // promise is that a contact ends up in the log, made from a surface the
+  // operator is NOT looking at — so every way it can quietly not happen is a
+  // contact they believe they made and did not.
+  group('a log request from the spots list', () {
+    testWidgets('is not swallowed while a QSO is being edited', (tester) async {
+      // The regression: `didUpdateWidget` returns early whenever `editingQso`
+      // is set — an ordinary two-pane state with the spots list still on
+      // screen — so the request was consumed and never retried. The gesture
+      // had already fired its heavy haptic and closed the row.
+      var asked = 0;
+      bool? askedAboutEditing;
+      final edited = Qso(uuid: 'q1', operationUuid: operation.uuid, data: const {'their': {'call': 'W1AW'}});
+
+      await tester.pumpWidget(host(editingQso: edited));
+      await tester.pump();
+      await tester.pumpWidget(host(
+        editingQso: edited,
+        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+        confirmLogOverwrite: ({required bool editing}) async {
+          asked++;
+          askedAboutEditing = editing;
+          return false;
+        },
+      ));
+      await tester.pump();
+
+      expect(asked, 1, reason: 'the request reached the panel instead of being dropped');
+      expect(askedAboutEditing, isTrue, reason: 'and it knows an edit is what is at risk');
+    });
+
+    testWidgets('asks before overwriting a part-typed entry', (tester) async {
+      var asked = 0;
+      bool? askedAboutEditing;
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
+      await tester.pump();
+
+      await tester.pumpWidget(host(
+        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+        confirmLogOverwrite: ({required bool editing}) async {
+          asked++;
+          askedAboutEditing = editing;
+          return false;
+        },
+      ));
+      await tester.pump();
+
+      expect(asked, 1, reason: 'a half-typed contact is work too, and it is about to be wiped');
+      expect(askedAboutEditing, isFalse, reason: 'nothing is being edited — this is a fresh entry');
+    });
+
+    testWidgets('logs straight away when there is nothing to lose', (tester) async {
+      var asked = 0;
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.pumpWidget(host(
+        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+        confirmLogOverwrite: ({required bool editing}) async {
+          asked++;
+          return true;
+        },
+      ));
+
+      final logged = await waitForQsos(tester, 1);
+
+      expect(asked, 0, reason: 'an empty panel has nothing worth interrupting the operator over');
+      expect(logged.single.data['their']['call'], 'K1ABC');
+    });
+
   });
 }
 

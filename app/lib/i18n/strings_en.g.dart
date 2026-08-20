@@ -2212,6 +2212,17 @@ class Translations$operation$spots$en {
 
 	/// en: '${sources} returned an error.'
 	String failedText({required Object sources}) => '${sources} returned an error.';
+
+	/// en: 'Log it'
+	String get slideLogIt => 'Log it';
+
+	/// en: 'Ignore'
+	String get slideIgnore => 'Ignore';
+
+	/// en: 'Restore'
+	String get slideRestore => 'Restore';
+
+	late final Translations$operation$spots$logConflict$en logConflict = Translations$operation$spots$logConflict$en.internal(_root);
 }
 
 // Path: operation.import
@@ -3991,6 +4002,30 @@ class Translations$operation$spots$filters$en {
 	String get sourceError => 'Error';
 }
 
+// Path: operation.spots.logConflict
+class Translations$operation$spots$logConflict$en {
+	Translations$operation$spots$logConflict$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Logging panel is busy'
+	String get title => 'Logging panel is busy';
+
+	/// en: 'You're editing a logged contact. Log this spot instead, or go back and finish the edit?'
+	String get editingBody => 'You\'re editing a logged contact. Log this spot instead, or go back and finish the edit?';
+
+	/// en: 'You've started entering a contact. Log this spot instead, or go back and finish what you were typing?'
+	String get composingBody => 'You\'ve started entering a contact. Log this spot instead, or go back and finish what you were typing?';
+
+	/// en: 'Go back'
+	String get goBack => 'Go back';
+
+	/// en: 'Clear and log spot'
+	String get clearAndLog => 'Clear and log spot';
+}
+
 // Path: settings.logging.leftieMode
 class Translations$settings$logging$leftieMode$en {
 	Translations$settings$logging$leftieMode$en.internal(this._root);
@@ -4941,6 +4976,14 @@ extension on Translations {
 			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} did not respond.',
 			'operation.spots.failedTitle' => 'Spot source error',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
+			'operation.spots.slideLogIt' => 'Log it',
+			'operation.spots.slideIgnore' => 'Ignore',
+			'operation.spots.slideRestore' => 'Restore',
+			'operation.spots.logConflict.title' => 'Logging panel is busy',
+			'operation.spots.logConflict.editingBody' => 'You\'re editing a logged contact. Log this spot instead, or go back and finish the edit?',
+			'operation.spots.logConflict.composingBody' => 'You\'ve started entering a contact. Log this spot instead, or go back and finish what you were typing?',
+			'operation.spots.logConflict.goBack' => 'Go back',
+			'operation.spots.logConflict.clearAndLog' => 'Clear and log spot',
 			'operation.import.title' => 'Import Data into Operation',
 			'operation.import.importAdifAction' => 'Import QSOs from ADIF',
 			'operation.import.settingsButton' => 'Listen settings',
@@ -5133,6 +5176,8 @@ extension on Translations {
 			'qsoEditForm.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.bandOrModeWarning' => 'Please make sure your band and mode are correct',
+			_ => null,
+		} ?? switch (path) {
 			'qsoList.today' => 'Today',
 			'qsoList.yesterday' => 'Yesterday',
 			'qsoList.tomorrow' => 'Tomorrow',
@@ -5141,8 +5186,6 @@ extension on Translations {
 			'qsoList.eventEnded' => 'Operation ended',
 			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
-			_ => null,
-		} ?? switch (path) {
 			'loggingPanel.dxccEntities' => 'DXCC entities',
 			'loggingPanel.statesWorked' => 'States',
 			'loggingPanel.provincesWorked' => 'Provinces',
@@ -5647,6 +5690,8 @@ extension on Translations {
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
@@ -5655,8 +5700,6 @@ extension on Translations {
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
