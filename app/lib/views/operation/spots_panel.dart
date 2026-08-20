@@ -189,7 +189,10 @@ List<Map<String, dynamic>> sortSpots(List<Map<String, dynamic>> spots, String so
 }
 
 /// Splits already-sorted `spots` into display sections, mirroring
-/// app-polo's SpotsPanel.jsx: `callsWithNotes` spots get a leading
+/// app-polo's SpotsPanel.jsx: [selfSpots] — the operator's own station's
+/// spots, which the caller supplies UNfiltered so a self-spot stays reachable
+/// after the operator wanders to another band — get a `'self'`-keyed section
+/// pinned above everything else. Then `callsWithNotes` spots get a leading
 /// `'notes'`-keyed section (a pinned DUPLICATE — those spots still appear
 /// again in their normal section below, never removed from it). Then, when
 /// `groupByBand` is false, one flat `'spots'`-keyed section holding `spots`
@@ -203,10 +206,13 @@ List<Map<String, dynamic>> sortSpots(List<Map<String, dynamic>> spots, String so
 /// maps it to translated text. Public for `spots_panel_merge_test.dart`.
 List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
   List<Map<String, dynamic>> spots, {
+  List<Map<String, dynamic>> selfSpots = const [],
   required Set<String> callsWithNotes,
   bool groupByBand = true,
 }) {
   final sections = <({String key, List<Map<String, dynamic>> spots})>[];
+
+  if (selfSpots.isNotEmpty) sections.add((key: 'self', spots: selfSpots));
 
   if (callsWithNotes.isNotEmpty) {
     // Pin a multi-op spot when ANY of its operators has a note — a
@@ -394,6 +400,19 @@ Map<String, dynamic> spotCandidateQso(String call, Map<String, dynamic> spot, {r
 bool spotIsCurrentQso(Map<String, dynamic> spot, {String? currentCall}) {
   if (currentCall == null || currentCall.isEmpty) return false;
   return _callsIn(_callOf(spot)).any((c) => c.toUpperCase() == currentCall);
+}
+
+/// Whether every operator on [spot] is [ourCall] (already uppercased) — the
+/// spot is ours ALONE. The self affordances key off this — the pinned
+/// section, the tap-to-retune, the withheld slide-to-log — NOT
+/// [spotDisplayFlags]'s any-of `isSelf` tint: a merged multi-op row that
+/// merely includes us still carries another station worth working, and
+/// stealing its tap or its log action would make that station unreachable
+/// from the board. Public for `spots_panel_merge_test.dart`.
+bool spotIsSelfOnly(Map<String, dynamic> spot, {String? ourCall}) {
+  if (ourCall == null || ourCall.isEmpty) return false;
+  final calls = _callsIn(_callOf(spot)).toList();
+  return calls.isNotEmpty && calls.every((c) => c.toUpperCase() == ourCall);
 }
 
 /// The fill for the row of the QSO being logged: the logging panel's own
@@ -1187,7 +1206,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// band/mode/age, which narrow temporarily, don't. Explicitly choosing a
   /// band opts out of the enabled-bands narrowing, and then every fetched
   /// spot is back in play — so "all" is everything again.
-  ({List<Map<String, dynamic>> filtered, int total}) get _filteredSpotsSummary {
+  ///
+  /// `selfSpots` — the merged spots that are this operation's own station's
+  /// alone ([spotIsSelfOnly]) — is drawn from BEFORE any of that narrowing,
+  /// band list included: the pinned self section exists so the operator can
+  /// get back to where they announced themselves, and the moment that matters
+  /// is exactly when the filters (an 'auto' band following a wandering VFO
+  /// most of all) would have hidden it. All of them, newest first, whatever
+  /// `sortBy` says.
+  ({List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots, int total})
+      get _filteredSpotsSummary {
     final vfo = widget.services.radio.vfoA;
     final band = _bandFilter == 'auto' ? vfo.band : _bandFilter;
     // The mode filter narrows by super mode (Phone/CW/Digital): 'auto' follows
@@ -1197,8 +1225,14 @@ class _SpotsPanelState extends State<SpotsPanel> {
         ? superModeForMode(vfo.mode)
         : (_modeFilter == 'any' ? null : _modeFilter);
 
+    final merged = _mergedRawSpots;
+    final selfSpots = sortSpots(
+      [for (final spot in merged) if (spotIsSelfOnly(spot, ourCall: _ourCall)) spot],
+      'time',
+    );
+
     final singleBand = band != null && band != 'any';
-    var spots = singleBand ? _mergedRawSpots : spotsOnEnabledBands(_mergedRawSpots, _enabledBands);
+    var spots = singleBand ? merged : spotsOnEnabledBands(merged, _enabledBands);
     final total = spots.length;
 
     if (singleBand) {
@@ -1219,7 +1253,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
           .toList();
     }
     spots = sortSpots(spots, _sortBy);
-    return (filtered: spots, total: total);
+    return (filtered: spots, selfSpots: selfSpots, total: total);
   }
 
   /// Spot counts per continent among every currently-fetched (source
@@ -1396,7 +1430,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
             top: false,
             left: false,
             right: false,
-            child: _buildSpotsList(context, summary.filtered),
+            child: _buildSpotsList(context, summary.filtered, summary.selfSpots),
           ),
         ),
       ],
@@ -1407,6 +1441,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// sort/group settings, then renders the scrollable list — split out of
   /// `build()` just for readability.
   ///
+  /// `selfSpots` — our own station's spots, unfiltered (see
+  /// `_filteredSpotsSummary`) — pin above everything as their own section.
   /// `groupCallsWithNotes` prepends a "Calls of Note" section (spots whose
   /// callsign has a note, per `_callNotes`) ahead of everything else —
   /// those spots still also appear in their normal section below, same as
@@ -1414,7 +1450,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// `_groupByBand` then decides band sections vs. one flat section; either
   /// way `filtered` is already sorted per `_sortBy`, so that order is what
   /// shows within each band (or across the whole flat list).
-  Widget _buildSpotsList(BuildContext context, List<Map<String, dynamic>> filtered) {
+  Widget _buildSpotsList(
+    BuildContext context,
+    List<Map<String, dynamic>> filtered,
+    List<Map<String, dynamic>> selfSpots,
+  ) {
     final t = context.t;
     final theme = Theme.of(context);
 
@@ -1424,7 +1464,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
               if (entry.value.hasNote) entry.key,
           }
         : const <String>{};
-    final rawSections = sectionSpots(filtered, callsWithNotes: callsWithNotes, groupByBand: _groupByBand);
+    final rawSections =
+        sectionSpots(filtered, selfSpots: selfSpots, callsWithNotes: callsWithNotes, groupByBand: _groupByBand);
     final sections = [
       for (final section in rawSections)
         (
@@ -1436,13 +1477,15 @@ class _SpotsPanelState extends State<SpotsPanel> {
     ];
     // Same adaptive Hz-digit rule as qso_list.dart's DayHeaderRow/QSO rows —
     // computed across every currently-visible spot, not per-tile, so every
-    // tile's Hz segment (if any) lines up at the same width.
-    final hzDigits = hzDigitsNeeded(filtered.map(_freqOf));
+    // tile's Hz segment (if any) lines up at the same width. The pinned self
+    // spots count too: they can sit outside `filtered`.
+    final visibleSpots = [...selfSpots, ...filtered];
+    final hzDigits = hzDigitsNeeded(visibleSpots.map(_freqOf));
     // The left column is only as wide as the widest frequency (and mode)
     // actually on screen — HF-only spots pack tighter than the fixed width
     // the widest microwave frequency would need. Shared across tiles so their
     // right-aligned frequencies still line up.
-    final leftWidth = _spotLeftColumnWidth(context, filtered, hzDigits);
+    final leftWidth = _spotLeftColumnWidth(context, visibleSpots, hzDigits);
 
     final currentCall = widget.callInfo?.call.toUpperCase();
     final highlight = widget.callInfo == null
@@ -1462,7 +1505,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
       // theme cannot reach.
       color: HaLoColors.of(context).onSurfaceAccent,
       onRefresh: _spots.refresh,
-      child: filtered.isEmpty
+      // `sections`, not `filtered`: a pinned self spot must survive filters
+      // that empty the rest of the board — that is when it is needed.
+      child: sections.isEmpty
           // While the initial fetch is still in flight (see the progress bar
           // above), "no spots" would be misleading — none have loaded yet,
           // not necessarily none exist (matches activities_view.dart's
@@ -1491,6 +1536,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
                   for (final (index, spot) in section.spots.indexed)
                     if (_flagsFor(spot) case final flags)
                       if (_isWorked(spot, scored: flags.worked) case final worked)
+                      // The SAME predicate the pinned section is built from,
+                      // so a row under "Your Spots" can never fall through to
+                      // the suggest/log affordances — and vice versa.
+                      if (spotIsSelfOnly(spot, ourCall: _ourCall) case final selfOnly)
                       // The slide wraps the tile rather than living inside it,
                       // and carries a key of its OWN that never changes. The
                       // tile's key does change — it takes `_currentRowKey` on
@@ -1510,7 +1559,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
                         key: ValueKey('${section.key}|${_callOf(spot)}|${_freqOf(spot)}|${_timeOf(spot)}'),
                         group: _slideGroup,
                         background: theme.colorScheme.surface,
-                        leading: widget.onLogQso == null
+                        // Our own station is not a contact to log — no
+                        // slide-to-log on a row that is ours alone, same
+                        // reasoning as the tap below.
+                        leading: widget.onLogQso == null || selfOnly
                             ? null
                             : _SlideAction(
                                 icon: MdiIcons.upload,
@@ -1560,9 +1612,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
                           isSelf: flags.isSelf,
                           notices: flags.notices,
                           highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
-                          onTap: widget.onSuggestQso == null
-                              ? null
-                              : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
+                          // A spot that is ours alone suggests no QSO — there
+                          // is no one to work. Tapping it re-tunes instead:
+                          // the VFO goes back to the spotted state, which is
+                          // what the operator wants back after wandering off
+                          // to hunt.
+                          onTap: selfOnly
+                              ? _retuneActionFor(spot)
+                              : widget.onSuggestQso == null
+                                  ? null
+                                  : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
                         ),
                       ),
                 ],
@@ -1616,6 +1675,35 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// second implementation of the thing the operator can already see.
   void _logSpot(Map<String, dynamic> spot) {
     widget.onLogQso?.call(suggestedQsoFromSpot(spot));
+  }
+
+  /// The tap for a row that is ours alone, or null when the spot carries
+  /// nothing restorable at all — a row must not accept a tap it cannot honor.
+  VoidCallback? _retuneActionFor(Map<String, dynamic> spot) {
+    if (_freqOf(spot) == null && _bandOf(spot) == null && _modeOf(spot) == null) return null;
+    return () => _retuneToSelfSpot(spot);
+  }
+
+  /// Tapped a self row: put the VFO back in the state the spot announced —
+  /// frequency (band follows it) and mode, everything the VFO holds, but
+  /// nothing QSO-shaped. Through [RadioService.setVfo] like the `setVfo`
+  /// command action, so CAT re-tunes a connected radio. A freq-less spot
+  /// still restores what it can: its band (which clears the frequency,
+  /// per setVfo's convention) and/or mode.
+  ///
+  /// The mode is uppercased for the same reason as [_spotModeFor] (sources
+  /// pass their API's casing through), and more than a display concern here:
+  /// the VFO's mode persists and seeds every subsequently logged QSO. Not
+  /// [_spotModeFor] itself — its `''` for an absent mode would clobber the
+  /// VFO's mode where null leaves it alone.
+  void _retuneToSelfSpot(Map<String, dynamic> spot) {
+    final freq = _freqOf(spot);
+    final mode = _modeOf(spot)?.toUpperCase();
+    if (freq != null) {
+      widget.services.radio.setVfo('vfoA', freq: freq, mode: mode);
+    } else {
+      widget.services.radio.setVfo('vfoA', band: _bandOf(spot), mode: mode);
+    }
   }
 
   /// The individual operators on a spot. A merged multi-op spot carries them
@@ -1810,6 +1898,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// narrowed to one — "All Spots" while filtered to a single band would
   /// misleadingly suggest the filter had no effect.
   String _sectionLabel(Translations t, String key) => switch (key) {
+        'self' => t.operation.spots.yourSpots,
         'notes' => t.operation.spots.callsOfNote,
         'spots' => _isSingleBandFilter ? _bandFilter : t.operation.spots.allSpots,
         '?' => t.operation.spots.unknownBand,

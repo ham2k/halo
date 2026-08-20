@@ -379,6 +379,7 @@
       "spotsCountFiltered": "Showing ${count} of ${total} spots",
       "ageMinutes": "${minutes} minutes",
       "callsOfNote": "Calls of Note",
+      "yourSpots": "Your Spots",
       "allSpots": "All Spots",
       "continents": {
         "af": "Africa",

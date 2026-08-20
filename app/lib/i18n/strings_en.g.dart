@@ -2225,6 +2225,9 @@ class Translations$operation$spots$en {
 	/// en: 'Calls of Note'
 	String get callsOfNote => 'Calls of Note';
 
+	/// en: 'Your Spots'
+	String get yourSpots => 'Your Spots';
+
 	/// en: 'All Spots'
 	String get allSpots => 'All Spots';
 
@@ -4988,6 +4991,7 @@ extension on Translations {
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Calls of Note',
+			'operation.spots.yourSpots' => 'Your Spots',
 			'operation.spots.allSpots' => 'All Spots',
 			'operation.spots.continents.af' => 'Africa',
 			'operation.spots.continents.as' => 'Asia',
@@ -5208,9 +5212,9 @@ extension on Translations {
 			'formChrome.storageUnavailable' => 'Logins unavailable',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
-			'qsoEditForm.theirGrid' => 'Grid',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
@@ -5722,9 +5726,9 @@ extension on Translations {
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
-			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			_ => null,
 		} ?? switch (path) {
+			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
 			'staleness.quitAndReopen' => 'Quit the app and open it again to apply it.',

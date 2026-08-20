@@ -1076,6 +1076,7 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutos';
 	@override String get callsOfNote => 'Indicativos destacados';
+	@override String get yourSpots => 'Tus spots';
 	@override String get allSpots => 'Todos los spots';
 	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
 	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
@@ -2473,6 +2474,7 @@ extension on TranslationsEs {
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
 			'operation.spots.callsOfNote' => 'Indicativos destacados',
+			'operation.spots.yourSpots' => 'Tus spots',
 			'operation.spots.allSpots' => 'Todos los spots',
 			'operation.spots.continents.af' => 'África',
 			'operation.spots.continents.as' => 'Asia',
@@ -2706,9 +2708,9 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
-			'settings.layoutCustomization.title' => 'Personalización de Disposición',
 			_ => null,
 		} ?? switch (path) {
+			'settings.layoutCustomization.title' => 'Personalización de Disposición',
 			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
 			'settings.layoutCustomization.descriptionOff' => 'La vista de registro usa su disposición estándar',
 			'settings.layoutDensity' => 'Densidad del Diseño',
@@ -3220,9 +3222,9 @@ extension on TranslationsEs {
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
 			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
-			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
 			'switchAccounts.emailSent' => ({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.',
 			'switchAccounts.resendEmail' => 'Reenviar email',
 			'switchAccounts.qrPrompt' => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.',

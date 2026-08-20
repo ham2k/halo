@@ -400,6 +400,57 @@ void main() {
       expect(sections.map((s) => s.key), ['notes', '20m']);
       expect((sections.first.spots.single['their'] as Map)['call'], 'K1ABC,W1XYZ');
     });
+
+    test('selfSpots pin a "self" section ahead of everything, "notes" included', () {
+      // The self section is where the operator finds their own announcement to
+      // tap back to — anything sorting above it (even the notes pin) buries it.
+      final spots = [
+        _spot(call: 'K1ABC', band: '20m', timeInMillis: 1000),
+        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
+      ];
+      final self = [_spot(call: 'N0CALL', band: '30m', timeInMillis: 2000)];
+
+      final sections = sectionSpots(spots, selfSpots: self, callsWithNotes: {'K1ABC'});
+
+      expect(sections.map((s) => s.key), ['self', 'notes', '40m', '20m']);
+      expect((sections.first.spots.single['their'] as Map)['call'], 'N0CALL');
+    });
+
+    test('selfSpots alone still produce their section on an otherwise-empty board', () {
+      // The caller passes selfSpots UNfiltered: the filters emptying the rest
+      // of the list — a band filter following a wandering VFO — is exactly the
+      // moment the pin exists for, so it must not vanish with them.
+      final self = [_spot(call: 'N0CALL', band: '20m', timeInMillis: 1000)];
+
+      final sections = sectionSpots([], selfSpots: self, callsWithNotes: {});
+
+      expect(sections.map((s) => s.key), ['self']);
+    });
+  });
+
+  group('spotIsSelfOnly', () {
+    test('a spot for exactly our station is self-only, case-insensitively', () {
+      final spot = _spot(call: 'n0call', band: '20m', timeInMillis: 1000);
+
+      expect(spotIsSelfOnly(spot, ourCall: 'N0CALL'), isTrue);
+    });
+
+    test('a merged multi-op spot that merely includes us is NOT self-only', () {
+      // The self affordances (pin, tap-to-retune, no slide-to-log) all key
+      // off this answer. Any-of matching here would steal the tap from a
+      // row that still carries another workable station.
+      final spot = _spot(call: 'W1XYZ,N0CALL', band: '20m', timeInMillis: 1000);
+
+      expect(spotIsSelfOnly(spot, ourCall: 'N0CALL'), isFalse);
+    });
+
+    test('no station call, or a call-less spot, is never self-only', () {
+      final spot = _spot(call: 'N0CALL', band: '20m', timeInMillis: 1000);
+
+      expect(spotIsSelfOnly(spot, ourCall: null), isFalse);
+      expect(spotIsSelfOnly(spot, ourCall: ''), isFalse);
+      expect(spotIsSelfOnly({'refs': const <Map<String, dynamic>>[]}, ourCall: 'N0CALL'), isFalse);
+    });
   });
 
   group('suggestedQsoFromSpot', () {
