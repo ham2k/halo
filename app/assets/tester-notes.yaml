@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"145":
   changes:
     - "iOS/Android: Check for Updates now finds new builds and opens the store"
     - Swipe a spot row right to log it, left to set it aside
