@@ -588,6 +588,51 @@ void main() {
       expect(logged.single['their'], {'call': 'K0001'});
     });
 
+    // The trailing action always reverses what the row SAYS, so it reads the
+    // same whether the strikethrough came from scoring or from an earlier
+    // slide. Only the slide-made case is reachable from this harness (scoring
+    // arrives through the extension host), but both go through the one
+    // `worked` value the row is built from.
+    testWidgets('the trailing action flips between taking a spot off the board and putting it back',
+        (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      // A live spot offers backspace — take this off my board.
+      await slide(tester, 'K0001', -120);
+      expect(find.byIcon(MdiIcons.backspace), findsOneWidget);
+      expect(find.byIcon(MdiIcons.undoVariant), findsNothing);
+
+      await tester.tap(find.byIcon(MdiIcons.backspace));
+      await tester.pumpAndSettle();
+
+      // Now struck through, the same slide offers undo instead.
+      await slide(tester, 'K0001', -120);
+      expect(find.byIcon(MdiIcons.undoVariant), findsOneWidget);
+      expect(find.byIcon(MdiIcons.backspace), findsNothing);
+    });
+
+    testWidgets('a spot taken off the board can still be logged', (tester) async {
+      // Working a station twice is the operator's call to make, not this
+      // panel's to prevent — a second contact on another band or mode is an
+      // ordinary thing to want, and the row being struck through says only
+      // that they have worked it before.
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: logged.add,
+      );
+
+      await slide(tester, 'K0001', -400);
+      await slide(tester, 'K0001', 400);
+
+      expect(logged.single['their'], {'call': 'K0001'});
+    });
+
     testWidgets('sliding left far enough strikes the row through, and again restores it',
         (tester) async {
       final services = await servicesWith(_board(6));

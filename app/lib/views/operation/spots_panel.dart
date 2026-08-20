@@ -776,12 +776,21 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// one the headers paint with.
   late LayoutMetrics _metrics;
 
-  /// Calls the operator has slid away this session. In memory deliberately:
-  /// an ignore is a "not this one, right now" about a board that turns over
-  /// every few minutes, not a fact about the station worth outliving the app.
-  /// Keyed by callsign alone, so the same operator re-spotted on another
-  /// frequency stays ignored — which is the case the gesture exists for.
-  final Set<String> _ignoredCalls = {};
+  /// Per-callsign overrides of what scoring says about a spot: true forces the
+  /// row to read as worked (slid left to set it aside), false forces it to read
+  /// as NOT worked — which is how a genuine duplicate is put back on the board,
+  /// and how an ignore is taken back.
+  ///
+  /// An override never touches the log. Nothing here can un-work a contact;
+  /// this only changes what the row says, which is the whole of what the
+  /// operator asked for when they slid it.
+  ///
+  /// In memory deliberately: this is a "not this one, right now" about a board
+  /// that turns over every few minutes, not a fact about the station worth
+  /// outliving the app. Keyed by callsign alone, so the same operator
+  /// re-spotted on another frequency keeps the verdict — which is the case the
+  /// gesture exists for.
+  final Map<String, bool> _workedOverride = {};
 
   /// Keeps one row's actions open at a time.
   final _SlideGroup _slideGroup = _SlideGroup();
@@ -1481,6 +1490,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
                   _SpotsSectionHeader(section.label),
                   for (final (index, spot) in section.spots.indexed)
                     if (_flagsFor(spot) case final flags)
+                      if (_isWorked(spot, scored: flags.worked) case final worked)
                       // The slide wraps the tile rather than living inside it,
                       // and carries a key of its OWN that never changes. The
                       // tile's key does change — it takes `_currentRowKey` on
@@ -1519,14 +1529,19 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                     ? null
                                     : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false),
                               ),
+                        // Always the reverse of what the row currently says, so
+                        // the gesture reads the same whether the row was struck
+                        // through by scoring or by an earlier slide: undo puts a
+                        // worked spot back on the board, backspace takes a live
+                        // one off it.
                         trailing: _SlideAction(
-                          icon: _isIgnored(spot) ? MdiIcons.restore : MdiIcons.eraser,
-                          label: _isIgnored(spot)
+                          icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
+                          label: worked
                               ? t.operation.spots.slideRestore
                               : t.operation.spots.slideIgnore,
                           background: theme.colorScheme.surfaceContainerHighest,
                           foreground: theme.colorScheme.onSurface,
-                          onPressed: () => _toggleIgnored(spot),
+                          onPressed: () => _toggleWorked(spot, worked: worked),
                         ),
                         child: _SpotTile(
                           key: _isCurrentRow(sectionIndex, index)
@@ -1538,10 +1553,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
                           leftWidth: leftWidth,
                           sortByAge: _sortBy == 'time',
                           activityControls: _activityControls,
-                          // An ignored spot reads exactly like a worked one:
-                          // the operator's judgement that they are done with
-                          // it is the same statement scoring makes.
-                          worked: flags.worked || _isIgnored(spot),
+                          // A spot set aside by a slide reads exactly like one
+                          // scoring calls worked, and a slide can equally put a
+                          // scored duplicate back — see [_isWorked].
+                          worked: worked,
                           isSelf: flags.isSelf,
                           notices: flags.notices,
                           highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
@@ -1567,24 +1582,30 @@ class _SpotsPanelState extends State<SpotsPanel> {
         hasEmoji: _noteEmojiOf(spot) != null,
       );
 
-  /// Whether this spot has been slid away this session. Every operator on a
-  /// merged multi-op spot must be ignored for the row to read as ignored —
-  /// the same "all of them" rule scoring applies to `worked`, so one
-  /// dismissed operator cannot hide a station still worth working.
-  bool _isIgnored(Map<String, dynamic> spot) {
+  /// Whether [spot] reads as worked, [scored] being what candidate scoring
+  /// says about it.
+  ///
+  /// An override only applies when EVERY operator on a merged multi-op spot
+  /// carries the same one — the "all of them" rule scoring itself uses. One
+  /// dismissed operator cannot hide a station still worth working, and one
+  /// restored operator cannot un-strike the rest.
+  bool _isWorked(Map<String, dynamic> spot, {required bool scored}) {
     final calls = _operatorCallsOf(spot);
-    return calls.isNotEmpty && calls.every(_ignoredCalls.contains);
+    if (calls.isEmpty) return scored;
+    final verdicts = calls.map((call) => _workedOverride[call]).toSet();
+    final agreed = verdicts.length == 1 ? verdicts.first : null;
+    return agreed ?? scored;
   }
 
-  /// Slid left: ignore every operator on the spot, or restore them all.
-  void _toggleIgnored(Map<String, dynamic> spot) {
+  /// Slid left: flip what the row says about having been worked, for every
+  /// operator on it. [worked] is what it says now, so this always reverses the
+  /// thing the operator is looking at.
+  void _toggleWorked(Map<String, dynamic> spot, {required bool worked}) {
     final calls = _operatorCallsOf(spot);
     if (calls.isEmpty) return;
     setState(() {
-      if (calls.every(_ignoredCalls.contains)) {
-        _ignoredCalls.removeAll(calls);
-      } else {
-        _ignoredCalls.addAll(calls);
+      for (final call in calls) {
+        _workedOverride[call] = !worked;
       }
     });
   }

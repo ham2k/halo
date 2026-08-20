@@ -616,6 +616,13 @@ apart without looking:
   the icon across its well to sit against the row it will act on, which is the
   visible half of the same statement.
 
+An action that has two senses shows **the one that reverses what the row
+currently says**, so the gesture never depends on remembering how the row got
+that way. In the spots list the trailing action is backspace on a live spot and
+undo on a struck-through one — including one struck through by scoring rather
+than by an earlier slide, which the operator can put back on the board. Doing
+so changes only what the row says; nothing here edits the log.
+
 Actions are **icons alone**, with the word carried as a `Semantics` label —
 there are no tooltips in this app. Only **one row is open at a time**, and
 scrolling closes whatever was open: a row left open under a thumb that has
