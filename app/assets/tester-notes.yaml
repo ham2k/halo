@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"146":
   changes:
     - Lookups now tidy up names and towns, and show QRZ nicknames
     - Swiping spot rows now works even better
