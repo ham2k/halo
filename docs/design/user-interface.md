@@ -605,16 +605,20 @@ apart without looking:
 - **The peek**, half an action well's width. Past it the row rests open on
   release with the action's icon exposed to tap, and any *preparatory* effect
   happens now — the spots list makes the row's station the suggested QSO here.
-  A light `HapticFeedback.selectionClick` marks it. Nothing preparatory may
-  fire before this point: on the first pixel of travel, a twitch during a
-  scroll would retune the radio.
-- **The commit**, half the ROW's width. Releasing past it performs the action
-  outright, without the icon ever being pressed. A heavier
+  A `HapticFeedback.mediumImpact` marks it. Nothing preparatory may fire before
+  this point: on the first pixel of travel, a twitch during a scroll would
+  retune the radio. Up to the commit the icon centres in whatever width is
+  revealed, so it arrives with the well and rests centred in it.
+- **The commit**, two fifths of the ROW's width. Releasing past it performs the
+  action outright, without the icon ever being pressed. A heavier
   `HapticFeedback.heavyImpact` marks it, in **both** directions — reversing
   back under the threshold is a promise that release will no longer act, and
   it deserves the same weight that promised it would. Crossing it also slides
   the icon across its well to sit against the row it will act on, which is the
   visible half of the same statement.
+
+Both are impacts rather than selection ticks: the gesture is made without
+looking, and feedback the hand can miss is feedback the gesture does not have.
 
 An action that has two senses shows **the one that reverses what the row
 currently says**, so the gesture never depends on remembering how the row got
@@ -628,14 +632,59 @@ there are no tooltips in this app. Only **one row is open at a time**, and
 scrolling closes whatever was open: a row left open under a thumb that has
 moved on is an armed action over whatever has since scrolled into its place.
 
+A row asked to close while a finger is still on it **refuses** — zeroing its
+displacement mid-gesture restarts the drag from nothing under a finger that
+never lifted. So whatever tracks open rows must keep tracking a refuser rather
+than forget it to make room for the next one. A forgotten row is open with
+nothing able to close it, and every later slide leaves another beside it: the
+list fills with open rows and none of them answer to anything. This is the
+ordinary path, not a corner — crossing the peek suggests the QSO, which arms
+the list's own reveal scroll, which asks every open row to close mid-drag.
+
+**What a peek fills belongs to the open row, not to the operator.** The
+preparatory effect lasts exactly as long as the row stays open: dragging back,
+setting the spot aside with the other action, opening another row and scrolling
+the list all take it back again, and the fields return to empty. The moment the
+operator types over the fill it becomes theirs, and closing the row no longer
+touches it.
+
+**An open row is a question, and answering it anywhere closes it.** Tapping any
+spot closes whatever row is open — a tap chooses a station outright, which is
+an answer — and so does the operator going to the logging panel and typing in
+(or wiping) the call field. Leaving the row armed behind either one leaves a
+gesture pointing at a station they have already moved past. The close runs
+before the tap's own suggestion, so the closing row's withdrawal cannot take
+the newly chosen station straight back out.
+
+**Choosing a station is not composing an entry.** A callsign a suggestion put
+in the fields — slid or tapped — is never the work in progress that the next
+suggestion has to ask about; only something the operator typed is. So one spot
+replaces another silently however either was chosen, and the log request that
+ends a slide never asks permission to overwrite what that same slide filled in
+a moment earlier. Whose the entry is, is decided by comparing the field to what
+was put there, NOT by a flag set from the field's change listener: that listener
+fires for every programmatic rewrite as well as for typing, and one spurious
+fire turns a suggestion nobody composed into work — after which every spot is
+refused, in silence.
+
 **A slide may not destroy work the operator cannot see.** The panel a slide
 acts on is not the one being looked at, so anything the action would overwrite
-— an edit in progress, a part-typed entry — earns a prompt offering to go back
-to it or to clear it and proceed, and "go back" surfaces the panel so the
-operator lands on what they kept. The reversible half of the gesture is held to
-a stricter rule still: a *peek*, which may yet be dragged back, is dropped
-rather than applied when it would overwrite, since applying it also moves the
-VFO and so retunes a connected radio.
+— an edit in progress, a station part-typed into the call field — earns a
+prompt offering to go back to it or to clear it and proceed, and "go back"
+surfaces the panel so the operator lands on what they kept. Work here means a
+**station**: a frequency, a reference or a stray field with no callsign
+attached is scaffolding the incoming spot replaces anyway, and prompting over
+it would train the operator to dismiss the prompt.
+
+The prompt comes at the **peek**, not at the commit — the point of filling the
+fields early is that what the gesture would do is on screen before it happens,
+and a slide that silently fills nothing has already failed at that. But it
+waits for the gesture to be over: the peek fires mid-drag, and a dialog raised
+under a moving finger takes the pointer while the drag runs on underneath it,
+so the release still commits. The suggestion is HELD instead, and put to the
+operator when the row comes to rest open. Declining keeps their work and ends
+the gesture; carrying the same slide through to a commit asks once more, since
+the commit destroys what the peek only offered to.
 
 **A slide never navigates.** The operator sliding a row is working the list
 they are looking at, and surfacing another pane — which a *tap* on the same

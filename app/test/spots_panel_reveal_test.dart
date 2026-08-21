@@ -169,6 +169,9 @@ void main() {
     double textScale = 1.0,
     ValueNotifier<LayoutDensity>? density,
     void Function(Map<String, dynamic> qso, {bool reveal})? onSuggestQso,
+    int closeSlidesSerial = 0,
+    VoidCallback? onWithdrawSuggestion,
+    VoidCallback? onSuggestionSettled,
     ValueChanged<Map<String, dynamic>>? onLogQso,
   }) async {
     final densityNotifier = density ?? ValueNotifier(LayoutDensity.normal);
@@ -193,6 +196,9 @@ void main() {
                       visible: visible,
                       callInfo: callInfo,
                       onSuggestQso: onSuggestQso,
+                      closeSlidesSerial: closeSlidesSerial,
+                      onWithdrawSuggestion: onWithdrawSuggestion,
+                      onSuggestionSettled: onSuggestionSettled,
                       onLogQso: onLogQso,
                     ),
                   ),
@@ -528,16 +534,24 @@ void main() {
 
       double iconDx() => tester.getCenter(find.byIcon(MdiIcons.upload)).dx;
 
+      final rowDx = tester.getCenter(find.text('K0001')).dx;
       final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
-      // Open, but short of the commit point — the icon sits at the OUTER edge.
+      // Open, but short of the commit point — the icon rides centred in the
+      // well the drag is opening.
       for (var i = 0; i < 10; i++) {
         await gesture.moveBy(const Offset(12, 0));
         await tester.pump();
       }
+      // The content's displacement IS the width of the well it uncovered, and
+      // measuring it beats deriving it from the travel: the recogniser eats an
+      // opening slop this test has no business knowing the size of.
+      final revealed = tester.getCenter(find.text('K0001')).dx - rowDx;
+      expect(iconDx(), closeTo(revealed / 2, 1),
+          reason: 'centred in what has been uncovered, not pinned to either edge');
       final resting = iconDx();
 
-      // Past half the 500pt row: the icon rides across to sit against the row
-      // it is about to act on.
+      // Past two fifths of the 500pt row: the icon rides across to sit against
+      // the row it is about to act on.
       for (var i = 0; i < 20; i++) {
         await gesture.moveBy(const Offset(12, 0));
         await tester.pump();
@@ -551,7 +565,25 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('a drag past half the row logs it on release', (tester) async {
+    testWidgets('a row resting open centres its icon in the well', (tester) async {
+      final services = await servicesWith(_board(6));
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'K0001', 120);
+
+      // 72pt well, so its middle is 36 from the row's leading edge. The
+      // mutation this catches is pinning the icon back to the outer edge,
+      // which leaves it hard against the panel's frame.
+      expect(tester.getCenter(find.byIcon(MdiIcons.upload)).dx, closeTo(36, 1));
+    });
+
+    testWidgets('a drag past two fifths of the row logs it on release', (tester) async {
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
       await pumpPanel(
@@ -562,12 +594,234 @@ void main() {
         onLogQso: logged.add,
       );
 
-      // The panel is 500 wide, so 400 is comfortably past the half-width
-      // commit point. Mutation check: drop the threshold test in _onDragEnd
-      // and the short-drag case above logs too.
-      await slide(tester, 'K0001', 400);
+      // The panel is 500 wide, so the commit point is 200 of displacement and
+      // 240 of travel clears it by less than the old half-width rule would
+      // have — a drag that rests open under 0.5 and fires under 0.4. Mutation
+      // check: drop the threshold test in _onDragEnd and the short-drag case
+      // above logs too; raise the fraction back to 0.5 and this one stops.
+      await slide(tester, 'K0001', 240);
 
       expect(logged.single['their'], {'call': 'K0001'});
+    });
+
+    // The peek's fill is the OPEN ROW's, not the operator's. Every way a row
+    // stops being open has to take it back, or the logging fields keep a
+    // station the operator has visibly moved on from — and the next Log is a
+    // contact with whoever was slid last.
+    testWidgets('dragging back takes the suggestion away again', (tester) async {
+      final services = await servicesWith(_board(6));
+      final suggested = <Map<String, dynamic>>[];
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      expect(suggested, hasLength(1), reason: 'the peek filled the fields');
+      expect(withdrawn, 0);
+
+      // All the way back under the peek, without ever lifting: the gesture the
+      // operator changed their mind halfway through.
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(-12, 0));
+        await tester.pump();
+      }
+      expect(withdrawn, 1, reason: 'the fields are no longer anybody\'s choice of station');
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('setting the spot aside takes it away too', (tester) async {
+      final services = await servicesWith(_board(6));
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      // Open on the log side, then carry the same finger through the middle
+      // and out the other side to strike the row off the board.
+      await slide(tester, 'K0001', 120);
+      await slide(tester, 'K0001', -300);
+
+      expect(withdrawn, 1, reason: 'a spot being set aside is not the spot being worked');
+    });
+
+    testWidgets('opening another row hands the fields to the new spot', (tester) async {
+      final services = await servicesWith(_board(6));
+      final suggested = <String>[];
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso['their']['call'] as String),
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'K0001', 120);
+      await slide(tester, 'K0002', 120);
+
+      // Order matters as much as the count: the first row's withdrawal has to
+      // land BEFORE the second row's suggestion, or the panel sees the new
+      // spot arrive over a call it still believes is in progress and asks the
+      // operator about work it filled in itself.
+      expect(suggested, ['K0001', 'K0002']);
+      expect(withdrawn, 1, reason: 'the row that filled the fields closed when the next one opened');
+    });
+
+    testWidgets('a committed slide spends its peek rather than withdrawing it', (tester) async {
+      final services = await servicesWith(_board(6));
+      var withdrawn = 0;
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: logged.add,
+      );
+
+      await slide(tester, 'K0001', 240);
+
+      expect(logged, hasLength(1));
+      // The mutation this catches: withdrawing on the way to firing, which
+      // empties the very fields the log is made from.
+      expect(withdrawn, 0, reason: 'what the peek filled is what the commit logs');
+    });
+
+    testWidgets('the row coming to rest is what settles the gesture', (tester) async {
+      final services = await servicesWith(_board(6));
+      var settled = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onSuggestionSettled: () => settled++,
+        onLogQso: (_) {},
+      );
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      // Still down. Anything the panel raises here is a modal over a live
+      // gesture: the drag runs on underneath it and the release still commits.
+      expect(settled, 0, reason: 'the finger has not left the row');
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(settled, 1);
+    });
+
+    testWidgets('REPRO a slashed call keeps taking suggestions', (tester) async {
+      // A slashed call is a spot like any other, but the logging panel reports
+      // its own callsign back as `callInfo` — and everything the panel does
+      // with that (locate the row, arm the reveal, scroll) runs between one
+      // slide and the next.
+      final services = await servicesWith([
+        _spot('EA3/KI2D'),
+        _spot('W2DEF', freq: 14260.0),
+      ]);
+      final suggested = <String>[];
+      var withdrawn = 0;
+      final setCall = await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso['their']['call'] as String),
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'EA3/KI2D', 120);
+      expect(suggested, ['EA3/KI2D']);
+      // What the logging panel sends back once it has taken the suggestion.
+      await setCall(const CallInfoData(call: 'EA3/KI2D'));
+
+      await slide(tester, 'W2DEF', 120);
+      expect(suggested, ['EA3/KI2D', 'W2DEF'], reason: 'the next slide still fills the fields');
+      expect(withdrawn, greaterThanOrEqualTo(1));
+    });
+
+    testWidgets('tapping a spot closes whatever row is open', (tester) async {
+      final services = await servicesWith(_board(6));
+      final suggested = <String>[];
+      final reveals = <bool>[];
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {
+          suggested.add(qso['their']['call'] as String);
+          reveals.add(reveal);
+        },
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'K0001', 120);
+      await tester.tap(find.text('K0002'));
+      await tester.pumpAndSettle();
+
+      // The tap answers the question the open row was asking, so the row may
+      // not stay armed behind it — and the withdrawal has to land BEFORE the
+      // tap's own suggestion, or it takes the tapped station straight back out.
+      expect(withdrawn, 1);
+      expect(suggested, ['K0001', 'K0002']);
+      expect(reveals, [false, true], reason: 'a tap reveals the panel, a slide never does');
+      expect(find.byIcon(MdiIcons.upload), findsNothing, reason: 'the open row closed');
+    });
+
+    testWidgets('the logging panel taking the fields closes an open row', (tester) async {
+      final services = await servicesWith(_board(6));
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        closeSlidesSerial: 0,
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+      await slide(tester, 'K0001', 120);
+      expect(find.byIcon(MdiIcons.upload), findsOneWidget);
+
+      // What the operator typing in (or wiping) the call field arrives as.
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        closeSlidesSerial: 1,
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: () => withdrawn++,
+        onLogQso: (_) {},
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(MdiIcons.upload), findsNothing);
+      expect(withdrawn, 1, reason: 'and the peek it made goes with it');
     });
 
     testWidgets('tapping the revealed button logs it', (tester) async {
@@ -774,6 +1028,39 @@ void main() {
 
       expect(suggested, hasLength(1),
           reason: 'the row was never reset, so the peek was not re-crossed');
+    });
+
+    testWidgets('a row that refused to close mid-drag is still the open one afterwards', (tester) async {
+      // The refusal and the bookkeeping have to agree. Crossing the peek
+      // suggests the QSO, which arms the panel's own reveal scroll, whose
+      // ScrollStartNotification closes open rows — and this row, with a finger
+      // still on it, says no. A group that forgets it anyway leaves a row that
+      // is open and untracked: nothing closes it, and every later slide adds
+      // another, until the list is a column of open rows.
+      final services = await servicesWith(_board(60));
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      tester.widget<Scrollable>(find.byType(Scrollable).first).controller?.jumpTo(20);
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(MdiIcons.upload), findsOneWidget, reason: 'the drag survived the scroll');
+
+      await slide(tester, 'K0004', 120);
+
+      expect(find.byIcon(MdiIcons.upload), findsOneWidget, reason: 'and only one row is ever open');
     });
 
     testWidgets('opening a second row closes the first, and the second ends up open',

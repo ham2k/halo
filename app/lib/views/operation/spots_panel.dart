@@ -620,6 +620,24 @@ class SpotsPanel extends StatefulWidget {
   final HaLoServices services;
   final void Function(Map<String, dynamic> qso, {bool reveal})? onSuggestQso;
 
+  /// Take back the suggestion a slide made — the row it belonged to is no
+  /// longer open, so the logging fields it filled are no longer anybody's
+  /// choice of station. Every way a row closes comes through here: dragged
+  /// back, set aside with the other action, closed by another row opening,
+  /// scrolled away.
+  final VoidCallback? onWithdrawSuggestion;
+
+  /// A slid row has come to rest open and the finger is off it. Anything the
+  /// logging panel held back rather than raise mid-drag — the prompt over
+  /// work a suggestion would overwrite — is put to the operator here.
+  final VoidCallback? onSuggestionSettled;
+
+  /// Bumped when the operator works the logging fields themselves — typing in
+  /// the call field, or wiping it. An open row is an offer about which station
+  /// to work, and they have just answered it from the other panel: leaving it
+  /// armed leaves a gesture pointing at a spot they have moved past.
+  final int closeSlidesSerial;
+
   /// Log this QSO outright — the spot row's slid-right action. Distinct from
   /// [onSuggestQso], which only fills the fields and leaves the operator to
   /// press Log: this one IS the press, so the row's gesture ends in a logged
@@ -670,6 +688,9 @@ class SpotsPanel extends StatefulWidget {
     required this.logRevision,
     required this.visible,
     this.onSuggestQso,
+    this.onWithdrawSuggestion,
+    this.onSuggestionSettled,
+    this.closeSlidesSerial = 0,
     this.onLogQso,
     this.qsos = const [],
     this.callInfo,
@@ -1009,6 +1030,14 @@ class _SpotsPanelState extends State<SpotsPanel> {
   void didUpdateWidget(SpotsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.logRevision != oldWidget.logRevision) _scheduleSpotScores();
+    if (widget.closeSlidesSerial != oldWidget.closeSlidesSerial) {
+      // After the frame: this runs during a build, and closing a row rebuilds
+      // it and reaches back up to the operation view to take its suggestion
+      // back — neither of which may happen while the tree is being built.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _slideGroup.closeAll();
+      });
+    }
     if (widget.visible != oldWidget.visible) {
       oldWidget.visible.removeListener(_onVisibilityChanged);
       widget.visible.addListener(_onVisibilityChanged);
@@ -1580,6 +1609,14 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                 onRevealed: widget.onSuggestQso == null
                                     ? null
                                     : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false),
+                                // The fill lasts as long as the row is open —
+                                // a spot the operator dragged back, set aside
+                                // or scrolled past is not the station they are
+                                // working, and leaving it in the fields makes
+                                // the next Log a contact with whoever was slid
+                                // last.
+                                onWithdrawn: widget.onWithdrawSuggestion,
+                                onSettled: widget.onSuggestionSettled,
                               ),
                         // Always the reverse of what the row currently says, so
                         // the gesture reads the same whether the row was struck
@@ -1617,11 +1654,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
                           // the VFO goes back to the spotted state, which is
                           // what the operator wants back after wandering off
                           // to hunt.
+                          // Every tap closes whatever is open first: a tap is
+                          // the operator choosing a station outright, which
+                          // answers the question the open row was asking. The
+                          // close runs BEFORE the suggestion so the row's own
+                          // withdrawal cannot land on top of it.
                           onTap: selfOnly
-                              ? _retuneActionFor(spot)
+                              ? _closingFirst(_retuneActionFor(spot))
                               : widget.onSuggestQso == null
                                   ? null
-                                  : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot)),
+                                  : _closingFirst(() => widget.onSuggestQso!(suggestedQsoFromSpot(spot))),
                         ),
                       ),
                 ],
@@ -1679,6 +1721,17 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   /// The tap for a row that is ours alone, or null when the spot carries
   /// nothing restorable at all — a row must not accept a tap it cannot honor.
+  /// Wraps a row's tap handler so it closes whatever row is currently open
+  /// before it runs — and returns null for a row that has no handler, so a
+  /// dead row stays dead rather than becoming tappable just to close another.
+  VoidCallback? _closingFirst(VoidCallback? onTap) {
+    if (onTap == null) return null;
+    return () {
+      _slideGroup.closeAll();
+      onTap();
+    };
+  }
+
   VoidCallback? _retuneActionFor(Map<String, dynamic> spot) {
     if (_freqOf(spot) == null && _bandOf(spot) == null && _modeOf(spot) == null) return null;
     return () => _retuneToSelfSpot(spot);
@@ -2273,6 +2326,18 @@ class _SlideAction {
   /// from doing it.
   final VoidCallback? onRevealed;
 
+  /// The counterpart to [onRevealed]: the peek was given up without this
+  /// action ever firing — dragged back, closed by another row, scrolled away.
+  /// Whatever [onRevealed] put on screen belongs to the open row and may not
+  /// outlive it.
+  final VoidCallback? onWithdrawn;
+
+  /// The row has come to rest open on this side and the finger is off it.
+  /// Anything that has to face the operator waits for this: a dialog raised
+  /// mid-drag takes the pointer while the drag runs on underneath it, and the
+  /// release still commits.
+  final VoidCallback? onSettled;
+
   const _SlideAction({
     required this.icon,
     required this.label,
@@ -2280,6 +2345,8 @@ class _SlideAction {
     required this.foreground,
     required this.onPressed,
     this.onRevealed,
+    this.onWithdrawn,
+    this.onSettled,
   });
 }
 
@@ -2296,32 +2363,47 @@ const _slideActionWidth = 72.0;
 const _slidePeekThreshold = _slideActionWidth / 2;
 
 /// The share of the row's WIDTH a drag must pass for release to fire the
-/// action outright rather than resting open. Half is the point where the
-/// gesture stops reading as "show me the button" and starts reading as "do
-/// it" — and it is far enough from [_slidePeekThreshold] that settling open
-/// is never a near-miss of firing.
-const _slideCommitFraction = 0.5;
+/// action outright rather than resting open. Two fifths is the point where
+/// the gesture stops reading as "show me the button" and starts reading as
+/// "do it" — and it is far enough from [_slidePeekThreshold] that settling
+/// open is never a near-miss of firing.
+const _slideCommitFraction = 0.4;
 
 /// Which rows are open, so only ever one is. A row registers itself as it
 /// opens and the previous one closes; the panel also clears the group when
 /// the list scrolls, since a row left hanging open under the operator's
 /// thumb is a row whose action they did not choose to keep armed.
 class _SlideGroup extends ChangeNotifier {
-  _SlidableSpotRowState? _open;
+  /// Every row that is open, not just the latest one — because a row can
+  /// REFUSE to close, which it does while a finger is still on it (see
+  /// [_SlidableSpotRowState.close]). A group that tracked one row would have
+  /// to forget a refuser to make room for the next, and a forgotten row is
+  /// open with nothing able to close it: every later slide then leaves another
+  /// beside it, until the list is a column of open rows. The refusal is not a
+  /// rare path — crossing the peek suggests the QSO, which arms the panel's
+  /// own reveal scroll, whose ScrollStartNotification lands here mid-drag.
+  ///
+  /// One row is still all the operator ever sees open: every row opening
+  /// closes the others, and a refuser is closed at the next opportunity
+  /// instead of being abandoned.
+  final _open = <_SlidableSpotRowState>{};
 
   void opened(_SlidableSpotRowState row) {
-    if (identical(_open, row)) return;
-    _open?.close();
-    _open = row;
+    _closeAllExcept(row);
+    _open.add(row);
   }
 
-  void closed(_SlidableSpotRowState row) {
-    if (identical(_open, row)) _open = null;
-  }
+  void closed(_SlidableSpotRowState row) => _open.remove(row);
 
-  void closeAll() {
-    _open?.close();
-    _open = null;
+  void closeAll() => _closeAllExcept(null);
+
+  void _closeAllExcept(_SlidableSpotRowState? keep) {
+    for (final row in _open.toList()) {
+      if (identical(row, keep)) continue;
+      // `close` deregisters through [closed] when it succeeds; a refusal
+      // leaves the row here to be closed the next time something asks.
+      row.close();
+    }
   }
 }
 
@@ -2390,9 +2472,12 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
   }
 
   /// Slides shut without firing anything — what the group calls on the row
-  /// that was open when another one opens.
-  void close() {
-    if (!mounted || _dx == 0) return;
+  /// that was open when another one opens. Returns whether it actually did:
+  /// a row refuses while a finger is on it, and the group has to keep
+  /// tracking one that refused.
+  bool close() {
+    if (!mounted) return true;
+    if (_dx == 0) return true;
     // Never while the finger is down. Crossing the peek suggests the QSO,
     // which can arm the panel's own reveal scroll, whose ScrollStartNotification
     // closes open rows — including this one. Zeroing the displacement there
@@ -2400,8 +2485,9 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     // the row jumps back, can no longer reach the commit point, and re-crossing
     // the peek suggests a second time. It also deregisters the row, so it can
     // come to rest open with the group believing nothing is.
-    if (_dragging) return;
+    if (_dragging) return false;
     _animateTo(0);
+    return true;
   }
 
   void _animateTo(double target) {
@@ -2412,8 +2498,28 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     if (target == 0) {
       widget.group.closed(this);
       _pastCommit = false;
-      _revealedSign = 0;
+      _withdraw();
     }
+  }
+
+  /// Gives up the peek without firing its action. Everything [_SlideAction
+  /// .onRevealed] put on screen is undone here, so a spot's hold on the
+  /// logging fields lasts exactly as long as its row stays open.
+  void _withdraw() {
+    final sign = _revealedSign;
+    _revealedSign = 0;
+    if (sign == 0) return;
+    (sign > 0 ? widget.leading : widget.trailing)?.onWithdrawn?.call();
+  }
+
+  /// Runs an action and closes the row. The peek is SPENT rather than
+  /// withdrawn: what it revealed is what the action is about to act on, and
+  /// withdrawing it here would take the suggested QSO out of the logging
+  /// fields the log is made from.
+  void _fire(_SlideAction action) {
+    _revealedSign = 0;
+    _animateTo(0);
+    action.onPressed();
   }
 
   void _onDragStart(DragStartDetails details) {
@@ -2426,13 +2532,19 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     final min = widget.trailing == null ? 0.0 : -width;
     final next = (_dx + (details.primaryDelta ?? 0)).clamp(min, max);
     // Two thresholds, two different weights of feedback, so the hand can tell
-    // them apart without looking: a light tick where the station is picked up,
-    // a heavier one where releasing would act on it.
+    // them apart without looking: a medium tap where the station is picked up,
+    // a heavier one where releasing would act on it. Both are impacts rather
+    // than selection ticks — the gesture is made without looking, often on a
+    // phone in a pocket-sized grip, so the feedback has to carry.
     final sign = next.abs() < _slidePeekThreshold ? 0 : (next > 0 ? 1 : -1);
     if (sign != _revealedSign) {
-      _revealedSign = sign;
+      // Withdraw first, then reveal: dragging back through the middle and out
+      // the other side is one gesture, and the incoming side's suggestion must
+      // land AFTER the outgoing side has taken its own back.
+      _withdraw();
       if (sign != 0) {
-        HapticFeedback.selectionClick();
+        _revealedSign = sign;
+        HapticFeedback.mediumImpact();
         (sign > 0 ? widget.leading : widget.trailing)?.onRevealed?.call();
       }
     }
@@ -2452,14 +2564,14 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     if (_pastCommit && action != null) {
       // Fire on release, then slide shut — the row has done its job and
       // leaving the button sitting there invites a second press.
-      _animateTo(0);
-      action.onPressed();
+      _fire(action);
       return;
     }
     // Far enough to mean it: rest open with the button exposed to tap.
     // Anything shorter was a stray horizontal wobble during a scroll.
     if (_dx.abs() >= _slidePeekThreshold) {
       _animateTo(_dx > 0 ? _slideActionWidth : -_slideActionWidth);
+      action?.onSettled?.call();
     } else {
       _animateTo(0);
     }
@@ -2478,11 +2590,13 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     final past = revealed >= width * _slideCommitFraction;
     // Past the commit point the icon crosses its well to sit against the row
     // it will act on — the same edge the row is being dragged by. Before it,
-    // the icon rests at the outer edge like the button it still is. The move
-    // is the visible half of what the heavy tick says: this is armed now.
-    final alignment = leading
-        ? (past ? Alignment.centerRight : Alignment.centerLeft)
-        : (past ? Alignment.centerLeft : Alignment.centerRight);
+    // the icon centres in whatever width is revealed, so it arrives with the
+    // well and sits centred in it once the row rests open, like the button it
+    // still is. The move is the visible half of what the heavy tick says:
+    // this is armed now.
+    final alignment = past
+        ? (leading ? Alignment.centerRight : Alignment.centerLeft)
+        : Alignment.center;
     return Align(
       alignment: leading ? Alignment.centerLeft : Alignment.centerRight,
       child: SizedBox(
@@ -2490,10 +2604,7 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
         child: Material(
           color: action.background,
           child: InkWell(
-            onTap: () {
-              _animateTo(0);
-              action.onPressed();
-            },
+            onTap: () => _fire(action),
             // The label is a screen-reader one only: these are bare icons, and
             // this repo has no tooltips (a `tooltip:` anywhere in lib fails a
             // source-scanning test), so Semantics is where the word lives.

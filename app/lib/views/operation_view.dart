@@ -509,6 +509,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       // A slide peek is the one suggestion the operator has not committed to.
       _suggestedQsoIsTentative = !reveal;
     });
+    // A tentative suggestion belongs to the open row, and the panel may hold
+    // it back rather than overwrite work in progress — [_suggestionSettled]
+    // is where that is put to the operator, once the gesture is over, and
+    // [_withdrawSuggestedQso] is where it goes when the row closes.
     if (!reveal) return;
     // On two-pane layouts the logging pane is already visible on the left —
     // and tab 0 is Info there, so switching would be wrong twice over. In
@@ -516,6 +520,29 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // surface it (no-op when it's already visible).
     _revealLoggingPanel();
   }
+
+  /// Takes back a suggestion a slide made — the row that made it has closed.
+  /// Only ever a tentative one: a station the operator TAPPED (or typed) is
+  /// theirs, and a slide closing somewhere else may not take it away.
+  void _withdrawSuggestedQso() {
+    if (!_suggestedQsoIsTentative) return;
+    setState(() {
+      _suggestedQso = null;
+      _suggestedQsoIsTentative = false;
+    });
+  }
+
+  /// Bumped when a slid row comes to rest open — see
+  /// `LoggingControls.suggestionSettledSerial`.
+  int _suggestionSettledSerial = 0;
+
+  void _suggestionSettled() => setState(() => _suggestionSettledSerial++);
+
+  /// Bumped when the operator works the call field themselves — see
+  /// `SpotsPanel.closeSlidesSerial`.
+  int _closeSlidesSerial = 0;
+
+  void _onCallEdited() => setState(() => _closeSlidesSerial++);
 
   /// The spots list's slid-right action, carrying the QSO it means to log —
   /// see `LoggingControls.logRequest`. The serial is what makes a repeat of
@@ -2089,6 +2116,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             ourCountryCode: _ourCountryCode,
             suggestedQso: _suggestedQso,
             suggestedQsoIsTentative: _suggestedQsoIsTentative,
+            suggestionSettledSerial: _suggestionSettledSerial,
+            onCallEdited: _onCallEdited,
             logRequest: _logRequest,
             confirmLogOverwrite: _confirmLogOverwrite,
             onCallInfoChanged: (info) {
@@ -2153,6 +2182,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 operation: operation,
                 services: widget.services,
                 onSuggestQso: _suggestQso,
+                onWithdrawSuggestion: _withdrawSuggestedQso,
+                onSuggestionSettled: _suggestionSettled,
+                closeSlidesSerial: _closeSlidesSerial,
                 onLogQso: _logQsoFromSpot,
                 logRevision: _logRevisionFor(qsos),
                 qsos: qsos,

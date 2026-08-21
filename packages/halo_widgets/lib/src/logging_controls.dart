@@ -468,11 +468,32 @@ class LoggingControls extends StatefulWidget {
 
   /// Whether [suggestedQso] is a tentative offer rather than a choice already
   /// made — a spot row slid open far enough to peek, which the operator may
-  /// still drag back. A tentative suggestion is dropped rather than applied
-  /// when it would overwrite an edit or a part-typed entry: applying it moves
-  /// the VFO (retuning a connected radio) and replaces the fields, neither of
-  /// which a gesture that was never completed may do.
+  /// still drag back. It fills the fields like any other suggestion, but it
+  /// belongs to the open row rather than to the operator: [suggestedQso]
+  /// going null takes it back out again, and nothing it put there counts as
+  /// work when the next one arrives.
+  ///
+  /// Over an edit or a part-typed callsign it is HELD instead of applied —
+  /// applying it moves the VFO (retuning a connected radio) and replaces the
+  /// fields, neither of which may happen behind the operator's back — and put
+  /// to them at [suggestionSettledSerial].
   final bool suggestedQsoIsTentative;
+
+  /// The operator has changed the call field themselves — typed into it, or
+  /// wiped it. Never fired for a suggestion filling it: a spot arriving is not
+  /// the operator composing anything.
+  ///
+  /// What listens is the surface the suggestion came FROM. A slid row is an
+  /// open question about which station to work, and an operator who has gone
+  /// to the fields and started typing has answered it somewhere else.
+  final VoidCallback? onCallEdited;
+
+  /// Bumped when the gesture behind a tentative [suggestedQso] comes to rest:
+  /// the row is open and the finger is off it. A suggestion held back over
+  /// work in progress is put to the operator here, and never earlier — a
+  /// dialog raised mid-drag takes the pointer while the drag runs on
+  /// underneath it, and the release still commits.
+  final int suggestionSettledSerial;
 
   /// Fires when an editing session ends without necessarily going through
   /// `onLogged` — a save of an existing QSO, a delete, or an explicit
@@ -783,6 +804,8 @@ class LoggingControls extends StatefulWidget {
     this.logRequest,
     this.confirmLogOverwrite,
     this.suggestedQsoIsTentative = false,
+    this.suggestionSettledSerial = 0,
+    this.onCallEdited,
     this.onEditCanceled,
     this.onNavigateToQsoList,
     this.settings,
@@ -1855,7 +1878,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // Wins over the generic VFO seed above — a suggestion is specific
       // operator intent ("log THIS call"), the VFO seed is just ambient
       // radio state.
-      if (widget.suggestedQso != null) _applySuggestedQso(widget.suggestedQso!);
+      if (widget.suggestedQso != null) {
+        _applySuggestedQso(widget.suggestedQso!);
+        // Remembered here as much as in didUpdateWidget: a panel built with a
+        // suggestion already in hand — a cold start on a deeplink, a pane
+        // remounted while a spot row is open — otherwise starts life believing
+        // the call it was handed is an entry somebody composed, and refuses
+        // every spot after it.
+        _rememberSuggestedCall(tentative: widget.suggestedQsoIsTentative);
+      }
     }
     _seedTimeFields();
     _callController.addListener(_onCallChanged);
@@ -2044,6 +2075,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (request != null && request.serial != oldWidget.logRequest?.serial) {
       unawaited(_handleLogRequest(request.qso));
     }
+    // The rest of the slide's lifecycle, up here for the same reason: an edit
+    // in progress is exactly when a tentative suggestion has something to say,
+    // and the guards below would swallow all three of these.
+    if (oldWidget.suggestedQso != null && widget.suggestedQso == null) _withdrawTentativeSuggestion();
+    if (widget.suggestedQsoIsTentative &&
+        widget.suggestedQso != null &&
+        !identical(oldWidget.suggestedQso, widget.suggestedQso) &&
+        (widget.editingQso != null || _hasComposedCall)) {
+      // Held rather than applied — and rather than dropped: the operator gets
+      // it back the moment the gesture settles.
+      _heldSuggestion = widget.suggestedQso;
+    }
+    if (widget.suggestionSettledSerial != oldWidget.suggestionSettledSerial) {
+      final held = _heldSuggestion;
+      if (held != null) {
+        _heldSuggestion = null;
+        unawaited(_confirmHeldSuggestion(held));
+      }
+    }
     // Withdraw from the controller we actually published to. `deactivate` only
     // ever sees the CURRENT one, so without this a swapped controller keeps a
     // row nothing can ever take back.
@@ -2175,10 +2225,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // suppress the other.
     if (widget.suggestedQso != null && !identical(oldWidget.suggestedQso, widget.suggestedQso)) {
       // A gesture the operator can still drag back may not take the fields or
-      // the VFO from work already in progress — see [suggestedQsoIsTentative].
-      if (widget.suggestedQsoIsTentative && _hasComposedValues) return;
+      // the VFO from work already in progress — it was held above instead.
+      if (widget.suggestedQsoIsTentative && _hasComposedCall) return;
       _resetEditingSessionState();
       _applySuggestedQso(widget.suggestedQso!);
+      _rememberSuggestedCall(tentative: widget.suggestedQsoIsTentative);
       _spotSources = const [];
       _spotStatus.clear();
       _refreshSpotSources();
@@ -2200,6 +2251,115 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _pendingLogRequest = null;
       unawaited(_applyAndLog(pending));
     }
+    final pendingSuggestion = _pendingSuggestion;
+    if (pendingSuggestion != null && widget.editingQso == null) {
+      _pendingSuggestion = null;
+      _applyTentativeSuggestion(pendingSuggestion);
+    }
+  }
+
+  /// A tentative suggestion the operator has not been asked about yet — it
+  /// would overwrite an edit or a part-typed callsign, so it waits for the
+  /// gesture to settle rather than take the fields mid-drag.
+  Map<String, dynamic>? _heldSuggestion;
+
+  /// The same, once cleared to proceed but waiting for the edit it displaces
+  /// to be gone — the mirror of [_pendingLogRequest].
+  Map<String, dynamic>? _pendingSuggestion;
+
+  /// The callsign the last applied suggestion put in the field, and whether it
+  /// came from a slide's peek (rather than a tap, or anything else that
+  /// chooses a station outright).
+  ///
+  /// The field's own text is what says whether the operator has taken it over
+  /// — NOT a flag set from the call field's listener. That listener fires for
+  /// every programmatic rewrite too (a command expansion, a pane save), and
+  /// any one of them counting as "the operator typed something" turns a
+  /// suggestion nobody composed into work the next spot has to ask about, and
+  /// then silently refuses every slide after it.
+  String? _suggestedCall;
+  bool _suggestionWasTentative = false;
+
+  /// Whether the call in the field is still exactly what a suggestion put
+  /// there — nothing typed over it, nothing typed after it.
+  bool get _callIsUntouchedSuggestion => _suggestedCall != null && _call == _suggestedCall;
+
+  /// The row that made the tentative suggestion has closed. Its fill goes with
+  /// it: leaving it there makes the next Log a contact with whoever was slid
+  /// last.
+  void _withdrawTentativeSuggestion() {
+    _heldSuggestion = null;
+    _pendingSuggestion = null;
+    // Only a peek's own fill, and only while it is still exactly what the peek
+    // put there: an entry the operator has typed over is theirs, and the row
+    // that started it closing may not take it away.
+    if (!_suggestionWasTentative || !_callIsUntouchedSuggestion) return;
+    _suggestionWasTentative = false;
+    // Focus stays where it is: pulling it here would raise the mobile keyboard
+    // over the list the operator is still working. And behind `_populating`,
+    // which is what stops the clear from reaching `onCallEdited`: this runs
+    // from didUpdateWidget, so the listener would report the operator editing
+    // the field — from inside a build, to a panel that has already built.
+    _populating = true;
+    _wipe(focusCall: false);
+    _populating = false;
+  }
+
+  /// Puts a held suggestion to the operator, and applies it if they clear the
+  /// way. Declining keeps their work — [confirmLogOverwrite] surfaces this
+  /// panel so they land on it — and leaves the row to ask again if the
+  /// gesture is carried through to a commit.
+  Future<void> _confirmHeldSuggestion(Map<String, dynamic> qso) async {
+    final editing = widget.editingQso != null;
+    final clear = await _askOverwrite(editing: editing);
+    if (!mounted || !clear) return;
+    if (editing) {
+      // Comes back as a widget update with `editingQso` null; the suggestion
+      // waits for it rather than filling fields that still belong to the edit.
+      widget.onEditCanceled?.call();
+      _pendingSuggestion = qso;
+      return;
+    }
+    _applyTentativeSuggestion(qso);
+  }
+
+  /// Puts [LoggingControls.confirmLogOverwrite]'s question to the operator,
+  /// from OUTSIDE the frame that decided to ask it.
+  ///
+  /// Both askers run from `didUpdateWidget` — deliberately, so neither is
+  /// swallowed by the editing guards there — which is the build phase, with
+  /// the Navigator mid-flush. A route pushed into it from there trips the
+  /// Navigator's own `!_debugLocked` assertion when the push animation lands,
+  /// and what reaches the operator is a crash where the question should be.
+  Future<bool> _askOverwrite({required bool editing}) {
+    final confirm = widget.confirmLogOverwrite;
+    if (confirm == null) return Future.value(false);
+    final asked = Completer<bool>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        asked.complete(false);
+        return;
+      }
+      // Takes the Future whole, so a throw from the caller's dialog reaches
+      // the awaiting side rather than leaving it hanging forever.
+      asked.complete(confirm(editing: editing));
+    });
+    return asked.future;
+  }
+
+  void _applyTentativeSuggestion(Map<String, dynamic> qso) {
+    _resetEditingSessionState();
+    _applySuggestedQso(qso);
+    _rememberSuggestedCall(tentative: true);
+  }
+
+  /// Records what the suggestion just applied put in the call field, so
+  /// [_callIsUntouchedSuggestion] can tell it apart from an entry the operator
+  /// composed. Read back off the field rather than out of the QSO map: the
+  /// field is what every other reader of this panel sees.
+  void _rememberSuggestedCall({required bool tentative}) {
+    _suggestedCall = _call.isEmpty ? null : _call;
+    _suggestionWasTentative = tentative;
   }
 
   /// A [LoggingControls.logRequest] that is waiting for an edit to be
@@ -2217,11 +2377,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// retries it.
   Future<void> _handleLogRequest(Map<String, dynamic> qso) async {
     final editing = widget.editingQso != null;
-    if (editing || _hasComposedValues) {
+    if (editing || _hasComposedCall) {
       // Something here would be destroyed. Never silently: the operator is
       // looking at the spots list, and the work at risk is on a surface they
       // cannot see from there.
-      final clear = await widget.confirmLogOverwrite?.call(editing: editing) ?? false;
+      final clear = await _askOverwrite(editing: editing);
       if (!mounted || !clear) return;
       if (editing) {
         // Comes back as a widget update with `editingQso` null; the request
@@ -2269,6 +2429,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// from `didUpdateWidget`, where a synchronous `setState` back up the
   /// tree could throw).
   void _populateFromEditingQso(Qso qso) {
+    _suggestedCall = null;
+    _suggestionWasTentative = false;
     _populating = true;
     _applyFieldsFromData(qso.data);
     if (qso.isEvent) {
@@ -6524,6 +6686,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   void _onCallChanged() {
     if (_populating) return;
+    // Past the guard, the change is the operator's own — typing, or the clear
+    // that `_wipe` does — which is exactly what the spots list wants to hear
+    // about. A suggestion filling the field never reaches here.
+    widget.onCallEdited?.call();
     setState(() {});
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
@@ -6804,7 +6970,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  void _wipe() {
+  /// [focusCall] false leaves the focus where it is — for a wipe the operator
+  /// did not ask for from this panel (a slid spot row closing, say), where
+  /// pulling focus here would raise the mobile keyboard over the list they
+  /// are actually working.
+  void _wipe({bool focusCall = true}) {
+    _suggestedCall = null;
+    _suggestionWasTentative = false;
     _settlePendingFreqEdit();
     _callController.clear();
     _clearRSTs();
@@ -6829,7 +7001,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _currentQsoExtra.clear();
     _manualStartAtMillis = null;
     _selectedControlKey = null;
-    _callFocus.requestFocus();
+    if (focusCall) _callFocus.requestFocus();
     setState(() {
       _commandMessage = null;
       _currentInterpretation = null;
@@ -6840,6 +7012,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
+
+  /// The part of [_hasComposedValues] a spot slide may not overwrite. The
+  /// slide is made on another surface, so what it would destroy has to be
+  /// worth a prompt from over there: a station being composed is, while a
+  /// frequency, a reference or a stray field with no call attached is
+  /// scaffolding the incoming spot replaces anyway.
+  ///
+  /// A call a SUGGESTION put there is not composed at all — the operator chose
+  /// a station, they did not compose an entry (see [_suggestedCall]). So the
+  /// next spot, slid or tapped, replaces it silently, and the log request that
+  /// ends a slide never asks permission to overwrite what that same slide
+  /// filled in a moment earlier.
+  bool get _hasComposedCall => _call.isNotEmpty && !_callIsUntouchedSuggestion;
 
   /// Whether the in-progress new QSO has anything actually worth wiping —
   /// the wipe button stays visible but disabled when this is false. With a
