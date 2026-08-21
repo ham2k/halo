@@ -696,10 +696,15 @@ class _HomeViewState extends State<HomeView>
               // but sliding OUT it is already gone as far as the operator is
               // concerned, and a press absorbed there does nothing at all
               // instead of backgrounding the app the way a press on Home does.
+              //
+              // `canPop` scopes the VETO only: a route hands the press to
+              // every PopScope registered on it, whichever one refused it. So
+              // the pane that is leaving has to decline the callback too, or
+              // switching between the two panes gives one press two answers.
               : PopScope(
                   canPop: !_showingSettings,
                   onPopInvokedWithResult: (didPop, _) {
-                    if (!didPop) _leaveSettings();
+                    if (!didPop && _showingSettings) _leaveSettings();
                   },
                   child: SlideTransition(position: _settingsOffset, child: child!),
                 ),
@@ -719,12 +724,20 @@ class _HomeViewState extends State<HomeView>
             ),
           ),
         ),
-        // Same arrangement as Settings above, for the Logs destination.
+        // Same arrangement as Settings above, for the Logs destination —
+        // including its claim on the system back press, and the same reason
+        // for only claiming it while Logs is the live destination.
         ListenableBuilder(
           listenable: _logsSlide,
           builder: (context, child) => _logsSlide.isDismissed
               ? const SizedBox.shrink()
-              : SlideTransition(position: _logsOffset, child: child!),
+              : PopScope(
+                  canPop: !_showingLogs,
+                  onPopInvokedWithResult: (didPop, _) {
+                    if (!didPop && _showingLogs) homeRail.destination = HomeDestination.operations;
+                  },
+                  child: SlideTransition(position: _logsOffset, child: child!),
+                ),
           child: besideRail(LogsView(services: widget.services)),
         ),
       ],
