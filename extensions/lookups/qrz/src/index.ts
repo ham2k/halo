@@ -152,6 +152,11 @@ async function lookupCall(
     }
     if (error) return []
 
+    const fname = tag(xml, 'fname')
+    // QRZ profiles routinely repeat the first name as the nickname; "Robert
+    // “Robert” Smith" is noise, not information.
+    const nick = tag(xml, 'nickname')
+    const nickname = nick && nick.toLowerCase() !== (fname ?? '').toLowerCase() ? nick : undefined
     const city = tag(xml, 'addr2')
     const state = tag(xml, 'state')
     const [lat, lon] = cleanLocationParams(tag(xml, 'lat'), tag(xml, 'lon'))
@@ -168,7 +173,9 @@ async function lookupCall(
       // this generically, without knowing 'qrz.com' by name.
       online: true,
       locationScope,
-      name: [tag(xml, 'fname'), tag(xml, 'name')].filter((x) => x).join(' '),
+      // First “Nickname” Last — the nickname is what the operator actually
+      // goes by on the air, and QRZ is the only source that reports one.
+      name: [fname, nickname && `“${nickname}”`, tag(xml, 'name')].filter((x) => x).join(' '),
       location: [city, state].filter((x) => x).join(', '),
       city,
       state,

@@ -162,7 +162,11 @@ __polo.defineExtension({
         },
         {
           'our': {'call': 'KI2D', 'sent': '599'},
-          'their': {'call': 'EA4XYZ', 'sent': '579'},
+          // The lookup layer composes a QRZ nickname as First “Nick” Last;
+          // ADIF is read by decades of software that cannot be trusted with
+          // typographic quotes, and the length prefix counts UTF-16 units
+          // while a byte-counting reader sees three bytes per curly quote.
+          'their': {'call': 'EA4XYZ', 'sent': '579', 'name': 'John “Jack” Smith'},
           'freq': 7025.0,
           'band': '40m',
           'mode': 'CW',
@@ -187,6 +191,7 @@ __polo.defineExtension({
     expect(content, contains('<NAME:7>ARRL HQ'));
     expect(content, contains('<GRIDSQUARE:6>FN31pr'));
     expect(content, contains('<CALL:6>EA4XYZ'));
+    expect(content, contains('<NAME:17>John "Jack" Smith'));
     expect(content, contains('<MODE:2>CW'));
     expect('<EOR>'.allMatches(content).length, 2);
   });

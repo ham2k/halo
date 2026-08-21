@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Lookups now tidy up names and towns, and show QRZ nicknames
+
 "145":
   changes:
     - "iOS/Android: Check for Updates now finds new builds and opens the store"

@@ -20,9 +20,26 @@ import { filenameFor } from "./filename.ts"
 const ADIF_VERSION = '3.1.5'
 const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
 
+/// Characters HaLo itself puts into a field, folded back to the ASCII a
+/// forty-year-old logging program can read. The typographic quotes come from
+/// the lookup layer's `First “Nick” Last` (see normalizeGuess.ts); this table
+/// is meant to grow as other Unicode punctuation finds its way in.
+///
+/// Not a general sanitizer: a correspondent's name in its own script stays as
+/// they spell it. lib-format-tools' `sanitizeToISO8859` is the blunter tool —
+/// it replaces everything outside Latin-1 with `·`, which would mangle those.
+const SUBSTITUTIONS: [RegExp, string][] = [
+  [/[“”]/g, '"'],
+  [/[‘’]/g, "'"],
+]
+
+function sanitizeAdifText(text: string): string {
+  return SUBSTITUTIONS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text)
+}
+
 function field(name: string, value: unknown): string {
   if (value === undefined || value === null || value === '') return ''
-  const text = String(value)
+  const text = sanitizeAdifText(String(value))
   return `<${name}:${text.length}>${text} `
 }
 

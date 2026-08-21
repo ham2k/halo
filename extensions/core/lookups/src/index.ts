@@ -12,6 +12,7 @@ import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, Looku
 
 import { annotateCallsign } from "./annotate"
 import { runLookupPipeline } from "./mergeLookup"
+import { normalizeGuess } from "./normalizeGuess"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -62,7 +63,16 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
     if (!entry.ok) host.log(`ERROR lookup hook '${entry.key}' failed for ${call}: ${entry.error}`)
   }
 
-  return { lookups, guess }
+  // Cleanup of the assembled answer only — `lookups[]` keeps each source's
+  // own wording (see normalizeGuess). Cosmetic, and so never allowed to cost
+  // the operator a lookup that did resolve: a throw here would empty a guess
+  // several sources just filled, and would read on screen as "not found".
+  try {
+    return { lookups, guess: normalizeGuess(guess) }
+  } catch (e) {
+    host.log(`ERROR normalizing the guess for ${call}: ${(e as Error).message ?? e}`)
+    return { lookups, guess }
+  }
 }
 
 defineExtension({
