@@ -11,7 +11,9 @@
 //
 // This distinction matters beyond correctness: iOS gates multicast behind
 // `com.apple.developer.networking.multicast`, an entitlement Apple grants
-// case-by-case on request — not something addable by editing a file. A
+// case-by-case on request — not something addable by editing a file. iOS
+// builds carry no entitlements file until that request is approved, so a
+// multicast join there fails and the operator sees "nothing heard". A
 // unicast destination sidesteps that restriction entirely, at the cost of
 // needing to be updated if the receiving device's address changes.
 //

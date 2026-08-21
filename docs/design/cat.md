@@ -333,7 +333,9 @@ needs `libudev-dev`.
 
 On **iOS**, receiving broadcasts additionally needs `NSLocalNetworkUsageDescription`, and multicast
 needs `com.apple.developer.networking.multicast` — a restricted entitlement Apple grants only on
-application. Neither is set up, so discovery finds nothing there; manual entry still works.
+application. The usage description is set; the multicast entitlement is not, and iOS ships no
+entitlements file at all until Apple approves that request, so multicast discovery finds nothing
+there; manual entry still works.
 
 ## Discovery
 
