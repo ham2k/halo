@@ -602,6 +602,16 @@ class _HomeViewState extends State<HomeView>
     showing ? _settingsSlide.forward() : _settingsSlide.reverse();
   }
 
+  /// Takes the embedded Settings down. The header's back button and the
+  /// system back press both come here, so the two cannot drift apart.
+  void _leaveSettings() {
+    final last = homeRail.lastNonSettingsDestination;
+    // Same guard as the rail's own Settings toggle — Logs may have gone
+    // behind the experiment flag while Settings sat over it.
+    final showLogs = widget.services.settings.experimentEnabled('logs') /* stored key, see experiments.yaml */;
+    homeRail.destination = (last == HomeDestination.logs && !showLogs) ? HomeDestination.operations : last;
+  }
+
   /// Same as [_showSettings], for the Logs destination.
   void _showLogsView(bool showing) {
     if (_showingLogs == showing) return;
@@ -679,20 +689,25 @@ class _HomeViewState extends State<HomeView>
           listenable: _settingsSlide,
           builder: (context, child) => _settingsSlide.isDismissed
               ? const SizedBox.shrink()
-              : SlideTransition(position: _settingsOffset, child: child!),
+              // Settings has no route of its own for the system back key or
+              // gesture to pop — it rides over Home inside Home's — so
+              // unclaimed, the press reaches Home's route and leaves the app.
+              // Claimed only while Settings is the live destination: mounted
+              // but sliding OUT it is already gone as far as the operator is
+              // concerned, and a press absorbed there does nothing at all
+              // instead of backgrounding the app the way a press on Home does.
+              : PopScope(
+                  canPop: !_showingSettings,
+                  onPopInvokedWithResult: (didPop, _) {
+                    if (!didPop) _leaveSettings();
+                  },
+                  child: SlideTransition(position: _settingsOffset, child: child!),
+                ),
           child: besideRail(
             SettingsView(
               services: widget.services,
               embedded: true,
-              onBack: () {
-                final last = homeRail.lastNonSettingsDestination;
-                // Same guard as the rail's own Settings toggle — Logs may
-                // have gone behind the experiment flag while Settings sat
-                // over it.
-                final showLogs = widget.services.settings.experimentEnabled('logs') /* stored key, see experiments.yaml */;
-                homeRail.destination =
-                    (last == HomeDestination.logs && !showLogs) ? HomeDestination.operations : last;
-              },
+              onBack: _leaveSettings,
               // Where this view and the app's mark reach for the same corner —
               // no rail at all, or a Mac window where the buttons have pushed
               // the mark off the rail's column — hold what the mark overhangs
