@@ -857,6 +857,8 @@
       "enable": "Share with my other devices",
       "enabledDescription": "Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.",
       "disabledDescription": "Off. This device is not visible to others on the network and shares nothing.",
+      "bleEnable": "Also connect over Bluetooth",
+      "bleDescription": "Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.",
       "thisDevice": "This Device",
       "deviceName": "Name",
       "deviceNameHint": "What your other devices call this one",
@@ -864,6 +866,7 @@
       "noPairedDevices": "No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.",
       "nearby": "Nearby",
       "connected": "Connected",
+      "viaBluetooth": "via Bluetooth",
       "connectedIdle": "Connected — open the same operation to sync it",
       "connecting": "Connecting…",
       "syncing": "Syncing…",
@@ -880,7 +883,8 @@
       "pairIdLabel": "Device ID",
       "pairWarning": "Only allow a device you recognise. Anything on this network can ask.",
       "shareNothingOpen": "Open an operation to start sharing it.",
-      "problem": "Can't reach the local network: ${error}"
+      "problem": "Can't reach the local network: ${error}",
+      "bleProblem": "Bluetooth: ${error}"
     },
     "developerMode": "Developer Mode",
     "syncPanel": {

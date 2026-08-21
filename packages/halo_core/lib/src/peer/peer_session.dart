@@ -85,7 +85,12 @@ class PeerSession {
   final OperationsRepository operations;
   final QsosRepository qsos;
 
-  /// How many outbox rows one `events` message may carry.
+  /// How many outbox rows one `events` message may carry. The default is
+  /// sized for fast links; a slower transport passes its own smaller limit.
+  /// This constant is the single owner of the default, so attach paths
+  /// never restate it as a second magic number.
+  static const int defaultBatchLimit = 200;
+
   final int batchLimit;
 
   /// Fired after any observable change — state, peer identity, progress —
@@ -121,7 +126,7 @@ class PeerSession {
     required this.qsos,
     String? sharedOperationUuid,
     this.localCapabilities = const [],
-    this.batchLimit = 200,
+    this.batchLimit = defaultBatchLimit,
     this.onChanged,
     this.onEphemeral,
     this.onEstablished,

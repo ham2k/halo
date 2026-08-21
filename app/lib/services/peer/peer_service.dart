@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Ties peer sync together (HALO-310): announces this device, watches for
-// others, opens a link to each, and owns one `PeerSession` per peer.
+// others, opens a link to each, and owns one `PeerSession` per peer. Links
+// arrive over LAN, and over BLE when its sub-switch adds that transport
+// (HALO-342) — sessions never know which carried them.
 //
 // Per-peer state lives in a map keyed by the peer's device id, never in a
 // field — the lesson docs/design/cat.md draws from app-polo's singleton
@@ -22,6 +24,8 @@ import 'package:halo_core/halo_core.dart';
 
 import '../../tools/backoff.dart';
 import '../error_reporting_service.dart';
+import 'ble/peer_ble_gateway.dart';
+import 'ble/peer_ble_transport.dart';
 import 'peer_beacon.dart';
 import 'peer_beacon_types.dart';
 import 'peer_link.dart';
@@ -36,6 +40,12 @@ const _announceInterval = Duration(seconds: 3);
 const _beaconTimeout = Duration(seconds: 15);
 
 const _reconnectCap = Duration(seconds: 30);
+
+/// Events per sync batch on a BLE link, against the LAN default of 200.
+/// A 200-row batch is one ~220 KB frame — half a minute of head-of-line
+/// blocking at BLE rates, with every ephemeral message stuck behind it. At
+/// 20 rows a frame is ~25 KB, a couple of seconds worst case.
+const _bleBatchLimit = 20;
 
 /// One discovered peer and whatever session it currently has.
 class PeerRuntime {
@@ -77,6 +87,9 @@ class PeerService extends ChangeNotifier {
     required this.localDeviceId,
     required this.localDeviceName,
     this.beaconPort = peerBeaconPort,
+    this.bleGateway,
+    this.bleHeadStart = const Duration(seconds: 5),
+    this.bleJitter = true,
   })  : cursors = PeerCursorStore(db),
         trust = PeerTrustStore(db) {
     // The ONLY thing that turns a local write into a live push. Without it
@@ -108,6 +121,23 @@ class PeerService extends ChangeNotifier {
   /// trust, never on this list.
   List<String> Function()? localCapabilities;
   final int beaconPort;
+
+  /// The BLE radio, or null where the platform has none (web, tests that
+  /// don't care). Constructing it touches nothing; the radio is only woken
+  /// by the reconciler when the sub-switch asks.
+  final PeerBleGateway? bleGateway;
+
+  /// Timing knobs for the BLE transport, production defaults. The fake-BLE
+  /// tests shrink them: at the real five-second head start, a "never
+  /// dialled" assertion passes before the dial timer ever comes due and
+  /// proves nothing.
+  final Duration bleHeadStart;
+  final bool bleJitter;
+
+  /// Whether this platform has a BLE transport at all — what the panel
+  /// keys the sub-switch row on, so web never shows a switch that would
+  /// silently do nothing.
+  bool get bleAvailable => bleGateway != null;
 
   final Map<String, PeerRuntime> _peers = {};
 
@@ -164,6 +194,11 @@ class PeerService extends ChangeNotifier {
   /// broken feature from an empty room.
   String? error;
 
+  /// Same, for the Bluetooth transport alone — kept apart from [error] so a
+  /// denied Bluetooth permission does not read as LAN sync being down, or
+  /// the other way around.
+  String? bleError;
+
   /// Whichever peer is waiting on the operator, if any. The UI prompts for
   /// this one and re-reads after answering.
   PeerRuntime? get pendingPairing {
@@ -177,7 +212,9 @@ class PeerService extends ChangeNotifier {
   }
 
   bool _enabled = true;
+  bool _bleEnabled = false;
   String? _openOperationUuid;
+  PeerBleTransport? _bleTransport;
 
   /// The master switch (`SettingsService.peerSyncEnabled`). Off tears
   /// everything down: no socket bound, no beacon sent, this device invisible.
@@ -189,6 +226,15 @@ class PeerService extends ChangeNotifier {
   /// operation open would never start at all.
   Future<void> setEnabled(bool enabled) async {
     _enabled = enabled;
+    await _apply();
+  }
+
+  /// The Bluetooth sub-switch (`SettingsService.peerBleEnabled`), effective
+  /// only under the master switch. Its own opt-in, unlike location sharing:
+  /// starting BLE pops OS permission prompts LAN never did, and keeps a
+  /// radio busy.
+  Future<void> setBleEnabled(bool enabled) async {
+    _bleEnabled = enabled;
     await _apply();
   }
 
@@ -265,6 +311,65 @@ class PeerService extends ChangeNotifier {
         _running = false;
         await _stop();
       }
+    }
+
+    // The BLE transport, reconciled on its own axis: it follows the master
+    // switch AND the sub-switch, and either flipping re-lands here. Its
+    // failures are caught HERE, not left to the apply tail: that handler
+    // writes [error] — the LAN field this one's doc promises to keep apart
+    // — and a throw escaping the start would leave [_bleTransport] set to a
+    // half-started instance this reconciler (which only constructs when
+    // null) would never retry.
+    try {
+      final wantBle = _enabled && _bleEnabled && bleGateway != null;
+      if (wantBle && _bleTransport == null) {
+        _bleTransport = PeerBleTransport(
+          gateway: bleGateway!,
+          localDeviceId: localDeviceId,
+          onLink: _onBleLink,
+          connectedDeviceIds: () =>
+              [for (final entry in _peers.entries) if (entry.value.isConnected) entry.key],
+          onStatus: (problem) {
+            // A late status from a transport being torn down — a reconcile
+            // failing mid-dispose, say — must not touch a notifier that may
+            // already be disposed, nor resurrect an error field the
+            // teardown path just settled.
+            if (_disposed) return;
+            bleError = problem;
+            notifyListeners();
+          },
+          log: (message) => debugPrint('[peer] $message'),
+          headStart: bleHeadStart,
+          jitter: bleJitter,
+        );
+        await _bleTransport!.start();
+      } else if (!wantBle && _bleTransport != null) {
+        final transport = _bleTransport!;
+        _bleTransport = null;
+        await transport.stop();
+        bleError = null;
+      } else if (!wantBle && _bleTransport == null) {
+        // Steady-off carries no BLE status. This is also what retires the
+        // error a FAILED stop recorded — without it that banner would
+        // outlive the sub-switch forever, with nothing left to clear it.
+        bleError = null;
+      }
+    } catch (e, st) {
+      // AFTER the cleanup stop, or its own teardown would race this
+      // assignment and the operator would see the error flash and vanish.
+      final broken = _bleTransport;
+      _bleTransport = null;
+      if (broken != null) {
+        try {
+          await broken.stop();
+        } catch (_) {
+          // The stop of a transport that just failed failing too adds
+          // nothing; the original error is the one to report.
+        }
+      }
+      bleError = 'Bluetooth failed: $e';
+      debugPrint('[peer] BLE transport FAILED: $e');
+      ErrorReportingService.report(e, st, context: 'PeerService:bleTransport');
     }
 
     // Sessions survive the operation switch — that is the point of binding
@@ -532,7 +637,18 @@ class PeerService extends ChangeNotifier {
     _attach(null, link);
   }
 
-  void _attach(PeerRuntime? runtime, PeerLink link) {
+  /// A ready BLE link — either side may have connected, so like an inbound
+  /// LAN link it attaches unidentified and is filed once its hello arrives.
+  void _onBleLink(PeerLink link) {
+    if (!_running) {
+      unawaited(link.close());
+      return;
+    }
+    debugPrint('[peer] BLE link ready');
+    _attach(null, link, batchLimit: _bleBatchLimit);
+  }
+
+  void _attach(PeerRuntime? runtime, PeerLink link, {int batchLimit = PeerSession.defaultBatchLimit}) {
     if (!_running) {
       unawaited(link.close());
       return;
@@ -548,6 +664,7 @@ class PeerService extends ChangeNotifier {
       trust: trust,
       operations: operations,
       qsos: qsos,
+      batchLimit: batchLimit,
       onChanged: _onSessionChanged,
       onEphemeral: (session, message) {
         final deviceId = session.peer?.deviceId;
@@ -629,9 +746,19 @@ class PeerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     unawaited(_stop());
+    // The reconciler owns the transport in life; in teardown nothing will
+    // run it again, so the radio is released here. Its async tail can still
+    // deliver a status after super.dispose() — [_disposed] is what keeps
+    // that from touching the dead notifier.
+    final transport = _bleTransport;
+    _bleTransport = null;
+    if (transport != null) unawaited(transport.stop());
     super.dispose();
   }
 }

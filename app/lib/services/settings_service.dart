@@ -67,6 +67,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _shorebirdTrackKey = 'shorebirdTrack';
   static const _listenForOtherAppsEnabledKey = 'listenForOtherAppsEnabled';
   static const _peerSyncEnabledKey = 'peerSyncEnabled';
+  static const _peerBleEnabledKey = 'peerBleEnabled';
   static const _peerDeviceIdKey = 'peerDeviceId';
   static const _peerDeviceNameKey = 'peerDeviceName';
   static const _n1mmProtocolEnabledKey = 'n1mmProtocolEnabled';
@@ -366,6 +367,18 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setPeerSyncEnabled(bool enabled) async {
     await _prefs.setBool(_peerSyncEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// The Bluetooth sub-switch under [peerSyncEnabled] (HALO-342). Its own
+  /// opt-in where location sharing has none, because turning it on does
+  /// what the master switch alone never did: pops an OS Bluetooth
+  /// permission prompt and keeps a radio busy. Off, BLE code touches
+  /// nothing and existing LAN users see no new prompt.
+  bool get peerBleEnabled => _prefs.getBool(_peerBleEnabledKey) ?? false;
+
+  Future<void> setPeerBleEnabled(bool enabled) async {
+    await _prefs.setBool(_peerBleEnabledKey, enabled);
     notifyListeners();
   }
 

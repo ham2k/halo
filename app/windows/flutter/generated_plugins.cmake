@@ -15,6 +15,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   sentry_flutter
   share_plus
   sqlite3_flutter_libs
+  universal_ble
   url_launcher_windows
 )
 

@@ -19,6 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../services/peer/ble/peer_ble_transport.dart';
 import '../services/peer/peer_service.dart';
 import 'peer_pairing_dialog.dart';
 
@@ -136,6 +137,27 @@ class _PeersPanelState extends State<PeersPanel> {
             widget.services.updatePeerSharing();
           },
         ),
+        // Its own opt-in under the master switch: Bluetooth pops an OS
+        // permission prompt and holds a radio, which "share with my
+        // devices" alone never implied. Absent entirely where no BLE
+        // transport exists (web) — a switch that silently does nothing
+        // would read as the feature being broken.
+        if (enabled && _peers.bleAvailable)
+          SwitchListTile(
+            title: Text(t.bleEnable),
+            subtitle: Text(t.bleDescription),
+            value: settings.peerBleEnabled,
+            onChanged: (value) async {
+              await settings.setPeerBleEnabled(value);
+              widget.services.updatePeerSharing();
+            },
+          ),
+        if (enabled)
+          if (_peers.bleError case final problem?)
+            ListTile(
+              leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
+              title: Text(t.bleProblem(error: problem)),
+            ),
         // Devices connect regardless now — this hint is about the QSO sync,
         // which still follows whichever operation is open.
         if (enabled && _peers.sharedOperationUuid == null)
@@ -196,7 +218,7 @@ class _PeersPanelState extends State<PeersPanel> {
 
   String _statusLabel(BuildContext context, PeerRuntime runtime) {
     final t = context.t.settings.peers;
-    return switch (runtime.session?.state) {
+    final label = switch (runtime.session?.state) {
       PeerSessionState.live => t.connected,
       // Established, sync idle: the link is UP — reading it as "Not
       // connected" would tell the operator their working pair is broken.
@@ -206,6 +228,13 @@ class _PeersPanelState extends State<PeersPanel> {
       PeerSessionState.needsPairing => '${runtime.beacon.deviceName} ${t.wantsToPair}',
       _ => t.notConnected,
     };
+    // Which pipe carries the pair matters in the field: "connected via
+    // Bluetooth" at a WiFi-less park is working as intended, the same words
+    // at home mean the LAN path is broken.
+    if (runtime.session?.link is PeerBleLink && runtime.session?.state != PeerSessionState.closed) {
+      return '$label · ${t.viaBluetooth}';
+    }
+    return label;
   }
 
   /// The app's established "is it connected" affordance — a small filled

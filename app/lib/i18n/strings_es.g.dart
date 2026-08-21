@@ -1319,6 +1319,8 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String get enable => 'Compartir con mis otros dispositivos';
 	@override String get enabledDescription => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.';
 	@override String get disabledDescription => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.';
+	@override String get bleEnable => 'Conectar también por Bluetooth';
+	@override String get bleDescription => 'Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.';
 	@override String get thisDevice => 'Este dispositivo';
 	@override String get deviceName => 'Nombre';
 	@override String get deviceNameHint => 'Cómo llaman tus otros dispositivos a este';
@@ -1326,6 +1328,7 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String get noPairedDevices => 'Todavía no hay dispositivos autorizados. Activa la sincronización entre dispositivos en otro dispositivo de esta red para vincularlos.';
 	@override String get nearby => 'Cerca';
 	@override String get connected => 'Conectado';
+	@override String get viaBluetooth => 'vía Bluetooth';
 	@override String get connectedIdle => 'Conectado — abre la misma operación para sincronizarla';
 	@override String get connecting => 'Conectando…';
 	@override String get syncing => 'Sincronizando…';
@@ -1343,6 +1346,7 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String get pairWarning => 'Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.';
 	@override String get shareNothingOpen => 'Abre una operación para empezar a compartirla.';
 	@override String problem({required Object error}) => 'No se puede acceder a la red local: ${error}';
+	@override String bleProblem({required Object error}) => 'Bluetooth: ${error}';
 }
 
 // Path: settings.syncPanel
@@ -2815,6 +2819,8 @@ extension on TranslationsEs {
 			'settings.peers.enable' => 'Compartir con mis otros dispositivos',
 			'settings.peers.enabledDescription' => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.',
 			'settings.peers.disabledDescription' => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.',
+			'settings.peers.bleEnable' => 'Conectar también por Bluetooth',
+			'settings.peers.bleDescription' => 'Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.',
 			'settings.peers.thisDevice' => 'Este dispositivo',
 			'settings.peers.deviceName' => 'Nombre',
 			'settings.peers.deviceNameHint' => 'Cómo llaman tus otros dispositivos a este',
@@ -2822,6 +2828,7 @@ extension on TranslationsEs {
 			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos autorizados. Activa la sincronización entre dispositivos en otro dispositivo de esta red para vincularlos.',
 			'settings.peers.nearby' => 'Cerca',
 			'settings.peers.connected' => 'Conectado',
+			'settings.peers.viaBluetooth' => 'vía Bluetooth',
 			'settings.peers.connectedIdle' => 'Conectado — abre la misma operación para sincronizarla',
 			'settings.peers.connecting' => 'Conectando…',
 			'settings.peers.syncing' => 'Sincronizando…',
@@ -2839,6 +2846,7 @@ extension on TranslationsEs {
 			'settings.peers.pairWarning' => 'Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.',
 			'settings.peers.shareNothingOpen' => 'Abre una operación para empezar a compartirla.',
 			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
+			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
@@ -3220,12 +3228,12 @@ extension on TranslationsEs {
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
 			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
 			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.emailAddress' => 'Dirección de email',
 			'switchAccounts.linkAccount' => 'Vincular cuenta',
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',
 			'switchAccounts.copyCode' => 'Copiar código',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
 			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
 			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',

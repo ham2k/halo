@@ -2762,6 +2762,12 @@ class Translations$settings$peers$en {
 	/// en: 'Off. This device is not visible to others on the network and shares nothing.'
 	String get disabledDescription => 'Off. This device is not visible to others on the network and shares nothing.';
 
+	/// en: 'Also connect over Bluetooth'
+	String get bleEnable => 'Also connect over Bluetooth';
+
+	/// en: 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.'
+	String get bleDescription => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.';
+
 	/// en: 'This Device'
 	String get thisDevice => 'This Device';
 
@@ -2782,6 +2788,9 @@ class Translations$settings$peers$en {
 
 	/// en: 'Connected'
 	String get connected => 'Connected';
+
+	/// en: 'via Bluetooth'
+	String get viaBluetooth => 'via Bluetooth';
 
 	/// en: 'Connected — open the same operation to sync it'
 	String get connectedIdle => 'Connected — open the same operation to sync it';
@@ -2833,6 +2842,9 @@ class Translations$settings$peers$en {
 
 	/// en: 'Can't reach the local network: ${error}'
 	String problem({required Object error}) => 'Can\'t reach the local network: ${error}';
+
+	/// en: 'Bluetooth: ${error}'
+	String bleProblem({required Object error}) => 'Bluetooth: ${error}';
 }
 
 // Path: settings.syncPanel
@@ -5375,6 +5387,8 @@ extension on Translations {
 			'settings.peers.enable' => 'Share with my other devices',
 			'settings.peers.enabledDescription' => 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.',
 			'settings.peers.disabledDescription' => 'Off. This device is not visible to others on the network and shares nothing.',
+			'settings.peers.bleEnable' => 'Also connect over Bluetooth',
+			'settings.peers.bleDescription' => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.',
 			'settings.peers.thisDevice' => 'This Device',
 			'settings.peers.deviceName' => 'Name',
 			'settings.peers.deviceNameHint' => 'What your other devices call this one',
@@ -5382,6 +5396,7 @@ extension on Translations {
 			'settings.peers.noPairedDevices' => 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.',
 			'settings.peers.nearby' => 'Nearby',
 			'settings.peers.connected' => 'Connected',
+			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connectedIdle' => 'Connected — open the same operation to sync it',
 			'settings.peers.connecting' => 'Connecting…',
 			'settings.peers.syncing' => 'Syncing…',
@@ -5399,6 +5414,7 @@ extension on Translations {
 			'settings.peers.pairWarning' => 'Only allow a device you recognise. Anything on this network can ask.',
 			'settings.peers.shareNothingOpen' => 'Open an operation to start sharing it.',
 			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
+			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
@@ -5728,12 +5744,12 @@ extension on Translations {
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
-			_ => null,
-		} ?? switch (path) {
 			'expiredBuild.dismiss' => 'Continue anyway',
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',

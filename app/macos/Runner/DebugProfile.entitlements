@@ -22,5 +22,10 @@
 	     Debug passes regardless. -->
 	<key>com.apple.security.device.serial</key>
 	<true/>
+	<!-- BLE peer transport (HALO-342). A sandbox relaxation like
+	     device.serial above, not AMFI-restricted. Must be present in BOTH
+	     entitlement files — a Release-only miss is the documented trap. -->
+	<key>com.apple.security.device.bluetooth</key>
+	<true/>
 </dict>
 </plist>

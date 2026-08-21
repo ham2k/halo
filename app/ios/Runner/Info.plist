@@ -54,6 +54,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Used to find and sync with your own paired devices over Bluetooth when peer device sync is on and no shared network is available.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to suggest nearby activities (parks, summits), set the operation's grid square, and — when peer device sync is on — share your position with your own paired devices.</string>
 	<key>UIApplicationSceneManifest</key>

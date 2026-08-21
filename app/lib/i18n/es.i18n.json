@@ -801,6 +801,8 @@
       "enable": "Compartir con mis otros dispositivos",
       "enabledDescription": "Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.",
       "disabledDescription": "Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.",
+      "bleEnable": "Conectar también por Bluetooth",
+      "bleDescription": "Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.",
       "thisDevice": "Este dispositivo",
       "deviceName": "Nombre",
       "deviceNameHint": "Cómo llaman tus otros dispositivos a este",
@@ -808,6 +810,7 @@
       "noPairedDevices": "Todavía no hay dispositivos autorizados. Activa la sincronización entre dispositivos en otro dispositivo de esta red para vincularlos.",
       "nearby": "Cerca",
       "connected": "Conectado",
+      "viaBluetooth": "vía Bluetooth",
       "connectedIdle": "Conectado — abre la misma operación para sincronizarla",
       "connecting": "Conectando…",
       "syncing": "Sincronizando…",
@@ -824,7 +827,8 @@
       "pairIdLabel": "ID del dispositivo",
       "pairWarning": "Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.",
       "shareNothingOpen": "Abre una operación para empezar a compartirla.",
-      "problem": "No se puede acceder a la red local: ${error}"
+      "problem": "No se puede acceder a la red local: ${error}",
+      "bleProblem": "Bluetooth: ${error}"
     },
     "developerMode": "Modo Desarrollador",
     "syncPanel": {

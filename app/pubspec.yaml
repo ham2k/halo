@@ -110,6 +110,7 @@ dependencies:
   # in-memory channel instead of a real socket.
   stream_channel: ^2.1.4
   pointer_interceptor: ^0.10.1+2
+  universal_ble: ^2.1.1
 
 dev_dependencies:
   flutter_test:

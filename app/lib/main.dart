@@ -68,6 +68,7 @@ import 'services/extension_service.dart';
 import 'services/unclean_quit.dart';
 import 'services/cat/cat_service.dart';
 import 'services/cat/equipment.dart' show EquipmentStatus;
+import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
 import 'services/peer/peer_service.dart';
 import 'views/peer_pairing_dialog.dart';
@@ -1256,6 +1257,9 @@ class HaLoServices {
         qsos: qsos,
         localDeviceId: settings.peerDeviceId,
         localDeviceName: settings.peerDeviceName,
+        // Null on web. Constructing the gateway touches no radio; only the
+        // Bluetooth sub-switch wakes it.
+        bleGateway: createPeerBleGateway(),
       );
 
   /// Routes the sessions' ephemeral channel (GPS, CAT next) between
@@ -1618,6 +1622,7 @@ class HaLoServices {
     // would drop its GPS snapshot into an unplugged callback.
     peerChannels;
     unawaited(peerService.setEnabled(wanted));
+    unawaited(peerService.setBleEnabled(settings.peerBleEnabled));
     unawaited(peerService.setOpenOperation(front));
   }
 
