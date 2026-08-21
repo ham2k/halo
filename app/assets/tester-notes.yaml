@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - Lookups now tidy up names and towns, and show QRZ nicknames
+    - Swiping spot rows now works even better
 
 "145":
   changes:
