@@ -282,6 +282,60 @@ class OperationsRepository {
     return query.watch().map((rows) => rows.map(_operationFromRow).toList());
   }
 
+  /// Received purges with nothing left for the operator to decide about:
+  /// this device holds no QSO of the operation, and the operation row
+  /// itself is a tombstone nothing displays, so confirming the prompt
+  /// would delete nothing anyone can see. Removing the row silently is what
+  /// keeps a purge for an operation this device never really had from
+  /// raising the "removed on another device" notice on every sync round,
+  /// forever. [mergeFromSync] and [mergeFromPeer]'s create guards keep new
+  /// ones from appearing; this clears whatever a build without them left
+  /// behind.
+  ///
+  /// `deleted` and `isTestOperation` are checked even though [purge] never
+  /// writes `purged` without both: on the inbound paths the two flags are
+  /// independent fields off the wire, so a record carrying `purged: true`
+  /// with no `deleted` — an older build, a peer on another dialect — leaves
+  /// a row `watchAll` still SHOWS. This is the one purge path with no human
+  /// in front of it, so it refuses anything that is visible or is not test
+  /// data rather than hard-deleting on a flag a peer controls.
+  ///
+  /// Counts EVERY QSO row of the operation, tombstones included: a purge is
+  /// what `confirmReceivedTestOperationPurges` would hard-delete, and a
+  /// device still holding rows of any kind has something real to be asked
+  /// about. Transactional, unlike [hardDeletePurged] — that one is followed
+  /// straight away by `hardDeletePurgedForOperation`, so a QSO written into
+  /// its window is still reclaimable, while a QSO written into this one is
+  /// not `purged` and [QsosRepository.hardDeletePurgedOrphans] can never
+  /// reach it again.
+  ///
+  /// Returns the uuids removed, which the caller logs: this is the only
+  /// irreversible delete in a sync round that no operator confirmed.
+  Future<List<String>> hardDeleteEmptyReceivedPurges() async {
+    return db.transaction(() async {
+      final rows = await (db.select(db.operations)
+            ..where((op) =>
+                op.purged.equals(true) &
+                op.synced.equals(true) &
+                op.purgedLocally.equals(false) &
+                op.deleted.equals(true)))
+          .get();
+      if (rows.isEmpty) return const <String>[];
+      final uuids = [for (final r in rows) if (_operationFromRow(r).isTestOperation) r.uuid];
+      if (uuids.isEmpty) return const <String>[];
+      final held = await (db.selectOnly(db.qsos)
+            ..addColumns([db.qsos.operation])
+            ..where(db.qsos.operation.isIn(uuids))
+            ..groupBy([db.qsos.operation]))
+          .get();
+      final withQsos = {for (final r in held) r.read(db.qsos.operation)};
+      final empty = [for (final uuid in uuids) if (!withQsos.contains(uuid)) uuid];
+      if (empty.isEmpty) return const <String>[];
+      await (db.delete(db.operations)..where((op) => op.uuid.isIn(empty))).go();
+      return empty;
+    });
+  }
+
   /// The operator confirmed removing [uuids] after seeing them in the
   /// "removed elsewhere" prompt — which of them are still real candidates.
   /// Re-checks `purged`/`synced`/`purgedLocally` against the database rather
@@ -481,6 +535,14 @@ class OperationsRepository {
         _normalizeLegacyStamps(data);
 
         final existing = existingByUuid[uuid];
+        // Never create a row from a purge tombstone, same as [mergeFromSync]
+        // — and load-bearing here for a reason of its own: a row this path
+        // creates starts `synced: false`, so it is invisible to
+        // [watchReceivedPurgesPending] until this device's own next push
+        // flips it true, and only THEN does an operation this device never
+        // had start asking the operator to confirm removing it, every round,
+        // forever.
+        if (existing == null && purged) continue;
         if (existing != null &&
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
@@ -1631,6 +1693,10 @@ class QsosRepository {
         _normalizeLegacyStamps(data);
 
         final existing = existingByUuid[uuid];
+        // See [mergeFromSync] and `OperationsRepository.mergeFromPeer`: a
+        // tombstone for a QSO this device does not have stands for nothing
+        // worth keeping.
+        if (existing == null && purged) continue;
         if (existing != null &&
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,

@@ -561,6 +561,7 @@ class SyncEngine {
       final opWatermark = inboundOperations.isEmpty ? null : await operations.mergeFromSync(inboundOperations);
       final qsoWatermark = inboundQsos.isEmpty ? null : await qsos.mergeFromSync(inboundQsos);
 
+
       // The QSOs the `hardDeletePurgedForOperation` loop above can no longer
       // reach: their operation row is already gone (an earlier round's
       // sweep, or an operator confirming a received purge) and their own
@@ -589,6 +590,23 @@ class SyncEngine {
         opWatermark: opWatermark,
         qsoWatermark: qsoWatermark,
       );
+
+      // A received purge this device holds no QSOs for has nothing for the
+      // operator to confirm removing, so it is dropped instead of prompted
+      // about — see `hardDeleteEmptyReceivedPurges`. After the merges, so
+      // this round's own tombstones are gone before the next round can
+      // prompt about them, and after the watermarks are persisted, so a
+      // deterministic failure in a housekeeping delete costs the sweep and
+      // not the cursor — a throw before `_processResponseMeta` would re-pull
+      // and re-die on the same page every round, forever, while pushes kept
+      // succeeding. Logged because no operator confirmed it: nothing else
+      // records that an operation row was removed here.
+      final droppedPurges = await operations.hardDeleteEmptyReceivedPurges();
+      if (droppedPurges.isNotEmpty) {
+        log?.call('[sync] dropped ${droppedPurges.length} received purge(s) with nothing held here: '
+            '${droppedPurges.join(', ')}');
+      }
+
       _errorCount = 0;
 
       if (!smallBatch) {

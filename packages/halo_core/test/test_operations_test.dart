@@ -363,6 +363,112 @@ void main() {
           reason: 'nothing to remove here — asking the operator to confirm would be asking about a stranger');
     });
 
+    test('a peer\'s purge tombstone for an operation this device never had is ignored too', () async {
+      // The gap `mergeFromSync`'s guard alone leaves open: a peer-created
+      // row starts `synced: false`, so it hides from
+      // watchReceivedPurgesPending until this device's own next push marks
+      // it synced — and only then starts prompting, forever, about an
+      // operation it never had.
+      await operations.mergeFromPeer([
+        {'uuid': 'never-here', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+      ]);
+      expect(await operations.get('never-here'), isNull);
+
+      await qsos.mergeFromPeer([
+        {'uuid': 'never-here-qso', 'operation': 'never-here', 'their': {'call': 'W1AW'}, 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+      ]);
+      expect(await qsos.get('never-here-qso'), isNull);
+    });
+
+    test('a peer purge of an operation this device DOES have still updates the row', () async {
+      // The other half of the guard: it refuses to CREATE, never to update.
+      await operations.mergeFromPeer([
+        {'uuid': 'shared-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+      ]);
+      await operations.mergeFromPeer([
+        {'uuid': 'shared-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
+      ]);
+      expect((await operations.get('shared-op'))!.purged, isTrue);
+    });
+
+    test('a received purge with no QSOs here is dropped rather than prompted about', () async {
+      // Clears rows an older build (or the pre-guard peer path) already
+      // stranded: the operation is a tombstone nothing displays and no QSO
+      // of it is held here, so confirming the prompt would delete nothing —
+      // the notice is pure noise, and it comes back every single round.
+      await operations.mergeFromSync([
+        {'uuid': 'empty-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+      ]);
+      await operations.mergeFromSync([
+        {'uuid': 'empty-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
+      ]);
+
+      expect(await operations.hardDeleteEmptyReceivedPurges(), ['empty-op']);
+      expect(await operations.get('empty-op'), isNull);
+      expect(await operations.watchReceivedPurgesPending().first, isEmpty);
+    });
+
+    test('a received purge whose QSOs are here is left for the operator to confirm', () async {
+      await operations.mergeFromSync([
+        {'uuid': 'real-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+      ]);
+      await qsos.mergeFromSync([
+        {'uuid': 'real-qso', 'operation': 'real-op', 'their': {'call': 'W1AW'}, 'updatedAtMillis': 1},
+      ]);
+      await operations.mergeFromSync([
+        {'uuid': 'real-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
+      ]);
+
+      expect(await operations.hardDeleteEmptyReceivedPurges(), isEmpty,
+          reason: 'this device holds QSOs of it — removing them is exactly what the operator must confirm');
+      expect((await operations.watchReceivedPurgesPending().first).map((o) => o.uuid), ['real-op']);
+    });
+
+    test('a received purge that is NOT tombstoned is left alone, however it got that way', () async {
+      // `purged` and `deleted` are independent fields off the wire, so a
+      // record carrying one without the other leaves a row watchAll still
+      // shows. Sweeping that is a visible operation vanishing off this
+      // device with no prompt — the one shape this hard delete must refuse.
+      await operations.mergeFromSync([
+        {'uuid': 'visible-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+      ]);
+      await operations.mergeFromSync([
+        {'uuid': 'visible-op', 'stationCall': 'KI2D/T', 'purged': true, 'updatedAtMillis': 2},
+      ]);
+
+      expect((await operations.get('visible-op'))!.deleted, isFalse, reason: 'the record never said deleted');
+      expect(await operations.hardDeleteEmptyReceivedPurges(), isEmpty);
+      expect(await operations.get('visible-op'), isNotNull);
+    });
+
+    test('a received purge for an operation that is not a Test Operation is left alone', () async {
+      // Nothing local sets `purged` on a real operation, so reaching here at
+      // all means an inbound flag this device does not control. Confining the
+      // unconfirmed delete to test data is what keeps a bad flag from taking
+      // a real log's operation with it.
+      await operations.mergeFromSync([
+        {'uuid': 'real-op', 'stationCall': 'KI2D', 'updatedAtMillis': 1},
+      ]);
+      await operations.mergeFromSync([
+        {'uuid': 'real-op', 'stationCall': 'KI2D', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
+      ]);
+
+      expect(await operations.hardDeleteEmptyReceivedPurges(), isEmpty);
+      expect(await operations.get('real-op'), isNotNull);
+    });
+
+    test('a purge this device confirmed itself is never swept as empty', () async {
+      // purgedLocally rows belong to hardDeletePurged, which waits for the
+      // push to be acknowledged — sweeping one here would drop the tombstone
+      // before any other device ever hears about the purge.
+      final op = await operations.create(stationCall: 'KI2D/T');
+      await operations.purge(op.uuid);
+      await operations.markSynced([(await operations.get(op.uuid))!]);
+
+      expect(await operations.hardDeleteEmptyReceivedPurges(), isEmpty);
+      expect(await operations.get(op.uuid), isNotNull);
+    });
+
     test('a purged QSO this device does not have is never created either', () async {
       await operations.mergeFromSync([
         {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},

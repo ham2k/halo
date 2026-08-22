@@ -1177,6 +1177,47 @@ void main() {
     });
   });
 
+  // The sweep only ever runs from a round, so the round is the only place
+  // its effect on the reported bug — a "removed on another device" notice
+  // that comes back every single sync round for an operation this device
+  // holds nothing of — can actually be pinned. Without the call in the
+  // round, every repository-level test still passes and the notice still
+  // returns forever.
+  group('received purges with nothing held here', () {
+    setUp(() {
+      transport.responder = (method, args) => {'account': {'uuid': 'acct-1'}};
+    });
+
+    test('a round drops one an earlier build stranded', () async {
+      await operations.mergeFromSync([
+        {'uuid': 'stranded-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
+      ]);
+      await operations.mergeFromSync([
+        {'uuid': 'stranded-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
+      ]);
+      expect((await operations.watchReceivedPurgesPending().first).map((o) => o.uuid), ['stranded-op']);
+
+      await engine.runOneRound();
+
+      expect(await operations.get('stranded-op'), isNull);
+      expect(await operations.watchReceivedPurgesPending().first, isEmpty);
+    });
+
+    test('a round leaves one whose QSOs are held here for the operator', () async {
+      final op = await operations.create(stationCall: 'KI2D/T');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      await operations.mergeFromSync([
+        {'uuid': op.uuid, 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 9999999999999},
+      ]);
+
+      await engine.runOneRound();
+
+      expect(await operations.get(op.uuid), isNotNull,
+          reason: 'removing this device\'s own QSOs is exactly what the operator has to confirm');
+      expect((await operations.watchReceivedPurgesPending().first).map((o) => o.uuid), [op.uuid]);
+    });
+  });
+
   // A QSO's purge tombstone arrives in a later batch than the operation it
   // belongs to, so it can land after that operation's row is already gone
   // (the operator confirmed a received purge, or an earlier round's sweep
