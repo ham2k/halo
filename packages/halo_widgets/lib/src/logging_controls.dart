@@ -6311,6 +6311,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // stored value gets the conventional Maidenhead casing back
         // (FN31pr) via normalizeGrid; states are plain uppercase.
         if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
+        // A typed locator replaces any coordinate the record arrived with (an
+        // import's LAT/LON, a sync'd fix): the operator is stating where the
+        // station is, and a leftover coordinate outranks a grid everywhere it
+        // is read, so keeping it would silently discard the correction.
+        if (_gridTouched) 'lat': null,
+        if (_gridTouched) 'lon': null,
         if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
         'call': call,
         'sent': _rstOrDefault(_rcvdController.text.trim()),

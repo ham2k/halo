@@ -644,9 +644,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final t = context.t.loggingControls.info;
     final entityPrefix = guess['entityPrefix'] as String?;
 
-    final ourGrid = widget.operation.grid;
-    final ourLoc = ourGrid == null ? null : gridToLocation(ourGrid);
+    final ourLoc = widget.operation.location;
     final resolved = locationForQsoInfoWithSource(
+      exact: locationFromLatLon(guess['lat'], guess['lon']),
       grid: guess['grid'] as String?,
       entityPrefix: entityPrefix,
       state: guess['state'] as String?,
@@ -661,7 +661,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         resolved?.source == QsoLocationSource.entity && kLargeEntities.contains(entityPrefix);
     if (ourLoc != null && resolved != null && !skipCentroid) {
       final miles = widget.services.settings.distanceUnits == DistanceUnits.miles;
-      final approximate = resolved.source != QsoLocationSource.grid;
+      final approximate = resolved.source.isApproximate;
       final km = distanceOnEarthKm(resolved.location, ourLoc);
       distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
       if (approximate) distStr = '~$distStr'; // centroid-based, not a real fix

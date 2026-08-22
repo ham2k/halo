@@ -582,7 +582,10 @@ class CommandEngine extends ChangeNotifier {
       (note != null && note.isNotEmpty) ? note : guess['name'],
       guess['location'],
       guess['country'],
-      guess['grid'],
+      // The locator the lookup's own coordinate justifies, where it reported
+      // one — the merge derives `guess.grid` from it at six characters, which
+      // is coarser than what was actually known.
+      gridForDisplay(lat: guess['lat'], lon: guess['lon'], grid: guess['grid'] as String?),
     ].whereType<String>().where((s) => s.isNotEmpty).toList();
     return parts.isEmpty ? null : parts.join(' • ');
   }

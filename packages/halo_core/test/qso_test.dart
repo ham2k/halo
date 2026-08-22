@@ -80,4 +80,71 @@ void main() {
       expect(q.theirFieldIsGuessed('state'), isFalse);
     });
   });
+
+  group('Qso location', () {
+    test("an entered coordinate is the QSO's location", () {
+      final q = _qso({'call': 'W1AW', 'lat': 41.7135, 'lon': -72.7278});
+      expect(q.theirExactLocation, const GridLocation(41.7135, -72.7278));
+    });
+
+    test('a lookup that reported coordinates answers when nothing was entered', () {
+      final q = _qso({
+        'call': 'W1AW',
+        'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
+      });
+      expect(q.theirExactLocation, const GridLocation(41.7135, -72.7278));
+    });
+
+    test('an ENTERED grid suppresses the guess\'s coordinate', () {
+      // The operator typing a locator is correcting the lookup. Coalescing
+      // field by field (as theirGrid does) would pair their square with the
+      // lookup's coordinate and put the station straight back at the address
+      // they just overrode — so this one deliberately does not.
+      final q = _qso({
+        'call': 'W1AW',
+        'grid': 'AA00aa',
+        'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
+      });
+      expect(q.theirExactLocation, isNull);
+      expect(q.theirGrid, 'AA00aa');
+    });
+
+    test('an entered coordinate still beats an entered grid', () {
+      final q = _qso({'call': 'W1AW', 'grid': 'AA00aa', 'lat': 41.7135, 'lon': -72.7278});
+      expect(q.theirExactLocation, const GridLocation(41.7135, -72.7278));
+    });
+
+    test('half a coordinate is no coordinate', () {
+      expect(_qso({'call': 'W1AW', 'lat': 41.7135}).theirExactLocation, isNull);
+    });
+
+    test("our own location falls back to our grid's centre, and is null when the QSO records neither", () {
+      expect(_qsoData({'our': {'lat': 41.5, 'lon': -72.5}}).ourLocation, const GridLocation(41.5, -72.5));
+      expect(_qsoData({'our': {'grid': 'FN31pr'}}).ourLocation, gridToLocation('FN31pr'));
+      expect(_qsoData({}).ourLocation, isNull, reason: "the operation's own location answers for it");
+    });
+  });
+
+  group('Operation location', () {
+    Operation op(Map<String, dynamic> data) => Operation(uuid: 'op', data: data);
+
+    test('measures from the stored coordinate, and shows it as eight characters', () {
+      final o = op({'grid': 'FN31', 'lat': 41.7135, 'lon': -72.7278});
+      expect(o.exactLocation, const GridLocation(41.7135, -72.7278));
+      expect(o.location, const GridLocation(41.7135, -72.7278));
+      expect(o.displayGrid, hasLength(8));
+    });
+
+    test('a grid alone still places the operation, at its square centre', () {
+      final o = op({'grid': 'FN31pr'});
+      expect(o.exactLocation, isNull, reason: 'a typed grid is not a coordinate');
+      expect(o.location, gridToLocation('FN31pr'));
+      expect(o.displayGrid, 'FN31pr');
+    });
+
+    test('an operation with no location at all measures from nothing', () {
+      expect(op({}).location, isNull);
+      expect(op({}).displayGrid, isNull);
+    });
+  });
 }

@@ -7,6 +7,7 @@
 
 import 'dart:convert';
 
+import '../ham/grid.dart';
 import 'operation_title.dart';
 
 /// Whether [call] carries `T` or `TEST` as a whole SEGMENT — `KI2D/T`,
@@ -99,6 +100,25 @@ class Operation {
   String get title => (data['title'] as String?) ?? '';
   String? get grid => data['grid'] as String?;
 
+  /// The operation's exact position, when the location it was set from knew
+  /// one — a GPS fix, or the published coordinate of a park/summit ref that
+  /// was adopted. Null when [grid] came from the operator typing one, which
+  /// is all the precision there is in that case.
+  ///
+  /// Where this is set it is authoritative and [grid] is display only: the
+  /// writers that set a grid without a coordinate clear this pair in the same
+  /// write, so the two never disagree about where the station is.
+  GridLocation? get exactLocation => locationFromLatLon(data['lat'], data['lon']);
+
+  /// Where the station is, as well as this operation knows — its
+  /// [exactLocation] if it has one, otherwise the center of its [grid].
+  /// What distance, bearing and the map measure from.
+  GridLocation? get location => exactLocation ?? gridToLocation(grid);
+
+  /// The locator to show for this operation: eight characters when it holds a
+  /// real coordinate, its stored [grid] otherwise (see [gridForDisplay]).
+  String? get displayGrid => gridForDisplay(lat: data['lat'], lon: data['lon'], grid: grid);
+
   List<Map<String, dynamic>> get refs =>
       ((data['refs'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
 
@@ -186,6 +206,23 @@ class Qso {
   /// present. Nothing in HaLo writes it yet; imports/sync may carry it.
   String? get ourGrid => _our['grid'] as String?;
 
+  /// Our exact position at the time of this QSO, when captured — the same
+  /// relationship to [ourGrid] that [Operation.location] has to
+  /// `Operation.grid`, and the same precedence: where it is set it is what
+  /// distance, bearing and the map use. ADIF's `MY_LAT`/`MY_LON` land here on
+  /// import.
+  GridLocation? get ourExactLocation => locationFromLatLon(_our['lat'], _our['lon']);
+
+  /// Where we were for this QSO as well as the QSO itself knows — its own
+  /// coordinate, else the center of its own [ourGrid]. Null when the QSO
+  /// records no location of its own, which is the usual case: the operation's
+  /// location answers for it then.
+  GridLocation? get ourLocation => ourExactLocation ?? gridToLocation(ourGrid);
+
+  /// The locator to show for our end of this QSO — eight characters when it
+  /// carries a real coordinate (see [gridForDisplay]).
+  String? get ourDisplayGrid => gridForDisplay(lat: _our['lat'], lon: _our['lon'], grid: ourGrid);
+
   /// Station Configuration's "Track Station Info for each QSO" — the
   /// transceiver/antenna/CW key display name captured at log time, when the
   /// operator has that field turned on. Null whenever tracking is off, the
@@ -201,6 +238,22 @@ class Qso {
   // entered/edited top-level value always wins over the guess.
   String? get theirName => (_their['name'] as String?) ?? (_theirGuess['name'] as String?);
   String? get theirGrid => (_their['grid'] as String?) ?? (_theirGuess['grid'] as String?);
+
+  /// The other station's exact position, when something knew one — imported
+  /// ADIF `LAT`/`LON`, or a callsign lookup that reported coordinates
+  /// (`their.guess.lat`/`.lon`, which QRZ and the Ham2K lookup both fill in).
+  ///
+  /// An ENTERED grid suppresses a guessed coordinate, rather than the usual
+  /// entered-beats-guess coalescing done field by field: an operator who
+  /// types `their.grid` is correcting the lookup, and pairing their square
+  /// with the lookup's coordinate would put the station back at the address
+  /// they just overrode. An entered coordinate still wins over an entered
+  /// grid — same precedence as everywhere else.
+  GridLocation? get theirExactLocation {
+    if (locationFromLatLon(_their['lat'], _their['lon']) case final entered?) return entered;
+    if (_their['grid'] != null) return null;
+    return locationFromLatLon(_theirGuess['lat'], _theirGuess['lon']);
+  }
   String? get theirState => (_their['state'] as String?) ?? (_theirGuess['state'] as String?);
   // Both set by the callsign-annotation lookup step
   // (`annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the

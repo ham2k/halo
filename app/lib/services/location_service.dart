@@ -139,9 +139,30 @@ class LocationService extends ChangeNotifier {
   /// peer hides the problem — resurfacing the moment the peer walks away.
   LocationStatus get localStatus => _status;
   Position? get position => positionIsFromPeer ? _peerPosition : _position;
+  /// The fix as a 6-character locator. Kept beside [displayGrid] for the one
+  /// comparison that has to happen at six characters: an operation stored
+  /// before `gridSource` existed carries a 6-character grid, and deciding
+  /// whether it came from GPS means comparing like with like.
   String? get grid {
     final resolved = position;
     return resolved == null ? null : locationToGrid6(resolved.latitude, resolved.longitude);
+  }
+
+  /// The fix as an 8-character locator — what the operator is SHOWN, and what
+  /// is stored when they adopt this position. A receiver knows where it is far
+  /// better than a 6-character square says, and the coordinate is kept
+  /// alongside it, so the shorter form would be understating a location the
+  /// app is holding exactly.
+  String? get displayGrid {
+    final resolved = position;
+    return resolved == null ? null : locationToGrid8(resolved.latitude, resolved.longitude);
+  }
+
+  /// The fix as a plain coordinate, for everything that measures rather than
+  /// displays — nearby search, distance, the map's "you are here".
+  GridLocation? get location {
+    final resolved = position;
+    return resolved == null ? null : GridLocation(resolved.latitude, resolved.longitude);
   }
 
   // [start] and [getCurrentPosition] can both ask for permission at once (the

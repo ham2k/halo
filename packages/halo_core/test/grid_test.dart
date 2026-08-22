@@ -92,4 +92,109 @@ void main() {
       expect(isWellFormedGrid('FN31pr!!'), isFalse);
     });
   });
+
+  group('gridToLocation, finer than six characters', () {
+    // An 8-character cell is 30" of longitude by 15" of latitude — roughly
+    // 700m x 460m at this latitude. Decoding one as if it were six characters
+    // lands on the subsquare's centre instead, up to ~4km away, which is the
+    // whole reason the extra digits get stored.
+    test('decodes the extended-square digits of an 8-character locator', () {
+      final subsquare = gridToLocation('FN31pr')!;
+      final extended = gridToLocation('FN31pr99')!;
+      expect(extended.latitude, greaterThan(subsquare.latitude));
+      expect(extended.longitude, greaterThan(subsquare.longitude));
+      // The last cell of the subsquare, so its centre sits just inside the
+      // subsquare's northeast corner.
+      expect(extended.latitude, closeTo(subsquare.latitude + (1 / 24) * 0.45, 1e-6));
+      expect(extended.longitude, closeTo(subsquare.longitude + (2 / 24) * 0.45, 1e-6));
+    });
+
+    test('decodes the sub-subsquare letters of a 10-character locator', () {
+      final extended = gridToLocation('FN31pr55')!;
+      final subSub = gridToLocation('FN31pr55xx')!;
+      expect(subSub.latitude, greaterThan(extended.latitude));
+      expect(subSub.longitude, greaterThan(extended.longitude));
+      expect(subSub.latitude - extended.latitude, lessThan(1 / 24 / 10 / 2));
+    });
+
+    test('a locator centred in its cell round-trips through the encoder', () {
+      final location = gridToLocation('FN31pr56')!;
+      expect(locationToGrid8(location.latitude, location.longitude), 'FN31pr56');
+    });
+
+    test('stops at the last level that parses rather than failing outright', () {
+      // Read off the air or out of a data file, a malformed tail is still
+      // worth the coarser cell the rest of the locator agrees on.
+      expect(gridToLocation('FN31przz'), gridToLocation('FN31pr'), reason: 'extended square must be digits');
+      expect(gridToLocation('FN31pr5599'), gridToLocation('FN31pr55'), reason: 'sub-subsquare must be letters');
+    });
+  });
+
+  group('locationToGrid8', () {
+    test('is the 6-character locator plus two digits of extended square', () {
+      const arrl = GridLocation(41.7135, -72.7278);
+      final grid6 = locationToGrid6(arrl.latitude, arrl.longitude);
+      final grid8 = locationToGrid8(arrl.latitude, arrl.longitude);
+      expect(grid8, hasLength(8));
+      expect(grid8.substring(0, 6), grid6);
+      expect(int.tryParse(grid8.substring(6)), isNotNull);
+    });
+
+    test('two points in the same subsquare but different extended squares differ', () {
+      // The mutation this catches: an encoder that appends '00' (or the same
+      // rounding for everything) still passes a length check and still starts
+      // with the right six characters.
+      final west = locationToGrid8(41.7135, -72.7500);
+      final east = locationToGrid8(41.7135, -72.7000);
+      expect(west.substring(0, 6), east.substring(0, 6));
+      expect(west, isNot(east));
+    });
+
+    test('clamps at the poles and the antimeridian instead of running off the alphabet', () {
+      expect(locationToGrid8(90, 180), isNotEmpty);
+      expect(locationToGrid8(-90, -180), isNotEmpty);
+    });
+  });
+
+  group('locationFromLatLon', () {
+    test('takes a numeric pair, whatever numeric type the JSON carried', () {
+      expect(locationFromLatLon(41, -72), const GridLocation(41, -72), reason: 'ints, from a hand-written file');
+      expect(locationFromLatLon(41.5, -72.5), const GridLocation(41.5, -72.5));
+    });
+
+    test('refuses anything that is not a usable coordinate', () {
+      expect(locationFromLatLon(null, null), isNull);
+      expect(locationFromLatLon(41.5, null), isNull, reason: 'half a coordinate is not a location');
+      expect(locationFromLatLon('41.5', '-72.5'), isNull, reason: 'strings are not silently coerced');
+      expect(locationFromLatLon(double.nan, 0), isNull);
+      expect(locationFromLatLon(double.infinity, 0), isNull);
+      expect(locationFromLatLon(91, 0), isNull);
+      expect(locationFromLatLon(0, -181), isNull);
+    });
+  });
+
+  group('gridForDisplay', () {
+    test('shows eight characters for a record that holds a real coordinate', () {
+      final shown = gridForDisplay(lat: 41.7135, lon: -72.7278, grid: 'FN31')!;
+      expect(shown, hasLength(8));
+      expect(shown, locationToGrid8(41.7135, -72.7278));
+    });
+
+    test("the coordinate wins over a stored grid that disagrees with it", () {
+      // Both are stored, and a writer that set one without the other is the
+      // bug this precedence exists to survive: the coordinate is what every
+      // distance is measured from, so it is what the operator must be shown.
+      expect(gridForDisplay(lat: 41.7135, lon: -72.7278, grid: 'AA00aa'), startsWith('FN31'));
+    });
+
+    test('falls back to the stored grid, normalized, when there is no coordinate', () {
+      expect(gridForDisplay(grid: 'fn31PR'), 'FN31pr');
+      expect(gridForDisplay(lat: null, lon: null, grid: 'FN31'), 'FN31');
+    });
+
+    test('is null when the record names no location at all', () {
+      expect(gridForDisplay(), isNull);
+      expect(gridForDisplay(grid: '   '), isNull);
+    });
+  });
 }

@@ -36,7 +36,7 @@ class OperationLocationScreen extends StatefulWidget {
 }
 
 class _OperationLocationScreenState extends State<OperationLocationScreen> {
-  late final _gridController = TextEditingController(text: widget.operation.grid ?? '');
+  late final _gridController = TextEditingController(text: widget.operation.displayGrid ?? '');
   late final _stateController = TextEditingController(text: (widget.operation.data['state'] as String?) ?? '');
   late final _countyController = TextEditingController(text: (widget.operation.data['county'] as String?) ?? '');
   final _gridFocus = FocusNode();
@@ -46,6 +46,18 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   static final _twoLetterState = RegExp(r'^[A-Za-z]{2}$');
 
   String? _gridSource;
+
+  /// The coordinate behind whatever is in the grid field, when it was adopted
+  /// from something that knew one — the device's own fix, or a ref carrying
+  /// its published position. Cleared the moment the operator types, so a
+  /// hand-entered locator never ships with the precision of the suggestion it
+  /// replaced (see [_onGridTextChanged]).
+  ///
+  /// Seeded from the operation like [_gridSource] is (in `initState`): this
+  /// screen returns a patch that gets spread over the operation's data, so a
+  /// field the operator never touched has to come back holding what it
+  /// arrived with, or an untouched Save strips the stored fix.
+  late GridLocation? _adoptedLocation = widget.operation.exactLocation;
 
   List<Map<String, dynamic>> _controls = const [];
   ControlsLoadState _controlsState = ControlsLoadState.loading;
@@ -119,9 +131,10 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     // complaint goes away as soon as they act on it rather than surviving
     // until the next Save.
     if (_gridRejected) setState(() => _gridRejected = false);
-    if (_gridSource != 'manual') {
+    if (_gridSource != 'manual' || _adoptedLocation != null) {
       setState(() {
         _gridSource = 'manual';
+        _adoptedLocation = null;
       });
     }
   }
@@ -143,9 +156,10 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     _stateController.text = _normalizeState(_stateController.text.trim());
   }
 
-  void _adoptGrid(String grid, String source) {
+  void _adoptGrid(String grid, String source, {GridLocation? location}) {
     setState(() {
       _gridSource = source;
+      _adoptedLocation = location;
       // Detached so the assignment doesn't read as manual typing — which also
       // means the listener's own clearing of [_gridRejected] doesn't run, and
       // a refused locator replaced by a suggested one would keep the
@@ -185,9 +199,16 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       return;
     }
 
+    // [_adoptedLocation] is non-null exactly while the field still holds the
+    // locator it was adopted with: every path that changes the text runs
+    // [_onGridTextChanged], which clears it. Nothing re-checks that here —
+    // a second guard on the same rule would be one this dialog can never
+    // reach, and a defence that cannot fire is not a defence.
     Navigator.of(context).pop(<String, dynamic>{
       'grid': grid.isEmpty ? null : grid,
       'gridSource': grid.isEmpty ? null : _gridSource,
+      'lat': _adoptedLocation?.latitude,
+      'lon': _adoptedLocation?.longitude,
       'state': state,
       'county': county,
     });
@@ -198,7 +219,14 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     final t = context.t.operationLocationScreen;
     final theme = Theme.of(context);
     final location = widget.services.location;
-    final refsWithGrid = widget.operation.refs.where((r) => (r['grid'] as String?)?.isNotEmpty == true).toList();
+    // A ref is offerable when it can name a location at all — its own
+    // published coordinate (an 8-character locator, and the coordinate itself
+    // is what gets adopted) or, for a program whose table has none, its grid.
+    final refsWithGrid = [
+      for (final ref in widget.operation.refs)
+        if (gridForDisplay(lat: ref['lat'], lon: ref['lon'], grid: ref['grid'] as String?) case final grid?)
+          (ref: ref, grid: grid, location: locationFromLatLon(ref['lat'], ref['lon'])),
+    ];
 
     // The LOCAL problem stays visible under a serving peer fix: with the
     // grid alone, this screen would be the operator's last surface that
@@ -214,7 +242,9 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
         : null;
     final gpsSubtitle = switch (location.status) {
       LocationStatus.available =>
-        localProblem == null ? (location.grid ?? '') : '${location.grid ?? ''} — $localProblem',
+        localProblem == null
+            ? (location.displayGrid ?? '')
+            : '${location.displayGrid ?? ''} — $localProblem',
       LocationStatus.unknown || LocationStatus.determining => t.locating,
       LocationStatus.permissionDenied => t.permissionDenied,
       LocationStatus.permissionBlocked => t.permissionBlocked,
@@ -259,19 +289,21 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               null => t.deviceGps,
             }),
             subtitle: Text(gpsSubtitle),
-            onTap: location.grid == null ? null : () => _adoptGrid(location.grid!, 'gps'),
+            onTap: location.displayGrid == null
+                ? null
+                : () => _adoptGrid(location.displayGrid!, 'gps', location: location.location),
           ),
-          for (final ref in refsWithGrid)
+          for (final suggestion in refsWithGrid)
             ListTile(
-              tileColor: !_controlsUnreliable && isUnknownRefType(_controls, ref['type'] as String?)
+              tileColor: !_controlsUnreliable && isUnknownRefType(_controls, suggestion.ref['type'] as String?)
                   ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                   : null,
               leading: _controlsUnreliable
                   ? Icon(MdiIcons.toyBrick)
-                  : activityRefIcon(_controls, ref['type'] as String?),
-              title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
-              subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),
-              onTap: () => _adoptGrid(ref['grid'] as String, 'manual'),
+                  : activityRefIcon(_controls, suggestion.ref['type'] as String?),
+              title: Text((suggestion.ref['shortLabel'] ?? suggestion.ref['ref'] ?? '?') as String),
+              subtitle: Text(suggestion.grid, style: const TextStyle(fontFamily: 'RobotoMono')),
+              onTap: () => _adoptGrid(suggestion.grid, 'manual', location: suggestion.location),
             ),
           // Only worth saying when a ref is actually standing there without
           // its activity's icon and label — with no refs to explain, the

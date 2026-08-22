@@ -1964,8 +1964,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         inLayout,
         // The saved operation's grid, not the draft's: the pane refetches
         // when this changes, and a half-typed grid square would send a
-        // request per keystroke.
-        operationGrid: _operationForPanels?.grid,
+        // request per keystroke. The DISPLAY grid, so a pane reading it gets
+        // the operation's real position where one is stored.
+        operationGrid: _operationForPanels?.displayGrid,
         // From `_callInfo`, which this view keeps current unconditionally —
         // NOT from the QSO draft, which is only produced when a panel
         // declares `qso` and costs a rebuild plus a deep compare on every

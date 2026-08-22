@@ -272,8 +272,8 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, their, 'dxcc', 'dxccCode', int.tryParse);
   _set(f, their, 'email', 'email');
   _set(f, their, 'gridsquare', 'grid');
-  _set(f, their, 'lat', 'lat');
-  _set(f, their, 'lon', 'lon');
+  _set(f, their, 'lat', 'lat', (x) => parseAdifCoordinate(x, latitude: true));
+  _set(f, their, 'lon', 'lon', (x) => parseAdifCoordinate(x, latitude: false));
   _set(f, their, 'pfx', 'entityPrefix');
 
   _set(f, our, 'my_name', 'name');
@@ -300,8 +300,8 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, our, 'my_dxcc', 'dxccCode', int.tryParse);
   _set(f, our, 'my_email', 'email');
   _set(f, our, 'my_gridsquare', 'grid');
-  _set(f, our, 'my_lat', 'lat');
-  _set(f, our, 'my_lon', 'lon');
+  _set(f, our, 'my_lat', 'lat', (x) => parseAdifCoordinate(x, latitude: true));
+  _set(f, our, 'my_lon', 'lon', (x) => parseAdifCoordinate(x, latitude: false));
   _set(f, our, 'my_pfx', 'entityPrefix');
   // num, not the raw string: `power` is also written by CAT capture
   // (Qso.power) as a number, and the two origins have to agree on a type.
@@ -422,6 +422,48 @@ bool _confirmed(String? value) {
 /// plenty of the latter, and for every purpose here they mean the same thing —
 /// which `??` chains do not, since `??` only skips null.
 String? _present(String? value) => (value == null || value.isEmpty) ? null : value;
+
+// Hoisted, not a literal inside the function: a `RegExp` literal recompiles
+// its pattern on every call, and an import runs this up to four times per
+// QSO (`LAT`/`LON`/`MY_LAT`/`MY_LON`) — the same cost `_clean` below
+// measured as the largest single item in parsing a 38k-QSO file.
+final _adifCoordinate = RegExp(r'^([NSEW])\s*(\d{1,3})\s+(\d{1,2}(?:\.\d+)?)$');
+
+/// ADIF's Location data type — `XDDD MM.MMM`, a hemisphere letter, degrees,
+/// then minutes to three decimals — as the signed decimal degrees QSON stores.
+/// `N041 22.500` is 41.375; `W074 27.000` is -74.45.
+///
+/// Also accepts bare signed decimal degrees, which is not the ADIF format but
+/// is what several exporters write into these fields anyway; the hemisphere
+/// letter is what tells the two apart. Returns null for anything else, or for
+/// a value outside the axis — [latitude] picks the limit, since a value legal
+/// for a longitude is off the map for a latitude.
+///
+/// Deliberately lenient about the field WIDTHS the spec states (`N41 22.5`
+/// parses): this reads other people's files, where a padding rule is the
+/// commonest thing to get wrong, and the number is unambiguous either way.
+double? parseAdifCoordinate(String raw, {required bool latitude}) {
+  final text = raw.trim().toUpperCase();
+  if (text.isEmpty) return null;
+
+  final limit = latitude ? 90.0 : 180.0;
+  double? inRange(double value) => value.isFinite && value.abs() <= limit ? value : null;
+
+  final match = _adifCoordinate.firstMatch(text);
+  if (match == null) return inRange(double.tryParse(text) ?? double.nan);
+
+  final hemisphere = match.group(1)!;
+  // A latitude signed E/W (or a longitude signed N/S) is not a coordinate on
+  // this axis, whatever the numbers say — likelier a file with its fields
+  // swapped than a location, and importing it would put the station somewhere
+  // nobody was.
+  if (latitude != (hemisphere == 'N' || hemisphere == 'S')) return null;
+
+  final minutes = double.parse(match.group(3)!);
+  if (minutes >= 60) return null;
+  final magnitude = double.parse(match.group(2)!) + minutes / 60;
+  return inRange(hemisphere == 'S' || hemisphere == 'W' ? -magnitude : magnitude);
+}
 
 /// Copies `src[field]` (or its `_intl` twin) to `dest[destField]`, converted.
 ///

@@ -23,11 +23,11 @@ class GridLocation {
   int get hashCode => Object.hash(latitude, longitude);
 }
 
-/// Decodes a 4- or 6-character Maidenhead grid locator to the lat/lon of
-/// its center (of the subsquare when 6 characters are given and valid,
-/// otherwise the square). Returns null for anything that doesn't parse as
-/// a valid locator — wrong length, out-of-range field letters, non-digit
-/// squares.
+/// Decodes a 4-, 6-, 8- or 10-character Maidenhead grid locator to the lat/lon
+/// of the center of the finest cell it can read — stopping at the last level
+/// that parses, so a locator with a malformed tail still yields the coarser
+/// cell it agrees on. Returns null for anything that doesn't parse at all —
+/// wrong length, out-of-range field letters, non-digit squares.
 GridLocation? gridToLocation(String? grid) {
   if (grid == null || grid.length < 4) return null;
   final g = grid.toUpperCase();
@@ -40,20 +40,46 @@ GridLocation? gridToLocation(String? grid) {
   final latSquare = int.tryParse(g[3]);
   if (lonSquare == null || latSquare == null) return null;
 
-  final lon = lonField * 20 - 180 + lonSquare * 2;
-  final lat = latField * 10 - 90 + latSquare * 1;
+  // The cell shrinks by the divisor of each level in turn — 24 for a letter
+  // pair, 10 for a digit pair — and the return adds half of whatever it ended
+  // up as, moving from the cell's south-west corner to its center.
+  var lonSize = 2.0;
+  var latSize = 1.0;
+  var lon = lonField * 20 - 180 + lonSquare * lonSize;
+  var lat = latField * 10 - 90 + latSquare * latSize;
+  GridLocation center() => GridLocation(lat + latSize / 2, lon + lonSize / 2);
 
   if (g.length >= 6) {
     final lonSub = g.codeUnitAt(4) - 65;
     final latSub = g.codeUnitAt(5) - 65;
-    if (lonSub >= 0 && lonSub < 24 && latSub >= 0 && latSub < 24) {
-      return GridLocation(
-        lat + latSub * (1 / 24) + (0.5 / 24),
-        lon + lonSub * (2 / 24) + (1 / 24),
-      );
-    }
+    if (lonSub < 0 || lonSub >= 24 || latSub < 0 || latSub >= 24) return center();
+    lonSize /= 24;
+    latSize /= 24;
+    lon += lonSub * lonSize;
+    lat += latSub * latSize;
   }
-  return GridLocation(lat + 0.5, lon + 1);
+
+  if (g.length >= 8) {
+    final lonExt = int.tryParse(g[6]);
+    final latExt = int.tryParse(g[7]);
+    if (lonExt == null || latExt == null) return center();
+    lonSize /= 10;
+    latSize /= 10;
+    lon += lonExt * lonSize;
+    lat += latExt * latSize;
+  }
+
+  if (g.length >= 10) {
+    final lonSubSub = g.codeUnitAt(8) - 65;
+    final latSubSub = g.codeUnitAt(9) - 65;
+    if (lonSubSub < 0 || lonSubSub >= 24 || latSubSub < 0 || latSubSub >= 24) return center();
+    lonSize /= 24;
+    latSize /= 24;
+    lon += lonSubSub * lonSize;
+    lat += latSubSub * latSize;
+  }
+
+  return center();
 }
 
 /// A well-formed Maidenhead locator: field pair, square digits, then
@@ -95,7 +121,20 @@ String normalizeGrid(String grid) {
 /// (e.g. `EM89hu`) — the inverse of [gridToLocation], used to show the
 /// device's current GPS position as a grid. Same algorithm as app-polo's
 /// @ham2k/lib-geo-tools `locationToGrid6`.
-String locationToGrid6(double lat, double lon) {
+String locationToGrid6(double lat, double lon) => _locationToGrid(lat, lon, extended: false);
+
+/// Encodes a latitude/longitude as an 8-character locator (e.g. `EM89hu56`) —
+/// the 6-character subsquare plus the extended-square digit pair, a cell 30″
+/// of longitude by 15″ of latitude (roughly 700m x 460m at mid latitudes).
+///
+/// Use this ONLY for a coordinate that is actually known to that precision (a
+/// GPS fix, a park's published position). A grid is what the operator reads,
+/// so its length is a claim about how well the location is known: eight
+/// characters derived from a grid-6 square's own center invent four hundred
+/// metres of precision that was never there.
+String locationToGrid8(double lat, double lon) => _locationToGrid(lat, lon, extended: true);
+
+String _locationToGrid(double lat, double lon, {required bool extended}) {
   final adjLat = (lat + 90).clamp(0, 180);
   final adjLon = (lon + 180).clamp(0, 360);
 
@@ -105,11 +144,51 @@ String locationToGrid6(double lat, double lon) {
   final lonSquare = ((adjLon - lonField * 20) / 2).floor().clamp(0, 9);
   final latSquare = (adjLat - latField * 10).floor().clamp(0, 9);
 
-  final lonSub = (((adjLon - lonField * 20 - lonSquare * 2)) / (2 / 24)).floor().clamp(0, 23);
-  final latSub = (((adjLat - latField * 10 - latSquare)) / (1 / 24)).floor().clamp(0, 23);
+  final lonRest = adjLon - lonField * 20 - lonSquare * 2;
+  final latRest = adjLat - latField * 10 - latSquare;
+  final lonSub = (lonRest / (2 / 24)).floor().clamp(0, 23);
+  final latSub = (latRest / (1 / 24)).floor().clamp(0, 23);
 
   final field = String.fromCharCode(65 + lonField) + String.fromCharCode(65 + latField);
   final square = '$lonSquare$latSquare';
   final sub = String.fromCharCode(97 + lonSub) + String.fromCharCode(97 + latSub);
-  return '$field$square$sub';
+  if (!extended) return '$field$square$sub';
+
+  final lonExt = ((lonRest - lonSub * (2 / 24)) / (2 / 240)).floor().clamp(0, 9);
+  final latExt = ((latRest - latSub * (1 / 24)) / (1 / 240)).floor().clamp(0, 9);
+  return '$field$square$sub$lonExt$latExt';
+}
+
+/// A coordinate pair as an exact location, or null when either half is
+/// missing, non-numeric, not finite, or out of range.
+///
+/// Takes [Object]s because every caller reads them straight out of a JSON
+/// blob (`operation.data`, `qso.their.guess`, an activity ref) where the type
+/// is whatever the writer put there — a `0` arriving as `int`, a coordinate
+/// arriving as a string from a data file that never got parsed. Answering
+/// "is there an exact location here?" in one place keeps every caller from
+/// re-deciding what counts.
+GridLocation? locationFromLatLon(Object? lat, Object? lon) {
+  if (lat is! num || lon is! num) return null;
+  final latitude = lat.toDouble();
+  final longitude = lon.toDouble();
+  if (!latitude.isFinite || !longitude.isFinite) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  return GridLocation(latitude, longitude);
+}
+
+/// The locator to SHOW for a record — eight characters derived from its
+/// coordinate when it has one, otherwise its stored [grid] as written.
+///
+/// The pair is the record's own `lat`/`lon` (see [locationFromLatLon]), so
+/// the length of what comes back tracks how well the location is actually
+/// known, rather than how long a string some upstream source happened to
+/// send. Null when the record has neither.
+String? gridForDisplay({Object? lat, Object? lon, String? grid}) {
+  if (locationFromLatLon(lat, lon) case final location?) {
+    return locationToGrid8(location.latitude, location.longitude);
+  }
+  final stored = grid?.trim();
+  if (stored == null || stored.isEmpty) return null;
+  return normalizeGrid(stored);
 }

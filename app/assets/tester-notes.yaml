@@ -4,6 +4,11 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Locations now keep full coordinates, so grids show finer and distances sharpen
+    - ADIF exports now carry your own grid square, and coordinates with private data on
+
 "146":
   changes:
     - Lookups now tidy up names and towns, and show QRZ nicknames

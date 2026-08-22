@@ -15,6 +15,7 @@ import { defineExtension, hooks, qsoValues, renderTemplate, startMillisOf, templ
 import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
+import { formatAdifCoordinate } from "./coordinates.ts"
 import { filenameFor } from "./filename.ts"
 
 const ADIF_VERSION = '3.1.5'
@@ -35,6 +36,27 @@ const SUBSTITUTIONS: [RegExp, string][] = [
 
 function sanitizeAdifText(text: string): string {
   return SUBSTITUTIONS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text)
+}
+
+/// The other station's coordinate, in the same precedence the app's own model
+/// uses (`Qso.theirExactLocation`): an entered pair wins; an ENTERED grid
+/// suppresses a guessed pair, because an operator who typed a locator was
+/// correcting the lookup and pairing the two would export the address they
+/// overrode; only then does the guess answer.
+function theirCoordinate(
+  their: Record<string, unknown>,
+  theirGuess: Record<string, unknown>,
+): { lat: unknown; lon: unknown } | undefined {
+  if (their.lat != null && their.lon != null) return { lat: their.lat, lon: their.lon }
+  if (their.grid != null) return undefined
+  return { lat: theirGuess.lat, lon: theirGuess.lon }
+}
+
+/// A locator cut back to its 6-character subsquare — the enclosing square, so
+/// the result is still a true statement about where the station was, just a
+/// coarser one. Shorter locators are already coarse and pass through unchanged.
+function coarseGrid(grid: string | undefined): string | undefined {
+  return typeof grid === 'string' ? grid.slice(0, 6) : undefined
 }
 
 function field(name: string, value: unknown): string {
@@ -81,6 +103,7 @@ interface AdifField {
 /// the other operator did not necessarily publish.
 function baseRowFor(
   qso: Record<string, unknown>,
+  operation: Record<string, unknown>,
   stationCall: string,
   timeOffsetMillis: number,
   includePrivateData: boolean,
@@ -122,8 +145,31 @@ function baseRowFor(
   // place.
   row += field('STATE', their.state ?? theirGuess.state)
   row += field('COUNTRY', their.country ?? theirGuess.country)
+  // Our own location always goes out, at SIX characters — the field award
+  // programs read, and a ~9 x 5 km square, which is what an operator has always
+  // put on the air. The finer forms below ride `includePrivateData`, so the
+  // stored locator is truncated here rather than written as-is: an operation
+  // set from a GPS fix stores eight characters, and shipping those ungated
+  // would state the operator's position to a few hundred metres through the
+  // very switch that withholds the coordinate they came from.
+  //
+  // A QSO's own `our.grid` wins over the operation's throughout: QSON allows
+  // the station to move mid-operation, and the contact records where it was
+  // actually made from.
+  const ourGrid = (our.grid ?? operation.grid) as string | undefined
+  row += field('MY_GRIDSQUARE', includePrivateData ? ourGrid : coarseGrid(ourGrid))
+
   if (includePrivateData) {
     row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
+    // Coordinates ride with the gridsquare, and for the same reason: where the
+    // other operator is, to a few hundred metres, is not something the contact
+    // itself says. Ours goes out under the same switch — a log uploaded to a
+    // program's servers would otherwise publish the operator's own address.
+    const theirs = theirCoordinate(their, theirGuess)
+    row += field('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
+    row += field('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
+    row += field('MY_LAT', formatAdifCoordinate(our.lat ?? operation.lat, 'lat'))
+    row += field('MY_LON', formatAdifCoordinate(our.lon ?? operation.lon, 'lon'))
   }
 
   // Built once, on the first field that will actually render — `qsoValues`
@@ -257,7 +303,7 @@ const ExportHandler = {
         // Records split out of one contact would otherwise be identical, and a
         // log processor is entitled to read that as a duplicate. app-polo
         // shifts each by a second (`qsonToADIF.js:144`); so do we.
-        let row = baseRowFor(qso, stationCall, n * 1000, includePrivateData === true, exportContext)
+        let row = baseRowFor(qso, operation, stationCall, n * 1000, includePrivateData === true, exportContext)
         for (const sets of perHook) {
           // A hook with a single set describes the contact rather than one of
           // its records, so it belongs on all of them.

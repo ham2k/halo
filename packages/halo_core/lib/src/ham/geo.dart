@@ -50,21 +50,43 @@ double bearingOnEarthDeg(GridLocation from, GridLocation to) {
 // never worth a marker (same skip-list as locationForQSONInfo).
 const _placeholderGrids = {'AA00', 'AA00AA'};
 
-/// Which fallback [locationForQsoInfoWithSource] used — a `grid` fix is exact;
-/// `region` (state/province centroid) and `entity` (DXCC centroid) are coarse,
-/// so display code can mark them approximate or suppress the least precise.
-enum QsoLocationSource { grid, region, entity }
+/// Which source [locationForQsoInfoWithSource] used — `exact` is a real
+/// coordinate, `grid` the center of a square the station is somewhere inside;
+/// `region` (state/province centroid) and `entity` (DXCC centroid) are coarse
+/// enough that display code marks them approximate or suppresses them.
+enum QsoLocationSource { exact, grid, region, entity }
 
-/// Resolves the best-available coordinates for one end of a QSO, in the same
-/// priority order as app-polo's map: an actual grid square, else the
-/// state/province centroid for `entityPrefix`+`state` (US/Canada/Australia),
-/// else the DXCC entity centroid for `entityPrefix`, else null. Also reports
-/// which source produced the location.
+extension QsoLocationSourceProximity on QsoLocationSource {
+  /// Whether the location is a centroid standing in for a station that could
+  /// be anywhere in a state or a country — a distance or bearing computed
+  /// from one is not a fact about the station, and display code says so.
+  ///
+  /// A `grid` fix is NOT approximate by this measure even though a square has
+  /// real width: the station is inside it, which is what the operator was
+  /// told and what app-polo's map has always drawn.
+  bool get isApproximate => this == QsoLocationSource.region || this == QsoLocationSource.entity;
+}
+
+/// Resolves the best-available coordinates for one end of a QSO: the [exact]
+/// coordinate when the record carries one, else the center of an actual grid
+/// square, else — following app-polo's map — the state/province centroid for
+/// `entityPrefix`+`state` (US/Canada/Australia), else the DXCC entity
+/// centroid for `entityPrefix`, else null. Also reports which source produced
+/// the location.
+///
+/// [exact] outranks [grid] rather than being a fallback for a missing one:
+/// where both are present the coordinate is what the grid was derived FROM
+/// (a GPS fix, a park's published position, a QRZ record), so decoding the
+/// square instead would throw away the precision this whole path exists to
+/// carry. Callers holding raw JSON parse it with [locationFromLatLon] first,
+/// so "is this a usable coordinate?" is answered in one place.
 ({GridLocation location, QsoLocationSource source})? locationForQsoInfoWithSource({
+  GridLocation? exact,
   String? grid,
   String? entityPrefix,
   String? state,
 }) {
+  if (exact != null) return (location: exact, source: QsoLocationSource.exact);
   if (grid != null && !_placeholderGrids.contains(grid.toUpperCase())) {
     if (gridToLocation(grid) case final location?) {
       return (location: location, source: QsoLocationSource.grid);
@@ -85,8 +107,13 @@ enum QsoLocationSource { grid, region, entity }
 
 /// The location alone (see [locationForQsoInfoWithSource]) — kept for callers
 /// (e.g. the map) that don't need the source.
-GridLocation? locationForQsoInfo({String? grid, String? entityPrefix, String? state}) =>
-    locationForQsoInfoWithSource(grid: grid, entityPrefix: entityPrefix, state: state)?.location;
+GridLocation? locationForQsoInfo({
+  GridLocation? exact,
+  String? grid,
+  String? entityPrefix,
+  String? state,
+}) =>
+    locationForQsoInfoWithSource(exact: exact, grid: grid, entityPrefix: entityPrefix, state: state)?.location;
 
 /// Points along the great circle from [start] to [end], split into multiple
 /// polylines where the arc crosses the antimeridian (so a 2D map doesn't

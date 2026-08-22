@@ -152,16 +152,23 @@ const _currentActivitiesMapMaxHeight = _twoLineRowHeight * 2.5;
 /// low would eat the results area it is there to protect.
 const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 
-/// Decides which grid (if any) an operation should adopt right after a new
+/// Decides which location (if any) an operation should adopt right after a new
 /// activity ref is added, given it doesn't already have one:
 ///  - if live GPS is available, adopt it — but only when the just-added ref
 ///    is within [_nearbyGridAdoptionKm] of it (a far-away ref added while
 ///    away from the shack shouldn't imply "this is where I am").
-///  - otherwise (no GPS fix), adopt the first ref's own grid, if it has one
-///    — the most that can be inferred without a location source at all.
+///  - otherwise (no GPS fix), adopt the first ref's own location, if it has
+///    one — the most that can be inferred without a location source at all.
+///
+/// Returns the coordinate as well as the locator wherever the source knew one
+/// (a fix always does; a ref does when its activity's table publishes
+/// coordinates), since that pair is what the operation stores. `grid` is
+/// always the locator for `location` when there is one, so the two can't
+/// describe different places.
+///
 /// A pure function (no Flutter/service dependencies) so this decision is
 /// unit-testable without exercising the whole ActivitiesView widget tree.
-String? gridToAdoptAfterAddingRef({
+({String grid, GridLocation? location, String source})? locationToAdoptAfterAddingRef({
   required String? operationGrid,
   required GridLocation? gpsPosition,
   required num? distanceKm,
@@ -171,11 +178,18 @@ String? gridToAdoptAfterAddingRef({
 
   if (gpsPosition != null) {
     if (distanceKm == null || distanceKm > _nearbyGridAdoptionKm) return null;
-    return locationToGrid6(gpsPosition.latitude, gpsPosition.longitude);
+    return (
+      grid: locationToGrid8(gpsPosition.latitude, gpsPosition.longitude),
+      location: gpsPosition,
+      source: 'gps',
+    );
   }
 
-  final firstGrid = refsAfterAdd.isEmpty ? null : refsAfterAdd.first['grid'] as String?;
-  return (firstGrid != null && firstGrid.isNotEmpty) ? firstGrid : null;
+  if (refsAfterAdd.isEmpty) return null;
+  final first = refsAfterAdd.first;
+  final grid = gridForDisplay(lat: first['lat'], lon: first['lon'], grid: first['grid'] as String?);
+  if (grid == null) return null;
+  return (grid: grid, location: locationFromLatLon(first['lat'], first['lon']), source: 'manual');
 }
 
 /// Whether an operation may carry more than one ref of [type] at a time, as
@@ -594,7 +608,11 @@ class OperationSheetState extends State<OperationSheet> {
   /// are the same location — the editor returns `''` for a field never filled
   /// in, so comparing raw would make an unchanged Save pay for a fan-out.
   void _researchIfLocationChanged(Operation before, Operation after) {
-    const keys = ['grid', 'state', 'county'];
+    // `lat`/`lon` alongside the grid: adopting a ref's own coordinate moves
+    // the search's centre by up to a few kilometres without the grid changing
+    // at all, and a nearby search run from the wrong one of those two points
+    // is exactly what this whole path exists to prevent.
+    const keys = ['grid', 'lat', 'lon', 'state', 'county'];
     if (keys.every((key) => (before.data[key] ?? '') == (after.data[key] ?? ''))) return;
     _debounce?.cancel();
     unawaited(_search(_searchController.text));
@@ -642,24 +660,29 @@ class OperationSheetState extends State<OperationSheet> {
 
   void _saveRefs(List<Map<String, dynamic>> refs) => _saveOperationData({'refs': refs});
 
-  /// Opportunistically fills in the operation's own (still-unset) grid right
-  /// after a new activity ref is added — from live GPS if that ref is close
-  /// by, or otherwise from the first ref's own grid once GPS isn't available
-  /// — so features that need a grid (nearby suggestions, the Map tab) work
-  /// without the user having to set one by hand via OperationLocationScreen.
-  void _maybeAdoptGridFromNewRef({num? distanceKm}) {
-    final position = widget.services.location.position;
-    final grid = gridToAdoptAfterAddingRef(
+  /// Opportunistically fills in the operation's own (still-unset) location
+  /// right after a new activity ref is added — from live GPS if that ref is
+  /// close by, or otherwise from the first ref's own position once GPS isn't
+  /// available — so features that need a location (nearby suggestions, the
+  /// Map tab) work without the user having to set one by hand via
+  /// OperationLocationScreen. The coordinate is stored with the locator
+  /// wherever the source knew one; see [locationToAdoptAfterAddingRef].
+  void _maybeAdoptLocationFromNewRef({num? distanceKm}) {
+    final adopted = locationToAdoptAfterAddingRef(
       operationGrid: _operation.grid,
-      gpsPosition: position == null ? null : GridLocation(position.latitude, position.longitude),
+      gpsPosition: widget.services.location.location,
       distanceKm: distanceKm,
       refsAfterAdd: _operation.refs,
     );
-    if (grid != null) {
-      final isGpsGrid = position != null && grid == locationToGrid6(position.latitude, position.longitude);
+    if (adopted != null) {
       _saveOperationData({
-        'grid': grid,
-        'gridSource': isGpsGrid ? 'gps' : 'manual',
+        'grid': adopted.grid,
+        'gridSource': adopted.source,
+        // Written even when null: a ref whose program publishes no coordinate
+        // must leave the operation with the grid alone rather than beside a
+        // stale pair from whatever set the location before.
+        'lat': adopted.location?.latitude,
+        'lon': adopted.location?.longitude,
       });
     }
   }
@@ -866,7 +889,7 @@ class OperationSheetState extends State<OperationSheet> {
     }
     _saveRefs([..._refsKeeping(type, suggestion: suggestion), suggestion]);
     widget.services.track('activity_added', {'activity': type});
-    _maybeAdoptGridFromNewRef(distanceKm: suggestion['distance'] as num?);
+    _maybeAdoptLocationFromNewRef(distanceKm: suggestion['distance'] as num?);
 
     // SAVE FIRST, then configure — the opposite order from [_addFormActivity],
     // and deliberately so. That path runs the form as the act of adding, with
@@ -1134,7 +1157,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// one read as a location would answer a muted "No suggestions" over a grid
   /// the hooks were never given: the "there is nothing near you" misreading
   /// this whole notice exists to prevent, reached by way of taking its advice.
-  bool get _hasOperationGrid => gridToLocation(_operation.grid) != null;
+  bool get _hasOperationGrid => _operation.location != null;
 
   /// The empty state for the Suggestions & Search section.
   ///
@@ -1982,7 +2005,7 @@ class OperationSheetState extends State<OperationSheet> {
             child: Builder(
               builder: (context) {
                 final locStatus = widget.services.location.status;
-                final operationGrid = _operation.grid;
+                final operationGrid = _operation.displayGrid;
 
                 // Every variation is the same filled button: white icon and
                 // label on a state color, rather than colored text on nothing.
@@ -1996,8 +2019,16 @@ class OperationSheetState extends State<OperationSheet> {
                 // a half-typed `FN` saved unvalidated must not label this
                 // button "located" under a notice still saying it isn't.
                 if (_hasOperationGrid) {
+                  // Only for operations stored before `gridSource` existed, and
+                  // compared at SIX characters on both sides: those carry a
+                  // 6-character grid, so matching them against a live fix's
+                  // 8-character locator can never be equal, and every legacy
+                  // GPS-set operation would quietly lose its green pin.
                   final gridSource = _operation.data['gridSource'] as String? ?? (
-                    (widget.services.location.grid != null && operationGrid == widget.services.location.grid)
+                    (_operation.location != null &&
+                            widget.services.location.grid != null &&
+                            locationToGrid6(_operation.location!.latitude, _operation.location!.longitude) ==
+                                widget.services.location.grid)
                         ? 'gps'
                         : 'manual'
                   );
@@ -2016,11 +2047,11 @@ class OperationSheetState extends State<OperationSheet> {
                     locationPin = const _PulsingGpsPin(color: onLocationColor);
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
-                  } else if (locStatus == LocationStatus.available && widget.services.location.grid != null) {
+                  } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid != null) {
                     locationPin = Icon(MdiIcons.mapMarker, color: onLocationColor);
-                    label = widget.services.location.grid!;
+                    label = widget.services.location.displayGrid!;
                     locationColor = const Color(0xFF1B5E20);
-                  } else if (locStatus == LocationStatus.available && widget.services.location.grid == null) {
+                  } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid == null) {
                     locationPin = const _PulsingGpsPin(color: onLocationColor);
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
@@ -2052,11 +2083,8 @@ class OperationSheetState extends State<OperationSheet> {
                 // show either (still determining, denied, or an unplaceable
                 // grid) — there's nothing to plot in that state.
                 final currentLocation = _hasOperationGrid
-                    ? gridToLocation(operationGrid)
-                    : (locStatus == LocationStatus.available && widget.services.location.position != null)
-                        ? GridLocation(widget.services.location.position!.latitude,
-                            widget.services.location.position!.longitude)
-                        : null;
+                    ? _operation.location
+                    : (locStatus == LocationStatus.available ? widget.services.location.location : null);
 
                 final searchBorder = OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),

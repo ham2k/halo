@@ -118,9 +118,9 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
 
   String? _distanceLine(BuildContext context) {
     final t = context.t.callInfo;
-    final ourGrid = widget.operation.grid;
-    final ourLoc = ourGrid == null ? null : gridToLocation(ourGrid);
+    final ourLoc = widget.operation.location;
     final resolved = locationForQsoInfoWithSource(
+      exact: locationFromLatLon(widget.guess?['lat'], widget.guess?['lon']),
       grid: _s('grid'),
       entityPrefix: _s('entityPrefix'),
       state: _s('state'),
@@ -132,7 +132,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       return null;
     }
     final miles = widget.services.settings.distanceUnits == DistanceUnits.miles;
-    final approximate = resolved.source != QsoLocationSource.grid;
+    final approximate = resolved.source.isApproximate;
     final km = distanceOnEarthKm(resolved.location, ourLoc);
     var distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
     if (approximate) distStr = '~$distStr';

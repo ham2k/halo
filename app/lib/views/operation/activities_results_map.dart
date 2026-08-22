@@ -39,12 +39,8 @@ import 'activities_view.dart' show activityRowDetail, activityRowTitle, suggesti
 /// / `Ref.lon`, extensions/sdk/src/types.ts), otherwise the center of its
 /// `grid`. Null when the entry has neither, same as a QSO with no
 /// resolvable location on the Map tab.
-GridLocation? locationForSuggestion(Map<String, dynamic> suggestion) {
-  final lat = suggestion['lat'];
-  final lon = suggestion['lon'];
-  if (lat is num && lon is num) return GridLocation(lat.toDouble(), lon.toDouble());
-  return gridToLocation(suggestion['grid'] as String?);
-}
+GridLocation? locationForSuggestion(Map<String, dynamic> suggestion) =>
+    locationFromLatLon(suggestion['lat'], suggestion['lon']) ?? gridToLocation(suggestion['grid'] as String?);
 
 /// One marker per [suggestions] entry with a resolvable location (see
 /// [locationForSuggestion]) — entries without one are silently omitted, the

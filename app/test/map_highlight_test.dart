@@ -10,6 +10,7 @@
 
 import 'package:flutter/material.dart' show Color, HSLColor;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation, gridToLocation;
 import 'package:halo_widgets/halo_widgets.dart' show CallInfoData;
 import 'package:ham2k_logger/views/map/map_gl_script.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
@@ -20,9 +21,14 @@ void main() {
   const editing = Color(0xFF0088FF); // stand-in for colorScheme.secondary
   const stroke = Color(0xFF1A1A1A);
 
-  ({List<MapMarkerData> markers, List<MapLineData> lines}) build(CallInfoData? info, {String? grid = 'CM87'}) =>
+  ({List<MapMarkerData> markers, List<MapLineData> lines}) build(CallInfoData? info,
+          {GridLocation? qth, String? grid = 'CM87'}) =>
       buildHighlightData(
-          callInfo: info, operationGrid: grid, composingColor: composing, editingColor: editing, strokeColor: stroke);
+          callInfo: info,
+          operationLocation: qth ?? gridToLocation(grid),
+          composingColor: composing,
+          editingColor: editing,
+          strokeColor: stroke);
 
   test('nothing to highlight when there is no call info', () {
     expect(build(null).markers, isEmpty);
@@ -43,6 +49,22 @@ void main() {
     expect(marker.label, 'W1AW');
     expect(marker.kind, MapMarkerKind.qso);
     expect(marker.sizeFactor, greaterThan(1.0), reason: 'drawn larger so it reads as the current QSO');
+  });
+
+  // The guess carries a coordinate whenever the lookup knew one (QRZ reports
+  // lat/lon, and the merge derives the grid FROM it). Dropping `exact:` from
+  // the resolve call leaves this passing at the square's centre instead —
+  // ~4km away here — so the assertion is on the coordinate, not on "is there
+  // a marker".
+  test("a guess's own coordinate places the marker, not the centre of its grid", () {
+    final result = build(CallInfoData(call: 'W1AW', guess: {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278}));
+    final marker = result.markers.single;
+    expect(marker.latitude, closeTo(41.7135, 1e-9));
+    expect(marker.longitude, closeTo(-72.7278, 1e-9));
+
+    final squareCentre = gridToLocation('FN31pr')!;
+    expect((marker.latitude - squareCentre.latitude).abs(), greaterThan(1e-4),
+        reason: 'the fixture must not sit on the grid centre, or this test cannot fail');
   });
 
   test('editing an existing QSO uses the editing colour for the marker and line', () {

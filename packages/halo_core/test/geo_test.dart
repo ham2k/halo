@@ -82,6 +82,32 @@ void main() {
       expect(locationForQsoInfo(grid: 'not-a-grid'), isNull);
       expect(locationForQsoInfo(entityPrefix: 'NOT-A-PREFIX'), isNull);
     });
+
+    test('an exact coordinate outranks the grid, rather than filling in for a missing one', () {
+      // The grid is normally DERIVED from the coordinate, so the two agree to
+      // within the square — this fixture disagrees on purpose, because a
+      // resolver that treats `exact` as a fallback still passes every
+      // agreeing case.
+      const fix = GridLocation(41.7135, -72.7278);
+      final resolved = locationForQsoInfoWithSource(exact: fix, grid: 'AA00', entityPrefix: 'K', state: 'CA')!;
+      expect(resolved.location, fix);
+      expect(resolved.source, QsoLocationSource.exact);
+    });
+
+    test('an exact coordinate is not approximate; the centroid fallbacks are', () {
+      // Drives the "~" and the rounding on the call-info distance line: a
+      // fix rendered as approximate understates what the app knows, and a
+      // country centroid rendered as exact overstates it badly.
+      expect(QsoLocationSource.exact.isApproximate, isFalse);
+      expect(QsoLocationSource.grid.isApproximate, isFalse);
+      expect(QsoLocationSource.region.isApproximate, isTrue);
+      expect(QsoLocationSource.entity.isApproximate, isTrue);
+    });
+
+    test('falls through to the grid when the coordinate is absent', () {
+      final resolved = locationForQsoInfoWithSource(grid: 'FN31pr')!;
+      expect(resolved.source, QsoLocationSource.grid);
+    });
   });
 
   group('greatCirclePoints', () {

@@ -696,4 +696,62 @@ Header text <PROGRAMID>Ham2K LoKi
       expect(log.qsos[0].qso['notes'], 'Bell & Howell A & B');
     });
   });
+
+  group('coordinates', () {
+    test("a real file's LAT/MY_LAT arrive as numbers, in the degrees QSON stores", () {
+      // ki2d-qrz.adi carries QRZ's own `<lat:11>N010 29.466` — ADIF states a
+      // coordinate in degrees and decimal MINUTES, so a mapper that copies the
+      // field verbatim (or reads 10.29466 out of it) puts the station tens of
+      // kilometres away, or in a type nothing downstream can measure with.
+      final log = _load('ki2d-qrz.adi');
+      final withLat = log.qsos.firstWhere((q) => q.fields['lat'] == 'N010 29.466');
+
+      expect(_their(withLat)['lat'], closeTo(10.4911, 1e-4));
+      expect(_our(withLat)['lat'], closeTo(41.6875, 1e-4));
+    });
+
+    test('a southern hemisphere letter reads as a negative latitude', () {
+      final log = _load('ki2d-qrz.adi');
+      final southern = log.qsos.firstWhere((q) => q.fields['lat'] == 'S035 14.574');
+
+      expect(_their(southern)['lat'], closeTo(-35.2429, 1e-4));
+    });
+
+    test('parses the ADIF Location format on both axes', () {
+      expect(parseAdifCoordinate('N041 22.500', latitude: true), closeTo(41.375, 1e-9));
+      expect(parseAdifCoordinate('W074 27.000', latitude: false), closeTo(-74.45, 1e-9));
+      expect(parseAdifCoordinate('S033 51.600', latitude: true), closeTo(-33.86, 1e-9));
+      expect(parseAdifCoordinate('E151 12.600', latitude: false), closeTo(151.21, 1e-9));
+    });
+
+    test('accepts the widths other loggers actually write, not only the padded form', () {
+      expect(parseAdifCoordinate('N41 22.5', latitude: true), closeTo(41.375, 1e-9));
+      expect(parseAdifCoordinate(' n041 22.500 ', latitude: true), closeTo(41.375, 1e-9));
+    });
+
+    test('accepts bare decimal degrees, which several exporters write instead', () {
+      expect(parseAdifCoordinate('41.375', latitude: true), closeTo(41.375, 1e-9));
+      expect(parseAdifCoordinate('-74.45', latitude: false), closeTo(-74.45, 1e-9));
+    });
+
+    test('refuses a hemisphere letter belonging to the other axis', () {
+      // A file with LAT and LON swapped is likelier than a station at `E041`
+      // latitude, and importing it silently would put the QSO somewhere
+      // nobody was.
+      expect(parseAdifCoordinate('E041 22.500', latitude: true), isNull);
+      expect(parseAdifCoordinate('N074 27.000', latitude: false), isNull);
+    });
+
+    test('refuses values no coordinate can hold', () {
+      expect(parseAdifCoordinate('N091 00.000', latitude: true), isNull);
+      expect(parseAdifCoordinate('E181 00.000', latitude: false), isNull);
+      expect(parseAdifCoordinate('N041 60.000', latitude: true), isNull, reason: 'sixty minutes is a degree');
+      expect(parseAdifCoordinate('', latitude: true), isNull);
+      expect(parseAdifCoordinate('not a coordinate', latitude: true), isNull);
+    });
+
+    test('a longitude past 90 is in range — the axes have different limits', () {
+      expect(parseAdifCoordinate('E120 30.000', latitude: false), closeTo(120.5, 1e-9));
+    });
+  });
 }

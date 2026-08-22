@@ -198,4 +198,62 @@ void main() {
     expect(withheld, isNot(contains('Park run')));
     expect(released, contains('Park run'));
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // Coordinates are a sharper statement of the same thing GRIDSQUARE gates —
+  // the station's position to a few hundred metres rather than a few
+  // kilometres — and MY_LAT is the operator's own address. A file uploaded to
+  // a program's servers carries neither unless the operator asked for it, and
+  // the format is ADIF's own degrees-and-decimal-minutes, not the signed
+  // degrees QSON stores.
+  test('coordinates are written in the ADIF Location format, and only with private data released', () async {
+    final host = await startHost();
+
+    Future<String> adifFor({required bool includePrivateData}) async {
+      final result = await host.invokeHook(
+        'export',
+        key: 'adif',
+        method: 'generateExport',
+        args: {
+          'operation': {...operation(['US-0001']), 'grid': 'FN21rq56', 'lat': 41.6875, 'lon': -74.45},
+          'qsos': [
+            {
+              ...qsos.first,
+              'their': {
+                'call': 'W0ABC',
+                'sent': '59',
+                'guess': {'lat': -33.86, 'lon': 151.21},
+              },
+            },
+          ],
+          'exportType': 'adif',
+          'includePrivateData': includePrivateData,
+        },
+        timeout: const Duration(seconds: 20),
+      ) as Map;
+      return result['content'] as String;
+    }
+
+    final withheld = await adifFor(includePrivateData: false);
+    expect(withheld, contains('<CALL:5>W0ABC'), reason: 'the contact itself is always there');
+    for (final tag in ['<LAT:', '<LON:', '<MY_LAT:', '<MY_LON:']) {
+      expect(withheld, isNot(contains(tag)));
+    }
+    // Our own square always ships — award programs read it — but cut back to
+    // six characters. The operation stores eight (it was set from a fix), and
+    // writing those verbatim would state the position to a few hundred metres
+    // through the same switch that is withholding the coordinate itself.
+    expect(withheld, contains('<MY_GRIDSQUARE:6>FN21rq'));
+    expect(withheld, isNot(contains('FN21rq56')));
+
+    final released = await adifFor(includePrivateData: true);
+    // The lookup knew where W0ABC was; the operation knows where we were.
+    expect(released, contains('S033 51.600'), reason: 'a southern latitude keeps its own hemisphere letter');
+    expect(released, contains('E151 12.600'));
+    expect(released, contains('N041 41.250'));
+    expect(released, contains('W074 27.000'));
+    expect(released, contains('<MY_GRIDSQUARE:8>FN21rq56'), reason: 'released, the finer locator goes out whole');
+    // The stored value must not reach the file as-is: a reader taking
+    // `-74.45` as ADIF's `XDDD MM.MMM` gets a different place entirely.
+    expect(released, isNot(contains('-74.45')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }

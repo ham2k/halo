@@ -101,6 +101,11 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   /// re-deriving hundreds of markers and densified great-circle lines.
   List<Qso>? _builtQsos;
   String? _builtGrid;
+
+  // The operation's resolved coordinate, alongside its grid: with an exact
+  // location stored, two positions inside one square are different maps, and
+  // comparing the grid alone would serve the first one's markers for both.
+  GridLocation? _builtQth;
   bool? _builtMiles;
   HaLoColors? _builtColors;
   AppLocale? _builtLocale;
@@ -237,6 +242,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (identical(_builtQsos, widget.qsos) &&
         _builtGrid == widget.operation.grid &&
+        _builtQth == widget.operation.location &&
         _builtMiles == miles &&
         _builtColors == poloColors &&
         _builtLocale == locale &&
@@ -245,6 +251,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     }
     _builtQsos = widget.qsos;
     _builtGrid = widget.operation.grid;
+    _builtQth = widget.operation.location;
     _builtMiles = miles;
     _builtColors = poloColors;
     _builtLocale = locale;
@@ -255,33 +262,37 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
 
     final qsoMarkers = <MapMarkerData>[];
     final lines = <MapLineData>[];
-    // Distinct station spots, keyed by uppercased grid so case variants of
-    // the same locator ('FN20ab' vs 'FN20AB') don't stack duplicate QTH
-    // circles — one operation usually has one, but a per-QSO `our.grid`
-    // (location change across a break) adds more.
+    // Distinct station spots, keyed by uppercased DISPLAY grid so case
+    // variants of the same locator ('FN20ab' vs 'FN20AB') don't stack
+    // duplicate QTH circles — one operation usually has one, but a per-QSO
+    // `our.grid` (location change across a break) adds more. Keying by the
+    // displayed locator rather than the raw coordinate also collapses the
+    // metres of GPS jitter between two fixes taken from the same chair, which
+    // would otherwise draw a circle each.
     final qthGrids = <String, ({String display, GridLocation location})>{};
 
     void addQth(String grid, GridLocation location) =>
         qthGrids.putIfAbsent(grid.toUpperCase(), () => (display: grid, location: location));
 
-    final operationGrid = widget.operation.grid;
+    final operationGrid = widget.operation.displayGrid;
     if (operationGrid != null) {
-      if (gridToLocation(operationGrid) case final qth?) addQth(operationGrid, qth);
+      if (widget.operation.location case final qth?) addQth(operationGrid, qth);
     }
 
     for (final qso in widget.qsos) {
       if (!qso.isRealContact) continue;
       final location = locationForQsoInfo(
+        exact: qso.theirExactLocation,
         grid: qso.theirGrid,
         entityPrefix: qso.theirEntityPrefix,
         state: qso.theirState,
       );
       if (location == null) continue;
 
-      final qthGrid = qso.ourGrid ?? operationGrid;
+      final qthGrid = qso.ourDisplayGrid ?? operationGrid;
       GridLocation? qth;
       if (qthGrid != null) {
-        qth = qthGrids[qthGrid.toUpperCase()]?.location ?? gridToLocation(qthGrid);
+        qth = qthGrids[qthGrid.toUpperCase()]?.location ?? qso.ourLocation;
         if (qth != null) addQth(qthGrid, qth);
       }
 
@@ -320,7 +331,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   /// `colorScheme.tertiary` (orange) composing, `.secondary` (blue) editing.
   ({List<MapMarkerData> markers, List<MapLineData> lines}) _buildHighlight(ThemeData theme) => buildHighlightData(
         callInfo: widget.callInfo,
-        operationGrid: widget.operation.grid,
+        operationLocation: widget.operation.location,
         composingColor: mapHighlightColor(theme.colorScheme.tertiary),
         editingColor: mapHighlightColor(theme.colorScheme.secondary),
         strokeColor: theme.brightness == Brightness.dark ? _qsoStrokeDark : _qsoStrokeLight,
@@ -465,7 +476,7 @@ Color mapHighlightColor(Color base) {
 /// testable without a live map backend.
 ({List<MapMarkerData> markers, List<MapLineData> lines}) buildHighlightData({
   required CallInfoData? callInfo,
-  required String? operationGrid,
+  required GridLocation? operationLocation,
   required Color composingColor,
   required Color editingColor,
   required Color strokeColor,
@@ -475,6 +486,7 @@ Color mapHighlightColor(Color base) {
   if (callInfo == null || guess == null) return empty;
 
   final location = locationForQsoInfo(
+    exact: locationFromLatLon(guess['lat'], guess['lon']),
     grid: guess['grid'] as String?,
     entityPrefix: guess['entityPrefix'] as String?,
     state: guess['state'] as String?,
@@ -498,9 +510,8 @@ Color mapHighlightColor(Color base) {
   );
 
   final lines = <MapLineData>[];
-  final qth = operationGrid == null ? null : gridToLocation(operationGrid);
-  if (qth != null) {
-    final segments = greatCirclePoints(location, qth);
+  if (operationLocation != null) {
+    final segments = greatCirclePoints(location, operationLocation);
     for (var i = 0; i < segments.length; i++) {
       lines.add(MapLineData(id: 'current/$i', points: segments[i], color: accent, highlight: true));
     }
