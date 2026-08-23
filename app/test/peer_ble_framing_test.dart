@@ -164,6 +164,40 @@ void main() {
     expect(b.messages.single.length, 400);
   });
 
+  test('a hello eaten by the radio is recovered by retransmission', () {
+    // The field failure this pins: macOS peripherals silently drop
+    // notifies fired right after a central subscribes, so one side's hello
+    // (and anything sent on the strength of "hello sent = hello arrived")
+    // vanishes. Ready must not report true until the peer ACKED our
+    // hello, and a resend must complete the handshake.
+    final a = _Harness();
+    final b = _Harness();
+    a.conduit.sendHello(100);
+    b.conduit.sendHello(100);
+
+    // A's first transmission dies on the floor; B's traffic flows.
+    a.drain(); // dropped, never fed to B
+    for (final packet in b.drain()) {
+      a.conduit.feed(packet);
+    }
+    // A heard B's hello and acked it, but B has heard nothing from A: A
+    // must NOT be ready (its hello is unconfirmed), B must not either.
+    expect(b.conduit.ready, isFalse);
+    expect(a.conduit.ready, isFalse,
+        reason: 'handing this link to a session would send messages into the same hole the hello fell in');
+
+    // The retry: A replays its hello; this time the radio carries it.
+    a.conduit.resendHello();
+    pump(a, b);
+    expect(a.conduit.ready, isTrue);
+    expect(b.conduit.ready, isTrue);
+
+    // And traffic flows both ways afterwards.
+    a.conduit.enqueueMessage(utf8.encode('after the recovery'));
+    pump(a, b);
+    expect(utf8.decode(b.messages.single), 'after the recovery');
+  });
+
   test('garbage magic fails the stream instead of guessing', () {
     final a = _Harness();
     a.conduit.sendHello(100);

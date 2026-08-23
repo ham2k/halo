@@ -115,8 +115,29 @@ class BleFrameConduit {
   int _sentMsgBytes = 0;
   int _peerAckedBytes = 0;
 
-  /// Both HELLOs have crossed — MSG traffic may flow.
-  bool get ready => _helloFrame != null && _helloOffset >= _helloFrame!.length && _peerChunk != null;
+  /// The peer confirmed receiving our HELLO (any ACK frame is the
+  /// confirmation — one is queued immediately on receiving a hello).
+  /// Load-bearing on macOS peripherals: `updateValue` silently DROPS
+  /// notifies fired in the first moments after a central subscribes, so
+  /// "our hello was handed to the platform" is not "our hello arrived" —
+  /// treating it as such strands the far side waiting forever.
+  bool _helloAcked = false;
+
+  /// Both HELLOs have crossed AND ours was acknowledged — MSG traffic may
+  /// flow, and the link may be handed to a session.
+  bool get ready =>
+      _helloFrame != null && _helloOffset >= _helloFrame!.length && _peerChunk != null && _helloAcked;
+
+  /// Replays our HELLO from the start. Called on a timer while [ready] is
+  /// false: the receiver tolerates duplicate hellos, and retransmission is
+  /// the only recovery for a hello the peer's platform ate.
+  void resendHello() {
+    if (_failed || ready) return;
+    final hello = _helloFrame;
+    if (hello == null || _helloOffset < hello.length) return;
+    _helloOffset = 0;
+    onSendable();
+  }
 
   /// The two views behind the effective packet size, for the ready-time log
   /// line — a side that silently fell back to the ATT floor drags BOTH
@@ -186,6 +207,11 @@ class BleFrameConduit {
 
     if (_ackQueue.isNotEmpty) return _ackQueue.removeFirst();
 
+    // MSG only once fully ready — not merely once sizes are known. This is
+    // what makes a hello replay structurally unable to splice into a
+    // half-emitted MSG frame: no MSG bytes exist before ready, and ready is
+    // monotonic, after which resendHello never fires again.
+    if (!ready) return null;
     if (_msgQueue.isEmpty) return null;
     if (_sentMsgBytes - _peerAckedBytes >= windowBytes) return null;
     final frame = _msgQueue.first;
@@ -284,11 +310,25 @@ class BleFrameConduit {
           _fail('hello carries no chunk size');
           return;
         }
-        final hadPeer = _peerChunk != null;
         _peerChunk = chunk.clamp(bleSafeChunk, bleMaxChunk);
-        if (!hadPeer) onSendable();
+        // Every hello — including a retransmitted duplicate — is answered
+        // with an ACK carrying the current count: the ACK is the sender's
+        // only proof its hello survived the radio, and the answer itself
+        // can be eaten by the same drop window, so each retry earns a
+        // fresh one.
+        final ackPayload = ByteData(8)
+          ..setUint32(0, _recvMsgBytes % 0x100000000, Endian.little)
+          ..setUint32(4, _recvMsgBytes ~/ 0x100000000, Endian.little);
+        _ackQueue.add(_encodeFrame(bleFrameTypeAck, ackPayload.buffer.asUint8List()));
+        onSendable();
       case bleFrameTypeAck:
         if (payload.length < 8) return; // short ack: ignore, the next one carries the count
+        // ANY ack, whatever it counts, proves the peer heard our hello —
+        // the hello-ack carries 0, which the cumulative guard below
+        // rightly ignores for the window.
+        final wasAcked = _helloAcked;
+        _helloAcked = true;
+        if (!wasAcked) onSendable();
         // Two 32-bit halves, joined by multiplication: Uint64 accessors are
         // unsupported under dart2js, and shifts past 32 bits wrap there —
         // this compiles into the web build even though BLE never runs on it.

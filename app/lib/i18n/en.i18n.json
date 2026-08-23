@@ -859,6 +859,7 @@
       "disabledDescription": "Off. This device is not visible to others on the network and shares nothing.",
       "bleEnable": "Also connect over Bluetooth",
       "bleDescription": "Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.",
+      "bleActive": "Bluetooth is on — announcing this device and looking for your paired devices.",
       "thisDevice": "This Device",
       "deviceName": "Name",
       "deviceNameHint": "What your other devices call this one",

@@ -139,6 +139,12 @@ class PeerService extends ChangeNotifier {
   /// silently do nothing.
   bool get bleAvailable => bleGateway != null;
 
+  /// Whether the BLE transport is up. With [bleError] null this is the
+  /// panel's positive "the radio is on and looking" signal — without one,
+  /// a working radio and a switch that silently did nothing look
+  /// identical, and the operator has no way to tell which they have.
+  bool get bleRunning => _bleTransport != null;
+
   final Map<String, PeerRuntime> _peers = {};
 
   /// Sessions on inbound links whose peer has not identified itself yet.

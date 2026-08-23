@@ -204,6 +204,11 @@ class PeerBleTransport {
         log?.call('BLE advertising as $_namePrefix$_localToken');
       } catch (e) {
         startFailed = true;
+        // Logged as well as surfaced: a scan failure right after this
+        // rebuilds `readiness` wholesale, and without this line the
+        // advertise diagnosis would evaporate in exactly the
+        // both-roles-broken case.
+        log?.call('BLE advertise failed: $e');
         readiness = PeerBleReadiness(
             canCentral: readiness.canCentral, canPeripheral: false, problem: 'Bluetooth advertise failed: $e');
       }
@@ -218,6 +223,7 @@ class PeerBleTransport {
         log?.call('BLE scanning for peers');
       } catch (e) {
         startFailed = true;
+        log?.call('BLE scan start failed: $e');
         readiness =
             PeerBleReadiness(canCentral: false, canPeripheral: readiness.canPeripheral, problem: 'Bluetooth scan failed: $e');
       }
@@ -227,10 +233,12 @@ class PeerBleTransport {
     }
     onStatus(readiness.usable ? readiness.problem : (readiness.problem ?? 'Bluetooth unavailable'));
 
-    if (startFailed && _running) {
-      // Transient class: the radio said ready and a start still failed.
-      // Self-heal on a capped backoff — a NOT-ready radio instead waits for
-      // the availability stream, which fires when it changes.
+    // Two self-heal classes: a start that failed with the radio nominally
+    // ready (Android's "scanning too frequently"), and readiness the
+    // gateway itself marked transient (a manager still powering on, which
+    // emits no event when it settles). Everything else waits for the
+    // availability stream, which fires when a not-ready radio changes.
+    if ((startFailed || readiness.transient) && _running) {
       _roleFailures++;
       _roleRetryTimer?.cancel();
       _roleRetryTimer = Timer(exponentialBackoff(_roleFailures, cap: _addressBackoffCap), () {
@@ -271,6 +279,12 @@ class PeerBleTransport {
     _candidates.removeWhere((_, c) =>
         c.activeLink == null && !c.connecting && now - c.lastSeenMillis > _candidateExpiry.inMilliseconds);
 
+    // Once per fresh address, not per advertisement: the line that says
+    // discovery is even happening — RPA rotation keeps the rate to a few
+    // an hour.
+    if (!_candidates.containsKey(sighting.addressId)) {
+      log?.call('BLE sighted ${sighting.addressId} as "${sighting.nameHint}"');
+    }
     final candidate = _candidates.putIfAbsent(sighting.addressId, _BleCandidate.new);
     candidate.lastSeenMillis = now;
     final name = sighting.nameHint;
@@ -313,9 +327,22 @@ class PeerBleTransport {
 
     candidate.connecting = true;
     log?.call('BLE dialling $addressId');
+    // Packets can arrive the moment the subscription lands, before the
+    // link object exists — buffered here, drained into the link below.
+    // Single-threaded, and no awaits sit between the connect resuming and
+    // the drain, so nothing slips between the two.
+    final earlyPackets = <Uint8List>[];
+    PeerBleLink? link;
     final PeerBleClientConnection connection;
     try {
-      connection = await gateway.connect(addressId);
+      connection = await gateway.connect(addressId, onPacket: (packet) {
+        final live = link;
+        if (live != null) {
+          live.feed(packet);
+        } else {
+          earlyPackets.add(packet);
+        }
+      });
     } catch (e) {
       candidate.connecting = false;
       candidate.failures++;
@@ -332,27 +359,21 @@ class PeerBleTransport {
       return;
     }
     log?.call('BLE connected to $addressId');
-    final link = PeerBleLink(
+    final live = link = PeerBleLink(
       sendPacket: connection.write,
       shutdown: connection.disconnect,
       label: addressId,
       log: log,
     );
-    candidate.activeLink = link;
+    candidate.activeLink = live;
     candidate.connecting = false;
-    final notificationsSub = connection.notifications.listen(link.feed, onError: (Object e) {
-      // A broken inbound stream with outbound still flowing would otherwise
-      // die 65s later as "peer silent" — blaming the peer for a local fault.
-      log?.call('BLE notification stream from $addressId failed: $e');
-      unawaited(link.close());
-    });
-    // Cancelled with the link: the plugin's value stream is one process-
-    // global broadcast that never closes, so an uncancelled listener here
-    // outlives every connect/close cycle and accumulates forever.
-    unawaited(link.closed.then((_) => notificationsSub.cancel()));
+    for (final packet in earlyPackets) {
+      live.feed(packet);
+    }
+    earlyPackets.clear();
     unawaited(connection.disconnected
-        .then((_) => link.close(), onError: (Object _) => link.close()));
-    _startLink(link, connection.chunkLimit, onClosed: (uptimeMillis) {
+        .then((_) => live.close(), onError: (Object _) => live.close()));
+    _startLink(live, connection.chunkLimit, onClosed: (uptimeMillis) {
       candidate.activeLink = null;
       if (uptimeMillis < _shortLivedCutoff.inMilliseconds) {
         candidate.failures++;
@@ -495,6 +516,7 @@ class PeerBleLink implements PeerLink {
   bool _isClosed = false;
   bool _started = false;
   Timer? _keepaliveTimer;
+  Timer? _helloRetryTimer;
 
   /// Real clock — a protocol timeout (docs/design/time.md).
   int _lastHeardMillis = realNowMillis();
@@ -509,6 +531,18 @@ class PeerBleLink implements PeerLink {
     if (_started || _isClosed) return;
     _started = true;
     _conduit.sendHello(chunkLimit);
+    // Retransmitted until the peer's ACK proves it landed: macOS
+    // peripherals silently eat notifies fired right after a central
+    // subscribes, and a hello that died there would otherwise strand the
+    // far side until the handshake timeout, every single attempt.
+    _helloRetryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_conduit.ready) {
+        _helloRetryTimer?.cancel();
+        _helloRetryTimer = null;
+        return;
+      }
+      _conduit.resendHello();
+    });
     unawaited(_sendWorker());
   }
 
@@ -596,6 +630,8 @@ class PeerBleLink implements PeerLink {
     _isClosed = true;
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    _helloRetryTimer?.cancel();
+    _helloRetryTimer = null;
     _wake();
     if (!_readyCompleter.isCompleted) _readyCompleter.complete(false);
     try {

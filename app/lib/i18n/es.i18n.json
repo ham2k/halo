@@ -803,6 +803,7 @@
       "disabledDescription": "Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.",
       "bleEnable": "Conectar también por Bluetooth",
       "bleDescription": "Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.",
+      "bleActive": "Bluetooth activo — anunciando este dispositivo y buscando tus dispositivos emparejados.",
       "thisDevice": "Este dispositivo",
       "deviceName": "Nombre",
       "deviceNameHint": "Cómo llaman tus otros dispositivos a este",

@@ -42,12 +42,15 @@ class FakeBleWorld {
   }
 }
 
-class _FakePipe {
-  _FakePipe(this.server, this.centralId);
+class FakeBlePipe {
+  FakeBlePipe(this.server, this.centralId, this.onPacket);
 
   final FakeBleGateway server;
   final String centralId;
-  final toClient = StreamController<Uint8List>.broadcast();
+
+  /// Where notifies land on the client side — wired at connect, like the
+  /// real gateway wires the listener before the CCCD write.
+  final void Function(Uint8List packet) onPacket;
   final clientDisconnected = Completer<void>();
   bool closed = false;
 
@@ -59,7 +62,6 @@ class _FakePipe {
     if (!server._serverEvents.isClosed) {
       server._serverEvents.add(PeerBleCentralUnsubscribed(centralId));
     }
-    unawaited(toClient.close());
   }
 }
 
@@ -86,7 +88,7 @@ class FakeBleGateway implements PeerBleGateway {
 
   int connectCalls = 0;
 
-  final Map<String, _FakePipe> pipes = {};
+  final Map<String, FakeBlePipe> pipes = {};
   final _sightings = StreamController<PeerBleSighting>.broadcast();
   final _serverEvents = StreamController<PeerBleServerEvent>.broadcast();
   final availability = StreamController<void>.broadcast();
@@ -123,7 +125,7 @@ class FakeBleGateway implements PeerBleGateway {
   Future<void> notify(String centralId, Uint8List packet) async {
     final pipe = pipes[centralId];
     if (pipe == null || pipe.closed) throw StateError('notify to a gone central');
-    pipe.toClient.add(packet);
+    pipe.onPacket(packet);
   }
 
   @override
@@ -156,19 +158,32 @@ class FakeBleGateway implements PeerBleGateway {
   @override
   Stream<PeerBleSighting> get sightings => _sightings.stream;
 
+  /// Event-loop turns to yield before [connect] returns. Models the real
+  /// race the onPacket-before-subscribe contract exists for: the peer's
+  /// first notifies fire off its Subscribed event, which with yields > 0
+  /// lands BEFORE the caller's link object exists — exercising the
+  /// early-packet buffer that is otherwise dead in every test.
+  int connectYields = 0;
+
   @override
-  Future<PeerBleClientConnection> connect(String addressId) async {
+  Future<PeerBleClientConnection> connect(
+    String addressId, {
+    required void Function(Uint8List packet) onPacket,
+  }) async {
     connectCalls++;
     final target = world.byAddress[addressId];
     if (target == null || !target.advertising) {
       throw StateError('nothing advertising at $addressId');
     }
     final centralId = '$address#${world._connectionSeq++}';
-    final pipe = _FakePipe(target, centralId);
+    final pipe = FakeBlePipe(target, centralId, onPacket);
     target.pipes[centralId] = pipe;
     // Subscribed lands on the server's event stream BEFORE any write can —
     // the same ordering the GATT server callbacks guarantee.
     target._serverEvents.add(PeerBleCentralSubscribed(centralId));
+    for (var i = 0; i < connectYields; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
     return _FakeClientConnection(pipe, chunkLimit);
   }
 }
@@ -176,13 +191,10 @@ class FakeBleGateway implements PeerBleGateway {
 class _FakeClientConnection implements PeerBleClientConnection {
   _FakeClientConnection(this._pipe, this.chunkLimit);
 
-  final _FakePipe _pipe;
+  final FakeBlePipe _pipe;
 
   @override
   final int chunkLimit;
-
-  @override
-  Stream<Uint8List> get notifications => _pipe.toClient.stream;
 
   @override
   Future<void> write(Uint8List packet) async {

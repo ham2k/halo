@@ -185,6 +185,21 @@ void main() {
     expect(a.status, isNull);
   });
 
+  test('packets arriving before the link object exists are buffered, not dropped', () async {
+    // The real ordering: the peripheral fires its hello off the CCCD
+    // subscription, DURING the central's connect — before _tryConnect has
+    // a link to feed. The yields force that ordering through the fake so
+    // the early-packet buffer actually runs; without them it is dead code
+    // in every test. (The 1s hello retransmit would eventually recover a
+    // dropped buffer too, so this pins the path, and the framing suite
+    // pins the recovery.)
+    a.gateway.connectYields = 12;
+    await a.transport.start();
+    await b.transport.start();
+    world.tick(to: a.gateway);
+    await waitFor('both sides to hand over a link', () => a.links.isNotEmpty && b.links.isNotEmpty);
+  });
+
   test('a transient role-start failure is retried, not terminal for the session', () async {
     a.gateway.failScanStarts = 1;
     await a.transport.start();
@@ -194,6 +209,24 @@ void main() {
     // must bring the role up, or one refused scan means BLE is off until
     // the operator notices and flips something.
     await waitFor('the retry to start the scan', () => a.gateway.scanning,
+        timeout: const Duration(seconds: 10));
+    expect(a.status, isNull);
+  });
+
+  test('transient readiness — a manager still powering on — is retried until it settles', () async {
+    // The trap this pins: the plugin's peripheral manager reports `unknown`
+    // to the query that CREATED it and emits no event on settling, so
+    // waiting for the availability stream here waits forever.
+    a.gateway.readiness = const PeerBleReadiness(
+        canCentral: true, canPeripheral: false, problem: 'cannot announce (unknown)', transient: true);
+    await a.transport.start();
+    expect(a.gateway.advertising, isFalse);
+    expect(a.status, contains('cannot announce'));
+
+    a.gateway.readiness = const PeerBleReadiness(canCentral: true, canPeripheral: true);
+    // Deliberately NO availability event: the retry backoff alone must
+    // re-prepare and bring the advertise role up.
+    await waitFor('the retry to start advertising', () => a.gateway.advertising,
         timeout: const Duration(seconds: 10));
     expect(a.status, isNull);
   });

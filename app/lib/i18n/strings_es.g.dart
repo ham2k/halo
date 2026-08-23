@@ -1321,6 +1321,7 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String get disabledDescription => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.';
 	@override String get bleEnable => 'Conectar también por Bluetooth';
 	@override String get bleDescription => 'Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.';
+	@override String get bleActive => 'Bluetooth activo — anunciando este dispositivo y buscando tus dispositivos emparejados.';
 	@override String get thisDevice => 'Este dispositivo';
 	@override String get deviceName => 'Nombre';
 	@override String get deviceNameHint => 'Cómo llaman tus otros dispositivos a este';
@@ -2821,6 +2822,7 @@ extension on TranslationsEs {
 			'settings.peers.disabledDescription' => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.',
 			'settings.peers.bleEnable' => 'Conectar también por Bluetooth',
 			'settings.peers.bleDescription' => 'Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.',
+			'settings.peers.bleActive' => 'Bluetooth activo — anunciando este dispositivo y buscando tus dispositivos emparejados.',
 			'settings.peers.thisDevice' => 'Este dispositivo',
 			'settings.peers.deviceName' => 'Nombre',
 			'settings.peers.deviceNameHint' => 'Cómo llaman tus otros dispositivos a este',
@@ -3227,9 +3229,9 @@ extension on TranslationsEs {
 			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
 			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
-			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
 			'switchAccounts.emailAddress' => 'Dirección de email',
 			'switchAccounts.linkAccount' => 'Vincular cuenta',
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',

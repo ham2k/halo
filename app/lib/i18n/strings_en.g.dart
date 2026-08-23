@@ -2768,6 +2768,9 @@ class Translations$settings$peers$en {
 	/// en: 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.'
 	String get bleDescription => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.';
 
+	/// en: 'Bluetooth is on — announcing this device and looking for your paired devices.'
+	String get bleActive => 'Bluetooth is on — announcing this device and looking for your paired devices.';
+
 	/// en: 'This Device'
 	String get thisDevice => 'This Device';
 
@@ -5389,6 +5392,7 @@ extension on Translations {
 			'settings.peers.disabledDescription' => 'Off. This device is not visible to others on the network and shares nothing.',
 			'settings.peers.bleEnable' => 'Also connect over Bluetooth',
 			'settings.peers.bleDescription' => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.',
+			'settings.peers.bleActive' => 'Bluetooth is on — announcing this device and looking for your paired devices.',
 			'settings.peers.thisDevice' => 'This Device',
 			'settings.peers.deviceName' => 'Name',
 			'settings.peers.deviceNameHint' => 'What your other devices call this one',
@@ -5743,9 +5747,9 @@ extension on Translations {
 			'commandDialog.goSettings' => 'Settings',
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
-			'commandDialog.sectionSuggestions' => 'Try',
 			_ => null,
 		} ?? switch (path) {
+			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',

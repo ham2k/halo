@@ -30,7 +30,12 @@ const String peerBleTxUuid = '562ee8a0-8848-43b5-b4d4-abaa07a2f39f';
 
 /// What the radio can do right now, per role.
 class PeerBleReadiness {
-  const PeerBleReadiness({required this.canCentral, required this.canPeripheral, this.problem});
+  const PeerBleReadiness({
+    required this.canCentral,
+    required this.canPeripheral,
+    this.problem,
+    this.transient = false,
+  });
 
   final bool canCentral;
   final bool canPeripheral;
@@ -38,6 +43,11 @@ class PeerBleReadiness {
   /// Operator-readable reason when a role (or the whole radio) is out —
   /// powered off, permission denied, hardware absent.
   final String? problem;
+
+  /// The shortfall is expected to clear on its own (a radio still powering
+  /// on), so the caller should retry rather than wait for an availability
+  /// event — the peripheral manager settling emits none.
+  final bool transient;
 
   bool get usable => canCentral || canPeripheral;
 }
@@ -86,14 +96,16 @@ class PeerBleWriteReceived extends PeerBleServerEvent {
 }
 
 /// One established central-side connection, subscribed and ready to talk.
+/// Notified packets arrive through the `onPacket` callback given to
+/// [PeerBleGateway.connect], never through a stream here: the peer's first
+/// notifies fire the instant it sees the subscription, so the receiver has
+/// to be wired BEFORE the CCCD write — a stream picked up after connect
+/// returns loses them and every handshake times out.
 abstract class PeerBleClientConnection {
   /// Largest packet this side believes the link carries, from the
   /// negotiated MTU. A view, not a guarantee — the frame layer's HELLO
   /// min-exchange is what makes it safe.
   int get chunkLimit;
-
-  /// Packets the peripheral notified. One element per notification.
-  Stream<Uint8List> get notifications;
 
   /// Writes one packet, without response. Completes when the local stack
   /// accepted it — which is real pacing on both platforms — and throws when
@@ -150,7 +162,12 @@ abstract class PeerBleGateway {
 
   Stream<PeerBleSighting> get sightings;
 
-  /// Connects, negotiates MTU, verifies the peer service, and subscribes to
-  /// TX. Throws on any failure, fully cleaned up.
-  Future<PeerBleClientConnection> connect(String addressId);
+  /// Connects, negotiates MTU, verifies the peer service, wires [onPacket]
+  /// to the TX characteristic, and only THEN subscribes — see
+  /// [PeerBleClientConnection] for why that order is load-bearing. Throws
+  /// on any failure, fully cleaned up.
+  Future<PeerBleClientConnection> connect(
+    String addressId, {
+    required void Function(Uint8List packet) onPacket,
+  });
 }

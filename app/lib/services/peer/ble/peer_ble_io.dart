@@ -13,6 +13,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:universal_ble/universal_ble.dart';
 
 import 'peer_ble_framing.dart' show bleMaxChunk, bleSafeChunk;
@@ -50,12 +51,30 @@ class UniversalBlePeerGateway implements PeerBleGateway {
   @override
   Stream<void> get availabilityChanged => _availability.stream;
 
+  /// How long [prepare] waits for a freshly-created manager to power on.
+  /// Both manager queries in the plugin CREATE the manager lazily and
+  /// answer with its state synchronously, so the FIRST query of a session
+  /// reads `unknown` essentially always — the state settles milliseconds
+  /// later, but only the central manager emits an event when it does.
+  /// Polling briefly is the difference between "works on enable" and a
+  /// permanent '(unknown)' problem row.
+  static const _settleTimeout = Duration(seconds: 3);
+  static const _settleStep = Duration(milliseconds: 150);
+  static int get _settleAttempts => _settleTimeout.inMilliseconds ~/ _settleStep.inMilliseconds;
+
   @override
   Future<PeerBleReadiness> prepare({required bool requestPermission}) async {
     // Central-side availability doubles as "does this device have a radio".
     AvailabilityState central;
     try {
       central = await UniversalBle.getBluetoothAvailabilityState();
+      for (var attempt = 0;
+          (central == AvailabilityState.unknown || central == AvailabilityState.resetting) &&
+              attempt < _settleAttempts;
+          attempt++) {
+        await Future<void>.delayed(_settleStep);
+        central = await UniversalBle.getBluetoothAvailabilityState();
+      }
     } catch (e) {
       return PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth unavailable: $e');
     }
@@ -71,9 +90,11 @@ class UniversalBlePeerGateway implements PeerBleGateway {
         return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'No Bluetooth radio');
       case AvailabilityState.unknown:
       case AvailabilityState.resetting:
-        // Transient at boot; the availability stream fires when it settles
-        // and the transport re-prepares.
-        return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is starting up');
+        // Still settling past the poll window — ask the transport to come
+        // back rather than parking on a state that announces nothing when
+        // it changes.
+        return const PeerBleReadiness(
+            canCentral: false, canPeripheral: false, problem: 'Bluetooth is starting up', transient: true);
     }
 
     try {
@@ -103,18 +124,31 @@ class UniversalBlePeerGateway implements PeerBleGateway {
     // but silently never advertises is half the reason two devices at a
     // park would never find each other with every indicator green.
     var canPeripheral = false;
+    var transient = false;
     String? problem;
     try {
-      final state = await UniversalBlePeripheral.getAvailabilityState();
+      var state = await UniversalBlePeripheral.getAvailabilityState();
+      // The same settle poll as the central above, and here it is load-
+      // bearing: the peripheral manager has NO state-change event in the
+      // plugin, so a one-shot query racing its power-on strands the
+      // advertise role on '(unknown)' with nothing to ever re-check.
+      for (var attempt = 0;
+          state == PeripheralReadinessState.unknown && attempt < _settleAttempts;
+          attempt++) {
+        await Future<void>.delayed(_settleStep);
+        state = await UniversalBlePeripheral.getAvailabilityState();
+      }
       canPeripheral = state == PeripheralReadinessState.ready;
       if (!canPeripheral) {
+        transient = state == PeripheralReadinessState.unknown;
         problem = 'This device can look for peers but cannot announce itself over Bluetooth (${state.name})';
       }
     } catch (e) {
       debugPrint('[peer] BLE peripheral availability check failed: $e');
       problem = 'This device can look for peers but cannot announce itself over Bluetooth';
     }
-    return PeerBleReadiness(canCentral: true, canPeripheral: canPeripheral, problem: problem);
+    return PeerBleReadiness(
+        canCentral: true, canPeripheral: canPeripheral, problem: problem, transient: transient);
   }
 
   // ---- peripheral role ----
@@ -219,13 +253,49 @@ class UniversalBlePeerGateway implements PeerBleGateway {
   @override
   Stream<PeerBleServerEvent> get serverEvents => _serverEvents.stream;
 
+  /// Serializes and paces the notify path. Bench-measured on macOS: the
+  /// platform's update queue holds ONE notification per connection event —
+  /// `updateValue` answers false for the second of any back-to-back pair
+  /// and the plugin discards that answer, so the packet silently
+  /// evaporates. Neither the false nor the ready callback reaches Dart,
+  /// which leaves spacing the sends past the connection interval as the
+  /// only reliable delivery the stock plugin allows. Android's peripheral
+  /// has the same shape (notifies fired without awaiting
+  /// onNotificationSent), so the pacing is unconditional.
+  Future<void> _notifyTail = Future.value();
+  int _lastNotifyMillis = 0;
+  static const _notifySpacing = Duration(milliseconds: 40);
+
   @override
-  Future<void> notify(String centralId, Uint8List packet) =>
-      UniversalBlePeripheral.updateCharacteristicValue(
-        characteristicId: peerBleTxUuid,
-        value: packet,
-        deviceId: centralId,
-      );
+  Future<void> notify(String centralId, Uint8List packet) {
+    final next = _notifyTail.then((_) async {
+      final since = realNowMillis() - _lastNotifyMillis;
+      if (since < _notifySpacing.inMilliseconds) {
+        await Future<void>.delayed(Duration(milliseconds: _notifySpacing.inMilliseconds - since));
+      }
+      // Bounded: the tail is gateway-global, so ONE platform call that
+      // never completes would starve every link's sends forever. The
+      // timeout closes the stalled LINK (the throw reaches its send
+      // worker); it does not cancel the platform call underneath, so the
+      // stamp below is written on the timeout path too — the next send
+      // still keeps its distance from a call that may yet be in flight.
+      try {
+        await UniversalBlePeripheral.updateCharacteristicValue(
+          characteristicId: peerBleTxUuid,
+          value: packet,
+          deviceId: centralId,
+        ).timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        _lastNotifyMillis = realNowMillis();
+        rethrow;
+      }
+      _lastNotifyMillis = realNowMillis();
+    });
+    // The tail must survive an individual failure or every later notify
+    // chains behind a dead future.
+    _notifyTail = next.catchError((Object _) {});
+    return next;
+  }
 
   @override
   Future<int> serverChunkLimit(String centralId) async {
@@ -284,8 +354,12 @@ class UniversalBlePeerGateway implements PeerBleGateway {
   Stream<PeerBleSighting> get sightings => _sightings.stream;
 
   @override
-  Future<PeerBleClientConnection> connect(String addressId) async {
+  Future<PeerBleClientConnection> connect(
+    String addressId, {
+    required void Function(Uint8List packet) onPacket,
+  }) async {
     await UniversalBle.connect(addressId, timeout: const Duration(seconds: 15));
+    StreamSubscription<Uint8List>? notifySub;
     try {
       // Android grants a real number; Apple platforms answer from
       // `maximumWriteValueLength`, which can over-report — the HELLO
@@ -303,10 +377,18 @@ class UniversalBlePeerGateway implements PeerBleGateway {
       if (!hasService) {
         throw StateError('peer service not present on $addressId');
       }
+      // The listener attaches BEFORE the CCCD write goes out. The peer
+      // fires its frame hello the moment it sees the subscription, the
+      // value stream is a broadcast that drops events with no listener,
+      // and the plugin's own post-subscribe awaits give the event loop
+      // room to deliver those notifies — subscribing first loses them,
+      // deterministically, and every handshake then times out.
+      notifySub = UniversalBle.characteristicValueStream(addressId, peerBleTxUuid).listen(onPacket);
       await UniversalBle.subscribeNotifications(addressId, peerBleServiceUuid, peerBleTxUuid);
-      return _UniversalBleClientConnection(addressId, (mtu - 3).clamp(bleSafeChunk, bleMaxChunk));
+      return _UniversalBleClientConnection(addressId, (mtu - 3).clamp(bleSafeChunk, bleMaxChunk), notifySub);
     } catch (e) {
       // Never leak a half-set-up connection: nothing above holds it yet.
+      await notifySub?.cancel();
       try {
         await UniversalBle.disconnect(addressId);
       } catch (_) {}
@@ -316,15 +398,17 @@ class UniversalBlePeerGateway implements PeerBleGateway {
 }
 
 class _UniversalBleClientConnection implements PeerBleClientConnection {
-  _UniversalBleClientConnection(this._deviceId, this.chunkLimit);
+  _UniversalBleClientConnection(this._deviceId, this.chunkLimit, this._notifySub);
 
   final String _deviceId;
 
-  @override
-  final int chunkLimit;
+  /// Cancelled at [disconnect] — the plugin's value stream is process-
+  /// global and never closes, so this subscription is the connection's to
+  /// reclaim.
+  final StreamSubscription<Uint8List> _notifySub;
 
   @override
-  Stream<Uint8List> get notifications => UniversalBle.characteristicValueStream(_deviceId, peerBleTxUuid);
+  final int chunkLimit;
 
   @override
   Future<void> write(Uint8List packet) =>
@@ -341,6 +425,7 @@ class _UniversalBleClientConnection implements PeerBleClientConnection {
 
   @override
   Future<void> disconnect() async {
+    await _notifySub.cancel();
     try {
       await UniversalBle.disconnect(_deviceId);
     } catch (e) {

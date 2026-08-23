@@ -34,6 +34,7 @@ class PeersPanel extends StatefulWidget {
 
 class _PeersPanelState extends State<PeersPanel> {
   late final TextEditingController _nameController;
+  late final FocusNode _nameFocus;
   bool _promptOpen = false;
 
   PeerService get _peers => widget.services.peerService;
@@ -42,6 +43,13 @@ class _PeersPanelState extends State<PeersPanel> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.services.settings.peerDeviceName);
+    // Committing on focus loss as well as on submit: a name typed and then
+    // tapped away from would otherwise be discarded without a word, which
+    // reads as the field not persisting at all.
+    _nameFocus = FocusNode()
+      ..addListener(() {
+        if (!_nameFocus.hasFocus) _commitName(_nameController.text);
+      });
     _peers.addListener(_onPeersChanged);
     widget.services.settings.addListener(_onSettingsChanged);
   }
@@ -50,8 +58,28 @@ class _PeersPanelState extends State<PeersPanel> {
   void dispose() {
     _peers.removeListener(_onPeersChanged);
     widget.services.settings.removeListener(_onSettingsChanged);
+    _nameFocus.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _commitName(String value) {
+    final settings = widget.services.settings;
+    final trimmed = value.trim();
+    if (trimmed == settings.peerDeviceName) return;
+    unawaited(settings.setPeerDeviceName(trimmed).then((_) {
+      // A cleared field falls back to the derived default name — put that
+      // name INTO the field, or it would sit blank while the network
+      // broadcasts the fallback, and every later blur would re-commit ''
+      // forever (empty never compares equal to the computed getter).
+      if (trimmed.isEmpty && mounted) {
+        _nameController.text = settings.peerDeviceName;
+      }
+      // Re-applies the name to the running service — beacons and future
+      // sessions carry it from here; without this the network keeps the old
+      // name until something else happens to reconcile.
+      widget.services.updatePeerSharing();
+    }));
   }
 
   void _onSettingsChanged() {
@@ -157,6 +185,15 @@ class _PeersPanelState extends State<PeersPanel> {
             ListTile(
               leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
               title: Text(t.bleProblem(error: problem)),
+            )
+          // The positive signal. Without it a working radio and a switch
+          // that silently did nothing look identical — the definitive
+          // proof stays the peer appearing under Nearby, but this says
+          // the looking is actually happening.
+          else if (_peers.bleRunning)
+            ListTile(
+              leading: Icon(MdiIcons.bluetooth),
+              title: Text(t.bleActive),
             ),
         // Devices connect regardless now — this hint is about the QSO sync,
         // which still follows whichever operation is open.
@@ -175,16 +212,18 @@ class _PeersPanelState extends State<PeersPanel> {
           padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
           child: TextField(
             controller: _nameController,
+            focusNode: _nameFocus,
             decoration: InputDecoration(
               labelText: t.deviceName,
               helperText: t.deviceNameHint,
               helperMaxLines: 2,
               border: const OutlineInputBorder(),
             ),
-            // On submit rather than on every keystroke: this name is
-            // broadcast, and re-announcing on each character typed would be
-            // noise on the network and a jittery name on every peer.
-            onSubmitted: (value) => unawaited(settings.setPeerDeviceName(value)),
+            // On submit and focus loss rather than on every keystroke: this
+            // name is broadcast, and re-announcing on each character typed
+            // would be noise on the network and a jittery name on every
+            // peer.
+            onSubmitted: _commitName,
           ),
         ),
         SectionHeader(t.pairedDevices),
