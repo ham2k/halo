@@ -648,6 +648,11 @@ the list all take it back again, and the fields return to empty. The moment the
 operator types over the fill it becomes theirs, and closing the row no longer
 touches it.
 
+A row can also be **discarded** while open, without ever closing — a list that
+keys its rows on the spot's own timestamp rebuilds one the moment it is
+re-spotted — so the row's `dispose` has to take the fill back too, not just its
+close.
+
 **An open row is a question, and answering it anywhere closes it.** Tapping any
 spot closes whatever row is open — a tap chooses a station outright, which is
 an answer — and so does the operator going to the logging panel and typing in
@@ -684,7 +689,25 @@ under a moving finger takes the pointer while the drag runs on underneath it,
 so the release still commits. The suggestion is HELD instead, and put to the
 operator when the row comes to rest open. Declining keeps their work and ends
 the gesture; carrying the same slide through to a commit asks once more, since
-the commit destroys what the peek only offered to.
+the commit destroys what the peek only offered to — and the commit's answer
+ENDS the peek's question, both halves being one gesture. A held question that
+outlives its gesture comes back on the next row the operator slides, offering
+to overwrite a panel that no longer holds anything.
+
+Both halves of what a held question assumed are re-read when it is finally
+asked, never trusted from when it was held: a conflict the operator has since
+cleared themselves is not worth a prompt (the suggestion simply applies), and a
+suggestion whose row has closed or been discarded while the dialog was up is
+dropped — applying it then would fill the fields and retune the radio for a row
+that is gone, after the withdrawal that could have undone it has already run.
+
+**A contact logged by the gesture alone leaves the focus where it is.** Logging
+normally ends by focusing the call field, ready for the next contact. A slide
+is made from the list, where that focus is an on-screen keyboard thrown up over
+the thing being worked — and that goes for every way the route can end: the
+wipe after a successful log, the wipe that clears the way at the prompt, and
+the refusal to log at all, which reaches for the field to point at what needs
+fixing.
 
 **A slide never navigates.** The operator sliding a row is working the list
 they are looking at, and surfacing another pane — which a *tap* on the same

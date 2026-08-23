@@ -170,7 +170,7 @@ void main() {
     ValueNotifier<LayoutDensity>? density,
     void Function(Map<String, dynamic> qso, {bool reveal})? onSuggestQso,
     int closeSlidesSerial = 0,
-    VoidCallback? onWithdrawSuggestion,
+    ValueChanged<String?>? onWithdrawSuggestion,
     VoidCallback? onSuggestionSettled,
     ValueChanged<Map<String, dynamic>>? onLogQso,
   }) async {
@@ -617,7 +617,7 @@ void main() {
         services: services,
         visible: ValueNotifier(true),
         onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
 
@@ -649,7 +649,7 @@ void main() {
         services: services,
         visible: ValueNotifier(true),
         onSuggestQso: (qso, {bool reveal = true}) {},
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
 
@@ -670,7 +670,7 @@ void main() {
         services: services,
         visible: ValueNotifier(true),
         onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso['their']['call'] as String),
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
 
@@ -694,7 +694,7 @@ void main() {
         services: services,
         visible: ValueNotifier(true),
         onSuggestQso: (qso, {bool reveal = true}) {},
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: logged.add,
       );
 
@@ -749,7 +749,7 @@ void main() {
         services: services,
         visible: ValueNotifier(true),
         onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso['their']['call'] as String),
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
 
@@ -776,7 +776,7 @@ void main() {
           suggested.add(qso['their']['call'] as String);
           reveals.add(reveal);
         },
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
 
@@ -802,7 +802,7 @@ void main() {
         visible: ValueNotifier(true),
         closeSlidesSerial: 0,
         onSuggestQso: (qso, {bool reveal = true}) {},
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
       await slide(tester, 'K0001', 120);
@@ -815,7 +815,7 @@ void main() {
         visible: ValueNotifier(true),
         closeSlidesSerial: 1,
         onSuggestQso: (qso, {bool reveal = true}) {},
-        onWithdrawSuggestion: () => withdrawn++,
+        onWithdrawSuggestion: (_) => withdrawn++,
         onLogQso: (_) {},
       );
       await tester.pumpAndSettle();
@@ -1028,6 +1028,39 @@ void main() {
 
       expect(suggested, hasLength(1),
           reason: 'the row was never reset, so the peek was not re-crossed');
+    });
+
+    testWidgets('a row discarded while open takes its fill with it', (tester) async {
+      // Nothing closed this row — it was DISCARDED. Its key carries the spot's
+      // own timestamp, so the next poll that re-spots the open station builds
+      // a different row and this one's State is gone mid-peek, with what it
+      // filled still sitting in the logging fields and no open row left to
+      // take it back.
+      final board = [_spot('K1ABC'), _spot('W2DEF', freq: 14260.0)];
+      final services = await servicesWith(board);
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: (_) => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'K1ABC', 120);
+      expect(withdrawn, 0);
+
+      // Re-spotted a minute later: same call, same frequency, new time — a new
+      // key, and so a new row.
+      board[0] = {
+        ..._spot('K1ABC'),
+        'spot': {'timeInMillis': 1700000060000, 'source': 'test'},
+      };
+      await tester.pump(const Duration(minutes: 3));
+      await settle(tester);
+
+      expect(withdrawn, 1, reason: 'the fill went with the row that made it');
     });
 
     testWidgets('a row that refused to close mid-drag is still the open one afterwards', (tester) async {

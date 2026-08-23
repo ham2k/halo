@@ -524,8 +524,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// Takes back a suggestion a slide made — the row that made it has closed.
   /// Only ever a tentative one: a station the operator TAPPED (or typed) is
   /// theirs, and a slide closing somewhere else may not take it away.
-  void _withdrawSuggestedQso() {
-    if (!_suggestedQsoIsTentative) return;
+  void _withdrawSuggestedQso(String? call) {
+    // A row discarded while open withdraws AFTER the frame (see its
+    // `dispose`), which is late enough for this view to have gone with it —
+    // a whole operation closing takes both down together.
+    if (!mounted || !_suggestedQsoIsTentative) return;
+    // And late enough for the fields to belong to a different row by then, so
+    // a withdrawal only ever takes back the station it put there.
+    final suggested = (_suggestedQso?['their'] as Map?)?['call'] as String?;
+    if (call != null && suggested != null && call.toUpperCase() != suggested.toUpperCase()) return;
     setState(() {
       _suggestedQso = null;
       _suggestedQsoIsTentative = false;

@@ -2072,19 +2072,31 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     super.didUpdateWidget(oldWidget);
     // First, before any of the guards below can return: see [_handleLogRequest].
     final request = widget.logRequest;
-    if (request != null && request.serial != oldWidget.logRequest?.serial) {
+    final logRequested = request != null && request.serial != oldWidget.logRequest?.serial;
+    if (logRequested) {
+      // The commit asks its own question, about the same gesture — so a peek
+      // held from the way in has nothing left to say.
+      _heldSuggestion = null;
       unawaited(_handleLogRequest(request.qso));
     }
     // The rest of the slide's lifecycle, up here for the same reason: an edit
     // in progress is exactly when a tentative suggestion has something to say,
     // and the guards below would swallow all three of these.
     if (oldWidget.suggestedQso != null && widget.suggestedQso == null) _withdrawTentativeSuggestion();
-    if (widget.suggestedQsoIsTentative &&
+    if (!logRequested &&
+        widget.suggestedQsoIsTentative &&
         widget.suggestedQso != null &&
         !identical(oldWidget.suggestedQso, widget.suggestedQso) &&
         (widget.editingQso != null || _hasComposedCall)) {
       // Held rather than applied — and rather than dropped: the operator gets
       // it back the moment the gesture settles.
+      //
+      // Never on the frame a log request lands. A commit carries a fresh
+      // suggestion of its own alongside the request, and holding THAT arms a
+      // question about a gesture that has already finished: it survives the
+      // log, and the next row to settle raises a prompt about a station the
+      // operator dealt with long ago — which, accepted, replaces the one they
+      // are working and retunes the radio to it.
       _heldSuggestion = widget.suggestedQso;
     }
     if (widget.suggestionSettledSerial != oldWidget.suggestionSettledSerial) {
@@ -2204,6 +2216,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _spotSources = const [];
       _spotStatus.clear();
       _refreshSpotSources();
+      // The fields are this panel's own again, which is exactly what anything
+      // parked was waiting for — and this branch returns, so it has to drain
+      // here rather than leave it to the bottom of the method.
+      _drainPending();
       return;
     }
     // Nothing below applies while editing an existing QSO — a suggestion or
@@ -2246,13 +2262,27 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // A request held back until the edit it had to clear is gone — see
     // [_handleLogRequest]. By here `editingQso` is null, so the fields are
     // this panel's own again and the spot can take them.
+    _drainPending();
+  }
+
+  /// Applies whatever was parked waiting for an edit to be gone — see
+  /// [_handleLogRequest] and [_confirmHeldSuggestion].
+  ///
+  /// Called from BOTH ends of `didUpdateWidget`, because the update that
+  /// clears the edit is the editing-change branch, and that branch returns
+  /// before the bottom of the method ever runs. Draining only at the bottom
+  /// leaves the work parked until some unrelated rebuild — a spot poll, a
+  /// clock tick — picks it up seconds later, on top of whatever the operator
+  /// has typed since, moving the VFO with it.
+  void _drainPending() {
+    if (widget.editingQso != null) return;
     final pending = _pendingLogRequest;
-    if (pending != null && widget.editingQso == null) {
+    if (pending != null) {
       _pendingLogRequest = null;
       unawaited(_applyAndLog(pending));
     }
     final pendingSuggestion = _pendingSuggestion;
-    if (pendingSuggestion != null && widget.editingQso == null) {
+    if (pendingSuggestion != null) {
       _pendingSuggestion = null;
       _applyTentativeSuggestion(pendingSuggestion);
     }
@@ -2299,7 +2329,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // over the list the operator is still working. And behind `_populating`,
     // which is what stops the clear from reaching `onCallEdited`: this runs
     // from didUpdateWidget, so the listener would report the operator editing
-    // the field — from inside a build, to a panel that has already built.
+    // the field — from inside a build, to a view that has already built. Any
+    // OTHER callback this wipe fires is under the same constraint.
     _populating = true;
     _wipe(focusCall: false);
     _populating = false;
@@ -2311,8 +2342,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// gesture is carried through to a commit.
   Future<void> _confirmHeldSuggestion(Map<String, dynamic> qso) async {
     final editing = widget.editingQso != null;
+    // The conflict is re-read here, not trusted from when the suggestion was
+    // held: the operator may have logged, wiped or cancelled the edit in
+    // between, and a prompt offering to clear an empty panel teaches them the
+    // prompt means nothing.
+    if (!editing && !_hasComposedCall) {
+      _applyTentativeSuggestion(qso);
+      return;
+    }
     final clear = await _askOverwrite(editing: editing);
     if (!mounted || !clear) return;
+    // Re-read AFTER the wait, because the wait is the point: the row that
+    // raised this dialog can be closed or discarded while it is up, which
+    // takes the suggestion back. Applying it anyway fills the fields and
+    // retunes the radio for a row that no longer exists — and the withdrawal
+    // has already been and gone, so nothing is left that could undo it.
+    if (!identical(widget.suggestedQso, qso)) return;
     if (editing) {
       // Comes back as a widget update with `editingQso` null; the suggestion
       // waits for it rather than filling fields that still belong to the edit.
@@ -2340,9 +2385,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         asked.complete(false);
         return;
       }
-      // Takes the Future whole, so a throw from the caller's dialog reaches
-      // the awaiting side rather than leaving it hanging forever.
-      asked.complete(confirm(editing: editing));
+      // `Future.sync`, so a caller that throws BEFORE returning its future
+      // still reaches the awaiting side. Left bare, a synchronous throw
+      // escapes this callback with the completer unfinished, and everything
+      // waiting on it waits forever: the contact the operator committed to
+      // with a full slide is never logged, and nothing retries it (the
+      // request's serial only changes once).
+      asked.complete(Future.sync(() => confirm(editing: editing)));
     });
     return asked.future;
   }
@@ -2390,7 +2439,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _pendingLogRequest = qso;
         return;
       }
-      _wipe();
+      // Same reasoning as `_applyAndLog`'s own wipe: the operator answered a
+      // dialog raised over another surface, and is still standing on it.
+      _wipe(focusCall: false);
     }
     await _applyAndLog(qso);
   }
@@ -2401,7 +2452,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Future<void> _applyAndLog(Map<String, dynamic> qso) async {
     _resetEditingSessionState();
     _applySuggestedQso(qso);
-    await _log();
+    await _log(focusCall: false);
   }
 
   /// Editing-session bookkeeping that must never leak from one QSO context
@@ -6977,9 +7028,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// [focusCall] false leaves the focus where it is — for a wipe the operator
-  /// did not ask for from this panel (a slid spot row closing, say), where
-  /// pulling focus here would raise the mobile keyboard over the list they
-  /// are actually working.
+  /// did not ask for from this panel (a slid spot row closing, say), or one
+  /// that ends a gesture made on another surface, where pulling focus here
+  /// would raise the mobile keyboard over the list they are actually working.
+  ///
   void _wipe({bool focusCall = true}) {
     _suggestedCall = null;
     _suggestionWasTentative = false;
@@ -7232,7 +7284,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _notifyCommandMessage(_commandMessage);
   }
 
-  Future<void> _log() async {
+  /// [focusCall] false leaves the focus alone when the entry is wiped after
+  /// logging — for a contact logged by a gesture made somewhere else (a spot
+  /// row slid past the commit point). The operator is working the spots list,
+  /// and taking focus here pops the on-screen keyboard up over it.
+  Future<void> _log({bool focusCall = true}) async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
     // The write policy specifically, NOT `_fieldsLocked`: this method is also
     // how a staged delete is committed and a deleted QSO saved, both of which
@@ -7462,7 +7518,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
 
     if (!_canLog) {
-      _callFocus.requestFocus();
+      // Pointing the operator at the field they have to fix — but only when
+      // they are here to see it. A spot that cannot be logged (no usable
+      // callsign) must not answer a gesture made on the spots list by raising
+      // a keyboard over it.
+      if (focusCall) _callFocus.requestFocus();
       return;
     }
     _isLogging = true;
@@ -7602,7 +7662,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
-        _wipe();
+        _wipe(focusCall: focusCall);
         // The un-logged rest of the stack goes straight back into the
         // now-empty field, as if the operator had just typed it.
         if (stacked != null) _callController.text = stacked.remainder;

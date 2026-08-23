@@ -622,10 +622,15 @@ class SpotsPanel extends StatefulWidget {
 
   /// Take back the suggestion a slide made — the row it belonged to is no
   /// longer open, so the logging fields it filled are no longer anybody's
-  /// choice of station. Every way a row closes comes through here: dragged
-  /// back, set aside with the other action, closed by another row opening,
-  /// scrolled away.
-  final VoidCallback? onWithdrawSuggestion;
+  /// choice of station. Every way a row stops being open comes through here:
+  /// dragged back, set aside with the other action, closed by another row
+  /// opening, scrolled away, or discarded outright.
+  ///
+  /// Carries the callsign it filled in, and takes back only that: a row
+  /// discarded while open withdraws AFTER the frame, by which time another
+  /// row's peek — made in the same frame, from input that ran before the
+  /// build that discarded this one — may already own the fields.
+  final ValueChanged<String?>? onWithdrawSuggestion;
 
   /// A slid row has come to rest open and the finger is off it. Anything the
   /// logging panel held back rather than raise mid-drag — the prompt over
@@ -1615,7 +1620,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                 // working, and leaving it in the fields makes
                                 // the next Log a contact with whoever was slid
                                 // last.
-                                onWithdrawn: widget.onWithdrawSuggestion,
+                                onWithdrawn: widget.onWithdrawSuggestion == null
+                                    ? null
+                                    : () => widget.onWithdrawSuggestion!(_callOf(spot)),
                                 onSettled: widget.onSuggestionSettled,
                               ),
                         // Always the reverse of what the row currently says, so
@@ -1719,8 +1726,6 @@ class _SpotsPanelState extends State<SpotsPanel> {
     widget.onLogQso?.call(suggestedQsoFromSpot(spot));
   }
 
-  /// The tap for a row that is ours alone, or null when the spot carries
-  /// nothing restorable at all — a row must not accept a tap it cannot honor.
   /// Wraps a row's tap handler so it closes whatever row is currently open
   /// before it runs — and returns null for a row that has no handler, so a
   /// dead row stays dead rather than becoming tappable just to close another.
@@ -1732,6 +1737,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
     };
   }
 
+  /// The tap for a row that is ours alone, or null when the spot carries
+  /// nothing restorable at all — a row must not accept a tap it cannot honor.
   VoidCallback? _retuneActionFor(Map<String, dynamic> spot) {
     if (_freqOf(spot) == null && _bandOf(spot) == null && _modeOf(spot) == null) return null;
     return () => _retuneToSelfSpot(spot);
@@ -2468,6 +2475,20 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
   @override
   void dispose() {
     widget.group.closed(this);
+    // A row can be DISCARDED while open, without ever closing: its key carries
+    // the spot's own timestamp, so an ordinary poll that re-spots the station
+    // rebuilds it as a different row and this State goes away mid-peek. What
+    // the peek filled would otherwise sit in the logging fields with no open
+    // row left to take it back — the very leftover this whole gesture is
+    // careful about everywhere else.
+    //
+    // After the frame: dispose runs inside `finalizeTree`, where reaching up
+    // to set state on the operation view is illegal.
+    final action = _revealedSign > 0 ? widget.leading : (_revealedSign < 0 ? widget.trailing : null);
+    final withdrawn = action?.onWithdrawn;
+    if (withdrawn != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => withdrawn());
+    }
     super.dispose();
   }
 

@@ -10795,6 +10795,158 @@ void main() {
       expect(callIn(tester), 'K1ABC');
     });
 
+    testWidgets('a peek held on the way in does not outlive the commit that follows it', (tester) async {
+      // The whole slide is one gesture: the peek asks to take the fields, the
+      // commit asks to log over them. Held past the commit, the peek's
+      // question survives the log — and the next row the operator slides is
+      // the one that pays. Its own peek fills the fields, then ITS settle
+      // fires the stale question, which by then has nothing left to ask about
+      // and so goes straight through: the station they just slid to is
+      // replaced by the one they finished with, and the VFO follows it.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      // Slide row A: peek (held, a call is in progress)...
+      await tester.pumpWidget(host(
+        suggestedQso: spotA,
+        suggestedQsoIsTentative: true,
+        confirmLogOverwrite: ({required bool editing}) async => true,
+      ));
+      await tester.pump();
+      // ...then the same drag carried through to the commit, which arrives
+      // with a fresh suggestion of its own alongside the request.
+      await tester.pumpWidget(host(
+        suggestedQso: Map<String, dynamic>.from(spotA),
+        suggestedQsoIsTentative: true,
+        logRequest: (serial: 1, qso: spotA),
+        confirmLogOverwrite: ({required bool editing}) async => true,
+      ));
+      await waitForQsos(tester, 1);
+
+      // Slide row B: its peek lands in an empty panel, so it simply applies.
+      await tester.pumpWidget(host(suggestedQso: spotB, suggestedQsoIsTentative: true));
+      await tester.pumpAndSettle();
+      expect(callIn(tester), 'W2DEF');
+
+      // B's row comes to rest.
+      await tester.pumpWidget(host(
+        suggestedQso: spotB,
+        suggestedQsoIsTentative: true,
+        suggestionSettledSerial: 1,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(callIn(tester), 'W2DEF', reason: 'the spent peek did not reach back in and replace it');
+    });
+
+    testWidgets('a held suggestion the row took back while the dialog was up is dropped', (tester) async {
+      // The prompt is a wait, and the row that raised it can close or be
+      // discarded while it is up — which takes the suggestion back. Applying
+      // it on the way out fills the fields and retunes the radio for a row
+      // that is gone, and the withdrawal that would have undone it has
+      // already happened: nothing is left that can take it back.
+      final completer = Completer<bool>();
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.pumpWidget(host(
+        suggestedQso: spotA,
+        suggestedQsoIsTentative: true,
+        confirmLogOverwrite: ({required bool editing}) => completer.future,
+      ));
+      await tester.pump();
+      await tester.pumpWidget(host(
+        suggestedQso: spotA,
+        suggestedQsoIsTentative: true,
+        suggestionSettledSerial: 1,
+        confirmLogOverwrite: ({required bool editing}) => completer.future,
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      // The row goes away while the operator is still looking at the dialog.
+      await tester.pumpWidget(host(confirmLogOverwrite: ({required bool editing}) => completer.future));
+      await tester.pump();
+
+      // ...and only then do they answer it.
+      completer.complete(true);
+      await tester.pumpAndSettle();
+
+      expect(callIn(tester), 'W1AW', reason: 'their own entry stands; the withdrawn spot never lands');
+    });
+
+    testWidgets('a suggestion parked behind an edit lands the moment the edit is cancelled', (tester) async {
+      // Parked work drains from the branch that CLEARS the edit, not merely
+      // from the bottom of didUpdateWidget — that branch returns before ever
+      // reaching it. Draining only at the bottom leaves the suggestion sitting
+      // there until some unrelated rebuild (a spot poll, a clock tick) happens
+      // along, by which time it lands on top of whatever has been typed since,
+      // and moves the VFO with it.
+      final edited = Qso(uuid: 'q1', operationUuid: operation.uuid, data: const {'their': {'call': 'W1AW'}});
+      var cancels = 0;
+
+      await tester.pumpWidget(host(editingQso: edited));
+      await tester.pump();
+      await tester.pumpWidget(host(
+        editingQso: edited,
+        suggestedQso: spotA,
+        suggestedQsoIsTentative: true,
+        suggestionSettledSerial: 1,
+        onEditCanceled: () => cancels++,
+        confirmLogOverwrite: ({required bool editing}) async => true,
+      ));
+      await tester.pumpAndSettle();
+      expect(cancels, 1, reason: 'the operator cleared the way');
+
+      // The edit going away IS the update that must apply it. Nothing else is
+      // pumped here — no poll, no later rebuild to be rescued by.
+      await tester.pumpWidget(host(
+        suggestedQso: spotA,
+        suggestedQsoIsTentative: true,
+        suggestionSettledSerial: 1,
+        onEditCanceled: () => cancels++,
+        confirmLogOverwrite: ({required bool editing}) async => true,
+      ));
+      await tester.pump();
+
+      expect(callIn(tester), 'K1ABC');
+    });
+
+    testWidgets('a held suggestion whose conflict is gone is applied, not put to the operator',
+        (tester) async {
+      // Held over a part-typed call; by the time the gesture settles the
+      // operator has cleared it themselves. Asking anyway offers to overwrite
+      // an empty panel, which teaches them the prompt means nothing.
+      var asked = 0;
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
+      await tester.pump();
+
+      await tester.pumpWidget(host(
+        suggestedQso: spotA,
+        suggestedQsoIsTentative: true,
+        suggestionSettledSerial: 1,
+        confirmLogOverwrite: ({required bool editing}) async {
+          asked++;
+          return true;
+        },
+      ));
+      await tester.pumpAndSettle();
+
+      expect(asked, 0);
+      expect(callIn(tester), 'K1ABC', reason: 'the spot takes the fields it no longer has to fight for');
+    });
+
     testWidgets('the commit that ends the same slide does not ask about the peek\'s own fill',
         (tester) async {
       var asked = 0;
@@ -10943,6 +11095,61 @@ void main() {
       expect(find.text('Clear it?'), findsOneWidget);
       await tester.tap(find.text('Go back'));
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('leaves the focus alone, so a phone does not raise its keyboard', (tester) async {
+      // The wipe that follows a log focuses the call field — right when the
+      // operator is typing here, wrong when the contact was logged by a
+      // gesture made on another surface. On a phone that focus is a keyboard,
+      // thrown up over the spots list they are still working.
+      final field = find.widgetWithText(TextField, 'Their call').first;
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.pumpWidget(host(
+        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+      ));
+      await waitForQsos(tester, 1);
+      await tester.pump();
+
+      expect(tester.widget<TextField>(field).controller?.text, isEmpty, reason: 'logged and wiped');
+      expect(tester.widget<TextField>(field).focusNode?.hasFocus, isFalse);
+    });
+
+    testWidgets('nor after clearing the way at the prompt, nor when it cannot log at all', (tester) async {
+      // The other two ways this route ends. Both reach for the call field to
+      // say something to an operator who is not standing in front of it.
+      final field = find.widgetWithText(TextField, 'Their call').first;
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(field, 'W9XYZ');
+      await tester.pump();
+      // Typing leaves the field focused; the operator then went to the spots
+      // list, which is where the gesture below is made from. Without this the
+      // test would be asserting about focus that was already theirs.
+      tester.widget<TextField>(field).focusNode?.unfocus();
+      await tester.pump();
+
+      // Clear-and-log: the wipe that makes room for the spot.
+      await tester.pumpWidget(host(
+        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+        confirmLogOverwrite: ({required bool editing}) async => true,
+      ));
+      await waitForQsos(tester, 1);
+      await tester.pump();
+
+      expect(tester.widget<TextField>(field).focusNode?.hasFocus, isFalse, reason: 'cleared and logged');
+
+      // A spot carrying nothing loggable: `_log` bails, pointing at the field
+      // that would have to be fixed — which on a phone is a keyboard over the
+      // list, for a station the operator can do nothing about from there.
+      await tester.pumpWidget(host(
+        logRequest: (serial: 2, qso: const {'their': {'call': ''}, 'band': '20m', 'mode': 'SSB'}),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(field).focusNode?.hasFocus, isFalse, reason: 'nothing to log, nothing to say here');
     });
 
     testWidgets('logs straight away when there is nothing to lose', (tester) async {
