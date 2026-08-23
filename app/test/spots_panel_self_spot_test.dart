@@ -27,8 +27,14 @@ class _FakeExtensions extends ExtensionService {
   final List<Map<String, dynamic>> board;
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() async =>
-      (items: board, unreachable: const <String>[], failed: const <String>[]);
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
+      getSpots() async =>
+      (
+        items: board,
+        succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
+        unreachable: const <String>[],
+        failed: const <String>[],
+      );
 
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
@@ -52,14 +58,14 @@ class _FakeExtensions extends ExtensionService {
 }
 
 Map<String, dynamic> _spot(String call,
-        {String band = '20m', double freq = 14250.0, int timeInMillis = 1700000000000}) =>
+        {String band = '20m', double freq = 14250.0, int? timeInMillis}) =>
     {
       'their': {'call': call},
       'freq': freq,
       'band': band,
       'mode': 'SSB',
       'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': timeInMillis, 'source': 'test'},
+      'spot': {'timeInMillis': timeInMillis ?? nowMillis() - 60000, 'source': 'test'},
       'hookKey': 'test',
     };
 
@@ -211,8 +217,8 @@ void main() {
     // workable station, so the row must NOT be pinned or claimed as self —
     // an any-of predicate here would make W1XYZ unreachable from the board.
     final services = await servicesWith([
-      _spot('N0CALL', freq: 14285.0, timeInMillis: 1700000000000),
-      _spot('W1XYZ', freq: 14285.0, timeInMillis: 1700000060000),
+      _spot('N0CALL', freq: 14285.0, timeInMillis: nowMillis() - 120000),
+      _spot('W1XYZ', freq: 14285.0, timeInMillis: nowMillis() - 60000),
     ]);
     final suggested = <Map<String, dynamic>>[];
     await pumpPanel(tester, services: services, onSuggestQso: (qso, {reveal = true}) => suggested.add(qso));

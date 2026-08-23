@@ -485,7 +485,18 @@ class ExtensionService implements PanelExtensionSource {
   /// feeds the failure streak: a call that never got out to the network says
   /// nothing about whether the code behind it is broken, so counting it would
   /// upload one report per source every time an operator drives out of range.
-  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> _collectHookResults(
+  ///
+  /// `succeeded` names the hooks that answered at all. All three lists empty
+  /// means the fan-out never happened — no host, or `invokeHookAll` itself
+  /// throwing — which a caller cannot otherwise tell from every hook
+  /// answering with nothing.
+  Future<
+      ({
+        List<Map<String, dynamic>> items,
+        List<String> succeeded,
+        List<String> unreachable,
+        List<String> failed
+      })> _collectHookResults(
     String category, {
     required String method,
     required Object? args,
@@ -495,7 +506,12 @@ class ExtensionService implements PanelExtensionSource {
   }) async {
     final host = _host;
     if (host == null) {
-      return (items: const <Map<String, dynamic>>[], unreachable: const <String>[], failed: const <String>[]);
+      return (
+        items: const <Map<String, dynamic>>[],
+        succeeded: const <String>[],
+        unreachable: const <String>[],
+        failed: const <String>[],
+      );
     }
     var parts = emptyHookPartition;
     try {
@@ -534,7 +550,12 @@ class ExtensionService implements PanelExtensionSource {
         threshold: failureThreshold,
       );
     }
-    return (items: parts.items, unreachable: parts.unreachable, failed: [for (final f in parts.failed) f.key]);
+    return (
+      items: parts.items,
+      succeeded: parts.succeeded,
+      unreachable: parts.unreachable,
+      failed: [for (final f in parts.failed) f.key],
+    );
   }
 
   /// Consecutive failures before a spot source is worth uploading, well above
@@ -609,7 +630,18 @@ class ExtensionService implements PanelExtensionSource {
   /// which is the difference between "nobody is activating" and "SOTAwatch
   /// didn't reply" — a distinction the spots alone cannot carry, since a
   /// feed that fails contributes no key to group by.
-  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() async {
+  ///
+  /// `succeeded` names the feeds that answered at all, which is what tells a
+  /// caller holding previous spots whether a source's silence is news. All
+  /// three lists empty means the fan-out itself never ran — no extension
+  /// host, or `invokeHookAll` throwing — and says nothing about any feed.
+  Future<
+      ({
+        List<Map<String, dynamic>> items,
+        List<String> succeeded,
+        List<String> unreachable,
+        List<String> failed
+      })> getSpots() async {
     final parts = await _collectHookResults(
       'spots',
       method: 'fetchSpots',
@@ -618,7 +650,12 @@ class ExtensionService implements PanelExtensionSource {
       partialOnTimeout: true,
       failureThreshold: _spotSourceFailureThreshold,
     );
-    return (items: validSpots(parts.items), unreachable: parts.unreachable, failed: parts.failed);
+    return (
+      items: validSpots(parts.items),
+      succeeded: parts.succeeded,
+      unreachable: parts.unreachable,
+      failed: parts.failed,
+    );
   }
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's

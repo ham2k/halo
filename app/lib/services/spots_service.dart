@@ -4,12 +4,22 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
 /// One fan-out across every spot source: the spots that came back, the hook
-/// keys of the sources nothing came back from, and the keys of those that
-/// answered with an error. Three results rather than one because an empty
-/// band, an unreachable feed and a feed that is up and broken look identical
-/// from the spots alone.
-typedef SpotsFetch = Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})>
-    Function();
+/// keys of the sources that answered at all, the keys of the sources nothing
+/// came back from, and the keys of those that answered with an error. Four
+/// results rather than one because an empty band, an unreachable feed and a
+/// feed that is up and broken look identical from the spots alone — and
+/// because a fan-out that never happened looks identical to all of them.
+///
+/// The three key lists together name every source that was actually asked.
+/// All three empty is not "every band is quiet": it is the fan-out itself
+/// not running, which says nothing about any source.
+typedef SpotsFetch = Future<
+    ({
+      List<Map<String, dynamic>> items,
+      List<String> succeeded,
+      List<String> unreachable,
+      List<String> failed
+    })> Function();
 
 /// The one place fetched spots live, shared by the Spots Panel (which
 /// displays them) and the `spot-history` lookup extension (which mines them
@@ -36,6 +46,13 @@ class SpotsService extends ChangeNotifier {
 
   /// Matches the cadence the Spots Panel polled at when it owned the fetch.
   final Duration refreshInterval;
+
+  /// The oldest a spot may be and still be held, whether it arrived in this
+  /// fetch or was retained from an earlier one. The board is never
+  /// open-ended: the Spots Panel's age filter offers nothing wider, so a spot
+  /// past this could not be displayed anyway, and holding it would only let a
+  /// failing source keep furnishing a board nobody can see it on.
+  static const maxSpotAge = Duration(minutes: 180);
 
   final Map<String, List<Map<String, dynamic>>> _bySource = {};
 
@@ -139,13 +156,70 @@ class SpotsService extends ChangeNotifier {
       final watched = _subscribers > 0;
       _unavailableSources = watched ? fetched.unreachable : const [];
       _failedSources = watched ? fetched.failed : const [];
-      _bySource.clear();
-      _byCall.clear();
+
+      // Spots are replaced PER SOURCE, and only by a source that answered.
+      // A source that never replied or answered with an error has said
+      // nothing about its band, so its previous spots stand and go on aging
+      // in the panel; without this, a thirty-second network drop empties the
+      // whole board and refills it a minute later, and a hunter watching a
+      // three-minute-old spot loses it for no reason. A source that answered
+      // with no spots is a genuinely empty band and correctly clears.
+      final answered = <String, List<Map<String, dynamic>>>{};
       for (final spot in spots) {
-        final hookKey = spot['hookKey'] as String? ?? 'unknown';
-        _bySource.putIfAbsent(hookKey, () => []).add(spot);
-        final call = callOfSpot(spot);
-        if (call != null) _byCall.putIfAbsent(call, () => []).add(spot);
+        answered.putIfAbsent(spot['hookKey'] as String? ?? 'unknown', () => []).add(spot);
+      }
+      // A source in none of the three lists was not consulted this cycle —
+      // one the operator has just switched off — and its spots go, or they
+      // would sit on the board for the rest of the session.
+      final askedNothing = fetched.succeeded.isEmpty && fetched.unreachable.isEmpty && fetched.failed.isEmpty;
+      final outOfTouch = <String>{...fetched.unreachable, ...fetched.failed};
+      // Keyed off what ANSWERED rather than off the outage lists alone: a
+      // source reported unreachable that somehow also returned spots is
+      // described by the spots, and appending to its retained list would
+      // double them.
+      //
+      // [askedNothing] is the answer that reads as "every band is quiet" and
+      // is nothing of the sort — the fan-out never ran, so the whole board
+      // stands. Not a corner: the extension host is null for as long as it
+      // takes to replace the runtime, which happens on every extension
+      // enable/disable and on every dead-host recovery, and a fan-out that
+      // throws degrades to the same empty answer.
+      final retained = {
+        for (final entry in _bySource.entries)
+          if (!answered.containsKey(entry.key) && (askedNothing || outOfTouch.contains(entry.key)))
+            entry.key: entry.value,
+      };
+      // Nothing older than [maxSpotAge] is kept, whoever offered it. Spots
+      // have no open-ended life here: a source that goes on failing empties
+      // itself instead of furnishing the board out of a morning that is over,
+      // and a live source cannot pin an ancient spot either. A source left
+      // with nothing drops out entirely, exactly as one that answered empty
+      // does.
+      final cutoff = nowMillis() - maxSpotAge.inMilliseconds;
+      _bySource
+        ..clear()
+        ..addAll(answered)
+        ..addAll(retained);
+      _bySource.removeWhere((_, list) {
+        // A spot whose time cannot be read is not judged old — the age is
+        // unknown, not zero, and dropping it would quietly discard a source's
+        // whole board on a wire format we failed to parse.
+        list.removeWhere((spot) {
+          final postedAt = timeOfSpot(spot);
+          return postedAt != null && postedAt < cutoff;
+        });
+        return list.isEmpty;
+      });
+
+      // Rebuilt from the merged map, not from the fetch: retained spots have
+      // to stay findable by [spotsForCall], which is the whole point of
+      // keeping them.
+      _byCall.clear();
+      for (final list in _bySource.values) {
+        for (final spot in list) {
+          final call = callOfSpot(spot);
+          if (call != null) _byCall.putIfAbsent(call, () => []).add(spot);
+        }
       }
       _loaded = true;
       _error = null;

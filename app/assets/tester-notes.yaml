@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Spots survive a brief network drop, and never show older than 3 hours
+
 "147":
   changes:
     - Locations now keep full coordinates, so grids show finer and distances sharpen

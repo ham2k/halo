@@ -35,8 +35,14 @@ class _FakeExtensions extends ExtensionService {
   final Set<String> notedCalls;
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() async =>
-      (items: board, unreachable: const <String>[], failed: const <String>[]);
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
+      getSpots() async =>
+      (
+        items: board,
+        succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
+        unreachable: const <String>[],
+        failed: const <String>[],
+      );
 
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
@@ -65,7 +71,7 @@ Map<String, dynamic> _spot(String call, {String band = '20m', double freq = 1425
       'band': band,
       'mode': 'SSB',
       'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': 1700000000000, 'source': 'test'},
+      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
       'hookKey': 'test',
     };
 
@@ -88,7 +94,7 @@ List<Map<String, dynamic>> _labelledBoard(int count) => [
             {'type': 'pota', 'ref': 'US-0001'}
           ],
           'spot': {
-            'timeInMillis': 1700000000000,
+            'timeInMillis': nowMillis() - 60000,
             'source': 'test',
             'label': 'US-0001 Somewhere National Park',
           },

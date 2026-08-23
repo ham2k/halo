@@ -29,8 +29,14 @@ class _FakeExtensions extends ExtensionService {
   final List<Map<String, dynamic>> board;
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> unreachable, List<String> failed})> getSpots() async =>
-      (items: board, unreachable: const <String>[], failed: const <String>[]);
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
+      getSpots() async =>
+      (
+        items: board,
+        succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
+        unreachable: const <String>[],
+        failed: const <String>[],
+      );
 
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
@@ -59,7 +65,7 @@ Map<String, dynamic> _spot(String call, {double freq = 14250.0}) => {
       'band': '20m',
       'mode': 'SSB',
       'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': 1700000000000, 'source': 'test'},
+      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
       'hookKey': 'test',
     };
 

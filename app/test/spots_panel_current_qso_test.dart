@@ -8,13 +8,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
 Map<String, dynamic> _spot(String call) => {
       'their': {'call': call},
       'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': 1000, 'source': 'test'},
+      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
     };
 
 /// How much of `container` survives in `color` once it has been blended into

@@ -718,7 +718,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   String _bandFilter = 'auto';
   String _modeFilter = 'auto';
-  int? _ageMinutes;
+  /// Never null and never wider than [_ageOptionsInMinutes]' last: the board
+  /// is not open-ended, so there is no "any age" to fall back to.
+  int _ageMinutes = _ageOptionsInMinutes.last;
   final Set<String> _disabledSources = {};
   final Set<String> _disabledContinents = {};
   String _sortBy = 'frequency';
@@ -974,7 +976,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
     if (decoded.isEmpty) return;
     _bandFilter = decoded['bandFilter'] as String? ?? _bandFilter;
     _modeFilter = normalizeModeFilter(decoded['modeFilter'] as String? ?? _modeFilter);
-    _ageMinutes = decoded['ageMinutes'] as int?;
+    // A stored 'any' (null, from before the board was bounded) or anything
+    // wider than the options now offered comes back as the widest one.
+    final storedAge = decoded['ageMinutes'] as int?;
+    _ageMinutes = _ageOptionsInMinutes.contains(storedAge) ? storedAge! : _ageOptionsInMinutes.last;
     // Through the typed accessor, not a second read of the raw map: the
     // status reporter subtracts the same set, and two hand-rolled decodings
     // of one key drift apart silently.
@@ -1275,10 +1280,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
     if (superMode != null) {
       spots = spots.where((s) => superModeForMode(_modeOf(s)) == superMode).toList();
     }
-    if (_ageMinutes != null) {
-      final cutoff = nowMillis() - _ageMinutes! * 60000;
-      spots = spots.where((s) => _timeOf(s) >= cutoff).toList();
-    }
+    final cutoff = nowMillis() - _ageMinutes * 60000;
+    spots = spots.where((s) => _timeOf(s) >= cutoff).toList();
     if (_disabledContinents.isNotEmpty) {
       // Per-operator so multi-op spots narrow correctly; an unresolved
       // continent never hides a spot. See spotPassesContinentFilter.
@@ -2715,7 +2718,7 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
 class _SpotsFilterPill extends StatelessWidget {
   final String bandLabel;
   final String modeLabel;
-  final int? ageMinutes;
+  final int ageMinutes;
   final int filteredCount;
   final int totalCount;
   final VoidCallback onTap;
@@ -2780,10 +2783,8 @@ class _SpotsFilterPill extends StatelessWidget {
                       // The only pill that can grow; flex it so it ellipsizes on a
                       // narrow panel rather than overflowing the row.
                       Flexible(child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap)),
-                      if (ageMinutes != null) ...[
-                        const SizedBox(width: Space.sm),
-                        _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
-                      ],
+                      const SizedBox(width: Space.sm),
+                      _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
                       const SizedBox(width: Space.sm),
                       _FilterInfoPill(icon: 'tune', onTap: onTap),
                     ],
@@ -2948,7 +2949,7 @@ const double _dropdownWidth = 400 * 2 / 3;
 class _SpotsFilterDialog extends StatefulWidget {
   final String bandFilter;
   final String modeFilter;
-  final int? ageMinutes;
+  final int ageMinutes;
   final String? autoBand;
   final String? autoMode;
   /// The operator's enabled bands, which decide the Band dropdown's entries
@@ -2975,7 +2976,7 @@ class _SpotsFilterDialog extends StatefulWidget {
   final Set<String> disabledContinents;
   final ValueChanged<String> onBandChanged;
   final ValueChanged<String> onModeChanged;
-  final ValueChanged<int?> onAgeChanged;
+  final ValueChanged<int> onAgeChanged;
   final ValueChanged<String> onSortByChanged;
   final ValueChanged<bool> onGroupByBandChanged;
   final ValueChanged<bool> onGroupCallsWithNotesChanged;
@@ -3021,7 +3022,7 @@ class _SpotsFilterDialog extends StatefulWidget {
 class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   late String _bandFilter = widget.bandFilter;
   late String _modeFilter = widget.modeFilter;
-  late int? _ageMinutes = widget.ageMinutes;
+  late int _ageMinutes = widget.ageMinutes;
   late String _sortBy = widget.sortBy;
   late bool _groupByBand = widget.groupByBand;
   late bool _groupCallsWithNotes = widget.groupCallsWithNotes;
@@ -3119,7 +3120,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                child: DropdownMenu<int?>(
+                child: DropdownMenu<int>(
                   trailingIcon: dropdownTrailingIcon,
                   selectedTrailingIcon: dropdownSelectedTrailingIcon,
                   initialSelection: _ageMinutes,
@@ -3128,7 +3129,6 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                   enableSearch: false,
                   label: Text(t.operation.spots.filters.age),
                   dropdownMenuEntries: [
-                    DropdownMenuEntry(value: null, label: '${t.operation.spots.any} (${widget.totalSpotCount})'),
                     for (final minutes in _ageOptionsInMinutes)
                       DropdownMenuEntry(
                         value: minutes,
@@ -3137,6 +3137,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                       ),
                   ],
                   onSelected: (value) {
+                    if (value == null) return;
                     setState(() => _ageMinutes = value);
                     widget.onAgeChanged(value);
                   },
