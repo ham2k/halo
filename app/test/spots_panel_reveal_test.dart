@@ -29,10 +29,31 @@ import 'package:ham2k_logger/views/operation/spots_panel.dart';
 /// lookup is what decides the "Calls of Note" section, so a test about the
 /// pinned duplicate has to drive it.
 class _FakeExtensions extends ExtensionService {
-  _FakeExtensions(this.board, {this.notedCalls = const {}});
+  _FakeExtensions(this.board, {this.notedCalls = const {}, this.dupeCalls = const {}});
 
   final List<Map<String, dynamic>> board;
   final Set<String> notedCalls;
+
+  /// Calls scoring reports as already in the log for this band and mode —
+  /// the `duplicate` alert a real scorer raises.
+  final Set<String> dupeCalls;
+
+  @override
+  Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
+    required Map<String, dynamic> operation,
+    required String operationUuid,
+    required Map<String, Map<String, dynamic>> candidates,
+    List<Map<String, dynamic>>? segments,
+    Map<String, dynamic>? scoresheets,
+    Set<String> huntedRefTypes = const {},
+  }) async =>
+      {
+        for (final key in candidates.keys)
+          if (dupeCalls.contains(key.split('|').first))
+            key: const {
+              'alerts': ['duplicate']
+            },
+      };
 
   @override
   Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
@@ -113,6 +134,7 @@ void main() {
   Future<HaLoServices> servicesWith(
     List<Map<String, dynamic>> spots, {
     Set<String> notedCalls = const {},
+    Set<String> dupeCalls = const {},
     bool groupCallsWithNotes = false,
   }) async {
     // Pinned so the board is never narrowed by the radio's current band or
@@ -124,7 +146,7 @@ void main() {
       'groupByBand': true,
       'groupCallsWithNotes': groupCallsWithNotes,
     });
-    return HaLoServices(db, settings, extensions: _FakeExtensions(spots, notedCalls: notedCalls));
+    return HaLoServices(db, settings, extensions: _FakeExtensions(spots, notedCalls: notedCalls, dupeCalls: dupeCalls));
   }
 
   setUp(() async {
@@ -922,36 +944,62 @@ void main() {
       expect(logged.single['their'], {'call': 'K0001'});
     });
 
-    testWidgets('sliding left far enough strikes the row through, and again restores it',
+    testWidgets('sliding left far enough greys the row out without striking it',
         (tester) async {
       final services = await servicesWith(_board(6));
       await pumpPanel(tester, services: services, visible: ValueNotifier(true));
 
-      bool struck() => tester
-          .widgetList<Text>(find.descendant(of: find.text('K0001'), matching: find.byType(Text)))
-          .followedBy([tester.widget<Text>(find.text('K0001'))])
-          .any((t) => t.style?.decoration == TextDecoration.lineThrough);
+      // The same accessor the sibling test below watches turn to
+      // lineThrough, so an assertion that it stays null here cannot be
+      // passing because the finder matched nothing.
+      TextStyle? style() => tester.widget<Text>(find.text('K0001')).style;
 
-      expect(struck(), isFalse, reason: 'nothing has been ignored yet');
+      final full = style()!.color!.a;
+      expect(style()?.decoration, isNull, reason: 'nothing has been ignored yet');
 
       await slide(tester, 'K0001', -400);
-      expect(struck(), isTrue, reason: 'an ignored spot reads as a worked one');
+      // The strikethrough belongs to calls already in the log: a set-aside
+      // spot that borrowed it would be indistinguishable from a worked one.
+      expect(style()?.decoration, isNull, reason: 'an ignored spot is not a logged one');
+      expect(style()!.color!.a, lessThan(full), reason: 'an ignored spot greys out');
 
       // Reversible on purpose: a mis-slide that could not be undone would
       // make the gesture something an operator learns to avoid.
       await slide(tester, 'K0001', -400);
-      expect(struck(), isFalse);
+      expect(style()!.color!.a, full);
+    });
+
+    // The two states have to stay tellable apart: grey says "not this one,
+    // right now", the strikethrough says "already in the log". A slide moves
+    // only the first, in either direction.
+    testWidgets('a slide never adds or removes the log strikethrough', (tester) async {
+      final services = await servicesWith(_board(6), dupeCalls: {'K0001'});
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+
+      TextStyle? style() => tester.widget<Text>(find.text('K0001')).style;
+
+      expect(style()?.decoration, TextDecoration.lineThrough, reason: 'K0001 is in the log');
+      final dimmed = style()!.color!.a;
+
+      // Slid to restore: back on the board, at full contrast — but the
+      // contact it duplicates has not been un-made.
+      await slide(tester, 'K0001', -400);
+      expect(style()?.decoration, TextDecoration.lineThrough);
+      expect(style()!.color!.a, greaterThan(dimmed));
     });
 
     testWidgets('ignoring one spot leaves its neighbours alone', (tester) async {
       final services = await servicesWith(_board(6));
       await pumpPanel(tester, services: services, visible: ValueNotifier(true));
 
+      final before = tester.widget<Text>(find.text('K0002')).style?.color;
       await slide(tester, 'K0001', -400);
 
       expect(
-        tester.widget<Text>(find.text('K0002')).style?.decoration,
-        isNot(TextDecoration.lineThrough),
+        tester.widget<Text>(find.text('K0002')).style?.color,
+        before,
         reason: 'the ignore set is keyed by call, not applied to the list',
       );
     });

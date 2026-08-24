@@ -623,9 +623,11 @@ looking, and feedback the hand can miss is feedback the gesture does not have.
 An action that has two senses shows **the one that reverses what the row
 currently says**, so the gesture never depends on remembering how the row got
 that way. In the spots list the trailing action is backspace on a live spot and
-undo on a struck-through one — including one struck through by scoring rather
-than by an earlier slide, which the operator can put back on the board. Doing
-so changes only what the row says; nothing here edits the log.
+undo on a greyed-out one — including one greyed by scoring rather than by an
+earlier slide, which the operator can put back on the board. Only the grey
+moves: the strikethrough says the call is already in the log, so no slide in
+either direction adds or removes it, and a restored duplicate comes back at
+full contrast still struck. Nothing here edits the log.
 
 Actions are **icons alone**, with the word carried as a `Semantics` label —
 there are no tooltips in this app. Only **one row is open at a time**, and

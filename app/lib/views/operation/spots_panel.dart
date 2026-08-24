@@ -826,7 +826,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// Per-callsign overrides of what scoring says about a spot: true forces the
   /// row to read as worked (slid left to set it aside), false forces it to read
   /// as NOT worked — which is how a genuine duplicate is put back on the board,
-  /// and how an ignore is taken back.
+  /// and how an ignore is taken back. Either way it moves only the row's dim:
+  /// the strikethrough is scoring's alone (see [_SpotTile.logged]), so a
+  /// restored duplicate comes back at full contrast still struck.
   ///
   /// An override never touches the log. Nothing here can un-work a contact;
   /// this only changes what the row says, which is the whole of what the
@@ -1629,10 +1631,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                 onSettled: widget.onSuggestionSettled,
                               ),
                         // Always the reverse of what the row currently says, so
-                        // the gesture reads the same whether the row was struck
-                        // through by scoring or by an earlier slide: undo puts a
-                        // worked spot back on the board, backspace takes a live
-                        // one off it.
+                        // the gesture reads the same whether the row was dimmed
+                        // by scoring or by an earlier slide: undo puts a worked
+                        // spot back on the board, backspace takes a live one off
+                        // it.
                         trailing: _SlideAction(
                           icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
                           label: worked
@@ -1652,10 +1654,13 @@ class _SpotsPanelState extends State<SpotsPanel> {
                           leftWidth: leftWidth,
                           sortByAge: _sortBy == 'time',
                           activityControls: _activityControls,
-                          // A spot set aside by a slide reads exactly like one
-                          // scoring calls worked, and a slide can equally put a
-                          // scored duplicate back — see [_isWorked].
+                          // A spot set aside by a slide dims like one scoring
+                          // calls worked, and a slide can equally put a scored
+                          // duplicate back on the board — but neither gesture
+                          // touches the strikethrough, which answers only
+                          // "is this call in the log" — see [_isWorked].
                           worked: worked,
+                          logged: flags.worked,
                           isSelf: flags.isSelf,
                           notices: flags.notices,
                           highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
@@ -1699,7 +1704,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// An override only applies when EVERY operator on a merged multi-op spot
   /// carries the same one — the "all of them" rule scoring itself uses. One
   /// dismissed operator cannot hide a station still worth working, and one
-  /// restored operator cannot un-strike the rest.
+  /// restored operator cannot un-dim the rest.
   bool _isWorked(Map<String, dynamic> spot, {required bool scored}) {
     final calls = _operatorCallsOf(spot);
     if (calls.isEmpty) return scored;
@@ -2085,10 +2090,20 @@ class _SpotTile extends StatelessWidget {
   final List<Map<String, dynamic>> activityControls;
   final VoidCallback? onTap;
 
-  /// Every operator on this spot has already been worked on this band and mode
-  /// — the `duplicate` alert from [SpotsPanel]'s candidate scoring. Struck
-  /// through and dimmed, per app-polo's SpotItem `type: 'duplicate'`.
+  /// This spot reads as worked: either every operator on it has already been
+  /// worked on this band and mode — the `duplicate` alert from [SpotsPanel]'s
+  /// candidate scoring — or the operator slid it aside. Dimmed, per app-polo's
+  /// SpotItem `type: 'duplicate'`.
   final bool worked;
+
+  /// [spotDisplayFlags]'s `worked`: every operator on this spot is already in
+  /// the log for this band and mode and no scorer raised a notice about it —
+  /// a notice deliberately un-strikes a duplicate, since it says there is
+  /// something here worth working anyway. Struck through, and NOTHING else
+  /// strikes a row: the strikethrough answers "have I worked this call", so a
+  /// spot merely set aside must not borrow it, and a slide that puts a
+  /// duplicate back on the board must not take it away.
+  final bool logged;
 
   /// This spot is OUR station's own — tinted and dimmed rather than struck,
   /// since it isn't a contact to make (app-polo's `type: 'self'`).
@@ -2119,6 +2134,7 @@ class _SpotTile extends StatelessWidget {
     this.activityControls = const [],
     this.onTap,
     this.worked = false,
+    this.logged = false,
     this.isSelf = false,
     this.notices = const {},
     this.highlight,
@@ -2143,7 +2159,7 @@ class _SpotTile extends StatelessWidget {
     Color faded(Color color) => dim == 1.0 ? color : color.withValues(alpha: color.a * dim);
 
     final baseColor = faded(isSelf ? theme.colorScheme.tertiary : theme.colorScheme.onSurface);
-    final decoration = worked ? TextDecoration.lineThrough : null;
+    final decoration = logged ? TextDecoration.lineThrough : null;
 
     final mono = haloMonoStyle(context, fontSize: 14, color: baseColor)
         .copyWith(decoration: decoration, decorationColor: baseColor);
