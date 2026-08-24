@@ -190,6 +190,31 @@ void main() {
     expect(deviceA.service.running, isTrue);
   });
 
+  test('turning the Bluetooth sub-switch off reports no lost connection', () async {
+    // The third operator-caused disconnection, beside the master switch and
+    // a revoke, and the one a reader of PeerService is least likely to spot:
+    // the drop happens inside the BLE transport's stop, two calls away.
+    await deviceA.service.trust.trust(deviceB.deviceId, name: 'Phone');
+    await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
+    final events = <String>[];
+    deviceA.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+      events.add(connected ? 'connected' : 'lost');
+    };
+    await bleOn(deviceA);
+    await bleOn(deviceB);
+    await waitFor('the pair to connect',
+        () => deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false);
+    await waitFor('A to report the connection', () => events.isNotEmpty);
+
+    await deviceA.service.setBleEnabled(false);
+    await waitFor('the session to drop with the transport',
+        () => !(deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false));
+    // Long enough for a report to have travelled: this is a negative, so an
+    // assertion made before the close landed would pass on anything.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(events, ['connected'], reason: 'the operator flipped the switch — telling them it dropped is noise');
+  });
+
   test('a Bluetooth problem is the operator-visible bleError, apart from the LAN error', () async {
     deviceA.gateway.readiness =
         const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is turned off');

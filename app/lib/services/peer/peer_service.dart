@@ -175,6 +175,23 @@ class PeerService extends ChangeNotifier {
   /// missed by not being there when they were last broadcast.
   void Function(PeerSession session)? onSessionEstablished;
 
+  /// Fired when a peer connection is made, and again when an established one
+  /// is LOST for a reason the operator did not cause. What the app layer
+  /// turns into status messages — a peer link is expected to come and go,
+  /// and the operator's answer to "is my other device on?" is the only
+  /// thing either edge is for.
+  ///
+  /// Distinct from [onSessionEstablished], which is the latest-value handoff
+  /// and has no losing edge. Operator-caused disconnections — peer sync
+  /// switched off, trust revoked, the app quitting — are deliberately
+  /// silent: the operator just did that, and being told so is noise.
+  void Function(String deviceId, String deviceName, {required bool connected})? onPeerConnectionChanged;
+
+  /// Peers reported connected and not yet reported lost. Doubles as the
+  /// suppression: an operator-caused disconnection takes the peer OUT of
+  /// here before closing its session, so the close finds nothing to report.
+  final Set<String> _announcedConnections = {};
+
   /// Sends [message] to every established session. Lossy by design: a peer
   /// mid-handshake simply misses it and is caught up by its establish-time
   /// snapshot.
@@ -352,6 +369,13 @@ class PeerService extends ChangeNotifier {
       } else if (!wantBle && _bleTransport != null) {
         final transport = _bleTransport!;
         _bleTransport = null;
+        // The sub-switch is the third operator-caused disconnection, beside
+        // the master switch and a revoke: the links this stop is about to
+        // close must not report themselves lost. Only the BLE ones — a LAN
+        // session dropping at this same moment is still news.
+        for (final entry in _peers.entries) {
+          if (entry.value.session?.link is PeerBleLink) _announcedConnections.remove(entry.key);
+        }
         await transport.stop();
         bleError = null;
       } else if (!wantBle && _bleTransport == null) {
@@ -445,6 +469,9 @@ class PeerService extends ChangeNotifier {
   /// to disconnect.
   Future<void> revokeTrust(String peerDeviceId) async {
     await trust.revoke(peerDeviceId);
+    // Before the close, so the drop this causes is not reported back to the
+    // operator who just asked for it.
+    _announcedConnections.remove(peerDeviceId);
     final runtime = _peers[peerDeviceId];
     if (runtime != null) {
       runtime.attemptSeq++;
@@ -458,6 +485,7 @@ class PeerService extends ChangeNotifier {
 
   Future<void> _start() async {
     error = null;
+    _discoveryError = null;
     try {
       _linkServer = await PeerLinkServer.bind();
     } catch (e, st) {
@@ -488,9 +516,15 @@ class PeerService extends ChangeNotifier {
     _beaconSubscription = socket.beacons.listen(
       _onBeacon,
       onError: (Object e, StackTrace st) {
-        error = 'Discovery failed: $e';
+        // Once per outage, not once per rebind. The socket now comes back on
+        // its own, so a receive-side failure that recurs after every rebind
+        // would upload on the announce interval for as long as it lasted —
+        // the storm this whole card exists to stop, from the other side.
+        final first = _discoveryError == null;
+        _discoveryError = 'Discovery failed: $e';
+        error = _discoveryError;
         debugPrint('[peer] discovery FAILED: $e');
-        ErrorReportingService.report(e, st, context: 'PeerService:beacons');
+        if (first) ErrorReportingService.report(e, st, context: 'PeerService:beacons');
         notifyListeners();
       },
     );
@@ -510,6 +544,10 @@ class PeerService extends ChangeNotifier {
 
   Future<void> _stop() async {
     debugPrint('[peer] peer sync stopped');
+    // Cleared first: every session below is about to be closed on the
+    // operator's own instruction, and each would otherwise report itself
+    // lost on the way out.
+    _announcedConnections.clear();
     _announceTimer?.cancel();
     _announceTimer = null;
     _sweepTimer?.cancel();
@@ -540,7 +578,24 @@ class PeerService extends ChangeNotifier {
     _linkServer = null;
   }
 
+  /// The discovery failure currently on [error], if that is what put it
+  /// there. Kept apart so retiring it cannot wipe the link-bind message,
+  /// which is a different fault with a different remedy.
+  String? _discoveryError;
+
+  /// Retires a discovery failure once the socket is back. Without this the
+  /// banner outlives the outage — the socket rebinds seconds later and the
+  /// operator is left with a red row over a working peer list, and no way
+  /// to clear it but toggling the switch.
+  void _clearRecoveredDiscoveryError() {
+    if (_discoveryError == null || _beaconSocket?.healthy != true) return;
+    if (error == _discoveryError) error = null;
+    _discoveryError = null;
+    notifyListeners();
+  }
+
   void _announce() {
+    _clearRecoveredDiscoveryError();
     final port = _linkServer?.port;
     // Nothing to advertise without somewhere to dial back to. A device whose
     // listen bind failed stays silent rather than announcing a port it isn't
@@ -676,7 +731,17 @@ class PeerService extends ChangeNotifier {
         final deviceId = session.peer?.deviceId;
         if (deviceId != null) onEphemeral?.call(deviceId, message);
       },
-      onEstablished: (session) => onSessionEstablished?.call(session),
+      onEstablished: (session) {
+        onSessionEstablished?.call(session);
+        final peer = session.peer;
+        if (peer == null) return;
+        // A second session for a peer that already has one — a BLE link
+        // racing an established LAN session — reaches here before
+        // _onSessionChanged closes it, and the operator must not be told
+        // twice about one connection.
+        if (!_announcedConnections.add(peer.deviceId)) return;
+        onPeerConnectionChanged?.call(peer.deviceId, peer.deviceName, connected: true);
+      },
       log: (message) => debugPrint('[peer] $message'),
     );
     if (runtime != null) {
@@ -722,6 +787,12 @@ class PeerService extends ChangeNotifier {
       for (final runtime in _peers.values.toList()) {
         if (!identical(runtime.session, session)) continue;
         runtime.session = null;
+        // Only for the session this peer is actually filed under, so the
+        // duplicate-link teardown above — which closes a session nothing
+        // tracks — never reads as the peer going away.
+        if (peer != null && _announcedConnections.remove(peer.deviceId)) {
+          onPeerConnectionChanged?.call(peer.deviceId, peer.deviceName, connected: false);
+        }
         // A refusal is a decision, not a fault — retrying it would just
         // re-refuse in a loop. A plain close is worth reconnecting for.
         if (session.state == PeerSessionState.closed && _running) {

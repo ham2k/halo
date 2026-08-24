@@ -16,6 +16,11 @@ class _StubBeaconSocket implements PeerBeaconSocket {
   @override
   Stream<PeerBeacon> get beacons => const Stream.empty();
 
+  /// Never — web has no socket to lose, and a caller retiring an error on
+  /// the strength of this would be retiring it on nothing.
+  @override
+  bool get healthy => false;
+
   @override
   void announce(PeerBeacon beacon) {}
 

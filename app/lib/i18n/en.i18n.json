@@ -885,7 +885,9 @@
       "pairWarning": "Only allow a device you recognise. Anything on this network can ask.",
       "shareNothingOpen": "Open an operation to start sharing it.",
       "problem": "Can't reach the local network: ${error}",
-      "bleProblem": "Bluetooth: ${error}"
+      "bleProblem": "Bluetooth: ${error}",
+      "statusConnected": "Connected to ${device}",
+      "statusLost": "Lost connection to ${device}"
     },
     "developerMode": "Developer Mode",
     "syncPanel": {

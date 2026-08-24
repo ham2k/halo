@@ -1617,6 +1617,19 @@ class HaLoServices {
     // first callsign the operator sets.
     peerService.localDeviceName = settings.peerDeviceName;
     peerService.localCapabilities = () => [if (cat.radio1 != null) 'cat'];
+    // A peer link is expected to come and go — a device carried out of
+    // range, a park with no WiFi — so both edges are news the operator can
+    // act on, and neither is an error. Keyed per device so two peers do not
+    // overwrite each other's message, and both self-dismiss: the footer is
+    // where the operator glances, not something they should have to tidy.
+    peerService.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+      statusBar.setMessage(
+        key: 'peer:$deviceId',
+        icon: connected ? 'lan-connect' : 'lan-disconnect',
+        text: connected ? t.settings.peers.statusConnected(device: deviceName) : t.settings.peers.statusLost(device: deviceName),
+        dismissAfter: StatusBarService.completedDismissDelay,
+      );
+    };
     // Touched for its side effect: the lazy field's construction is what
     // wires the ephemeral channel, and a session established before that
     // would drop its GPS snapshot into an unplugged callback.

@@ -2848,6 +2848,12 @@ class Translations$settings$peers$en {
 
 	/// en: 'Bluetooth: ${error}'
 	String bleProblem({required Object error}) => 'Bluetooth: ${error}';
+
+	/// en: 'Connected to ${device}'
+	String statusConnected({required Object device}) => 'Connected to ${device}';
+
+	/// en: 'Lost connection to ${device}'
+	String statusLost({required Object device}) => 'Lost connection to ${device}';
 }
 
 // Path: settings.syncPanel
@@ -5419,6 +5425,8 @@ extension on Translations {
 			'settings.peers.shareNothingOpen' => 'Open an operation to start sharing it.',
 			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
+			'settings.peers.statusConnected' => ({required Object device}) => 'Connected to ${device}',
+			'settings.peers.statusLost' => ({required Object device}) => 'Lost connection to ${device}',
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
@@ -5745,10 +5753,10 @@ extension on Translations {
 			'commandDialog.sectionOperations' => 'Operations',
 			'commandDialog.goHome' => 'Home',
 			'commandDialog.goSettings' => 'Settings',
-			'commandDialog.goNewOperation' => 'New operation',
-			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			_ => null,
 		} ?? switch (path) {
+			'commandDialog.goNewOperation' => 'New operation',
+			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'expiredBuild.title' => 'This build has expired',

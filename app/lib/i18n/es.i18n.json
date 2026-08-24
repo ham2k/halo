@@ -829,7 +829,9 @@
       "pairWarning": "Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.",
       "shareNothingOpen": "Abre una operación para empezar a compartirla.",
       "problem": "No se puede acceder a la red local: ${error}",
-      "bleProblem": "Bluetooth: ${error}"
+      "bleProblem": "Bluetooth: ${error}",
+      "statusConnected": "Conectado a ${device}",
+      "statusLost": "Se perdió la conexión con ${device}"
     },
     "developerMode": "Modo Desarrollador",
     "syncPanel": {

@@ -176,6 +176,55 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(seen.map((b) => b.deviceId), ['device-b']);
     });
+
+    test('a send with no route to the segment neither ends discovery nor is surfaced', () async {
+      final port = await freeUdpPort();
+      // '::1' out of an IPv4 socket is the deterministic stand-in for the
+      // real trigger (errno 51, network unreachable): both fail the send
+      // inside dart:io, which reports it on the socket's ERROR handler and
+      // closes the socket behind it. A test that only closed the socket
+      // would exercise none of that.
+      final socket = await openPeerBeaconSocket(port: port, broadcastAddress: '::1');
+      addTearDown(socket.close);
+
+      Object? surfaced;
+      var ended = false;
+      socket.beacons.listen((_) {}, onError: (Object e) => surfaced = e, onDone: () => ended = true);
+
+      const beacon = PeerBeacon(deviceId: 'device-c', deviceName: 'Handheld', port: 4321);
+      socket.announce(beacon);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      // An interface without a route is the operator's network, not a defect
+      // of ours, and it must not reach PeerService's onError — which turns
+      // anything arriving there into an upload and an on-screen notice.
+      expect(surfaced, isNull);
+      expect(ended, isFalse);
+      // Nothing here calls anything to bring the socket back: it rebinds on
+      // a timer of its own, precisely so a caller that stops announcing —
+      // PeerService does exactly that when its link server has no port —
+      // cannot strand it deaf for the session. The deaf window itself is not
+      // asserted: it is real but shorter than one bind, and pinning it would
+      // race the recovery this is here to prove.
+      for (var i = 0; i < 100 && !socket.healthy; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      // What PeerService reads to decide whether the failure it reported is
+      // still true — a banner over a working peer list is its own defect.
+      expect(socket.healthy, isTrue, reason: 'nothing else is going to bring discovery back');
+
+      final heard = socket.beacons.first;
+      final other = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(other.close);
+      // Resent until it lands rather than fired once after a fixed wait: UDP
+      // drops a datagram sent while nothing holds the port, so a one-shot
+      // probe would turn "the rebind was a few ms slower here" into a
+      // failure — and this branch's tests first run on CI after the merge.
+      final probe = Timer.periodic(const Duration(milliseconds: 50), (_) {
+        other.send(utf8.encode(jsonEncode(beacon.toJson())), InternetAddress('127.0.0.1'), port);
+      });
+      addTearDown(probe.cancel);
+      expect((await heard.timeout(const Duration(seconds: 5))).deviceId, 'device-c');
+    });
   });
 
   group('two PeerSessions over a real socket', () {

@@ -1348,6 +1348,8 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String get shareNothingOpen => 'Abre una operación para empezar a compartirla.';
 	@override String problem({required Object error}) => 'No se puede acceder a la red local: ${error}';
 	@override String bleProblem({required Object error}) => 'Bluetooth: ${error}';
+	@override String statusConnected({required Object device}) => 'Conectado a ${device}';
+	@override String statusLost({required Object device}) => 'Se perdió la conexión con ${device}';
 }
 
 // Path: settings.syncPanel
@@ -2849,6 +2851,8 @@ extension on TranslationsEs {
 			'settings.peers.shareNothingOpen' => 'Abre una operación para empezar a compartirla.',
 			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
+			'settings.peers.statusConnected' => ({required Object device}) => 'Conectado a ${device}',
+			'settings.peers.statusLost' => ({required Object device}) => 'Se perdió la conexión con ${device}',
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
@@ -3227,10 +3231,10 @@ extension on TranslationsEs {
 			'switchAccounts.linkToAnother' => 'Vincular a otra cuenta',
 			'switchAccounts.linkWithQr' => 'Vincular con un código QR',
 			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
-			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
-			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
+			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
 			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
 			'switchAccounts.emailAddress' => 'Dirección de email',
 			'switchAccounts.linkAccount' => 'Vincular cuenta',

@@ -88,6 +88,11 @@ class PeerBeacon {
 /// runs, it becomes a setting rather than a different constant.
 const int peerBeaconPort = 7373;
 
+/// How often a lost beacon socket tries to bind again. Matches the announce
+/// interval: a socket back sooner than the next beacon buys nothing, and one
+/// back later costs the operator a round of discovery.
+const rebindInterval = Duration(seconds: 3);
+
 /// Sends and receives [PeerBeacon]s on one shared socket.
 ///
 /// One socket for both directions on purpose: a beacon must be sent FROM the
@@ -95,6 +100,11 @@ const int peerBeaconPort = 7373;
 /// answer an ephemeral port that nothing is listening on.
 abstract class PeerBeaconSocket {
   Stream<PeerBeacon> get beacons;
+
+  /// Whether a socket is currently bound. False between losing one and
+  /// getting it back — what lets a caller retire a failure it reported once
+  /// discovery is working again.
+  bool get healthy;
 
   /// Broadcasts [beacon] to the local segment. Never throws — a send on a
   /// downed interface is normal, and discovery is retried on a timer anyway.

@@ -271,6 +271,54 @@ void main() {
     expect(deviceB.service.peers['device-a']?.session, isNull);
   });
 
+  test('a peer arriving and then going away announces both edges', () async {
+    final op = await sharedOperation();
+    await deviceA.service.trust.trust('device-b', name: 'Phone');
+    await deviceB.service.trust.trust('device-a', name: 'Laptop');
+    final events = <String>[];
+    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+      events.add('${connected ? 'connected' : 'lost'}:$deviceId:$deviceName');
+    };
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+
+    await waitFor('B to report the connection', () => events.isNotEmpty);
+    // The NAME, not the id: the operator is told which of their devices this
+    // is, and the id is what the panel shows when they need to be sure.
+    expect(events.first, 'connected:device-a:Laptop');
+
+    // A carried out of range — from B's side an ordinary disappearance, and
+    // the only edge that tells B's operator their devices stopped talking.
+    await deviceA.service.setEnabled(false);
+    await waitFor('B to report the loss', () => events.length > 1);
+    expect(events[1], 'lost:device-a:Laptop');
+  });
+
+  test('a disconnection the operator asked for says nothing', () async {
+    final op = await sharedOperation();
+    await deviceA.service.trust.trust('device-b', name: 'Phone');
+    await deviceB.service.trust.trust('device-a', name: 'Laptop');
+    final events = <String>[];
+    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+      events.add(connected ? 'connected' : 'lost');
+    };
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('the link to go live',
+        () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.live);
+    await waitFor('B to report the connection', () => events.isNotEmpty);
+
+    // Revoking trust drops the session — the operator did that, and being
+    // told the connection was lost is telling them what they just did.
+    await deviceB.service.revokeTrust('device-a');
+    // Then the master switch, the other half of the same rule. Long enough
+    // for the close to have travelled: this assertion is a negative, so a
+    // check that runs before the teardown would pass on anything.
+    await deviceB.service.setEnabled(false);
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(events, ['connected'], reason: 'neither the revoke nor the switch may report a loss');
+  });
+
   test('the master switch alone stops and restarts sharing, with the operation still open', () async {
     final op = await sharedOperation();
     await deviceA.service.trust.trust('device-b', name: 'Phone');
