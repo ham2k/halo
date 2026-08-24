@@ -3,7 +3,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -1088,30 +1087,50 @@ REF-002,Summit Two,45.56,-122.78
   });
 
   group('connectivity-driven resync', () {
-    test('coming back online runs one unattended sync pass; staying online does not', () async {
-      final connectivity = StreamController<List<ConnectivityResult>>();
+    test('coming back online runs one unattended sync pass', () async {
+      final offline = StreamController<bool>();
       final m = _SyncCountingDataFileManager(
         lookups: lookups,
         extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
         prefs: prefs,
-        connectivity: connectivity.stream,
+        offlineChanges: offline.stream,
       );
 
-      connectivity.add([ConnectivityResult.none]);
+      offline.add(true);
       await pumpEventQueue();
       expect(m.syncCalls, 0, reason: 'going offline is not a download opportunity');
 
-      connectivity.add([ConnectivityResult.wifi]);
+      offline.add(false);
       await pumpEventQueue();
       expect(m.syncCalls, 1);
       expect(m.notifyFlags.single, isFalse,
           reason: 'a reconnect is unattended, like the boot sync — failure notices on every '
               'flaky-network recovery would be pure noise');
+      await offline.close();
+    });
 
-      connectivity.add([ConnectivityResult.mobile]); // wifi→cellular, never offline
+    test('unattended passes are skipped outright while offline', () async {
+      // The trigger is not lost by being refused: everything that fires this
+      // loop — a runtime replacement, a reconnect — fires again on the far
+      // side of an outage, and the reconnect edge fires precisely then.
+      // Attempting anyway would spend a timeout per data file to write
+      // nothing.
+      var offline = true;
+      final m = _SyncCountingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        prefs: prefs,
+        isOffline: () => offline,
+      );
+
+      m.extensions.runtimeGeneration.value++;
       await pumpEventQueue();
-      expect(m.syncCalls, 1, reason: 'interface changes while online must not re-download');
-      await connectivity.close();
+      expect(m.syncCalls, 0);
+
+      offline = false;
+      m.extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
+      expect(m.syncCalls, 1);
     });
 
     test('a reconnect trigger cannot overlap a direct sync pass', () async {
@@ -1119,10 +1138,8 @@ REF-002,Summit Two,45.56,-122.78
       // syncAllDataFiles is what keeps a direct pass (boot, RELOAD, Update
       // All) and a reconnect pass from double-downloading — and from
       // interleaving the per-pass stale sweeps that delete each other's
-      // freshly written rows. The connectivity stream replays current state
-      // on subscribe on most platforms, so this overlap happens on every
-      // boot with stale files, not in a rare corner.
-      final connectivity = StreamController<List<ConnectivityResult>>();
+      // freshly written rows.
+      final offline = StreamController<bool>();
       final host = MockExtensionHost({
         'dataFile:*:getDefinition': [
           {
@@ -1135,7 +1152,7 @@ REF-002,Summit Two,45.56,-122.78
         lookups: lookups,
         extensions: MockExtensionService(host),
         prefs: prefs,
-        connectivity: connectivity.stream,
+        offlineChanges: offline.stream,
       );
 
       m.blockDownload = Completer<void>();
@@ -1143,7 +1160,7 @@ REF-002,Summit Two,45.56,-122.78
       await pumpEventQueue();
       expect(m.downloadCalls, 1, reason: 'the direct pass is mid-download');
 
-      connectivity.add([ConnectivityResult.wifi]); // the on-subscribe replay
+      offline.add(false);
       await pumpEventQueue();
       expect(m.downloadCalls, 1,
           reason: 'the reconnect pass must queue behind the direct pass, not race it');
@@ -1154,49 +1171,29 @@ REF-002,Summit Two,45.56,-122.78
       await pumpEventQueue();
       expect(m.downloadCalls, 1,
           reason: 'the serialized follow-up pass sees the fresh stamp and age-skips the file');
-      await connectivity.close();
+      await offline.close();
     });
 
-    test('a connectivity stream error degrades silently and keeps the subscription alive', () async {
-      final connectivity = StreamController<List<ConnectivityResult>>();
+    test('an offline-stream error degrades silently and keeps the subscription alive', () async {
+      final offline = StreamController<bool>();
       final m = _SyncCountingDataFileManager(
         lookups: lookups,
         extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
         prefs: prefs,
-        connectivity: connectivity.stream,
+        offlineChanges: offline.stream,
       );
 
       // Without an onError, this escapes as an unhandled zone error — an
       // ErrorPolicy-default notice and upload for a background blip whose
       // correct degradation is "no reconnect resync".
-      connectivity.addError(StateError('backend gone'));
+      offline.addError(StateError('backend gone'));
       await pumpEventQueue();
       expect(m.syncCalls, 0);
 
-      connectivity.add([ConnectivityResult.wifi]);
+      offline.add(false);
       await pumpEventQueue();
       expect(m.syncCalls, 1, reason: 'an error event must not kill the subscription');
-      await connectivity.close();
-    });
-
-    test('the first online emission triggers a pass even with no observed offline first', () async {
-      // A device that boots offline may never EMIT `[none]`: on platforms
-      // whose stream does not replay the current state on subscribe, the
-      // first event is the eventual `[wifi]`. An edge detector that waits to
-      // see offline first would sit silent — and the boot-offline recovery
-      // this listener exists for would never run.
-      final connectivity = StreamController<List<ConnectivityResult>>();
-      final m = _SyncCountingDataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
-        prefs: prefs,
-        connectivity: connectivity.stream,
-      );
-
-      connectivity.add([ConnectivityResult.wifi]);
-      await pumpEventQueue();
-      expect(m.syncCalls, 1);
-      await connectivity.close();
+      await offline.close();
     });
   });
 }
@@ -1210,7 +1207,8 @@ class _SyncCountingDataFileManager extends DataFileManager {
     required super.lookups,
     required super.extensions,
     required super.prefs,
-    super.connectivity,
+    super.offlineChanges,
+    super.isOffline,
   });
 
   @override
@@ -1240,7 +1238,7 @@ class _BlockingDownloadManager extends DataFileManager {
     required super.lookups,
     required super.extensions,
     required super.prefs,
-    super.connectivity,
+    super.offlineChanges,
   });
 
   @override

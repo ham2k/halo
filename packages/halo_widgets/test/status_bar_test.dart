@@ -306,6 +306,60 @@ void main() {
     },
   );
 
+  testWidgets('a leading indicator opens the bar on its own', (tester) async {
+    // The whole reason the indicator is a slot rather than an item: the bar
+    // collapses to nothing with no items, and "we have no network" is the
+    // answer to "why is nothing updating?" precisely when nothing else is
+    // being said. An item could not be on screen at that moment.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [],
+              onDismiss: _noop,
+              leading: const Icon(Icons.cloud_off, key: ValueKey('offline-icon')),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.getSize(find.byType(StatusBarFooter)).height, greaterThan(0));
+    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+  });
+
+  testWidgets('the indicator stays put while messages come and go', (tester) async {
+    // It belongs to the bar, not to whatever is being said in it. A slot
+    // inside the collapsed switcher would be rebuilt — and briefly duplicated
+    // — on every message change.
+    Widget withItems(List<StatusBarItemData> items) => MaterialApp(
+          home: Column(
+            children: [
+              const Expanded(child: SizedBox.shrink()),
+              StatusBarFooter(
+                items: items,
+                onDismiss: _noop,
+                leading: const Icon(Icons.cloud_off, key: ValueKey('offline-icon')),
+              ),
+            ],
+          ),
+        );
+
+    await tester.pumpWidget(withItems([StatusBarItemData(key: 'a', title: 'Syncing', text: 'Syncing')]));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+
+    await tester.pumpWidget(withItems([StatusBarItemData(key: 'b', title: 'Downloading', text: 'Downloading')]));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Mid-transition, with both messages mounted: exactly one icon.
+    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+  });
+
   testWidgets(
     'under the dark theme the notice is still black ink on post-it yellow, '
     'markdown roles included',

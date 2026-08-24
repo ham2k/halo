@@ -4,7 +4,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -86,11 +85,23 @@ class DataFileManager {
   /// a test, so web-only behavior branches on this field instead.
   final bool isWeb;
 
-  /// Emissions of the device's current connectivity, [Connectivity.onConnectivityChanged]-shaped:
-  /// offline is "every entry is `none`". Optional so the many tests that
+  /// Edges of the app's offline state (`ConnectivityService.offlineChanges`),
+  /// true meaning we have gone offline. Optional so the many tests that
   /// construct a manager without network concerns don't touch platform
   /// channels.
-  final Stream<List<ConnectivityResult>>? connectivity;
+  ///
+  /// Edges of the WHOLE state, not of the OS signal: a captive portal reports
+  /// a healthy interface, so watching raw `connectivity_plus` results would
+  /// miss both the loss and — worse — the recovery, leaving every data file
+  /// stale until the next boot.
+  final Stream<bool>? offlineChanges;
+
+  /// Whether the app currently believes it has no internet. Guards the
+  /// unattended passes: with nothing answering, a fan-out over twenty data
+  /// files buys nothing but twenty timeouts, and the reconnect edge above
+  /// runs the pass the moment there is a point to it. Null skips the gate
+  /// (tests, and anything that would rather try than ask).
+  final bool Function()? isOffline;
 
   DataFileManager({
     required this.lookups,
@@ -99,7 +110,8 @@ class DataFileManager {
     this.statusBar,
     this.httpClientFactory = http.Client.new,
     this.isWeb = kIsWeb,
-    this.connectivity,
+    this.offlineChanges,
+    this.isOffline,
   }) {
     // Every successful runtime start can register dataFile hooks that did
     // not exist before — a custom file added in a settings panel, an
@@ -113,14 +125,12 @@ class DataFileManager {
     // (whose own explicit call happens before this listener is registered,
     // since HaLoServices constructs DataFileManager lazily after start).
     extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
-    connectivity?.listen(_onConnectivityChanged, onError: (Object e) {
-      // A connectivity backend that can't be watched (a platform-channel
-      // failure, no NetworkManager on Linux) costs only the reconnect
-      // resync — not worth any operator-facing noise. The Linux backend can
-      // also throw from its own async stream setup, where no onError of
-      // ours can reach it; ErrorPolicy's connectivity-backend-unavailable
-      // rule covers that leg.
-      debugPrint('[data-file] connectivity stream error: $e');
+    offlineChanges?.listen(_onOfflineChanged, onError: (Object e) {
+      // `ConnectivityService.offlineChanges` does not error today. Handled
+      // anyway because the alternative is an unhandled zone error — an
+      // operator notice and an upload — for a background signal whose correct
+      // degradation is simply "no reconnect resync".
+      debugPrint('[data-file] offline stream error: $e');
     });
   }
 
@@ -136,26 +146,12 @@ class DataFileManager {
 
   void _onRuntimeReplaced() => unawaited(_runSerializedSync(notifyOnFailure: true));
 
-  /// Seeded offline so the stream's FIRST online emission always triggers a
-  /// pass: on platforms whose stream does not replay the current state on
-  /// subscribe, a device that boots offline would otherwise emit only the
-  /// eventual `[wifi]` — with no preceding `[none]` observed, an
-  /// offline-to-online edge detector stays silent and the recovery this
-  /// listener exists for never runs. The cost on a normal online boot is one
-  /// redundant pass that the per-file age check reduces to a definition
-  /// fan-out.
-  bool _wasOffline = true;
-
-  void _onConnectivityChanged(List<ConnectivityResult> results) {
-    final offline = results.every((r) => r == ConnectivityResult.none);
-    final cameBackOnline = _wasOffline && !offline;
-    _wasOffline = offline;
-    if (cameBackOnline) {
-      // Stale and never-downloaded files are exactly the set an offline
-      // stretch leaves behind, and the age check skips everything else.
-      // Unattended moment → no failure notices, same as the boot sync.
-      unawaited(_runSerializedSync(notifyOnFailure: false));
-    }
+  void _onOfflineChanged(bool offline) {
+    if (offline) return;
+    // Stale and never-downloaded files are exactly the set an offline
+    // stretch leaves behind, and the age check skips everything else.
+    // Unattended moment → no failure notices, same as the boot sync.
+    unawaited(_runSerializedSync(notifyOnFailure: false));
   }
 
   /// Coalesces listener triggers: a trigger landing mid-sync (a runtime
@@ -164,6 +160,10 @@ class DataFileManager {
   /// exclusion against DIRECT [syncAllDataFiles] callers is not this loop's
   /// job; [syncAllDataFiles] itself serializes every pass.
   Future<void> _runSerializedSync({required bool notifyOnFailure}) async {
+    // Not an early return that loses the trigger: every reason this loop
+    // fires (a runtime replacement, a reconnect) fires again on the far side
+    // of an outage, and the reconnect edge fires precisely then.
+    if (isOffline?.call() ?? false) return;
     if (_syncRunning) {
       _queuedNotify = (_queuedNotify ?? false) || notifyOnFailure;
       return;

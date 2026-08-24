@@ -46,14 +46,39 @@ class LookupQueueService {
   /// giving up and processing anyway (overridable for tests).
   final Duration runtimeWaitBudget;
 
+  /// Whether the app believes it has no internet. While it does the queue
+  /// holds rather than drains: every entry here is an ONLINE lookup by
+  /// definition (see `_needsOnlineLookup`), so draining offline spends a
+  /// timeout per QSO to write nothing.
+  ///
+  /// Holding, not dropping, and this is the one lookup path where that is
+  /// right: these are logged QSOs being enriched in the background, and the
+  /// answer is as good in an hour as it is now. The operator's own typed
+  /// lookups take the opposite rule — they fail fast and are never replayed,
+  /// because a lookup for a call typed ten minutes ago is worthless by the
+  /// time it would land. Null skips the gate (tests).
+  final bool Function()? isOffline;
+
+  /// Edges of the offline state. The queue holds while offline, and nothing
+  /// else would ever restart it: its entries were enqueued while
+  /// [_ensureProcessing] was refusing, so no later enqueue is coming to carry
+  /// them along.
+  final Stream<bool>? offlineChanges;
+
   LookupQueueService({
     required this.lookup,
     required this.qsos,
     required this.operations,
     required this.statusBar,
     this.lookupReady,
+    this.isOffline,
+    this.offlineChanges,
     this.runtimeWaitBudget = const Duration(seconds: 20),
-  });
+  }) {
+    offlineChanges?.listen((offline) {
+      if (!offline) _ensureProcessing();
+    });
+  }
 
   /// Status-bar item key for queue progress.
   static const statusKey = 'lookup_queue_progress';
@@ -175,6 +200,7 @@ class LookupQueueService {
     unawaited(_drain());
   }
 
+
   Future<void> _drain() async {
     final completed = <_CompletedLookup>[];
     var waitBudget = runtimeWaitBudget;
@@ -183,6 +209,11 @@ class LookupQueueService {
         // Removing from the dedup set *now* (not after the lookup) means an
         // explicit re-request arriving while this entry's lookup is in
         // flight queues a fresh attempt instead of being silently dropped.
+        // The whole offline gate, and per entry rather than once at the top:
+        // an outage that starts partway through a long queue would otherwise
+        // spend a timeout on every remaining QSO. Entries are left where they
+        // are, and the recovery edge above starts the drain again.
+        if (isOffline?.call() ?? false) break;
         final entry = _queue.removeAt(0);
         _queuedUuids.remove(entry.qsoUuid);
 
@@ -226,6 +257,14 @@ class LookupQueueService {
       _cachedOperation = null;
       _idleCompleter?.complete();
       _idleCompleter = null;
+      // The results above are written while `_processing` is still true, and
+      // that write is long enough (a database round-trip) for the recovery
+      // edge to land inside it — where [_ensureProcessing] sees a queue
+      // already draining and does nothing. Nothing else would ever restart
+      // it: these entries were enqueued before the outage, so no later
+      // enqueue is coming to carry them. Re-armed here, once the flag is
+      // down, rather than by moving the write.
+      if (_queue.isNotEmpty && !(isOffline?.call() ?? false)) _ensureProcessing();
     }
   }
 

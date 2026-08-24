@@ -29,6 +29,7 @@ import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
+import 'connectivity_service.dart' show ConnectivityService;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -214,6 +215,15 @@ class ErrorPolicy {
           'keeps trying',
       disposition: ErrorDisposition.logOnly,
       matches: _isCatEquipmentUnreachable,
+    ),
+    ErrorRule(
+      id: 'network-unreachable-while-offline',
+      reason: 'a network call failed to get an answer while the device is offline (no route, or '
+          'nothing answering over the one there is); in the field that is the session\'s normal '
+          'state rather than a defect, and uploading one event per retry per subsystem for the '
+          'length of an activation would bury the online failures these types exist to surface',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isNetworkErrorWhileOffline,
     ),
     ErrorRule(
       id: 'fetch-transport-transient',
@@ -495,12 +505,37 @@ class ErrorPolicy {
   /// `toString()` reads `'ClientException with $cause, uri=$uri'` — a plain
   /// `http.ClientException` reads `'ClientException: $message'` — so both
   /// forms need matching or a "Failed host lookup" falls through to notify.
-  static bool _isFetchTransportTransient(Object error, FlutterErrorDetails? details) {
+  static bool _isFetchTransportTransient(Object error, FlutterErrorDetails? details) => _isHostFetchTransport(error);
+
+  static bool _isHostFetchTransport(Object error) {
     if (error is! ExtensionHostException) return false;
     return error.message.startsWith('ClientException:') ||
         error.message.startsWith('ClientException with ') ||
         error.message.startsWith('TimeoutException');
   }
+
+  /// Whether [error] means the other end never answered — a timeout, or a
+  /// connection that could not be made, was refused, or was reset — as
+  /// opposed to one that answered with something we did not like.
+  ///
+  /// Public because it is not only a rule matcher: `SyncEngine` is the app's
+  /// connectivity probe (see `ConnectivityService`), and what it needs to
+  /// know about a failed round is exactly this question. A second copy of
+  /// the answer over there would be a second definition of "the network is
+  /// down", which is the thing that card exists to remove.
+  ///
+  /// Deliberately narrow to the two INTERNET-facing shapes: `hostFetch`,
+  /// which reaches this app only ever wrapped in an [ExtensionHostException],
+  /// and direct `package:http` callers. A bare `SocketException` is not here
+  /// on purpose — peer sync's LAN transport throws those, and a BLE or LAN
+  /// link failing is a real, reportable fault that has nothing to do with
+  /// internet reachability (`peer_service.dart` keeps those apart for a
+  /// related reason).
+  /// A bare [TimeoutException] is likewise absent: `_fetchAndDecode`'s two
+  /// `.timeout()`s throw it with nothing to scope it to a network call at
+  /// all, and it is thrown all over the app for waits that have no network
+  /// in them.
+  static bool isTransportFailure(Object error) => error is ClientException || _isHostFetchTransport(error);
 
   /// The prefix is `extensions/sync/ham2k-lofi/src/index.ts`'s `sync()`
   /// wrapping the original LoFi error when its own fallback capture to the
@@ -542,6 +577,23 @@ class ErrorPolicy {
   /// would bury the online failures this type exists to surface. The same
   /// error raised ONLINE (a bad token, a style that won't parse, a layer
   /// bug of ours) matches nothing and uploads.
+  /// A call that got no answer, raised while we already believe we have no
+  /// internet. Both halves are the match, and each does necessary work:
+  ///
+  ///  * The SHAPE, so that an error which merely happened during an outage —
+  ///    a parse bug, a bad token, anything the code got wrong — still uploads.
+  ///    Being offline is not a licence to stop reporting our own defects.
+  ///  * The STATE, so that the same timeout ONLINE keeps the `report`
+  ///    disposition the two rules below give it. A TCP blip on a working
+  ///    network is worth seeing in aggregate; the two-hundredth one on a
+  ///    summit with no bars is not.
+  ///
+  /// `ConnectivityService.isOffline` starts false and only ever becomes true
+  /// once something has actually failed to answer, so the window this
+  /// quietens is one the app has already measured rather than assumed.
+  static bool _isNetworkErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
+      ConnectivityService.isOffline && isTransportFailure(error);
+
   static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
       error is MapError && error.offline;
 

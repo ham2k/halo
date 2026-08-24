@@ -59,6 +59,7 @@ import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
 import 'services/connectivity_service.dart';
+import 'views/offline_indicator.dart';
 import 'services/error_reporting_backend.dart';
 import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_policy.dart';
@@ -1405,7 +1406,8 @@ class HaLoServices {
         extensions: extensions,
         prefs: settings.prefs,
         statusBar: statusBar,
-        connectivity: ConnectivityService.changes,
+        offlineChanges: ConnectivityService.offlineChanges,
+        isOffline: () => ConnectivityService.isOffline,
       );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
 
@@ -1415,7 +1417,11 @@ class HaLoServices {
   final KeyboardAccessoryController keyboardAccessory = KeyboardAccessoryController();
   /// Spots fetched once and shared by the Spots Panel and the `spot-history`
   /// lookup hook. Idle until something subscribes (see SpotsService).
-  late final SpotsService spots = SpotsService(fetchSpots: extensions.getSpots);
+  late final SpotsService spots = SpotsService(
+    fetchSpots: extensions.getSpots,
+    isOffline: () => ConnectivityService.isOffline,
+    offlineChanges: ConnectivityService.offlineChanges,
+  );
 
   final LookupQueueService? _lookupQueueOverride;
   late final LookupQueueService lookupQueue = _lookupQueueOverride ??
@@ -1425,6 +1431,8 @@ class HaLoServices {
         operations: operations,
         statusBar: statusBar,
         lookupReady: () => extensions.ready,
+        isOffline: () => ConnectivityService.isOffline,
+        offlineChanges: ConnectivityService.offlineChanges,
       );
 
   /// See `InboundQsoListenerService`: listens for another logging program's
@@ -1679,6 +1687,17 @@ class HaLoServices {
     onProgress: _showSyncProgress,
     onError: ErrorReportingService.report,
     onAuthError: _showSyncAuthNotice,
+    // Sync doubles as the app's connectivity probe: it is the one request the
+    // app makes on its own schedule whatever else is suspended, and its
+    // success is what declares us back online. It is also the one
+    // subsystem NOT suspended while offline, for the same reason — everything
+    // else is waiting on it.
+    onReachability: (reached) {
+      ConnectivityService.reportProbe(reached: reached);
+      ConnectivityService.reportService('sync', label: t.offline.syncService, reached: reached);
+    },
+    onProbeStopped: ConnectivityService.stopProbing,
+    isTransportFailure: ErrorPolicy.isTransportFailure,
   );
 
   /// Status-bar item key for backfill progress; the Sync settings panel
@@ -3917,6 +3936,19 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    // The offline state is a Stream rather than a Listenable, and it belongs
+    // OUTSIDE the merged listenable below for a reason the budget makes
+    // load-bearing: the indicator opens the footer on its own, so a change to
+    // it changes how the bottom of the window is divided up, and a stale read
+    // here would hand the notice room the footer has already taken.
+    return StreamBuilder<bool>(
+      stream: ConnectivityService.offlineChanges,
+      initialData: ConnectivityService.isOffline,
+      builder: (context, offlineSnapshot) => _buildChrome(context, offlineSnapshot.data ?? false),
+    );
+  }
+
+  Widget _buildChrome(BuildContext context, bool offline) {
     return ListenableBuilder(
       // All three, because the budget below has to see the numbers row and the
       // home layer: whether a row is published and whether Quick Lookup is on
@@ -4001,7 +4033,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           windowHeight: MediaQuery.sizeOf(context).height,
           keyboardInset: keyboardInset,
           hasNumbersRow: accessory != null,
-          hasStatusItems: items.isNotEmpty,
+          hasStatusItems: items.isNotEmpty || offline,
           numbersRowHeight: NumberKeys.heightOf(context),
           footerHeight: StatusBarFooter.collapsedHeightOf(context),
           // Quick Lookup is chrome for the home layer and nothing else, so it
@@ -4047,6 +4079,15 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 StatusBarFooter(
                   items: items,
                   onDismiss: statusBar.clear,
+                  leading: offline
+                      ? OfflineIndicator(
+                          onRetry: widget.services.syncEngine.retryNow,
+                          nextAttemptAt: () => widget.services.syncEngine.nextAttemptAt,
+                          navigatorKey: navigatorKey,
+                          color: Theme.of(context).appBarTheme.foregroundColor ??
+                              Theme.of(context).colorScheme.onPrimary,
+                        )
+                      : null,
                   maxExpandedHeight: bottom.footerMax,
                   dismissLabel: context.t.common.dismiss,
                 ),

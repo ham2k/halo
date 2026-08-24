@@ -40,9 +40,30 @@ class SpotsService extends ChangeNotifier {
   SpotsService({
     required SpotsFetch fetchSpots,
     this.refreshInterval = const Duration(minutes: 2),
-  }) : _fetchSpots = fetchSpots;
+    this.isOffline,
+    Stream<bool>? offlineChanges,
+  }) : _fetchSpots = fetchSpots {
+    // Straight away on recovery rather than up to a whole refreshInterval
+    // later: the board an operator comes back to is stale by exactly the
+    // length of the outage, and that is the moment they look at it.
+    _offlineSubscription = offlineChanges?.listen((offline) {
+      if (!offline && _subscribers > 0) unawaited(refresh());
+    });
+  }
+
+  StreamSubscription<bool>? _offlineSubscription;
 
   final SpotsFetch _fetchSpots;
+
+  /// Whether the app believes it has no internet. While it does, a refresh
+  /// is skipped rather than attempted: every source would time out, and the
+  /// board is better served by the spots already on it aging visibly than by
+  /// a fan-out that can only report outages. Null skips the gate (tests).
+  ///
+  /// Skipped, not queued. The timer keeps ticking, so the first tick after
+  /// coverage returns fetches — and a spot that was worth fetching two
+  /// minutes ago is worth fetching now, not replaying.
+  final bool Function()? isOffline;
 
   /// Matches the cadence the Spots Panel polled at when it owned the fetch.
   final Duration refreshInterval;
@@ -141,7 +162,26 @@ class SpotsService extends ChangeNotifier {
   /// request instead of doubling the fan-out.
   Future<void> refresh() => _inFlight ??= _doRefresh().whenComplete(() => _inFlight = null);
 
+  /// Whether the most recent [refresh] actually went to the network. False
+  /// when it was skipped for being offline — which the automatic timer can
+  /// ignore, but an operator who pressed the refresh button cannot: a
+  /// spinner that comes and goes over an unchanged board otherwise reports
+  /// success for something that never happened.
+  bool get lastRefreshWasSkipped => _lastRefreshWasSkipped;
+  bool _lastRefreshWasSkipped = false;
+
   Future<void> _doRefresh() async {
+    if (isOffline?.call() ?? false) {
+      _lastRefreshWasSkipped = true;
+      // Deliberately touches nothing — not _bySource, not the outage lists,
+      // not _error. A skipped fetch has learned nothing about any source, and
+      // the retention rule below turns exactly that into "the previous spots
+      // stand". Reporting every source as unreachable here would badge the
+      // whole panel for a condition the status bar's offline icon already
+      // states once.
+      return;
+    }
+    _lastRefreshWasSkipped = false;
     try {
       final fetched = await _fetchSpots();
       final spots = fetched.items;
@@ -257,6 +297,8 @@ class SpotsService extends ChangeNotifier {
     _disposed = true;
     _timer?.cancel();
     _timer = null;
+    _offlineSubscription?.cancel();
+    _offlineSubscription = null;
     super.dispose();
   }
 }

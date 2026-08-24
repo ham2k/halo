@@ -110,6 +110,35 @@ enum SyncAccountChoice {
   replace,
 }
 
+/// What a manual [SyncEngine.retryNow] actually managed to do — the offline
+/// detail view's "retry now" reports back with this, and an operator who taps
+/// and is told nothing has learned nothing about whether we tried.
+enum SyncRetryOutcome {
+  /// The transport answered. Everything suspended on the offline state
+  /// resumes on the same path an automatic recovery takes.
+  reached,
+
+  /// The transport did not answer — still offline, and the schedule is left
+  /// exactly where it was (see [SyncEngine.retryNow]).
+  unreachable,
+
+  /// The round exited before it ever called the transport (nothing to push
+  /// on a small batch, an account change waiting on the operator). Nothing
+  /// was learned about reachability either way.
+  notAttempted,
+
+  /// Refused for coming too soon after the last one — see
+  /// [SyncEngine.manualRetryFloor].
+  throttled,
+
+  /// A round was already on the network when the operator asked. That round
+  /// is the attempt; its result arrives on its own.
+  inFlight,
+
+  /// Sync is switched off, so there is no probe to fire.
+  disabled,
+}
+
 class SyncEngine {
   final OperationsRepository operations;
   final QsosRepository qsos;
@@ -147,12 +176,57 @@ class SyncEngine {
   /// [SyncProgress]. Null when the app layer doesn't surface progress.
   final void Function(SyncProgress progress)? onProgress;
 
+  /// Reports what a round learned about whether the sync service ANSWERED,
+  /// which is not the same as whether the round succeeded: a rejected
+  /// registration, a server 500 and a merge that threw all prove we reached
+  /// it. The app layer feeds this to `ConnectivityService`, where it is the
+  /// half of "offline" that OS reachability cannot see — a captive portal, or
+  /// a router with no upstream, reports a perfectly good interface.
+  ///
+  /// Called with `true` every time the transport returns, and with `false`
+  /// only when it throws something [isTransportFailure] recognises. Anything
+  /// else it throws reports NOTHING: an extension host that is dead or
+  /// disposed says nothing about the network, and guessing either way from it
+  /// would either quieten real errors or hold the app in a false offline
+  /// state.
+  final void Function(bool reached)? onReachability;
+
+  /// Called when this engine stops probing — sync switched off, or the engine
+  /// disposed. Whatever it last reported through [onReachability] must be
+  /// forgotten by the app's connectivity state: a verdict with nothing left
+  /// to revise it is a verdict that stands forever, and "offline" standing
+  /// forever suspends work and quietens errors on a working network.
+  final void Function()? onProbeStopped;
+
+  /// Whether an error thrown by [transport] means "no answer came back"
+  /// (timeout, DNS, connection refused or reset) rather than "they answered
+  /// and something went wrong". Supplied by the app layer — this package has
+  /// no view of `package:http` or the extension host's error shapes, and the
+  /// app already classifies exactly this for `ErrorPolicy`.
+  ///
+  /// Null leaves the engine unable to tell the two apart, which costs the
+  /// service-reachability signal and the tighter probe ceiling; nothing else.
+  final bool Function(Object error)? isTransportFailure;
+
   static const smallBatchSize = 10;
   static const defaultLargeBatchSize = 100; // matches sync.js
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
   static const defaultLoopDelay = Duration(seconds: 20);
   static const maxErrorBackoffShift = 8; // caps the exponential backoff at 2^8s; the loop itself never gives up
+
+  /// The ceiling on the backoff while the failures are transport-shaped —
+  /// tighter than [maxErrorBackoffShift]'s ~4.6 minutes, because the delay is
+  /// then not just sync's own patience: this round is also the app's
+  /// connectivity probe, so it is how long an operator who has walked back
+  /// into coverage waits to be told so, and how long every suspended lookup
+  /// and spot fetch stays suspended.
+  static const unreachableBackoffCeiling = Duration(minutes: 2);
+
+  /// How soon after one manual [retryNow] another may fire. Low on purpose —
+  /// an operator tapping twice is asking twice — but not zero, so a held tap
+  /// cannot become a request loop.
+  static const manualRetryFloor = Duration(seconds: 5);
   static const authErrorNotifyThreshold = 3; // ~a minute of retries before bothering the user
 
   /// Consecutive failed rounds before one is worth crash-reporting.
@@ -198,6 +272,22 @@ class SyncEngine {
   /// server with an identical full-page request at zero delay.
   bool _backfillStuckAtCap = false;
 
+  /// When the loop timer will next fire, on the REAL clock — a scheduled
+  /// wall-clock instant whose remainder becomes a `Timer` duration, so it
+  /// must not travel (docs/design/time.md §1). Read by the offline detail
+  /// view to say when the next attempt is due; null while nothing is
+  /// scheduled.
+  DateTime? _nextAttemptAt;
+
+  /// Whether the transport answered during the round currently running —
+  /// what tells [retryNow] whether its attempt learned anything. A round can
+  /// return without ever calling the transport.
+  bool? _roundReachedService;
+
+  /// When the last manual retry fired, on the real clock (it gates a
+  /// `Timer`-shaped floor, and a travelled clock must not open the gate).
+  DateTime? _lastManualRetryAt;
+
   Timer? _debounceTimer;
   DateTime? _debounceStartedAt;
   Timer? _loopTimer;
@@ -211,6 +301,9 @@ class SyncEngine {
     this.onProgress,
     this.onError,
     this.onAuthError,
+    this.onReachability,
+    this.onProbeStopped,
+    this.isTransportFailure,
   });
 
   /// Whether sync may run at all right now.
@@ -233,7 +326,10 @@ class SyncEngine {
   bool get travelRefusesSync => AppClock.instance.isTravelling;
 
   void start() {
-    if (!_mayRun) return;
+    if (!_mayRun) {
+      onProbeStopped?.call();
+      return;
+    }
     _scheduleLoop(Duration.zero);
   }
 
@@ -244,6 +340,8 @@ class SyncEngine {
     _disposed = true;
     _debounceTimer?.cancel();
     _loopTimer?.cancel();
+    _nextAttemptAt = null;
+    onProbeStopped?.call();
   }
 
   /// Called by the repositories after every local write (wired in via their
@@ -335,7 +433,7 @@ class SyncEngine {
   /// this device is about to be merged into unasked.
   Future<bool> _canAdoptAccountSilently(Map<String, dynamic>? accountData) async {
     if ((await qsos.syncCounts()).total == 0) return true;
-    final data = accountData ?? await transport('getAccountData', const {});
+    final data = accountData ?? await _callTransport('getAccountData', const {});
     return _accountTotal(data, 'operations') == 0 && _accountTotal(data, 'qsos') == 0;
   }
 
@@ -430,6 +528,11 @@ class SyncEngine {
   Future<void> runOneRound({bool smallBatch = false}) async {
     if (!_mayRun || _running) return;
     _running = true;
+    // Cleared per round, not per call: [retryNow] reads it afterwards to tell
+    // "we asked and got nothing" from "we never asked" (an account change
+    // waiting on the operator, an empty small batch), which are different
+    // answers to give someone who just tapped retry.
+    _roundReachedService = null;
     // Snapshot the reconciliation generation: if resolveAccountChange or
     // forceFullResync runs while this round awaits the network, everything
     // this round knows (its batch, its backfill flags, its state snapshot)
@@ -444,7 +547,7 @@ class SyncEngine {
       }
 
       if (state['lastSyncAccountUUID'] == null) {
-        final response = await transport('getAccountData', const {});
+        final response = await _callTransport('getAccountData', const {});
         if (generation != _generation) return _abandonRound();
         final accountUuid = (response['current_account'] as Map?)?['uuid'] as String?;
         if (accountUuid != null) {
@@ -481,7 +584,7 @@ class SyncEngine {
       if (batch.isEmpty && smallBatch) return;
 
       final pull = !smallBatch;
-      final response = await transport(
+      final response = await _callTransport(
         'sync',
         await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
       );
@@ -638,7 +741,14 @@ class SyncEngine {
       // next periodic round forward too: its data would otherwise sit
       // dirty until whatever _loopDelay the server last suggested.
       final backoffShift = _errorCount < maxErrorBackoffShift ? _errorCount : maxErrorBackoffShift;
-      _scheduleLoop(_loopDelay + Duration(seconds: 1 << backoffShift));
+      final backoff = _loopDelay + Duration(seconds: 1 << backoffShift);
+      // A round that failed because nothing answered is the connectivity
+      // probe as well as a sync attempt, so it gets the tighter ceiling —
+      // see [unreachableBackoffCeiling]. A round that failed for any other
+      // reason keeps the general one: the service answered, and nothing is
+      // waiting on this round to declare us back online.
+      final unreachable = _roundReachedService == false;
+      _scheduleLoop(unreachable && backoff > unreachableBackoffCeiling ? unreachableBackoffCeiling : backoff);
     } finally {
       _running = false;
     }
@@ -888,9 +998,103 @@ class SyncEngine {
     _scheduleLoop(Duration.zero);
   }
 
+  /// Every call to [transport] goes through here, which is what makes the
+  /// reachability signal a fact about the network rather than an inference
+  /// from how the round ended: the answer is observed at the one place it
+  /// arrives, before any of the round's own logic can throw over it.
+  Future<Map<String, dynamic>> _callTransport(String method, Map<String, dynamic> args) async {
+    try {
+      final response = await transport(method, args);
+      _roundReachedService = true;
+      onReachability?.call(true);
+      return response;
+    } on SyncTransportNotReady {
+      // The extension host has not finished loading, so nothing was sent and
+      // nothing can be concluded — see the type's own doc comment.
+      rethrow;
+    } catch (e) {
+      // The classifier is injected, so a throw from it would replace the
+      // round's real failure on its way up and cost the report that failure
+      // was going to get. An unclassifiable error simply says nothing about
+      // reachability, which is already this method's answer for one.
+      var transport = false;
+      try {
+        transport = isTransportFailure?.call(e) ?? false;
+      } catch (_) {}
+      if (transport) {
+        _roundReachedService = false;
+        onReachability?.call(false);
+      }
+      rethrow;
+    }
+  }
+
+  /// When the loop next fires, or null while nothing is scheduled. Real
+  /// clock — see [_nextAttemptAt].
+  DateTime? get nextAttemptAt => _nextAttemptAt;
+
+  /// Fire a round NOW, abandoning the wait the backoff had scheduled — the
+  /// offline detail view's "retry now", for an operator who has just walked
+  /// back into coverage and should not have to sit out a two-minute ceiling.
+  ///
+  /// A failure here leaves the schedule exactly where it was. Tapping retry
+  /// is a question, not a failed attempt: letting it feed the backoff would
+  /// mean an operator who taps three times pushes their own next automatic
+  /// attempt further out, which is the opposite of what they asked for.
+  /// Success takes the ordinary path — [runOneRound] resets the count and
+  /// reschedules — so recovery by hand and recovery on its own are the same
+  /// code.
+  Future<SyncRetryOutcome> retryNow() async {
+    if (!_mayRun) {
+      onProbeStopped?.call();
+      return SyncRetryOutcome.disabled;
+    }
+    // A round already in flight IS the attempt this tap is asking for —
+    // [runOneRound] would return instantly and leave `notAttempted` as the
+    // answer, which is the wrong thing to tell someone whose request is at
+    // that moment on the network. Neither the throttle stamp nor
+    // `_roundReachedService` is touched: the latter belongs to the running
+    // round, which reads it in its own catch to pick a backoff ceiling.
+    if (_running) return SyncRetryOutcome.inFlight;
+
+    final now = realNowUtc();
+    final last = _lastManualRetryAt;
+    if (last != null && now.difference(last) < manualRetryFloor) return SyncRetryOutcome.throttled;
+    _lastManualRetryAt = now;
+
+    final savedErrorCount = _errorCount;
+    final savedNextAttemptAt = _nextAttemptAt;
+    _roundReachedService = null;
+    await runOneRound();
+    final reached = _roundReachedService;
+    if (reached == null) return SyncRetryOutcome.notAttempted;
+    if (reached) return SyncRetryOutcome.reached;
+
+    _errorCount = savedErrorCount;
+    // Only when there IS a saved schedule to put back. With none, the round's
+    // own catch has just scheduled the right thing — reaching for [_loopDelay]
+    // here would replace a considered backoff with a flat 20 seconds, which is
+    // neither "where it was" nor anything this method promises.
+    final remaining = savedNextAttemptAt?.difference(realNowUtc());
+    if (remaining != null) _scheduleLoop(remaining > Duration.zero ? remaining : _loopDelay);
+    return SyncRetryOutcome.unreachable;
+  }
+
   void _scheduleLoop(Duration delay) {
-    if (!_mayRun || _disposed) return;
+    if (!_mayRun || _disposed) {
+      // The one place every "no next round" path converges, whichever way it
+      // got here — the setting turned off, dispose, a round that failed after
+      // either. Announced from here rather than from each of them so a new
+      // exit cannot forget to.
+      _nextAttemptAt = null;
+      onProbeStopped?.call();
+      return;
+    }
     _loopTimer?.cancel();
+    // Real clock: the remainder of this instant becomes a Timer duration, and
+    // a travelled session must not push the next sync attempt into next week
+    // (docs/design/time.md §1).
+    _nextAttemptAt = realNowUtc().add(delay);
     _loopTimer = Timer(delay, () => unawaited(runOneRound(smallBatch: false)));
   }
 }

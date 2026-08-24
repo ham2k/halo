@@ -47,6 +47,7 @@ class _FakeTransport {
 }
 
 void main() {
+  group('connectivity probe', _reachabilityTests);
   late HaLoDatabase db;
   late OperationsRepository operations;
   late QsosRepository qsos;
@@ -1270,3 +1271,184 @@ void main() {
     });
   });
 }
+
+/// The sync round is also the app's connectivity probe. These
+/// tests exist because the two jobs pull in different directions: sync's own
+/// failure handling wants to be patient and count streaks, while the probe's
+/// answer has to be a fact about the network — right on the first failure,
+/// and never guessed from a failure that was not the network's fault.
+void _reachabilityTests() {
+  late HaLoDatabase db;
+  late _FakeSyncSettings settings;
+  late _FakeTransport transport;
+  late List<bool> reported;
+
+  SyncEngine build({bool Function(Object)? classify}) => SyncEngine(
+        operations: OperationsRepository(db),
+        qsos: QsosRepository(db),
+        transport: transport.call,
+        settings: settings,
+        onReachability: reported.add,
+        isTransportFailure: classify ?? (e) => e is _NoAnswer,
+      );
+
+  setUp(() {
+    db = HaLoDatabase(NativeDatabase.memory());
+    settings = _FakeSyncSettings(state: {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true});
+    transport = _FakeTransport((method, args) => const {});
+    reported = [];
+  });
+
+  tearDown(() async => db.close());
+
+  test('a transport that answers reports reachable, whatever it answered with', () async {
+    // A REJECTED round, deliberately: the server saying no is proof the
+    // network is there. Reading reachability off "did the round succeed"
+    // instead would put a device with a stale token into offline mode —
+    // quietening real errors and suspending lookups that work fine.
+    transport.responder = (method, args) => const {'error': 'registration refused'};
+    final engine = build();
+    await engine.runOneRound();
+    engine.dispose();
+    expect(reported, [true]);
+  });
+
+  test('only a transport-shaped failure reports unreachable', () async {
+    transport.responder = (method, args) => throw _NoAnswer();
+    final engine = build();
+    await engine.runOneRound();
+    engine.dispose();
+    expect(reported, [false]);
+  });
+
+  test('a failure the classifier does not recognise reports nothing at all', () async {
+    // Silence, not `true`. A dead extension host and a bug in our own payload
+    // both throw here and neither says anything about the network; claiming
+    // "reached" would clear a genuine offline state, and claiming
+    // "unreachable" would fake one.
+    transport.responder = (method, args) => throw StateError('runtime is gone');
+    final engine = build();
+    await engine.runOneRound();
+    engine.dispose();
+    expect(reported, isEmpty);
+  });
+
+  test('an unreachable round is rescheduled inside the probe ceiling', () async {
+    transport.responder = (method, args) => throw _NoAnswer();
+    final engine = build();
+    // Eight, not fewer: the general backoff is loopDelay + 2^errorCount, so
+    // it only passes the two-minute ceiling at the seventh failure. A shorter
+    // loop would leave this test unable to fail with the cap deleted — the
+    // uncapped value would already be inside the bound it asserts.
+    for (var i = 0; i < 8; i++) {
+      await engine.runOneRound();
+    }
+    final wait = engine.nextAttemptAt!.difference(realNowUtc());
+    engine.dispose();
+    expect(wait, lessThanOrEqualTo(SyncEngine.unreachableBackoffCeiling));
+  });
+
+  test('a failure that is not the network keeps the general backoff', () async {
+    transport.responder = (method, args) => throw StateError('runtime is gone');
+    final engine = build();
+    for (var i = 0; i < 8; i++) {
+      await engine.runOneRound();
+    }
+    final wait = engine.nextAttemptAt!.difference(realNowUtc());
+    engine.dispose();
+    expect(wait, greaterThan(SyncEngine.unreachableBackoffCeiling));
+  });
+
+  test('a failed retryNow does not push the schedule further out', () async {
+    transport.responder = (method, args) => throw _NoAnswer();
+    final engine = build();
+    for (var i = 0; i < 4; i++) {
+      await engine.runOneRound();
+    }
+    final before = engine.nextAttemptAt!;
+    expect(await engine.retryNow(), SyncRetryOutcome.unreachable);
+    final after = engine.nextAttemptAt!;
+    engine.dispose();
+    // Tapping retry is a question, not a failed attempt. If the round's own
+    // catch were allowed to reschedule, an operator tapping three times would
+    // push their own next automatic attempt out each time — the opposite of
+    // what they asked for.
+    expect(after.isAfter(before.add(const Duration(seconds: 1))), isFalse);
+  });
+
+  test('retryNow that reaches the service reports so', () async {
+    final engine = build();
+    expect(await engine.retryNow(), SyncRetryOutcome.reached);
+    engine.dispose();
+  });
+
+  test('a second retryNow inside the floor is refused rather than sent', () async {
+    final engine = build();
+    await engine.retryNow();
+    final callsAfterFirst = transport.calls.length;
+    expect(await engine.retryNow(), SyncRetryOutcome.throttled);
+    engine.dispose();
+    // Refused, not merely reported as throttled: a held tap must not become
+    // a request loop.
+    expect(transport.calls.length, callsAfterFirst);
+  });
+
+  test('a round that never called the transport says so rather than guessing', () async {
+    // An account change waiting on the operator: nothing was sent, so nothing
+    // was learned. Reporting this as "still unreachable" would tell someone
+    // who just walked into coverage that they had not.
+    settings.state = {'pendingAccountUUID': 'acct-2'};
+    final engine = build();
+    expect(await engine.retryNow(), SyncRetryOutcome.notAttempted);
+    engine.dispose();
+    expect(reported, isEmpty);
+  });
+
+  test('a retry while a round is on the network says so, and keeps its throttle', () async {
+    // The tap lands during an 8-second transport timeout — which is exactly
+    // when this dialog is open. Answering "we never tried" and then refusing
+    // the next tap as too soon gives the operator two wrong answers at the
+    // one moment the button exists for.
+    final gate = Completer<Map<String, dynamic>>();
+    transport.responder = (method, args) => throw StateError('unused');
+    final engine = SyncEngine(
+      operations: OperationsRepository(db),
+      qsos: QsosRepository(db),
+      transport: (method, args) => gate.future,
+      settings: settings,
+      onReachability: reported.add,
+      isTransportFailure: (e) => e is _NoAnswer,
+    );
+    final round = engine.runOneRound();
+    await pumpEventQueue();
+
+    expect(await engine.retryNow(), SyncRetryOutcome.inFlight);
+    // The throttle is untouched, so the operator's next tap — once the round
+    // has landed — is a real attempt rather than a refusal.
+    gate.complete(const {});
+    await round;
+    expect(await engine.retryNow(), isNot(SyncRetryOutcome.throttled));
+    engine.dispose();
+  });
+
+  test('a failed retry with nothing saved leaves the round\'s own backoff alone', () async {
+    transport.responder = (method, args) => throw _NoAnswer();
+    final engine = build();
+    // Never started, so nothing was ever scheduled: there is no previous
+    // schedule to restore. Falling back to the flat loop delay here would
+    // replace the round's considered backoff with 20 seconds.
+    expect(await engine.retryNow(), SyncRetryOutcome.unreachable);
+    final wait = engine.nextAttemptAt!.difference(realNowUtc());
+    engine.dispose();
+    expect(wait, greaterThan(SyncEngine.defaultLoopDelay));
+  });
+
+  test('sync switched off has no probe to fire', () async {
+    settings.enabled = false;
+    final engine = build();
+    expect(await engine.retryNow(), SyncRetryOutcome.disabled);
+    engine.dispose();
+  });
+}
+
+class _NoAnswer implements Exception {}

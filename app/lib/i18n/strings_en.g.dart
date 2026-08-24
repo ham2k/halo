@@ -72,6 +72,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$confirmDevice$en confirmDevice = Translations$confirmDevice$en.internal(_root);
 	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
 	late final Translations$adifImport$en adifImport = Translations$adifImport$en.internal(_root);
+	late final Translations$offline$en offline = Translations$offline$en.internal(_root);
 }
 
 // Path: common
@@ -1261,6 +1262,9 @@ class Translations$spotting$en {
 
 	/// en: 'Spot not sent.'
 	String get notSent => 'Spot not sent.';
+
+	/// en: 'No connection — spots were not refreshed'
+	String get notRefreshedOffline => 'No connection — spots were not refreshed';
 }
 
 // Path: dataFiles
@@ -1786,6 +1790,75 @@ class Translations$adifImport$en {
 
 	/// en: 'Drop one ADIF file at a time — the order files are imported in decides which data wins.'
 	String get oneFileOnly => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.';
+}
+
+// Path: offline
+class Translations$offline$en {
+	Translations$offline$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Offline'
+	String get title => 'Offline';
+
+	/// en: 'No internet connection — tap for detail'
+	String get iconLabel => 'No internet connection — tap for detail';
+
+	/// en: 'This device reports no network connection at all.'
+	String get noRoute => 'This device reports no network connection at all.';
+
+	/// en: 'The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.'
+	String get unreachable => 'The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.';
+
+	/// en: 'Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.'
+	String get whatStops => 'Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.';
+
+	/// en: 'Services'
+	String get servicesTitle => 'Services';
+
+	/// en: 'Nothing has reported in yet.'
+	String get noServices => 'Nothing has reported in yet.';
+
+	/// en: 'Last answered ${when} ago'
+	String lastSuccess({required Object when}) => 'Last answered ${when} ago';
+
+	/// en: 'Has not answered yet'
+	String get neverSucceeded => 'Has not answered yet';
+
+	/// en: 'Next attempt in ${when}'
+	String nextAttempt({required Object when}) => 'Next attempt in ${when}';
+
+	/// en: 'Next attempt due'
+	String get nextAttemptNow => 'Next attempt due';
+
+	/// en: 'Retry now'
+	String get retry => 'Retry now';
+
+	/// en: 'Trying…'
+	String get retrying => 'Trying…';
+
+	/// en: 'Back online.'
+	String get retryReached => 'Back online.';
+
+	/// en: 'Still no answer.'
+	String get retryUnreachable => 'Still no answer.';
+
+	/// en: 'Nothing to send right now.'
+	String get retryNotAttempted => 'Nothing to send right now.';
+
+	/// en: 'Just tried — give it a moment.'
+	String get retryThrottled => 'Just tried — give it a moment.';
+
+	/// en: 'Sync is switched off, so there is nothing to probe with.'
+	String get retryDisabled => 'Sync is switched off, so there is nothing to probe with.';
+
+	/// en: 'Ham2K LoFi sync'
+	String get syncService => 'Ham2K LoFi sync';
+
+	/// en: 'Already trying — hang on.'
+	String get retryInFlight => 'Already trying — hang on.';
 }
 
 // Path: home.nav
@@ -5775,6 +5848,7 @@ extension on Translations {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
+			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
@@ -5905,6 +5979,26 @@ extension on Translations {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
+			'offline.title' => 'Offline',
+			'offline.iconLabel' => 'No internet connection — tap for detail',
+			'offline.noRoute' => 'This device reports no network connection at all.',
+			'offline.unreachable' => 'The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.',
+			'offline.whatStops' => 'Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.',
+			'offline.servicesTitle' => 'Services',
+			'offline.noServices' => 'Nothing has reported in yet.',
+			'offline.lastSuccess' => ({required Object when}) => 'Last answered ${when} ago',
+			'offline.neverSucceeded' => 'Has not answered yet',
+			'offline.nextAttempt' => ({required Object when}) => 'Next attempt in ${when}',
+			'offline.nextAttemptNow' => 'Next attempt due',
+			'offline.retry' => 'Retry now',
+			'offline.retrying' => 'Trying…',
+			'offline.retryReached' => 'Back online.',
+			'offline.retryUnreachable' => 'Still no answer.',
+			'offline.retryNotAttempted' => 'Nothing to send right now.',
+			'offline.retryThrottled' => 'Just tried — give it a moment.',
+			'offline.retryDisabled' => 'Sync is switched off, so there is nothing to probe with.',
+			'offline.syncService' => 'Ham2K LoFi sync',
+			'offline.retryInFlight' => 'Already trying — hang on.',
 			_ => null,
 		};
 	}

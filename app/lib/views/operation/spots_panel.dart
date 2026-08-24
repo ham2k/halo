@@ -1190,6 +1190,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
     setState(() => _refreshing = true);
     try {
       await _spots.refresh();
+      // A press that was skipped for being offline has to say so. The
+      // status-bar offline icon is a passive state indicator somewhere else
+      // on screen; it is not an answer to this button.
+      if (_spots.lastRefreshWasSkipped && mounted) {
+        widget.services.statusBar.setMessage(
+          key: 'spots:not-refreshed',
+          icon: 'cloud-off',
+          text: context.t.spotting.notRefreshedOffline,
+        );
+      }
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }

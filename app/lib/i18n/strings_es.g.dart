@@ -71,6 +71,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$confirmDevice$es confirmDevice = _Translations$confirmDevice$es._(_root);
 	@override late final _Translations$switchAccounts$es switchAccounts = _Translations$switchAccounts$es._(_root);
 	@override late final _Translations$adifImport$es adifImport = _Translations$adifImport$es._(_root);
+	@override late final _Translations$offline$es offline = _Translations$offline$es._(_root);
 }
 
 // Path: common
@@ -593,6 +594,7 @@ class _Translations$spotting$es extends Translations$spotting$en {
 	@override String spotFailed({required Object source, required Object message}) => '${source} falló: ${message}';
 	@override String get unknownError => 'error desconocido';
 	@override String get notSent => 'Spot no enviado.';
+	@override String get notRefreshedOffline => 'Sin conexión — los spots no se actualizaron';
 }
 
 // Path: dataFiles
@@ -858,6 +860,35 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String shortfall({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.';
 	@override String get busy => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.';
 	@override String get oneFileOnly => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.';
+}
+
+// Path: offline
+class _Translations$offline$es extends Translations$offline$en {
+	_Translations$offline$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sin conexión';
+	@override String get iconLabel => 'Sin conexión a internet — toca para ver detalles';
+	@override String get noRoute => 'Este dispositivo no reporta ninguna conexión de red.';
+	@override String get unreachable => 'La red está activa, pero nada responde. Una página de acceso sin completar, o una conexión sin salida, se ven así.';
+	@override String get whatStops => 'Las búsquedas de indicativos, las actualizaciones de spots y las descargas de archivos de datos están en pausa. El registro de QSOs y la sincronización con dispositivos cercanos no se ven afectados.';
+	@override String get servicesTitle => 'Servicios';
+	@override String get noServices => 'Todavía no ha respondido nada.';
+	@override String lastSuccess({required Object when}) => 'Respondió por última vez hace ${when}';
+	@override String get neverSucceeded => 'Todavía no ha respondido';
+	@override String nextAttempt({required Object when}) => 'Próximo intento en ${when}';
+	@override String get nextAttemptNow => 'Próximo intento pendiente';
+	@override String get retry => 'Reintentar ahora';
+	@override String get retrying => 'Intentando…';
+	@override String get retryReached => 'Conexión restablecida.';
+	@override String get retryUnreachable => 'Sigue sin responder.';
+	@override String get retryNotAttempted => 'No hay nada que enviar ahora mismo.';
+	@override String get retryThrottled => 'Acabas de intentarlo — espera un momento.';
+	@override String get retryDisabled => 'La sincronización está desactivada, así que no hay con qué sondear.';
+	@override String get syncService => 'Sincronización Ham2K LoFi';
+	@override String get retryInFlight => 'Ya se está intentando — un momento.';
 }
 
 // Path: home.nav
@@ -3151,6 +3182,7 @@ extension on TranslationsEs {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
 			'spotting.unknownError' => 'error desconocido',
 			'spotting.notSent' => 'Spot no enviado.',
+			'spotting.notRefreshedOffline' => 'Sin conexión — los spots no se actualizaron',
 			'dataFiles.downloading' => 'Descargando…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'No se pudo descargar ${name}',
 			'dataFiles.downloadFailedWebHint' => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.',
@@ -3230,9 +3262,9 @@ extension on TranslationsEs {
 			'switchAccounts.otherAccounts' => 'Otras cuentas',
 			'switchAccounts.linkToAnother' => 'Vincular a otra cuenta',
 			'switchAccounts.linkWithQr' => 'Vincular con un código QR',
-			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
 			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
 			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
@@ -3283,6 +3315,26 @@ extension on TranslationsEs {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
+			'offline.title' => 'Sin conexión',
+			'offline.iconLabel' => 'Sin conexión a internet — toca para ver detalles',
+			'offline.noRoute' => 'Este dispositivo no reporta ninguna conexión de red.',
+			'offline.unreachable' => 'La red está activa, pero nada responde. Una página de acceso sin completar, o una conexión sin salida, se ven así.',
+			'offline.whatStops' => 'Las búsquedas de indicativos, las actualizaciones de spots y las descargas de archivos de datos están en pausa. El registro de QSOs y la sincronización con dispositivos cercanos no se ven afectados.',
+			'offline.servicesTitle' => 'Servicios',
+			'offline.noServices' => 'Todavía no ha respondido nada.',
+			'offline.lastSuccess' => ({required Object when}) => 'Respondió por última vez hace ${when}',
+			'offline.neverSucceeded' => 'Todavía no ha respondido',
+			'offline.nextAttempt' => ({required Object when}) => 'Próximo intento en ${when}',
+			'offline.nextAttemptNow' => 'Próximo intento pendiente',
+			'offline.retry' => 'Reintentar ahora',
+			'offline.retrying' => 'Intentando…',
+			'offline.retryReached' => 'Conexión restablecida.',
+			'offline.retryUnreachable' => 'Sigue sin responder.',
+			'offline.retryNotAttempted' => 'No hay nada que enviar ahora mismo.',
+			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
+			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
+			'offline.syncService' => 'Sincronización Ham2K LoFi',
+			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
 			_ => null,
 		};
 	}

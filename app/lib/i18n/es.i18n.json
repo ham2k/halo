@@ -1174,7 +1174,8 @@
     "nothingToSpot": "Nada que spotear — ninguna extensión ofrece spotting aquí.",
     "spotFailed": "${source} falló: ${message}",
     "unknownError": "error desconocido",
-    "notSent": "Spot no enviado."
+    "notSent": "Spot no enviado.",
+    "notRefreshedOffline": "Sin conexión — los spots no se actualizaron"
   },
   "dataFiles": {
     "downloading": "Descargando…",
@@ -1370,5 +1371,27 @@
     "shortfall": "Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.",
     "busy": "Ya hay una importación en curso. Espera a que termine antes de empezar otra.",
     "oneFileOnly": "Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen."
+  },
+  "offline": {
+    "title": "Sin conexión",
+    "iconLabel": "Sin conexión a internet — toca para ver detalles",
+    "noRoute": "Este dispositivo no reporta ninguna conexión de red.",
+    "unreachable": "La red está activa, pero nada responde. Una página de acceso sin completar, o una conexión sin salida, se ven así.",
+    "whatStops": "Las búsquedas de indicativos, las actualizaciones de spots y las descargas de archivos de datos están en pausa. El registro de QSOs y la sincronización con dispositivos cercanos no se ven afectados.",
+    "servicesTitle": "Servicios",
+    "noServices": "Todavía no ha respondido nada.",
+    "lastSuccess": "Respondió por última vez hace ${when}",
+    "neverSucceeded": "Todavía no ha respondido",
+    "nextAttempt": "Próximo intento en ${when}",
+    "nextAttemptNow": "Próximo intento pendiente",
+    "retry": "Reintentar ahora",
+    "retrying": "Intentando…",
+    "retryReached": "Conexión restablecida.",
+    "retryUnreachable": "Sigue sin responder.",
+    "retryNotAttempted": "No hay nada que enviar ahora mismo.",
+    "retryThrottled": "Acabas de intentarlo — espera un momento.",
+    "retryDisabled": "La sincronización está desactivada, así que no hay con qué sondear.",
+    "syncService": "Sincronización Ham2K LoFi",
+    "retryInFlight": "Ya se está intentando — un momento."
   }
 }

@@ -17,6 +17,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
+import 'connectivity_service.dart';
 import 'error_reporting_service.dart';
 import 'location_service.dart';
 import 'panel_service.dart';
@@ -2334,6 +2335,18 @@ class ExtensionService implements PanelExtensionSource {
     final host = _host;
     if (host == null || call.length < 3) return null;
 
+    // While we believe we have no internet the pipeline still runs, but every
+    // hook is asked to stay local — call history, call notes, cached data
+    // files. That is the whole suspension: the operator keeps getting the
+    // answers we already hold, and we stop spending an 8-second timeout per
+    // keystroke's worth of debounce to learn the network is still down.
+    //
+    // Nothing is queued for later. A lookup for a call typed ten minutes ago
+    // is worthless by the time it would land — the background enrichment
+    // queue (`LookupQueueService`) is where a deferred lookup belongs, and it
+    // holds its own entries.
+    final reachable = online && !ConnectivityService.isOffline;
+
     try {
       final result = await host.invokeHook(
         'lookupService',
@@ -2343,7 +2356,7 @@ class ExtensionService implements PanelExtensionSource {
           'callInfo': {'call': call},
           'qso': qso,
           'operation': operation,
-          'online': online,
+          'online': reachable,
           'recentContext': recentContext,
         },
         timeout: const Duration(seconds: 8),

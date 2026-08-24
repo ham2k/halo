@@ -92,7 +92,8 @@ const _progressTitleFlex = 1;
 /// The collapsed/expandable status bar. Shows the most-recently-updated
 /// [items] entry collapsed; tap to expand into a scrollable list, capped at
 /// [maxExpandedHeight] — or 40% of the screen when no caller sets one.
-/// Collapses to zero height on every platform when [items] is empty.
+/// Collapses to zero height on every platform when it has nothing to show —
+/// no [items] and no [leading].
 class StatusBarFooter extends StatefulWidget {
   /// The footer's height with its list collapsed — what it takes whenever
   /// there is anything to show at all. Public for the same reason as
@@ -102,6 +103,21 @@ class StatusBarFooter extends StatefulWidget {
 
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
+
+  /// A persistent indicator pinned to the LEFT of the bar, outside the item
+  /// list — the app's offline icon is the one that uses it.
+  ///
+  /// Deliberately not an item. An item lives in the collapsed switcher, so it
+  /// is shown only while it happens to be the most recent thing posted, it is
+  /// pushed aside by the next sync's progress bar, and it is dismissible.
+  /// None of those suit a state: "we have no network" is true until it is
+  /// not, and it is the answer to "why is nothing updating?" precisely when
+  /// nothing else is being said.
+  ///
+  /// So it also opens the bar on its own — a caller that passes one gets a
+  /// visible footer with no items at all. It never expands the list (there is
+  /// nothing in it to expand) and its own taps are its own business.
+  final Widget? leading;
 
   /// Accessible name for an item's dismiss button — it is icon-only, and the
   /// app has no hover tooltips (docs/design/user-interface.md). English
@@ -118,6 +134,7 @@ class StatusBarFooter extends StatefulWidget {
     super.key,
     required this.items,
     required this.onDismiss,
+    this.leading,
     this.maxExpandedHeight,
     this.dismissLabel = 'Dismiss',
   });
@@ -151,7 +168,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
 
   @override
   Widget build(BuildContext context) {
-    final hasItems = widget.items.isNotEmpty;
+    final hasContent = widget.items.isNotEmpty || widget.leading != null;
     // A single item has nothing more to show expanded — the expanded list
     // would just be that same one row in a taller box — so there's nothing
     // to toggle.
@@ -190,7 +207,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       // worth announcing once.
       liveRegion: _announceable,
       label: _semanticsLabel,
-      child: _visuals(context, hasItems, canExpand, expanded, backgroundColor, foregroundColor),
+      child: _visuals(context, hasContent, canExpand, expanded, backgroundColor, foregroundColor),
     );
   }
 
@@ -211,7 +228,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
   /// none of it reaches the semantics tree (see [build]).
   Widget _visuals(
     BuildContext context,
-    bool hasItems,
+    bool hasContent,
     bool canExpand,
     bool expanded,
     Color backgroundColor,
@@ -237,7 +254,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
               child: child,
             );
           },
-          child: !hasItems
+          child: !hasContent
               ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
               : ChromeTopEdge(
                   key: const ValueKey('footer_active'),
@@ -273,108 +290,127 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       // pinned to the window's bottom edge, which is always on-grid). See
       // PixelGrid — 28 × 0.85 × 2.0 is 47.6 device px, a hairline seam.
       height: PixelGrid.of(context).snap(StatusBarFooter.collapsedHeightOf(context)),
-      child: last == null
-          ? const SizedBox.shrink()
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-              // Hold the message to the ideal pane width, centered, rather
-              // than letting it stretch across a wide window.
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-                  child: Row(
-                    // Stretch, so the switcher's child is as tall as the bar
-                    // rather than as tall as its text. The slide travels the
-                    // child's height: left to size itself the outgoing message
-                    // crossfades nearly in place instead of sliding out under
-                    // the bar's clip, which is a visual change this
-                    // semantics-only restructuring has no business making.
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Everything that changes with the item, and the only
-                      // part that animates. Excluded from semantics: the
-                      // switcher builds a fresh subtree per item and keeps the
-                      // outgoing one mounted through the transition, so its
-                      // nodes would be created and destroyed several times a
-                      // second — which is exactly what steals a focused text
-                      // field's node (see build()). The message itself is
-                      // still announced, by the one stable node up there.
-                      Expanded(
-                        child: ExcludeSemantics(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, animation) {
-                              return SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0, 1.0),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: FadeTransition(opacity: animation, child: child),
-                              );
-                            },
-                            child: Row(
-                              key: _collapsedSwitchKey(last),
-                              children: [
-                                if (showGroups)
-                                  for (final group in _groupByIcon(widget.items))
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: Space.xs),
-                                      child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
-                                    ),
-                                if (last.icon != null) ...[
-                                  Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
-                                  const SizedBox(width: Space.sm),
-                                ],
-                                if (last.isProgress) ...[
-                                  Expanded(
-                                    flex: _progressTitleFlex,
-                                    child: Text(
-                                      last.title ?? last.text ?? '',
-                                      textAlign: TextAlign.left,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
-                                    ),
-                                  ),
-                                  const SizedBox(width: Space.md),
-                                  Expanded(
-                                    flex: _progressBarFlex,
-                                    child: _StatusBarProgressIndicator(item: last, color: foregroundColor),
-                                  ),
-                                ] else
-                                  Expanded(
-                                    child: Text(
-                                      last.title ?? last.text ?? '',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
-                                    ),
-                                  ),
-                              ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+        // Stretch, so the message column below is given this bar's height
+        // rather than its text's — the inner row stretches against it.
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The indicator sits OUTSIDE the centered message column on
+            // purpose: it belongs to the bar, not to whatever is being said
+            // in it, so it stays put at the left edge while messages come
+            // and go. Only in the collapsed bar — expanding is a deliberate
+            // act of reading the list, and the icon would be floating beside
+            // a tall box.
+            if (widget.leading != null) ...[
+              Center(child: widget.leading),
+              const SizedBox(width: Space.sm),
+            ],
+            Expanded(
+              child: last == null
+                  ? const SizedBox.shrink()
+                  // Hold the message to the ideal pane width, centered,
+                  // rather than letting it stretch across a wide window.
+                  : Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+                      child: Row(
+                        // Stretch, so the switcher's child is as tall as the bar
+                        // rather than as tall as its text. The slide travels the
+                        // child's height: left to size itself the outgoing message
+                        // crossfades nearly in place instead of sliding out under
+                        // the bar's clip, which is a visual change this
+                        // semantics-only restructuring has no business making.
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Everything that changes with the item, and the only
+                          // part that animates. Excluded from semantics: the
+                          // switcher builds a fresh subtree per item and keeps the
+                          // outgoing one mounted through the transition, so its
+                          // nodes would be created and destroyed several times a
+                          // second — which is exactly what steals a focused text
+                          // field's node (see build()). The message itself is
+                          // still announced, by the one stable node up there.
+                          Expanded(
+                            child: ExcludeSemantics(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (child, animation) {
+                                  return SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 1.0),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: FadeTransition(opacity: animation, child: child),
+                                  );
+                                },
+                                child: Row(
+                                  key: _collapsedSwitchKey(last),
+                                  children: [
+                                    if (showGroups)
+                                      for (final group in _groupByIcon(widget.items))
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: Space.xs),
+                                          child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
+                                        ),
+                                    if (last.icon != null) ...[
+                                      Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
+                                      const SizedBox(width: Space.sm),
+                                    ],
+                                    if (last.isProgress) ...[
+                                      Expanded(
+                                        flex: _progressTitleFlex,
+                                        child: Text(
+                                          last.title ?? last.text ?? '',
+                                          textAlign: TextAlign.left,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                                        ),
+                                      ),
+                                      const SizedBox(width: Space.md),
+                                      Expanded(
+                                        flex: _progressBarFlex,
+                                        child: _StatusBarProgressIndicator(item: last, color: foregroundColor),
+                                      ),
+                                    ] else
+                                      Expanded(
+                                        child: Text(
+                                          last.title ?? last.text ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: Space.xs),
+                          // Hoisted OUT of the switcher above, deliberately. It is
+                          // the one control down here, it exists in every state,
+                          // and outside the switcher its element — and so its
+                          // semantics node — survives every item change instead of
+                          // being rebuilt with the row.
+                          // Centred rather than stretched: the row's stretch is
+                          // for the switcher's travel, and the button sizes itself.
+                          Center(
+                            child: _DismissButton(
+                              color: foregroundColor,
+                              onPressed: () => widget.onDismiss(last.key),
+                              label: widget.dismissLabel,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: Space.xs),
-                      // Hoisted OUT of the switcher above, deliberately. It is
-                      // the one control down here, it exists in every state,
-                      // and outside the switcher its element — and so its
-                      // semantics node — survives every item change instead of
-                      // being rebuilt with the row.
-                      // Centred rather than stretched: the row's stretch is
-                      // for the switcher's travel, and the button sizes itself.
-                      Center(
-                        child: _DismissButton(
-                          color: foregroundColor,
-                          onPressed: () => widget.onDismiss(last.key),
-                          label: widget.dismissLabel,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
             ),
+          ],
+        ),
+      ),
     );
   }
 

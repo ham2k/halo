@@ -1291,7 +1291,8 @@
     "nothingToSpot": "Nothing to spot — no extension offers spotting here.",
     "spotFailed": "${source} failed: ${message}",
     "unknownError": "unknown error",
-    "notSent": "Spot not sent."
+    "notSent": "Spot not sent.",
+    "notRefreshedOffline": "No connection — spots were not refreshed"
   },
   "dataFiles": {
     "downloading": "Downloading…",
@@ -1487,5 +1488,27 @@
     "shortfall": "Only ${written} of ${planned} could be applied — the log changed while you were deciding.",
     "busy": "An import is already running. Wait for it to finish before starting another.",
     "oneFileOnly": "Drop one ADIF file at a time — the order files are imported in decides which data wins."
+  },
+  "offline": {
+    "title": "Offline",
+    "iconLabel": "No internet connection — tap for detail",
+    "noRoute": "This device reports no network connection at all.",
+    "unreachable": "The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.",
+    "whatStops": "Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.",
+    "servicesTitle": "Services",
+    "noServices": "Nothing has reported in yet.",
+    "lastSuccess": "Last answered ${when} ago",
+    "neverSucceeded": "Has not answered yet",
+    "nextAttempt": "Next attempt in ${when}",
+    "nextAttemptNow": "Next attempt due",
+    "retry": "Retry now",
+    "retrying": "Trying…",
+    "retryReached": "Back online.",
+    "retryUnreachable": "Still no answer.",
+    "retryNotAttempted": "Nothing to send right now.",
+    "retryThrottled": "Just tried — give it a moment.",
+    "retryDisabled": "Sync is switched off, so there is nothing to probe with.",
+    "syncService": "Ham2K LoFi sync",
+    "retryInFlight": "Already trying — hang on."
   }
 }
