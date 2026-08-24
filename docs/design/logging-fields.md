@@ -250,6 +250,23 @@ sends it back to the callsign field once a contact is logged, so a QSO
 submitted from an exchange field still leaves the operator on callsign, ready
 for the next one.
 
+**Unless the operator is not here.** A contact can be logged by a gesture made
+on another surface — sliding a spot row past its commit point
+([user-interface.md](user-interface.md) § Row gestures) — and there the return
+to callsign is a keyboard thrown up over the list being worked, for an entry
+nobody is about to type. So a log that did not come from this panel leaves the
+focus where it is (`_log(focusCall: false)`), and that covers every way the
+route can end: the wipe after a successful log, the wipe that clears the way at
+an overwrite prompt, and the refusal to log at all — which reaches for the
+callsign field to point at what needs fixing, and so points at a field the
+operator cannot see. That last one leaves the refusal with no signal anywhere;
+surfacing it where the gesture happened is [HALO-335](https://cabo.ham2k.com/halo/c/335).
+
+The line this draws is the one [HALO-93](https://cabo.ham2k.com/halo/c/93)
+drew for cold start, and the general question is
+[HALO-182](https://cabo.ham2k.com/halo/c/182): focus returns to callsign when
+the operator is standing in front of the panel, and not otherwise.
+
 This has to be asserted, not assumed. A single-line `TextField` unfocuses
 itself *before* calling `onSubmitted` — Flutter's default end-of-editing
 behavior — so every main logging field supplies `onEditingComplete` to
