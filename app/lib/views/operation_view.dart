@@ -1117,20 +1117,16 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// modal (which re-reads the latest `_callInfo` on rebuild via the modal's
   /// own key, so live updates flow through while it's open).
   Future<void> _handleCallInfoTap(Operation operation) async {
-    if (ShirtSize.of(context).isTwoPane) {
-      if (_customLayout) {
-        dockKey.currentState?.revealModule('info');
-      } else if (_tabController?.index != 0) {
-        _tabController?.animateTo(0);
-      }
-      return;
-    }
+    if (_revealInfoPane()) return;
     final info = _callInfo;
     if (info == null) return;
     await showModalPane<void>(
       context,
       title: info.call,
       closeLabel: context.t.common.close,
+      // The panel is a ListView and scrolls itself; wrapped in the pane's own
+      // scroll view it would sit in unbounded height and lay out blank.
+      scrollable: false,
       builder: (_) => CallInfoPanel(
         operation: operation,
         services: widget.services,
@@ -1140,6 +1136,52 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         alertKeys: info.alertKeys,
         noticeKeys: info.noticeKeys,
         ourEntityPrefix: _ourEntityPrefix,
+      ),
+    );
+  }
+
+  /// On wide layouts the Info pane is already in the layout — surface it and
+  /// let it show whatever it shows. Answers whether it actually did: a custom
+  /// layout the operator has dropped the Info pane out of has nothing to
+  /// reveal (`revealModule` no-ops on a module that isn't there), and a tap
+  /// that stops here would spend its splash on nothing. Saying so lets the
+  /// caller fall back to the modal, which always works.
+  bool _revealInfoPane() {
+    if (!ShirtSize.of(context).isTwoPane) return false;
+    if (_customLayout) {
+      final dock = dockKey.currentState;
+      if (dock == null || !dock.modules.contains('info')) return false;
+      dock.revealModule('info');
+      return true;
+    }
+    if (_tabController == null) return false;
+    if (_tabController!.index != 0) _tabController!.animateTo(0);
+    return true;
+  }
+
+  /// Tap on a day header in the QSO list: the operation's own info — its stats
+  /// and scoring, the counterpart to the call-info area standing for the
+  /// contact. Same two presentations as [_handleCallInfoTap], and the same
+  /// consequence on wide: the Info pane shows what it shows, which is the
+  /// call detail while one is being composed. The modal, which is this tap's
+  /// own, is the stats unconditionally.
+  Future<void> _handleOperationInfoTap(Operation operation, List<Qso> qsos) async {
+    if (_revealInfoPane()) return;
+    await showModalPane<void>(
+      context,
+      // The operation, the way the Call Info modal is titled with the call —
+      // `InformationPanel` heads its own body "Operation Stats", so naming
+      // the pane that too would say it twice.
+      title: displayTitleFor(context, operation),
+      closeLabel: context.t.common.close,
+      // See the Call Info modal above — InformationPanel is a ListView too.
+      scrollable: false,
+      builder: (_) => InformationPanel(
+        operation: operation,
+        qsos: qsos,
+        services: widget.services,
+        ourEntityPrefix: _ourEntityPrefix,
+        activityControls: _loggingControls,
       ),
     );
   }
@@ -2178,6 +2220,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             onQsoChanged:
                 _anyPanelWants('qso') || _anyPanelWants('lookup') ? _onQsoDraftChanged : null,
             onCallInfoTap: () => _handleCallInfoTap(operation),
+            onOperationInfoTap: () => _handleOperationInfoTap(operation, qsos),
             ),
           ),
         );

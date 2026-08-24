@@ -892,11 +892,16 @@ Two distinct surfaces; pick deliberately:
     dismissal, and actions pinned at the bottom.
   - **L / XL:** a centered dialog at the ideal pane width, with a pinned
     title row, scrollable body, pinned actions, and barrier/Escape
-    dismissal. (Panes that manage their own vertical layout — internal
-    scrollables, height-filling sections — pass `scrollable: false` and get
-    a bounded height instead of a scroll view: as much as they ask for, up
-    to the pane's max, so a filling body still gets the full height and a
-    short form gets a card that fits it.)
+    dismissal.
+
+  Panes that manage their own vertical layout — internal scrollables,
+  height-filling sections — pass `scrollable: false` and get a bounded
+  height instead of a scroll view: as much as they ask for, up to the pane's
+  max, so a filling body still gets the full height and a short form gets a
+  card that fits it. This is not a refinement of the dialog presentation but
+  a requirement of **both**: a body holding a ListView inside the pane's own
+  scroll view is handed unbounded height, and lays the pane out blank under
+  a header that still looks right.
 
   It is a single route that re-presents itself when the window crosses the
   S/L boundary while open — no pop-and-reshow. Both presentations resolve

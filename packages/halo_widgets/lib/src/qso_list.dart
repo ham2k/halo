@@ -338,6 +338,11 @@ class QsoList extends StatefulWidget {
   /// the same row into the editor either way.
   final void Function(Qso qso)? onSelectEvent;
 
+  /// Tap a day header — the operation view opens the operation's own info
+  /// (modal on narrow, the Info pane on wide), the counterpart to tapping a
+  /// row for a contact. Null leaves the headers inert.
+  final VoidCallback? onTapDayHeader;
+
   /// Whether to show the RST column (ham2k/halo-dist#1's logging-view
   /// menu) — the underlying data always exists, this only hides the column.
   final bool showRSTFields;
@@ -385,6 +390,7 @@ class QsoList extends StatefulWidget {
     required this.qsos,
     required this.onSelect,
     this.onSelectEvent,
+    this.onTapDayHeader,
     this.selectedUuid,
     this.noQsosLabel,
     this.needsBandOrMode = false,
@@ -1202,6 +1208,7 @@ class _QsoListState extends State<QsoList> {
                                     .length,
                                 scores: scoresByDay[dayKeys[g]],
                                 labels: widget.labels,
+                                onTap: widget.onTapDayHeader,
                               ),
                             ),
                           ),
@@ -1511,6 +1518,11 @@ class DayHeaderRow extends StatelessWidget {
   final Map<String, dynamic>? scores;
   final QsoListLabels labels;
 
+  /// Tapping the header opens the operation's own info — the day divider is
+  /// the list's stand-in for "this operation", the way a QSO row is for a
+  /// contact. Null leaves the header inert.
+  final VoidCallback? onTap;
+
   /// Overrides "now" for the relative-date label below — tests only; a real
   /// header always compares against the current moment.
   final DateTime? now;
@@ -1522,6 +1534,7 @@ class DayHeaderRow extends StatelessWidget {
     this.scores,
     this.labels = QsoListLabels.english,
     this.now,
+    this.onTap,
   });
 
   /// Same tiering as app-polo/web-lofi's `fmtDateDynamicZulu(compact: true)`
@@ -1598,80 +1611,87 @@ class DayHeaderRow extends StatelessWidget {
       );
     }
 
-    return Container(
+    return Material(
       // `surfaceContainerHigh` isn't one of the tones `buildHaLoTheme`
       // overrides (theme.dart), so it falls back to Flutter's default — an
       // almost-white tint that doesn't read as "gray" against the QSO
       // rows' plain `surface`. `surfaceContainerHighest` is an
       // explicitly-set, visibly gray tone (already used to fill the list's
       // own empty space above/below its rows), so it actually shows up as
-      // a distinct header background.
+      // a distinct header background. It sits on the Material, not on the
+      // Container below, so the InkWell's splash isn't painted over.
       color: theme.colorScheme.surfaceContainerHighest,
-      // `foregroundDecoration`, not `decoration` — same reason the row's own
-      // selected-treatment border below uses it: `Container` auto-insets
-      // its child by a `BoxDecoration`'s border width when the border lives
-      // in `decoration`, which would make the header taller than a plain
-      // QSO row for the same padding. Painting over the already-laid-out
-      // box instead keeps the header exactly row-height while still
-      // reading as a stronger break than the 1px hairline between ordinary
-      // QSO rows — matching app-polo's QSOHeader (`headerRow`'s
-      // `borderBottomWidth: 2`) — using `outline`, not `outlineVariant`,
-      // since `outlineVariant` is nearly the same color as the header's own
-      // background and the border all but disappears against it.
-      foregroundDecoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
-        ),
-      ),
-      child: Padding(
-        // Same vertical padding as a QSO row (see `buildRow`'s own
-        // `Padding` above) so the header comes out exactly row-height.
-        padding: PaneSafeArea.symmetricOf(
-          context,
-          horizontal: Space.lg,
-          vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
-        ),
-        child: Row(
-          children: [
-            // The header lives inside the same minimum width the QSO rows do,
-            // so at that minimum the date and count have to give rather than
-            // overflow. `Expanded` pushes the badges right (what a bare
-            // `Spacer` would do) while also capping the pair.
-            //
-            // That makes the score badges the one thing here that never
-            // yields, which is deliberate: they are fixed-size chips with
-            // nothing to ellipsize into, while a shortened date still reads.
-            // Within the pair the date gives first and the count second, so
-            // the day stays identifiable for as long as there is room for it.
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      _dayLabel(dayMillis, now ?? nowUtc(), labels),
-                      style: rowStyle?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: Space.md),
-                  // Deliberately NOT Flexible. Two loose Flexibles in one Row
-                  // split the space proportionally and never hand back what
-                  // they don't use, so the date would ellipsize at half the
-                  // header even when the count is short. Non-flex, the count
-                  // takes its natural width and the date gets the rest —
-                  // which is the behaviour we want everywhere except a count
-                  // label wider than the list's whole minimum width, and that
-                  // needs ~25 characters of "N QSOs".
-                  Text(labels.qsoCountLabel(count), style: rowStyle),
-                ],
-              ),
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+        child: Container(
+          // `foregroundDecoration`, not `decoration` — same reason the row's own
+          // selected-treatment border below uses it: `Container` auto-insets
+          // its child by a `BoxDecoration`'s border width when the border lives
+          // in `decoration`, which would make the header taller than a plain
+          // QSO row for the same padding. Painting over the already-laid-out
+          // box instead keeps the header exactly row-height while still
+          // reading as a stronger break than the 1px hairline between ordinary
+          // QSO rows — matching app-polo's QSOHeader (`headerRow`'s
+          // `borderBottomWidth: 2`) — using `outline`, not `outlineVariant`,
+          // since `outlineVariant` is nearly the same color as the header's own
+          // background and the border all but disappears against it.
+          foregroundDecoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
             ),
-            ...badges,
-          ],
+          ),
+          child: Padding(
+            // Same vertical padding as a QSO row (see `buildRow`'s own
+            // `Padding` above) so the header comes out exactly row-height.
+            padding: PaneSafeArea.symmetricOf(
+              context,
+              horizontal: Space.lg,
+              vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+            ),
+            child: Row(
+              children: [
+                // The header lives inside the same minimum width the QSO rows do,
+                // so at that minimum the date and count have to give rather than
+                // overflow. `Expanded` pushes the badges right (what a bare
+                // `Spacer` would do) while also capping the pair.
+                //
+                // That makes the score badges the one thing here that never
+                // yields, which is deliberate: they are fixed-size chips with
+                // nothing to ellipsize into, while a shortened date still reads.
+                // Within the pair the date gives first and the count second, so
+                // the day stays identifiable for as long as there is room for it.
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _dayLabel(dayMillis, now ?? nowUtc(), labels),
+                          style: rowStyle?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: Space.md),
+                      // Deliberately NOT Flexible. Two loose Flexibles in one Row
+                      // split the space proportionally and never hand back what
+                      // they don't use, so the date would ellipsize at half the
+                      // header even when the count is short. Non-flex, the count
+                      // takes its natural width and the date gets the rest —
+                      // which is the behaviour we want everywhere except a count
+                      // label wider than the list's whole minimum width, and that
+                      // needs ~25 characters of "N QSOs".
+                      Text(labels.qsoCountLabel(count), style: rowStyle),
+                    ],
+                  ),
+                ),
+                ...badges,
+              ],
+            ),
+          ),
         ),
       ),
     );

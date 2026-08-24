@@ -114,6 +114,10 @@ class LoggingPanel extends StatefulWidget {
   /// the detail (modal on narrow, focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
 
+  /// Fires when a day header in the QSO list is tapped — the operation view
+  /// opens the operation's own info the same two ways.
+  final VoidCallback? onOperationInfoTap;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -143,6 +147,7 @@ class LoggingPanel extends StatefulWidget {
     this.onCallInfoChanged,
     this.onQsoChanged,
     this.onCallInfoTap,
+    this.onOperationInfoTap,
   });
 
   @override
@@ -715,6 +720,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       bandOrModeWarningLabel: context.t.qsoList.bandOrModeWarning,
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
+      onTapDayHeader: widget.onOperationInfoTap,
       showRSTFields: widget.showRSTFields,
       switchSentRcvd: widget.switchSentRcvd,
       showQsoNumbers: widget.showQsoNumbers,

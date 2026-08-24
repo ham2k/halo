@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Tap a date header in the QSO list to open the operation info
+
 "148":
   changes:
     - Spots survive a brief network drop, and never show older than 3 hours

@@ -607,6 +607,36 @@ void main() {
     },
   );
 
+  testWidgets('the day header is the operation\'s own tap target', (tester) async {
+    final operation = await operations.create(stationCall: 'KI2D');
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+
+    var headerTaps = 0;
+    Qso? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QsoList(
+            qsos: [qso],
+            onSelect: (q) => selected = q,
+            onTapDayHeader: () => headerTaps++,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(DayHeaderRow));
+    expect(headerTaps, 1);
+    // The header is not a row: a tap on it must never load a QSO into the
+    // editor, whichever QSO happens to sit under it.
+    expect(selected, isNull);
+  });
+
   group('annotation rows (note/todo/solar/weather events, ham2k/halo-dist#64)', () {
     // The event pseudo-QSO shape the annotation-commands extension emits
     // through its `addQso` action.
@@ -2285,7 +2315,10 @@ void main() {
         // A row's own painted height, divider included, is what the scroll
         // arithmetic adds up. Measured between two adjacent rows' tops rather
         // than from one row's box, since the divider sits between them.
-        final rows = find.byType(InkWell);
+        // Scoped to the row sliver: the day header is an InkWell too (it
+        // opens the operation info), and a bare byType would measure the
+        // pitch from IT to the first row.
+        final rows = find.descendant(of: find.byType(SliverFixedExtentList), matching: find.byType(InkWell));
         expect(rows, findsAtLeast(2));
         final firstTop = tester.getTopLeft(rows.at(0)).dy;
         final secondTop = tester.getTopLeft(rows.at(1)).dy;
