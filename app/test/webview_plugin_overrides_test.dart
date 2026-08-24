@@ -5,7 +5,7 @@
 // exact pin on the umbrella, the five version pins in `dependency_overrides`
 // that hold the rest of the family still, the three overrides that
 // displace the published Linux, macOS and Windows implementations outright,
-// the one patched line inside the vendored macOS copy, and the three patched
+// the one patched line inside the vendored macOS copy, and the four patched
 // hunks inside the vendored Windows copy.
 //
 // All of it is invisible to every other signal. Delete an override and the
@@ -380,6 +380,43 @@ void main() {
           'registered in the messenger\'s callback map after the '
           'environment is destroyed (HALO-290/HALO-NEXT-59), not a test '
           'failure',
+    );
+  });
+
+  test('the vendored Windows copy still emits a Release PDB for its own code', () {
+    // Same "resolving to the vendored directory is not the same as the patch
+    // being in it" caveat as the other Windows-patch tests, for the
+    // CMakeLists.txt fourth of the messenger callback race patch (PATCH.md's
+    // "The messenger callback race" section) — instrumentation, not a bugfix,
+    // but dropped just as silently on a careless re-vendor.
+    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/CMakeLists.txt';
+    final file = File(sourcePath);
+    if (!file.existsSync()) {
+      fail(
+        'No $sourcePath — the Windows override points at a package with no '
+        'CMakeLists.txt, so this test cannot answer the question it exists '
+        'to answer.',
+      );
+    }
+    final source = file.readAsStringSync();
+    expect(
+      source,
+      contains(r'target_compile_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/Zi>)'),
+      reason: 'emitting a Release PDB for this plugin IS the patch; without '
+          'it a native crash whose actual site is inside this plugin\'s own '
+          'code resolves in Sentry the same way one inside the Flutter '
+          'engine does — nearest-export only, no line, no non-exported '
+          'frames (HALO-290) — not a test failure',
+    );
+    expect(
+      source,
+      contains(r'target_link_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)'),
+      reason: 'MSVC emits the linked PDB only with the linker\'s /DEBUG -- '
+          '/Zi alone produces compiler-side PDBs the upload step in '
+          'app_dist/ci/build-windows.ps1 never finds, so dropping just this '
+          'line on a re-vendor defeats the whole hunk while the /Zi check '
+          'above stays green',
     );
   });
 }

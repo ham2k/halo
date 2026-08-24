@@ -110,6 +110,28 @@ class ErrorReportingService {
     _backend.captureException(error, stackTrace, context: context);
   }
 
+  /// Records a lightweight breadcrumb the active backend can attach to
+  /// whatever it captures next — including a native crash (crashpad on
+  /// desktop), which never runs through [report] or any Dart error hook at
+  /// all. Always logs locally; unlike [report] there is no [ErrorPolicy] to
+  /// consult, since nothing is being reported yet.
+  ///
+  /// Call sites include a `dispose()` right before `super.dispose()` tears
+  /// down a native platform view — the exact teardown this exists to shed
+  /// light on — so a *synchronous* backend failure here must never
+  /// propagate: doing so would skip that teardown and produce the very
+  /// corruption this is meant to help diagnose. An asynchronous one is not
+  /// caught here (same as any other unawaited backend call) and can still
+  /// reach [run]'s fallback zone.
+  static void breadcrumb(String message, {String? category}) {
+    debugPrint('[breadcrumb]${category != null ? ' $category:' : ''} $message');
+    try {
+      _backend.addBreadcrumb(message, category: category);
+    } catch (error, stackTrace) {
+      debugPrint('[breadcrumb] backend threw, ignoring: $error\n$stackTrace');
+    }
+  }
+
   /// Consecutive failures per [reportIfRepeated] key. Process-wide and
   /// never persisted: "stuck" is a claim about this session.
   static final Map<String, int> _failureStreaks = {};

@@ -19,6 +19,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/windows_webview.dart';
 
@@ -219,6 +220,20 @@ class _HtmlPanelViewState extends State<_HtmlPanelView> {
   }
 
   @override
+  void dispose() {
+    // The last thing this app's own code knows before the native platform
+    // view underneath actually tears down (HALO-290) — a subsequent native
+    // crash carries no Dart stack of its own to say so. Gated on _support:
+    // an unsupported/pending pane never built _SandboxedHtmlView, and a
+    // breadcrumb claiming otherwise would misinform the very crash trail
+    // this exists to keep trustworthy.
+    if (_support == WebviewSupport.yes) {
+      ErrorReportingService.breadcrumb('html extension panel webview disposing', category: 'webview');
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     switch (_support) {
       // The same spinner an unanswered panel shows, and for the same reason:
@@ -284,6 +299,8 @@ class _SandboxedHtmlView extends StatelessWidget {
         blockNetworkImage: true,
         contentBlockers: _blockEverything,
       ),
+      onWebViewCreated: (controller) =>
+          ErrorReportingService.breadcrumb('html extension panel webview created', category: 'webview'),
       shouldOverrideUrlLoading: (controller, action) async {
         // Only a navigation the OPERATOR started leaves for the browser.
         // Scripts are off, but `<meta http-equiv="refresh">` is still a

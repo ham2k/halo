@@ -1,12 +1,13 @@
-# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, three files changed
+# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, four files changed
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except
 `windows/custom_platform_view/custom_platform_view.cc`'s
 `CustomPlatformView` destructor, one hunk in
 `windows/in_app_webview/in_app_webview_manager.cpp`'s `createInAppWebView`,
-and `windows/webview_environment/webview_environment.cpp`'s
-`WebViewEnvironment` destructor.
+`windows/webview_environment/webview_environment.cpp`'s
+`WebViewEnvironment` destructor, and two build-settings lines added to
+`windows/CMakeLists.txt`.
 
 ```diff
    CustomPlatformView::~CustomPlatformView()
@@ -46,6 +47,26 @@ and `windows/webview_environment/webview_environment.cpp`'s
 +    }
      if (environment_) {
 ```
+
+```diff
+ flutter_inappwebview_windows_apply_standard_settings(${PLUGIN_NAME})
+
++target_compile_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/Zi>)
++target_link_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)
++
+ target_link_libraries(${PLUGIN_NAME} PRIVATE ${CMAKE_BINARY_DIR}/packages/Microsoft.Web.WebView2/build/native/Microsoft.Web.WebView2.targets)
+```
+
+This last hunk is instrumentation, not a bugfix: MSVC's default Release flags
+carry no debug info, so without it a crash whose actual site is inside this
+plugin's own code resolves in Sentry the same way a crash inside the Flutter
+engine does — nearest-export only, no line, no non-exported frames. Mirrors
+`app/windows/runner/CMakeLists.txt`'s identical two lines, added for the same
+reason (HALO-290). `app_dist/ci/build-windows.ps1`'s debug-symbol upload step
+scans the whole `build/windows/x64` tree, not just `runner/Release`, because
+this is exactly why: the PDB this hunk produces lands in this plugin's own
+CMake build subdirectory, not copied alongside the DLL into `Release/` by the
+bundling step.
 
 Upstream's `example/` is left out, same as the macOS copy — a whole Flutter
 app nothing here reads. Only `lib/` and `windows/` are consumed by the
@@ -204,7 +225,7 @@ caller — since (unlike `CustomPlatformView`'s `view`) nothing about
 
 ## Verifying this copy
 
-Everything except the three hunks above must match the published package. Diff
+Everything except the four hunks above must match the published package. Diff
 against a freshly extracted archive, **never against `~/.pub-cache`** — a
 build writes generated files into the cached copy too, so contamination on
 both sides cancels out. Run from the repo root:
@@ -217,7 +238,7 @@ diff -r -x example -x PATCH.md \
      "$upstream" packages/flutter_inappwebview_windows_patched
 ```
 
-A clean run prints only the three hunks above.
+A clean run prints only the four hunks above.
 
 ## No local verification
 
@@ -232,15 +253,17 @@ been verified throughout.
 
 ## Re-vendoring a newer version
 
-Copy the new package over this directory, drop its `example/`, re-apply
-all three hunks if upstream hasn't fixed the underlying races itself (check
+Copy the new package over this directory, drop its `example/`, re-apply the
+CMakeLists.txt PDB hunk unconditionally (it's instrumentation, not a bugfix —
+keep it regardless of what upstream has changed), and re-apply the other three
+hunks if upstream hasn't fixed the underlying races itself (check
 `CustomPlatformView`'s destructor, the keep-alive branch of
 `createInAppWebView`, and `WebViewEnvironment`'s destructor first — a fix
 might land under a different shape, and check whether `ChannelDelegate`
 itself finally unregisters in its own destructor, which would obsolete all
-three hunks at once), update the version above and in the archive URL, and
-re-run the diff. Do not hand-merge — this directory is a copy, not a
-maintained fork.
+three at once), update the version above and in the archive URL, and re-run
+the diff. Do not hand-merge — this directory is a copy, not a maintained
+fork.
 
 **If the clock-discipline check flags a file in here, do not fix the
 file.** Same exemption rule as `flutter_inappwebview_macos_patched` — add
@@ -249,7 +272,11 @@ than editing a vendored copy.
 
 ## Deleting this
 
-Drop the directory once an upstream release fixes the same races (check all
-three hunks, not just the version number — a bump alone proves nothing) —
-along with **both** `flutter_inappwebview_windows` override entries, the
-one in `app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.
+Drop the directory once an upstream release fixes the same races (check the
+three race-fix hunks, not just the version number — a bump alone proves
+nothing) — along with **both** `flutter_inappwebview_windows` override
+entries, the one in `app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.
+The PDB hunk isn't a reason to keep this directory on its own: if the other
+three are ever gone, drop the vendored copy and get the same debug info by
+adding the same two `target_compile_options`/`target_link_options` lines as a
+patch on the *published* package instead (or upstream them).

@@ -21,6 +21,12 @@ abstract class ErrorReportingBackend {
 
   /// Updates the backend's user-identifying context. Both null clears it.
   void updateUserContext({String? callsign, String? accountId});
+
+  /// Records a breadcrumb (ErrorReportingService.breadcrumb()) — session-wide
+  /// state a backend can attach to whatever it captures next, including a
+  /// native crash this app's own Dart error hooks never see (crashpad
+  /// captures those independently of everything above).
+  void addBreadcrumb(String message, {String? category});
 }
 
 class NoopErrorReportingBackend implements ErrorReportingBackend {
@@ -34,4 +40,7 @@ class NoopErrorReportingBackend implements ErrorReportingBackend {
 
   @override
   void updateUserContext({String? callsign, String? accountId}) {}
+
+  @override
+  void addBreadcrumb(String message, {String? category}) {}
 }

@@ -358,6 +358,10 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     widget.panels.removeListener(_onCatalogChanged);
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    // The last thing this app's own code knows before the native platform
+    // view underneath actually tears down (HALO-290) — a subsequent native
+    // crash carries no Dart stack of its own to say so.
+    ErrorReportingService.breadcrumb('website panel webview disposing', category: 'webview');
     super.dispose();
   }
 
@@ -410,7 +414,10 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
               transparentBackground: true,
               supportZoom: true,
             ),
-            onWebViewCreated: (controller) => _controller = controller,
+            onWebViewCreated: (controller) {
+              ErrorReportingService.breadcrumb('website panel webview created', category: 'webview');
+              _controller = controller;
+            },
             shouldOverrideUrlLoading: (controller, action) async {
               final target = action.request.url?.toString();
               if (target == null) return NavigationActionPolicy.CANCEL;

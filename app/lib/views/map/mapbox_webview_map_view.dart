@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../services/error_reporting_service.dart';
 import '../../services/windows_webview.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
@@ -120,6 +121,10 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       ?..onZoomIn = null
       ..onZoomOut = null;
     _readyWatchdog?.cancel();
+    // The last thing this app's own code knows before the native platform
+    // view underneath actually tears down (HALO-290) — a subsequent native
+    // crash carries no Dart stack of its own to say so.
+    ErrorReportingService.breadcrumb('map webview disposing', category: 'webview');
     super.dispose();
   }
 
@@ -183,6 +188,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       initialSettings: InAppWebViewSettings(transparentBackground: true),
       onConsoleMessage: (controller, message) => debugPrint('[map-webview] ${message.message}'),
       onWebViewCreated: (controller) {
+        ErrorReportingService.breadcrumb('map webview created', category: 'webview');
         _controller = controller;
         controller.addJavaScriptHandler(
           handlerName: 'poloMapReady',

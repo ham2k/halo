@@ -68,17 +68,30 @@ class RecordedUserContext {
   RecordedUserContext(this.callsign, this.accountId);
 }
 
+class RecordedBreadcrumb {
+  final String message;
+  final String? category;
+  RecordedBreadcrumb(this.message, this.category);
+}
+
 /// A test double standing in for a real backend (Sentry, in app_dist) —
 /// records what ErrorReportingService sends it, without touching any SDK.
 class FakeErrorReportingBackend implements ErrorReportingBackend {
   final exceptions = <RecordedException>[];
   final userContextCalls = <RecordedUserContext>[];
+  final breadcrumbs = <RecordedBreadcrumb>[];
 
   /// Simulates the backend's own init failing before it ever calls
   /// startBody (e.g. a real Sentry init throwing) — the caller must still
   /// run the app via its own fallback.
   final bool failsToRun;
-  FakeErrorReportingBackend({this.failsToRun = false});
+
+  /// Simulates addBreadcrumb throwing synchronously (a real SDK call
+  /// erroring) — ErrorReportingService.breadcrumb() must swallow it, since
+  /// call sites run it right before a dispose()'s own teardown.
+  final bool breadcrumbThrows;
+
+  FakeErrorReportingBackend({this.failsToRun = false, this.breadcrumbThrows = false});
 
   @override
   Future<bool> run(FutureOr<void> Function() startBody) async {
@@ -95,6 +108,12 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   @override
   void updateUserContext({String? callsign, String? accountId}) {
     userContextCalls.add(RecordedUserContext(callsign, accountId));
+  }
+
+  @override
+  void addBreadcrumb(String message, {String? category}) {
+    if (breadcrumbThrows) throw StateError('backend addBreadcrumb failed');
+    breadcrumbs.add(RecordedBreadcrumb(message, category));
   }
 }
 
@@ -293,6 +312,23 @@ void main() {
       expect(backend.exceptions.single.error, isA<StateError>());
       expect(backend.exceptions.single.context, 'test-context');
       expect(ErrorReportingService.reportingEnabled, isTrue, reason: 'a backend is attached');
+    }, backend: backend);
+  });
+
+  test('breadcrumb() reaches the backend\'s addBreadcrumb with the given category', () async {
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(() async {
+      ErrorReportingService.breadcrumb('map webview created', category: 'webview');
+      expect(backend.breadcrumbs, hasLength(1));
+      expect(backend.breadcrumbs.single.message, 'map webview created');
+      expect(backend.breadcrumbs.single.category, 'webview');
+    }, backend: backend);
+  });
+
+  test('breadcrumb() swallows a throwing backend — call sites run it right before their own dispose()', () async {
+    final backend = FakeErrorReportingBackend(breadcrumbThrows: true);
+    await withErrorHooks(() async {
+      expect(() => ErrorReportingService.breadcrumb('map webview disposing', category: 'webview'), returnsNormally);
     }, backend: backend);
   });
 

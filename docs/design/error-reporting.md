@@ -111,6 +111,15 @@ failure gets uploaded without a notice.
 of the sync flow, not a bug, so it is never crash-reported and gets its own
 status-bar notice instead.
 
+`ErrorReportingService.breadcrumb(message, category:)` is separate too: it
+records context, not an event, so there is nothing for the policy to decide —
+it always reaches the backend and rides along with whatever that backend
+captures next, including a native crash that reaches none of the hooks above
+at all. A *synchronous* backend failure is swallowed (call sites run this
+right before their own `dispose()`, which must always still run); an
+asynchronous one is not — same as any other unawaited call — and can still
+reach the fallback zone above.
+
 ## Vendor split
 
 The public repo contains only the `ErrorReportingBackend` interface (no-op by

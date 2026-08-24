@@ -36,6 +36,9 @@ class _RecordingBackend implements ErrorReportingBackend {
 
   @override
   void updateUserContext({String? callsign, String? accountId}) {}
+
+  @override
+  void addBreadcrumb(String message, {String? category}) {}
 }
 
 void main() {
