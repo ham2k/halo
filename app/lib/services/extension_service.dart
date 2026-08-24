@@ -113,6 +113,48 @@ class MalformedSpotDataException implements Exception {
   String toString() => 'MalformedSpotDataException: hook "$hookKey" field "$field" is ${value.runtimeType}';
 }
 
+/// A `scoring` hook that threw, timed out, or was unreachable — one scorer
+/// failing a pass, never the pass itself. Classified `report` in
+/// [ErrorPolicy]: a broken scorer is a defect in that extension, and there is
+/// nothing the operator can do about it mid-activation, so it goes to the
+/// crash backend without a notice.
+///
+/// What it costs is worth stating: the pass returns without that scorer's
+/// verdicts, so on the spots board its contributions are simply ABSENT — no
+/// duplicate strike from `core`, no multiplier accent from a contest scorer.
+/// An absence looks like a quiet board rather than like a failure, which is
+/// exactly why this reaches the backend rather than only the console.
+class ScoringHookFailure implements Exception {
+  ScoringHookFailure(this.scorerKey, this.method, this.cause);
+  final String scorerKey;
+  final String method;
+  final Object cause;
+
+  @override
+  String toString() => 'ScoringHookFailure: scorer "$scorerKey" failed $method: $cause';
+}
+
+/// The [ErrorReportingService.reportIfRepeated] key for one scorer's failures
+/// of one method. Per scorer AND per method so a contest scorer stuck on the
+/// spots pass cannot mask the core scorer breaking on the logging one.
+String _scorerFailureKey(String scorerKey, String method) => 'scoring:$scorerKey:$method';
+
+/// Reports one scorer's failure to the crash backend, at most once per scorer
+/// per method until it succeeds again — a pass runs every couple of minutes
+/// for as long as an operation is open, so a scorer broken for a four-hour
+/// activation is one event, not a hundred. [ErrorReportingService.recordSuccess]
+/// on the answering path is what re-arms it, making a second event mean a
+/// second outage.
+void _reportScorerFailure(String scorerKey, String method, Object error, StackTrace stackTrace) {
+  ErrorReportingService.reportIfRepeated(
+    _scorerFailureKey(scorerKey, method),
+    ScoringHookFailure(scorerKey, method, error),
+    stackTrace,
+    context: 'scoring:$scorerKey:$method',
+    threshold: 1,
+  );
+}
+
 /// The first top-level field on [spot] whose type spots_panel.dart's/
 /// spots_service.dart's readers don't tolerate, or null if every field
 /// present is shaped as expected. `their.call` and each `refs` entry are
@@ -2455,10 +2497,10 @@ class ExtensionService implements PanelExtensionSource {
         timeout: const Duration(seconds: 10),
       );
       return result is Map ? result.cast<String, dynamic>() : null;
-    } catch (e) {
+    } catch (e, stackTrace) {
       // One contest's scorer blowing up must not cost the operation its core
       // scoring, so failures are per-scorer.
-      debugPrint('[extensions] scoreQsos($scorerKey) failed: $e');
+      _reportScorerFailure(scorerKey, 'scoreQsos', e, stackTrace);
       return null;
     }
   }
@@ -2531,8 +2573,8 @@ class ExtensionService implements PanelExtensionSource {
         any = true;
         notices.addAll(((result['notices'] as List?) ?? const []).whereType<String>());
         alerts.addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
-      } catch (e) {
-        debugPrint('[extensions] scoreQso(${scorer.key}) failed: $e');
+      } catch (e, stackTrace) {
+        _reportScorerFailure(scorer.key, 'scoreQso', e, stackTrace);
       }
     }));
 
@@ -2543,8 +2585,9 @@ class ExtensionService implements PanelExtensionSource {
   /// The same live judgement as [scoreQso], for many not-yet-logged candidates
   /// at once — the Spots Panel annotating every spot on screen against the
   /// operation's log. Returns `{candidateKey: {notices, alerts}}` merged across
-  /// every scorer relevant to [operation], or null when the runtime isn't up or
-  /// no scorer applies.
+  /// every scorer relevant to [operation], or null when NO pass happened — the
+  /// runtime isn't up, or no scorer applies. A scorer that ran and failed is
+  /// not that case: see the return below.
   ///
   /// One bridge crossing per scorer, not per candidate: the runtime folds the
   /// log once and scores every candidate against it (DESIGN.md §4). Calling
@@ -2605,6 +2648,11 @@ class ExtensionService implements PanelExtensionSource {
     // scorers' orderings.
     final merged = <String, ({SplayTreeSet<String> notices, SplayTreeSet<String> alerts})>{};
     var any = false;
+    // Tracked apart from [any] because the two mean opposite things to the
+    // caller. No scorer answering can be a pass that had nothing to say, or a
+    // runtime not up yet; a scorer FAILING is a verdict that should exist and
+    // doesn't — and the board must not keep showing the last one it had.
+    var failed = false;
 
     await Future.wait(scorers.map((scorer) async {
       try {
@@ -2625,6 +2673,7 @@ class ExtensionService implements PanelExtensionSource {
         );
         if (result is! Map) return;
         any = true;
+        ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreCandidates'));
         for (final entry in result.entries) {
           final key = entry.key;
           final value = entry.value;
@@ -2636,14 +2685,22 @@ class ExtensionService implements PanelExtensionSource {
           into.notices.addAll(((value['notices'] as List?) ?? const []).whereType<String>());
           into.alerts.addAll(((value['alerts'] as List?) ?? const []).whereType<String>());
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
         // Per-scorer, like scoreQso: a contest scorer that throws must not cost
         // the spots their core dupe marking.
-        debugPrint('[extensions] scoreCandidates(${scorer.key}) failed: $e');
+        failed = true;
+        _reportScorerFailure(scorer.key, 'scoreCandidates', e, stackTrace);
       }
     }));
 
-    if (!any) return null;
+    // A failure returns the surviving scorers' verdicts — an EMPTY map when
+    // the only scorer was the one that failed — rather than null. Null means
+    // "no pass happened", which the panel answers by keeping the verdicts it
+    // has; doing that here would leave a board struck through by a scorer that
+    // is no longer running. Losing the strikes is the safe direction: an
+    // un-struck worked spot costs a glance, a struck unworked one costs the
+    // contact.
+    if (!any && !failed) return null;
     return {
       for (final entry in merged.entries)
         if (entry.value.notices.isNotEmpty || entry.value.alerts.isNotEmpty)

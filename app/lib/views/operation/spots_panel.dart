@@ -1133,7 +1133,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
         if (!mounted) return;
         // A null result means no scorer ran at all (runtime not up yet, or none
         // applies) — leave the previous verdicts alone rather than un-striking
-        // every worked spot on a transient miss.
+        // every worked spot on a transient miss. A scorer that RAN and failed
+        // is deliberately not that case: it comes back as the surviving
+        // scorers' verdicts, empty if it was the only one, so a board never
+        // keeps strikes put there by a scorer that is no longer answering.
         if (scored != null) {
           setState(() {
             _spotScores = {

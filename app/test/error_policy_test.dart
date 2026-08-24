@@ -28,7 +28,7 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException;
+import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 
@@ -486,6 +486,20 @@ void main() {
     test('reported, not noticed — the operator cannot fix another extension\'s bug', () {
       expect(
         dispositionFor(MalformedSpotDataException('wwff', 'freq', '14285.0')),
+        ErrorDisposition.report,
+      );
+    });
+  });
+
+  group('a scoring hook that failed', () {
+    // Uploaded because the failure is INVISIBLE where it lands: the pass
+    // returns without that scorer's verdicts, so a broken `core` shows as a
+    // board where nothing is struck — which looks exactly like a board of
+    // fresh spots. Not noticed, because an operator mid-activation can do
+    // nothing about an extension's defect.
+    test('reported, not noticed', () {
+      expect(
+        dispositionFor(ScoringHookFailure('core', 'scoreCandidates', TimeoutException('hook timed out'))),
         ErrorDisposition.report,
       );
     });

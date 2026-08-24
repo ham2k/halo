@@ -10,7 +10,10 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+
+import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
 
 /// Records every hook invocation so a test can assert on the arguments, not
 /// just the result.
@@ -29,7 +32,11 @@ class _RecordingHost implements ExtensionHost {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     calls.add((category: category, key: key, method: method, args: args));
-    return results['$category:$key:$method'];
+    final result = results['$category:$key:$method'];
+    // A hook that throws is stored as the exception itself — the failure this
+    // file needs is a scorer that raises, not one that answers oddly.
+    if (result is Exception) throw result;
+    return result;
   }
 
   @override
@@ -79,6 +86,9 @@ Map<String, dynamic> _candidate(String call) => {
     };
 
 void main() {
+  setUp(ErrorReportingService.resetFailureStreaks);
+  tearDown(ErrorReportingService.resetFailureStreaks);
+
   test('the operation reaching the scorer carries the uuid', () async {
     final host = _host({
       'k1abc': {'notices': const [], 'alerts': const ['duplicate']},
@@ -203,4 +213,115 @@ void main() {
 
     expect(result, isNull);
   });
+
+  group('a scorer that fails', () {
+    // The distinction this whole group is about: "nobody ran" and "the one
+    // who knows failed" are opposite instructions to the panel, and before
+    // they were told apart a broken core scorer produced the SAME null as a
+    // runtime still starting — so the board kept every strike the dead
+    // scorer had last put there.
+    test('returns an empty map, not the null that means "keep the old verdicts"', () async {
+      final service = _ServiceWithHost(
+        _RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}),
+      );
+
+      final result = await withScoringBackend(() => service.scoreCandidates(
+            operation: const {'stationCall': 'N0DEV'},
+            operationUuid: 'op-1',
+            candidates: {'worked': _candidate('K1ABC')},
+          ));
+
+      expect(result, isNotNull, reason: 'null would leave the board struck through by a scorer that is gone');
+      expect(result, isEmpty, reason: 'no duplicate alert survives, so every spot reads available');
+    });
+
+    // The half that must NOT change: one contest scorer breaking cannot cost
+    // the operator core's dupe marking, which is the reason the catch is
+    // per-scorer in the first place.
+    test('the scorers that did answer still report', () async {
+      final service = _ServiceWithHost(
+        _RecordingHost({
+          'scoring:core:scoreCandidates': {
+            'worked': {'notices': const [], 'alerts': const ['duplicate']},
+          },
+          'scoring:contest:scoreCandidates': Exception('contest scorer blew up'),
+        }),
+        scopes: const {'core': 'always', 'contest': 'always'},
+      );
+
+      final result = await withScoringBackend(() => service.scoreCandidates(
+            operation: const {'stationCall': 'N0DEV'},
+            operationUuid: 'op-1',
+            candidates: {'worked': _candidate('K1ABC')},
+          ));
+
+      expect(result?['worked']?['alerts'], ['duplicate']);
+    });
+
+    // A pass runs every couple of minutes for as long as an operation is
+    // open. Reporting each one would send a four-hour activation's worth of
+    // identical events for one broken extension.
+    test('reports once, however many passes fail', () async {
+      final service = _ServiceWithHost(
+        _RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}),
+      );
+      final backend = FakeErrorReportingBackend();
+
+      await withErrorHooks(() async {
+        for (var pass = 0; pass < 3; pass++) {
+          await service.scoreCandidates(
+            operation: const {'stationCall': 'N0DEV'},
+            operationUuid: 'op-1',
+            candidates: {'worked': _candidate('K1ABC')},
+          );
+        }
+      }, backend: backend);
+
+      expect(backend.exceptions.length, 1);
+      expect(backend.exceptions.single.error, isA<ScoringHookFailure>());
+      expect((backend.exceptions.single.error as ScoringHookFailure).scorerKey, 'core');
+    });
+
+    // Without the recordSuccess on the answering path the streak never
+    // clears, so a scorer that broke, recovered and broke again would be
+    // reported only the first time — and the second outage would be
+    // invisible for the rest of the session.
+    test('a scorer that recovers and breaks again is reported again', () async {
+      final backend = FakeErrorReportingBackend();
+      final broken = _ServiceWithHost(
+        _RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}),
+      );
+      final working = _ServiceWithHost(
+        _RecordingHost({
+          'scoring:core:scoreCandidates': {
+            'worked': {'notices': const [], 'alerts': const ['duplicate']},
+          },
+        }),
+      );
+
+      await withErrorHooks(() async {
+        for (final service in [broken, working, broken]) {
+          await service.scoreCandidates(
+            operation: const {'stationCall': 'N0DEV'},
+            operationUuid: 'op-1',
+            candidates: {'worked': _candidate('K1ABC')},
+          );
+        }
+      }, backend: backend);
+
+      expect(backend.exceptions.length, 2);
+    });
+  });
+}
+
+/// Runs [body] with the error hooks installed and a throwaway backend, for
+/// the cases that are about the RESULT rather than the report — a scorer
+/// failure reports through ErrorReportingService either way, and without a
+/// backend in place it would reach the real one.
+Future<T> withScoringBackend<T>(Future<T> Function() body) async {
+  late T result;
+  await withErrorHooks(() async {
+    result = await body();
+  }, backend: FakeErrorReportingBackend());
+  return result;
 }

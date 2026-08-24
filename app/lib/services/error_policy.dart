@@ -29,7 +29,7 @@ import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
-import 'extension_service.dart' show MalformedSpotDataException;
+import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'unclean_quit.dart' show UncleanDatabaseQuit;
@@ -256,6 +256,15 @@ class ErrorPolicy {
           'and the spot is already dropped so the panel\'s other sources are unaffected',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is MalformedSpotDataException,
+    ),
+    ErrorRule(
+      id: 'scoring-hook-failed',
+      reason: 'one scoring hook threw or timed out (extension_service.dart\'s ScoringHookFailure) '
+          '— a defect in that extension, and nothing the operator can act on mid-activation; the '
+          'pass drops that scorer\'s verdicts rather than keeping stale ones, so the board reads '
+          'available rather than worked',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is ScoringHookFailure,
     ),
     ErrorRule(
       id: 'website-panel-offline',
