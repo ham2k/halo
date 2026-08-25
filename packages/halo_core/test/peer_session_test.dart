@@ -89,6 +89,11 @@ class _Device {
 
   final String deviceId;
   final String name;
+
+  /// Both devices are the same operator's by default — the ordinary case,
+  /// and what lets an operation neither has shared before cross at all. A
+  /// test about the account gate reassigns this before building its session.
+  String? accountTag = 'account-1';
   late final HaLoDatabase db;
   late final PeerOutbox outbox;
   late final PeerCursorStore cursors;
@@ -108,6 +113,7 @@ class _Device {
         localDeviceId: deviceId,
         localDeviceName: name,
         sharedOperationUuid: sharing,
+        localAccountTag: accountTag,
         localCapabilities: capabilities,
         outbox: outbox,
         cursors: cursors,
@@ -261,15 +267,16 @@ void main() {
       expect(await deviceA.trust.isTrusted('device-b'), isFalse);
     });
 
-    test('different operations connect anyway, and no log crosses between them', () async {
-      // The session belongs to the paired DEVICE: two devices on different
-      // operations establish for ephemeral traffic, and the durable sync is
-      // what stays idle. Refusing them instead would sever GPS/CAT the
-      // moment the two screens disagree about which operation is open.
-      final opA = await deviceA.operations.create(stationCall: 'KI2D');
-      final opB = await deviceB.operations.create(stationCall: 'KI2D');
+    test('an operation open on the peer reaches a device that has never seen it', () async {
+      // The reason receiving follows the PEER's declaration and not a match
+      // between the two: B cannot name opA — it has no such row — so a rule
+      // that waited for both sides to name the same operation would leave a
+      // newly created one permanently unreachable.
+      //
+      // The operator's own two devices, on one account (the harness default)
+      // — the only pair an operation neither has shared before crosses.
+      final opA = await deviceA.operations.create(stationCall: 'KI2D', userTitle: 'Field day');
       deviceA.outbox.activeOperationUuid = opA.uuid;
-      deviceB.outbox.activeOperationUuid = opB.uuid;
       await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
       await deviceA.outbox.scanNow();
       await deviceA.trust.trust('device-b', name: 'Phone');
@@ -277,60 +284,113 @@ void main() {
 
       final links = _LinkPair();
       final sessionA = deviceA.session(links.a, opA.uuid);
-      final sessionB = deviceB.session(links.b, opB.uuid);
+      // Nothing open on B at all — the case the operator actually hits when
+      // they pick up a second device.
+      final sessionB = deviceB.session(links.b, null);
       await sessionA.start();
       await sessionB.start();
       await settle();
 
-      expect(sessionA.state, PeerSessionState.connected);
-      expect(sessionB.state, PeerSessionState.connected);
-      expect(await deviceB.qsos.watchForOperation(opA.uuid).first, isEmpty,
-          reason: "A's log belongs to an operation B is not sharing — it must not cross");
+      expect((await deviceB.operations.get(opA.uuid))?.userTitle, 'Field day',
+          reason: 'the operation itself must arrive, not just its QSOs');
+      expect((await deviceB.qsos.watchForOperation(opA.uuid).first).map((q) => q.theirCall),
+          ['W1AW']);
+      expect(sessionB.state, PeerSessionState.live);
+      expect(sessionA.state, PeerSessionState.live,
+          reason: 'the device being pulled FROM is carrying a log, not idling');
     });
 
-    test('sync engages in place when sharing lines up mid-session', () async {
-      // The whole point of device-bound sessions: switching operations moves
-      // the sync without touching the link.
+    test('a QSO logged after the pull keeps streaming, with nothing shared back', () async {
+      // The live push is gated on the peer having ASKED for this operation,
+      // never on it sharing one back — the puller shares nothing, so a gate
+      // on a matching operation would hand it the backlog once and then go
+      // quiet until the link dropped.
       final opA = await deviceA.operations.create(stationCall: 'KI2D');
-      final opB = await deviceB.operations.create(stationCall: 'KI2D');
       deviceA.outbox.activeOperationUuid = opA.uuid;
-      deviceB.outbox.activeOperationUuid = opB.uuid;
-      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
-      await deviceA.outbox.scanNow();
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
 
       final links = _LinkPair();
       final sessionA = deviceA.session(links.a, opA.uuid);
-      final sessionB = deviceB.session(links.b, opB.uuid);
+      final sessionB = deviceB.session(links.b, null);
       await sessionA.start();
       await sessionB.start();
       await settle();
-      expect(sessionA.state, PeerSessionState.connected, reason: 'sanity: idle until sharing matches');
 
-      // The phone opens the laptop's operation.
-      deviceB.outbox.activeOperationUuid = opA.uuid;
-      await sessionB.setSharing(opA.uuid);
+      // Logged AFTER catch-up finished, so only a live push can carry it.
+      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'K1ABC'}});
+      await deviceA.outbox.scanNow();
+      await sessionA.pushLocal();
+      await settle();
+
+      expect((await deviceB.qsos.watchForOperation(opA.uuid).first).map((q) => q.theirCall),
+          ['K1ABC']);
+    });
+
+    test('sync engages in place when an operation is opened mid-session', () async {
+      // The whole point of device-bound sessions: opening an operation moves
+      // the sync without touching the link.
+      final opA = await deviceA.operations.create(stationCall: 'KI2D');
+      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.trust.trust('device-b', name: 'Phone');
+      await deviceB.trust.trust('device-a', name: 'Laptop');
+
+      final links = _LinkPair();
+      // Neither side is in an operation, so there is nothing to carry yet.
+      final sessionA = deviceA.session(links.a, null);
+      final sessionB = deviceB.session(links.b, null);
+      await sessionA.start();
+      await sessionB.start();
+      await settle();
+      expect(sessionA.state, PeerSessionState.connected, reason: 'sanity: idle with nothing open');
+      expect(sessionB.state, PeerSessionState.connected);
+
+      // The laptop opens its operation.
+      deviceA.outbox.activeOperationUuid = opA.uuid;
+      await deviceA.outbox.scanNow();
+      await sessionA.setSharing(opA.uuid);
       await settle();
 
       expect(sessionB.state, PeerSessionState.live);
       final onB = await deviceB.qsos.watchForOperation(opA.uuid).first;
       expect(onB.map((q) => q.theirCall), ['W1AW'],
-          reason: 'catch-up must run for the newly shared operation over the SAME link');
+          reason: 'catch-up must run for the newly opened operation over the SAME link');
     });
 
-    test('closing the operation idles the sync without dropping the session', () async {
+    test('closing the operation on one device does not stop the other\'s log arriving', () async {
+      // Closing an operation stops what this device SERVES, not what it
+      // receives: the far side is still in that operation and still logging,
+      // and a laptop put down mid-activation must not stop collecting what
+      // the phone works.
       final (sessionA, sessionB, op) = await pairedSessions();
       expect(sessionA.state, PeerSessionState.live, reason: 'sanity');
 
       await sessionA.setSharing(null);
       await settle();
 
+      await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}});
+      await deviceB.outbox.scanNow();
+      await sessionB.pushLocal();
+      await settle();
+
+      expect((await deviceA.qsos.watchForOperation(op).first).map((q) => q.theirCall),
+          contains('K1ABC'));
+    });
+
+    test('with neither side in the operation the sync idles without dropping the session',
+        () async {
+      final (sessionA, sessionB, op) = await pairedSessions();
+      expect(sessionA.state, PeerSessionState.live, reason: 'sanity');
+
+      await sessionA.setSharing(null);
+      await sessionB.setSharing(null);
+      await settle();
+
       expect(sessionA.state, PeerSessionState.connected);
       expect(sessionB.state, PeerSessionState.connected,
-          reason: 'the far side hears the sharing change and idles too');
+          reason: 'each side hears the other\'s sharing change and idles too');
 
-      // A QSO logged on B for the now-unshared operation must not cross.
+      // A QSO logged on B for the now-closed operation must not cross.
       await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}});
       await deviceB.outbox.scanNow();
       await sessionB.pushLocal();
@@ -339,11 +399,75 @@ void main() {
       expect(onA.where((q) => q.theirCall == 'K1ABC'), isEmpty);
 
       // Re-opening it resumes over the same link, from the cursor.
-      await sessionA.setSharing(op);
+      await sessionB.setSharing(op);
       await settle();
       expect((await deviceA.qsos.watchForOperation(op).first).map((q) => q.theirCall).toSet(),
           contains('K1ABC'));
       expect(sessionA.state, PeerSessionState.live);
+    });
+
+    test('an unseen operation is NOT taken from a peer on another account', () async {
+      // The consent line: what two operators have already shared keeps
+      // flowing, but an operation one of them has never seen does not cross
+      // an account boundary — that needs the owner's say-so, and there is
+      // nowhere yet for them to give it.
+      deviceB.accountTag = 'account-2';
+      final opA = await deviceA.operations.create(stationCall: 'KI2D');
+      deviceA.outbox.activeOperationUuid = opA.uuid;
+      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.outbox.scanNow();
+      await deviceA.trust.trust('device-b', name: 'Phone');
+      await deviceB.trust.trust('device-a', name: 'Laptop');
+
+      final links = _LinkPair();
+      final sessionA = deviceA.session(links.a, opA.uuid);
+      final sessionB = deviceB.session(links.b, null);
+      await sessionA.start();
+      await sessionB.start();
+      await settle();
+
+      expect(await deviceB.operations.get(opA.uuid), isNull);
+      expect(await deviceB.qsos.watchForOperation(opA.uuid).first, isEmpty);
+      expect(sessionB.state, PeerSessionState.connected,
+          reason: 'the pair stays up for ephemeral traffic — it is the durable sync that idles');
+    });
+
+    test('an operation BOTH already have still syncs across accounts', () async {
+      // A joint activation the two operators have shared before. Refusing
+      // this would break the pairing they already had.
+      deviceB.accountTag = 'account-2';
+      final (sessionA, sessionB, op) = await pairedSessions();
+
+      await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+      await deviceA.outbox.scanNow();
+      await sessionA.pushLocal();
+      await settle();
+
+      expect((await deviceB.qsos.watchForOperation(op).first).map((q) => q.theirCall), ['W1AW']);
+      expect(sessionB.state, PeerSessionState.live);
+    });
+
+    test('two devices signed in to nothing do not read as one account', () async {
+      // Null must never match null: an account-less pair cannot show they
+      // belong to one operator, and treating them as if they could would
+      // hand the whole gate to anyone willing to sign out.
+      deviceA.accountTag = null;
+      deviceB.accountTag = null;
+      final opA = await deviceA.operations.create(stationCall: 'KI2D');
+      deviceA.outbox.activeOperationUuid = opA.uuid;
+      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.outbox.scanNow();
+      await deviceA.trust.trust('device-b', name: 'Phone');
+      await deviceB.trust.trust('device-a', name: 'Laptop');
+
+      final links = _LinkPair();
+      final sessionA = deviceA.session(links.a, opA.uuid);
+      final sessionB = deviceB.session(links.b, null);
+      await sessionA.start();
+      await sessionB.start();
+      await settle();
+
+      expect(await deviceB.operations.get(opA.uuid), isNull);
     });
 
     test('a device hearing its own announcement refuses itself instead of syncing with itself', () async {
@@ -464,6 +588,7 @@ void main() {
         localDeviceId: 'device-a',
         localDeviceName: 'Laptop',
         sharedOperationUuid: op.uuid,
+        localAccountTag: deviceA.accountTag,
         outbox: deviceA.outbox,
         cursors: deviceA.cursors,
         trust: deviceA.trust,
@@ -479,6 +604,58 @@ void main() {
       final onB = await deviceB.qsos.watchForOperation(op.uuid).first;
       expect(onB, hasLength(25));
       expect(sessionB.state, PeerSessionState.live);
+    });
+
+    test('a serve interrupted mid-backlog does not pin the session at syncing', () async {
+      // `syncing` must mean a batch is really in train. The operator closing
+      // the operation between a full batch and its ack leaves the serve
+      // stalled with no ack coming — and a session that reads "Syncing…"
+      // forever afterwards is a healthy link the operator sees as broken.
+      final op = await deviceA.operations.create(stationCall: 'KI2D');
+      deviceA.outbox.activeOperationUuid = op.uuid;
+      await deviceA.trust.trust('device-b', name: 'Phone');
+      for (var i = 0; i < 6; i++) {
+        await deviceA.qsos.add(op.uuid, {'their': {'call': 'W${i}AW'}, 'startAtMillis': 1000 + i});
+      }
+      await deviceA.outbox.scanNow();
+
+      final links = _LinkPair();
+      final sessionA = PeerSession(
+        link: links.a,
+        localDeviceId: 'device-a',
+        localDeviceName: 'Laptop',
+        sharedOperationUuid: op.uuid,
+        localAccountTag: deviceA.accountTag,
+        outbox: deviceA.outbox,
+        cursors: deviceA.cursors,
+        trust: deviceA.trust,
+        operations: deviceA.operations,
+        qsos: deviceA.qsos,
+        // Below the backlog, so the first batch A sends says hasMore.
+        batchLimit: 2,
+      );
+      await sessionA.start();
+
+      // A hand-driven peer: it shares the operation and answers A's own
+      // catch-up with nothing, so A's RECEIVE direction settles — then it
+      // asks for the backlog and never acks a byte of it.
+      links.b.send(PeerMessage.hello(
+        deviceId: 'device-b',
+        deviceName: 'Phone',
+        operationUuid: op.uuid,
+      ).encode());
+      links.b.send(PeerMessage.trusted().encode());
+      links.b.send(PeerMessage.eventsBatch(op.uuid, const [], hasMore: false).encode());
+      links.b.send(PeerMessage.catchUp(op.uuid, 0).encode());
+      await settle();
+      expect(sessionA.state, PeerSessionState.syncing,
+          reason: 'sanity: a full batch went out and its ack is outstanding');
+
+      await sessionA.setSharing(null);
+      await settle();
+
+      expect(sessionA.state, PeerSessionState.live,
+          reason: 'A serves nothing now, so the abandoned batch must stop counting as in train');
     });
 
     test('a reconnect resumes from the cursor instead of replaying the whole log', () async {
@@ -693,11 +870,12 @@ void main() {
     });
 
     test('a trusted peer pushing events for an UNSHARED operation writes nothing', () async {
-      // The write-side twin of the catch-up guard above: sharing is the
-      // operator's per-operation consent, so even a trusted peer may only
-      // land records in the operation BOTH sides currently share. Without
-      // this, any paired device could rewrite any operation it ever learned
-      // the uuid of.
+      // The write-side twin of the catch-up guard above: a batch is applied
+      // only for the operation this side ASKED for. An unsolicited one aimed
+      // at an operation nobody is catching up on writes nothing — which
+      // bounds a confused or stale peer, not a determined one: declaring the
+      // operation first would get it in (see _onEvents' comment on what this
+      // gate is and is not).
       final opShared = await deviceA.operations.create(stationCall: 'KI2D');
       final opClosed = await deviceA.operations.create(stationCall: 'KI2D/P');
       await deviceA.trust.trust('device-b', name: 'Phone');

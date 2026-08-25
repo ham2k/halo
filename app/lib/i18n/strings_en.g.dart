@@ -2853,8 +2853,8 @@ class Translations$settings$peers$en {
 	/// en: 'Share with my other devices'
 	String get enable => 'Share with my other devices';
 
-	/// en: 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.'
-	String get enabledDescription => 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.';
+	/// en: 'Your paired devices on this network stay connected, the operation each of you has open syncs its contacts as you log — a new one crosses between devices on the same account — and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.'
+	String get enabledDescription => 'Your paired devices on this network stay connected, the operation each of you has open syncs its contacts as you log — a new one crosses between devices on the same account — and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.';
 
 	/// en: 'Off. This device is not visible to others on the network and shares nothing.'
 	String get disabledDescription => 'Off. This device is not visible to others on the network and shares nothing.';
@@ -2928,8 +2928,8 @@ class Translations$settings$peers$en {
 	/// en: 'Allow ${name}?'
 	String pairTitle({required Object name}) => 'Allow ${name}?';
 
-	/// en: 'This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.'
-	String get pairBody => 'This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.';
+	/// en: 'This device is on your network and wants to sync with this one. Whatever operation each of you has open syncs both ways, contacts and all; one this device has never seen crosses only from a device on the same account.'
+	String get pairBody => 'This device is on your network and wants to sync with this one. Whatever operation each of you has open syncs both ways, contacts and all; one this device has never seen crosses only from a device on the same account.';
 
 	/// en: 'Device ID'
 	String get pairIdLabel => 'Device ID';
@@ -2937,8 +2937,8 @@ class Translations$settings$peers$en {
 	/// en: 'Only allow a device you recognise. Anything on this network can ask.'
 	String get pairWarning => 'Only allow a device you recognise. Anything on this network can ask.';
 
-	/// en: 'Open an operation to start sharing it.'
-	String get shareNothingOpen => 'Open an operation to start sharing it.';
+	/// en: 'Open an operation to share it. Whatever your other devices have open still arrives here.'
+	String get shareNothingOpen => 'Open an operation to share it. Whatever your other devices have open still arrives here.';
 
 	/// en: 'Can't reach the local network: ${error}'
 	String problem({required Object error}) => 'Can\'t reach the local network: ${error}';
@@ -5495,7 +5495,7 @@ extension on Translations {
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.peers.title' => 'Peer Devices',
 			'settings.peers.enable' => 'Share with my other devices',
-			'settings.peers.enabledDescription' => 'Your paired devices on this network stay connected, the operation you have open syncs its contacts as you log, and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.',
+			'settings.peers.enabledDescription' => 'Your paired devices on this network stay connected, the operation each of you has open syncs its contacts as you log — a new one crosses between devices on the same account — and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.',
 			'settings.peers.disabledDescription' => 'Off. This device is not visible to others on the network and shares nothing.',
 			'settings.peers.bleEnable' => 'Also connect over Bluetooth',
 			'settings.peers.bleDescription' => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.',
@@ -5520,10 +5520,10 @@ extension on Translations {
 			'settings.peers.forgetTitle' => ({required Object name}) => 'Forget ${name}?',
 			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Allow ${name}?',
-			'settings.peers.pairBody' => 'This device is on your network and wants to share the operation you have open. Contacts will sync both ways while you both have it open.',
+			'settings.peers.pairBody' => 'This device is on your network and wants to sync with this one. Whatever operation each of you has open syncs both ways, contacts and all; one this device has never seen crosses only from a device on the same account.',
 			'settings.peers.pairIdLabel' => 'Device ID',
 			'settings.peers.pairWarning' => 'Only allow a device you recognise. Anything on this network can ask.',
-			'settings.peers.shareNothingOpen' => 'Open an operation to start sharing it.',
+			'settings.peers.shareNothingOpen' => 'Open an operation to share it. Whatever your other devices have open still arrives here.',
 			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Connected to ${device}',

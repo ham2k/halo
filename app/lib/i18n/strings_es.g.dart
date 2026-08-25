@@ -1356,7 +1356,7 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	// Translations
 	@override String get title => 'Dispositivos';
 	@override String get enable => 'Compartir con mis otros dispositivos';
-	@override String get enabledDescription => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.';
+	@override String get enabledDescription => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que cada uno tenga abierta sincroniza sus contactos mientras registras — una nueva solo pasa entre dispositivos de la misma cuenta — y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.';
 	@override String get disabledDescription => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.';
 	@override String get bleEnable => 'Conectar también por Bluetooth';
 	@override String get bleDescription => 'Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.';
@@ -1381,10 +1381,10 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String forgetTitle({required Object name}) => '¿Olvidar ${name}?';
 	@override String get forgetBody => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.';
 	@override String pairTitle({required Object name}) => '¿Permitir ${name}?';
-	@override String get pairBody => 'Este dispositivo está en tu red y quiere compartir la operación que tienes abierta. Los contactos se sincronizarán en ambos sentidos mientras ambos la tengan abierta.';
+	@override String get pairBody => 'Este dispositivo está en tu red y quiere sincronizarse con este. La operación que cada uno tenga abierta se sincroniza en ambos sentidos, con todos sus contactos; una que este dispositivo nunca haya visto solo llega desde un dispositivo de la misma cuenta.';
 	@override String get pairIdLabel => 'ID del dispositivo';
 	@override String get pairWarning => 'Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.';
-	@override String get shareNothingOpen => 'Abre una operación para empezar a compartirla.';
+	@override String get shareNothingOpen => 'Abre una operación para compartirla. Lo que tus otros dispositivos tengan abierto llega aquí igualmente.';
 	@override String problem({required Object error}) => 'No se puede acceder a la red local: ${error}';
 	@override String bleProblem({required Object error}) => 'Bluetooth: ${error}';
 	@override String statusConnected({required Object device}) => 'Conectado a ${device}';
@@ -2865,7 +2865,7 @@ extension on TranslationsEs {
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.peers.title' => 'Dispositivos',
 			'settings.peers.enable' => 'Compartir con mis otros dispositivos',
-			'settings.peers.enabledDescription' => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que tengas abierta sincroniza sus contactos mientras registras, y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.',
+			'settings.peers.enabledDescription' => 'Tus dispositivos emparejados en esta red permanecen conectados, la operación que cada uno tenga abierta sincroniza sus contactos mientras registras — una nueva solo pasa entre dispositivos de la misma cuenta — y tu posición se comparte con ellos cuando no tienen GPS propio. Cada dispositivo debe autorizarse una vez.',
 			'settings.peers.disabledDescription' => 'Desactivado. Este dispositivo no es visible para otros en la red y no comparte nada.',
 			'settings.peers.bleEnable' => 'Conectar también por Bluetooth',
 			'settings.peers.bleDescription' => 'Alcanza tus dispositivos emparejados cuando no hay una red compartida, como en un parque sin WiFi. Usa la radio Bluetooth mientras está activo.',
@@ -2890,10 +2890,10 @@ extension on TranslationsEs {
 			'settings.peers.forgetTitle' => ({required Object name}) => '¿Olvidar ${name}?',
 			'settings.peers.forgetBody' => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.',
 			'settings.peers.pairTitle' => ({required Object name}) => '¿Permitir ${name}?',
-			'settings.peers.pairBody' => 'Este dispositivo está en tu red y quiere compartir la operación que tienes abierta. Los contactos se sincronizarán en ambos sentidos mientras ambos la tengan abierta.',
+			'settings.peers.pairBody' => 'Este dispositivo está en tu red y quiere sincronizarse con este. La operación que cada uno tenga abierta se sincroniza en ambos sentidos, con todos sus contactos; una que este dispositivo nunca haya visto solo llega desde un dispositivo de la misma cuenta.',
 			'settings.peers.pairIdLabel' => 'ID del dispositivo',
 			'settings.peers.pairWarning' => 'Autoriza solo un dispositivo que reconozcas. Cualquier cosa en esta red puede solicitarlo.',
-			'settings.peers.shareNothingOpen' => 'Abre una operación para empezar a compartirla.',
+			'settings.peers.shareNothingOpen' => 'Abre una operación para compartirla. Lo que tus otros dispositivos tengan abierto llega aquí igualmente.',
 			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Conectado a ${device}',

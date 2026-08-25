@@ -120,6 +120,16 @@ class PeerService extends ChangeNotifier {
   /// with the station setup. Advisory only: every consumer still gates on
   /// trust, never on this list.
   List<String> Function()? localCapabilities;
+
+  /// This device's cloud account as an opaque tag, or null when signed in to
+  /// none — what decides whether a peer's UNSEEN operation may be taken
+  /// (`PeerSession`'s header). Read fresh at each session's construction:
+  /// the operator can sign in, out, or switch accounts while peers are up.
+  ///
+  /// A stand-in, never the account itself: the hello crosses before either
+  /// side has decided to trust the other, so anything that can open a socket
+  /// here can read it.
+  String? Function()? localAccountTag;
   final int beaconPort;
 
   /// The BLE radio, or null where the platform has none (web, tests that
@@ -267,6 +277,10 @@ class PeerService extends ChangeNotifier {
   /// is the whole consent, and whichever operation is open follows it. That
   /// is what makes the field case work — open the app on a second device and
   /// it joins, with nothing to remember to switch on per activation.
+  ///
+  /// This decides what this device SERVES. What it receives follows the
+  /// peer's open operation instead, so an operation created over there
+  /// arrives here whether or not anything is open (`PeerSession`'s header).
   Future<void> setOpenOperation(String? operationUuid) async {
     _openOperationUuid = operationUuid;
     await _apply();
@@ -737,6 +751,7 @@ class PeerService extends ChangeNotifier {
       localDeviceId: localDeviceId,
       localDeviceName: localDeviceName,
       localCapabilities: localCapabilities?.call() ?? const [],
+      localAccountTag: localAccountTag?.call(),
       sharedOperationUuid: _openOperationUuid,
       outbox: outbox,
       cursors: cursors,

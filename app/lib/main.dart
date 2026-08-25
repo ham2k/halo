@@ -71,6 +71,7 @@ import 'services/cat/cat_service.dart';
 import 'services/cat/equipment.dart' show EquipmentStatus;
 import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
+import 'services/peer/peer_account_tag.dart';
 import 'services/peer/peer_service.dart';
 import 'views/peer_pairing_dialog.dart';
 import 'services/inbound_qso_listener_service.dart';
@@ -1625,6 +1626,7 @@ class HaLoServices {
     // first callsign the operator sets.
     peerService.localDeviceName = settings.peerDeviceName;
     peerService.localCapabilities = () => [if (cat.radio1 != null) 'cat'];
+    peerService.localAccountTag = () => peerAccountTag(settings);
     // A peer link is expected to come and go — a device carried out of
     // range, a park with no WiFi — so both edges are news the operator can
     // act on, and neither is an error. Keyed per device so two peers do not

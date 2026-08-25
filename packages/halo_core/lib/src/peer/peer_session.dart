@@ -11,9 +11,32 @@
 //   - Ephemeral messages (a GPS fix, a radio's VFO, a tune request) — sent
 //     any time the session is established, latest-value-wins, never
 //     persisted, delivered through [onEphemeral].
-//   - The durable QSO/operation sync, which engages only WHILE both sides
-//     share the same operation ([setSharing] / the `sharing` message) and
-//     disengages — without tearing the session down — when they stop.
+//   - The durable QSO/operation sync, whose two directions are INDEPENDENT
+//     (HALO-365): what this device receives follows the operation the PEER
+//     declares it is sharing, and what it sends follows its own
+//     ([setSharing] / the `sharing` message).
+//
+// What may be received is narrower than what a peer offers (HALO-365). An
+// operation this device has never seen is taken only from a peer signed in
+// to the SAME cloud account — one of the operator's own devices. From any
+// other peer, and from every peer when neither side is signed in at all,
+// only an operation this device already has will sync: what two operators
+// have already shared keeps flowing, and nothing new crosses between
+// accounts without a consent step that does not exist yet.
+//
+// Stopping is asymmetric with it: closing an operation stops what this
+// device SERVES, never what it receives, since the peer is still in that
+// operation and still logging. The master switch and unpairing are what
+// stop the inbound side.
+//
+// That asymmetry is what lets an operation created on one device reach the
+// other at all. A device can only ever declare an operation it HAS, so
+// requiring the two declarations to match — as this once did — left a brand
+// new operation unreachable: the far side had nothing to name. Following the
+// peer's declaration instead, it pulls the operation and its log, and the
+// operator finds it in their list. It stays receive-only there until they
+// open it: the outbox only ever holds the operation this device has open, so
+// nothing is served for an operation the operator is not in.
 //
 // The shape of a session, in order:
 //   1. Both sides send `hello`, unprompted, on connect.
@@ -24,8 +47,8 @@
 //   4. Nothing flows until BOTH have — see [_maybeEstablish]. Trust is
 //      per-device and one-directional in the store, so a peer this operator
 //      welcomed must still wait to be welcomed back.
-//   5. Established. Whenever both sides' shared operation is the same one,
-//      each asks for the other's outbox after its own durable cursor,
+//   5. Established. Whenever the peer names an operation it is sharing, this
+//      side asks for that operation's outbox after its own durable cursor,
 //      applies what comes back, and acks; the acked side sends the next
 //      batch, until there is nothing left and the session reads as caught
 //      up. A `sharing` change re-runs this against the new operation.
@@ -53,13 +76,13 @@ enum PeerSessionState {
   needsPairing,
 
   /// Mutually trusted. Ephemeral traffic flows; the durable sync is idle
-  /// because the two sides are not sharing the same operation right now.
+  /// because neither side has named an operation to carry.
   connected,
 
-  /// Mutually trusted and catching up on the operation both sides share.
+  /// Mutually trusted, with a batch in train in either direction.
   syncing,
 
-  /// Caught up on the shared operation; local writes stream as they happen.
+  /// Caught up in both directions; local writes stream as they happen.
   live,
 
   /// Terminal, with [refusedReason] set — a version mismatch, this device
@@ -78,6 +101,10 @@ class PeerSession {
   /// What this side advertises it can offer the peer (`gps`, `cat`) —
   /// carried in the hello, surfaced from [peer] on the far side.
   final List<String> localCapabilities;
+
+  /// This device's account stand-in, or null when signed in to none — see
+  /// [PeerHello.accountTag] for what it may and may not be.
+  final String? localAccountTag;
 
   final PeerOutbox outbox;
   final PeerCursorStore cursors;
@@ -125,6 +152,7 @@ class PeerSession {
     required this.operations,
     required this.qsos,
     String? sharedOperationUuid,
+    this.localAccountTag,
     this.localCapabilities = const [],
     this.batchLimit = defaultBatchLimit,
     this.onChanged,
@@ -145,13 +173,12 @@ class PeerSession {
   /// pairing prompt reads this.
   PeerHello? get peer => _peer;
 
+  /// What each side has open. [_localSharing] is the only operation this
+  /// device SERVES; [_peerSharing] is the only one it RECEIVES, whether or
+  /// not it is the same one — an operation this device has never seen can
+  /// only ever arrive under the name its owner gives it.
   String? _localSharing;
   String? _peerSharing;
-
-  /// The operation BOTH sides currently share, or null — the only operation
-  /// the durable sync may touch.
-  String? get syncedOperationUuid =>
-      _localSharing != null && _localSharing == _peerSharing ? _localSharing : null;
 
   bool _localTrusts = false;
   bool _peerTrustsUs = false;
@@ -160,9 +187,26 @@ class PeerSession {
   /// Mutual trust declared, both ways — the gate on every kind of data.
   bool get established => _established;
 
-  /// Which operation the current catch-up was requested for. Also the guard
-  /// against requesting twice: null while none is in train.
+  /// Which operation this side has asked the peer for — a mirror of the
+  /// peer's declaration that outlives the catch-up itself, since the same
+  /// operation keeps arriving as live pushes afterwards. Two jobs: it
+  /// suppresses a duplicate request when nothing moved, and it is the
+  /// admission gate in [_onEvents]. Null only while the peer names nothing.
   String? _catchUpOperation;
+
+  /// The operation the PEER last asked this side for, or null. Only ever set
+  /// to something [_onCatchUp] accepted, so it names an operation this
+  /// device has open — the send direction's counterpart to
+  /// [_catchUpOperation], and what tells [_pushLocal] there is somebody
+  /// listening. A peer that never asked is not owed a live push.
+  String? _servingOperation;
+
+  /// Whether each direction has a batch in train — what [_refreshSyncState]
+  /// reads. Both must be quiet for the session to read as caught up, or the
+  /// device doing the SENDING would report itself idle while it feeds the
+  /// other one a whole log.
+  bool _receiveBusy = false;
+  bool _serveBusy = false;
 
   /// The highest outbox `seq` this side has put on the wire, per operation.
   /// An optimization only: it saves resending, but the peer's own cursor is
@@ -189,6 +233,7 @@ class PeerSession {
       deviceId: localDeviceId,
       deviceName: localDeviceName,
       operationUuid: _localSharing,
+      accountTag: localAccountTag,
       capabilities: localCapabilities,
     ));
     return Future.value();
@@ -218,6 +263,12 @@ class PeerSession {
   Future<void> setSharing(String? operationUuid) async {
     if (_localSharing == operationUuid || _closed) return;
     _localSharing = operationUuid;
+    // Whatever was being served is over: the peer re-requests on hearing the
+    // change below, and until it does, a stale [_serveBusy] left over from an
+    // abandoned batch would read as a batch in train the moment this device
+    // returns to the same operation.
+    _servingOperation = null;
+    _serveBusy = false;
     _send(PeerMessage.sharing(operationUuid));
     await _enqueue(_syncStateChanged);
   }
@@ -344,25 +395,75 @@ class PeerSession {
     await _syncStateChanged();
   }
 
-  /// Re-derives what the durable sync should be doing from the two sharing
-  /// declarations. Runs on establish and on either side's `sharing` change.
+  /// Re-derives what the RECEIVE direction should be doing from the peer's
+  /// sharing declaration. Runs on establish and on either side's `sharing`
+  /// change — this side's own change matters here only because it can turn
+  /// the session from carrying nothing into carrying something.
   Future<void> _syncStateChanged() async {
     if (!_established || _closed) return;
-    final shared = syncedOperationUuid;
-    if (shared == null) {
-      // Any catch-up in train is for an operation no longer shared. Batches
-      // still in flight name their operation, so the guards in _onEvents /
-      // _onCatchUp make them harmless; the request state just resets.
+    final incoming = _peerSharing;
+    if (incoming == null) {
+      // Any catch-up in train is for an operation the peer has since left.
+      // Batches still in flight name their operation, so the guards in
+      // _onEvents / _onCatchUp make them harmless; the request state resets.
       _catchUpOperation = null;
+      _receiveBusy = false;
+      _refreshSyncState();
+      return;
+    }
+    if (_catchUpOperation == incoming) {
+      _refreshSyncState();
+      return;
+    }
+    if (!await _mayReceive(incoming)) {
+      // Silently, and without refusing the session: the pair stays up for
+      // ephemeral traffic and for any operation they DO share. Nothing is
+      // requested, so the guard in _onEvents drops an unsolicited batch.
+      _catchUpOperation = null;
+      _receiveBusy = false;
+      _refreshSyncState();
+      return;
+    }
+    _catchUpOperation = incoming;
+    _receiveBusy = true;
+    _refreshSyncState();
+    final peerDeviceId = _peer!.deviceId;
+    final since = await cursors.lastAppliedSeq(peerDeviceId, incoming);
+    _send(PeerMessage.catchUp(incoming, since));
+  }
+
+  /// Whether an operation the peer offers may be taken — see this file's
+  /// header. Re-asked on every change of what the peer shares, never cached:
+  /// the answer moves when an operation arrives here by another route.
+  ///
+  /// Deliberately NOT re-asked when that happens without the peer moving —
+  /// an operation landing from cloud sync while the peer sits in it engages
+  /// nothing until either side next changes what it has open, or the link
+  /// reconnects. It is already arriving over the other channel.
+  Future<bool> _mayReceive(String operationUuid) async {
+    if (_peer?.sameAccountAs(localAccountTag) ?? false) return true;
+    return await operations.get(operationUuid) != null;
+  }
+
+  /// Both directions in one label. `connected` only when there is nothing to
+  /// carry either way; anything in train is `syncing`; quiet with something
+  /// shared is `live`.
+  ///
+  /// Each busy flag counts only while its own direction is still running.
+  /// A serve interrupted mid-backlog — the operator closes the operation
+  /// between a full batch and its ack — leaves [_serveBusy] set with no ack
+  /// coming to clear it, and reading it unconditionally would pin a healthy
+  /// session at `syncing` for as long as it lives.
+  void _refreshSyncState() {
+    if (!_established || _closed) return;
+    final receiving = _catchUpOperation != null;
+    final serving = _servingOperation != null && _servingOperation == _localSharing;
+    if (!receiving && !serving) {
       _setState(PeerSessionState.connected);
       return;
     }
-    if (_catchUpOperation == shared) return;
-    _catchUpOperation = shared;
-    _setState(PeerSessionState.syncing);
-    final peerDeviceId = _peer!.deviceId;
-    final since = await cursors.lastAppliedSeq(peerDeviceId, shared);
-    _send(PeerMessage.catchUp(shared, since));
+    final busy = (receiving && _receiveBusy) || (serving && _serveBusy);
+    _setState(busy ? PeerSessionState.syncing : PeerSessionState.live);
   }
 
   /// The peer wants this device's outbox for an operation from `sinceSeq` on.
@@ -372,12 +473,17 @@ class PeerSession {
     // not extract the log by skipping the handshake.
     if (!_localTrusts) return;
     final operationUuid = message.operationUuid;
-    // Only the operation this side currently shares is served. A peer asking
-    // for anything else — stale, confused, or probing — gets silence, and
-    // its own _syncStateChanged re-requests when sharing next lines up.
+    // Only the operation this side currently has open is served. A peer
+    // asking for anything else — stale, confused, or probing — gets silence,
+    // and its own _syncStateChanged re-requests when this side next opens it.
     if (operationUuid == null || operationUuid != _localSharing) return;
     final sinceSeq = message.intSinceSeq ?? 0;
     _lastSentSeq[operationUuid] = sinceSeq;
+    // Somebody is listening: from here on, local writes push live to them,
+    // whether or not they share anything back.
+    _servingOperation = operationUuid;
+    _serveBusy = true;
+    _refreshSyncState();
     await _sendBatchAfter(operationUuid, sinceSeq);
   }
 
@@ -385,6 +491,8 @@ class PeerSession {
     final rows = await outbox.eventsSince(operationUuid, sinceSeq, limit: batchLimit);
     if (rows.isEmpty) {
       _send(PeerMessage.eventsBatch(operationUuid, const [], hasMore: false));
+      _serveBusy = false;
+      _refreshSyncState();
       return;
     }
     final payload = [
@@ -396,20 +504,34 @@ class PeerSession {
     // `hasMore` is honest about the batch limit, not about whether the peer
     // has caught up with a log still being written: a full batch means ask
     // again, and the peer does exactly that on ack.
-    _send(PeerMessage.eventsBatch(operationUuid, payload, hasMore: rows.length >= batchLimit));
+    final hasMore = rows.length >= batchLimit;
+    _send(PeerMessage.eventsBatch(operationUuid, payload, hasMore: hasMore));
+    _serveBusy = hasMore;
+    _refreshSyncState();
   }
 
   Future<void> _onEvents(PeerMessage message) async {
     if (!_localTrusts || _peer == null) return;
     final operationUuid = message.operationUuid;
-    // A batch for an operation this side is not syncing any more — sharing
-    // moved while it was in flight. Dropped WITHOUT advancing any cursor:
-    // the records are durable and will be re-served when sharing lines up
-    // again, from the cursor exactly where it stands.
-    if (operationUuid == null || operationUuid != syncedOperationUuid) return;
+    // Only the catch-up actually in train is applied: a batch must name the
+    // operation this side asked for, which is the one the peer declared.
+    // Anything else — a batch still in flight when sharing moved, an
+    // unsolicited push at an operation nobody asked about — is dropped
+    // WITHOUT advancing any cursor, so its records are re-served from where
+    // the cursor stands if sharing later lines up.
+    //
+    // What this does NOT do is bound a trusted peer to one operation: the
+    // declaration it is checked against is the PEER's, so a paired device
+    // can reach any operation whose uuid it knows by declaring it first.
+    // That is inside the protocol's stated trust model, not outside it —
+    // the same device can already tune this station's radio, and nothing
+    // here authenticates anyone (see peer_protocol.dart's header). The
+    // gate is against a misdirected batch, not against a hostile peer.
+    if (operationUuid == null || operationUuid != _catchUpOperation) return;
     final events = message.events;
     if (events.isEmpty) {
-      _setState(message.hasMore ? PeerSessionState.syncing : PeerSessionState.live);
+      _receiveBusy = message.hasMore;
+      _refreshSyncState();
       return;
     }
 
@@ -450,7 +572,8 @@ class PeerSession {
 
     await cursors.advanceTo(_peer!.deviceId, operationUuid, highestSeq);
     _send(PeerMessage.ack(operationUuid, highestSeq));
-    _setState(message.hasMore ? PeerSessionState.syncing : PeerSessionState.live);
+    _receiveBusy = message.hasMore;
+    _refreshSyncState();
   }
 
   Future<void> _onAck(PeerMessage message) async {
@@ -465,10 +588,13 @@ class PeerSession {
   }
 
   Future<void> _pushLocal() async {
-    if (_state != PeerSessionState.live && _state != PeerSessionState.syncing) return;
-    if (!_established) return;
-    final operationUuid = syncedOperationUuid;
-    if (operationUuid == null) return;
+    if (!_established || _closed) return;
+    final operationUuid = _localSharing;
+    // Gated on the PEER having asked for this operation, not on what it
+    // shares back: the device a peer is pulling FROM sees that peer sharing
+    // nothing, and gating on a shared operation would hand it the backlog
+    // once and then never another QSO until the link dropped.
+    if (operationUuid == null || operationUuid != _servingOperation) return;
     await _sendBatchAfter(operationUuid, _lastSentSeq[operationUuid] ?? 0);
   }
 

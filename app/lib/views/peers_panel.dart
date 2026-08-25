@@ -195,8 +195,9 @@ class _PeersPanelState extends State<PeersPanel> {
               leading: Icon(MdiIcons.bluetooth),
               title: Text(t.bleActive),
             ),
-        // Devices connect regardless now — this hint is about the QSO sync,
-        // which still follows whichever operation is open.
+        // Devices connect regardless now, and an operation open on a peer
+        // arrives here whatever this device has open — so this hint is only
+        // about what this device SENDS, which still follows the open one.
         if (enabled && _peers.sharedOperationUuid == null)
           ListTile(
             leading: Icon(MdiIcons.informationOutline),

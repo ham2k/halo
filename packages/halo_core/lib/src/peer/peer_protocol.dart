@@ -27,6 +27,10 @@ import 'dart:convert';
 /// devices, and "refuse and say so" is a better failure than two devices
 /// silently disagreeing about what a field means.
 ///
+/// Adding a FIELD does not qualify either, for the same reason: a peer that
+/// does not know `acct` reads a hello without it, which is exactly what an
+/// account-less device sends, and falls back to the narrower behaviour.
+///
 /// v2: sessions bind to the paired DEVICE, not to one operation.
 /// `hello.operationUuid` became optional, [sharing] moves an established
 /// session between operations in place, and the sync messages name their
@@ -129,6 +133,7 @@ class PeerMessage {
     required String deviceId,
     required String deviceName,
     String? operationUuid,
+    String? accountTag,
     List<String> capabilities = const [],
   }) =>
       PeerMessage(PeerMessageType.hello, {
@@ -136,6 +141,7 @@ class PeerMessage {
         'deviceId': deviceId,
         'deviceName': deviceName,
         'operationUuid': ?operationUuid,
+        'acct': ?accountTag,
         if (capabilities.isNotEmpty) 'caps': capabilities,
       });
 
@@ -244,11 +250,15 @@ class PeerMessage {
     final deviceId = fields['deviceId'];
     if (version == null || deviceId is! String || deviceId.isEmpty) return null;
     final caps = fields['caps'];
+    final accountTag = fields['acct'];
     return PeerHello(
       protocolVersion: version,
       deviceId: deviceId,
       deviceName: (fields['deviceName'] as String?) ?? '',
       operationUuid: operationUuid,
+      // Blank is absent: an empty tag must never compare equal to another
+      // empty one, or two account-less devices would read as one account.
+      accountTag: accountTag is String && accountTag.isNotEmpty ? accountTag : null,
       capabilities: caps is List ? caps.whereType<String>().toList() : const [],
     );
   }
@@ -267,6 +277,17 @@ class PeerHello {
   /// it had nothing open.
   final String? operationUuid;
 
+  /// An opaque, stable stand-in for the cloud account this device is signed
+  /// in to, or null when it is signed in to none. Only ever COMPARED, never
+  /// resolved back to an account: the app layer decides what it is derived
+  /// from, and the hello crosses before trust, so it must not carry anything
+  /// worth reading off the wire.
+  ///
+  /// Null never matches null. Two devices with no account cannot show they
+  /// belong to one operator, and treating them as if they had would let any
+  /// account-less pair share everything.
+  final String? accountTag;
+
   /// Self-declared feature offers (`gps`, `cat`) — what the Peers panel
   /// shows and the CAT picker keys off. Advisory: honoring a capability is
   /// still gated on trust, never on this list.
@@ -277,8 +298,14 @@ class PeerHello {
     required this.deviceId,
     required this.deviceName,
     this.operationUuid,
+    this.accountTag,
     this.capabilities = const [],
   });
+
+  /// Whether [other] is signed in to the same account as this device. False
+  /// whenever either side has none — see [accountTag].
+  bool sameAccountAs(String? localAccountTag) =>
+      localAccountTag != null && localAccountTag.isNotEmpty && localAccountTag == accountTag;
 }
 
 /// A peer's GPS fix. [atMillis] is the SENDER's real wall clock at the fix —
