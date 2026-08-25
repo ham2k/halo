@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"149":
   changes:
     - Tap a date header in the QSO list to open the operation info
     - Status bar shows an offline icon; tap it for detail and a retry
