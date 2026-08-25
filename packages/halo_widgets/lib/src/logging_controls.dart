@@ -4964,6 +4964,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   dropdownMenuEntries: _bandMenuEntries,
                   onSelected: (value) {
                     if (value == null) return;
+                    // A pick is a selection, never a filter. DropdownMenu
+                    // writes the picked label into the controller BEFORE this
+                    // fires, while `_band` still holds the old value, so
+                    // `_onDropdownTextChanged`'s `text != selection` test reads
+                    // that write as typed text. Left set, the filter narrows the
+                    // menu to the entry just picked — and, worse, DropdownMenu
+                    // only syncs the field to a changed `initialSelection` when
+                    // that value is among the entries it was given, so the
+                    // field then can't follow a later band-plan or radio change
+                    // and strands a stale value that the next commit pushes
+                    // back over the real one. Assigned outside `setState` on
+                    // the strength of [_applyBandPick] rebuilding
+                    // unconditionally — a guard added there would leave the
+                    // menu narrowed with nothing to repaint it.
+                    _bandFilter = '';
                     // A discrete dropdown pick, not a keystroke — push to the
                     // VFO immediately rather than debouncing like frequency
                     // typing (see _applyBandPick).
@@ -5067,6 +5082,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   dropdownMenuEntries: _modeMenuEntries,
                   onSelected: (value) {
                     if (value == null) return;
+                    // Same clear, same reason, and the same dependency on
+                    // [_setMode] rebuilding unconditionally, as the Band
+                    // dropdown above.
+                    _modeFilter = '';
                     _setMode(value);
                     _callFocus.requestFocus();
                   },

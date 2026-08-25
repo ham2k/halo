@@ -7769,6 +7769,92 @@ void main() {
     expect(fakeRadio.vfoA.mode, 'FT8');
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('a mode picked from the menu is a selection, not a filter', (tester) async {
+    // The trap: DropdownMenu writes the picked label into the controller
+    // before `onSelected` runs, so the pick looks exactly like typed text.
+    // Kept as a filter it narrows the menu to the one entry picked, and
+    // DropdownMenu then refuses to sync the field to a changed
+    // `initialSelection` it can't find among those entries — so the band
+    // plan's next guess never reaches the field, and the commit on the way
+    // out pushes the stale mode back over it.
+    fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7050');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT4');
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.widgetWithText(MenuItemButton, 'CW').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+    expect(fakeRadio.vfoA.mode, 'CW');
+
+    // Tuning on: the band plan's guess for 7200 has to reach the field.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7200');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+
+    // …and the menu still offers every enabled mode, not just the one picked.
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.widgetWithText(MenuItemButton, 'FT8').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a band picked from the menu is a selection, not a filter', (tester) async {
+    // Same trap as the Mode dropdown above, on the sibling that shares the
+    // filter machinery.
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.widgetWithText(MenuItemButton, '40m').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(fakeRadio.vfoA.band, '40m');
+
+    // A frequency names its own band, and the field has to follow it — which
+    // it can't while the entries are narrowed to the band just picked.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).controller!.text, '20m');
+
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.widgetWithText(MenuItemButton, '80m').hitTestable(), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('on a touch platform, where nothing else clears it, a mode pick still is not a filter', (tester) async {
+    // The severe form: a dropdown field can't take focus on iOS/Android, so
+    // neither the focus-gain clear nor the blur commit — the two paths that
+    // paper over a stray filter on desktop — ever runs. A filter left by the
+    // pick would pin the menu to that one entry for the rest of the session.
+    fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.widgetWithText(MenuItemButton, 'CW').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7050');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT4');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
   testWidgets('an open Band menu holds its scroll position across the clock-tick rebuilds', (tester) async {
     // A selected band matters: the rebuild-time re-scroll only fires when
     // the field text matches an entry. Null enabled lists → the full
