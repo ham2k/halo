@@ -14,7 +14,6 @@ upcoming:
     - Tap a date header in the QSO list to open the operation info
     - Status bar shows an offline icon; tap it for detail and a retry
     - Settings has a new Help & Resources section with community links
-    - Settings rows now open a dialog to edit, instead of typing in place
     - "Windows: updating no longer stalls with the old app still running"
 
 "148":
