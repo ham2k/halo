@@ -5,6 +5,8 @@
 // what a listener hands back. Kept out of the `_io`/`_stub` pair so the stub,
 // the tests and any UI can name these types without pulling in `dart:io`.
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 /// One device announcing "I am here, dial me at this port" — plus which
 /// operation it is sharing, if any. Deliberately tiny: a beacon goes out
 /// every few seconds to every device on the segment, and it carries no log
@@ -88,10 +90,15 @@ class PeerBeacon {
 /// runs, it becomes a setting rather than a different constant.
 const int peerBeaconPort = 7373;
 
-/// How often a lost beacon socket tries to bind again. Matches the announce
-/// interval: a socket back sooner than the next beacon buys nothing, and one
-/// back later costs the operator a round of discovery.
-const rebindInterval = Duration(seconds: 3);
+/// The ceiling on how long a socket-less beacon listener waits between
+/// attempts. It climbs from a second, so an ordinary blip recovers within
+/// one beacon interval; the cap is what stops a port that is never going to
+/// bind — a sandbox denial, another app holding it — from costing an attempt
+/// every few seconds for the length of a field day.
+///
+/// The cost is at the tail: coming back from a long outage can take this
+/// long to notice. One constant, if the field says otherwise.
+const rebindBackoffCap = Duration(seconds: 60);
 
 /// Sends and receives [PeerBeacon]s on one shared socket.
 ///
@@ -103,8 +110,17 @@ abstract class PeerBeaconSocket {
 
   /// Whether a socket is currently bound. False between losing one and
   /// getting it back — what lets a caller retire a failure it reported once
-  /// discovery is working again.
+  /// discovery is working again. Says nothing about whether sends are
+  /// getting anywhere; nothing about a UDP send can.
   bool get healthy;
+
+  /// Every delay this socket has waited between attempts to get one, in
+  /// order. Exposed because the ladder is a decision — attempts space out,
+  /// and cap — that nothing else about the socket's behaviour reveals: a
+  /// fixed interval and a growing one are indistinguishable from the
+  /// outside, and both look correct.
+  @visibleForTesting
+  List<Duration> get retryDelays;
 
   /// Broadcasts [beacon] to the local segment. Never throws — a send on a
   /// downed interface is normal, and discovery is retried on a timer anyway.

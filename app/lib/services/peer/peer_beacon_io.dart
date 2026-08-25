@@ -21,6 +21,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../../tools/backoff.dart';
 import 'peer_beacon_types.dart';
 
 /// Opens the shared beacon socket on [port].
@@ -29,31 +30,35 @@ import 'peer_beacon_types.dart';
 /// same contract `udpBroadcastDatagrams` uses: a port held by another app, or
 /// a sandbox refusing the bind, must leave the caller with "nothing found"
 /// and a reason instead of an exception out of a UI callback.
+///
+/// A socket that could not be opened is NOT a dead one. The returned object
+/// keeps trying on the same backoff a socket lost mid-session uses, because
+/// the two are the same failure and differ only in whether the network
+/// happened to be down at the moment the operator turned peer sync on.
 Future<PeerBeaconSocket> openPeerBeaconSocket({
   int port = peerBeaconPort,
   @visibleForTesting String broadcastAddress = '255.255.255.255',
 }) async {
-  final RawDatagramSocket socket;
-  try {
-    socket = await _bind(port);
-  } catch (e, st) {
-    // Deferred to the FIRST listener rather than added now. A broadcast
-    // controller drops anything added while nobody is subscribed, and the
-    // caller cannot possibly have subscribed yet — so adding the error here
-    // (and closing) discards the only signal that the bind failed, leaving
-    // the operator with an empty peer list indistinguishable from an empty
-    // room. That is precisely the failure this reports.
-    return _DeadBeaconSocket(Stream<PeerBeacon>.error(e, st));
-  }
-  return _PeerBeaconSocket(socket, StreamController<PeerBeacon>.broadcast(), port, broadcastAddress);
+  final socket = _PeerBeaconSocket(port, broadcastAddress);
+  // Awaited so an ordinary open still behaves exactly as it always did: the
+  // caller gets a socket that is already bound and listening, not one that
+  // will be a tick later.
+  await socket.open();
+  return socket;
 }
 
 class _PeerBeaconSocket implements PeerBeaconSocket {
-  _PeerBeaconSocket(RawDatagramSocket socket, this._controller, this._port, this._broadcastAddress) {
-    _attach(socket);
+  _PeerBeaconSocket(this._port, this._broadcastAddress) {
+    // Deferred to the FIRST listener rather than added when it happens. A
+    // broadcast controller drops anything added while nobody is subscribed,
+    // and the opening failure lands before the caller can possibly have
+    // subscribed — so adding it there would discard the only signal that the
+    // socket never opened, leaving the operator with an empty peer list
+    // indistinguishable from an empty room.
+    _controller = StreamController<PeerBeacon>.broadcast(onListen: _flushPendingFailure);
   }
 
-  final StreamController<PeerBeacon> _controller;
+  late final StreamController<PeerBeacon> _controller;
   final int _port;
 
   /// Overridden only by tests, which need a deterministic destination —
@@ -73,16 +78,78 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
   /// and a rebind driven by it would never run in exactly that state.
   Timer? _rebindTimer;
   bool _rebinding = false;
-  String? _rebindFailure;
+  String? _bindFailure;
 
   /// Set by a send, cleared by the failure a send reports. Still set at the
   /// next tick means the previous datagram left the machine — the only
-  /// evidence of a working send there is, since a UDP send that succeeds
-  /// says nothing at all.
+  /// evidence a UDP send ever offers, since a send that works says nothing.
   bool _sentLastTick = false;
-  int _sendFailures = 0;
   String? _sendFailure;
+
+  /// The two halves of the retry ladder, added together to space attempts.
+  ///
+  /// Kept apart because they clear on different evidence, and a single
+  /// counter gets one of them wrong. Binds clear when one succeeds. Sends
+  /// cannot: an outage is a loop of SUCCEEDING binds and failing sends —
+  /// binding wants no route, sending does — so a counter that reset on a
+  /// bind would sit at the bottom rung rebinding forever while the Wi-Fi is
+  /// off. Only [_noteWorking] clears the send half.
+  int _bindFailures = 0;
+  int _sendFailures = 0;
+
+  Duration get _retryDelay => exponentialBackoff(_bindFailures + _sendFailures, cap: rebindBackoffCap);
+
+  @override
+  final List<Duration> retryDelays = [];
+
+  /// The opening failure, held until somebody subscribes.
+  Object? _pendingFailure;
+  StackTrace? _pendingFailureStack;
+
+  /// The reason last put on [beacons], so an outage is reported once.
+  /// [PeerService] uploads a crash report for anything arriving there, and a
+  /// ladder that re-reported every rung would rebuild the storm. Keyed on the
+  /// reason rather than a flag: a failure that CHANGES — another app taking
+  /// the port after a permission denial — is a different fault and has to
+  /// get through.
+  String? _surfacedFailure;
   bool _closed = false;
+
+  void _flushPendingFailure() {
+    final failure = _pendingFailure;
+    if (failure == null || _controller.isClosed) return;
+    // Held, not dropped, while nobody is listening — which is the state it
+    // is written in, and the whole reason it is held at all.
+    if (!_controller.hasListener) return;
+    _controller.addError(failure, _pendingFailureStack ?? StackTrace.current);
+    // Delivered, so a listener that comes and goes is not handed a stale
+    // failure again; [_surfacedFailure] is what holds the once-per-outage
+    // rule for as long as the outage lasts.
+    _pendingFailure = null;
+    _pendingFailureStack = null;
+  }
+
+  /// The first attempt. Its failure is reported the way every later one is
+  /// kept silent — see [_surfacedFailure].
+  Future<void> open() => _rebind();
+
+  /// Evidence the socket is doing its job, from either direction: a datagram
+  /// that arrived, or one that left without the failure a send reports.
+  ///
+  /// A RECEIVED datagram counts, and has to. A device whose link server
+  /// never bound is never asked to announce at all ([PeerService] suppresses
+  /// that tick), and a VPN or an isolating access point can block outbound
+  /// broadcast while inbound beacons still arrive — with only sends counting,
+  /// both of those pin the ladder at its ceiling for the session and spend it
+  /// deaf, over a socket that was receiving the whole time.
+  void _noteWorking() {
+    if (_sendFailures > 0) {
+      debugPrint('[peer] beacon socket working again, after $_sendFailures failed');
+    }
+    _sendFailures = 0;
+    _sendFailure = null;
+    _surfacedFailure = null;
+  }
 
   void _attach(RawDatagramSocket socket) {
     // Published only once the socket is both broadcast-enabled and listened
@@ -95,6 +162,7 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
         if (event != RawSocketEvent.read) return;
         final datagram = socket.receive();
         if (datagram == null || _controller.isClosed) return;
+        if (_sendFailures > 0 || _surfacedFailure != null) _noteWorking();
         final beacon = _parse(datagram.data, datagram.address.address);
         if (beacon != null) _controller.add(beacon);
       },
@@ -106,6 +174,9 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
     _socket = socket;
     _rebindTimer?.cancel();
     _rebindTimer = null;
+    _bindFailures = 0;
+    _pendingFailure = null;
+    _pendingFailureStack = null;
   }
 
   /// Drops [socket] if it is still the live one, and starts trying to
@@ -117,9 +188,24 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
     if (!identical(_socket, socket)) return;
     _socket = null;
     _sentLastTick = false;
-    if (_closed || _rebindTimer != null) return;
-    _rebindTimer = Timer.periodic(rebindInterval, (_) => unawaited(_rebind()));
-    unawaited(_rebind());
+    // Scheduled, never immediate. A no-route outage is a loop of succeeding
+    // binds and failing sends, so a socket rebound the instant it is lost
+    // would bind and close one every few seconds for as long as the Wi-Fi is
+    // off. The ladder still recovers a one-off loss in a couple of seconds.
+    _scheduleRebind();
+  }
+
+  /// One attempt at a time, spaced by [_retryDelay]. Rescheduled from the end
+  /// of each attempt rather than run on a period: an attempt that outlasts
+  /// its own interval would otherwise queue the next one behind it.
+  void _scheduleRebind() {
+    if (_closed || _socket != null || _rebindTimer != null) return;
+    final delay = _retryDelay;
+    retryDelays.add(delay);
+    _rebindTimer = Timer(delay, () {
+      _rebindTimer = null;
+      unawaited(_rebind());
+    });
   }
 
   /// dart:io does not throw a UDP send failure out of `send()` — it reports
@@ -136,59 +222,87 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
   /// dismiss the ones that matter.
   ///
   /// One line per outage, not one per attempt: the rebind that follows
-  /// succeeds even with no route (binding wants no route, sending does), so
-  /// the send fails again on the next tick for as long as the outage lasts.
-  /// Logging each round would bury everything else the console is for.
+  /// succeeds even with no route, so the send fails again on the next tick
+  /// for as long as the outage lasts. Logging each round would bury
+  /// everything else the console is for.
   void _onSocketError(RawDatagramSocket socket, Object e, StackTrace st) {
-    _release(socket);
     if (e is SocketException && e.message == 'Send failed') {
-      _sendFailures++;
-      if (_sendFailure != e.toString()) {
-        _sendFailure = e.toString();
-        debugPrint('[peer] beacon send failed: $e');
-      }
+      // Counted BEFORE the release, so the ladder this loss schedules is
+      // spaced by the failure that caused it rather than by the one before.
+      _noteSendFailure(e);
+      _release(socket);
       return;
     }
+    _release(socket);
     // Anything else is a receive-side failure the operator's peer list is
     // silently wrong about, so it still travels to the listener — a rebind
     // may follow it, but the reason must be visible either way.
     if (!_controller.isClosed) _controller.addError(e, st);
   }
 
+  void _noteSendFailure(Object e) {
+    _sendFailures++;
+    if (_sendFailure == e.toString()) return;
+    _sendFailure = e.toString();
+    debugPrint('[peer] beacon send failed: $e');
+  }
+
+  /// Both halves of getting a socket — the bind and the attach — because
+  /// they fail the same way from the operator's side: no discovery. Retrying
+  /// only the bind would leave a sandbox's SO_BROADCAST refusal ending
+  /// discovery for the session, while the identical outcome one line earlier
+  /// recovers on its own.
   Future<void> _rebind() async {
     if (_rebinding || _closed || _socket != null) return;
     _rebinding = true;
     // Held until [_attach] has taken it over, so a bind that succeeds into a
     // closed socket — or an attach that throws — closes rather than leaks it.
     RawDatagramSocket? bound;
+    var stage = 'bind';
     try {
       bound = await _bind(_port);
       if (_closed) return;
+      stage = 'broadcast';
       _attach(bound);
       bound = null;
       // Only after a failure the console was told about. A rebind is the
       // ordinary second half of every send failure, and announcing each one
       // would restore the per-tick spam the line above exists to avoid.
-      if (_rebindFailure != null) {
-        _rebindFailure = null;
+      if (_bindFailure != null) {
+        _bindFailure = null;
         debugPrint('[peer] beacon socket bound again on $_port');
       }
-    } catch (e) {
-      // Keyed on the reason, so a failure that CHANGES — a port grabbed by
-      // another app after a permission denial — still says so.
-      if (_rebindFailure != e.toString()) {
-        _rebindFailure = e.toString();
-        debugPrint('[peer] beacon socket rebind failed: $e');
+    } catch (e, st) {
+      _bindFailures++;
+      // The reason travels to the listener once per outage — the operator
+      // needs to know why their peer list is empty, and needs to be told
+      // that once rather than at every rung of the ladder.
+      if (_surfacedFailure != e.toString()) {
+        _surfacedFailure = e.toString();
+        _pendingFailure = e;
+        _pendingFailureStack = st;
+        _flushPendingFailure();
+      }
+      // Which half refused matters to whoever is reading: a port another app
+      // holds and a sandbox denying SO_BROADCAST are different problems with
+      // different remedies, and the exception text alone does not say which.
+      if (_bindFailure != e.toString()) {
+        _bindFailure = e.toString();
+        debugPrint('[peer] beacon socket $stage failed: $e');
       }
     } finally {
       bound?.close();
       _rebinding = false;
+      _scheduleRebind();
     }
   }
 
   @override
   Stream<PeerBeacon> get beacons => _controller.stream;
 
+  /// Bound and listening. NOT a claim that anything is getting through: a
+  /// send can still fail over a perfectly healthy socket, which is what the
+  /// send half of the ladder is for.
   @override
   bool get healthy => _socket != null;
 
@@ -196,12 +310,8 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
   void announce(PeerBeacon beacon) {
     if (_closed) return;
     final socket = _socket;
-    if (socket == null) return; // the rebind timer is already on it
-    if (_sentLastTick && _sendFailures > 0) {
-      debugPrint('[peer] beacon sending again, after $_sendFailures failed');
-      _sendFailures = 0;
-      _sendFailure = null;
-    }
+    if (socket == null) return; // the retry ladder is already on it
+    if (_sentLastTick) _noteWorking();
     final payload = utf8.encode(jsonEncode(beacon.toJson()));
     try {
       // 255.255.255.255 rather than a per-interface directed broadcast: the
@@ -212,10 +322,13 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
       socket.send(payload, InternetAddress(_broadcastAddress), _port);
       _sentLastTick = true;
     } catch (e) {
-      // Routine, not exceptional: an interface can be down or refuse
-      // broadcast between one beacon and the next, and the timer will try
-      // again. Reporting it would train the operator to ignore the report.
-      debugPrint('[peer] beacon send failed: $e');
+      // The synchronous half of the same failure dart:io usually reports
+      // asynchronously, and it gets the same accounting: deduped, counted
+      // into the ladder, and the socket given up so something rebinds it.
+      // Left to itself it would print every announce tick over a socket
+      // nothing could send on.
+      _noteSendFailure(e);
+      _release(socket);
     }
   }
 
@@ -229,25 +342,6 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
     _socket = null;
     if (!_controller.isClosed) await _controller.close();
   }
-}
-
-/// The bind failed. Holds the error stream so the caller learns why, and
-/// makes every other call a no-op — a caller should not have to null-check a
-/// socket it was handed.
-class _DeadBeaconSocket implements PeerBeaconSocket {
-  _DeadBeaconSocket(this.beacons);
-
-  @override
-  final Stream<PeerBeacon> beacons;
-
-  @override
-  bool get healthy => false;
-
-  @override
-  void announce(PeerBeacon beacon) {}
-
-  @override
-  Future<void> close() async {}
 }
 
 PeerBeacon? _parse(List<int> data, String address) {
@@ -270,7 +364,14 @@ Future<RawDatagramSocket> _bind(int port) async {
   try {
     return await RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: true, reusePort: true);
   } catch (e) {
-    debugPrint('[peer] SO_REUSEPORT unavailable ($e), binding $port without it');
+    // Once per process: Windows refuses SO_REUSEPORT every single time, and
+    // the ladder would otherwise print this at every rung of every outage.
+    if (!_reusePortReported) {
+      _reusePortReported = true;
+      debugPrint('[peer] SO_REUSEPORT unavailable ($e), binding $port without it');
+    }
     return RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: true);
   }
 }
+
+bool _reusePortReported = false;

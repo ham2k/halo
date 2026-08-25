@@ -486,22 +486,26 @@ class PeerService extends ChangeNotifier {
   Future<void> _start() async {
     error = null;
     _discoveryError = null;
+    _linkError = null;
     try {
       _linkServer = await PeerLinkServer.bind();
     } catch (e, st) {
       // A device that cannot listen can still dial out, so this is degraded
       // rather than fatal — but it must be visible, since a firewall prompt
       // the operator dismissed is otherwise invisible forever.
-      error = 'Cannot accept incoming connections: $e';
+      _linkError = 'Cannot accept incoming connections: $e';
+      _refreshError();
       debugPrint('[peer] listen bind FAILED: $e');
       ErrorReportingService.report(e, st, context: 'PeerService:bindLinkServer');
     }
     _linkSubscription = _linkServer?.connections.listen(_onInboundLink);
 
-    // `openPeerBeaconSocket` catches its own bind, but enabling broadcast on
-    // the bound socket can still throw (a sandbox refusing SO_BROADCAST) —
-    // and out of here it would leave `_running` true over a device that is
-    // deaf, with nothing on screen saying so.
+    // `openPeerBeaconSocket` owns every way opening a socket can fail — the
+    // bind and enabling broadcast on it alike — reporting the reason on
+    // `beacons` and retrying on its own backoff. Nothing is expected out of
+    // here any more; the catch stays because a throw that reaches it would
+    // otherwise leave `_running` true over a device that is deaf, with
+    // nothing on screen saying so.
     final PeerBeaconSocket socket;
     try {
       socket = await openPeerBeaconSocket(port: beaconPort);
@@ -510,6 +514,15 @@ class PeerService extends ChangeNotifier {
       debugPrint('[peer] beacon socket FAILED: $e');
       ErrorReportingService.report(e, st, context: 'PeerService:beaconSocket');
       notifyListeners();
+      return;
+    }
+    // The teardown does not wait for this method: `dispose` fires `_stop`
+    // outside the apply tail, so a stop can land while this awaits its
+    // socket. Assigning one then would hand `_beaconSocket` an object the
+    // stop already decided against — bound, listening, and running a retry
+    // ladder nothing will ever cancel.
+    if (_disposed || !_enabled) {
+      await socket.close();
       return;
     }
     _beaconSocket = socket;
@@ -522,7 +535,7 @@ class PeerService extends ChangeNotifier {
         // the storm this whole card exists to stop, from the other side.
         final first = _discoveryError == null;
         _discoveryError = 'Discovery failed: $e';
-        error = _discoveryError;
+        _refreshError();
         debugPrint('[peer] discovery FAILED: $e');
         if (first) ErrorReportingService.report(e, st, context: 'PeerService:beacons');
         notifyListeners();
@@ -578,10 +591,15 @@ class PeerService extends ChangeNotifier {
     _linkServer = null;
   }
 
-  /// The discovery failure currently on [error], if that is what put it
-  /// there. Kept apart so retiring it cannot wipe the link-bind message,
-  /// which is a different fault with a different remedy.
+  /// The two faults [error] can be showing, held apart because they recover
+  /// separately: discovery comes back on its own, a refused listen bind does
+  /// not. One slot on screen, so [_refreshError] decides which is showing —
+  /// without this the recovery of one silently retires the other, and a
+  /// device that cannot accept a single inbound link says so nowhere.
   String? _discoveryError;
+  String? _linkError;
+
+  void _refreshError() => error = _discoveryError ?? _linkError;
 
   /// Retires a discovery failure once the socket is back. Without this the
   /// banner outlives the outage — the socket rebinds seconds later and the
@@ -589,8 +607,8 @@ class PeerService extends ChangeNotifier {
   /// to clear it but toggling the switch.
   void _clearRecoveredDiscoveryError() {
     if (_discoveryError == null || _beaconSocket?.healthy != true) return;
-    if (error == _discoveryError) error = null;
     _discoveryError = null;
+    _refreshError();
     notifyListeners();
   }
 

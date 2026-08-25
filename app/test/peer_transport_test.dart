@@ -177,6 +177,152 @@ void main() {
       expect(seen.map((b) => b.deviceId), ['device-b']);
     });
 
+    /// Holds [port] the way another app would. `reuseAddress: false` is the
+    /// load-bearing part and not the default: `_bind` falls back to a plain
+    /// SO_REUSEADDR bind for Windows' sake, and a holder that also set
+    /// SO_REUSEADDR would let that fallback through on the platforms where
+    /// the flag means "share this port" — Linux, which is what CI runs, and
+    /// where a branch's tests are first run only AFTER it merges. With the
+    /// flag withheld here, every platform refuses both attempts.
+    ///
+    /// The deterministic stand-in for the field cases: a sandbox denial, a
+    /// port another program owns, an interface not up yet.
+    Future<RawDatagramSocket> holdPort(int port) =>
+        RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: false);
+
+    test('a socket that cannot open says why ONCE, to a listener that arrives later', () async {
+      final port = await freeUdpPort();
+      final holder = await holdPort(port);
+      addTearDown(holder.close);
+
+      final socket = await openPeerBeaconSocket(port: port, broadcastAddress: '127.0.0.1');
+      addTearDown(socket.close);
+      expect(socket.healthy, isFalse);
+
+      // Subscribing AFTER the failure, which is the only order that ever
+      // happens: PeerService cannot listen to a socket it has not been
+      // handed yet. A broadcast controller drops what is added before the
+      // first listener, so an error added when it happened would be gone.
+      final errors = <Object>[];
+      socket.beacons.listen((_) {}, onError: errors.add);
+      // Long enough that the ladder has failed again after the opening
+      // attempt — the operator is told their peer list is empty and why,
+      // once, not once per attempt. PeerService uploads a crash report for
+      // anything arriving here.
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      expect(errors, hasLength(1), reason: 'one outage, one report');
+      expect(errors.single.toString(), contains('Address already in use'));
+      // Closed here rather than left to the teardown: a ladder still running
+      // when the body returns keeps reporting into a test the framework has
+      // already finished with, and that lands as an unhandled error on
+      // whatever test happens to be running next.
+      await socket.close();
+    });
+
+    test('attempts space out and stop hammering a port that is never coming back', () async {
+      final port = await freeUdpPort();
+      final holder = await holdPort(port);
+      addTearDown(holder.close);
+
+      final socket = await openPeerBeaconSocket(port: port, broadcastAddress: '127.0.0.1');
+      addTearDown(socket.close);
+      socket.beacons.listen((_) {}, onError: (Object _) {});
+
+      // The delays the socket scheduled, not the wall clock: a test that
+      // timed the gaps would be measuring the machine's load as much as the
+      // ladder, and this has to survive a busy CI box.
+      await Future<void>.delayed(const Duration(seconds: 7));
+      expect(socket.retryDelays.length, greaterThanOrEqualTo(2),
+          reason: 'a port held forever has to keep being retried at all');
+      // The whole point of the ladder. A fixed interval — which is what this
+      // replaces, and what an innocent-looking edit would restore — gives
+      // identical gaps and leaves everything else about the socket the same.
+      expect(socket.retryDelays[1], greaterThan(socket.retryDelays[0]));
+      expect(socket.retryDelays.last, lessThanOrEqualTo(rebindBackoffCap));
+      await socket.close();
+    });
+
+    test('a socket that cannot open keeps trying, and starts working when the port frees up', () async {
+      final port = await freeUdpPort();
+      final holder = await holdPort(port);
+      final socket = await openPeerBeaconSocket(port: port, broadcastAddress: '127.0.0.1');
+      addTearDown(socket.close);
+      // ONE subscription, and it handles errors. A second listener taking
+      // only values (`beacons.first`) would take the errors too, with
+      // nowhere to put them — and this socket can legitimately report
+      // another failure at any moment, since a freed ephemeral port is fair
+      // game for whatever else the suite is binding at the time.
+      final heard = Completer<PeerBeacon>();
+      socket.beacons.listen(
+        (beacon) {
+          if (!heard.isCompleted) heard.complete(beacon);
+        },
+        onError: (Object _) {},
+      );
+      expect(socket.healthy, isFalse, reason: 'the port is held — nothing could have bound it');
+
+      // Turning peer sync on before the WiFi associates is the everyday
+      // version of this. Without a retry the socket never opens again:
+      // discovery is dead for the session, and toggling the switch is the
+      // only way back.
+      holder.close();
+      // Generous against the ladder rather than against the machine: each
+      // attempt that lands before the OS has actually let the port go pushes
+      // the next one further out, so a tight window would be testing how
+      // fast this box releases a socket.
+      for (var i = 0; i < 400 && !socket.healthy; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      expect(socket.healthy, isTrue);
+
+      // Bound is not the same as listening: the proof is a beacon arriving.
+      socket.announce(const PeerBeacon(deviceId: 'device-d', deviceName: 'Tablet', port: 4321));
+      expect((await heard.future.timeout(const Duration(seconds: 5))).deviceId, 'device-d');
+      await socket.close();
+    });
+
+    test('a datagram that ARRIVES counts as evidence, and lets the ladder back down', () async {
+      final port = await freeUdpPort();
+      // Sends always fail here, receives are untouched — the shape of a VPN
+      // holding the default route, or an access point isolating its clients.
+      final socket = await openPeerBeaconSocket(port: port, broadcastAddress: '::1');
+      addTearDown(socket.close);
+      socket.beacons.listen((_) {}, onError: (Object _) {});
+      const beacon = PeerBeacon(deviceId: 'device-e', deviceName: 'Handheld', port: 4321);
+
+      Future<void> until(bool Function() done) async {
+        for (var i = 0; i < 400 && !done(); i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+      }
+
+      // Two failed sends, so the ladder has climbed a rung it can be seen
+      // coming back down from.
+      socket.announce(beacon);
+      await until(() => !socket.healthy);
+      await until(() => socket.healthy);
+      socket.announce(beacon);
+      await until(() => !socket.healthy);
+      await until(() => socket.healthy);
+      final climbed = socket.retryDelays.last;
+
+      final other = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(other.close);
+      other.send(utf8.encode(jsonEncode(beacon.toJson())), InternetAddress('127.0.0.1'), port);
+      await until(() => socket.retryDelays.length > 2 || !socket.healthy);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      socket.announce(beacon);
+      await until(() => socket.retryDelays.last != climbed || !socket.healthy);
+      // Without this, a device that hears peers but cannot broadcast to them
+      // climbs to the ceiling and stays there — bound for a couple of
+      // seconds out of every minute, and deaf for the rest, over a socket
+      // that was receiving perfectly well the whole time.
+      expect(socket.retryDelays.last, lessThan(climbed),
+          reason: 'a beacon arrived, so the socket is working whatever its sends are doing');
+      await socket.close();
+    });
+
     test('a send with no route to the segment neither ends discovery nor is surfaced', () async {
       final port = await freeUdpPort();
       // '::1' out of an IPv4 socket is the deterministic stand-in for the
@@ -189,7 +335,14 @@ void main() {
 
       Object? surfaced;
       var ended = false;
-      socket.beacons.listen((_) {}, onError: (Object e) => surfaced = e, onDone: () => ended = true);
+      final heard = Completer<PeerBeacon>();
+      socket.beacons.listen(
+        (beacon) {
+          if (!heard.isCompleted) heard.complete(beacon);
+        },
+        onError: (Object e) => surfaced = e,
+        onDone: () => ended = true,
+      );
 
       const beacon = PeerBeacon(deviceId: 'device-c', deviceName: 'Handheld', port: 4321);
       socket.announce(beacon);
@@ -212,7 +365,6 @@ void main() {
       // still true — a banner over a working peer list is its own defect.
       expect(socket.healthy, isTrue, reason: 'nothing else is going to bring discovery back');
 
-      final heard = socket.beacons.first;
       final other = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(other.close);
       // Resent until it lands rather than fired once after a fixed wait: UDP
@@ -223,7 +375,8 @@ void main() {
         other.send(utf8.encode(jsonEncode(beacon.toJson())), InternetAddress('127.0.0.1'), port);
       });
       addTearDown(probe.cancel);
-      expect((await heard.timeout(const Duration(seconds: 5))).deviceId, 'device-c');
+      expect((await heard.future.timeout(const Duration(seconds: 5))).deviceId, 'device-c');
+      await socket.close();
     });
   });
 

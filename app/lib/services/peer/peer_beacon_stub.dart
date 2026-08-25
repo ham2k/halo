@@ -21,6 +21,10 @@ class _StubBeaconSocket implements PeerBeaconSocket {
   @override
   bool get healthy => false;
 
+  /// Nothing is ever attempted, so nothing is ever waited.
+  @override
+  List<Duration> get retryDelays => const [];
+
   @override
   void announce(PeerBeacon beacon) {}
 
