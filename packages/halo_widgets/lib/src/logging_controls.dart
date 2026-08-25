@@ -4517,13 +4517,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// pill, and a non-focusable ancestor over its expanded content that watches
   /// for the keys which close it again. Applied once, over the assembled list,
   /// so a newly added kind of control can't arrive without it.
-  SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) =>
-      SecondaryControlSpec(
-        key: spec.key,
-        icon: spec.icon,
-        summary: spec.summary,
-        liveSummary: spec.liveSummary,
-        iconColor: spec.iconColor,
+  ///
+  /// Through `copyWith` rather than a fresh [SecondaryControlSpec]:
+  /// re-listing the fields here drops any the spec grows later, and a chip
+  /// rendering the default is not a failure anything reports.
+  SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) => spec.copyWith(
         focusNode: _pillFocusFor(spec.key),
         enabled: enabled,
         expandedBuilder: (context) => Focus(
@@ -4869,6 +4867,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         key: 'radio',
         icon: _radioChipIcon,
         iconColor: _radioStatusColor(theme, selected: _selectedControlKey == 'radio'),
+        // `_band` is null both when nothing is tuned at all and when the
+        // frequency in the field falls outside every ham band, which is the
+        // whole of what the alert is about — a mode is never missing here.
+        alert: _band == null,
         summary: _radioSummary,
         expandedBuilder: (context) {
           // Resolved once for both dropdowns below. `dropdownTextScale` is the

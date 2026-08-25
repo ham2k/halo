@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Radio pill and QSO frequencies turn red when there is no band
+
 "149":
   changes:
     - Tap a date header in the QSO list to open the operation info

@@ -72,6 +72,14 @@ class SecondaryControlSpec {
   /// doesn't change between editing a contact and an event.
   final bool enabled;
 
+  /// Paints the chip in the theme's error pair instead of the tertiary one.
+  /// The Radio control sets it when there is no band to log on — nothing
+  /// tuned, or a frequency outside every ham band — because a contact
+  /// logged on the wrong band is only discovered long after the station is
+  /// gone. It outranks [iconColor]: an arbitrary accent has no guaranteed
+  /// contrast against the error fill.
+  final bool alert;
+
   const SecondaryControlSpec({
     required this.key,
     required this.icon,
@@ -81,7 +89,43 @@ class SecondaryControlSpec {
     this.iconColor,
     this.focusNode,
     this.enabled = true,
+    this.alert = false,
   });
+
+  /// A copy with the given fields replaced.
+  ///
+  /// The panel that builds these wraps every spec on its way to the row —
+  /// attaching the focus node and the expanded panel's key handling — and
+  /// doing that by re-listing the fields at the call site silently drops
+  /// whatever was added here since: the chip renders the default and
+  /// nothing fails. `secondary_control_spec_copy_test` pins every field to
+  /// this method for that reason.
+  ///
+  /// Null means "keep", so this cannot CLEAR a field. Nothing needs to, and
+  /// clearing would take a sentinel per nullable field — more machinery
+  /// than the one caller earns.
+  SecondaryControlSpec copyWith({
+    String? key,
+    IconData? icon,
+    String? summary,
+    WidgetBuilder? expandedBuilder,
+    ValueGetter<String>? liveSummary,
+    Color? iconColor,
+    FocusNode? focusNode,
+    bool? enabled,
+    bool? alert,
+  }) =>
+      SecondaryControlSpec(
+        key: key ?? this.key,
+        icon: icon ?? this.icon,
+        summary: summary ?? this.summary,
+        expandedBuilder: expandedBuilder ?? this.expandedBuilder,
+        liveSummary: liveSummary ?? this.liveSummary,
+        iconColor: iconColor ?? this.iconColor,
+        focusNode: focusNode ?? this.focusNode,
+        enabled: enabled ?? this.enabled,
+        alert: alert ?? this.alert,
+      );
 }
 
 /// Lets mouse click-drag scroll the chip strip, in addition to the
@@ -806,6 +850,14 @@ class _ControlChip extends StatelessWidget {
     var foreground = selected ? theme.colorScheme.onTertiary : theme.colorScheme.onTertiaryContainer;
     var background = poloColors.tertiaryLight;
     var selectedColor = theme.colorScheme.tertiary;
+    // The error pair keeps the same selected/unselected contrast the
+    // tertiary one has — container fill closed, solid fill open — so an
+    // alerting chip still reads as open or shut.
+    if (control.alert) {
+      foreground = selected ? theme.colorScheme.onError : theme.colorScheme.onErrorContainer;
+      background = theme.colorScheme.errorContainer;
+      selectedColor = theme.colorScheme.error;
+    }
     // Every color here is pinned explicitly (below), which bypasses
     // ChoiceChip's own built-in disabled treatment — fade everything by
     // hand instead, or a disabled pill (editing an event — see
@@ -829,7 +881,8 @@ class _ControlChip extends StatelessWidget {
         // _activityControlSpec). Contrast against the selected fill isn't
         // guaranteed for an arbitrary extension color, but that's on the
         // extension to pick a color that works — same as the unselected case.
-        color: control.enabled ? (control.iconColor ?? foreground) : foreground,
+        // An alerting chip drops the accent entirely (see [alert]).
+        color: control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground,
       ),
       label: control.liveSummary != null
           ? OncePerSecond(builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)))

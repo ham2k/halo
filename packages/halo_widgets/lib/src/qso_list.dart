@@ -31,6 +31,11 @@ import 'theme.dart';
 /// Callsign/Name/References/RST).
 const double _columnGap = 12;
 
+/// The freq/band column when a QSO has neither — a visible placeholder
+/// rather than a blank, so "we don't know where this was worked" reads as a
+/// fact about the contact instead of an empty column.
+const String _noBandLabel = '???';
+
 /// The list's UTC time-column label — `HH:MMz`, or a placeholder when the
 /// record has no start time. Shared by the QSO, event, and annotation rows
 /// so their time columns can never drift apart.
@@ -886,11 +891,23 @@ class _QsoListState extends State<QsoList> {
       }
 
       // Frequency bolded-MHz/regular-kHz/smaller-Hz, dot-separated; falls
-      // back to the band when the QSO has no frequency at all.
+      // back to the band when the QSO has no frequency at all, and to
+      // [_noBandLabel] when it has neither.
       final freqKHz = qso.freq;
+      // Red whenever the contact has no band — nothing recorded at all, or a
+      // frequency that falls outside every ham band. The stored band is not
+      // consulted for a QSO that has a frequency: the frequency is what the
+      // column shows, so a band field disagreeing with it must not vouch for
+      // what's on screen.
+      final bandKnown = freqKHz != null ? bandForFrequency(freqKHz) != null : qso.band != null;
+      // Carries the row's own alpha across, so a deleted QSO's bad band
+      // stays faded rather than snapping back to full strength.
+      final freqStyle = bandKnown
+          ? rowMono
+          : rowMono.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMono.color?.a ?? 1.0));
       final Widget freqField;
       if (freqKHz == null) {
-        freqField = Text(qso.band ?? '', style: rowMono);
+        freqField = Text(qso.band ?? _noBandLabel, style: freqStyle);
       } else {
         final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
         freqField = Row(
@@ -900,16 +917,16 @@ class _QsoListState extends State<QsoList> {
           children: [
             Text(
               parts.mhz,
-              style: rowMono.copyWith(fontWeight: FontWeight.w700),
+              style: freqStyle.copyWith(fontWeight: FontWeight.w700),
             ),
-            Text('.', style: rowMono),
-            Text(parts.khz, style: rowMono),
+            Text('.', style: freqStyle),
+            Text(parts.khz, style: freqStyle),
             if (parts.hz != null) ...[
-              Text('.', style: rowMono),
+              Text('.', style: freqStyle),
               Text(
                 parts.hz!,
-                style: rowMono.copyWith(
-                  fontSize: (rowMono.fontSize ?? 14) * 0.8,
+                style: freqStyle.copyWith(
+                  fontSize: (freqStyle.fontSize ?? 14) * 0.8,
                 ),
               ),
             ],
@@ -1321,8 +1338,13 @@ _QsoListMetrics _computeMetrics({
     }
     if (q.theirCall.length > longestCall.length) longestCall = q.theirCall;
     freqsInKHz.add(q.freq);
-    // Band only renders when the QSO has no frequency (freqField below).
-    if (q.freq == null && (q.band?.length ?? 0) > longestBand.length) longestBand = q.band!;
+    // Band only renders when the QSO has no frequency (freqField below), and
+    // a QSO with neither shows [_noBandLabel] there — which still has to be
+    // measured, or the column collapses on a list made only of those.
+    if (q.freq == null) {
+      final label = q.band ?? _noBandLabel;
+      if (label.length > longestBand.length) longestBand = label;
+    }
     final exchange = q.theirExchange;
     if (exchange != null && exchange.length > longestExchange.length) longestExchange = exchange;
     final rstPair = '${q.sentRST ?? ''} ${q.receivedRST ?? ''}';

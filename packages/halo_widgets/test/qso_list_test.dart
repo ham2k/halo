@@ -484,6 +484,72 @@ void main() {
     handle.dispose();
   });
 
+  // The freq/band column is the log's only record of where a contact was
+  // worked, and a wrong one is discovered long after the station is gone.
+  // These assert the COLOR, not just the text: a '???' painted in the
+  // ordinary row color is exactly the miss they exist to catch.
+  group('a QSO with no band reads as an error', () {
+    testWidgets('neither frequency nor band shows ??? in the error color', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      final theme = buildHaLoTheme(Brightness.light);
+
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
+      ));
+
+      expect(tester.widget<Text>(find.text('???')).style?.color, theme.colorScheme.error);
+    });
+
+    testWidgets('a frequency outside every ham band paints red', (tester) async {
+      // 5000 kHz is WWV, not an amateur allocation — the stored band field
+      // is deliberately absent, but even a present one must not vouch for a
+      // frequency the band plan disowns.
+      expect(bandForFrequency(5000), isNull, reason: 'fixture assumes 5000 kHz is not a ham band');
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'freq': 5000.0,
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      final theme = buildHaLoTheme(Brightness.light);
+
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
+      ));
+
+      // The MHz half of the dot-separated frequency — the whole reading is
+      // styled as one, so one part settles it.
+      expect(tester.widget<Text>(find.text('5')).style?.color, theme.colorScheme.error);
+    });
+
+    testWidgets('an in-band frequency keeps the ordinary row color', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'freq': 14074.0,
+        'mode': 'FT8',
+        'startAtMillis': 1000,
+      });
+      final theme = buildHaLoTheme(Brightness.light);
+
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
+      ));
+
+      expect(tester.widget<Text>(find.text('14')).style?.color, isNot(theme.colorScheme.error));
+      expect(find.text('???'), findsNothing);
+    });
+  });
+
   testWidgets('newest QSO renders at the bottom, next to the logging panel', (
     tester,
   ) async {

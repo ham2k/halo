@@ -8737,6 +8737,49 @@ void main() {
         findsOneWidget,
       );
     });
+
+    // A pill that looks exactly like every other one is how a contact gets
+    // logged with no band at all. The error pair keeps the same
+    // closed/open contrast the tertiary pair has, so the alert can't be
+    // mistaken for the chip being expanded.
+    testWidgets('the Radio chip fills with the error pair when there is no band', (tester) async {
+      final untuned = _FakeVfoStore()..setVfo('vfoA', mode: 'SSB');
+      final theme = buildHaLoTheme(Brightness.light);
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: LoggingControls(radioService: untuned, operation: operation, qsosRepository: qsos),
+        ),
+      ));
+
+      final chip = tester.widget<ChoiceChip>(find.ancestor(
+        of: find.byIcon(MdiIcons.radio),
+        matching: find.byType(ChoiceChip),
+      ));
+      expect(chip.backgroundColor, theme.colorScheme.errorContainer);
+      expect(chip.selectedColor, theme.colorScheme.error);
+    });
+
+    testWidgets('a frequency outside every ham band alerts the Radio chip too', (tester) async {
+      // Tuned, and to a real number — but 5000 kHz is WWV, not an amateur
+      // allocation. A chip that only checks "is there a frequency" passes
+      // this one straight through.
+      expect(bandForFrequency(5000), isNull, reason: 'fixture assumes 5000 kHz is not a ham band');
+      final offBand = _FakeVfoStore()..setVfo('vfoA', freq: 5000, mode: 'SSB');
+      final theme = buildHaLoTheme(Brightness.light);
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: LoggingControls(radioService: offBand, operation: operation, qsosRepository: qsos),
+        ),
+      ));
+
+      final chip = tester.widget<ChoiceChip>(find.ancestor(
+        of: find.byIcon(MdiIcons.radio),
+        matching: find.byType(ChoiceChip),
+      ));
+      expect(chip.backgroundColor, theme.colorScheme.errorContainer);
+    });
   });
 
   group('wipe/undo, delete/undo, revert-changes button', () {
