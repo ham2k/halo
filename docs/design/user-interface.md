@@ -267,6 +267,28 @@ parameter (`closeLabel`, `expandLabel`/`collapseLabel`, `clearLabel`,
 defaults it to English so it stays i18n-free. Nothing named `…Tooltip`
 survives; don't add one back.
 
+### Links leave the app
+
+A link the app hands off — the QRZ button, a markdown link in a call note, an
+extension's notice action, an OAuth sign-in page — opens in the operator's
+**own browser**, where their sessions, extensions, password manager and
+history are. Never an in-app browser (an Android Custom Tab, an iOS
+`SFSafariViewController`) or an embedded web view wearing the app's chrome.
+
+Route every one through `openExternalUrl` (`app/lib/services/link_opener.dart`),
+which also holds the scheme allowlist that keeps `javascript:` and `file:` out
+of URLs authored by extensions and community call-notes files. It takes no
+mode: there is one behaviour and no call site can opt out of it.
+
+`url_launcher` makes the wrong thing the easy thing — `launchUrl(uri)` with no
+`mode` is `platformDefault`, which IS the in-app browser on both mobile
+platforms — so `app/test/links_leave_the_app_test.dart` scans the source for
+that omission as well as for an explicit `LaunchMode.platformDefault`.
+
+An embedded web view is for a **pane that shows a site** (the Web Site pane,
+HTML extension panels, the MapLibre map backend), never for handing the
+operator off to somebody else's page.
+
 ### Icons
 
 The app's icon language is **Material Design Icons** (Pictogrammers MDI, the

@@ -446,6 +446,8 @@ class _Translations$callInfo$es extends Translations$callInfo$en {
 	// Translations
 	@override String get qrz => 'QRZ';
 	@override String get showImage => 'Mostrar imagen';
+	@override String get imageUnavailable => 'Foto no disponible';
+	@override String get photo => 'Foto';
 	@override String get notes => 'Notas';
 	@override String distanceTo({required Object distance}) => '${distance} a';
 	@override String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a';
@@ -1460,7 +1462,6 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get connected => 'Conectado';
 	@override String connectTo({required Object label}) => 'Conectar con ${label}';
 	@override String get openInBrowser => 'Abrir en el navegador';
-	@override String get webViewUnavailable => 'Esta computadora no puede mostrar la página de acceso. Ham2K Logger necesita el Microsoft Edge WebView2 Runtime, y aquí no funciona — instalarlo o repararlo debería solucionarlo. Hasta entonces, no se puede conectar esta cuenta en esta máquina.';
 	@override String loggedInAs({required Object identity}) => 'Sesión iniciada como ${identity}';
 	@override String get pressSaveToKeep => 'Pulsa Guardar para mantener esta cuenta conectada.';
 	@override String connectedTo({required Object label}) => 'Conectado a ${label}';
@@ -1482,6 +1483,7 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get pastedLinkNoCode => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.';
 	@override String get pastedLinkMalformed => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.';
 	@override String get relayLoginWaiting => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.';
+	@override String get loginNoResponse => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cierra esto e intenta conectar de nuevo.';
 	@override String get relayLoginNotOpened => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.';
 	@override String get relayLoginUnavailable => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.';
 	@override String get relayLoginMalformedEvent => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.';
@@ -2727,6 +2729,8 @@ extension on TranslationsEs {
 			'loggingPanel.duplicates' => 'Duplicados',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Mostrar imagen',
+			'callInfo.imageUnavailable' => 'Foto no disponible',
+			'callInfo.photo' => 'Foto',
 			'callInfo.notes' => 'Notas',
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} a',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
@@ -2754,10 +2758,10 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.smaller' => 'Pequeña',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Grande',
-			'settings.fontScaleOpts.largest' => 'Más grande',
-			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.largest' => 'Más grande',
+			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
 			'settings.layoutCustomization.title' => 'Personalización de Disposición',
 			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
@@ -2944,7 +2948,6 @@ extension on TranslationsEs {
 			'settings.accounts.connected' => 'Conectado',
 			'settings.accounts.connectTo' => ({required Object label}) => 'Conectar con ${label}',
 			'settings.accounts.openInBrowser' => 'Abrir en el navegador',
-			'settings.accounts.webViewUnavailable' => 'Esta computadora no puede mostrar la página de acceso. Ham2K Logger necesita el Microsoft Edge WebView2 Runtime, y aquí no funciona — instalarlo o repararlo debería solucionarlo. Hasta entonces, no se puede conectar esta cuenta en esta máquina.',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Sesión iniciada como ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Pulsa Guardar para mantener esta cuenta conectada.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'Conectado a ${label}',
@@ -2966,6 +2969,7 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
+			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cierra esto e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
 			'settings.accounts.relayLoginMalformedEvent' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
@@ -3268,10 +3272,10 @@ extension on TranslationsEs {
 			'confirmDevice.linkExpired' => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.',
 			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
 			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
-			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
-			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
+			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
 			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
 			'confirmDevice.malformedRequest' => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.',
 			'confirmDevice.linkIt' => 'Vincular dispositivo',

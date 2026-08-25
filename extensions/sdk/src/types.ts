@@ -1384,7 +1384,7 @@ export interface OAuth2Config {
   /// The native custom-scheme redirect (`com.ham2k.*.auth://…`), used on
   /// every platform that can intercept it via an in-app webview or OS deep
   /// link (macOS/Windows/Android/iOS today — see `oauthUsesWebhookRelay` in
-  /// app/lib/views/oauth_relay_login.dart).
+  /// app/lib/views/oauth_browser_login.dart).
   redirectUrl: string
   /// The LoFi webhook-relay callback (HALO-65/66), used instead of
   /// [redirectUrl] on platforms that can't catch a custom scheme at all

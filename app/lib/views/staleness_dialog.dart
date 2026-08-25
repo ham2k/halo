@@ -14,21 +14,15 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/strings.g.dart';
+import '../services/link_opener.dart';
 import '../services/restart_service.dart';
 import '../services/staleness.dart';
 
-Future<void> openStalenessUrl(String url) async {
-  final uri = Uri.tryParse(url);
-  if (uri == null) return;
-  try {
-    await launchUrl(uri);
-  } catch (e) {
-    debugPrint('[staleness] could not open $url: $e');
-  }
-}
+/// Through the shared opener like every other link the app hands off, so the
+/// download page lands in the operator's own browser rather than an in-app one.
+void openStalenessUrl(String url) => openExternalUrl(url);
 
 /// Shows the nag once the real app's Navigator exists — the boot-gate swap
 /// lands a frame or two after services resolve.
@@ -174,7 +168,7 @@ class StalenessNagDialog extends StatelessWidget {
           )
         else if (!_isFloor && url != null)
           FilledButton(
-            onPressed: () => unawaited(openStalenessUrl(url!)),
+            onPressed: () => openStalenessUrl(url!),
             child: Text(t.expiredBuild.visit),
           ),
       ],

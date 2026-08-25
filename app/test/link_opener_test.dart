@@ -8,7 +8,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/link_opener.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
@@ -79,12 +78,13 @@ void main() {
     expect(launcher.launched, hasLength(1));
   });
 
-  testWidgets('leaves the app by default, and stays in it when asked to', (tester) async {
+  // Not "by default" — there is no other mode to ask for. A link the app hands
+  // off belongs in the operator's own browser, not an in-app one (a Custom Tab
+  // / SFSafariViewController) wearing its chrome.
+  testWidgets('always leaves the app, with no caller able to opt out', (tester) async {
     openExternalUrl('https://ham2k.com');
-    openExternalUrl('https://ham2k.com', mode: LaunchMode.platformDefault);
     await settle(tester);
 
-    expect(launcher.launched[0].mode, PreferredLaunchMode.externalApplication);
-    expect(launcher.launched[1].mode, PreferredLaunchMode.platformDefault);
+    expect(launcher.launched.single.mode, PreferredLaunchMode.externalApplication);
   });
 }

@@ -8,6 +8,8 @@ upcoming:
   changes:
     - Radio pill and QSO frequencies turn red when there is no band
     - Peer sync copies an operation open on one device to your other devices on the same account
+    - QRZ photos show in Call Info again; tap one to see it full size
+    - Signing in to SOTA and other accounts now happens in your own browser
 
 "149":
   changes:

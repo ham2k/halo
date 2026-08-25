@@ -32,7 +32,6 @@ import '../config/dev_flags.dart';
 import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
-import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
@@ -2238,10 +2237,7 @@ class ExtensionService implements PanelExtensionSource {
       case 'link':
         final url = map['url'] as String?;
         if (url == null) return null;
-        // platformDefault, not the shared default: an http(s) link from a
-        // notice action has always opened in an in-app browser (Custom Tab /
-        // SFSafariViewController) rather than backgrounding the logger.
-        return () => openExternalUrl(url, mode: LaunchMode.platformDefault);
+        return () => openExternalUrl(url);
       case 'dialog':
         final text = map['text'] as String? ?? '';
         final title = map['title'] as String?;

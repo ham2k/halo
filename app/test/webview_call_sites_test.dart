@@ -31,10 +31,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// The five files allowed to reach one, as paths relative to `app/` — so a
+/// The four files allowed to reach one, as paths relative to `app/` — so a
 /// file in the widget package reads as `../packages/halo_widgets/lib/…`.
+///
+/// OAuth is deliberately NOT among them: the sign-in page opens in the
+/// operator's own browser on every platform, so `settings_view.dart` builds no
+/// web view at all (oauth_browser_login.dart).
 const _expectedCallSites = {
-  'lib/views/settings_view.dart', // the OAuth login page
   'lib/views/operation/panel_content_view.dart', // the HTML extension panel
   'lib/views/operation/website/website_panel.dart', // the Web Site pane
   'lib/views/map/mapbox_webview_map_view.dart', // the MapLibre map backend
@@ -72,7 +75,7 @@ List<File> _appSources() {
 }
 
 void main() {
-  test('exactly five files reach a platform-backed flutter_inappwebview API', () {
+  test('exactly four files reach a platform-backed flutter_inappwebview API', () {
     final found = <String>{};
     for (final file in _appSources()) {
       for (final line in file.readAsLinesSync()) {

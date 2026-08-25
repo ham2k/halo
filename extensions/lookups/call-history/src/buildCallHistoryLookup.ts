@@ -108,6 +108,16 @@ export function buildCallHistoryTiers(
   const name = pick(mostRecent, guess, 'name')
   if (name) fields[name.tier].name = name.value
 
+  // The station's photo, remembered from the last time they were worked. It
+  // rides the GUESSED tier (nobody types a photo URL), which is what makes it
+  // safe to carry: a live QRZ answer still wins, so a profile picture that
+  // changed is not frozen at whatever URL this QSO happened to store, while a
+  // call worked before still shows a face with no network at all. Not tied to
+  // the location rules below — a photo describes the operator, not where this
+  // variant of their call is operating from today.
+  const image = pick(mostRecent, guess, 'image')
+  if (image) fields[image.tier].image = image.value
+
   // A location logged during a POTA/SOTA activation (or any other portable
   // op) is the park/summit, not the station's home QTH — carrying it forward
   // would show that temporary location as if it were permanent. And a match

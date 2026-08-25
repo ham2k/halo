@@ -18,14 +18,11 @@
 # leaving `InAppWebViewPlatform.instance` unset on Linux exactly as it is with
 # no implementation at all.
 #
-# FIVE files reach into this plugin, and each is kept off Linux by a guard
+# FOUR files reach into this plugin, and each is kept off Linux by a guard
 # that does not have to live in the same file as the call it protects. None of
 # the guards consults `canUseWebView` — that is `WindowsWebView.isAvailable()`,
 # which returns TRUE off Windows:
 #
-#   - app/lib/views/settings_view.dart, the OAuth login page — guarded from
-#     app/lib/views/oauth_relay_login.dart, whose `oauthUsesWebhookRelay`
-#     diverts Linux to the webhook relay before the page can build one.
 #   - app/lib/views/operation/panel_content_view.dart, the HTML extension
 #     panel — guarded in place: the pane's own probe returns early for Linux,
 #     leaving it on the `htmlPanelUnsupported` message and never constructing
@@ -40,12 +37,12 @@
 #     WebView2 environment rather than a view, and is guarded by being
 #     Windows-only, so Linux never reaches the call.
 #
-# app/test/webview_call_sites_test.dart asserts that those five files are
+# app/test/webview_call_sites_test.dart asserts that those four files are
 # exactly the set reaching a plugin entry point that needs a registered
-# platform implementation, so a sixth fails the suite rather than quietly
+# platform implementation, so a fifth fails the suite rather than quietly
 # joining a list here that no longer matches.
 #
-# Retiring this stub means revisiting all five. Miss one and it keeps
+# Retiring this stub means revisiting all four. Miss one and it keeps
 # refusing a web view that now exists, silently: the Web Site pane in
 # particular would go on saying "unsupported" with nothing logged.
 #

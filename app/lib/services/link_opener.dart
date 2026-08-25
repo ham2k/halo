@@ -24,14 +24,15 @@ const _allowedSchemes = {'http', 'https', 'mailto'};
 /// to junk is to ignore it rather than to raise anything. A URL that passes and
 /// then fails to launch is a different case: that stays unhandled.
 ///
-/// [mode] defaults to leaving the app. Pass [LaunchMode.platformDefault] where
-/// an in-app browser (Custom Tab / SFSafariViewController on mobile) is the
-/// established behaviour for that surface.
-void openExternalUrl(String url, {LaunchMode mode = LaunchMode.externalApplication}) {
+/// Always [LaunchMode.externalApplication], with no per-caller override: a
+/// link the app hands off belongs in the operator's own browser, where their
+/// sessions, extensions and history are, and not in an in-app browser (a
+/// Custom Tab / SFSafariViewController) that merely looks like one.
+void openExternalUrl(String url) {
   final uri = Uri.tryParse(url);
   if (uri == null || !_allowedSchemes.contains(uri.scheme)) {
     debugPrint('[links] refusing to open "$url"');
     return;
   }
-  unawaited(launchUrl(uri, mode: mode));
+  unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
 }

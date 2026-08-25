@@ -13,13 +13,11 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:url_launcher/url_launcher.dart';
 
 import '../config/experiments.dart';
 import '../config/release_notes.dart';
@@ -36,7 +34,6 @@ import '../services/extension_service.dart';
 import '../services/link_opener.dart';
 import '../services/pusher_service.dart';
 import '../services/settings_service.dart';
-import '../services/windows_webview.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/sync_account_identity.dart';
 import 'header_profile_label.dart';
@@ -50,7 +47,7 @@ import 'peers_panel.dart';
 import 'station_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
-import 'oauth_relay_login.dart';
+import 'oauth_browser_login.dart';
 import 'operation_dialogs.dart';
 import 'release_overlay.dart';
 import 'switch_accounts_dialog.dart';
@@ -3481,10 +3478,11 @@ class _AccountPaneState extends State<_AccountPane> {
     final issuer = oauth2['issuer'] as String;
     final clientId = oauth2['clientId'] as String;
     final scopes = (oauth2['scopes'] as List).cast<String>();
-    // Web/Linux can't catch the native com.ham2k.*.auth:// redirect at all
-    // (oauth_relay_login.dart's header explains why) — they go through
-    // LoFi's webhook relay instead; every other platform keeps using the
-    // original in-app webview + deep-link interception below, unchanged.
+    // Every platform opens the sign-in page in the operator's own browser.
+    // What differs is only how the code comes home: Web/Linux/Windows can't
+    // receive the native com.ham2k.*.auth:// redirect at all
+    // (oauth_browser_login.dart's header explains why), so they go through
+    // LoFi's webhook relay; everywhere else the OS delivers it as a deep link.
     final useRelay = oauthUsesWebhookRelay();
     final redirectUrl = (useRelay ? oauth2['webhookRedirectUrl'] : oauth2['redirectUrl']) as String?;
 
@@ -3552,15 +3550,6 @@ class _AccountPaneState extends State<_AccountPane> {
         },
       );
 
-      // A Windows machine that cannot create a WebView2 environment gets a
-      // blank login page with nothing to explain it. There is no rescue to
-      // offer: the system browser can't bring the operator back, because
-      // Windows registers none of the `com.ham2k.*.auth://` schemes and this
-      // leg depends entirely on shouldOverrideUrlLoading catching the
-      // redirect inside the webview. So the page says so instead of
-      // pretending.
-      final canUseWebView = await WindowsWebView.isAvailable();
-
       if (!mounted) return;
 
       String? authError;
@@ -3568,7 +3557,7 @@ class _AccountPaneState extends State<_AccountPane> {
       if (useRelay) {
         code = await Navigator.of(context).push<String>(
           MaterialPageRoute(
-            builder: (context) => OAuthRelayLoginPage(
+            builder: (context) => OAuthBrowserLoginPage(
               accountLabel: '${widget.account['label']}',
               authUri: authUri,
               expectedState: state,
@@ -3581,100 +3570,31 @@ class _AccountPaneState extends State<_AccountPane> {
           ),
         );
       } else {
-        // The provider redirects to a com.ham2k.*.auth:// URL. Normally the
-        // webview intercepts it below, but if the OS handles it instead
-        // (the schemes are registered as deep links), it comes back through
-        // DeepLinkService — either way the webview route pops with the code.
+        // The sign-in page opens in the operator's own browser, same as the
+        // relay platforms; here the provider redirects to a
+        // com.ham2k.*.auth:// URL these platforms register, and the OS hands
+        // it back through DeepLinkService. This listener is what completes
+        // the login — the waiting page itself carries no relay wiring and
+        // never resolves on its own.
         final navigator = Navigator.of(context);
         final linkSub = widget.services.deepLinks.links.listen((uri) {
           if (!DeepLinkService.isAuthCallback(uri)) return;
-          if (uri.queryParameters['state'] != state) return;
+          if (uri.queryParameters['state'] != state) {
+            // A redirect from an attempt the operator abandoned, or one meant
+            // for another login. Dropping it is right; dropping it in silence
+            // leaves a page waiting with no record that anything came back.
+            debugPrint('[oauth] ignoring an auth callback for a different attempt');
+            return;
+          }
           authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
           navigator.pop(uri.queryParameters['code']);
         }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:auth-callback'));
 
-        InAppWebViewController? webViewController;
         code = await navigator.push<String>(
           MaterialPageRoute(
-            builder: (context) => Scaffold(
-              appBar: AppBar(
-                flexibleSpace: windowHeaderGestureArea(),
-                title: Text(context.t.settings.accounts.connectTo(label: '${widget.account['label']}')),
-                actions: [
-                  // Continues the login in the system browser (from wherever
-                  // the in-app page currently is); the redirect then comes
-                  // back through the deep-link listener above. Keep this
-                  // page open — closing it abandons the flow.
-                  //
-                  // Gone with the webview, and for the same reason: without a
-                  // webview to intercept the redirect there is nothing to
-                  // come back to, so offering it beside a page that says
-                  // signing in is impossible would be handing over a dead end.
-                  if (canUseWebView)
-                    TextButton(
-                      child: Text(context.t.settings.accounts.openInBrowser),
-                      onPressed: () async {
-                        final current = await webViewController?.getUrl();
-                        unawaited(
-                          launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication),
-                        );
-                      },
-                    ),
-                  windowsCaptionSpacer(context),
-                ],
-                leadingWidth: macOSAwareLeadingWidth(context),
-                leading: isMacOSChromelessWindow
-                    ? Padding(
-                        padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
-                        child: CloseButton(onPressed: () => Navigator.of(context).pop()),
-                      )
-                    : CloseButton(onPressed: () => Navigator.of(context).pop()),
-              ),
-              body: !canUseWebView
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(Space.xxl),
-                        child: Text(
-                          context.t.settings.accounts.webViewUnavailable,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    )
-                  : InAppWebView(
-                      // Null off Windows; on Windows the app's own
-                      // environment, without which the plugin builds one next
-                      // to the exe and can fail outright (see WindowsWebView).
-                      webViewEnvironment: WindowsWebView.environment,
-                      onWebViewCreated: (controller) => webViewController = controller,
-                      initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
-                      initialSettings:
-                          InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
-                      shouldOverrideUrlLoading: (controller, navigationAction) async {
-                        final url = navigationAction.request.url?.toString();
-                        final uri = url != null ? Uri.tryParse(url) : null;
-                        final expected = Uri.parse(redirectUrl);
-                        // Scheme and authority, not a string prefix:
-                        // prefix-matching `com.ham2k.logger.next.auth://sota`
-                        // would also accept `…://sota.example.com`. The state
-                        // check below is what actually protects the exchange,
-                        // but there is no reason to accept a redirect
-                        // addressed somewhere else.
-                        if (uri != null &&
-                            uri.scheme.toLowerCase() == expected.scheme.toLowerCase() &&
-                            uri.authority.toLowerCase() == expected.authority.toLowerCase()) {
-                          final redirectCode = uri.queryParameters['code'];
-                          final redirectState = uri.queryParameters['state'];
-                          if (redirectState == state) {
-                            Navigator.of(context).pop(redirectCode);
-                          } else {
-                            Navigator.of(context).pop();
-                          }
-                          return NavigationActionPolicy.CANCEL;
-                        }
-                        return NavigationActionPolicy.ALLOW;
-                      },
-                    ),
+            builder: (context) => OAuthBrowserLoginPage(
+              accountLabel: '${widget.account['label']}',
+              authUri: authUri,
             ),
           ),
         );

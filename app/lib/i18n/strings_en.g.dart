@@ -922,6 +922,12 @@ class Translations$callInfo$en {
 	/// en: 'Show Image'
 	String get showImage => 'Show Image';
 
+	/// en: 'Photo unavailable'
+	String get imageUnavailable => 'Photo unavailable';
+
+	/// en: 'Photo'
+	String get photo => 'Photo';
+
 	/// en: 'Notes'
 	String get notes => 'Notes';
 
@@ -3111,9 +3117,6 @@ class Translations$settings$accounts$en {
 	/// en: 'Open in Browser'
 	String get openInBrowser => 'Open in Browser';
 
-	/// en: 'This computer can't show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn't working here — installing or repairing it should fix this. Until then, this account can't be connected on this machine.'
-	String get webViewUnavailable => 'This computer can\'t show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn\'t working here — installing or repairing it should fix this. Until then, this account can\'t be connected on this machine.';
-
 	/// en: 'Logged in as ${identity}'
 	String loggedInAs({required Object identity}) => 'Logged in as ${identity}';
 
@@ -3176,6 +3179,9 @@ class Translations$settings$accounts$en {
 
 	/// en: 'Waiting for you to finish signing in — this page will continue automatically once you do.'
 	String get relayLoginWaiting => 'Waiting for you to finish signing in — this page will continue automatically once you do.';
+
+	/// en: 'This device hasn't heard back from the sign-in yet. If you already finished in your browser, close this and try connecting again.'
+	String get loginNoResponse => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, close this and try connecting again.';
 
 	/// en: 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.'
 	String get relayLoginNotOpened => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.';
@@ -5361,6 +5367,8 @@ extension on Translations {
 			'loggingPanel.duplicates' => 'Duplicates',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Show Image',
+			'callInfo.imageUnavailable' => 'Photo unavailable',
+			'callInfo.photo' => 'Photo',
 			'callInfo.notes' => 'Notes',
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} to',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to',
@@ -5576,7 +5584,6 @@ extension on Translations {
 			'settings.accounts.connected' => 'Connected',
 			'settings.accounts.connectTo' => ({required Object label}) => 'Connect to ${label}',
 			'settings.accounts.openInBrowser' => 'Open in Browser',
-			'settings.accounts.webViewUnavailable' => 'This computer can\'t show the sign-in page. Ham2K Logger needs the Microsoft Edge WebView2 Runtime, and it isn\'t working here — installing or repairing it should fix this. Until then, this account can\'t be connected on this machine.',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Logged in as ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Press Save to keep this account connected.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'Connected to ${label}',
@@ -5598,6 +5605,7 @@ extension on Translations {
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
+			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, close this and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
 			'settings.accounts.relayLoginMalformedEvent' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
@@ -5848,10 +5856,10 @@ extension on Translations {
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} selected',
 			'commands.settingExpectsOnOff' => 'on or off',
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
-			'commands.settingExpectsNumber' => 'a number',
-			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
 			_ => null,
 		} ?? switch (path) {
+			'commands.settingExpectsNumber' => 'a number',
+			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',

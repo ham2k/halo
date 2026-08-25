@@ -5,7 +5,12 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { buildCallHistoryTiers, mergeHistory } from "./buildCallHistoryLookup.ts"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { CallInfoLookup, JSONValue } from "@ham2k/halo-extension-sdk"
+
+/// The photo rides along as an extra field `CallInfoLookup`'s fixed shape does
+/// not declare, the same widening `flag` uses (annotate.ts) — so reading it
+/// back in a test needs the same widening.
+type WithImage = CallInfoLookup & { image?: string }
 
 // `call` defaults to "KI2D" — the location guard requires the past QSO's OWN
 // call to match the call being composed, so most fixtures need one to
@@ -49,6 +54,29 @@ test("one past QSO can split across both tiers — a corrected name, an unverifi
   assert.equal((manual[0] as Record<string, unknown>).grid, undefined)
   assert.equal(guessed[0].grid, "CM87")
   assert.equal((guessed[0] as Record<string, unknown>).name, undefined)
+})
+
+test("the photo comes forward from the last time the station was worked", () => {
+  // Guessed tier, deliberately: it fills the slot when nothing live answered
+  // — a call worked before shows a face with no network at all — while a
+  // fresh QRZ answer still outranks it, so a changed profile picture is not
+  // frozen at whatever URL that QSO happened to store.
+  const { manual, guessed } = buildCallHistoryTiers("KI2D", [
+    qso({ guess: { image: "https://qrz.test/ki2d.jpg" } }),
+  ])
+  assert.equal((guessed[0] as WithImage).image, "https://qrz.test/ki2d.jpg")
+  assert.equal(manual.length, 0)
+})
+
+test("the photo is not a location field — a portable QSO still carries it", () => {
+  // The location of a POTA/SOTA activation says nothing about where the
+  // station lives, and is dropped; a photo describes the operator, not the
+  // variant of their call, so it survives the same guard.
+  const { guessed } = buildCallHistoryTiers("KI2D", [
+    qso({ guess: { image: "https://qrz.test/ki2d.jpg", locationScope: "portable", grid: "FN31pr" } }),
+  ])
+  assert.equal((guessed[0] as WithImage).image, "https://qrz.test/ki2d.jpg")
+  assert.equal(guessed[0].grid, undefined)
 })
 
 test("a home QTH location comes through", () => {

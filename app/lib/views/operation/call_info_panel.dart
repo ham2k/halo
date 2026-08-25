@@ -13,7 +13,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../main.dart';
@@ -24,6 +23,12 @@ import '../../tools/scoring_labels.dart';
 
 /// How many "other operations" QSOs to list before the "… and N more" line.
 const _otherOpsToShow = 3;
+
+/// The thumbnail's box in the header. Plain logical pixels — the Font Scale
+/// wrapper scales the whole UI, so nothing here multiplies by it
+/// (docs/design/ui-scaling.md). Tap it for the photo at full size.
+const _thumbnailMaxWidth = 200.0;
+const _thumbnailMaxHeight = 160.0;
 
 class CallInfoPanel extends StatefulWidget {
   final Operation operation;
@@ -73,6 +78,11 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   bool _showImage = true;
   List<Qso>? _history;
 
+  /// The URL whose failure has already been reported — see
+  /// [_reportImageFailure]. Also what makes the thumbnail inert: a placeholder
+  /// that opened a full-window copy of itself is a dead end.
+  String? _failedImageUrl;
+
   @override
   void initState() {
     super.initState();
@@ -84,6 +94,10 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.call != widget.call) {
       _history = null;
+      // Per call, not for the panel's lifetime: without this a URL that fails
+      // for one callsign silences the report for a different callsign's photo
+      // that fails later, and leaves that one's thumbnail inert.
+      _failedImageUrl = null;
       _loadHistory();
     }
   }
@@ -162,8 +176,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     return '$time $date';
   }
 
-  Future<void> _openQrz() =>
-      launchUrl(Uri.parse('https://qrz.com/db/${widget.call}'), mode: LaunchMode.externalApplication);
+  void _openQrz() => openExternalUrl('https://qrz.com/db/${widget.call}');
 
   @override
   Widget build(BuildContext context) {
@@ -301,17 +314,31 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     return Padding(
       padding: const EdgeInsets.only(bottom: Space.md),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 200, maxHeight: 160),
+        constraints: const BoxConstraints(maxWidth: _thumbnailMaxWidth, maxHeight: _thumbnailMaxHeight),
         child: Stack(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                image,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => const SizedBox.shrink(),
-                loadingBuilder: (context, child, progress) =>
-                    progress == null ? child : const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+              child: InkWell(
+                // Null once the load has failed: there is nothing to enlarge,
+                // and a tap that opened the same placeholder full-window would
+                // be a dead end with its own close button.
+                onTap: _failedImageUrl == image ? null : () => _openImageViewer(image),
+                child: Image.network(
+                  image,
+                  fit: BoxFit.cover,
+                  semanticLabel: context.t.callInfo.photo,
+                  // A failed load is SAID, not swallowed: shrinking to nothing
+                  // renders a 404, a blocked request and a callsign with no
+                  // photo at all as the same absence, which is unanswerable
+                  // from a bug report.
+                  errorBuilder: (context, error, stack) {
+                    _reportImageFailure(image, error);
+                    return _imageUnavailable(theme);
+                  },
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null ? child : const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+                ),
               ),
             ),
             Positioned(
@@ -327,6 +354,68 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       ),
     );
   }
+
+  /// What a broken photo looks like: the same box the image would have filled,
+  /// so the layout doesn't move, saying which of "no photo" and "the photo
+  /// didn't load" happened.
+  Widget _imageUnavailable(ThemeData theme) => Container(
+        width: _thumbnailMaxWidth,
+        height: _thumbnailMaxHeight,
+        color: theme.colorScheme.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(MdiIcons.imageOff, size: 28, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(height: Space.xs),
+            Text(
+              context.t.callInfo.imageUnavailable,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+
+  /// Once per URL, not once per build: `errorBuilder` runs on every rebuild of
+  /// a failed image, and this panel rebuilds on every keystroke in the call
+  /// field.
+  void _reportImageFailure(String url, Object error) {
+    if (_failedImageUrl == url) return;
+    debugPrint('[call-info] photo failed to load: $url — $error');
+    // After the frame: `errorBuilder` runs DURING build, and the tap target
+    // below is what this changes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _failedImageUrl != url) setState(() => _failedImageUrl = url);
+    });
+  }
+
+  /// The photo at full size. A Modal Pane, like the app's other panes — full
+  /// screen on narrow, a centered card on wide. Not scrollable: the body sizes
+  /// the image itself, and a pane's own scroll view would hand it unbounded
+  /// height (docs/design/layouts.md).
+  Future<void> _openImageViewer(String image) => showModalPane<void>(
+        context,
+        title: widget.call,
+        closeLabel: context.t.common.close,
+        scrollable: false,
+        builder: (context) => Center(
+          child: InteractiveViewer(
+            child: Image.network(
+              image,
+              fit: BoxFit.contain,
+              semanticLabel: context.t.callInfo.photo,
+              // Reported here too: a photo whose thumbnail loaded and whose
+              // full-size fetch does not is the same unanswerable bug report
+              // the thumbnail's own handler exists to prevent.
+              errorBuilder: (context, error, stack) {
+                _reportImageFailure(image, error);
+                return _imageUnavailable(Theme.of(context));
+              },
+            ),
+          ),
+        ),
+      );
 
   List<Widget> _pills(BuildContext context) {
     final theme = Theme.of(context);

@@ -447,7 +447,7 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
 // string, no wildcard: https://lofi.ham2k.net/v1/webhooks/client/oauth. The
 // host (`_doOAuth`, settings_view.dart) picks which of `redirectUrl` /
 // `webhookRedirectUrl` to actually use per `oauthUsesWebhookRelay()|
-// (oauth_relay_login.dart) — the client is told apart via the OAuth `state`
+// (oauth_browser_login.dart) — the client is told apart via the OAuth `state`
 // param in that case, not the URL (state is the only thing every compliant
 // provider is required to echo back unmodified, which is what makes it
 // portable — see HALO-65's design note for why this isn't a per-client URL).

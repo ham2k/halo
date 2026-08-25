@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // oauthUsesWebhookRelay decides which platforms go through LoFi's webhook
-// relay (Web, Linux) versus the original in-app webview + deep-link flow
+// relay (Web, Linux, Windows) versus the deep-link flow
 // (everywhere else) for OAuth logins (HALO-22). Pinned here for the same
 // reason the deleted oauthNeedsSystemBrowser was: `kIsWeb` is a
 // compile-time constant `flutter test` can't flip, and this project's CI
@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/pusher_service.dart';
-import 'package:ham2k_logger/views/oauth_relay_login.dart';
+import 'package:ham2k_logger/views/oauth_browser_login.dart';
 
 const _state = 'abc123';
 
@@ -50,23 +50,25 @@ void main() {
       expect(oauthUsesWebhookRelay(isWeb: false, platform: TargetPlatform.linux), isTrue);
     });
 
-    test('macOS, Windows, Android and iOS keep the native webview/deep-link flow', () {
-      for (final platform in [
-        TargetPlatform.android,
-        TargetPlatform.iOS,
-        TargetPlatform.macOS,
-        TargetPlatform.windows,
-      ]) {
+    test('Windows uses the relay: it registers no scheme to catch the redirect with', () {
+      // The sign-in page opens in the system browser there like everywhere
+      // else, so without the relay the authorization code would have no way
+      // back into the app at all (HALO-178 is the missing registration).
+      expect(oauthUsesWebhookRelay(isWeb: false, platform: TargetPlatform.windows), isTrue);
+    });
+
+    test('macOS, Android and iOS take the code home as a deep link', () {
+      for (final platform in [TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS]) {
         expect(
           oauthUsesWebhookRelay(isWeb: false, platform: platform),
           isFalse,
-          reason: '$platform should keep the original webview/deep-link flow, not the relay',
+          reason: '$platform registers com.ham2k.*.auth:// and needs no relay',
         );
       }
     });
   });
 
-  group('the relay waiting page', () {
+  group('the waiting page', () {
     /// Pushes the page and reports what it pops with. `popped` is a LIST, not a
     /// nullable field: the route pops after this returns, and a record would
     /// have captured the value as it was before the event arrived.
@@ -75,6 +77,7 @@ void main() {
       bool launchSucceeds = true,
       List<Map<String, dynamic>> Function()? fetch,
       Stream<PusherEvent>? pings,
+      Duration pollInterval = const Duration(days: 1),
     }) async {
       final errors = <String>[];
       final popped = <String?>[];
@@ -87,7 +90,7 @@ void main() {
               body: TextButton(
                 onPressed: () async {
                   popped.add(await Navigator.of(context).push<String>(MaterialPageRoute(
-                    builder: (_) => OAuthRelayLoginPage(
+                    builder: (_) => OAuthBrowserLoginPage(
                       accountLabel: 'SOTA',
                       authUri: authUri,
                       expectedState: _state,
@@ -95,12 +98,13 @@ void main() {
                       fetchWebhookEvents: () async => fetch?.call() ?? const [],
                       onError: errors.add,
                       launcher: (uri) async => launchSucceeds,
-                      // Long enough that the poll tick never fires during a
-                      // test — every check below is driven by the initial
-                      // immediate check in initState or by `pings`, not by
-                      // the timer, so the two triggers stay independently
-                      // controllable.
-                      pollInterval: const Duration(days: 1),
+                      // Defaults long enough that the poll tick never fires
+                      // during a test — every check below is driven by the
+                      // initial immediate check in initState or by `pings`,
+                      // not by the timer, so the two triggers stay
+                      // independently controllable. A test about the polling
+                      // itself passes its own.
+                      pollInterval: pollInterval,
                     ),
                   )));
                 },
@@ -156,7 +160,7 @@ void main() {
         ],
       );
       expect(run.popped, isEmpty, reason: 'nothing matched this login\'s state — still waiting');
-      expect(find.byType(OAuthRelayLoginPage), findsOneWidget);
+      expect(find.byType(OAuthBrowserLoginPage), findsOneWidget);
     });
 
     testWidgets('the state must match EXACTLY, not merely start the same way', (tester) async {
@@ -203,6 +207,77 @@ void main() {
     testWidgets('a browser that will not open says so, instead of waiting forever', (tester) async {
       await pump(tester, launchSucceeds: false);
       expect(find.text(_t(tester).settings.accounts.relayLoginNotOpened), findsOneWidget);
+      expect(find.text(_t(tester).settings.accounts.relayLoginWaiting), findsNothing);
+    });
+
+    testWidgets('with no relay wiring it opens the browser and waits, polling nothing', (tester) async {
+      // The deep-link platforms' shape: the OS brings the code back and
+      // `_doOAuth`'s listener pops this route, so a page that resolved
+      // anything on its own here would be racing that listener. A relay call
+      // in this mode is a null-deref, not a wasted request — which is why
+      // fetch is wired to fail the test rather than return an empty list.
+      final launched = <Uri>[];
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: OAuthBrowserLoginPage(
+            accountLabel: 'SOTA',
+            authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
+            launcher: (uri) async {
+              launched.add(uri);
+              return true;
+            },
+            pollInterval: const Duration(milliseconds: 1),
+          ),
+        ),
+      ));
+      await _settle(tester);
+      // Well past several poll intervals: a timer left armed in this mode
+      // would have fired by now, and firing means dereferencing a null hook.
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(launched, hasLength(1));
+      expect(tester.takeException(), isNull);
+      expect(find.text(_t(tester).settings.accounts.relayLoginWaiting), findsOneWidget);
+    });
+
+    testWidgets('a relay it cannot reach stops calling it waiting', (tester) async {
+      // fetchWebhookEvents reports a dead host as an EMPTY LIST, so a throw is
+      // the only failure this page can see at all — and it must not read as
+      // "the operator hasn't finished yet", which is what the waiting line
+      // claims and what it would go on claiming forever.
+      var calls = 0;
+      await pump(tester, fetch: () {
+        calls++;
+        throw StateError('relay unreachable');
+      }, pollInterval: const Duration(milliseconds: 10));
+      // Three consecutive failures: one dropped request is what polling is for.
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.pump();
+
+      expect(calls, greaterThanOrEqualTo(3));
+      expect(find.text(_t(tester).settings.accounts.relayLoginUnavailable), findsOneWidget);
+      expect(find.text(_t(tester).settings.accounts.relayLoginWaiting), findsNothing);
+    });
+
+    testWidgets('a code that never comes back stops calling it waiting too', (tester) async {
+      // The deep-link platforms' failure mode: the OS never delivered the
+      // redirect, or the operator finished on another device. Nothing here can
+      // tell that from a slow password, so the page waits a good while — and
+      // then says what the operator can actually do about it.
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: OAuthBrowserLoginPage(
+            accountLabel: 'SOTA',
+            authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
+            launcher: (uri) async => true,
+          ),
+        ),
+      ));
+      await _settle(tester);
+      expect(find.text(_t(tester).settings.accounts.relayLoginWaiting), findsOneWidget);
+
+      await tester.pump(const Duration(minutes: 2));
+      expect(find.text(_t(tester).settings.accounts.loginNoResponse), findsOneWidget);
       expect(find.text(_t(tester).settings.accounts.relayLoginWaiting), findsNothing);
     });
 
