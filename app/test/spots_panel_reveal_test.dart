@@ -1046,7 +1046,34 @@ void main() {
           reason: 'the row stayed open — the re-key did not cancel the drag');
     });
 
-    testWidgets('a scroll during a drag does not take the row out from under the finger',
+    testWidgets('scrolling the board leaves an open row open', (tester) async {
+      // The operator peeking at one spot's action while scanning the rest of
+      // the board is reading, not abandoning the peek. A list that closed the
+      // row under the scroll would also withdraw what it filled, emptying the
+      // logging fields for a gesture the operator never made.
+      final services = await servicesWith(_board(60));
+      var withdrawn = 0;
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: (_) => withdrawn++,
+        onLogQso: (_) {},
+      );
+
+      await slide(tester, 'K0001', 120);
+      expect(openDx(tester, 'K0001', closed: 'K0003'), greaterThan(0));
+
+      tester.widget<Scrollable>(find.byType(Scrollable).first).controller?.jumpTo(20);
+      await tester.pumpAndSettle();
+
+      expect(openDx(tester, 'K0001', closed: 'K0003'), greaterThan(0),
+          reason: 'the scroll left the peek alone');
+      expect(withdrawn, 0, reason: 'and left what it filled in the logging fields');
+    });
+
+    testWidgets('a mid-drag close does not take the row out from under the finger',
         (tester) async {
       final services = await servicesWith(_board(60));
       final suggested = <Map<String, dynamic>>[];
@@ -1064,14 +1091,20 @@ void main() {
         await gesture.moveBy(const Offset(12, 0));
         await tester.pump();
       }
-      final beforeScroll = tester.getTopLeft(find.text('K0001')).dx - closedAt;
-      expect(beforeScroll, greaterThan(0));
+      final beforeClose = tester.getTopLeft(find.text('K0001')).dx - closedAt;
+      expect(beforeClose, greaterThan(0));
 
-      // What crossing the peek can arm: suggesting the QSO makes this the
-      // current row, and revealing it scrolls — which used to close every open
-      // row, this one included, mid-gesture.
-      tester.widget<Scrollable>(find.byType(Scrollable).first).controller?.jumpTo(20);
-      await tester.pump();
+      // What crossing the peek arms: suggesting the QSO edits the call being
+      // logged, and the operation view answers by bumping `closeSlidesSerial`
+      // — which closes every open row, this one included, mid-gesture.
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        closeSlidesSerial: 1,
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
+        onLogQso: (_) {},
+      );
 
       for (var i = 0; i < 6; i++) {
         await gesture.moveBy(const Offset(12, 0));
@@ -1119,8 +1152,8 @@ void main() {
 
     testWidgets('a row that refused to close mid-drag is still the open one afterwards', (tester) async {
       // The refusal and the bookkeeping have to agree. Crossing the peek
-      // suggests the QSO, which arms the panel's own reveal scroll, whose
-      // ScrollStartNotification closes open rows — and this row, with a finger
+      // suggests the QSO, which edits the call being logged, whose
+      // `closeSlidesSerial` closes open rows — and this row, with a finger
       // still on it, says no. A group that forgets it anyway leaves a row that
       // is open and untracked: nothing closes it, and every later slide adds
       // another, until the list is a column of open rows.
@@ -1138,12 +1171,18 @@ void main() {
         await gesture.moveBy(const Offset(12, 0));
         await tester.pump();
       }
-      tester.widget<Scrollable>(find.byType(Scrollable).first).controller?.jumpTo(20);
-      await tester.pump();
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        closeSlidesSerial: 1,
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(MdiIcons.upload), findsOneWidget, reason: 'the drag survived the scroll');
+      expect(find.byIcon(MdiIcons.upload), findsOneWidget, reason: 'the drag survived the close');
 
       await slide(tester, 'K0004', 120);
 

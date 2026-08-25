@@ -50,6 +50,51 @@ test("scoreQso: exact call+band+mode already worked is a duplicate", async () =>
   assert.deepEqual(notices.notices, [])
 })
 
+test("scoreQso: a spot's coarser mode still duplicates the sideband it was worked on", async () => {
+  // The spots board asks this question for every row: POTA and SOTA say
+  // `SSB` where the radio reported `USB`, and a raw string comparison leaves
+  // an already-worked station looking fresh — unstruck on the board, and
+  // scoring a point in the log.
+  const notices = await scoreQso(
+    { operation: op, qso: qso("W1AW", "20m", "SSB") },
+    ctxWithLog([qso("W1AW", "20m", "USB", { uuid: "q1" })]),
+  )
+  assert.deepEqual(notices.alerts, ["duplicate"])
+  assert.deepEqual(notices.notices, [])
+})
+
+test("scoreQso: a coarse DATA mode duplicates whichever digital mode was worked", async () => {
+  const notices = await scoreQso(
+    { operation: op, qso: qso("W1AW", "20m", "DATA") },
+    ctxWithLog([qso("W1AW", "20m", "FT8", { uuid: "q1" })]),
+  )
+  assert.deepEqual(notices.alerts, ["duplicate"])
+})
+
+test("scoreQso: a coarse mode already in the log does not swallow the modes around it", async () => {
+  // The other direction, which must NOT widen: a contact logged as DATA is
+  // one contact. A dupe is never appended to `workedByCall`, so a coarse
+  // entry that matched its whole category would strike this station on this
+  // band for the rest of the operation.
+  const notices = await scoreQso(
+    { operation: op, qso: qso("W1AW", "20m", "FT8") },
+    ctxWithLog([qso("W1AW", "20m", "DATA", { uuid: "q1" })]),
+  )
+  assert.deepEqual(notices.alerts, [])
+  assert.ok(notices.notices.includes("newMode"))
+})
+
+test("scoreQso: two digital modes are still two contacts", async () => {
+  // The widened match may not go as far as the super mode: FT8 and RTTY are
+  // separate credit, and folding them would silently drop one.
+  const notices = await scoreQso(
+    { operation: op, qso: qso("W1AW", "20m", "RTTY") },
+    ctxWithLog([qso("W1AW", "20m", "FT8", { uuid: "q1" })]),
+  )
+  assert.deepEqual(notices.alerts, [])
+  assert.ok(notices.notices.includes("newMode"))
+})
+
 test("scoreQso: same call on a different band is New Band, not a dupe", async () => {
   const notices = await scoreQso(
     { operation: op, qso: qso("W1AW", "40m", "SSB") },
@@ -439,6 +484,25 @@ test("scoreQsos: a day section's tally carries no band breakdown", async () => {
 
 // Duplicates count toward a band's total: the row is contacts logged, which is
 // what the stats block above it counts, not the score, which drops them.
+test("scoreQsos: a duplicate on another spelling of the same mode brings nothing new", async () => {
+  // The tally keys are the raw mode, so a dupe caught only by the mode fold
+  // arrives with a mode `base.modes` has never seen — and would be credited
+  // as a contact that brought a new mode, which rule 1 has just said it is
+  // not. Its band row still counts it, like any other dupe.
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "USB", { uuid: "q1" }),
+        qso("W1AW", "20m", "SSB", { uuid: "q2" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.qsoScores.q2.dupe, true)
+  assert.equal(result.operationSummary.bandsAndModes.total, 1)
+})
+
 test("scoreQsos: a duplicate still counts toward its band's row", async () => {
   const result = await scoreQsos(
     {

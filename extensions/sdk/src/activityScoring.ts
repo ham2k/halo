@@ -30,6 +30,7 @@
 // `node --test` — the same constraint dxcc.ts and core/scoring document.
 
 import { createCachedTranslator, createTranslator } from "./i18n.ts"
+import { modesMatchForDupe } from "./modes.ts"
 import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "./types.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 
@@ -252,7 +253,9 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       if (candidates.length === 0) notice ??= 'band'
     }
     if (unique.has('mode')) {
-      candidates = candidates.filter((c) => c.mode === now.mode)
+      // Not `===`: a prior logged on `USB` and a contact spotted as `SSB` are
+      // the same emission at two resolutions — see [modesMatchForDupe].
+      candidates = candidates.filter((c) => modesMatchForDupe(c.mode, now.mode))
       if (candidates.length === 0) notice ??= 'mode'
     }
     if (unique.has('ref')) {

@@ -27,6 +27,7 @@
 
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
+import { modesMatchForDupe } from "../../../sdk/src/modes.ts"
 import { contestScorer } from "../../../sdk/src/scoring.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { DXCC_BY_PREFIX } from "@ham2k/lib-dxcc-data"
@@ -124,6 +125,12 @@ function str(value: JSONValue | undefined): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
+/// The mode half of a `band|mode` entry in `workedByCall`. Split on the FIRST
+/// separator: a band name carries none, a mode string is not guaranteed to.
+function modeOfCombo(combo: string): string {
+  return combo.slice(combo.indexOf('|') + 1)
+}
+
 /// The state or province of the station being worked, or undefined when it has
 /// none, isn't North American, or hasn't been resolved yet.
 ///
@@ -189,7 +196,11 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     const prior = base.workedByCall[call] ?? []
 
     // --- Rule 1: duplicate contacts ---------------------------------------
-    const isDupe = prior.includes(bandMode)
+    // Not a string comparison against `bandMode`: the two sides spell the mode
+    // at whatever resolution they were logged or spotted at, and `SSB` and
+    // `USB` are one emission — see [modesMatchForDupe].
+    const sameMode = (combo: string) => modesMatchForDupe(modeOfCombo(combo), mode)
+    const isDupe = prior.some((combo) => combo.startsWith(`${band}|`) && sameMode(combo))
 
     const notices = new Set<string>()
     const alerts = new Set<string>()
@@ -197,7 +208,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
       alerts.add('duplicate')
     } else if (prior.length > 0) {
       // Worked before, but not on this combination — worth calling out.
-      if (!prior.some((combo) => combo.endsWith(`|${mode}`))) notices.add('newMode')
+      if (!prior.some(sameMode)) notices.add('newMode')
       if (!prior.some((combo) => combo.startsWith(`${band}|`))) notices.add('newBand')
     }
 
@@ -219,8 +230,11 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     const isNewBand = Boolean(band) && base.bands[band] === undefined
     const isNewMode = Boolean(mode) && base.modes[mode] === undefined
     // Credits once for a QSO that is new on either axis — a first 15m contact
-    // counts even when its mode was already worked.
-    const broughtBandOrMode = isNewBand || isNewMode
+    // counts even when its mode was already worked. Never a duplicate, which
+    // by rule 1 brought nothing: the tally keys are the RAW mode, so a station
+    // worked on `USB` and then duplicated on `SSB` reaches here with a mode no
+    // tally has seen and would otherwise be credited for it.
+    const broughtBandOrMode = !isDupe && (isNewBand || isNewMode)
 
     // --- Rule 4: states and provinces worked -------------------------------
     // Scoped to North American operators (rule 3's tally-only treatment does

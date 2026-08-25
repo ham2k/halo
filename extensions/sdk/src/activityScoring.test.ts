@@ -198,6 +198,27 @@ test("the same station on the same band, mode, day and ref is a duplicate", asyn
   assert.deepEqual(tally(result.operationSummary, 'activation')!.activatedRefs, { 'US-0001': 1 })
 })
 
+test("a repeat contact spotted at a coarser mode is still a duplicate", async () => {
+  // The mode axis is what the spots board leans on hardest: a park spotted as
+  // `SSB` after the activator was worked on `USB` would otherwise read as a
+  // fresh mode — unstruck on the board, and credited again in the log.
+  const operation = operationActivating('potaActivation', 'US-0001')
+  const result = await score(POTA, operation, [
+    qso('W1AW', { uuid: 'q1', mode: 'USB' }),
+    qso('W1AW', { uuid: 'q2', mode: 'SSB' }),
+  ])
+  assert.deepEqual(result.qsoScores.q2.alerts, ['duplicate'])
+})
+
+test("a repeat contact on a genuinely different mode still counts again", async () => {
+  const operation = operationActivating('potaActivation', 'US-0001')
+  const result = await score(POTA, operation, [
+    qso('W1AW', { uuid: 'q1', mode: 'FT8' }),
+    qso('W1AW', { uuid: 'q2', mode: 'RTTY' }),
+  ])
+  assert.deepEqual(result.qsoScores.q2.notices, ['newMode'])
+})
+
 test("a duplicate on a fresh band counts again and says so", async () => {
   const operation = operationActivating('potaActivation', 'US-0001')
   const result = await score(POTA, operation, [

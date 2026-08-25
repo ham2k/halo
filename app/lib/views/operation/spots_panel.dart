@@ -363,10 +363,12 @@ String spotCandidateKey(String call, Map<String, dynamic> spot) {
   return '${call.toUpperCase()}|${_bandOf(spot) ?? ''}|${_spotModeFor(spot)}|${refs.join(',')}';
 }
 
-/// A spot's mode as a scorer will compare it. Scorers match a logged QSO's
-/// `band|mode` as raw strings and logged modes are always uppercase, so a
-/// source that passes its API's casing through — POTA hands back `spot.mode`
-/// untouched — would otherwise never match a contact the operator has made.
+/// A spot's mode as a scorer will compare it, uppercased: sources pass their
+/// API's casing through — POTA hands back `spot.mode` untouched — and this is
+/// also half of [spotCandidateKey], which must not ask the same question twice
+/// because two sources spelled one mode differently. Scorers themselves fold
+/// the spellings that name one emission (`modesMatchForDupe`), so the casing
+/// is the only normalization owed to them.
 String _spotModeFor(Map<String, dynamic> spot) => (_modeOf(spot) ?? '').toUpperCase();
 
 /// The QSO a scorer judges when asked "what would working this spot be?".
@@ -1572,15 +1574,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
                     child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
                   ),
                 ]))
-          : NotificationListener<ScrollStartNotification>(
-              // A row left open under a thumb that has moved on to scrolling
-              // is a row whose action is still armed over whatever slid into
-              // its place.
-              onNotification: (_) {
-                _slideGroup.closeAll();
-                return false;
-              },
-              child: ListView(
+          // Scrolling deliberately leaves an open row open: the operator
+          // peeking at one spot's action while scanning the rest of the board
+          // is reading, not abandoning the peek, and a row that snapped shut
+          // under the scroll took its suggestion out of the logging fields
+          // with it.
+          : ListView(
               controller: _scrollController,
               children: [
                 for (final (sectionIndex, section) in sections.indexed) ...[
@@ -1633,11 +1632,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                     ? null
                                     : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false),
                                 // The fill lasts as long as the row is open —
-                                // a spot the operator dragged back, set aside
-                                // or scrolled past is not the station they are
-                                // working, and leaving it in the fields makes
-                                // the next Log a contact with whoever was slid
-                                // last.
+                                // a spot the operator dragged back or set
+                                // aside is not the station they are working,
+                                // and leaving it in the fields makes the next
+                                // Log a contact with whoever was slid last.
+                                // Scrolling is not one of those: it leaves the
+                                // row open, and so leaves the fill alone.
                                 onWithdrawn: widget.onWithdrawSuggestion == null
                                     ? null
                                     : () => widget.onWithdrawSuggestion!(_callOf(spot)),
@@ -1696,7 +1696,6 @@ class _SpotsPanelState extends State<SpotsPanel> {
                       ),
                 ],
               ],
-              ),
             ),
     );
   }
@@ -2409,9 +2408,9 @@ const _slidePeekThreshold = _slideActionWidth / 2;
 const _slideCommitFraction = 0.4;
 
 /// Which rows are open, so only ever one is. A row registers itself as it
-/// opens and the previous one closes; the panel also clears the group when
-/// the list scrolls, since a row left hanging open under the operator's
-/// thumb is a row whose action they did not choose to keep armed.
+/// opens and the previous one closes; a tap on any row, and any edit to the
+/// call being logged, clear the group outright. Scrolling deliberately does
+/// not — see the list in `_SpotsPanelState.build`.
 class _SlideGroup extends ChangeNotifier {
   /// Every row that is open, not just the latest one — because a row can
   /// REFUSE to close, which it does while a finger is still on it (see
@@ -2419,8 +2418,8 @@ class _SlideGroup extends ChangeNotifier {
   /// to forget a refuser to make room for the next, and a forgotten row is
   /// open with nothing able to close it: every later slide then leaves another
   /// beside it, until the list is a column of open rows. The refusal is not a
-  /// rare path — crossing the peek suggests the QSO, which arms the panel's
-  /// own reveal scroll, whose ScrollStartNotification lands here mid-drag.
+  /// rare path — crossing the peek suggests the QSO, which edits the call being
+  /// logged, whose `closeSlidesSerial` lands here mid-drag.
   ///
   /// One row is still all the operator ever sees open: every row opening
   /// closes the others, and a refuser is closed at the next opportunity
@@ -2532,8 +2531,8 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     if (!mounted) return true;
     if (_dx == 0) return true;
     // Never while the finger is down. Crossing the peek suggests the QSO,
-    // which can arm the panel's own reveal scroll, whose ScrollStartNotification
-    // closes open rows — including this one. Zeroing the displacement there
+    // which edits the call being logged, whose `closeSlidesSerial` closes open
+    // rows — including this one. Zeroing the displacement there
     // would restart the drag from nothing under a finger that never lifted:
     // the row jumps back, can no longer reach the commit point, and re-crossing
     // the peek suggests a second time. It also deregisters the row, so it can
