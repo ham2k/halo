@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"150":
   changes:
     - Radio pill and QSO frequencies turn red when there is no band
     - Peer sync copies an operation open on one device to your other devices on the same account
