@@ -45,7 +45,15 @@ const COARSE_SUPER_MODES: Record<string, string> = {
 /// them, and `PHONE` would match `DATA`.
 const KNOWN_MODES = new Set(ADIF_MODES_AND_SUBMODES.map((mode) => mode.toUpperCase()))
 
-function canonicalMode(mode: string): string {
+/// One spelling per emission, for a key that has to be stable: the sidebands
+/// fold to `SSB` and the alias spellings resolve, everything else passes
+/// through untouched. Two contacts on `FT4` and `MFSK` keep two keys — the
+/// parent rule below belongs to duplicate matching, not to counting.
+///
+/// Exported because core scoring's bands-and-modes tally keys on this too: a
+/// log holding both `USB` and `SSB` is one mode worked, and reporting it as
+/// two contradicts the duplicate rule that already treats them as one.
+export function canonicalMode(mode: string): string {
   const upper = (mode ?? '').trim().toUpperCase()
   if (SIDEBAND_SPELLINGS.has(upper)) return 'SSB'
   return MODE_ALIASES[upper] ?? upper

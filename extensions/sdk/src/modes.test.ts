@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { modesMatchForDupe } from "./modes.ts"
+import { canonicalMode, modesMatchForDupe } from "./modes.ts"
 
 test("modesMatchForDupe folds the sideband spellings together", () => {
   // The spot board's whole reason for this: POTA and SOTA say SSB where the
@@ -68,4 +68,24 @@ test("modesMatchForDupe matches an absent mode only against another absent one",
   assert.equal(modesMatchForDupe("", ""), true)
   assert.equal(modesMatchForDupe("", "DATA"), false)
   assert.equal(modesMatchForDupe("", "SSB"), false)
+})
+
+test("canonicalMode gives one spelling per emission and leaves the rest alone", () => {
+  // Core scoring keys its band/mode tallies on this, so what it merges is what
+  // an operation reports as one mode worked — and what it must NOT merge is
+  // every pair the wider duplicate rule folds.
+  assert.equal(canonicalMode("USB"), "SSB")
+  assert.equal(canonicalMode("lsb"), "SSB")
+  assert.equal(canonicalMode("DV"), "DIGITALVOICE")
+  assert.equal(canonicalMode("ft4"), "FT4")
+  assert.equal(canonicalMode("MFSK"), "MFSK")
+  assert.equal(canonicalMode("DATA"), "DATA")
+})
+
+test("canonicalMode answers nothing for a mode that is only whitespace", () => {
+  // A tally keyed on the result would otherwise gain a nameless entry: a
+  // phantom mode in the count, and a blank in the breakdown line. `str()` in
+  // core scoring does not trim, so this really does arrive.
+  assert.equal(canonicalMode(""), "")
+  assert.equal(canonicalMode("   "), "")
 })

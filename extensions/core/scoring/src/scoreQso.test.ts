@@ -484,23 +484,165 @@ test("scoreQsos: a day section's tally carries no band breakdown", async () => {
 
 // Duplicates count toward a band's total: the row is contacts logged, which is
 // what the stats block above it counts, not the score, which drops them.
-test("scoreQsos: a duplicate on another spelling of the same mode brings nothing new", async () => {
-  // The tally keys are the raw mode, so a dupe caught only by the mode fold
-  // arrives with a mode `base.modes` has never seen — and would be credited
-  // as a contact that brought a new mode, which rule 1 has just said it is
-  // not. Its band row still counts it, like any other dupe.
+test("scoreQsos: the sideband spellings are one mode worked, in the count and the breakdown", async () => {
+  // A radio reports `USB` while a spot, an import or another session says
+  // `SSB`, so one operation ends up holding both — and reporting "2 modes"
+  // contradicts the duplicate rule, which already treats them as one.
   const result = await scoreQsos(
     {
       operation: usOp,
       qsos: [
         qso("W1AW", "20m", "USB", { uuid: "q1" }),
-        qso("W1AW", "20m", "SSB", { uuid: "q2" }),
+        qso("K2XYZ", "20m", "SSB", { uuid: "q2" }),
+        qso("K3ABC", "20m", "LSB", { uuid: "q3" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 3 — SSB 3")
+
+  // The CHECKPOINT, not just what was rendered from it. This is the object
+  // cached on the operation and resumed from on the next append, so a
+  // scoresheet still holding three keys would keep re-deriving three modes
+  // for every later pass — and the fold on the way out would be the only
+  // thing hiding it.
+  const sheet = result.scoresheet as { modes: Record<string, number>; bandModes: Record<string, Record<string, number>> }
+  assert.deepEqual(sheet.modes, { SSB: 3 })
+  assert.deepEqual(sheet.bandModes["20m"], { SSB: 3 })
+})
+
+test("scoreQsos: nothing but the sidebands and the alias spellings is combined", async () => {
+  // The fold is for spellings of ONE emission. A parent mode and its submode
+  // are two — folding `FT4` into `MFSK` would under-report an operation that
+  // worked both, which is the failure the narrow rule exists to avoid.
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "FT4", { uuid: "q1" }),
+        qso("K2XYZ", "20m", "MFSK", { uuid: "q2" }),
+        qso("K3ABC", "20m", "DV", { uuid: "q3" }),
+        qso("K4DEF", "20m", "DIGITALVOICE", { uuid: "q4" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 3 Modes")
+  assert.equal(
+    result.operationSummary.bandsAndModes.longSummary,
+    "**20m**: 4 — DIGITALVOICE 2, FT4 1, MFSK 1",
+  )
+})
+
+test("scoreQsos: a checkpoint that tallied raw modes still renders folded", async () => {
+  // The tally is folded going in, so this is about the ones that are not: a
+  // scoresheet cached by an earlier build persists in the operation's local
+  // data and is resumed from as-is. Without the fold on the way out it keeps
+  // reporting two modes worked until something forces a full rescore.
+  const rawTally = {
+    workedByCall: {}, entities: {}, states: {}, provinces: {},
+    bands: { "20m": 15 }, modes: { USB: 12, SSB: 3 },
+    bandModes: { "20m": { USB: 12, SSB: 3 } },
+    qsos: 15, points: 15, duplicates: 0, bandModeQsos: 2,
+    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+    ourCall: "W1XYZ", ourEntity: "K",
+  }
+  const result = await scoreQsos(
+    { operation: usOp, qsos: [], resumeFrom: rawTally },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 15 — SSB 15")
+})
+
+test("scoreQsos: a duplicate the tally would call a new mode brings nothing new", async () => {
+  // `FT4` and `MFSK`, not the sidebands: the duplicate rule folds a submode
+  // into its ADIF parent where the TALLY keeps them apart, so q2 is a dupe
+  // that arrives with a mode key `base.modes` has never seen. Without the
+  // guard it is credited as having brought a new mode, which rule 1 has just
+  // said it did not. A pair the tally itself merges cannot catch that — the
+  // key would already be there.
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "FT4", { uuid: "q1" }),
+        qso("W1AW", "20m", "MFSK", { uuid: "q2" }),
       ],
     },
     ctxWithLog([]),
   )
   assert.equal(result.qsoScores.q2.dupe, true)
   assert.equal(result.operationSummary.bandsAndModes.total, 1)
+})
+
+test("scoreQsos: a mode of whitespace alone is no mode at all", async () => {
+  // It is truthy — `str` tests length, not content — and canonicalizes to
+  // nothing, so a guard on the raw string writes a nameless tally key: a
+  // second mode in the count, and a blank entry in the breakdown that reads
+  // as a rendering glitch rather than as data.
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "SSB", { uuid: "q1" }),
+        qso("K2ABC", "20m", " ", { uuid: "q2" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  const sheet = result.scoresheet as { modes: Record<string, number> }
+  assert.deepEqual(sheet.modes, { SSB: 1 })
+  assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
+  // The band still counts the contact — it has a band, it just has no mode.
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — SSB 1")
+})
+
+test("scoreQsos: a checkpoint's lower-case and nameless keys migrate too", async () => {
+  // The fold is not only about the sidebands: `canonicalMode` upper-cases, so
+  // a key cached as `ssb` moves as well, and a nameless key cached before the
+  // write guard keyed on the canonical value is dropped rather than carried.
+  const rawTally = {
+    workedByCall: {}, entities: {}, states: {}, provinces: {},
+    bands: { "20m": 9 }, modes: { ssb: 5, USB: 3, " ": 1 },
+    bandModes: { "20m": { ssb: 5, USB: 3, " ": 1 } },
+    qsos: 9, points: 9, duplicates: 0, bandModeQsos: 1,
+    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+    ourCall: "W1XYZ", ourEntity: "K",
+  }
+  const result = await scoreQsos(
+    { operation: usOp, qsos: [qso("K9NEW", "20m", "CW", { uuid: "qN" })], resumeFrom: rawTally },
+    ctxWithLog([]),
+  )
+  const sheet = result.scoresheet as { modes: Record<string, number> }
+  assert.deepEqual(sheet.modes, { SSB: 8, CW: 1 })
+})
+
+test("scoreQsos: a resumed checkpoint's raw tally keys are folded, not just rendered folded", async () => {
+  // The render fold covers the DISPLAY half of the migration. Left alone, the
+  // accumulator still holds `USB`, so the next contact on that band finds no
+  // `SSB` key, is credited as bringing a mode the operation had already
+  // worked, and writes both keys back into the checkpoint for good.
+  const rawTally = {
+    workedByCall: {}, entities: {}, states: {}, provinces: {},
+    bands: { "20m": 12 }, modes: { USB: 12 }, bandModes: { "20m": { USB: 12 } },
+    qsos: 12, points: 12, duplicates: 0, bandModeQsos: 1,
+    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+    ourCall: "W1XYZ", ourEntity: "K",
+  }
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [qso("K9NEW", "20m", "USB", { uuid: "qN" })],
+      resumeFrom: rawTally,
+    },
+    ctxWithLog([]),
+  )
+  const sheet = result.scoresheet as { modes: Record<string, number>; bandModes: Record<string, Record<string, number>> }
+  assert.deepEqual(sheet.modes, { SSB: 13 })
+  assert.deepEqual(sheet.bandModes["20m"], { SSB: 13 })
+  assert.equal(result.operationSummary.bandsAndModes.total, 1, 'the appended contact brought nothing new')
 })
 
 test("scoreQsos: a duplicate still counts toward its band's row", async () => {

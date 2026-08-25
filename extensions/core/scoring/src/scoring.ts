@@ -27,7 +27,7 @@
 
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
-import { modesMatchForDupe } from "../../../sdk/src/modes.ts"
+import { canonicalMode, modesMatchForDupe } from "../../../sdk/src/modes.ts"
 import { contestScorer } from "../../../sdk/src/scoring.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { DXCC_BY_PREFIX } from "@ham2k/lib-dxcc-data"
@@ -66,6 +66,11 @@ export type CoreScoresheet = {
   /// Counted rather than derived from `bands`/`modes` above, because a QSO that
   /// is new on BOTH axes still credits once.
   bandModeQsos: number
+  /// Whether the mode tallies are already keyed as [canonicalMode] spells
+  /// them. Absent on every checkpoint written before the tally folded — which
+  /// is exactly the sheet that needs migrating — and set from then on, so the
+  /// check costs one comparison per QSO instead of a walk of every band.
+  foldedTallyKeys?: boolean
   /// band → mode → contacts, the per-band breakdown's own data. Kept beside
   /// the flat `bands`/`modes` counts rather than replacing them: those two
   /// answer "how many bands" without walking a matrix, and a QSO with a band
@@ -156,7 +161,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
   startScoresheet(): CoreScoresheet {
     return {
       workedByCall: {}, entities: {}, bands: {}, modes: {}, bandModes: {}, states: {}, provinces: {},
-      qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
+      qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0, foldedTallyKeys: true,
       dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
     }
   },
@@ -185,6 +190,12 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     base.states ??= {}
     base.provinces ??= {}
     base.bandModes ??= {}
+    base.bands ??= {}
+    base.modes ??= {}
+    if (base.foldedTallyKeys !== true) {
+      foldTallyKeys(base)
+      base.foldedTallyKeys = true
+    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -192,6 +203,12 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
 
     const band = str(qso.band) ?? ''
     const mode = str(qso.mode) ?? ''
+    // What the band/mode TALLIES key on — one spelling per emission, so a log
+    // holding both `USB` and `SSB` reports one mode worked rather than two.
+    // Not what `workedByCall` stores: that keeps the mode as logged, and the
+    // duplicate rule reads it through `modesMatchForDupe`, which folds further
+    // than this does.
+    const tallyMode = canonicalMode(mode)
     const bandMode = `${band}|${mode}`
     const prior = base.workedByCall[call] ?? []
 
@@ -228,12 +245,13 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // in this log, now on a band or mode we hadn't worked THEM on.
     // Read BEFORE recording below, or the QSO would mask itself.
     const isNewBand = Boolean(band) && base.bands[band] === undefined
-    const isNewMode = Boolean(mode) && base.modes[mode] === undefined
+    const isNewMode = Boolean(tallyMode) && base.modes[tallyMode] === undefined
     // Credits once for a QSO that is new on either axis — a first 15m contact
     // counts even when its mode was already worked. Never a duplicate, which
-    // by rule 1 brought nothing: the tally keys are the RAW mode, so a station
-    // worked on `USB` and then duplicated on `SSB` reaches here with a mode no
-    // tally has seen and would otherwise be credited for it.
+    // by rule 1 brought nothing: that rule folds modes FURTHER than the tally
+    // does, so a station worked on `FT4` and duplicated on `MFSK` reaches here
+    // with a key the tally has never seen and would otherwise be credited for
+    // bringing it.
     const broughtBandOrMode = !isDupe && (isNewBand || isNewMode)
 
     // --- Rule 4: states and provinces worked -------------------------------
@@ -261,10 +279,14 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     }
     if (entityPrefix) base.entities[entityPrefix] = (base.entities[entityPrefix] ?? 0) + 1
     if (band) base.bands[band] = (base.bands[band] ?? 0) + 1
-    if (mode) base.modes[mode] = (base.modes[mode] ?? 0) + 1
-    if (band && mode) {
+    // Keyed on `tallyMode`, so guarded on it too: `str` does not trim, so a
+    // mode of whitespace alone is truthy and canonicalizes to nothing, and a
+    // nameless key is a phantom mode in the count and a blank entry in the
+    // breakdown.
+    if (tallyMode) base.modes[tallyMode] = (base.modes[tallyMode] ?? 0) + 1
+    if (band && tallyMode) {
       const byMode = (base.bandModes[band] ??= {})
-      byMode[mode] = (byMode[mode] ?? 0) + 1
+      byMode[tallyMode] = (byMode[tallyMode] ?? 0) + 1
     }
     if (stateWorked?.kind === 'state') base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
     if (stateWorked?.kind === 'province') {
@@ -353,9 +375,59 @@ export function dxccBreakdown(entities: Record<string, number>): string {
     .join(' ')
 }
 
+/// A mode tally re-keyed through [canonicalMode], merging the counts that
+/// land together. The scoresheet is already tallied that way, so this is for
+/// the ones that are NOT: a checkpoint written by a build that keyed on the
+/// raw mode persists in the operation's local data and is resumed from as-is,
+/// and would otherwise keep reporting `USB` and `SSB` as two modes worked
+/// until something forced a full rescore.
+function foldedModeTally(modes: Record<string, number> | undefined): Record<string, number> {
+  const folded: Record<string, number> = {}
+  for (const [mode, count] of Object.entries(modes ?? {})) {
+    const key = canonicalMode(mode)
+    // A checkpoint can hold a nameless key — a mode of whitespace alone was
+    // tallied as itself before the write guard keyed on the canonical value.
+    // Dropped rather than carried: it counts as a mode worked and renders as
+    // a blank entry in the breakdown.
+    if (!key) continue
+    folded[key] = (folded[key] ?? 0) + count
+  }
+  return folded
+}
+
+/// Re-keys a resumed checkpoint's mode tallies in place, so the accumulator
+/// agrees with what [foldedModeTally] renders. A sheet cached by a build that
+/// tallied the mode as logged carries `USB` and `SSB` as separate keys, and
+/// `isNewMode` reading one of those finds no key for the next contact on the
+/// other spelling — crediting it as having brought a mode the operation had
+/// already worked, and leaving both keys in the checkpoint from then on.
+///
+/// Runs once, gated on [CoreScoresheet.foldedTallyKeys], because a resumed fold
+/// never calls `startScoresheet` and this walks every band's modes — per QSO
+/// that costs about a third of the whole pass, on a loop that runs in QuickJS
+/// on every keystroke.
+///
+/// Migrates the KEYS, not the counters derived from them: `bandModeQsos` was
+/// accumulated against the unfolded keys and may credit a contact for bringing
+/// a mode that, folded, was already worked. Nothing here can tell which
+/// contact that was — only a full rescore can, and the number is a running
+/// total by design.
+function foldTallyKeys(base: CoreScoresheet): void {
+  if (Object.keys(base.modes).some((mode) => canonicalMode(mode) !== mode)) {
+    base.modes = foldedModeTally(base.modes)
+  }
+  for (const band of Object.keys(base.bandModes)) {
+    const byMode = base.bandModes[band]
+    if (Object.keys(byMode).some((mode) => canonicalMode(mode) !== mode)) {
+      base.bandModes[band] = foldedModeTally(byMode)
+    }
+  }
+}
+
 function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boolean): ScoreTally {
   const bandCount = Object.keys(sheet.bands).length
-  const modeCount = Object.keys(sheet.modes).length
+  const modes = foldedModeTally(sheet.modes)
+  const modeCount = Object.keys(modes).length
   const parts: string[] = []
   if (bandCount > 0) parts.push(bandCount === 1 ? t('oneBand') : t('manyBands', { n: bandCount }))
   if (modeCount > 0) parts.push(modeCount === 1 ? t('oneMode') : t('manyModes', { n: modeCount }))
@@ -367,7 +439,7 @@ function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boo
     // new on both axes credits once.
     total: sheet.bandModeQsos,
     bands: sheet.bands,
-    modes: sheet.modes,
+    modes,
     label: parts.join(', '),
     // Operation scope only. `bands`/`bandModes` carry across the whole
     // operation (`for: 'operation'` says so), so a breakdown attached to a day
@@ -401,7 +473,7 @@ function bandBreakdown(sheet: CoreScoresheet): string {
   return ordered
     .map((band) => {
       const total = fmtInteger(sheet.bands[band] ?? 0)
-      const byMode = Object.entries(sheet.bandModes?.[band] ?? {})
+      const byMode = Object.entries(foldedModeTally(sheet.bandModes?.[band]))
         // Count first, then mode name — so two modes tied at 3 don't swap
         // places between renders of the same log.
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
