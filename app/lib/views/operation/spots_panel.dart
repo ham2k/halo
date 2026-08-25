@@ -2715,26 +2715,40 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
             // The panel behind is sized from the SAME animating value as the
             // row in front, so the two stay edge to edge through a snap
             // instead of the panel jumping to its target while the row eases.
-            builder: (context, dx, child) => Stack(
-              children: [
-                // Only while there is something to see: an idle row pays for
-                // no extra layer, which matters on a board scrolled fast.
-                if (dx != 0)
-                  Positioned.fill(
-                    child: dx > 0
-                        ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
-                        : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
+            builder: (context, dx, child) {
+              final stack = Stack(
+                children: [
+                  // Only while there is something to see: an idle row pays for
+                  // no extra layer, which matters on a board scrolled fast.
+                  if (dx != 0)
+                    Positioned.fill(
+                      child: dx > 0
+                          ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
+                          : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
+                    ),
+                  Transform.translate(
+                    offset: Offset(dx, 0),
+                    // Opaque ONLY while displaced: the actions sit behind the
+                    // row, so a transparent row would show the one it has not
+                    // uncovered — but a row at rest must paint exactly what it
+                    // painted before it could slide, down to having no fill.
+                    child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
                   ),
-                Transform.translate(
-                  offset: Offset(dx, 0),
-                  // Opaque ONLY while displaced: the actions sit behind the
-                  // row, so a transparent row would show the one it has not
-                  // uncovered — but a row at rest must paint exactly what it
-                  // painted before it could slide, down to having no fill.
-                  child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
-                ),
-              ],
-            ),
+                ],
+              );
+              // The displaced content is clipped to the row's box — the width
+              // of the list itself — so a row dragged to the edge stops at it
+              // instead of painting over whatever sits beside the spot list.
+              // `Clip.none` rather than dropping the widget while the row
+              // rests: it allocates no layer either, and keeping the widget
+              // type stable across that boundary keeps the row's subtree —
+              // global keys, ink splashes and all — from being re-inflated at
+              // the frame a slide starts and again at the one it ends.
+              return ClipRect(
+                clipBehavior: dx == 0 ? Clip.none : Clip.hardEdge,
+                child: stack,
+              );
+            },
             child: widget.child,
           ),
         );
