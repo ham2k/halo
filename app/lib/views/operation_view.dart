@@ -1629,10 +1629,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       context: context,
       builder: (dialogContext) => HaloDialog(
         title: Text(t.toolsTitle),
-        // The rows are the dialog's whole content, so they get the header's
-        // horizontal inset from the ListTiles themselves rather than a
-        // content padding that would double it.
-        contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
+        // The rows ARE the dialog's content, so they take the shell's list
+        // padding: to the card's edges, with their contents inset off the
+        // same SettingsList every other list in the app reads.
+        list: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1687,6 +1687,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               },
             ),
           ],
+        ),
+        // Every row here closes the menu itself, so this is a way out rather
+        // than a confirm — and a dialog without a footer band ends on nothing,
+        // which is what sets one apart from the rest.
+        cancel: TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(context.t.common.done),
         ),
       ),
     );

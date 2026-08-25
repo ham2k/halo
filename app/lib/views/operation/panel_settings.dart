@@ -58,6 +58,9 @@ Future<void> showPanelSettings(
     initialState: current,
     labels: formRendererLabelsFor(t),
     developerMode: services.settings.developerMode,
+    // A panel's configuration is settings, not a form to fill in — same rows
+    // the Settings panels show.
+    settingsList: true,
     // NATIVE panels only, and the narrowness is the point. FormRenderer
     // disables an action button when `onAction` is null, so supplying one
     // unconditionally would turn every extension panel's action button from

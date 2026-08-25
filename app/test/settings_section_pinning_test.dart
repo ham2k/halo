@@ -25,7 +25,7 @@ void main() {
                   slivers: [
                     for (var s = 0; s < sections; s++)
                       SliverMainAxisGroup(slivers: [
-                        SettingsSectionHeader.pinned(context, 'Section $s', width: width),
+                        SectionHeader.pinned(context, 'Section $s', width: width),
                         SliverList.list(children: [
                           for (var r = 0; r < rowsPerSection; r++)
                             ListTile(title: Text('Row $s-$r')),

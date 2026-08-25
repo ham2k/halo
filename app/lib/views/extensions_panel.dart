@@ -136,7 +136,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         for (final category in categories) {
           final inCategory = [for (final info in visible) if ((info.category ?? 'other') == category) info];
           if (inCategory.isEmpty) continue;
-          rows.add(SettingsSectionHeader(extensionCategoryTitle(category)));
+          rows.add(SectionHeader(extensionCategoryTitle(category)));
           for (final info in inCategory) {
             rows.add(SwitchListTile(
               // Stable identity: without keys, list churn during the

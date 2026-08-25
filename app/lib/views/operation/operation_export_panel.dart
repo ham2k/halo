@@ -99,6 +99,8 @@ Future<void> showOperationExportPanel(
     closeLabel: t.common.close,
     // The option list scrolls; the action row stays pinned under it.
     scrollable: false,
+    // The footer's Done is the way out — see haloDialogFooterBand.
+    closeButton: false,
     headerActions: [
       // Route-level, so it sits in the pane's own header rather than in the
       // content. The panel below reloads itself when the setting changes —
@@ -429,24 +431,24 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   @override
   Widget build(BuildContext context) {
     final t = context.t;
-    final theme = Theme.of(context);
 
-    if (_loading) return const Center(child: CircularProgressIndicator());
-
+    // EVERY state keeps the footer under it, loading included. It is this
+    // pane's only way out — the header carries no close button — so a body
+    // that returns early takes the operator's exit with it, and a load
+    // waiting on the extension host is not a single frame.
     return Column(
       children: [
         Expanded(
-          child: _error != null
-              // Keeps the footer below it: a pane that failed to load still
-              // needs its way out, and the header's close button is easy to
-              // miss when the body is a wall of error text.
-              ? Padding(
-                  padding: const EdgeInsets.all(Space.xxl),
-                  child: Center(child: Text(t.operation.export.exportFailed(error: _error!))),
-                )
-              : _buildList(context),
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(Space.xxl),
+                      child: Center(child: Text(t.operation.export.exportFailed(error: _error!))),
+                    )
+                  : _buildList(context),
         ),
-        _buildFooter(context, theme),
+        _buildFooter(context),
       ],
     );
   }
@@ -497,7 +499,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         if (_options.isEmpty)
           Padding(
             padding: const EdgeInsets.all(Space.xl),
-            child: Text(t.operation.export.noOptions, style: theme.textTheme.bodyMedium),
+            child: Text(
+              // Two different empties, and saying the wrong one sends the
+              // operator looking for a fault: a log with no contacts yet has
+              // nothing to offer, where a log WITH contacts and no options
+              // means the formats themselves never arrived.
+              syncCounts != null && syncCounts.total == 0
+                  ? t.operation.export.nothingLogged
+                  : t.operation.export.noOptions,
+              style: theme.textTheme.bodyMedium,
+            ),
           )
         else
           for (final group in groups) ...[
@@ -719,32 +730,15 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// Just the way out. Everything that DOES something lives in the list,
   /// so this stays a plain dismissal — nothing here is destructive or
   /// unsaved, and the exports have already happened by the time it's pressed.
-  Widget _buildFooter(BuildContext context, ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        // The same band color a plain HaloDialog's own header/footer show —
-        // elevation-corrected for a modal pane's Material, so a Done-only
-        // footer reads the same everywhere it appears rather than drifting
-        // to a tint of its own.
-        color: haloDialogBandColorAt(context),
-        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
-          child: haloDialogFooterRow(
-            // Everything that DOES something lives in the list above and has
-            // already happened by the time this is pressed, so this is a way
-            // out rather than a confirm: plain Done, in the cancel slot.
-            cancel: TextButton(
-              // maybePop, matching the pane's own close button and barrier.
-              onPressed: () => Navigator.of(context).maybePop(),
-              child: Text(context.t.common.done),
-            ),
-          ),
+  Widget _buildFooter(BuildContext context) => haloDialogFooterBand(
+        context,
+        // Everything that DOES something lives in the list above and has
+        // already happened by the time this is pressed, so this is a way out
+        // rather than a confirm: plain Done, in the cancel slot.
+        cancel: TextButton(
+          // maybePop, matching the pane's barrier.
+          onPressed: () => Navigator.of(context).maybePop(),
+          child: Text(context.t.common.done),
         ),
-      ),
-    );
-  }
+      );
 }

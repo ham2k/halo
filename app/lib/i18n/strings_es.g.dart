@@ -1032,6 +1032,7 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	@override String eventsPending({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes de sincronizar';
 	@override String get loading => 'Cargando opciones de exportación…';
 	@override String get noOptions => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)';
+	@override String get nothingLogged => 'Nada que exportar todavía — esta operación no tiene QSOs.';
 	@override String get share => 'Compartir';
 	@override String get nothingSelected => 'Nada seleccionado';
 	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
@@ -2482,6 +2483,7 @@ extension on TranslationsEs {
 			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes de sincronizar',
 			'operation.export.loading' => 'Cargando opciones de exportación…',
 			'operation.export.noOptions' => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)',
+			'operation.export.nothingLogged' => 'Nada que exportar todavía — esta operación no tiene QSOs.',
 			'operation.export.share' => 'Compartir',
 			'operation.export.nothingSelected' => 'Nada seleccionado',
 			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo', other: 'Guardar ${count} archivos', ), 
@@ -2754,9 +2756,9 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
-			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
 			'settings.layoutCustomization.title' => 'Personalización de Disposición',
 			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
 			'settings.layoutCustomization.descriptionOff' => 'La vista de registro usa su disposición estándar',
@@ -3268,9 +3270,9 @@ extension on TranslationsEs {
 			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
 			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
 			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
-			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
 			'confirmDevice.malformedRequest' => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.',
 			'confirmDevice.linkIt' => 'Vincular dispositivo',
 			'switchAccounts.noAccountDetails' => 'Aún sin detalles de la cuenta',

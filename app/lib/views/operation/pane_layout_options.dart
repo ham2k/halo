@@ -220,6 +220,9 @@ Future<void> showPaneLayoutOptions(
     title: context.t.operation.layout.paneOptionsTitle(panel: paneTitle),
     closeLabel: context.t.common.close,
     scrollable: false,
+    // The footer band below carries Done, which is the way out — see
+    // haloDialogFooterBand.
+    closeButton: false,
     builder: (paneContext) => _PaneLayoutOptionsBody(
       defaultTitle: defaultTitle,
       inTabset: inTabset,
@@ -482,22 +485,7 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Full-bleed to both edges, the same as a section band in
-                // the Operation Setup sheet — a band inset to match the
-                // fields above it would read as a highlighted row, not a
-                // section.
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.sm),
-                  color: haloDialogBandColorAt(context),
-                  child: Text(
-                    t.panelSettingsAction,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontFamily: 'RobotoSlab',
-                      fontWeight: FontWeight.w900,
-                      color: HaLoColors.of(context).onSurfaceAccent,
-                    ),
-                  ),
-                ),
+                SectionHeader(t.panelSettingsAction),
                 // Flexible with no scrollview of its own: every
                 // panelSettingsBuilder result scrolls itself internally
                 // given a bounded height (_TargetSettingsForm's own
@@ -507,97 +495,77 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                 // what breaks a Flexible nested inside one.
                 Flexible(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.lg),
-                    child: ListTileTheme(
-                      data: const ListTileThemeData(contentPadding: EdgeInsets.zero),
-                      child: Builder(builder: builder),
+                    // Vertical only: these are settings rows, and a row that
+                    // spans the pane is what makes its background and the
+                    // band above it reach the same edge.
+                    padding: const EdgeInsets.only(top: Space.md, bottom: Space.lg),
+                    child: SettingsList(child: Builder(builder: builder)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // The shared modal-pane footer band: everything that DOES something
+        // has already happened by the time it is pressed, so Done is a way
+        // OUT and sits in the cancel slot rather than reading as a confirm.
+        haloDialogFooterBand(
+          context,
+          // The footer's leading slot, which is where a control that
+          // takes something away belongs — as far from Done as the row
+          // goes. Remove leads: it is the single-pane act, an operator
+          // reaches for it first, and Restore Defaults (the
+          // whole-arrangement act) trails it. Two controls in a slot
+          // the footer sizes to its natural width (no Flexible of its
+          // own), so they have to be able to give way — a long pair of
+          // labels in another language, or a resize to a narrow pane
+          // while this is open, would starve Done and overflow the row.
+          destructive: Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onDelete case final remove?)
+                  Flexible(
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                      // No confirmation, unlike Restore Defaults beside
+                      // it: this drops ONE pane, it is part of the
+                      // draft, and discard puts it back with what was
+                      // in it. The other asks because it takes the whole
+                      // arrangement.
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        remove();
+                      },
+                      icon: const Icon(MdiIcons.trashCanOutline, size: 18),
+                      label: Text(
+                        context.t.operation.layout.removePane,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                Flexible(
+                  child: TextButton.icon(
+                    // Not error-colored, unlike Remove: this puts
+                    // things BACK to what they were, it doesn't destroy
+                    // anything new — the same reason it carries an undo
+                    // glyph rather than a warning one.
+                    onPressed: () => unawaited(_confirmReset()),
+                    icon: const Icon(MdiIcons.undo, size: 18),
+                    label: Text(
+                      context.t.operation.layout.resetOptions,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        // The export panel's footer, which is the app's answer for exactly
-        // this shape of pane: everything that DOES something has already
-        // happened by the time it is pressed, so Done is a way OUT and sits
-        // in the cancel slot rather than reading as a confirm.
-        Container(
-          decoration: BoxDecoration(
-            // The same band color a plain HaloDialog's own header/footer
-            // show — elevation-corrected for a modal pane's Material, so a
-            // Done-only footer reads the same everywhere it appears rather
-            // than drifting to a tint of its own.
-            color: haloDialogBandColorAt(context),
-            border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
-              child: haloDialogFooterRow(
-                // The footer's leading slot, which is where a control that
-                // takes something away belongs — as far from Done as the row
-                // goes. Remove leads: it is the single-pane act, an operator
-                // reaches for it first, and Restore Defaults (the
-                // whole-arrangement act) trails it. Two controls in a slot
-                // the footer sizes to its natural width (no Flexible of its
-                // own), so they have to be able to give way — a long pair of
-                // labels in another language, or a resize to a narrow pane
-                // while this is open, would starve Done and overflow the row.
-                destructive: Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.onDelete case final remove?)
-                        Flexible(
-                          child: TextButton.icon(
-                            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-                            // No confirmation, unlike Restore Defaults beside
-                            // it: this drops ONE pane, it is part of the
-                            // draft, and discard puts it back with what was
-                            // in it. The other asks because it takes the whole
-                            // arrangement.
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              remove();
-                            },
-                            icon: const Icon(MdiIcons.trashCanOutline, size: 18),
-                            label: Text(
-                              context.t.operation.layout.removePane,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      Flexible(
-                        child: TextButton.icon(
-                          // Not error-colored, unlike Remove: this puts
-                          // things BACK to what they were, it doesn't destroy
-                          // anything new — the same reason it carries an undo
-                          // glyph rather than a warning one.
-                          onPressed: () => unawaited(_confirmReset()),
-                          icon: const Icon(MdiIcons.undo, size: 18),
-                          label: Text(
-                            context.t.operation.layout.resetOptions,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                cancel: TextButton(
-                  // Plain, unstyled — the same Done-only modal-pane footer
-                  // shape as the export panel's (operation_export_panel.dart),
-                  // so the two read as the same footer rather than drifting a
-                  // pixel apart.
-                  // maybePop, matching the pane's own close button and barrier.
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: Text(context.t.common.done),
-                ),
-              ),
-            ),
+          cancel: TextButton(
+            // maybePop, matching the pane's barrier.
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: Text(context.t.common.done),
           ),
         ),
       ],
@@ -699,6 +667,7 @@ class _EmbeddedPanelSettingsFormState extends State<EmbeddedPanelSettingsForm> {
       showTitle: false,
       developerMode: widget.developerMode,
       labels: formRendererLabelsFor(context.t),
+      settingsList: true,
       onChange: _onChange,
       onSubmit: (_) {},
       onCancel: () {},

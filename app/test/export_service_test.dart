@@ -51,6 +51,29 @@ void main() {
     await db.close();
   });
 
+  test('an operation with nothing logged offers no options, and is not a failure', () async {
+    // The panel renders a thrown ExportException as "Export failed: …", so a
+    // throw here is a red wall in front of anyone who opens Exports before
+    // their first contact. Asking what CAN be exported is a question an
+    // empty log answers; exporting one is a request it refuses.
+    await settings.setDeveloperMode(true);
+    final operations = OperationsRepository(db);
+    final empty = await operations.create(stationCall: 'N0CALL', userTitle: 'Empty Op');
+
+    final none = await exports.getExportOptions(empty);
+    expect(none, isEmpty);
+    // Sorted, because that is the first thing the panel does with the list
+    // (`_load`) and `sort` throws on an unmodifiable one whatever its length.
+    // Asserting only `isEmpty` cannot fail on an empty answer the caller
+    // cannot use.
+    expect(() => none.sort((a, b) => 0), returnsNormally);
+
+    // …and the refusal is still there where it belongs: asked to actually
+    // produce a file for a log with nothing in it, the service throws.
+    final options = await exports.getExportOptions(operation);
+    await expectLater(exports.generateExports(empty, options), throwsA(isA<ExportException>()));
+  });
+
   test('QSON option is hidden unless developer mode is enabled', () async {
     expect(await exports.getExportOptions(operation), isEmpty);
 

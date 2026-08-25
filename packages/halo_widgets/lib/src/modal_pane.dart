@@ -63,9 +63,9 @@ Future<T?> showHaloDialog<T>({
 ///
 /// [headerActions] is the exception, and a narrow one: buttons that belong to
 /// the pane as a whole rather than to its content — the Exports pane's
-/// settings gear. Unlike [trailing] they sit ALONGSIDE the close button
-/// rather than replacing it, which is what a pane needs when it wants an
-/// extra control and the usual dismissal both.
+/// settings gear. Unlike [trailing] they sit ALONGSIDE whatever dismissal the
+/// header carries rather than replacing it, which is what a pane needs when it
+/// wants an extra control and the usual dismissal both.
 Future<T?> showModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -76,6 +76,7 @@ Future<T?> showModalPane<T>(
   Widget? trailing,
   List<Widget> headerActions = const [],
   String closeLabel = 'Close',
+  bool closeButton = true,
 }) => Navigator.of(context).push(
   ModalPaneRoute<T>(
     builder: builder,
@@ -86,6 +87,7 @@ Future<T?> showModalPane<T>(
     trailing: trailing,
     headerActions: headerActions,
     closeLabel: closeLabel,
+    closeButton: closeButton,
   ),
 );
 
@@ -120,6 +122,16 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   /// i18n-free; the app passes a translated value.
   final String closeLabel;
 
+  /// Whether the dialog presentation heads the pane with an X.
+  ///
+  /// Off for a pane whose own content ends in a footer band
+  /// ([haloDialogFooterBand]): its Done IS the way out, and a second one in
+  /// the header is both a verb the operator has to choose between and the
+  /// thing that makes these panes read as a different family from every
+  /// dialog beside them. The full-screen presentation is unaffected — there
+  /// the leading control is the platform's back button, not a close box.
+  final bool closeButton;
+
   /// Carries the body's Element (and State) across the presentation flip:
   /// the two presentations have different widget trees, so without this
   /// GlobalKey a resize across the S/L boundary would re-inflate the body
@@ -135,6 +147,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
     this.trailing,
     this.headerActions = const [],
     this.closeLabel = 'Close',
+    this.closeButton = true,
   }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
@@ -278,8 +291,10 @@ class _ModalPaneScaffold extends StatelessWidget {
           // in front of everything under it in browser hit-testing — including
           // any platform view (a webview/GL map) the pane's content embeds,
           // silently swallowing every click meant for it. A screen-reader
-          // user already has the explicit Close button; this pair is pure
-          // gesture plumbing with nothing to announce.
+          // user reaches the pane's own dismissal instead — the header's close
+          // button, or the footer's Done on a pane that declines it
+          // ([closeButton]); this pair is pure gesture plumbing with nothing
+          // to announce.
           excludeFromSemantics: true,
           child: SafeArea(
             child: Center(
@@ -316,11 +331,14 @@ class _ModalPaneScaffold extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ...route.headerActions,
-                              route.trailing ?? IconButton(
-                                icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
-                                // maybePop — see the barrier handler above.
-                                onPressed: () => Navigator.of(context).maybePop(),
-                              ),
+                              if (route.trailing != null)
+                                route.trailing!
+                              else if (route.closeButton)
+                                IconButton(
+                                  icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
+                                  // maybePop — see the barrier handler above.
+                                  onPressed: () => Navigator.of(context).maybePop(),
+                                ),
                             ],
                           ),
                         ),

@@ -83,6 +83,29 @@ void main() {
     expect(find.byIcon(MdiIcons.close), findsOneWidget);
   });
 
+  testWidgets('a pane can decline the header close button, and keeps the back button on a phone', (tester) async {
+    setWidth(tester, 900);
+    addTearDown(tester.view.reset);
+    final context = await pumpHost(tester);
+
+    // For a pane whose own footer carries Done. The X going away is the point;
+    // what must NOT go away with it is the phone presentation's back button,
+    // which is the platform's dismissal rather than this flag's.
+    showModalPane<void>(
+      context,
+      title: 'Exports',
+      closeButton: false,
+      builder: (context) => const Text('pane body'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('pane body'), findsOneWidget);
+    expect(find.byIcon(MdiIcons.close), findsNothing);
+
+    setWidth(tester, 400);
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+  });
+
   testWidgets('pops with a result from the dialog presentation', (tester) async {
     setWidth(tester, 900);
     addTearDown(tester.view.reset);

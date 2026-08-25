@@ -301,6 +301,7 @@
       "eventsPending": "${pending} of ${total} event markers pending sync",
       "loading": "Loading export options…",
       "noOptions": "No export formats available (extension runtime still starting?)",
+      "nothingLogged": "Nothing to export yet — this operation has no QSOs.",
       "share": "Share",
       "nothingSelected": "Nothing selected",
       "saveFiles": {

@@ -36,6 +36,10 @@ Future<void> showOperationImportPanel(
     context,
     title: t.operation.import.title,
     closeLabel: t.common.close,
+    // The rows scroll; the footer stays pinned under them, and its Done is
+    // the way out — so no X in the header (see haloDialogFooterBand).
+    scrollable: false,
+    closeButton: false,
     builder: (_) => OperationImportPanel(services: services, operation: operation),
   );
 }
@@ -141,6 +145,34 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Rows to the pane's edges, contents inset — the settings list every
+        // other list-shaped surface is (docs/design/user-interface.md
+        // § Settings lists).
+        Expanded(
+          child: SettingsList(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: Space.md),
+              children: _rows(context),
+            ),
+          ),
+        ),
+        // Nothing here waits to be confirmed — every row acts as it is
+        // worked — so the footer holds one way out, in the cancel slot.
+        haloDialogFooterBand(
+          context,
+          cancel: TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: Text(context.t.common.done),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _rows(BuildContext context) {
     final t = context.t.operation.import;
 
     final importAdifRow = ListTile(
@@ -151,110 +183,98 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
 
     // UDP sockets don't exist on web — there is nothing this feature could
     // ever do there, so it doesn't offer to.
-    if (isWebPlatform) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [importAdifRow]);
-    }
+    if (isWebPlatform) return [importAdifRow];
 
     final settings = widget.services.settings;
     final theme = Theme.of(context);
     final operationStationCall =
         widget.operation.stationCalls.length == 1 ? widget.operation.stationCalls.first : null;
 
-    // One StreamBuilder around everything below the ADIF row, rather than
-    // just around the list: whether "Add to this operation" shows at all
-    // depends on [rows], so a rebuild scoped only to the list would leave
-    // that row stale the moment a capture arrives.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        importAdifRow,
-        const Divider(height: 1),
-        ListTile(
-          leading: Icon(
-              settings.listenForOtherAppsEnabled ? MdiIcons.accessPointNetwork : MdiIcons.accessPointNetworkOff),
-          title: Text(t.listenTitle),
-          subtitle: Text(
-            !settings.listenForOtherAppsEnabled
-                ? t.listenDescriptionOff
-                : switch ((settings.n1mmProtocolEnabled, settings.wsjtxProtocolEnabled)) {
-                    (true, true) => t.listenDescriptionOnBoth,
-                    (true, false) => t.listenDescriptionOnN1mm,
-                    (false, true) => t.listenDescriptionOnWsjtx,
-                    (false, false) => t.listenDescriptionOff,
-                  },
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Switch(
-                value: settings.listenForOtherAppsEnabled,
-                onChanged: (value) => unawaited(settings.setListenForOtherAppsEnabled(value)),
-              ),
-              IconButton(
-                icon: Icon(MdiIcons.tune, semanticLabel: t.settingsButton),
-                onPressed: () => unawaited(showListenSettingsDialog(context, services: widget.services)),
-              ),
-            ],
-          ),
+    return [
+      importAdifRow,
+      ListTile(
+        leading:
+            Icon(settings.listenForOtherAppsEnabled ? MdiIcons.accessPointNetwork : MdiIcons.accessPointNetworkOff),
+        title: Text(t.listenTitle),
+        subtitle: Text(
+          !settings.listenForOtherAppsEnabled
+              ? t.listenDescriptionOff
+              : switch ((settings.n1mmProtocolEnabled, settings.wsjtxProtocolEnabled)) {
+                  (true, true) => t.listenDescriptionOnBoth,
+                  (true, false) => t.listenDescriptionOnN1mm,
+                  (false, true) => t.listenDescriptionOnWsjtx,
+                  (false, false) => t.listenDescriptionOff,
+                },
         ),
-        const Divider(height: 1),
-        // A capture insert failure means a QSO the source program will never
-        // resend is sitting in a memory-only retry queue — the loudest thing
-        // in this panel, for as long as it stays unresolved.
-        if (widget.services.inboundQsos.captureError != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, 0),
-            child: Text(
-              t.captureFailed(error: widget.services.inboundQsos.captureError!),
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Switch(
+              value: settings.listenForOtherAppsEnabled,
+              onChanged: (value) => unawaited(settings.setListenForOtherAppsEnabled(value)),
             ),
-          ),
-        StreamBuilder<List<InboundCaptureRow>>(
-          stream: widget.services.inboundCaptures.watchPending(),
-          builder: (context, snapshot) {
-            final rows = snapshot.data ?? const <InboundCaptureRow>[];
-            _pending = rows;
-            // Hidden until there's real data to decide about — an operator
-            // who hasn't started the other program yet has nothing to turn
-            // this on FOR, and a toggle with nothing behind it just reads
-            // as broken.
-            final showAddToOperation = _receiving || rows.isNotEmpty;
-
-            final sorted = [...rows]..sort((a, b) => b.receivedAtMillis.compareTo(a.receivedAtMillis));
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showAddToOperation)
-                  SwitchListTile(
-                    secondary: const Icon(MdiIcons.playlistCheck),
-                    title: Text(t.addToOperationTitle),
-                    subtitle: Text(_receiving ? t.addToOperationDescriptionOn : t.addToOperationDescriptionOff),
-                    value: _receiving,
-                    onChanged: (value) => unawaited(_setReceiving(value)),
-                  ),
-                if (rows.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(Space.lg),
-                    child: Text(t.pendingEmpty, style: theme.textTheme.bodyMedium),
-                  )
-                else ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.sm),
-                    child: Text(t.pendingSectionTitle, style: theme.textTheme.labelLarge),
-                  ),
-                  for (final row in sorted)
-                    _CaptureTile(
-                      row: row,
-                      operationStationCall: operationStationCall,
-                      onDiscard: () => unawaited(widget.services.inboundCaptures.discard([row.uuid])),
-                    ),
-                ],
-              ],
-            );
-          },
+            IconButton(
+              icon: Icon(MdiIcons.tune, semanticLabel: t.settingsButton),
+              onPressed: () => unawaited(showListenSettingsDialog(context, services: widget.services)),
+            ),
+          ],
         ),
-      ],
-    );
+      ),
+      // A capture insert failure means a QSO the source program will never
+      // resend is sitting in a memory-only retry queue — the loudest thing
+      // in this panel, for as long as it stays unresolved.
+      if (widget.services.inboundQsos.captureError != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(settingsRowInset, Space.md, settingsRowInset, 0),
+          child: Text(
+            t.captureFailed(error: widget.services.inboundQsos.captureError!),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+          ),
+        ),
+      // One StreamBuilder around everything below, rather than just around
+      // the list: whether "Add to this operation" shows at all depends on
+      // [rows], so a rebuild scoped only to the list would leave that row
+      // stale the moment a capture arrives.
+      StreamBuilder<List<InboundCaptureRow>>(
+        stream: widget.services.inboundCaptures.watchPending(),
+        builder: (context, snapshot) {
+          final rows = snapshot.data ?? const <InboundCaptureRow>[];
+          _pending = rows;
+          // Hidden until there's real data to decide about — an operator who
+          // hasn't started the other program yet has nothing to turn this on
+          // FOR, and a toggle with nothing behind it just reads as broken.
+          final showAddToOperation = _receiving || rows.isNotEmpty;
+
+          final sorted = [...rows]..sort((a, b) => b.receivedAtMillis.compareTo(a.receivedAtMillis));
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showAddToOperation)
+                SwitchListTile(
+                  secondary: const Icon(MdiIcons.playlistCheck),
+                  title: Text(t.addToOperationTitle),
+                  subtitle: Text(_receiving ? t.addToOperationDescriptionOn : t.addToOperationDescriptionOff),
+                  value: _receiving,
+                  onChanged: (value) => unawaited(_setReceiving(value)),
+                ),
+              SectionHeader(t.pendingSectionTitle),
+              if (sorted.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.lg),
+                  child: Text(t.pendingEmpty, style: theme.textTheme.bodyMedium),
+                )
+              else
+                for (final row in sorted)
+                  _CaptureTile(
+                    row: row,
+                    operationStationCall: operationStationCall,
+                    onDiscard: () => unawaited(widget.services.inboundCaptures.discard([row.uuid])),
+                  ),
+            ],
+          );
+        },
+      ),
+    ];
   }
 }
 

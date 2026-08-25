@@ -14,6 +14,8 @@
 //     built by the extensions, so they can't be patched up locally — WITHOUT
 //     discarding ticks already made.
 
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'package:flutter/semantics.dart' show SemanticsFlag;
@@ -101,6 +103,32 @@ void main() {
       ));
       await tester.pumpAndSettle();
     }
+
+    testWidgets('the way out is on screen while the pane is still loading', (tester) async {
+      // The pane declines the header's close button, so the footer's Done is
+      // its ONLY visible dismissal. A body that returns early for the spinner
+      // takes that exit away with it — for as long as the extension host
+      // takes to answer, which is not a single frame.
+      final hold = Completer<void>();
+      exports.holdOptions = hold;
+      tester.view.physicalSize = const Size(1000, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: OperationExportPanel(services: services, operation: operation)),
+        ),
+      ));
+
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+
+      hold.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Done'), findsOneWidget);
+    });
 
     testWidgets('lists every option with its filename, and counts the ticked ones', (tester) async {
       await pump(tester);
@@ -572,8 +600,14 @@ class _FakeExportService extends ExportService {
   /// when developer mode is on — tagged with the operation's first callsign.
   bool includeQson = false;
 
+  /// Holds the option load open, for the test that has to see the pane
+  /// mid-load. The real one waits on the extension host, which a fake
+  /// answering synchronously never reproduces.
+  Completer<void>? holdOptions;
+
   @override
   Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async {
+    if (holdOptions != null) await holdOptions!.future;
     final compact = _settings.useCompactFileNames;
     return [
       // Deliberately returned in the WRONG order, so the panel's own

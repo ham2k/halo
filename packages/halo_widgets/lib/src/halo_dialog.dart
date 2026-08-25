@@ -13,6 +13,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'settings_list.dart';
 import 'spacing.dart';
 import 'theme.dart';
 
@@ -168,6 +169,45 @@ Widget haloDialogFooterRow({
   );
 }
 
+/// [haloDialogFooterRow] in the band a dialog's own footer sits in — for a
+/// surface that builds its own chrome instead of being a [HaloDialog]: a
+/// modal pane's body, whose footer must stay pinned under a list that
+/// scrolls.
+///
+/// A pane that carries this is closed BY it (`showModalPane`'s
+/// `closeButton: false` takes the header's X away), so the way out is one
+/// button in the place every dialog puts it rather than two in two places.
+Widget haloDialogFooterBand(
+  BuildContext context, {
+  Widget? cancel,
+  Widget? destructive,
+  Widget? secondary,
+  List<Widget> actions = const [],
+}) {
+  final theme = Theme.of(context);
+  return Container(
+    decoration: BoxDecoration(
+      // Elevation-corrected for a modal pane's own Material, so a Done-only
+      // footer reads the same wherever it appears rather than drifting to a
+      // tint of its own.
+      color: haloDialogBandColorAt(context),
+      border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+    ),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
+        child: haloDialogFooterRow(
+          cancel: cancel,
+          destructive: destructive,
+          secondary: secondary,
+          actions: actions,
+        ),
+      ),
+    ),
+  );
+}
+
 class HaloDialog extends StatelessWidget {
   /// The header band's content — usually a plain `Text`; it picks up the
   /// dialog title style, so call sites don't restate it.
@@ -211,6 +251,21 @@ class HaloDialog extends StatelessWidget {
   /// rather than a prompt and two buttons.
   final bool wide;
 
+  /// Whether [content] is a settings-shaped LIST rather than dialog prose.
+  ///
+  /// A list dialog spends no horizontal padding of its own: its rows run to
+  /// the card's edges and inset their contents instead, off the
+  /// [SettingsList] this wraps them in — the same rule the settings panels
+  /// follow (docs/design/user-interface.md § Settings lists), so a row
+  /// background, a divider and a [SectionHeader] band reach the same edge
+  /// wherever the operator meets them. Padded like prose, the rows float in
+  /// a gutter and the bands stop short of the card.
+  ///
+  /// A caller that states its own [contentPadding] keeps it — only the
+  /// padding DEFAULT defers. The [SettingsList] wrapper goes on either way,
+  /// since that is what the rows read their inset from.
+  final bool list;
+
   const HaloDialog({
     super.key,
     this.title,
@@ -222,13 +277,21 @@ class HaloDialog extends StatelessWidget {
     this.scrollable = true,
     this.contentPadding,
     this.wide = false,
+    this.list = false,
   });
+
+  /// A list dialog publishes the settings row inset its rows read from;
+  /// anything else is left exactly as the caller built it.
+  Widget _wrapContent(Widget content) => list ? SettingsList(child: content) : content;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final padding = contentPadding ?? const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl);
+    final padding = contentPadding ??
+        (list
+            ? const EdgeInsets.symmetric(vertical: Space.md)
+            : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl));
 
     Widget? body;
     if (content != null) {
@@ -238,8 +301,8 @@ class HaloDialog extends StatelessWidget {
       body = Material(
         color: colors.surface,
         child: scrollable
-            ? SingleChildScrollView(padding: padding, child: content)
-            : Padding(padding: padding, child: content),
+            ? SingleChildScrollView(padding: padding, child: _wrapContent(content!))
+            : Padding(padding: padding, child: _wrapContent(content!)),
       );
     }
 

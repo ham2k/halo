@@ -2160,6 +2160,9 @@ class Translations$operation$export$en {
 	/// en: 'No export formats available (extension runtime still starting?)'
 	String get noOptions => 'No export formats available (extension runtime still starting?)';
 
+	/// en: 'Nothing to export yet — this operation has no QSOs.'
+	String get nothingLogged => 'Nothing to export yet — this operation has no QSOs.';
+
 	/// en: 'Share'
 	String get share => 'Share';
 
@@ -5073,6 +5076,7 @@ extension on Translations {
 			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} of ${total} event markers pending sync',
 			'operation.export.loading' => 'Loading export options…',
 			'operation.export.noOptions' => 'No export formats available (extension runtime still starting?)',
+			'operation.export.nothingLogged' => 'Nothing to export yet — this operation has no QSOs.',
 			'operation.export.share' => 'Share',
 			'operation.export.nothingSelected' => 'Nothing selected',
 			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Save ${count} file', other: 'Save ${count} files', ), 
@@ -5332,9 +5336,9 @@ extension on Translations {
 			'formChrome.removeItem' => 'Remove',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
 			'qsoEditForm.title' => 'Edit QSO',
-			'qsoEditForm.theirName' => 'Name',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
@@ -5846,9 +5850,9 @@ extension on Translations {
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
 			'commands.settingExpectsNumber' => 'a number',
 			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
-			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			_ => null,
 		} ?? switch (path) {
+			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',

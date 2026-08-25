@@ -3106,88 +3106,71 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
 
     return HaloDialog(
       wide: true,
+      // A list of filters, not a form: rows and section bands run to the
+      // card's edges and inset their contents instead (SettingsList).
+      list: true,
+      // The body scrolls ITSELF, because its bands pin — a section band that
+      // holds the top while its own rows scroll under it needs a sliver
+      // viewport, which the shell's plain scroll view is not.
+      scrollable: false,
       title: Text(t.operation.spots.filters.title),
-      content: SizedBox(
-        width: 400,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                child: DropdownMenu<String>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  initialSelection: _bandFilter,
-                  width: _dropdownWidth,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  // Pick-only; search's rebuild-time scrollToHighlight would snap
-                  // the open menu back to the selection whenever spots stream in.
-                  enableSearch: false,
-                  label: Text(t.operation.spots.filters.band),
-                  dropdownMenuEntries: [
-                    for (final option in bandOptions)
-                      DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
-                  ],
-                  onSelected: (value) {
-                    if (value != null) {
+      content: LayoutBuilder(
+        builder: (context, constraints) => CustomScrollView(
+          shrinkWrap: true,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _filterDropdown(
+                    label: t.operation.spots.filters.band,
+                    initialSelection: _bandFilter,
+                    entries: [
+                      for (final option in bandOptions)
+                        DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
+                    ],
+                    onSelected: (value) {
+                      if (value == null) return;
                       setState(() => _bandFilter = value);
                       widget.onBandChanged(value);
-                    }
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                child: DropdownMenu<String>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  initialSelection: _modeFilter,
-                  width: _dropdownWidth,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  enableSearch: false,
-                  label: Text(t.operation.spots.filters.mode),
-                  dropdownMenuEntries: [
-                    for (final option in modeOptions)
-                      DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
-                  ],
-                  onSelected: (value) {
-                    if (value != null) {
+                    },
+                  ),
+                  _filterDropdown(
+                    label: t.operation.spots.filters.mode,
+                    initialSelection: _modeFilter,
+                    entries: [
+                      for (final option in modeOptions)
+                        DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
+                    ],
+                    onSelected: (value) {
+                      if (value == null) return;
                       setState(() => _modeFilter = value);
                       widget.onModeChanged(value);
-                    }
-                  },
-                ),
+                    },
+                  ),
+                  _filterDropdown<int>(
+                    label: t.operation.spots.filters.age,
+                    initialSelection: _ageMinutes,
+                    entries: [
+                      for (final minutes in _ageOptionsInMinutes)
+                        DropdownMenuEntry(
+                          value: minutes,
+                          label:
+                              '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
+                        ),
+                    ],
+                    onSelected: (value) {
+                      if (value == null) return;
+                      setState(() => _ageMinutes = value);
+                      widget.onAgeChanged(value);
+                    },
+                  ),
+                ],
               ),
+            ),
+            SectionHeader.section(context, t.operation.spots.filters.sorting, width: constraints.maxWidth, children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                child: DropdownMenu<int>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  initialSelection: _ageMinutes,
-                  width: _dropdownWidth,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  enableSearch: false,
-                  label: Text(t.operation.spots.filters.age),
-                  dropdownMenuEntries: [
-                    for (final minutes in _ageOptionsInMinutes)
-                      DropdownMenuEntry(
-                        value: minutes,
-                        label:
-                            '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
-                      ),
-                  ],
-                  onSelected: (value) {
-                    if (value == null) return;
-                    setState(() => _ageMinutes = value);
-                    widget.onAgeChanged(value);
-                  },
-                ),
-              ),
-              SectionHeader(t.operation.spots.filters.sorting),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.sm),
+                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.sm),
                 child: SegmentedButton<String>(
                   // MDI-only UI: skip the framework's Material check on the
                   // selected segment (same as settings_view).
@@ -3203,102 +3186,65 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                   },
                 ),
               ),
-              ListTile(
-                dense: true,
-                visualDensity: const VisualDensity(vertical: -4),
-                contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
+              _toggleRow(
+                title: t.operation.spots.filters.groupByBand,
+                value: _groupByBand,
                 // Grouping by band is meaningless once the Band filter has
                 // already narrowed to one band — every spot would land in
                 // the same single section anyway.
-                enabled: !_isSingleBandFilter,
-                title: Text(t.operation.spots.filters.groupByBand),
-                trailing: Switch(
-                  value: _groupByBand,
-                  onChanged: _isSingleBandFilter
-                      ? null
-                      : (value) {
-                          setState(() => _groupByBand = value);
-                          widget.onGroupByBandChanged(value);
-                        },
-                ),
+                onChanged: _isSingleBandFilter
+                    ? null
+                    : (value) {
+                        setState(() => _groupByBand = value);
+                        widget.onGroupByBandChanged(value);
+                      },
               ),
-              ListTile(
-                dense: true,
-                visualDensity: const VisualDensity(vertical: -4),
-                contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
-                title: Text(t.operation.spots.filters.groupCallsWithNotes),
-                trailing: Switch(
-                  value: _groupCallsWithNotes,
-                  onChanged: (value) {
-                    setState(() => _groupCallsWithNotes = value);
-                    widget.onGroupCallsWithNotesChanged(value);
+              _toggleRow(
+                title: t.operation.spots.filters.groupCallsWithNotes,
+                value: _groupCallsWithNotes,
+                onChanged: (value) {
+                  setState(() => _groupCallsWithNotes = value);
+                  widget.onGroupCallsWithNotesChanged(value);
+                },
+              ),
+            ]),
+            if (widget.sources.isNotEmpty)
+              SectionHeader.section(context, t.operation.spots.filters.sources, width: constraints.maxWidth, children: [
+                for (final source in widget.sources)
+                  _toggleRow(
+                    title: widget.sourceNames[source] ?? source,
+                    value: !_disabledSources.contains(source),
+                    trailing: _sourceStatus(source),
+                    onChanged: (_) {
+                      setState(
+                        () => _disabledSources.contains(source)
+                            ? _disabledSources.remove(source)
+                            : _disabledSources.add(source),
+                      );
+                      widget.onToggleSource(source);
+                    },
+                  ),
+              ]),
+            SectionHeader.section(context, t.operation.spots.filters.continent, width: constraints.maxWidth, children: [
+              for (final code in _continentCodes)
+                _toggleRow(
+                  title: _continentLabel(t, code),
+                  value: !_disabledContinents.contains(code),
+                  trailing: Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
+                  onChanged: (_) {
+                    setState(
+                      () => _disabledContinents.contains(code)
+                          ? _disabledContinents.remove(code)
+                          : _disabledContinents.add(code),
+                    );
+                    widget.onToggleContinent(code);
                   },
                 ),
-              ),
-              if (widget.sources.isNotEmpty) ...[
-                SectionHeader(t.operation.spots.filters.sources),
-                for (final source in widget.sources)
-                  ListTile(
-                    dense: true,
-                    visualDensity: const VisualDensity(vertical: -4),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
-                    title: Text(
-                      widget.sourceNames[source] ?? source,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _sourceStatus(source),
-                        const SizedBox(width: Space.md),
-                        Switch(
-                          value: !_disabledSources.contains(source),
-                          onChanged: (_) {
-                            setState(
-                              () => _disabledSources.contains(source)
-                                  ? _disabledSources.remove(source)
-                                  : _disabledSources.add(source),
-                            );
-                            widget.onToggleSource(source);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-              SectionHeader(t.operation.spots.filters.continent),
-              for (final code in _continentCodes)
-                ListTile(
-                  dense: true,
-                  visualDensity: const VisualDensity(vertical: -4),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
-                  title: Text(
-                    _continentLabel(t, code),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
-                      const SizedBox(width: Space.md),
-                      Switch(
-                        value: !_disabledContinents.contains(code),
-                        onChanged: (_) {
-                          setState(
-                            () => _disabledContinents.contains(code)
-                                ? _disabledContinents.remove(code)
-                                : _disabledContinents.add(code),
-                          );
-                          widget.onToggleContinent(code);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+            ]),
+          ],
         ),
       ),
+
       // Done, not Apply: every toggle above has already taken effect on the
       // spots list behind this dialog, so there is nothing left for a button
       // to apply. In the `cancel` slot rather than `actions` because it is a
@@ -3306,6 +3252,57 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.done)),
     );
   }
+
+  /// A filter row, in the shape every settings row in the app takes: bold
+  /// title, whatever the row has to report about itself, and a switch the
+  /// WHOLE row works — a title that looks like the rest of the list and does
+  /// nothing reads as a broken row.
+  Widget _toggleRow({
+    required String title,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+    Widget? trailing,
+  }) {
+    final theme = Theme.of(context);
+    return ListTile(
+      title: Text(title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailing != null) ...[trailing, const SizedBox(width: Space.md)],
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+      enabled: onChanged != null,
+      onTap: onChanged == null ? null : () => onChanged(!value),
+      mouseCursor: onChanged == null ? null : SystemMouseCursors.click,
+    );
+  }
+
+  /// One of the three pickers above the sections. Fixed-width and centred:
+  /// a dropdown stretched to a wide dialog's full width would put its label
+  /// and its value at opposite ends of the card.
+  Widget _filterDropdown<T>({
+    required String label,
+    required T? initialSelection,
+    required List<DropdownMenuEntry<T>> entries,
+    required ValueChanged<T?> onSelected,
+  }) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: Space.sm),
+        child: DropdownMenu<T>(
+          trailingIcon: dropdownTrailingIcon,
+          selectedTrailingIcon: dropdownSelectedTrailingIcon,
+          initialSelection: initialSelection,
+          width: _dropdownWidth,
+          menuHeight: dropdownMenuMaxHeight(context),
+          // Pick-only; search's rebuild-time scrollToHighlight would snap the
+          // open menu back to the selection whenever spots stream in.
+          enableSearch: false,
+          label: Text(label),
+          dropdownMenuEntries: entries,
+          onSelected: onSelected,
+        ),
+      );
 
   /// Whether the Band filter has narrowed to one specific band ('auto' and
   /// 'any' both leave multiple bands possible).

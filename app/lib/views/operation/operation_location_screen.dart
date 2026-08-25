@@ -255,13 +255,16 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       wide: true,
       scrollable: false,
       title: Text(t.title),
-      contentPadding: EdgeInsets.zero,
-      content: ListView(
+      // Rows and bands to the card's edges, contents inset — the same list
+      // every other settings-shaped surface is (SettingsList).
+      list: true,
+      content: LayoutBuilder(
+        builder: (context, constraints) => CustomScrollView(
         shrinkWrap: true,
-        children: [
-          SectionHeader(t.selectedLocation),
+        slivers: [
+          SectionHeader.section(context, t.selectedLocation, width: constraints.maxWidth, children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
+            padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
             child: TextField(
               selectAllOnFocus: false,
               controller: _gridController,
@@ -278,7 +281,8 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             ),
           ),
           const SizedBox(height: Space.md),
-          SectionHeader(t.suggestedLocations),
+          ]),
+          SectionHeader.section(context, t.suggestedLocations, width: constraints.maxWidth, children: [
           ListTile(
             leading: Icon(MdiIcons.crosshairsGps),
             // A fix served on a peer's behalf is named as such — calling the
@@ -322,9 +326,10 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               ),
             ),
           const SizedBox(height: Space.md),
-          SectionHeader(t.moreDetails),
+          ]),
+          SectionHeader.section(context, t.moreDetails, width: constraints.maxWidth, children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
+            padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
             child: Column(
               children: [
                 TextField(
@@ -350,7 +355,9 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             ),
           ),
           const SizedBox(height: Space.xxl),
+          ]),
         ],
+        ),
       ),
       cancel: TextButton(
         onPressed: () => Navigator.of(context).pop(null),

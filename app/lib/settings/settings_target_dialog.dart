@@ -152,11 +152,10 @@ Future<void> _showSettingsDialog(
         // its own comment — so this dialog's body must not also try to,
         // or the nested scrollables fail to lay out.
         scrollable: false,
-        // No horizontal inset here — each row (the settings themselves, the
-        // Actions items) carries its own via the ambient ListTileTheme set
-        // up in _TargetSettingsFormState.build, so it isn't stacked on top
-        // of a second, outer padding.
-        contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
+        // Rows to the card's edges, contents inset — the shell publishes the
+        // settings row inset every row here reads from, so nothing stacks a
+        // second, outer padding on top of it.
+        list: true,
         content: _TargetSettingsForm(
           services: services,
           inBase: inBase,
@@ -447,6 +446,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     validator: _validate,
     developerMode: widget.services.settings.developerMode,
     labels: formRendererLabelsFor(context.t),
+    settingsList: true,
     onChange: _autosave,
     onAction: _onAction,
     onManageAccount: _onManageAccount,
@@ -462,14 +462,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     if (base == null || extended == null) {
       return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
     }
-    final theme = Theme.of(context);
-    // One shared inset for every row in this dialog — Actions items and the
-    // settings rows alike — so padding lives on each row (which is what
-    // FormRenderer's own rows already read this from) rather than as a
-    // separate wrapper around the whole list stacking on top of it.
-    return ListTileTheme(
-      data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: Space.xl)),
-      child: Column(
+    return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -520,27 +513,18 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
           // and trailing, the same shape a Panel Settings section takes in
           // the pane layout options dialog.
           if (widget.actions.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.sm),
-              color: haloDialogBandColorAt(context),
-              child: Text(
-                context.t.operation.menu.actionsSection,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontFamily: 'RobotoSlab',
-                  fontWeight: FontWeight.w900,
-                  color: HaLoColors.of(context).onSurfaceAccent,
-                ),
-              ),
-            ),
+            SectionHeader(context.t.operation.menu.actionsSection),
             for (final action in widget.actions)
               ListTile(
                 leading: Icon(resolveIconName(action.icon)),
-                title: Text(action.label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                title: Text(
+                  action.label,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
                 onTap: action.onTap,
               ),
           ],
-        ],
-      ),
+      ],
     );
   }
 }

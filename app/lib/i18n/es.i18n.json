@@ -286,6 +286,7 @@
       "eventsPending": "${pending} de ${total} marcadores de evento pendientes de sincronizar",
       "loading": "Cargando opciones de exportación…",
       "noOptions": "No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)",
+      "nothingLogged": "Nada que exportar todavía — esta operación no tiene QSOs.",
       "share": "Compartir",
       "nothingSelected": "Nada seleccionado",
       "saveFiles": {

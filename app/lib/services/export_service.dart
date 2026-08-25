@@ -84,11 +84,23 @@ class ExportService {
   /// filters out (docs/design/contests.md §5.1.3) — the same trap
   /// `ScoringService.rescoreOperation` documents.
   Future<({List<Qso> qsos, SegmentedOperation segmented})> _logFor(Operation operation) async {
-    final all = await qsos.watchForOperation(operation.uuid).first;
-    final qsoList = all.where((q) => !q.isEvent).toList();
-    if (qsoList.isEmpty) {
+    final log = await _logOrNothing(operation);
+    if (log == null) {
       throw ExportException('Nothing to export: this operation has no QSOs.');
     }
+    return log;
+  }
+
+  /// The same log, with an empty one reported as null rather than thrown.
+  ///
+  /// Asking what an operation COULD export is a question an empty log
+  /// answers — with nothing — where actually exporting one is a request it
+  /// has to refuse. Thrown for both, the panel greets an operator whose only
+  /// mistake was opening it before their first contact with "Export failed".
+  Future<({List<Qso> qsos, SegmentedOperation segmented})?> _logOrNothing(Operation operation) async {
+    final all = await qsos.watchForOperation(operation.uuid).first;
+    final qsoList = all.where((q) => !q.isEvent).toList();
+    if (qsoList.isEmpty) return null;
     return (qsos: qsoList, segmented: SegmentedOperation.from(operation: operation.data, qsos: all));
   }
 
@@ -203,7 +215,12 @@ class ExportService {
   /// belongs to so the panel can group them and `generateExports` can rebuild
   /// the same payload.
   Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async {
-    final log = await _logFor(operation);
+    final log = await _logOrNothing(operation);
+    // GROWABLE, not `const []`: the panel sorts what it gets by priority, and
+    // `sort` on an unmodifiable list throws whatever its length — turning the
+    // empty answer this exists to give into a worse failure than the one it
+    // replaced.
+    if (log == null) return <Map<String, dynamic>>[];
     final calls = operation.stationCalls;
 
     final perCall = await Future.wait(calls.map((call) async {

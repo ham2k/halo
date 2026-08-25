@@ -208,7 +208,7 @@ class _PeersPanelState extends State<PeersPanel> {
             leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
             title: Text(t.problem(error: problem)),
           ),
-        SettingsSectionHeader(t.thisDevice),
+        SectionHeader(t.thisDevice),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
           child: TextField(
@@ -227,10 +227,10 @@ class _PeersPanelState extends State<PeersPanel> {
             onSubmitted: _commitName,
           ),
         ),
-        SettingsSectionHeader(t.pairedDevices),
+        SectionHeader(t.pairedDevices),
         _PairedDevices(services: widget.services, onForget: _forget),
         if (_peers.peers.isNotEmpty) ...[
-          SettingsSectionHeader(t.nearby),
+          SectionHeader(t.nearby),
           for (final runtime in _peers.peers.values)
             ListTile(
               leading: _statusDot(context, runtime),

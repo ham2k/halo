@@ -1491,7 +1491,7 @@ void main() {
     });
   });
 
-  group('FormRenderer icon-row fields', () {
+  group('FormRenderer settings-row fields', () {
     final iconRowFormDefinition = {
       'elements': [
         {
@@ -1520,6 +1520,55 @@ void main() {
         },
       ],
     };
+
+    testWidgets('a settings list gives an icon-less field the settings row shape, and a form does not', (tester) async {
+      // The row shape belongs to the SURFACE. Read off the element instead,
+      // it becomes an accident of whoever wrote the declaration — which
+      // renders a panel of extension settings (whose fields declare no icons)
+      // as compact form controls beside a panel of settings rows.
+      Widget renderer({required bool settingsList}) => MaterialApp(
+            home: Scaffold(
+              body: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {
+                      'type': 'field',
+                      'fieldType': 'checkbox',
+                      'key': 'noIconToggle',
+                      'label': 'Plain Toggle',
+                      'value': false,
+                    },
+                  ],
+                },
+                initialState: const {},
+                settingsList: settingsList,
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          );
+
+      await tester.pumpWidget(renderer(settingsList: false));
+      // A form's toggle is the compact control: the checkbox leads the row,
+      // and the row itself is not the switch.
+      expect(find.byType(CheckboxListTile), findsOneWidget);
+      expect(find.byType(Switch), findsNothing);
+
+      await tester.pumpWidget(renderer(settingsList: true));
+      expect(find.byType(CheckboxListTile), findsNothing);
+      expect(find.byType(Switch), findsOneWidget);
+      expect(tester.widget<Text>(find.text('Plain Toggle')).style?.fontWeight, FontWeight.bold);
+      // Nothing in the leading slot — an icon-less element is still a
+      // settings row, not a row with a hole where the glyph would be.
+      expect(tester.widget<ListTile>(find.byType(ListTile)).leading, isNull);
+
+      // And the WHOLE row works the toggle, which is the point of the shape:
+      // tapping the title, not the switch, flips it.
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+      await tester.tap(find.text('Plain Toggle'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    });
 
     testWidgets('a select field with icon set renders as a tappable list row showing the current value', (tester) async {
       await tester.pumpWidget(MaterialApp(

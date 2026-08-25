@@ -11,7 +11,7 @@ import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
 import 'secret_text_field.dart';
-import 'settings_section_header.dart';
+import 'section_header.dart';
 import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
@@ -287,6 +287,23 @@ class FormRenderer extends StatefulWidget {
   /// locale-aware instance (see FormRendererLabels).
   final FormRendererLabels labels;
 
+  /// Whether this form IS a settings list rather than a form to fill in —
+  /// the settings panels, a target-scoped settings dialog, a panel's own
+  /// configuration (docs/design/user-interface.md § Settings lists).
+  ///
+  /// A settings list renders every field it can as a settings ROW: bold
+  /// title, the description underneath, the whole row working the toggle,
+  /// and a tap opening the editor for anything that isn't one. A form
+  /// renders the same field as a control to type into.
+  ///
+  /// The distinction belongs to the SURFACE, not to the element: a settings
+  /// row whose element happens to declare no icon is still a settings row,
+  /// with nothing in the leading slot. Read off the element it made the row
+  /// shape an accident of whoever wrote the declaration, which is how a
+  /// panel of extension settings comes out looking nothing like the panel
+  /// beside it.
+  final bool settingsList;
+
   const FormRenderer({
     super.key,
     required this.formDefinition,
@@ -305,6 +322,7 @@ class FormRenderer extends StatefulWidget {
     this.submittingNotifier,
     this.developerMode = false,
     this.labels = FormRendererLabels.english,
+    this.settingsList = false,
   });
 
   @override
@@ -716,7 +734,7 @@ class FormRendererState extends State<FormRenderer> {
             // section below it, and the section above ends where the band
             // starts. A gap either side would leave it floating between two
             // sections, belonging to neither — and a band that STICKS as its
-            // rows scroll under it (SettingsSectionHeader.pinned) would drag
+            // rows scroll under it (SectionHeader.pinned) would drag
             // a hole along with it.
             separatorBuilder: (context, index) =>
                 elements[index]['style'] == 'section' || elements[index + 1]['style'] == 'section'
@@ -758,11 +776,9 @@ class FormRendererState extends State<FormRenderer> {
   /// renders `type: 'header'` elements for every FormRenderer caller, not
   /// just settings panels — an ad hoc extension form's own section headers
   /// keep the plain unbanded look unless they explicitly ask for this one.
-  /// Doesn't reuse SectionHeader: that widget bakes in its own 16px
-  /// horizontal padding, sized for a container with none of its own
-  /// (Sync/Accounts' ListView) — here, the inset comes from the ambient
-  /// ListTileTheme every row in this form shares, so adding SectionHeader's
-  /// on top would double it.
+  /// The band takes its own inset from the ambient ListTileTheme, which is
+  /// the same one every row in this form reads, so the section branch skips
+  /// [_rowContentPadding] rather than adding a second one on top.
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
     final subtitle = el['subtitle'] as String?;
@@ -794,7 +810,7 @@ class FormRendererState extends State<FormRenderer> {
       ],
     );
     if (!isSection) return Padding(padding: _rowContentPadding, child: content);
-    return SettingsSectionHeader(title, color: devModeColor, subtitle: subtitleWidget);
+    return SectionHeader(title, color: devModeColor, subtitle: subtitleWidget);
   }
 
   Widget _buildDivider(Map<String, dynamic> el, ThemeData theme) {
@@ -856,16 +872,20 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
-  static const _iconRowSupportedTypes = {'text', 'multiline', 'email', 'callsign', 'number', 'secret', 'select', 'checkbox'};
+  static const _settingsRowSupportedTypes = {'text', 'multiline', 'email', 'callsign', 'number', 'secret', 'select', 'checkbox'};
 
-  /// Field types that can take the icon-row shape (see [_buildIconRowField]).
-  /// 'list', 'radio', and 'account' fall back to their normal full-width
-  /// rendering even when `icon` is set — a multi-option or multi-row control
-  /// has no single control to hang off a labeled row.
+  /// Field types that can take the settings-row shape (see
+  /// [_buildSettingsRowField]). 'list', 'radio', 'multiselect', 'account'
+  /// and 'checkboxGroup' fall back to their normal full-width rendering even
+  /// on a settings list — a multi-option or multi-row control has no single
+  /// control to hang off a labeled row.
   Widget _buildField(Map<String, dynamic> el, ThemeData theme) {
     final fieldType = el['fieldType'] as String?;
-    if (el['icon'] != null && _iconRowSupportedTypes.contains(fieldType)) {
-      return _buildIconRowField(el, fieldType!, theme);
+    // The surface decides, with `icon` as the standing exception: a form
+    // whose element asked for the row shape still gets it, which is how
+    // several extension forms already read.
+    if ((widget.settingsList || el['icon'] != null) && _settingsRowSupportedTypes.contains(fieldType)) {
+      return _buildSettingsRowField(el, fieldType!, theme);
     }
 
     final key = el['key'] as String;
@@ -1059,8 +1079,9 @@ class FormRendererState extends State<FormRenderer> {
     }
   }
 
-  /// The settings-panel row shape: leading icon, bold title, an optional
-  /// description underneath (or the validation error, in its place). The
+  /// The settings-panel row shape: an optional leading icon, bold title, an
+  /// optional description underneath (or the validation error, in its
+  /// place). The
   /// trailing/stacked control depends on the field type:
   ///  - a toggle (checkbox) keeps its Switch trailing on the right, and the
   ///    whole row works it;
@@ -1070,7 +1091,7 @@ class FormRendererState extends State<FormRenderer> {
   ///    [_buildSelectRow]);
   ///  - every other (text-like) field becomes a tap-to-open editor dialog
   ///    showing its current value (see [_buildTextRow]).
-  Widget _buildIconRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
+  Widget _buildSettingsRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
     if (fieldType == 'select') {
       return _buildSelectRow(el, theme);
     }
@@ -2163,6 +2184,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormOpenLink? onOpenLink,
   bool developerMode = false,
   FormRendererLabels labels = FormRendererLabels.english,
+  bool settingsList = false,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -2191,7 +2213,10 @@ Future<Map<String, dynamic>?> showFormDialog(
           ],
         ],
       ),
-      contentPadding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
+      // A settings list takes the shell's own list padding — rows to the
+      // card's edges, contents inset — rather than a form's prose padding.
+      list: settingsList,
+      contentPadding: settingsList ? null : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
       // Width comes from the shared sizing, and the shell scrolls the body.
       content: FormRenderer(
         key: formKey,
@@ -2205,6 +2230,7 @@ Future<Map<String, dynamic>?> showFormDialog(
         onOpenLink: onOpenLink,
         developerMode: developerMode,
         labels: labels,
+        settingsList: settingsList,
         showActions: false,
         showTitle: false,
         submittingNotifier: submittingNotifier,

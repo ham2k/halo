@@ -607,32 +607,45 @@ on macOS, which has no DOM — and none in a widget test either, because
 rather than a DOM element, so no browser focus event ever fires. Test the
 invariant (the sections are still mounted) rather than the symptom.
 
-### Settings panels
+### Settings lists
 
-Every settings panel is one list, whatever builds it — a declared
+A settings **list** is any surface whose content is settings rows: the
+Settings panels, a target-scoped settings dialog (the logging pane's tune
+icon), a pane's layout options, a panel's own configuration, the spot
+filters, the operation's location screen. Whatever builds one — a declared
 `SettingsGroup` through `FormRenderer`, an extension's `settingsPanel`, or a
-hand-built panel like Sync or Station. Three rules keep them from drifting
-apart:
+hand-built panel like Sync or Station — it is the same list to the operator,
+and these rules are what keep it one:
 
-- **Rows span the pane; their CONTENTS are inset.** The reading width comes
-  from padding inside each row, never from capping the column, so row
-  backgrounds and section bands reach the pane's edges instead of floating in
-  a gutter on a wide window. The inset rides the ambient `ListTileTheme`
-  (`settingsRowInset` plus the pane's own centring offset), which is where
-  `ListTile` rows and `FormRenderer`'s `_rowContentPadding` both read it —
-  one number, which the pane's title lines up with too. A panel that builds
-  something that is not a row (a search field, a status line) takes the same
-  inset from that theme rather than restating it.
-- **A section is headed by a band**, `SettingsSectionHeader`: full-bleed, on
-  the ground the Operation Setup sheet's sections use, in the slab face.
-  `FormRenderer`'s `style: 'section'` header IS that widget. The band abuts
-  its rows on both sides — the gap belongs above a section, not between a
-  heading and what it names.
-- **Bands stick.** A section is a `SliverMainAxisGroup` of [band, rows], so
-  the band holds the top while its own rows scroll under it and is pushed off
-  by the next section's. That makes the panel a `CustomScrollView`, and every
-  piece of it a sliver: a box handed to a viewport fails the whole list, not
-  just the section that returned it.
+- **Rows span the surface; their CONTENTS are inset.** The reading width
+  comes from padding inside each row, never from capping the column, so row
+  backgrounds and section bands reach the edges instead of floating in a
+  gutter on a wide window. The inset rides the ambient `ListTileTheme`, which
+  `SettingsList` publishes (`settingsRowInset`, plus a pane's own centring
+  offset) and which `ListTile` rows and `FormRenderer`'s `_rowContentPadding`
+  both read — one number, which a pane's title lines up with too. A surface
+  that builds something that is not a row (a search field, a status line)
+  takes the same inset from that theme rather than restating it, and a
+  DIALOG carrying a list says `list: true` rather than spending horizontal
+  padding of its own.
+- **The SURFACE decides the row shape, not the element.** `FormRenderer`
+  renders a settings list's fields as settings rows — bold title, the
+  description underneath, the whole row working the toggle, a tap opening the
+  editor for anything that is not one — and a form's fields as controls to
+  type into (`settingsList:`). A field whose element declares no `icon` is
+  still a settings row on a settings list, with nothing in the leading slot.
+  Decided per element, the shape becomes an accident of whoever wrote the
+  declaration.
+- **A section is headed by a band**, `SectionHeader`: full-bleed, on the
+  ground the Operation Setup sheet's sections use, in the slab face.
+  `FormRenderer`'s `style: 'section'` header IS that widget, and it is the
+  only section header in the app. The band abuts its rows on both sides — the
+  gap belongs above a section, not between a heading and what it names.
+- **Bands stick.** A section is a `SliverMainAxisGroup` of [band, rows]
+  (`SectionHeader.section`), so the band holds the top while its own rows
+  scroll under it and is pushed off by the next section's. That makes the
+  surface a `CustomScrollView`, and every piece of it a sliver: a box handed
+  to a viewport fails the whole list, not just the section that returned it.
 
 ## Row gestures
 

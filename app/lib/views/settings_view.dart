@@ -448,8 +448,8 @@ class _SettingsViewState extends State<SettingsView> {
             // explicit padding (panels that aren't ListTile-based) — so
             // row backgrounds and dividers still reach the pane's true
             // edge, right up to the grab-strip clearance this cancels.
-            body: ListTileTheme.merge(
-              contentPadding: EdgeInsets.only(left: settingsRowInset + safeLeft, right: settingsRowInset),
+            body: SettingsList(
+              extraLeft: safeLeft,
               child: _buildPanelContent(effectivePanel, widget.services, _panels),
             ),
           ),
@@ -694,11 +694,6 @@ class _SettingsPaneWidth extends InheritedWidget {
 double settingsPaneWidth(BuildContext context) =>
     context.dependOnInheritedWidgetOfExactType<_SettingsPaneWidth>()?.width ?? MediaQuery.sizeOf(context).width;
 
-/// What a settings row insets its contents by, off the row's own edge — the
-/// row itself runs to the pane's. One number, because the pane's title lines
-/// up with it (see the wide layout's `targetLeft`).
-const double settingsRowInset = 24;
-
 /// The narrow layout has no ListTileTheme of its own to merge over (the wide
 /// pane sets one before [_buildPanelContent] runs), so it starts from this.
 const _defaultRowInset = EdgeInsets.symmetric(horizontal: settingsRowInset);
@@ -854,7 +849,7 @@ class _ProfilesPanelState extends State<_ProfilesPanel> {
               onTap: _editCallsign,
               mouseCursor: SystemMouseCursors.click,
             ),
-            SettingsSectionHeader(t.personalInfo),
+            SectionHeader(t.personalInfo),
             Padding(
               // The rows' own inset, off the ambient ListTileTheme — it
               // carries the grab-strip clearance and the pane's centring,
@@ -1116,7 +1111,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       visible: !hidden,
       maintainState: true,
       sliver: SliverMainAxisGroup(slivers: [
-        SettingsSectionHeader.pinned(context, widget.group.title, width: settingsPaneWidth(context)),
+        SectionHeader.pinned(context, widget.group.title, width: settingsPaneWidth(context)),
         SliverToBoxAdapter(
           child: ExcludeFocus(
             excluding: hidden,
@@ -1127,6 +1122,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
           showTitle: false,
           developerMode: widget.services.settings.developerMode,
           labels: formRendererLabelsFor(context.t),
+          settingsList: true,
           onChange: _autosave,
           onOpenLink: openExternalUrl,
           onSubmit: (_) {},
@@ -1716,7 +1712,7 @@ class _SyncPanelState extends State<_SyncPanel> {
         return ListView(
           padding: const EdgeInsets.only(bottom: Space.md),
           children: [
-            SettingsSectionHeader(context.t.settings.syncPanel.configuration),
+            SectionHeader(context.t.settings.syncPanel.configuration),
             // The operator-callsign row lives in the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
@@ -1939,7 +1935,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
           ListTile(title: Text(context.t.settings.accounts.none))
         else
           for (final category in extensionCategoriesIn(grouped.keys)) ...[
-            SettingsSectionHeader(extensionCategoryTitle(category)),
+            SectionHeader(extensionCategoryTitle(category)),
             ...grouped[category]!.map((account) {
               final kvKey = account['kvKey'] as String;
               final label = account['label'] as String;
@@ -2087,7 +2083,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     return ListView(
       padding: const EdgeInsets.only(bottom: Space.md),
       children: [
-        SettingsSectionHeader(context.t.settings.offlineData.title),
+        SectionHeader(context.t.settings.offlineData.title),
         if (files.isEmpty)
           ListTile(
             title: Text(context.t.settings.offlineData.noFiles),
@@ -2098,7 +2094,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
           for (final file in files) _buildRow(context, file),
         ],
         if (_dataFileScopedPanels.isNotEmpty) ...[
-          SettingsSectionHeader(context.t.settings.offlineData.extensionsSection),
+          SectionHeader(context.t.settings.offlineData.extensionsSection),
           for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
         ],
       ],
@@ -2519,6 +2515,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       showTitle: !(widget.embedded && widget.sectionTitle != null),
       developerMode: widget.services.settings.developerMode,
       labels: formRendererLabelsFor(context.t),
+      settingsList: true,
       validator: _validate,
       onChange: _autosave,
       onAction: (actionKey, method, state) async {
@@ -2554,7 +2551,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       final rows = SliverToBoxAdapter(child: ExcludeFocus(excluding: searchHidden, child: form));
       if (title == null) return hideSliverIfFiltered(rows);
       return hideSliverIfFiltered(SliverMainAxisGroup(slivers: [
-        SettingsSectionHeader.pinned(context, title, width: settingsPaneWidth(context)),
+        SectionHeader.pinned(context, title, width: settingsPaneWidth(context)),
         rows,
       ]));
     }
@@ -2587,14 +2584,12 @@ class _DeveloperPanel extends StatelessWidget {
           // stopped their backgrounds short of the pane's edges.
           padding: const EdgeInsets.only(bottom: Space.xl),
           children: [
-            SettingsSectionHeader(context.t.settings.developer.options),
-            const SizedBox(height: Space.xl),
+            SectionHeader(context.t.settings.developer.options),
             SwitchListTile(
               title: Text(context.t.settings.developerMode),
               subtitle: Text(context.t.settings.developer.developerModeDescription),
               value: settings.developerMode,
               onChanged: (enabled) => settings.setDeveloperMode(enabled),
-              contentPadding: EdgeInsets.zero,
             ),
             // Gated by the 'experiments' meta-experiment (EXP EXPERIMENTS /
             // EXP EXP): the tile only appears once someone opted in via the
@@ -2619,7 +2614,6 @@ class _DeveloperPanel extends StatelessWidget {
                     leading: const Icon(MdiIcons.flaskOutline),
                     title: Text(context.t.settings.developer.experiments),
                     subtitle: Text(context.t.settings.developer.experimentsEnabled(count: enabledCount)),
-                    contentPadding: EdgeInsets.zero,
                     mouseCursor: SystemMouseCursors.click,
                     // The pane loads the catalog itself — capturing this
                     // builder's `definitions` would freeze a still-loading
@@ -3119,7 +3113,7 @@ class _AboutPanel extends StatelessWidget {
               ),
             ),
             if (recentReleases.isNotEmpty) ...[
-              SliverToBoxAdapter(child: SettingsSectionHeader(context.t.settings.about.releaseNotes)),
+              SliverToBoxAdapter(child: SectionHeader(context.t.settings.about.releaseNotes)),
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: _ReleaseNotesPreview(releases: recentReleases),

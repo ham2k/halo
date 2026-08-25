@@ -424,7 +424,7 @@ class StationPanel extends StatelessWidget {
           children: [
             // What the station IS right now: the choices that decide how the
             // rest of the app behaves. Today that is one question.
-            SettingsSectionHeader(st.currentConfiguration),
+            SectionHeader(st.currentConfiguration),
             Padding(
               padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, Space.md, Space.xs, Space.md),
               child: Row(
@@ -525,7 +525,7 @@ class StationPanel extends StatelessWidget {
             // What the station is made OF. Compact shows only the rig
             // driving the main VFO — a quick-glance connect/status row, not
             // the whole catalogue Add Equipment and the other radios imply.
-            SettingsSectionHeader(st.equipmentInventory),
+            SectionHeader(st.equipmentInventory),
             if (compact) ...[
               if (_cat.radio1 case final uuid?)
                 if (_cat.nodeFor(uuid) case final node?)
@@ -570,7 +570,7 @@ class StationPanel extends StatelessWidget {
               // SectionHeader, same as Equipment Inventory above it — rather
               // than tacking the toggle onto the equipment list it has
               // nothing to do with.
-              SettingsSectionHeader(st.otherOptions),
+              SectionHeader(st.otherOptions),
               // What to remember about EACH QSO, rather than the station's
               // own current setup above — off by default, since most
               // operators log with one radio, one antenna and one key, and a
@@ -632,28 +632,16 @@ class StationPanel extends StatelessWidget {
   /// offers opposite the primary/cancel group; "More Settings" itself
   /// destroys nothing.
   Widget _compactFooter(BuildContext context) {
-    final theme = Theme.of(context);
     final st = context.t.settings.station;
-    return Container(
-      decoration: BoxDecoration(
-        color: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.08),
-        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+    return haloDialogFooterBand(
+      context,
+      destructive: TextButton(
+        onPressed: onMoreSettings,
+        child: Text(st.moreSettings),
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
-          child: haloDialogFooterRow(
-            destructive: TextButton(
-              onPressed: onMoreSettings,
-              child: Text(st.moreSettings),
-            ),
-            cancel: TextButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              child: Text(context.t.common.done),
-            ),
-          ),
-        ),
+      cancel: TextButton(
+        onPressed: () => Navigator.of(context).maybePop(),
+        child: Text(context.t.common.done),
       ),
     );
   }
@@ -682,38 +670,36 @@ class StationPanel extends StatelessWidget {
       // `compact` keeps the dialog narrow and its rows padded, rather than
       // the flush wide layout that suits a dozen-plus bands.
       //
-      // FormRenderer's own rows read their padding from the ambient
-      // ListTileTheme, defaulting to none — every other row in this panel
-      // gets it for free from ListTile's own built-in default, so this is
-      // merged in explicitly to match.
-      ListTileTheme.merge(
-        contentPadding: const EdgeInsets.symmetric(horizontal: Space.xl),
-        child: FormRenderer(
-          formDefinition: {
-            'elements': [
-              {
-                'type': 'field',
-                'fieldType': 'multiselect',
-                'key': 'trackedFields',
-                'label': st.whatToTrack,
-                'value': [for (final opt in trackedFieldOptions) if (tracked.contains(opt['value'])) opt['value']],
-                'defaultValue': SettingsService.defaultStationInfoTrackedFields,
-                'options': trackedFieldOptions,
-                'compact': true,
-              },
-            ],
-          },
-          initialState: const {},
-          showActions: false,
-          showTitle: false,
-          onChange: (fieldKey, value, state) async {
-            await settings.setStationInfoTrackedFields((value as List).cast<String>().toSet());
-            return null;
-          },
-          onSubmit: (_) {},
-          onCancel: () {},
-          labels: formRendererLabelsFor(context.t),
-        ),
+      // No inset of its own: FormRenderer's rows read the ambient
+      // ListTileTheme, which the settings pane's own SettingsList already
+      // set to the one inset every row in the panel shares. Restating it
+      // here is how a panel ends up a rung off from the one beside it.
+      FormRenderer(
+        formDefinition: {
+          'elements': [
+            {
+              'type': 'field',
+              'fieldType': 'multiselect',
+              'key': 'trackedFields',
+              'label': st.whatToTrack,
+              'value': [for (final opt in trackedFieldOptions) if (tracked.contains(opt['value'])) opt['value']],
+              'defaultValue': SettingsService.defaultStationInfoTrackedFields,
+              'options': trackedFieldOptions,
+              'compact': true,
+            },
+          ],
+        },
+        initialState: const {},
+        showActions: false,
+        showTitle: false,
+        onChange: (fieldKey, value, state) async {
+          await settings.setStationInfoTrackedFields((value as List).cast<String>().toSet());
+          return null;
+        },
+        onSubmit: (_) {},
+        onCancel: () {},
+        labels: formRendererLabelsFor(context.t),
+        settingsList: true,
       ),
     ];
   }

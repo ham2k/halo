@@ -288,6 +288,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // StationPanel is its own scrolling ListView — the pane must not also
     // wrap it in a SingleChildScrollView.
     scrollable: false,
+    // The compact panel ends in a footer band whose Done is the way out.
+    closeButton: false,
     builder: (context) => StationPanel(
       services: widget.services,
       compact: true,
