@@ -2588,6 +2588,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _freqController.text = freq != null ? fmtFreqInput(freq) : '';
     _mode = data['mode'] as String? ?? _mode;
     _manualBand = freq == null ? data['band'] as String? : null;
+    // A wholesale repopulate — a spot tapped, a QSO opened for editing —
+    // replaces every field, so nothing in a dropdown survives it either.
+    _resyncDropdownFieldsToSelection();
     _currentQsoExtra
       ..clear()
       ..addAll(data)
@@ -2794,7 +2797,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // against band and mode, so without this a rig retuned at its own front
     // panel left them describing the band the operator has left. Debounced
     // and gated on a plausible callsign, so a spun VFO knob costs nothing.
-    if (_band != previousBand || _mode != previousMode) _scheduleScore();
+    if (_band != previousBand || _mode != previousMode) {
+      _resyncDropdownFieldsToSelection();
+      _scheduleScore();
+    }
   }
 
   /// Ends a pending frequency edit at a QSO boundary — logging, wiping, or
@@ -3424,6 +3430,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _applyModeGuess(String mode) {
     if (mode == _mode) return;
     _mode = mode;
+  }
+
+  /// Puts the Band and Mode fields back in step with `_band`/`_mode` after
+  /// something other than the dropdowns themselves moved them — a connected
+  /// rig, a spot the operator tapped, a QSO opened for editing.
+  ///
+  /// A filter the operator had typed is dropped rather than kept. It was an
+  /// in-progress edit of a value that has since moved, so keeping it leaves
+  /// the field describing a mode that no longer applies — and the commit on
+  /// the way out then pushes that stale text back over the change, taking a
+  /// rig that just reported CW and retuning it to FT8 on the strength of a
+  /// keystroke that predates the report.
+  ///
+  /// Writing the controllers here rather than leaving it to
+  /// `DropdownMenu.initialSelection` is the point: that sync fires only when
+  /// the new value is among the entries the menu was last given, so a
+  /// filtered menu — the only state this method has to repair — is exactly
+  /// the state it skips.
+  ///
+  /// Callers must have established that the value actually changed: an
+  /// unconditional call from a path a connected radio drives (a VFO
+  /// notification restating the mode it is already on) would wipe whatever
+  /// the operator is typing at the time. The command paths in
+  /// [_dispatchActions] need none of this — a command is typed into the call
+  /// field, so no dropdown holds a filter when one lands.
+  void _resyncDropdownFieldsToSelection() {
+    _bandFilter = '';
+    _modeFilter = '';
+    _bandDropdownController.text = _band ?? '';
+    _modeDropdownController.text = _mode;
   }
 
   void _setMode(String mode) {

@@ -7855,6 +7855,79 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT4');
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
+  testWidgets('a rig that moves the mode wins over half-typed text in the Mode field', (tester) async {
+    // The trap: the operator starts typing a mode, the rig moves underneath
+    // them, and the field keeps showing the keystrokes. `_mode` has already
+    // followed the rig, so nothing on screen says the two disagree — and the
+    // commit on the way out resolves 'F' to FT8 and pushes it, retuning a rig
+    // that had just reported CW on the strength of a keystroke older than the
+    // report.
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'F');
+    await tester.pump();
+
+    fakeRadio.setVfo('vfoA', freq: 14030, mode: 'CW');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+
+    // Leaving the field must not resurrect the abandoned edit.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+    expect(fakeRadio.vfoA.mode, 'CW', reason: 'the rig keeps the mode it reported');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '599');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a spot arriving while the Mode field is being typed in replaces the half-typed text', (tester) async {
+    // A spot tapped on another surface repopulates every field. The Mode
+    // dropdown is the one field that could hold the operator's own unfinished
+    // text at that moment, and it must not survive to commit over the mode
+    // the spot brought.
+    await tester.pumpWidget(host(enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'C');
+    await tester.pump();
+
+    await tester.pumpWidget(host(
+      enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM'],
+      suggestedQso: const {'their': {'call': 'W1AW'}, 'freq': 14074.0, 'mode': 'FT8'},
+    ));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a rig restating the mode it is already on leaves the operator typing alone', (tester) async {
+    // The other half of the contract, and the one a blunter fix breaks: a
+    // connected radio notifies constantly. Only a mode that actually MOVED
+    // may take the field back — a VFO update that changes nothing else must
+    // not wipe a filter mid-word.
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'F');
+    await tester.pump();
+
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'F');
+    expect(find.widgetWithText(MenuItemButton, 'FT8').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('an open Band menu holds its scroll position across the clock-tick rebuilds', (tester) async {
     // A selected band matters: the rebuild-time re-scroll only fires when
     // the field text matches an entry. Null enabled lists → the full
