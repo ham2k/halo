@@ -23,6 +23,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config/version.dart' show Edition, kBuildNumber, kEdition;
 import 'error_reporting_service.dart';
+import 'restart_service.dart' show quitThroughFramework;
 import 'winsparkle_config.dart';
 
 /// Signature of [configureWinSparkleBeforeInit], so a test can stand in for it
@@ -58,6 +59,41 @@ class _SilentCheckListener with UpdaterListener {
   void onUpdaterUpdateDownloaded(AppcastItem? appcastItem) {}
   @override
   void onUpdaterBeforeQuitForUpdate(AppcastItem? appcastItem) {}
+}
+
+/// Quits the app when WinSparkle is about to install an update.
+///
+/// WINDOWS ONLY, and load-bearing there. WinSparkle launches the installer and
+/// then asks the host to shut down; it never terminates the host itself, and
+/// `auto_updater_windows` implements that callback by forwarding this event and
+/// nothing else — so without this the app stays up. It and the crash handler it
+/// spawned then hold every file in the install folder open, the installer stops
+/// on files-in-use, and the operator's only way forward is Task Manager.
+///
+/// NOT macOS: there this same event comes from Sparkle's
+/// `willInstallUpdateOnQuit`, which means "installed whenever you next quit",
+/// not "quit now" — quitting on it would close the app out from under the
+/// operator the moment a background download finished. Sparkle terminates the
+/// app itself when it does install, through `NSApp.terminate`, which reaches
+/// the same exit hook this does.
+class _QuitForUpdateListener with UpdaterListener {
+  @override
+  void onUpdaterBeforeQuitForUpdate(AppcastItem? appcastItem) {
+    if (defaultTargetPlatform != TargetPlatform.windows) return;
+    final quit = (kDebugMode ? AutoUpdateService.debugQuitForUpdate : null) ?? quitThroughFramework;
+    unawaited(quit('auto-update'));
+  }
+
+  @override
+  void onUpdaterCheckingForUpdate(Appcast? appcast) {}
+  @override
+  void onUpdaterUpdateAvailable(AppcastItem? appcastItem) {}
+  @override
+  void onUpdaterUpdateNotAvailable(UpdaterError? error) {}
+  @override
+  void onUpdaterUpdateDownloaded(AppcastItem? appcastItem) {}
+  @override
+  void onUpdaterError(UpdaterError? error) {}
 }
 
 class AutoUpdateService {
@@ -109,6 +145,11 @@ class AutoUpdateService {
   /// product-qualified (`halo-<edition>`) so the updates host can namespace
   /// Ham2K products without collision.
   String get feedUrl => '$_baseUrl/halo-${kEdition.name}/$_platform/appcast.xml';
+
+  /// The process-wide [_QuitForUpdateListener], registered by [start]. Held so
+  /// it is added exactly once — the plugin's listener list is a plain `List`,
+  /// so a second `addListener` would quit the app twice over.
+  static _QuitForUpdateListener? _quitListener;
 
   /// The in-flight or completed one-and-only configuration call, shared by
   /// every caller. See [_ensureConfigured].
@@ -195,10 +236,17 @@ class AutoUpdateService {
   @visibleForTesting
   static WinSparkleConfigurator? debugConfigureWinSparkle;
 
+  /// Test seam for the quit itself, which otherwise ends the test binary.
+  /// Read only under [kDebugMode], for the same reason as the seams above.
+  @visibleForTesting
+  static Future<void> Function(String logTag)? debugQuitForUpdate;
+
   @visibleForTesting
   static void debugResetConfiguration() {
     _configureCall = null;
     _automaticChecks = true;
+    if (_quitListener != null) autoUpdater.removeListener(_quitListener!);
+    _quitListener = null;
   }
 
   /// Point the native updater at this build's feed and hand it the operator's
@@ -213,6 +261,7 @@ class AutoUpdateService {
   Future<void> start({bool automaticChecks = true}) async {
     _automaticChecks = automaticChecks;
     if (!isSupported) return;
+    if (_quitListener == null) autoUpdater.addListener(_quitListener = _QuitForUpdateListener());
     try {
       await _ensureConfigured();
     } catch (e, st) {

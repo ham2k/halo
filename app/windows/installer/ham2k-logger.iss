@@ -6,8 +6,11 @@
 ; Windows runner's own halo_edition.h (docs/releases.md §2.6).
 ;
 ; Per-user install (no admin/UAC), so background updates need no elevation —
-; the WinSparkle/auto_updater path just downloads the next signed Setup and runs
-; it silently (/VERYSILENT), overwriting the install folder in place.
+; the WinSparkle/auto_updater path downloads the next signed Setup and runs this
+; same wizard, overwriting the install folder in place. It passes no arguments
+; (the appcast carries no sparkle:installerArguments), so an update is an
+; ordinary interactive install, and the [Run] entry's postinstall checkbox is
+; what brings the app back.
 ;
 ; CI invocation (PowerShell):
 ;   ISCC /DHaloEdition=next /DHaloMarketing=26.8.1 /DHaloBuild=73 `
@@ -96,6 +99,27 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ; e.g. "Ham2K Logger (Next) 26.8.1-alpha1 (73) Installer.exe" — the ".exe"
 ; already implies Windows, so no platform word (§2.2).
 OutputBaseFilename={#HaloFullName} Installer
+; An update runs while the old build is still up: WinSparkle launches this and
+; only then asks the app to quit, and the app it asks may be an older build that
+; does not (auto_update_service.dart's _QuitForUpdateListener). Restart Manager,
+; which is all the default `yes` has, cannot clear that — it can only ASK, and
+; crashpad_handler.exe (Sentry's native crash handler, a child of the app,
+; living in {app} and so in use itself) has no window and never registers with
+; RM. Setup gives up on it and waits for the operator, whose only way out is
+; Task Manager. That stalls a hand-run install over a running app exactly as it
+; stalls an update.
+;
+; `force` TERMINATES what RM could not close, and for the app that is a kill,
+; NOT its exit hook: RM asks a GUI process with WM_QUERYENDSESSION, while only
+; WM_CLOSE reaches the path that runs main.dart's shutdownOnExit — so a forced
+; close skips the CAT goodbyes and the database close. The quit above is what
+; keeps the UPDATER's path graceful: the app gets itself out of the way before
+; Setup ever looks. A hand-run install has no such help, so quit the app first.
+;
+; RestartApplications=no: RM's own relaunch would just as happily bring back the
+; crash handler, orphaned from the app it was watching.
+CloseApplications=force
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -113,16 +137,17 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#ExeName}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopicon
 
 [Run]
-; Offered after an interactive install; skipped during a silent (updater) run.
+; Offered at the end of the wizard — including the updater's run, which is an
+; ordinary interactive install, so this is how the app comes back after an
+; update. skipifsilent leaves a hand-run /VERYSILENT install alone.
 Filename: "{app}\{#ExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 // Uninstall only ever removes {app} (the program files) — never the
 // operator's own data, per Windows best practice: ask, default to keeping
-// it. Skipped for a silent uninstall (WinSparkle's background updater only
-// ever runs a silent INSTALL over the existing files, never an uninstall, so
-// this only fires for an interactive Settings > Apps run or a developer's
-// manual `/VERYSILENT`-less test).
+// it. Skipped for a silent uninstall — the updater only ever INSTALLS over the
+// existing files, never uninstalls, so this only fires for an interactive
+// Settings > Apps run.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir, SecureStorageDir: String;

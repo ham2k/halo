@@ -9,6 +9,12 @@
 // callback — checkSilently() then times out and the About row reports "up to
 // date" whatever the appcast says. Nothing about that is visible from macOS or
 // from a plain read of the Dart, which is why it needs pinning here.
+//
+// And the quit that has to follow an install: WinSparkle asks the host to shut
+// down and never does it itself, while Sparkle's same event means the opposite
+// ("installed on your next quit"). Both halves are invisible from the other
+// platform, and getting either wrong is silent — an installer stuck on
+// files-in-use, or an app that vanishes mid-QSO.
 
 import 'dart:async';
 
@@ -48,6 +54,11 @@ class _FakeAutoUpdaterPlatform extends AutoUpdaterPlatform with MockPlatformInte
 
   @override
   Stream<Map<Object?, Object?>> get sparkleEvents => _events.stream;
+
+  /// Fires a native event the way WinSparkle/Sparkle would, so a test reaches
+  /// the listener through the plugin's own dispatch rather than calling a
+  /// handler by hand.
+  void emit(String type) => _events.add({'type': type});
 
   @override
   Future<void> setFeedURL(String feedUrl) async {
@@ -118,6 +129,7 @@ void main() {
   tearDown(() {
     AutoUpdateService.debugSupportedOverride = null;
     AutoUpdateService.debugConfigureWinSparkle = null;
+    AutoUpdateService.debugQuitForUpdate = null;
     AutoUpdateService.debugResetConfiguration();
   });
 
@@ -166,6 +178,77 @@ void main() {
     // on the native default (a day) for its entire life, with nothing left to
     // notice or correct it.
     expect(platform.intervals, hasLength(1));
+  });
+
+  group('quitting for the install', () {
+    /// Records quit requests and lets the event reach the listener through the
+    /// plugin's broadcast stream.
+    Future<List<String>> quitsAfterBeforeQuitEvent({required TargetPlatform on}) async {
+      final quits = <String>[];
+      AutoUpdateService.debugQuitForUpdate = (logTag) async => quits.add(logTag);
+      debugDefaultTargetPlatformOverride = on;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      await const AutoUpdateService().start();
+      platform.emit('before-quit-for-update');
+      // The event is dispatched off the broadcast stream, so it lands a
+      // microtask after emit().
+      await Future<void>.delayed(Duration.zero);
+      return quits;
+    }
+
+    test('quits the app on Windows, where nothing else will', () async {
+      // WinSparkle launches the installer and only THEN asks the host to shut
+      // down — it never terminates it, and auto_updater_windows implements that
+      // callback by forwarding this event and nothing more. An app that stays
+      // up holds every file in the install folder open (its own exe, and the
+      // crashpad handler it spawned), and the installer stops on files-in-use
+      // with Task Manager as the operator's only way forward.
+      expect(await quitsAfterBeforeQuitEvent(on: TargetPlatform.windows), ['auto-update']);
+    });
+
+    test('does NOT quit the app on macOS, where the event means something else', () async {
+      // Sparkle emits this one from willInstallUpdateOnQuit — "installed
+      // whenever you next quit", not "quit now". Quitting on it would close the
+      // app out from under the operator the moment a background download
+      // finished, with no update pending on this side at all.
+      expect(await quitsAfterBeforeQuitEvent(on: TargetPlatform.macOS), isEmpty);
+    });
+
+    test('registers the quit listener exactly once across repeated starts', () async {
+      final quits = <String>[];
+      AutoUpdateService.debugQuitForUpdate = (logTag) async => quits.add(logTag);
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      const service = AutoUpdateService();
+      await service.start();
+      await service.start();
+      platform.emit('before-quit-for-update');
+      await Future<void>.delayed(Duration.zero);
+
+      // The plugin holds its listeners in a plain List, so a second
+      // addListener would run the quit twice — the second one racing the exit
+      // hook the first is already inside, with the database mid-close.
+      expect(quits, hasLength(1));
+    });
+
+    test('a build with no self-update never registers a quit listener', () async {
+      // A debug build, a Dev edition, the web: nothing there ever sees a real
+      // update, but a stray event on the shared broadcast stream would still
+      // reach a listener that had been registered anyway.
+      final quits = <String>[];
+      AutoUpdateService.debugQuitForUpdate = (logTag) async => quits.add(logTag);
+      AutoUpdateService.debugSupportedOverride = false;
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      await const AutoUpdateService().start();
+      platform.emit('before-quit-for-update');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(quits, isEmpty);
+    });
   });
 
   group('platform gating', () {
