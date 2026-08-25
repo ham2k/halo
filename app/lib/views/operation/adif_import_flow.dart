@@ -11,8 +11,12 @@
 // field lengths in bytes, and a string that has already been decoded has lost
 // them (packages/halo_core/lib/src/adif/adif_parser.dart).
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, visibleForTesting, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -49,6 +53,61 @@ bool looksLikeAdif(String filename) {
 /// not a smaller one.
 bool adifImportInFlight = false;
 
+/// The filter handed to the picker.
+///
+/// Android greys out anything outside the requested MIME types, and `.adi` /
+/// `.adif` map to no MIME type at all (`file_selector_android` drops
+/// extensions `MimeTypeMap` cannot convert), so a filtered group there offers
+/// the operator a browser with nothing selectable in it. An empty group asks
+/// for `*/*`; what the operator picks is filtered by [looksLikeAdif] and
+/// [bytesLookLikeAdif] instead.
+@visibleForTesting
+List<XTypeGroup> adifTypeGroups() {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return const [];
+  return [
+    XTypeGroup(
+      label: 'ADIF',
+      extensions: _adifExtensions,
+      // iOS filters by UTI and THROWS for a group carrying none
+      // (`file_selector_ios`), so extensions alone breaks the only route
+      // mobile has to this feature. `public.data` because ADIF has no UTI
+      // of its own; `looksLikeAdif` still does the real filtering.
+      uniformTypeIdentifiers: const ['public.data'],
+      mimeTypes: const ['text/plain'],
+    ),
+  ];
+}
+
+/// Enough of a file to find an ADIF marker in. A header is free text of any
+/// length, but one that runs past this is not something a logger writes.
+const _sniffBytes = 64 * 1024;
+
+/// A field tag (`<CALL:5`) or a segment marker (`<EOH>`, `<EOR>`) — the two
+/// shapes every ADIF file starts with, and neither of them something a text
+/// file the operator picked by mistake carries in its first bytes.
+final _adifMarker = RegExp(r'<(eoh>|eor>|[a-z_]+:\d)', caseSensitive: false);
+
+/// Whether [head] — the first bytes of a file — reads as ADIF.
+///
+/// The NAME cannot answer this on Android: the picker hands back a COPY of
+/// the chosen file whose extension the platform rewrote from the provider's
+/// MIME type (`file_selector_android`'s `FileUtils.getFileExtension`), and
+/// `.adi` has no MIME type of its own — so an ADIF file arrives named `.bin`
+/// or `.txt` and [looksLikeAdif] alone would refuse what the operator picked
+/// correctly, naming a file that exists nowhere on their device.
+///
+/// Latin-1 because this is a byte scan: any decoding that can throw would
+/// turn an unusual encoding into a refusal, and the markers are ASCII.
+bool bytesLookLikeAdif(Uint8List head) => _adifMarker.hasMatch(latin1.decode(head, allowInvalid: true));
+
+Future<Uint8List> _readHead(XFile file) async {
+  final builder = BytesBuilder(copy: false);
+  await for (final chunk in file.openRead(0, _sniffBytes)) {
+    builder.add(chunk);
+  }
+  return builder.takeBytes();
+}
+
 /// Opens the file picker, then runs [importAdifFile] on what was chosen.
 Future<void> pickAndImportAdif(
   BuildContext context, {
@@ -57,20 +116,7 @@ Future<void> pickAndImportAdif(
 }) async {
   final XFile? file;
   try {
-    file = await openFile(
-      acceptedTypeGroups: [
-        XTypeGroup(
-          label: 'ADIF',
-          extensions: _adifExtensions,
-          // iOS filters by UTI and THROWS for a group carrying none
-          // (`file_selector_ios`), so extensions alone breaks the only route
-          // mobile has to this feature. `public.data` because ADIF has no UTI
-          // of its own; `looksLikeAdif` still does the real filtering.
-          uniformTypeIdentifiers: const ['public.data'],
-          mimeTypes: const ['text/plain'],
-        ),
-      ],
-    );
+    file = await openFile(acceptedTypeGroups: adifTypeGroups());
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'adifImport:picker');
     if (context.mounted) {
@@ -103,11 +149,27 @@ Future<void> importAdifFile(
   }
 
   if (!looksLikeAdif(filename)) {
-    // A dialog, not the status bar. Dropping the wrong file is a mistake made
-    // in the moment and the operator is watching the window, not the status
-    // line — a refusal they can miss reads as the drop having done nothing.
-    await _showNotice(context, t.notAdif(filename: filename));
-    return;
+    // The name is only the first answer, and on Android it is a rewritten one
+    // ([bytesLookLikeAdif]), so the bytes get the last word before a refusal.
+    final Uint8List head;
+    try {
+      head = await _readHead(file);
+    } catch (e, stack) {
+      _reportFailure(services, 'adifImport:sniff', e, stack, t.failed(filename: filename, error: '$e'));
+      if (context.mounted) {
+        await _showNotice(context, t.failed(filename: filename, error: e.toString()));
+      }
+      return;
+    }
+    if (!context.mounted) return;
+    if (!bytesLookLikeAdif(head)) {
+      // A dialog, not the status bar. Dropping the wrong file is a mistake
+      // made in the moment and the operator is watching the window, not the
+      // status line — a refusal they can miss reads as the drop having done
+      // nothing.
+      await _showNotice(context, t.notAdif(filename: filename));
+      return;
+    }
   }
 
   adifImportInFlight = true;
