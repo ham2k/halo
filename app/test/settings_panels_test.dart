@@ -76,9 +76,12 @@ void main() {
     // Settings (and the whole Logging section with it) here.
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
-      // Tall enough that the full two-line settings sidebar renders without
-      // scrolling — ListView.builder won't build off-screen rows.
-      tester.view.physicalSize = const Size(1000, 1400);
+      // Tall enough that the whole settings list renders without scrolling.
+      // Both halves are lazy: the sidebar is a ListView.builder, and the
+      // panel is a CustomScrollView whose sections pin their own headers —
+      // neither builds what is off-screen, so a shorter viewport here reads
+      // as a missing setting rather than as an unscrolled one.
+      tester.view.physicalSize = const Size(1000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -121,7 +124,7 @@ void main() {
   testWidgets('environment excludes a field from every settings surface on the excluded platform', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
-      tester.view.physicalSize = const Size(1000, 1400);
+      tester.view.physicalSize = const Size(1000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -148,7 +151,7 @@ void main() {
   testWidgets('environment shows a field on every platform it does not exclude', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      tester.view.physicalSize = const Size(1000, 1400);
+      tester.view.physicalSize = const Size(1000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -168,7 +171,7 @@ void main() {
   testWidgets('Common Settings adds the numbers row on mobile only', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      tester.view.physicalSize = const Size(1000, 1400);
+      tester.view.physicalSize = const Size(1000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -188,9 +191,10 @@ void main() {
   });
 
   testWidgets('All Settings shows every group plus extension sections', (tester) async {
-    // Tall enough that the full two-line settings sidebar renders without
-    // scrolling — ListView.builder won't build off-screen rows.
-    tester.view.physicalSize = const Size(1000, 1400);
+    // Tall enough that the whole settings list renders without scrolling —
+    // both the sidebar (ListView.builder) and the panel (a CustomScrollView
+    // of pinned sections) build only what is on screen.
+    tester.view.physicalSize = const Size(1000, 4000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -263,7 +267,7 @@ void main() {
     // --platform chrome` drives text input through the test binding rather
     // than a DOM element, so no browser focus event ever fires there. This
     // pins the invariant instead — the mechanism, not the symptom.
-    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.physicalSize = const Size(1000, 4000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -297,7 +301,7 @@ void main() {
     // The box and the commands share one matcher (settings_catalog.dart), but
     // sharing it is not the same as the SCREEN being wired to it — this drives
     // the real search field to prove the wiring, not just the predicate.
-    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.physicalSize = const Size(1000, 4000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 

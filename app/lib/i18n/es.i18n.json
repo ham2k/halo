@@ -645,14 +645,6 @@
       "sparse": "Amplia",
       "sparsest": "Muy amplia"
     },
-    "layoutDensityDescription": {
-      "auto": "Según la altura de la ventana",
-      "densest": "Muestra todo lo que sea posible",
-      "dense": "Muestra más en pantalla",
-      "normal": "El diseño estándar",
-      "sparse": "Más espacio alrededor de todo",
-      "sparsest": "El máximo espacio alrededor de todo"
-    },
     "layoutDensityClamped": "la ventana es muy baja, usando ${effective}",
     "layoutDensityAtLimit": "es lo máximo",
     "distanceUnits": "Unidades de distancia",
@@ -760,11 +752,26 @@
         "description": "A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez."
       }
     },
+    "help": {
+      "title": "Ayuda y Recursos",
+      "description": "Comunidad y soporte",
+      "forums": "Foros de Ham2K",
+      "forumsDescription": "Encuentra ayuda, danos tu opinión, comparte ideas…",
+      "chat": "Chat de Ham2K",
+      "chatDescription": "El servidor de Discord de nuestra comunidad",
+      "youtube": "Ham2K en YouTube",
+      "youtubeDescription": "Vídeos y transmisiones en directo",
+      "instagram": "Ham2K en Instagram",
+      "instagramDescription": "Porque nunca hay demasiadas fotos…",
+      "bluesky": "Ham2K en BlueSky",
+      "blueskyDescription": "Síguenos para novedades y actualizaciones",
+      "contact": "Contáctanos",
+      "contactDescription": "help@ham2k.com — ¡pero prueba primero los Foros o el Chat!"
+    },
     "map": {
       "title": "Mapa",
       "style": {
-        "title": "Estilo del Mapa",
-        "description": "Qué mapa base usa la pestaña Mapa. Automático sigue el tema claro/oscuro de la app."
+        "title": "Estilo del Mapa"
       },
       "styleOpts": {
         "automatic": "Automático",

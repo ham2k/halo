@@ -20,7 +20,7 @@
 import 'dart:async' show TimeoutException;
 import 'dart:io' show FileSystemException, SocketException;
 
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
@@ -148,6 +148,15 @@ class ErrorPolicy {
       disposition: ErrorDisposition.ignore,
       logOncePerSession: true,
       matches: _isWebFocusTraversalNull,
+    ),
+    ErrorRule(
+      id: 'hot-restart-stale-object',
+      reason: 'a live object left behind by a hot reload/restart, whose class no longer has the '
+          'field being read. A development artifact of the reload itself — nothing in the code is '
+          'wrong and a cold start clears it, so it must not wear an operator notice or reach the '
+          'backend. Debug builds only, so it can never quiet anything a user could see',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isHotRestartStaleObject,
     ),
     ErrorRule(
       id: 'bottom-chrome-squeezed',
@@ -362,6 +371,37 @@ class ErrorPolicy {
 
   static bool _isRenderFlexOverflow(Object error, FlutterErrorDetails? details) =>
       error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
+
+  /// A stale object stranded by a hot reload or hot restart: DDC reads a
+  /// private Dart field off an instance whose class no longer declares it,
+  /// and JavaScript answers `undefined` rather than throwing on the object
+  /// itself. What surfaces is a `TypeError: Cannot read properties of
+  /// undefined (reading 'Symbol(<field>)')`, usually from deep inside the
+  /// framework — a stranded `Element` whose `_lifecycleState` has gone
+  /// missing, say, which then fails an assert whose own message cannot be
+  /// built either.
+  ///
+  /// Reported as a crash, it is noise of the worst kind: it names framework
+  /// internals, points at no code, and the fix is a cold start. It says
+  /// nothing about the build a user runs.
+  ///
+  /// Two guards keep it from quieting anything real. [kDebugMode], because a
+  /// reload cannot happen in a profile or release build — where a JS TypeError
+  /// naming a Dart symbol WOULD be a genuine compiler or interop bug, and
+  /// stays loud. And the `Symbol(` in the message, which is what says the
+  /// missing member is a private Dart field rather than an ordinary
+  /// undefined-property mistake in interop code.
+  static bool _isHotRestartStaleObject(Object error, FlutterErrorDetails? details) {
+    if (!kDebugMode || !(debugTreatAsWeb ?? kIsWeb)) return false;
+    // An extension's own JS crash reaches us wrapped, with the engine's
+    // message quoted inside it — including, for extension code that touches
+    // Symbol-keyed objects, one shaped exactly like this. That is an
+    // extension author's real bug, in the dev cycle where they are hunting
+    // it, so the wrapper is excluded rather than matched by its text.
+    if (error is ExtensionHostException) return false;
+    final text = error.toString();
+    return text.contains('Cannot read properties of undefined') && text.contains("Symbol(");
+  }
 
   /// "setState() or markNeedsBuild() called during build." — a framework
   /// assertion about the ORDER our own code touched a listener in, not

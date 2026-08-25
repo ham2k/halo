@@ -420,14 +420,11 @@ class StationPanel extends StatelessWidget {
         ];
 
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
+          padding: const EdgeInsets.only(bottom: Space.md),
           children: [
             // What the station IS right now: the choices that decide how the
             // rest of the app behaves. Today that is one question.
-            Padding(
-              padding: EdgeInsets.only(left: safeLeft),
-              child: SectionHeader(st.currentConfiguration),
-            ),
+            SettingsSectionHeader(st.currentConfiguration),
             Padding(
               padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, Space.md, Space.xs, Space.md),
               child: Row(
@@ -528,10 +525,7 @@ class StationPanel extends StatelessWidget {
             // What the station is made OF. Compact shows only the rig
             // driving the main VFO — a quick-glance connect/status row, not
             // the whole catalogue Add Equipment and the other radios imply.
-            Padding(
-              padding: EdgeInsets.only(left: safeLeft),
-              child: SectionHeader(st.equipmentInventory),
-            ),
+            SettingsSectionHeader(st.equipmentInventory),
             if (compact) ...[
               if (_cat.radio1 case final uuid?)
                 if (_cat.nodeFor(uuid) case final node?)
@@ -576,10 +570,7 @@ class StationPanel extends StatelessWidget {
               // SectionHeader, same as Equipment Inventory above it — rather
               // than tacking the toggle onto the equipment list it has
               // nothing to do with.
-              Padding(
-                padding: EdgeInsets.only(left: safeLeft),
-                child: SectionHeader(st.otherOptions),
-              ),
+              SettingsSectionHeader(st.otherOptions),
               // What to remember about EACH QSO, rather than the station's
               // own current setup above — off by default, since most
               // operators log with one radio, one antenna and one key, and a

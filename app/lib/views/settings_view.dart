@@ -40,6 +40,7 @@ import '../services/windows_webview.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/sync_account_identity.dart';
 import 'header_profile_label.dart';
+import 'help_panel.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
 import 'confirm_device_dialog.dart';
@@ -129,6 +130,12 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
           icon: MdiIcons.key,
           order: 20,
           description: t.settings.panels.accountsDescription),
+      _SettingsPanelEntry(
+          key: 'help',
+          title: t.settings.help.title,
+          icon: MdiIcons.lifebuoy,
+          order: 95,
+          description: t.settings.help.description),
       _SettingsPanelEntry(
           key: 'extensions',
           title: t.settings.panels.extensions,
@@ -401,14 +408,13 @@ class _SettingsViewState extends State<SettingsView> {
         secondary: LayoutBuilder(builder: (context, constraints) {
           final safeLeft = PaneSafeArea.leftOf(context);
           final paneWidth = constraints.maxWidth;
-          // The rows below cap at idealPaneWidth and CENTER within the pane
-          // (_buildPanelContent), then inset 24 + safeLeft into that centered
-          // box (the row-background margin plus the ambient ListTileTheme
-          // inset — see the ListTileTheme.merge below). Replicate both parts
-          // — the centering AND the inset — to get the title's left edge to
-          // the same absolute x, measured from the pane's true left edge.
-          final centeringOffset = max(0.0, (paneWidth - idealPaneWidth) / 2);
-          final targetLeft = centeringOffset + 24 + safeLeft;
+          // The rows below span the pane and inset their CONTENTS by the
+          // centering offset plus 24 + safeLeft (_buildPanelContent's
+          // ListTileTheme merge over the one below). Replicate both parts to
+          // get the title's left edge to the same absolute x, measured from
+          // the pane's true left edge.
+          final centeringOffset = settingsRowCentering(paneWidth);
+          final targetLeft = centeringOffset + settingsRowInset + safeLeft;
           // NavigationToolbar (which AppBar's title slot layouts through)
           // starts the title at `titleSpacing` from the toolbar's left edge
           // when centerTitle is false — see _ToolbarLayout.performLayout in
@@ -443,7 +449,7 @@ class _SettingsViewState extends State<SettingsView> {
             // row backgrounds and dividers still reach the pane's true
             // edge, right up to the grab-strip clearance this cancels.
             body: ListTileTheme.merge(
-              contentPadding: EdgeInsets.only(left: Space.xl + safeLeft, right: Space.xl),
+              contentPadding: EdgeInsets.only(left: settingsRowInset + safeLeft, right: settingsRowInset),
               child: _buildPanelContent(effectivePanel, widget.services, _panels),
             ),
           ),
@@ -507,6 +513,16 @@ class _SettingsViewState extends State<SettingsView> {
           // color here (the AppBar/FAB teal), not tuned for reading directly
           // on this sidebar's surface; only 2.67:1 in dark mode.
           selectedColor: HaLoColors.of(context).onSurfaceAccent,
+          // The section band's own hue, at half strength against the
+          // sidebar's surface: the selected row and the section it opens read
+          // as one family, but the band still marks a heading and this only
+          // marks a row. Derived rather than a fixed tint, so it follows the
+          // theme instead of disappearing in dark mode.
+          selectedTileColor: Color.lerp(
+            Theme.of(context).colorScheme.surface,
+            haloDialogBandColorAt(context),
+            0.5,
+          ),
           leading: Icon(panel.icon),
           title: titleWidget,
           subtitle: panel.description == null ? null : Text(panel.description!),
@@ -617,6 +633,8 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
       content = _DeveloperPanel(services: services);
     case 'about':
       content = _AboutPanel(services: services);
+    case 'help':
+      content = const HelpPanel();
     default:
       final descriptor = panel.descriptor;
       content = descriptor == null
@@ -628,25 +646,67 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
     onPointerDown: (_) => panels.used(_panelUseName(panel)),
     child: content,
   );
-  // About manages its own width (see _AboutPanel): the header photo spans
-  // the pane's full true width edge-to-edge, while its rows below cap at
-  // idealPaneWidth and center, same as every other panel below — so it
-  // must not also get the blanket cap-and-center wrapper below.
-  if (panel.key == 'about') {
-    return SafeArea(top: false, left: false, right: false, child: body);
-  }
-  // Cap settings content at the ideal reading width, centered in the pane
-  // rather than stretching across (or pinning to one edge of) a wide one.
-  // The SafeArea sits inside the cap: each panel's scroll view clears the
-  // bottom safe area itself, since the status footer doesn't reserve
-  // the home indicator globally.
-  return Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-      child: SafeArea(top: false, left: false, right: false, child: body),
-    ),
-  );
+  // Settings content spans the pane; the ideal reading width is reached by
+  // PADDING each row's contents, not by capping the column. Rows, section
+  // bands and dividers therefore run to the pane's own edges, the way the
+  // rest of the app's lists do — a capped column leaves them floating in a
+  // gutter of bare surface on a wide window.
+  //
+  // The offset rides the ambient ListTileTheme, which is where every row in
+  // here already takes its inset from (ListTile-based panels directly,
+  // FormRenderer through its `_rowContentPadding`) — so there is one number
+  // to line the pane's title up with, not two.
+  //
+  // The SafeArea sits inside: each panel's scroll view clears the bottom
+  // safe area itself, since the status footer doesn't reserve the home
+  // indicator globally.
+  return LayoutBuilder(builder: (context, constraints) {
+    final base = ListTileTheme.of(context).contentPadding ?? _defaultRowInset;
+    return ListTileTheme.merge(
+      contentPadding: base.add(EdgeInsets.symmetric(horizontal: settingsRowCentering(constraints.maxWidth))),
+      child: _SettingsPaneWidth(
+        width: constraints.maxWidth,
+        child: SafeArea(top: false, left: false, right: false, child: body),
+      ),
+    );
+  });
 }
+
+/// The pane's width, published once per layout for the section bands, whose
+/// pinned extent has to be measured against it.
+///
+/// Not read from a `SliverLayoutBuilder` at the band itself, which is where
+/// it is wanted: `SliverConstraints` carry `scrollOffset`, so such a builder
+/// re-runs on every frame of a scroll — one text measurement per section per
+/// frame, across every group and extension panel in All Settings, for a width
+/// that cannot change while scrolling.
+class _SettingsPaneWidth extends InheritedWidget {
+  final double width;
+
+  const _SettingsPaneWidth({required this.width, required super.child});
+
+  @override
+  bool updateShouldNotify(_SettingsPaneWidth old) => old.width != width;
+}
+
+/// The width [_buildPanelContent] published, or the window's where a panel is
+/// rendered outside it (a test pumping one directly).
+double settingsPaneWidth(BuildContext context) =>
+    context.dependOnInheritedWidgetOfExactType<_SettingsPaneWidth>()?.width ?? MediaQuery.sizeOf(context).width;
+
+/// What a settings row insets its contents by, off the row's own edge — the
+/// row itself runs to the pane's. One number, because the pane's title lines
+/// up with it (see the wide layout's `targetLeft`).
+const double settingsRowInset = 24;
+
+/// The narrow layout has no ListTileTheme of its own to merge over (the wide
+/// pane sets one before [_buildPanelContent] runs), so it starts from this.
+const _defaultRowInset = EdgeInsets.symmetric(horizontal: settingsRowInset);
+
+/// What a settings row's contents inset by, on top of the row inset, so they
+/// land at [idealPaneWidth] centred in a pane of [paneWidth]. Zero once the
+/// pane is narrower than that.
+double settingsRowCentering(double paneWidth) => max(0.0, (paneWidth - idealPaneWidth) / 2);
 
 /// The "profiles" panel — callsign profiles. Until multi-profile features
 /// are enabled it presents itself as just "Callsign": a single field, saved
@@ -777,7 +837,6 @@ class _ProfilesPanelState extends State<_ProfilesPanel> {
     final settings = widget.services.settings;
     final theme = Theme.of(context);
     final t = context.t.settings.profiles;
-    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListenableBuilder(
       listenable: settings,
@@ -786,7 +845,7 @@ class _ProfilesPanelState extends State<_ProfilesPanel> {
         final call = profile.operatorCall;
         final sectionLabel = _sectionLabel(context, profile.operatorSection);
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
+          padding: const EdgeInsets.only(bottom: Space.md),
           children: [
             ListTile(
               leading: const Icon(MdiIcons.account),
@@ -795,9 +854,13 @@ class _ProfilesPanelState extends State<_ProfilesPanel> {
               onTap: _editCallsign,
               mouseCursor: SystemMouseCursors.click,
             ),
-            Padding(padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(t.personalInfo)),
+            SettingsSectionHeader(t.personalInfo),
             Padding(
-              padding: EdgeInsets.fromLTRB(Space.xl + safeLeft, 0, Space.xl, Space.xs),
+              // The rows' own inset, off the ambient ListTileTheme — it
+              // carries the grab-strip clearance and the pane's centring,
+              // neither of which a hand-written inset here would have.
+              padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
+                  .add(const EdgeInsets.only(bottom: Space.xs)),
               child: Text(
                 t.personalInfoNote,
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -996,18 +1059,20 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   Widget build(BuildContext context) {
     var elements = _elements;
     if (elements == null) {
-      return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
+      return const SliverToBoxAdapter(
+        child: Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator())),
+      );
     }
     // A group can decline to contribute anything at all — RadioSettingsGroup
     // does while the CAT experiment is off. Its title is chrome for the rows
     // below it, so with no rows there is nothing to head.
-    if (elements.isEmpty) return const SizedBox.shrink();
+    if (elements.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
     if (widget.commonOnly) {
       elements = [
         for (final el in elements)
           if (elementIsCommon(el)) el,
       ];
-      if (elements.isEmpty) return const SizedBox.shrink();
+      if (elements.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
     // A group the search excludes is HIDDEN, not unmounted. Unmounting it
     // disposes every FocusNode and TextEditingController its FormRenderer
@@ -1043,18 +1108,20 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       hidden = scored.isEmpty;
       if (!hidden) elements = [for (final s in scored) s.element];
     }
-    return Visibility(
+    // A section, not a box: its band is PINNED over its own rows and pushed
+    // off by the next section's, which only a SliverMainAxisGroup can
+    // express. The band is therefore no longer part of the form definition —
+    // the rows are the form, the heading is the sliver above them.
+    return SliverVisibility(
       visible: !hidden,
       maintainState: true,
-      child: ExcludeFocus(
-        excluding: hidden,
-        child: FormRenderer(
-          formDefinition: {
-            'elements': [
-              {'type': 'header', 'title': widget.group.title, 'style': 'section'},
-              ...elements,
-            ],
-          },
+      sliver: SliverMainAxisGroup(slivers: [
+        SettingsSectionHeader.pinned(context, widget.group.title, width: settingsPaneWidth(context)),
+        SliverToBoxAdapter(
+          child: ExcludeFocus(
+            excluding: hidden,
+            child: FormRenderer(
+          formDefinition: {'elements': elements},
           initialState: const {},
           showActions: false,
           showTitle: false,
@@ -1064,8 +1131,10 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
           onOpenLink: openExternalUrl,
           onSubmit: (_) {},
           onCancel: () {},
+            ),
+          ),
         ),
-      ),
+      ]),
     );
   }
 }
@@ -1113,32 +1182,27 @@ class _CommonSettingsPanelState extends State<_CommonSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final extensionPanels = _extensionPanels;
-    // FormRenderer rows pick up their own content inset from the
-    // ambient ListTileTheme (settings_view.dart's wide-layout wrapper), so
-    // this is just the small margin between a row's background and the
-    // pane edge — matching the ListTile-based panels' own ListView padding.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final group in widget.services.settingsRegistry.groups) ...[
-            _SettingsGroupForm(services: widget.services, group: group, commonOnly: true),
-            const SizedBox(height: Space.xxl),
-          ],
-          if (extensionPanels != null)
-            for (final descriptor in extensionPanels) ...[
-              _ExtensionSettingsPanel(
-                services: widget.services,
-                descriptor: descriptor,
-                embedded: true,
-                commonOnly: true,
-                sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
-              ),
-              const SizedBox(height: Space.xxl),
-            ],
-        ],
-      ),
+    // A CustomScrollView because each section pins its own band while its
+    // rows scroll under it (see [_SettingsGroupForm]). No horizontal
+    // padding: rows, bands and dividers run to the pane's own edges, and
+    // their CONTENTS are inset by the ambient ListTileTheme instead.
+    return CustomScrollView(
+      slivers: [
+        // Straight into the first section: its band heads the list, flush
+        // under the pane's own header.
+        for (final group in widget.services.settingsRegistry.groups)
+          _SettingsGroupForm(services: widget.services, group: group, commonOnly: true),
+        if (extensionPanels != null)
+          for (final descriptor in extensionPanels)
+            _ExtensionSettingsPanel(
+              services: widget.services,
+              descriptor: descriptor,
+              embedded: true,
+              commonOnly: true,
+              sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
+            ),
+        const SliverToBoxAdapter(child: SizedBox(height: Space.xl)),
+      ],
     );
   }
 }
@@ -1185,11 +1249,11 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
   Widget build(BuildContext context) {
     final extensionPanels = _extensionPanels;
     final query = _searchController.text.trim().toLowerCase();
-    // The search bar isn't a FormRenderer row, so it carries the full
-    // content inset itself (grab-strip clearance included — layouts.md);
-    // the scroll view below only needs the smaller row-background margin,
-    // since its rows pick theirs up from the ambient ListTileTheme.
-    final safeLeft = PaneSafeArea.leftOf(context);
+    // The search bar isn't a row, so it takes the rows' own content inset
+    // explicitly — the ambient ListTileTheme, which already carries the
+    // grab-strip clearance (layouts.md) and the pane's centering. Anything
+    // else and the field it filters with is wider than the results.
+    final rowInset = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
     final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1198,7 +1262,10 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
         // key, title, and description; sections with no match disappear
         // entirely, title included.
         Padding(
-          padding: EdgeInsets.fromLTRB(Space.xxl + safeLeft, Space.xl, Space.xxl, 0),
+          // Bottom as well as top: the sections below have no margin of their
+          // own any more (a band abuts its rows), so this is what keeps the
+          // field off the first one.
+          padding: rowInset.add(const EdgeInsets.symmetric(vertical: Space.xl)),
           child: TextField(
             selectAllOnFocus: false,
             key: const ValueKey('all-settings-search'),
@@ -1220,34 +1287,30 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
           ),
         ),
         Expanded(
-          child: SingleChildScrollView(
-            // Just the row-background margin — FormRenderer rows get their
-            // own content inset from the ambient ListTileTheme (see
-            // _rowContentPadding in form_renderer.dart), matching the
-            // search bar's 24 + safeLeft above.
-            padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final group in widget.services.settingsRegistry.groups) ...[
-                  _SettingsGroupForm(services: widget.services, group: group, searchQuery: query),
-                  const SizedBox(height: Space.xxl),
-                ],
-                if (extensionPanels == null)
-                  const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
-                else
-                  for (final descriptor in extensionPanels) ...[
-                    _ExtensionSettingsPanel(
-                      services: widget.services,
-                      descriptor: descriptor,
-                      embedded: true,
-                      sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
-                      searchQuery: query,
-                    ),
-                    const SizedBox(height: Space.xxl),
-                  ],
-              ],
-            ),
+          // Sliver sections, so each band pins over its own rows. No
+          // horizontal padding — rows run to the pane's edges and inset their
+          // own contents through the ambient ListTileTheme (see
+          // _rowContentPadding in form_renderer.dart), landing on the same
+          // inset the search bar above uses.
+          child: CustomScrollView(
+            slivers: [
+              for (final group in widget.services.settingsRegistry.groups)
+                _SettingsGroupForm(services: widget.services, group: group, searchQuery: query),
+              if (extensionPanels == null)
+                const SliverToBoxAdapter(
+                  child: Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator())),
+                )
+              else
+                for (final descriptor in extensionPanels)
+                  _ExtensionSettingsPanel(
+                    services: widget.services,
+                    descriptor: descriptor,
+                    embedded: true,
+                    sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
+                    searchQuery: query,
+                  ),
+              const SliverToBoxAdapter(child: SizedBox(height: Space.xl)),
+            ],
           ),
         ),
       ],
@@ -1646,17 +1709,14 @@ class _SyncPanelState extends State<_SyncPanel> {
   @override
   Widget build(BuildContext context) {
     final settings = widget.services.settings;
-    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
+          padding: const EdgeInsets.only(bottom: Space.md),
           children: [
-            Padding(
-                padding: EdgeInsets.only(left: safeLeft),
-                child: SectionHeader(context.t.settings.syncPanel.configuration)),
+            SettingsSectionHeader(context.t.settings.syncPanel.configuration),
             // The operator-callsign row lives in the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
@@ -1672,11 +1732,7 @@ class _SyncPanelState extends State<_SyncPanel> {
               mouseCursor: SystemMouseCursors.click,
             ),
             if (settings.syncState['pendingAccountUUID'] != null)
-              _PendingAccountBanner(
-                onCombine: _combineAccount,
-                onReplace: _replaceAccount,
-                extraLeftMargin: safeLeft,
-              ),
+              _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
             // The footer status bar isn't visible on this screen, so mirror
             // the backfill-progress item here while it's active.
             ListenableBuilder(
@@ -1852,13 +1908,26 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     if (_accounts == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final safeLeft = PaneSafeArea.leftOf(context);
+
+    // Grouped by the category of the extension each account belongs to, and
+    // headed the same way the Extensions panel heads its own groups — a flat
+    // list of every service the installed extensions offer reads as one
+    // undifferentiated pile once there are more than a handful. An account's
+    // `kvKey` defaults to its extension's key (docs/extensions/settings.md),
+    // which is what ties the two together; anything that doesn't match a
+    // known extension falls to "other" rather than being dropped.
+    final categoryOf = {
+      for (final info in widget.services.extensions.availableExtensions) info.key: info.category ?? 'other',
+    };
+    String categoryFor(Map<String, dynamic> account) => categoryOf[account['kvKey'] as String] ?? 'other';
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final account in _accounts!) {
+      grouped.putIfAbsent(categoryFor(account), () => []).add(account);
+    }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
+      padding: const EdgeInsets.only(bottom: Space.md),
       children: [
-        Padding(
-            padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.accounts.title)),
         // Said once, at
         // the top — beats each row claiming to be disconnected.
         if (_secureStorageUnavailable)
@@ -1869,22 +1938,25 @@ class _AccountsPanelState extends State<_AccountsPanel> {
         if (_accounts!.isEmpty)
           ListTile(title: Text(context.t.settings.accounts.none))
         else
-          ..._accounts!.map((account) {
-            final kvKey = account['kvKey'] as String;
-            final label = account['label'] as String;
-            final description = account['description'] as String?;
-            final identity = _accountIdentities[kvKey];
-            return ListTile(
-              leading: Icon(MdiIcons.keyChain),
-              title: Text.rich(TextSpan(children: [
-                TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                if (identity != null) TextSpan(text: '  $identity'),
-              ])),
-              subtitle: Text(description ?? (identity == null ? context.t.settings.accounts.notConfigured : '')),
-              onTap: () => _openAccountDialog(account),
-              mouseCursor: SystemMouseCursors.click,
-            );
-          }),
+          for (final category in extensionCategoriesIn(grouped.keys)) ...[
+            SettingsSectionHeader(extensionCategoryTitle(category)),
+            ...grouped[category]!.map((account) {
+              final kvKey = account['kvKey'] as String;
+              final label = account['label'] as String;
+              final description = account['description'] as String?;
+              final identity = _accountIdentities[kvKey];
+              return ListTile(
+                leading: Icon(extensionCategoryIcon(category)),
+                title: Text.rich(TextSpan(children: [
+                  TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  if (identity != null) TextSpan(text: '  $identity'),
+                ])),
+                subtitle: Text(description ?? (identity == null ? context.t.settings.accounts.notConfigured : '')),
+                onTap: () => _openAccountDialog(account),
+                mouseCursor: SystemMouseCursors.click,
+              );
+            }),
+          ],
       ],
     );
   }
@@ -2011,13 +2083,11 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
   Widget build(BuildContext context) {
     final files = _files;
     if (files == null) return const Center(child: CircularProgressIndicator());
-    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: Space.md, horizontal: Space.md),
+      padding: const EdgeInsets.only(bottom: Space.md),
       children: [
-        Padding(
-            padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.offlineData.title)),
+        SettingsSectionHeader(context.t.settings.offlineData.title),
         if (files.isEmpty)
           ListTile(
             title: Text(context.t.settings.offlineData.noFiles),
@@ -2028,10 +2098,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
           for (final file in files) _buildRow(context, file),
         ],
         if (_dataFileScopedPanels.isNotEmpty) ...[
-          Padding(
-            padding: EdgeInsets.only(left: safeLeft, top: Space.md),
-            child: SectionHeader(context.t.settings.offlineData.extensionsSection),
-          ),
+          SettingsSectionHeader(context.t.settings.offlineData.extensionsSection),
           for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
         ],
       ],
@@ -2392,21 +2459,25 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // Embedded, EVERY return is a sliver: this panel is one section of a
+    // CustomScrollView, and a box handed to a viewport fails the whole list,
+    // not just this section. See the embedded branch at the end.
+    Widget out(Widget box) => widget.embedded ? SliverToBoxAdapter(child: box) : box;
     if (_loading) {
-      return widget.embedded
+      return out(widget.embedded
           ? const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
-          : const Center(child: CircularProgressIndicator());
+          : const Center(child: CircularProgressIndicator()));
     }
     var definition = _definition;
     if (definition == null) {
-      return Center(child: Text(context.t.settings.developer.panelLoadFailed));
+      return out(Center(child: Text(context.t.settings.developer.panelLoadFailed)));
     }
     if (widget.commonOnly) {
       final common = [
         for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
           if (elementIsCommon(el)) el,
       ];
-      if (common.isEmpty) return const SizedBox.shrink();
+      if (common.isEmpty) return out(const SizedBox.shrink());
       definition = {...definition, 'elements': common};
     }
     // Hidden, not unmounted — same rule as the core groups above, and for the
@@ -2471,28 +2542,27 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
           maintainState: true,
           child: ExcludeFocus(excluding: searchHidden, child: child),
         );
+    // Embedded, this panel is one SECTION of the list that hosts it — a
+    // sliver, with its band pinned over its own rows, exactly as a core
+    // group's is ([_SettingsGroupForm]). An extension's section is one of
+    // these, and a plain line of text among banded ones would read as a
+    // different kind of thing.
     if (widget.embedded) {
       final title = widget.sectionTitle;
-      if (title == null) return hideIfFiltered(form);
-      // Same content inset as form's own rows below (the ambient
-      // ListTileTheme), so the section title lines up with them.
-      final contentPadding = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
-      return hideIfFiltered(Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: contentPadding.add(const EdgeInsets.only(bottom: Space.xl)),
-            child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent)),
-          ),
-          form,
-        ],
-      ));
+      Widget hideSliverIfFiltered(Widget sliver) =>
+          SliverVisibility(visible: !searchHidden, maintainState: true, sliver: sliver);
+      final rows = SliverToBoxAdapter(child: ExcludeFocus(excluding: searchHidden, child: form));
+      if (title == null) return hideSliverIfFiltered(rows);
+      return hideSliverIfFiltered(SliverMainAxisGroup(slivers: [
+        SettingsSectionHeader.pinned(context, title, width: settingsPaneWidth(context)),
+        rows,
+      ]));
     }
 
     return hideIfFiltered(SingleChildScrollView(
-      // form's own rows pick up the content inset from the ambient
-      // ListTileTheme; this is just the row-background margin.
-      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xl),
+      // No horizontal padding: rows run to the pane's edges and inset their
+      // own contents from the ambient ListTileTheme.
+      padding: const EdgeInsets.symmetric(vertical: Space.xl),
       child: form,
     ));
   }
@@ -2506,21 +2576,18 @@ class _DeveloperPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = services.settings;
-    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: EdgeInsets.fromLTRB(Space.xxl + safeLeft, Space.xl, Space.xxl, Space.xl),
+          // No inset of its own: every row here takes the ambient
+          // ListTileTheme's, like every other panel's. Its own padding on top
+          // pushed these rows in twice as far as the rest of Settings and
+          // stopped their backgrounds short of the pane's edges.
+          padding: const EdgeInsets.only(bottom: Space.xl),
           children: [
-            Text(
-              context.t.settings.developer.options,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: HaLoColors.of(context).onSurfaceAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            SettingsSectionHeader(context.t.settings.developer.options),
             const SizedBox(height: Space.xl),
             SwitchListTile(
               title: Text(context.t.settings.developerMode),
@@ -2979,7 +3046,6 @@ class _AboutPanel extends StatelessWidget {
       builder: (context, snapshot) {
         final releaseNotes = snapshot.data ?? const [];
         final recentReleases = releaseNotes.take(_aboutRecentReleaseCount).toList();
-        final theme = Theme.of(context);
         // Match the running version explicitly rather than assuming
         // `releaseNotes.first` is it — release-notes.yaml's newest-first
         // order is a hand-maintained authoring convention, not something
@@ -2990,14 +3056,6 @@ class _AboutPanel extends StatelessWidget {
         final currentRelease = releaseNotes.isEmpty
             ? null
             : releaseNotes.firstWhere((entry) => entry.version == kPublicVersion, orElse: () => releaseNotes.first);
-
-        // Unlike every other settings panel (capped AND pinned left — see
-        // _buildPanelContent), About's own content caps at the same
-        // idealPaneWidth but CENTERS within the pane; the header photo and
-        // the dividers between rows opt out of the cap entirely and span
-        // the pane's full true width edge-to-edge.
-        Widget centered(Widget child) =>
-            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: idealPaneWidth), child: child));
 
         // CustomScrollView + SliverFillRemaining(hasScrollBody: false)
         // rather than a plain Column: on a short viewport (a phone in
@@ -3011,84 +3069,60 @@ class _AboutPanel extends StatelessWidget {
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(child: _AboutHeader(release: currentRelease)),
-            const SliverToBoxAdapter(child: Divider(height: 1)),
+            // Ordinary settings rows from here down — no dividers between
+            // them and no width cap of their own: this panel reads as one
+            // list with the rest of Settings, and its rows take the pane's
+            // width and the ambient row inset like every other panel's.
             SliverToBoxAdapter(
-              child: centered(
-                ListTile(
-                  leading: const Icon(MdiIcons.information),
-                  // VersionLabel renders SelectableText, whose own tap
-                  // recognizer (for cursor placement) would otherwise win
-                  // the gesture arena over this ListTile's onTap —
-                  // IgnorePointer keeps the whole row a single tap target
-                  // instead of a text-selection field.
-                  title: const IgnorePointer(
-                    child: VersionLabel(
-                      detailed: true,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      boldFirstLine: true,
-                    ),
+              child: ListTile(
+                leading: const Icon(MdiIcons.information),
+                // VersionLabel renders SelectableText, whose own tap
+                // recognizer (for cursor placement) would otherwise win
+                // the gesture arena over this ListTile's onTap —
+                // IgnorePointer keeps the whole row a single tap target
+                // instead of a text-selection field.
+                title: const IgnorePointer(
+                  child: VersionLabel(
+                    detailed: true,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    boldFirstLine: true,
                   ),
-                  onTap: () => _copyVersionDetailsToClipboard(context),
-                  mouseCursor: SystemMouseCursors.click,
                 ),
+                onTap: () => _copyVersionDetailsToClipboard(context),
+                mouseCursor: SystemMouseCursors.click,
               ),
             ),
-            // The leading divider is conditional (unlike every other one in
-            // this panel) because UpdateCheckRow hides itself entirely when
-            // no update mechanism applies to the running build — most
-            // local/debug builds — and a divider either side of a
-            // zero-height row would double up. It has to live out here,
-            // not inside the row's own centered()-wrapped content, to span
-            // the pane's full width like its neighbors rather than getting
-            // capped to idealPaneWidth along with the row.
-            if (updateCheckAppliesTo(services)) const SliverToBoxAdapter(child: Divider(height: 1)),
-            SliverToBoxAdapter(child: centered(UpdateCheckRow(services: services))),
-            // Same conditional-divider reasoning as above: this row hides
-            // itself where the preference is not ours to honour.
-            if (automaticUpdateCheckApplies) const SliverToBoxAdapter(child: Divider(height: 1)),
-            SliverToBoxAdapter(child: centered(AutomaticUpdateCheckRow(services: services))),
-            const SliverToBoxAdapter(child: Divider(height: 1)),
+            // Both of these hide themselves entirely where they don't apply
+            // (no update mechanism for this build; a preference that isn't
+            // ours to honour), which is why neither is wrapped in anything
+            // that would leave a gap behind.
+            SliverToBoxAdapter(child: UpdateCheckRow(services: services)),
+            SliverToBoxAdapter(child: AutomaticUpdateCheckRow(services: services)),
             // Notices & Messages sits here, between the version and the
             // release notes, as an entry point into the history view.
             SliverToBoxAdapter(
-              child: centered(
-                ListTile(
-                  leading: const Icon(MdiIcons.bell),
-                  title: Text(context.t.settings.about.notices),
-                  subtitle: Text(context.t.settings.about.noticesDescription),
-                  trailing: const Icon(MdiIcons.chevronRight),
-                  onTap: () => showModalPane<void>(
-                    context,
-                    title: context.t.settings.about.notices,
-                    closeLabel: context.t.common.close,
-                    // NoticeHistoryView is its own scrolling ListView — the
-                    // pane must not also wrap it in a SingleChildScrollView.
-                    scrollable: false,
-                    builder: (context) => NoticeHistoryView(services: services),
-                  ),
-                  mouseCursor: SystemMouseCursors.click,
+              child: ListTile(
+                leading: const Icon(MdiIcons.bell),
+                title: Text(context.t.settings.about.notices),
+                subtitle: Text(context.t.settings.about.noticesDescription),
+                trailing: const Icon(MdiIcons.chevronRight),
+                onTap: () => showModalPane<void>(
+                  context,
+                  title: context.t.settings.about.notices,
+                  closeLabel: context.t.common.close,
+                  // NoticeHistoryView is its own scrolling ListView — the
+                  // pane must not also wrap it in a SingleChildScrollView.
+                  scrollable: false,
+                  builder: (context) => NoticeHistoryView(services: services),
                 ),
+                mouseCursor: SystemMouseCursors.click,
               ),
             ),
-            const SliverToBoxAdapter(child: Divider(height: 1)),
             if (recentReleases.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: centered(
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.md),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        context.t.settings.about.releaseNotes,
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              SliverToBoxAdapter(child: SettingsSectionHeader(context.t.settings.about.releaseNotes)),
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: centered(_ReleaseNotesPreview(releases: recentReleases)),
+                child: _ReleaseNotesPreview(releases: recentReleases),
               ),
             ],
           ],
@@ -3147,7 +3181,9 @@ class _ReleaseNotesPreview extends StatelessWidget {
           blendMode: BlendMode.dstIn,
           child: SingleChildScrollView(
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
+            // The rows' own inset, so the notes start under the section
+            // band's title rather than at an inset of their own.
+            padding: ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl),
             child: MarkdownBody(data: markdown, styleSheet: styleSheet),
           ),
         ),
@@ -3208,22 +3244,20 @@ class _AboutHeader extends StatelessWidget {
   }
 }
 
-/// Shown whenever `SettingsService.syncState['pendingAccountUUID']` is set —
-/// a first-ever link, or a re-registration under a different account
-/// (`SyncEngine`'s account-identity gating, DESIGN.md's sync reconciliation
-/// flow) — pausing sync until the user picks how to reconcile local data.
 class _PendingAccountBanner extends StatelessWidget {
   final VoidCallback onCombine;
   final VoidCallback onReplace;
-  final double extraLeftMargin;
 
-  const _PendingAccountBanner({required this.onCombine, required this.onReplace, this.extraLeftMargin = 0});
+  const _PendingAccountBanner({required this.onCombine, required this.onReplace});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: EdgeInsets.fromLTRB(Space.xl + extraLeftMargin, Space.xs, Space.xl, Space.lg),
+      // Lined up with the rows it sits among, off the ambient ListTileTheme
+      // (grab-strip clearance and pane centring included).
+      margin: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
+          .add(const EdgeInsets.only(top: Space.xs, bottom: Space.lg)),
       color: theme.colorScheme.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(Space.xl),

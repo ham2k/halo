@@ -264,7 +264,17 @@ void main() {
     // credit at the bottom. Unlike that overlay (release_overlay_test.dart),
     // there's no notes band or Continue button to dismiss.
     expect(find.byType(Ham2kBrandMark), findsNWidgets(2));
-    expect(find.textContaining('KI2D'), findsOneWidget);
+    // The modal's credit line specifically, matched on its SHAPE — a rich
+    // text whose callsign sits in its own span. The About list behind it
+    // credits KI2D too, on its Credits row, but as a plain Text, so a bare
+    // textContaining would match either and pass with the modal missing it.
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Text && (w.textSpan?.toPlainText() ?? '').contains('KI2D'),
+        description: 'the modal credits line',
+      ),
+      findsOneWidget,
+    );
     // The modal shows the release line over its build line, matching the
     // splash/onboarding — not the shorter release-notes name, and not the whole
     // kVersionName on one line. The version row behind shows the

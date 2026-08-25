@@ -547,6 +547,14 @@ InputDecoration poloFieldDecoration(
   String? hintText,
   String? errorText,
   int? labelMaxLines,
+  /// Drops the label slot entirely, for a field whose own surface already
+  /// names it (a settings editor dialog, whose title is the field's label).
+  ///
+  /// Not the same as passing an empty label: an empty one still builds a
+  /// label of no text, which keeps its line and the height that comes with
+  /// it — which is exactly what the logging row's invisible spacer field
+  /// wants, and exactly what a dialog does not.
+  bool showLabel = true,
 }) {
   final theme = Theme.of(context);
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
@@ -557,8 +565,8 @@ InputDecoration poloFieldDecoration(
     // Exactly one of these two: InputDecoration asserts on both being set.
     // The style comes from the decorator's own AnimatedDefaultTextStyle either
     // way, so the widget form looks identical to the plain text one.
-    labelText: labelMaxLines == null ? label : null,
-    label: labelMaxLines == null
+    labelText: !showLabel || labelMaxLines != null ? null : label,
+    label: !showLabel || labelMaxLines == null
         ? null
         : Text(label, maxLines: labelMaxLines, overflow: TextOverflow.ellipsis),
     hintText: hintText,

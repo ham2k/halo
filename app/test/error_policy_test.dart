@@ -213,6 +213,50 @@ void main() {
     });
   });
 
+  group('a hot reload/restart stranding a live object', () {
+    // What DDC actually reports when a private Dart field is read off an
+    // instance whose class no longer declares it — the framework's own
+    // `Element._lifecycleState`, in the case that motivated this.
+    Object staleFieldTypeError() =>
+        _JsTypeErrorStub("TypeError: Cannot read properties of undefined (reading 'Symbol(_lifecycleState)')");
+
+    test('is console-only — the fix is a cold start, not anything an operator can do', () {
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(dispositionFor(staleFieldTypeError()), ErrorDisposition.logOnly);
+    });
+
+    test('the same TypeError off web stays loud', () {
+      // Native has no DDC and no undefined: a Dart field read there either
+      // works or throws about the object itself, so this shape of message
+      // could only be something else entirely.
+      ErrorPolicy.debugTreatAsWeb = false;
+      expect(dispositionFor(staleFieldTypeError()), ErrorDisposition.notify);
+    });
+
+    test("an extension's own JS crash, quoted through the host wrapper, is still loud", () {
+      // The wrapper carries the engine's message verbatim, so extension code
+      // that touches Symbol-keyed objects produces this exact shape — and it
+      // is a real bug of theirs, not a leftover of ours.
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(
+        dispositionFor(ExtensionHostException(
+            "TypeError: Cannot read properties of undefined (reading 'Symbol(Symbol.iterator)')")),
+        ErrorDisposition.notify,
+      );
+    });
+
+    test('an ordinary undefined-property failure, with no Dart field named, is still loud', () {
+      // Interop code reading a property that genuinely is not there is a bug
+      // in our code; only the `Symbol(` — a private Dart member — says the
+      // object itself is a leftover.
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(
+        dispositionFor(_JsTypeErrorStub("TypeError: Cannot read properties of undefined (reading 'features')")),
+        ErrorDisposition.notify,
+      );
+    });
+  });
+
   group('extension host teardown', () {
     // dispose() fails every pending hook call with this exact message, and
     // disposal only happens on a runtime replacement (an extension toggle,
@@ -615,4 +659,15 @@ void main() {
       expect(dispositionFor(StateError('boom')), ErrorDisposition.notify);
     });
   });
+}
+
+/// Stands in for the JS `TypeError` DDC raises on web: the policy matches it
+/// by message, and no Dart type in the VM the tests run in carries one.
+class _JsTypeErrorStub {
+  final String message;
+
+  const _JsTypeErrorStub(this.message);
+
+  @override
+  String toString() => message;
 }

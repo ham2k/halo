@@ -164,7 +164,7 @@ void main() {
     // are genuinely different facts.
     await _chord(tester, LogicalKeyboardKey.digit0, shift: true);
     final auto = services.statusBar.items.where((i) => i.key == 'layoutDensity').first;
-    expect(auto.text, 'Auto — Normal');
+    expect(auto.text, 'Automatic — Normal');
 
     await _drain(tester);
   });

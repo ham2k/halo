@@ -367,7 +367,7 @@
       "empty": "No spots match your filters",
       "error": "Failed to load spots: ${error}",
       "unknownBand": "Other",
-      "auto": "Auto",
+      "auto": "Automatic",
       "autoValue": "Auto (${value})",
       "any": "Any",
       "allBands": "All Bands",
@@ -694,20 +694,12 @@
     },
     "layoutDensity": "Layout Density",
     "layoutDensityOpts": {
-      "auto": "Auto",
+      "auto": "Automatic",
       "densest": "Densest",
       "dense": "Dense",
       "normal": "Normal",
       "sparse": "Sparse",
       "sparsest": "Sparsest"
-    },
-    "layoutDensityDescription": {
-      "auto": "Chosen from the height of the window",
-      "densest": "As much on screen as possible",
-      "dense": "Fits more on screen",
-      "normal": "The standard layout",
-      "sparse": "More room around everything",
-      "sparsest": "The most room around everything"
     },
     "layoutDensityClamped": "the window is too short, using ${effective}",
     "layoutDensityAtLimit": "as far as it goes",
@@ -816,11 +808,26 @@
         "description": "How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again."
       }
     },
+    "help": {
+      "title": "Help & Resources",
+      "description": "Community and support",
+      "forums": "Ham2K Forums",
+      "forumsDescription": "Find help, give feedback, discuss ideas…",
+      "chat": "Ham2K Chat",
+      "chatDescription": "The Discord server for our online community",
+      "youtube": "Ham2K YouTube",
+      "youtubeDescription": "Videos and live streams",
+      "instagram": "Ham2K Instagram",
+      "instagramDescription": "Because you cannot have too many photos…",
+      "bluesky": "Ham2K BlueSky",
+      "blueskyDescription": "Follow us for news and updates",
+      "contact": "Contact Us",
+      "contactDescription": "help@ham2k.com — but try the Forums or Chat first!"
+    },
     "map": {
       "title": "Map",
       "style": {
-        "title": "Map Style",
-        "description": "Which basemap the Map tab uses. Automatic follows the app's light/dark theme."
+        "title": "Map Style"
       },
       "styleOpts": {
         "automatic": "Automatic",

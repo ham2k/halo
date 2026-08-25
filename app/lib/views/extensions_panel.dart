@@ -17,8 +17,36 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 
-/// Category display order; anything unrecognized lands in "other".
-const _categoryOrder = ['activity', 'contest', 'lookup', 'spots', 'dashboard'];
+/// Category display order; anything unrecognized lands in "other". Public
+/// because the Accounts panel groups by the same categories, and two lists in
+/// two orders would present the same extensions differently in each.
+const extensionCategoryOrder = ['activity', 'contest', 'lookup', 'spots', 'dashboard'];
+
+String extensionCategoryTitle(String category) => switch (category) {
+      'activity' => t.extensionsPanel.categoryActivity,
+      'contest' => t.extensionsPanel.categoryContest,
+      'lookup' => t.extensionsPanel.categoryLookup,
+      'spots' => t.extensionsPanel.categorySpots,
+      'dashboard' => t.extensionsPanel.categoryDashboard,
+      _ => t.extensionsPanel.categoryOther,
+    };
+
+IconData extensionCategoryIcon(String? category) => switch (category) {
+      'activity' => MdiIcons.compass,
+      'contest' => MdiIcons.trophy,
+      'lookup' => MdiIcons.accountSearch,
+      'spots' => MdiIcons.radioTower,
+      'dashboard' => MdiIcons.viewDashboard,
+      _ => MdiIcons.toyBrick,
+    };
+
+/// The categories present in [keys], in [extensionCategoryOrder] first and
+/// then whatever else turned up, so a caller grouping by category doesn't
+/// restate the ordering rule.
+List<String> extensionCategoriesIn(Iterable<String> keys) => [
+      ...extensionCategoryOrder.where(keys.contains),
+      ...keys.where((c) => !extensionCategoryOrder.contains(c)),
+    ];
 
 class ExtensionsPanel extends StatefulWidget {
   final HaLoServices services;
@@ -70,28 +98,14 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     }
   }
 
-  String _categoryTitle(String category) => switch (category) {
-        'activity' => t.extensionsPanel.categoryActivity,
-        'contest' => t.extensionsPanel.categoryContest,
-        'lookup' => t.extensionsPanel.categoryLookup,
-        'spots' => t.extensionsPanel.categorySpots,
-        'dashboard' => t.extensionsPanel.categoryDashboard,
-        _ => t.extensionsPanel.categoryOther,
-      };
-
-  IconData _categoryIcon(String? category) => switch (category) {
-        'activity' => MdiIcons.compass,
-        'contest' => MdiIcons.trophy,
-        'lookup' => MdiIcons.accountSearch,
-        'spots' => MdiIcons.radioTower,
-        'dashboard' => MdiIcons.viewDashboard,
-        _ => MdiIcons.toyBrick,
-      };
-
   @override
   Widget build(BuildContext context) {
     final settings = widget.services.settings;
-    final safeLeft = PaneSafeArea.leftOf(context);
+    // The search bar and the applying line aren't rows, so they take the
+    // rows' own content inset explicitly — the ambient ListTileTheme, which
+    // already carries the grab-strip clearance (layouts.md) and the pane's
+    // centering. Anything else and the field is wider than what it filters.
+    final rowInset = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
     final query = _searchController.text.trim().toLowerCase();
 
     return ListenableBuilder(
@@ -115,20 +129,14 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   if (info.matchesSearch(query, locale: locale)) info,
               ];
 
-        final categories = <String>[
-          ..._categoryOrder,
-          ...{for (final info in visible) info.category ?? 'other'}.where((c) => !_categoryOrder.contains(c)),
-        ];
+        final categories = extensionCategoriesIn({for (final info in visible) info.category ?? 'other'});
 
         final overrides = settings.extensionOverrides;
         final rows = <Widget>[];
         for (final category in categories) {
           final inCategory = [for (final info in visible) if ((info.category ?? 'other') == category) info];
           if (inCategory.isEmpty) continue;
-          rows.add(Padding(
-            padding: EdgeInsets.only(left: safeLeft),
-            child: SectionHeader(_categoryTitle(category)),
-          ));
+          rows.add(SettingsSectionHeader(extensionCategoryTitle(category)));
           for (final info in inCategory) {
             rows.add(SwitchListTile(
               // Stable identity: without keys, list churn during the
@@ -137,7 +145,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               key: ValueKey('extension-${info.key}'),
               // The extension's own icon (build-index `icon`, mirroring its
               // hooks) when it has one; the category icon otherwise.
-              secondary: Icon(info.icon != null ? resolveIconName(info.icon) : _categoryIcon(info.category)),
+              secondary: Icon(info.icon != null ? resolveIconName(info.icon) : extensionCategoryIcon(info.category)),
               title: Text(info.nameFor(locale)),
               subtitle: info.descriptionFor(locale) == null ? null : Text(info.descriptionFor(locale)!),
               value: overrides[info.key] ?? info.enabledByDefault,
@@ -157,7 +165,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(Space.xl + safeLeft, Space.lg, Space.xl, Space.md),
+              padding: rowInset.add(const EdgeInsets.only(top: Space.lg, bottom: Space.xl)),
               child: TextField(
                 selectAllOnFocus: false,
                 key: const ValueKey('extensions-search'),
@@ -183,12 +191,12 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 ignoring: _applying,
                 child: rows.isEmpty
                     ? Center(child: Text(t.extensionsPanel.noMatches))
-                    : ListView(padding: const EdgeInsets.symmetric(vertical: Space.md), children: rows),
+                    : ListView(padding: const EdgeInsets.only(bottom: Space.md), children: rows),
               ),
             ),
             if (_applying)
               Padding(
-                padding: EdgeInsets.fromLTRB(Space.xl + safeLeft, Space.md, Space.xl, Space.lg),
+                padding: rowInset.add(const EdgeInsets.only(top: Space.md, bottom: Space.lg)),
                 child: Row(
                   children: [
                     const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),

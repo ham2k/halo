@@ -161,6 +161,20 @@ class GeneralSettingsGroup extends SettingsGroup {
       ),
       _fontScaleSelect(),
       _layoutDensitySelect(),
+      _select(
+        key: 'distanceUnits',
+        aliases: const ['units'],
+        label: t.settings.distanceUnits,
+        icon: 'map-marker-distance',
+        // Just the current unit's name (its option label).
+        description: t['settings.distanceUnitsOpts.${settings.distanceUnits.name}'] as String,
+        value: settings.distanceUnits.name,
+        options: [
+          for (final unit in DistanceUnits.values)
+            (label: t['settings.distanceUnitsOpts.${unit.name}'] as String, value: unit.name),
+        ],
+        common: true,
+      ),
       _toggle(
         key: 'layoutCustomization',
         // NOT 'panels': that is the dashboard-panel EXPERIMENT's key, and
@@ -175,20 +189,6 @@ class GeneralSettingsGroup extends SettingsGroup {
             ? t.settings.layoutCustomization.descriptionOn
             : t.settings.layoutCustomization.descriptionOff,
         value: settings.layoutCustomization,
-      ),
-      _select(
-        key: 'distanceUnits',
-        aliases: const ['units'],
-        label: t.settings.distanceUnits,
-        icon: 'map-marker-distance',
-        // Just the current unit's name (its option label).
-        description: t['settings.distanceUnitsOpts.${settings.distanceUnits.name}'] as String,
-        value: settings.distanceUnits.name,
-        options: [
-          for (final unit in DistanceUnits.values)
-            (label: t['settings.distanceUnitsOpts.${unit.name}'] as String, value: unit.name),
-        ],
-        common: true,
       ),
     ];
   }
@@ -244,7 +244,7 @@ class GeneralSettingsGroup extends SettingsGroup {
       key: 'layoutDensity',
       label: t.settings.layoutDensity,
       icon: 'arrow-collapse-vertical',
-      description: t['settings.layoutDensityDescription.${current.name}'] as String,
+      description: t['settings.layoutDensityOpts.${current.name}'] as String,
       value: current.name,
       options: [
         for (final preference in DensityPreference.selectableValues)
@@ -730,7 +730,6 @@ class MapSettingsGroup extends SettingsGroup {
         key: 'mapStyle',
         label: s.style.title,
         icon: 'map-outline',
-        description: s.style.description,
         value: settings.mapStyle.name,
         options: [
           for (final style in MapStyle.values)

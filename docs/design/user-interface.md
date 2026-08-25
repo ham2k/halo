@@ -372,6 +372,19 @@ A dialog whose every row is itself an action (a menu, an option picker) needs
 no footer at all; this rule governs dialogs that **have** a dismiss button, not
 which dialogs need one.
 
+**A settings field's editor is the one family that never says Save or
+Cancel.** Every editor a settings row opens — the text/number/secret dialog,
+the option picker, the bands/modes multiselect — carries `Done` in the
+`cancel` slot and, where the field declares a `defaultValue`, `Defaults` in
+`secondary`. A setting commits as its editor closes, by Done or by Escape or
+by a tap outside, so there is no pending change for a Cancel to abandon and
+nothing left for a Save to apply. One editor offering to discard would be the
+only place in Settings where leaving a dialog undid what the operator just
+typed. The option picker takes this footer even though every row in it is
+already an action: a field's editors are read as one family, and a picker
+with no buttons beside a bands editor with two reads as a dialog missing its
+own.
+
 ### One way out, and it works
 
 A surface carries **one** way out per level. A dialog that walks the operator
@@ -582,8 +595,9 @@ themselves; every other field opts out.
 **A live filter hides what it excludes; it never unmounts it.** Anything that
 re-filters a list of forms while the operator is still typing the query — All
 Settings' search is the one that exists today — must keep the excluded
-sections in the tree (`Visibility(maintainState: true)` plus `ExcludeFocus`,
-so a hidden field stays out of the Tab order). Dropping a section instead
+sections in the tree (`Visibility`/`SliverVisibility` with
+`maintainState: true`, plus `ExcludeFocus` so a hidden field stays out of the
+Tab order). Dropping a section instead
 disposes every `FocusNode` and `TextEditingController` its `FormRenderer`
 owns, and **on web that teardown takes the browser's text-input element with
 it**: focus falls back to the route's scope and the next keystrokes are
@@ -592,6 +606,33 @@ on macOS, which has no DOM — and none in a widget test either, because
 `flutter test --platform chrome` drives text input through the test binding
 rather than a DOM element, so no browser focus event ever fires. Test the
 invariant (the sections are still mounted) rather than the symptom.
+
+### Settings panels
+
+Every settings panel is one list, whatever builds it — a declared
+`SettingsGroup` through `FormRenderer`, an extension's `settingsPanel`, or a
+hand-built panel like Sync or Station. Three rules keep them from drifting
+apart:
+
+- **Rows span the pane; their CONTENTS are inset.** The reading width comes
+  from padding inside each row, never from capping the column, so row
+  backgrounds and section bands reach the pane's edges instead of floating in
+  a gutter on a wide window. The inset rides the ambient `ListTileTheme`
+  (`settingsRowInset` plus the pane's own centring offset), which is where
+  `ListTile` rows and `FormRenderer`'s `_rowContentPadding` both read it —
+  one number, which the pane's title lines up with too. A panel that builds
+  something that is not a row (a search field, a status line) takes the same
+  inset from that theme rather than restating it.
+- **A section is headed by a band**, `SettingsSectionHeader`: full-bleed, on
+  the ground the Operation Setup sheet's sections use, in the slab face.
+  `FormRenderer`'s `style: 'section'` header IS that widget. The band abuts
+  its rows on both sides — the gap belongs above a section, not between a
+  heading and what it names.
+- **Bands stick.** A section is a `SliverMainAxisGroup` of [band, rows], so
+  the band holds the top while its own rows scroll under it and is pushed off
+  by the next section's. That makes the panel a `CustomScrollView`, and every
+  piece of it a sliver: a box handed to a viewport fails the whole list, not
+  just the section that returned it.
 
 ## Row gestures
 

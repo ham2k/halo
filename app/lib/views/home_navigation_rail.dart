@@ -37,6 +37,10 @@ class HomeNavigationRail extends StatelessWidget {
 
   final ValueChanged<HomeDestination> onDestination;
 
+  /// Flips [expanded]. The mark is the other control that runs it — see
+  /// [HomeRailLogo], which the window draws over this column.
+  final VoidCallback onToggle;
+
   /// Toggles [expanded]. The logo is the control, and it lives at the top of
   /// this column rather than in a view's header — the rail owns the whole left
   /// edge, so the header begins to its right and has no room for a mark that
@@ -48,6 +52,7 @@ class HomeNavigationRail extends StatelessWidget {
     required this.destination,
     required this.showLogs,
     required this.onDestination,
+    required this.onToggle,
   });
 
   /// Icon-only. Wide enough for the glyph with Material's minimum touch target
@@ -153,7 +158,14 @@ class HomeNavigationRail extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: ColoredBox(
+            // The rail's own ground is the other way to work the toggle,
+            // alongside the mark. An ancestor of the destinations rather than
+            // a layer over them: a child's tap recogniser takes the gesture
+            // first, so pressing a destination still navigates.
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onToggle,
+              child: ColoredBox(
               // A light surface, not the header's: the rail is a surface the
               // panes sit beside, and the boundary is drawn by the shadow they
               // cast onto it rather than by a change of colour.
@@ -275,6 +287,7 @@ class HomeNavigationRail extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ),
           // The chrome and the panes all cast INWARD onto the rail — the rail
@@ -576,41 +589,36 @@ class HomeRailLogo extends StatelessWidget {
             // taller than the mark itself, and an InkWell sized to it would
             // take taps on the blank strip above the glyph as a toggle,
             // same as one anywhere else in that corner.
-            child: Semantics(
-              button: true,
-              label: context.t.home.toggleNav,
-              // Its own Material: this is a sibling of the views, not inside
-              // any Scaffold, so there is no ancestor to print an ink
-              // response on.
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onToggle,
-                  mouseCursor: SystemMouseCursors.click,
-                  // No hover or press wash: the mark is artwork, not a button
-                  // surface, and a highlight painted behind it reads as a
-                  // stray dark square — one the pointer can leave stuck
-                  // there by exiting over a widget that rebuilt under it.
-                  hoverColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  child: SizedBox(
-                    width: HomeNavigationRail.collapsedWidth,
-                    child: ClipRect(
-                      child: OverflowBox(
-                        // Both minimums released, not just the maximums: a
-                        // tight width is a MINIMUM too, and a mark narrower
-                        // than the column would inherit it and leave the
-                        // constraints non-normalized.
-                        minWidth: 0,
-                        minHeight: 0,
-                        maxWidth: logoSize,
-                        maxHeight: logoSize,
-                        // Bottom-anchored, so the mark sits on the rail's
-                        // first destination whatever it measures.
-                        alignment: Alignment.bottomCenter,
-                        child: SvgPicture.asset(ham2kSquareLogoAsset, width: logoSize, height: logoSize),
-                      ),
+            // The column's spare width is spent HERE, outside the button, so
+            // the mark stays centred over the destinations below it while the
+            // tap target is the mark's own box. Inside the button instead, the
+            // strips either side of the glyph toggle the rail from wherever
+            // this box happens to be sitting over — which is not always the
+            // rail.
+            child: Padding(
+              padding: EdgeInsets.only(left: (HomeNavigationRail.collapsedWidth - logoSize) / 2),
+              child: Semantics(
+                button: true,
+                label: context.t.home.toggleNav,
+                // Its own Material: this is a sibling of the views, not inside
+                // any Scaffold, so there is no ancestor to print an ink
+                // response on.
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onToggle,
+                    mouseCursor: SystemMouseCursors.click,
+                    // No hover or press wash: the mark is artwork, not a button
+                    // surface, and a highlight painted behind it reads as a
+                    // stray dark square — one the pointer can leave stuck
+                    // there by exiting over a widget that rebuilt under it.
+                    hoverColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    splashColor: Colors.transparent,
+                    child: SizedBox(
+                      width: logoSize,
+                      height: logoSize,
+                      child: SvgPicture.asset(ham2kSquareLogoAsset, width: logoSize, height: logoSize),
                     ),
                   ),
                 ),
@@ -787,6 +795,11 @@ class _HomeRailShellState extends State<HomeRailShell> {
             // the OTHER one's widget — re-inflating the whole route tree and
             // the rail on every push, which is a visible stutter at exactly
             // the moment a view is trying to animate in.
+            void toggleRail() {
+              homeRail.expanded = !homeRail.expanded;
+              unawaited(widget.services.settings.setHomeNavExpanded(homeRail.expanded));
+            }
+
             final views = Positioned.fill(key: const ValueKey('views'), child: child!);
             final rail = Positioned(
               key: const ValueKey('rail'),
@@ -804,6 +817,7 @@ class _HomeRailShellState extends State<HomeRailShell> {
                     destination: homeRail.destination,
                     showLogs: showLogs,
                     onDestination: (destination) => homeRail.destination = destination,
+                    onToggle: toggleRail,
                   ),
                 ),
               ),
@@ -821,12 +835,7 @@ class _HomeRailShellState extends State<HomeRailShell> {
               // its own — the mark is drawn OUTSIDE the rail and would
               // otherwise sit in the clock.
               top: MediaQuery.paddingOf(context).top,
-              child: HomeRailLogo(
-                onToggle: () {
-                  homeRail.expanded = !homeRail.expanded;
-                  unawaited(widget.services.settings.setHomeNavExpanded(homeRail.expanded));
-                },
-              ),
+              child: HomeRailLogo(onToggle: toggleRail),
             );
             // The mark belongs to the rail and travels with it — a view that
             // covers the rail covers the mark too, and neither needs telling.

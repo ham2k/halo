@@ -11,6 +11,7 @@ import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
 import 'secret_text_field.dart';
+import 'settings_section_header.dart';
 import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
@@ -163,6 +164,16 @@ class _ListFieldActions {
 
   const _ListFieldActions({required this.editItem, required this.deleteItem, required this.reorder});
 }
+
+/// The Defaults button every settings-field editor puts in its `secondary`
+/// slot — one builder so the three dialogs can't drift on icon or wording.
+/// Undo, not restore: what it undoes is the operator's own change, and the
+/// two icons read as different promises when one dialog uses each.
+Widget _defaultsButton({required FormRendererLabels labels, required VoidCallback? onPressed}) => TextButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(MdiIcons.undo, size: 18),
+      label: Text(labels.defaults),
+    );
 
 /// The Cancel/Save (+ submitting spinner) row shared by every presenter of
 /// a [FormRenderer] — the renderer's own `showActions` footer,
@@ -701,7 +712,16 @@ class FormRendererState extends State<FormRenderer> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: elements.length,
-            separatorBuilder: (context, index) => const SizedBox(height: Space.xl),
+            // A section band abuts its rows on both sides: it heads the
+            // section below it, and the section above ends where the band
+            // starts. A gap either side would leave it floating between two
+            // sections, belonging to neither — and a band that STICKS as its
+            // rows scroll under it (SettingsSectionHeader.pinned) would drag
+            // a hole along with it.
+            separatorBuilder: (context, index) =>
+                elements[index]['style'] == 'section' || elements[index + 1]['style'] == 'section'
+                    ? const SizedBox.shrink()
+                    : const SizedBox(height: Space.xl),
             itemBuilder: (context, index) {
               final el = elements[index];
               final type = el['type'] as String?;
@@ -732,18 +752,17 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
-  /// `style: 'section'` opts into the same typography as the section
-  /// headers used in the Sync/Accounts settings panels (see SectionHeader)
-  /// — smaller and less bold than the default. Opt-in, not the default,
-  /// because `_buildHeader` renders `type: 'header'` elements for every
-  /// FormRenderer caller, not just settings panels — an ad hoc extension
-  /// form's own section headers keep the original bold look unless they
-  /// explicitly ask for the settings-panel one. Doesn't reuse SectionHeader
-  /// itself even when 'section' is requested: that widget bakes in its own
-  /// 16px horizontal padding, sized for a container with none of its own
-  /// (Sync/Accounts' ListView) — here, the horizontal inset already comes
-  /// from the outer SingleChildScrollView every field in this form shares,
-  /// so adding SectionHeader's on top would double it.
+  /// `style: 'section'` renders the settings-panel section band: smaller
+  /// type than a form's own title, on the same ground the Operation Setup
+  /// sheet's sections take. Opt-in, not the default, because `_buildHeader`
+  /// renders `type: 'header'` elements for every FormRenderer caller, not
+  /// just settings panels — an ad hoc extension form's own section headers
+  /// keep the plain unbanded look unless they explicitly ask for this one.
+  /// Doesn't reuse SectionHeader: that widget bakes in its own 16px
+  /// horizontal padding, sized for a container with none of its own
+  /// (Sync/Accounts' ListView) — here, the inset comes from the ambient
+  /// ListTileTheme every row in this form shares, so adding SectionHeader's
+  /// on top would double it.
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
     final subtitle = el['subtitle'] as String?;
@@ -752,31 +771,30 @@ class FormRendererState extends State<FormRenderer> {
     // Text on the surface, not a fill — HaLoColors.onSurfaceAccent, not
     // colorScheme.primary directly.
     final onSurfaceAccent = (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent;
-    final titleStyle = isSection
-        ? theme.textTheme.titleSmall?.copyWith(color: devModeColor ?? onSurfaceAccent)
-        : theme.textTheme.titleMedium?.copyWith(
+    final subtitleWidget = subtitle == null || subtitle.isEmpty
+        ? null
+        : Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
+            ),
+          );
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
             fontFamily: 'RobotoSlab',
             fontWeight: FontWeight.w900,
             color: devModeColor ?? onSurfaceAccent,
-          );
-    return Padding(
-      padding: _rowContentPadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: titleStyle),
-          if (subtitle != null && subtitle.isNotEmpty) ...[
-            const SizedBox(height: Space.xs),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
+          ),
+        ),
+        if (subtitleWidget != null) ...[const SizedBox(height: Space.xs), subtitleWidget],
+      ],
     );
+    if (!isSection) return Padding(padding: _rowContentPadding, child: content);
+    return SettingsSectionHeader(title, color: devModeColor, subtitle: subtitleWidget);
   }
 
   Widget _buildDivider(Map<String, dynamic> el, ThemeData theme) {
@@ -1044,16 +1062,20 @@ class FormRendererState extends State<FormRenderer> {
   /// The settings-panel row shape: leading icon, bold title, an optional
   /// description underneath (or the validation error, in its place). The
   /// trailing/stacked control depends on the field type:
-  ///  - a toggle (checkbox) keeps its Switch trailing on the right;
+  ///  - a toggle (checkbox) keeps its Switch trailing on the right, and the
+  ///    whole row works it;
   ///  - a `select` becomes a tap-to-open picker dialog; the row shows the
   ///    field's description (written to explain the current value — see the
   ///    settings definitions), not the raw value on its own (see
   ///    [_buildSelectRow]);
-  ///  - every other (text-like) field renders its input full-width, stacked
-  ///    beneath the title/description.
+  ///  - every other (text-like) field becomes a tap-to-open editor dialog
+  ///    showing its current value (see [_buildTextRow]).
   Widget _buildIconRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
     if (fieldType == 'select') {
       return _buildSelectRow(el, theme);
+    }
+    if (fieldType != 'checkbox') {
+      return _buildTextRow(el, fieldType, theme);
     }
 
     final key = el['key'] as String;
@@ -1073,32 +1095,21 @@ class FormRendererState extends State<FormRenderer> {
     final leading = icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null;
     final title = Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor));
 
-    if (fieldType == 'checkbox') {
-      return ListTile(
-        contentPadding: _rowContentPadding,
-        leading: leading,
-        title: title,
-        subtitle: subtitle,
-        trailing: _buildCompactControl(el, fieldType, devModeColor),
-      );
-    }
+    final disabled = el['disabled'] == true;
+    final toggle = _isSubmitting || disabled ? null : () => _setToggle(key, _values[key] != true);
 
-    // Text-like fields: the input renders full-width beneath the title/
-    // description rather than trailing beside them, at every panel width.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Space.xs),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            contentPadding: _rowContentPadding,
-            leading: leading,
-            title: title,
-            subtitle: subtitle,
-          ),
-          _buildCompactControl(el, fieldType, devModeColor),
-        ],
-      ),
+    return ListTile(
+      contentPadding: _rowContentPadding,
+      leading: leading,
+      title: title,
+      subtitle: subtitle,
+      trailing: Switch(value: _values[key] == true, onChanged: toggle == null ? null : (val) => _setToggle(key, val)),
+      // The whole row works the switch, not just the switch itself: a
+      // settings row IS its setting, and a title and description that look
+      // like the rest of the list but do nothing read as a broken row.
+      enabled: toggle != null,
+      onTap: toggle,
+      mouseCursor: toggle == null ? null : SystemMouseCursors.click,
     );
   }
 
@@ -1149,12 +1160,19 @@ class FormRendererState extends State<FormRenderer> {
   /// The picker dialog for a `select` icon-row field: one row per option,
   /// checked against the current value; tapping one commits it (exactly as
   /// the inline control did) and closes.
+  ///
+  /// It carries a footer even though every row is already an action, unlike
+  /// the plain option menus §Dialogs excuses from one: a settings field's
+  /// editors are read as one family, and a picker that closes only by tapping
+  /// an option — beside a bands editor that has Done and Defaults — reads as
+  /// a dialog missing its buttons.
   Future<void> _openSelectDialog(Map<String, dynamic> el) async {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final options =
         (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
     final current = _values[key];
+    final hasDefault = el.containsKey('defaultValue');
 
     // Wrap the chosen value in a one-element list so a dismissed dialog
     // (null) is distinguishable from picking an option whose value is null.
@@ -1173,6 +1191,13 @@ class FormRendererState extends State<FormRenderer> {
           searchHint: widget.labels.searchHint,
           clearLabel: widget.labels.clearLabel,
         ),
+        secondary: hasDefault
+            ? _defaultsButton(
+                labels: widget.labels,
+                onPressed: _isSubmitting ? null : () => Navigator.of(dialogContext).pop([el['defaultValue']]),
+              )
+            : null,
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
       ),
     );
     if (picked == null || !mounted) return;
@@ -1182,6 +1207,112 @@ class FormRendererState extends State<FormRenderer> {
       _errors.remove(key);
     });
     _handleFieldBlurOrInteraction(key, val);
+  }
+
+  /// A text-like icon-row field (`text`/`multiline`/`email`/`callsign`/
+  /// `number`/`secret`): a tappable row whose subtitle is what the setting is
+  /// currently SET TO, edited in [_openTextDialog] rather than in an inline
+  /// input under the title.
+  ///
+  /// The value leads, not prose about the setting: a settings panel is read
+  /// by scanning what everything is set to, and a description restating the
+  /// label pushes that off the row. [el]'s `description` fills in only when
+  /// there is no value and no placeholder to show — otherwise it belongs in
+  /// the editor dialog, where the operator is deciding what to type.
+  Widget _buildTextRow(Map<String, dynamic> el, String fieldType, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final icon = el['icon'] as String?;
+    final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
+    final disabled = el['disabled'] == true;
+
+    Widget? subtitle;
+    if (errorText != null) {
+      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
+    } else {
+      final value = _displayValue(el, fieldType);
+      final shown = value.isNotEmpty ? value : (el['placeholder'] as String? ?? el['description'] as String? ?? '');
+      if (shown.isNotEmpty) {
+        subtitle = Text(
+          shown,
+          style: TextStyle(color: devModeColor),
+          // A pasted note or a URL would otherwise grow the row without
+          // limit; the dialog is where the whole value is readable.
+          maxLines: fieldType == 'multiline' ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      }
+    }
+
+    return ListTile(
+      contentPadding: _rowContentPadding,
+      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
+      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      subtitle: subtitle,
+      trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      // Greyed rather than hidden, exactly as the inline field was — see the
+      // `disabled` note on the text branch of [_buildField].
+      enabled: !disabled && !_isSubmitting,
+      onTap: () => _openTextDialog(el, fieldType),
+      mouseCursor: SystemMouseCursors.click,
+    );
+  }
+
+  /// What [_buildTextRow] shows for [el]'s current value. A secret is shown
+  /// as a fixed-length mask: settings panels are read over shoulders and on
+  /// shared screens, and even the LENGTH of a password is more than the row
+  /// needs to say to confirm one is stored.
+  String _displayValue(Map<String, dynamic> el, String fieldType) {
+    final raw = _values[el['key']]?.toString() ?? '';
+    if (raw.isEmpty) return '';
+    return fieldType == 'secret' ? '••••••••' : raw;
+  }
+
+  /// Opens the editor dialog for a text-like icon-row field and commits what
+  /// it comes back with.
+  ///
+  /// The dialog edits a COPY of the value ([_TextEditDialog] owns its own
+  /// controller) and reports it as the dialog closes — by Done, by Escape, or
+  /// by a tap outside, since a settings editor has no Cancel to mean
+  /// otherwise. It writes back through the live controller, so the listener
+  /// that parses and stores the value is the same one inline typing went
+  /// through; typing straight into that controller instead would commit every
+  /// keystroke to the settings store.
+  Future<void> _openTextDialog(Map<String, dynamic> el, String fieldType) async {
+    final key = el['key'] as String;
+
+    await showHaloDialog<void>(
+      context: context,
+      builder: (dialogContext) => _TextEditDialog(
+        label: el['label'] as String? ?? '',
+        placeholder: el['placeholder'] as String?,
+        fieldType: fieldType,
+        initialText: _values[key]?.toString() ?? '',
+        defaultText: el.containsKey('defaultValue') ? el['defaultValue']?.toString() ?? '' : null,
+        keyboardType: _keyboardTypeFor(fieldType),
+        textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
+        inputFormatters: _inputFormattersFor(fieldType, el),
+        autofillHints: _getAutofillHints(key, fieldType),
+        labels: widget.labels,
+        onClosed: (text) => _commitTextEdit(el, fieldType, text),
+      ),
+    );
+  }
+
+  void _commitTextEdit(Map<String, dynamic> el, String fieldType, String text) {
+    final key = el['key'] as String;
+    if (!mounted) return;
+    final live = _controllers[key];
+    if (live != null) {
+      live.text = text;
+    } else {
+      setState(() {
+        _values[key] = fieldType == 'number' ? num.tryParse(text) : text;
+        _errors.remove(key);
+      });
+    }
+    unawaited(_handleFieldBlurOrInteraction(key, _values[key]));
   }
 
   /// `{type: 'link', label, url, icon?, description?}` — an icon-row-styled
@@ -1238,72 +1369,13 @@ class FormRendererState extends State<FormRenderer> {
         _ => _isUppercase(fieldType, el) ? const [UpperCaseTextFormatter()] : null,
       };
 
-  /// The control an icon-row field renders: the trailing Switch for a
-  /// 'checkbox', or — for every text-like type — the input the row stacks
-  /// full-width beneath its title/description.
-  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor) {
-    final key = el['key'] as String;
-
-    switch (fieldType) {
-      case 'checkbox':
-        return Switch(
-          value: _values[key] == true,
-          onChanged: _isSubmitting
-              ? null
-              : (val) {
-                  setState(() {
-                    _values[key] = val;
-                    _errors.remove(key);
-                  });
-                  _handleFieldBlurOrInteraction(key, val);
-                },
-        );
-      default: // text, multiline, email, callsign, number, secret
-        // The label lives in the row above, so `placeholder` is the only hint
-        // this layout can show — and the full-width layout already honors it
-        // (via poloFieldDecoration). Dropping it here would make the same
-        // element render differently depending on whether it carried an `icon`.
-        //
-        // The hint needs dimming to the same 0.38 poloFieldDecoration uses,
-        // and for the same reason: Material's default renders it at full
-        // strength, which is indistinguishable from an actual value sitting
-        // in the field. Only the color, not a font size — this field inherits
-        // its size and has no scale factor to apply (ui-scaling.md).
-        final hintColor = devModeColor ?? Theme.of(context).colorScheme.onSurfaceVariant;
-        final decoration = InputDecoration(
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-          hintText: el['placeholder'] as String?,
-          hintStyle: TextStyle(color: hintColor.withValues(alpha: 0.38)),
-        );
-        // Secret fields get the show/hide toggle (SecretTextField owns the
-        // obscuring + the password autofill hint); every other type keeps the
-        // plain field with its per-type capitalization/formatters.
-        return fieldType == 'secret'
-            ? SecretTextField(
-                controller: _controllers[key],
-                focusNode: _focusNodes[key],
-                keyboardType: _keyboardTypeFor(fieldType),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => submit(),
-                decoration: decoration,
-              )
-            : TextField(
-                selectAllOnFocus: false,
-                controller: _controllers[key],
-                focusNode: _focusNodes[key],
-                maxLines: fieldType == 'multiline' ? null : 1,
-                minLines: fieldType == 'multiline' ? 3 : null,
-                textCapitalization: _capitalizationFor(fieldType, el),
-                keyboardType: _keyboardTypeFor(fieldType),
-                inputFormatters: _inputFormattersFor(fieldType, el),
-                autofillHints: _getAutofillHints(key, fieldType),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => submit(),
-                decoration: decoration,
-              );
-    }
+  /// Sets a `checkbox` field, from the row or from its own Switch.
+  void _setToggle(String key, bool value) {
+    setState(() {
+      _values[key] = value;
+      _errors.remove(key);
+    });
+    _handleFieldBlurOrInteraction(key, value);
   }
 
   String _listItemTitle(Map<String, dynamic> el, Map<String, dynamic> item) {
@@ -1601,9 +1673,7 @@ class FormRendererState extends State<FormRenderer> {
                   ],
                 ),
               ),
-            actions: [
-              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
-            ],
+            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
           );
         },
       ),
@@ -1844,11 +1914,9 @@ class FormRendererState extends State<FormRenderer> {
           return HaloDialog(
             wide: !compact,
             title: Text(label),
-            // Rows run edge to edge; the shell's own scroll view is off because
-            // this content scrolls itself, and its width comes from the shared
-            // sizing. A compact dialog keeps HaloDialog's own default inset
-            // instead, since its rows carry their own ListTile padding.
-            contentPadding: compact ? null : EdgeInsets.zero,
+            // The shell's own scroll view is off because this content scrolls
+            // itself; its inset is HaloDialog's own either way, with the rows
+            // dropping their ListTile padding below so the two don't stack.
             scrollable: false,
             content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1863,7 +1931,7 @@ class FormRendererState extends State<FormRenderer> {
                           for (final opt in visible)
                             SwitchListTile(
                               dense: true,
-                              contentPadding: compact ? null : EdgeInsets.zero,
+                              contentPadding: EdgeInsets.zero,
                               // Selected values read bold, unselected ones
                               // greyed, so the states scan apart without
                               // hunting for the switch thumbs.
@@ -1895,75 +1963,82 @@ class FormRendererState extends State<FormRenderer> {
                         style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ),
-                  if (searchable)
+                  // A view control over the list, not a verb applied to the
+                  // selection — so it sits with the search field rather than
+                  // in the footer, whose slots are for what the dialog DOES
+                  // (docs/design/user-interface.md §Dialogs). Meaningless
+                  // while a query overrides the tiers, so it goes then.
+                  if (searchable || (hasDisclosure && !filtering))
                     Padding(
                       key: const ValueKey('multiselect-search'),
                       padding: const EdgeInsets.only(top: Space.md),
-                      child: TextField(
-                        selectAllOnFocus: false,
-                        controller: searchController,
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          prefixIcon: const Icon(MdiIcons.magnify, size: 18),
-                          suffixIcon: !filtering
-                              ? null
-                              : IconButton(
-                                  icon: Icon(MdiIcons.close, size: 18, semanticLabel: widget.labels.clearLabel),
-                                  onPressed: () => setDialogState(() => searchController!.clear()),
+                      child: Row(
+                        children: [
+                          if (searchable)
+                            Expanded(
+                              child: TextField(
+                                selectAllOnFocus: false,
+                                controller: searchController,
+                                onChanged: (_) => setDialogState(() {}),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                                  suffixIcon: !filtering
+                                      ? null
+                                      : IconButton(
+                                          icon: Icon(MdiIcons.close, size: 18, semanticLabel: widget.labels.clearLabel),
+                                          onPressed: () => setDialogState(() => searchController!.clear()),
+                                        ),
+                                  hintText: widget.labels.searchHint,
+                                  border: searchBorder,
+                                  focusedBorder: haloFocusedBorder(searchBorder, dialogContext),
                                 ),
-                          hintText: widget.labels.searchHint,
-                          border: searchBorder,
-                          focusedBorder: haloFocusedBorder(searchBorder, dialogContext),
-                        ),
+                              ),
+                            )
+                          else
+                            const Spacer(),
+                          if (hasDisclosure && !filtering)
+                            TextButton.icon(
+                              onPressed: () => setDialogState(() {
+                                level = switch (level) {
+                                  0 => hasUncommon ? 1 : 2,
+                                  1 => 2,
+                                  _ => 0,
+                                };
+                              }),
+                              icon: Icon(level >= 2 ? MdiIcons.unfoldLessHorizontal : MdiIcons.unfoldMoreHorizontal, size: 18),
+                              label: Text(switch (level) {
+                                0 when hasUncommon => widget.labels.showMore,
+                                0 => widget.labels.showAll,
+                                1 => widget.labels.showAll,
+                                _ => widget.labels.showFewer,
+                              }),
+                            ),
+                        ],
                       ),
                     ),
                 ],
               ),
-            actions: [
-              // One full-width row: the disclosure toggle and Reset live
-              // outside the scroll area, on the action row's left, with
-              // Done on the right.
-              Row(
-                children: [
-                  // Tier disclosure is meaningless while a query overrides
-                  // it — the status row's Reveal takes its place.
-                  if (hasDisclosure && !filtering)
-                    TextButton.icon(
-                      onPressed: () => setDialogState(() {
-                        level = switch (level) {
-                          0 => hasUncommon ? 1 : 2,
-                          1 => 2,
-                          _ => 0,
-                        };
-                      }),
-                      icon: Icon(level >= 2 ? MdiIcons.unfoldLessHorizontal : MdiIcons.unfoldMoreHorizontal, size: 18),
-                      label: Text(switch (level) {
-                        0 when hasUncommon => widget.labels.showMore,
-                        0 => widget.labels.showAll,
-                        1 => widget.labels.showAll,
-                        _ => widget.labels.showFewer,
-                      }),
-                    ),
-                  if (defaultValue != null)
-                    TextButton.icon(
-                      // Restored defaults pin so uncommon ones stay
-                      // visible. Deliberately drops any out-of-vocabulary
-                      // stored values — Defaults means the declared set.
-                      onPressed: _isSubmitting
-                          ? null
-                          : () {
-                              pinned.addAll(defaultValue);
-                              commit({...defaultValue});
-                            },
-                      icon: const Icon(MdiIcons.restore, size: 18),
-                      label: Text(widget.labels.defaults),
-                    ),
-                  const Spacer(),
-                  TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
-                ],
-              ),
-            ],
+            // Restoring defaults is something else to DO with the selection,
+            // so it takes the `secondary` slot; Done is the way out and takes
+            // `cancel`. Neither may be improvised into `actions:` — a Row of
+            // buttons handed to one trailing slot also defeats the footer's
+            // stacking, which measures its children one by one.
+            secondary: defaultValue == null
+                ? null
+                // Restored defaults pin so uncommon ones stay visible.
+                // Deliberately drops any out-of-vocabulary stored values —
+                // Defaults means the declared set.
+                : _defaultsButton(
+                    labels: widget.labels,
+                    onPressed: _isSubmitting
+                        ? null
+                        : () {
+                            pinned.addAll(defaultValue);
+                            commit({...defaultValue});
+                          },
+                  ),
+            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
           );
         },
       ),
@@ -2423,6 +2498,151 @@ class _SelectDialogBodyState extends State<_SelectDialogBody> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The editor behind a text-like icon-row row ([FormRendererState._buildTextRow]).
+///
+/// Owns the controller rather than borrowing the form's: the value it edits
+/// must not reach [FormRendererState._values] on every keystroke, and
+/// disposing a controller the moment the dialog pops would tear it out from
+/// under the route's own exit animation, which is still building the field.
+class _TextEditDialog extends StatefulWidget {
+  final String label;
+  final String? placeholder;
+  final String fieldType;
+  final String initialText;
+
+  /// The field's declared `defaultValue` as text, or null when it declares
+  /// none — which is what decides whether the Defaults button is offered.
+  final String? defaultText;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+  final Iterable<String>? autofillHints;
+  final FormRendererLabels labels;
+
+  /// The edited text, handed back as the dialog closes — by any route out of
+  /// it, which is why this is a callback rather than the dialog's pop result:
+  /// Escape and a barrier tap pop with no result, and there is no verb here
+  /// that means discard the edit. Called at most once (see [_commitOnce]),
+  /// and not at all when nothing was typed.
+  final ValueChanged<String> onClosed;
+
+  const _TextEditDialog({
+    required this.label,
+    required this.placeholder,
+    required this.fieldType,
+    required this.initialText,
+    required this.defaultText,
+    required this.keyboardType,
+    required this.textCapitalization,
+    required this.inputFormatters,
+    required this.autofillHints,
+    required this.labels,
+    required this.onClosed,
+  });
+
+  @override
+  State<_TextEditDialog> createState() => _TextEditDialogState();
+}
+
+class _TextEditDialogState extends State<_TextEditDialog> {
+  late final TextEditingController _controller = TextEditingController(text: widget.initialText);
+  bool _committed = false;
+
+  /// Hands the edit back, once. Guarded because the two ways this dialog can
+  /// end overlap: a pop runs [PopScope]'s callback and then disposes, while a
+  /// route REMOVED rather than popped (its Navigator torn down, an ancestor
+  /// taking the pane down) only ever disposes — and an edit that reached
+  /// neither would vanish with the operator believing it saved, since closing
+  /// is this dialog's commit gesture.
+  ///
+  /// An untouched value is not a commit: opening a setting and pressing
+  /// Escape must not write it, and `onChange` is a real write with whatever
+  /// the presenter hung off it.
+  void _commitOnce() {
+    if (_committed || _controller.text == widget.initialText) return;
+    _committed = true;
+    widget.onClosed(_controller.text);
+  }
+
+  @override
+  void dispose() {
+    _commitOnce();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Guarded on being the current route: two closes landing in the same frame
+  /// — a repeated Enter, or Enter racing a tap on Done — would otherwise pop
+  /// this dialog and then the pane underneath it.
+  void _close() {
+    if (ModalRoute.of(context)?.isCurrent ?? false) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final multiline = widget.fieldType == 'multiline';
+    // No label: the dialog's own title already names the field, and a second
+    // copy of the same words inside the box says nothing. The placeholder
+    // stays — it is the only thing that says what a value here looks like.
+    final decoration = poloFieldDecoration(context, widget.label, hintText: widget.placeholder, showLabel: false);
+
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _commitOnce();
+      },
+      child: HaloDialog(
+        wide: true,
+        title: Text(widget.label),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.fieldType == 'secret')
+              SecretTextField(
+                controller: _controller,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _close(),
+                decoration: decoration,
+              )
+            else
+              TextField(
+                selectAllOnFocus: false,
+                autofocus: true,
+                controller: _controller,
+                maxLines: multiline ? null : 1,
+                minLines: multiline ? 3 : null,
+                keyboardType: widget.keyboardType,
+                textCapitalization: widget.textCapitalization,
+                inputFormatters: widget.inputFormatters,
+                autofillHints: widget.autofillHints,
+                // Enter inserts a newline in a multiline value; everywhere else
+                // it closes the dialog, which is what commits.
+                textInputAction: multiline ? null : TextInputAction.done,
+                onSubmitted: multiline ? null : (_) => _close(),
+                decoration: decoration,
+              ),
+          ],
+        ),
+        // Done and Defaults, like every other settings-field editor: there is
+        // no Save because closing is what commits, and so no Cancel either —
+        // a way out that discarded the edit would be the only one in Settings
+        // that did.
+        secondary: widget.defaultText == null
+            ? null
+            : _defaultsButton(
+                labels: widget.labels,
+                onPressed: () {
+                  _controller.text = widget.defaultText!;
+                  _close();
+                },
+              ),
+        cancel: TextButton(onPressed: _close, child: Text(widget.labels.done)),
+      ),
     );
   }
 }

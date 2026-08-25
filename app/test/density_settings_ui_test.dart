@@ -67,7 +67,11 @@ void main() {
     await settings.setDensityPreference(DensityPreference.sparsest);
     final field = await densityField(settings);
     expect(field['value'], 'sparsest');
-    expect(field['description'], isNot(contains('layoutDensityDescription')));
+    // The description restates the CHOSEN option, nothing else: a description
+    // that drifted back to prose about the option would still be non-empty.
+    final options = (field['options'] as List).cast<Map<String, dynamic>>();
+    final chosen = options.firstWhere((o) => o['value'] == 'sparsest');
+    expect(field['description'], chosen['label']);
   });
 
   test('commit lands on the service, and ignores a value that is not a level', () async {

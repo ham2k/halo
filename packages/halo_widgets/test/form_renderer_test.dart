@@ -1585,7 +1585,7 @@ void main() {
       expect(submittedValues!['themeMode'], 'dark');
     });
 
-    testWidgets('an icon-row text field renders its input stacked below the title/description', (tester) async {
+    testWidgets('an icon-row text field shows its value, and edits it in a dialog', (tester) async {
       final textFormDefinition = {
         'elements': [
           {
@@ -1599,10 +1599,162 @@ void main() {
           },
         ],
       };
+      Map<String, dynamic>? submittedValues;
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: FormRenderer(
             formDefinition: textFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // The row states what the setting is SET TO. The description is prose
+      // about the setting, and giving it the subtitle would push the value —
+      // the one thing an operator scans a settings panel for — off the row.
+      expect(find.text('Field Day'), findsOneWidget);
+      expect(find.text('Shown on your exports'), findsNothing);
+      // Nothing to type into on the panel itself: a tap-to-open row, like
+      // the icon-row select beside it.
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byIcon(MdiIcons.chevronRight), findsOneWidget);
+
+      // Editing happens in the dialog, seeded with the current value.
+      await tester.tap(find.text('Station Name'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HaloDialog), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, 'Field Day');
+
+      await tester.enterText(find.byType(TextField), 'Winter FD');
+      // Done, not Save: closing is what commits a settings field, so the
+      // editor carries no Save and no Cancel.
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Cancel')), findsNothing);
+      await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Done')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HaloDialog), findsNothing);
+      expect(find.text('Winter FD'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['stationName'], 'Winter FD');
+    });
+
+    testWidgets('dismissing the editor commits, the same as Done', (tester) async {
+      // There is no discard here: the dialog has Done and Defaults only, so
+      // Escape and a tap outside have to mean what Done means. Popping on a
+      // route result alone would silently drop the edit on both — they pop
+      // with no result at all.
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'text',
+                  'key': 'stationName',
+                  'label': 'Station Name',
+                  'icon': 'account',
+                  'value': 'Field Day',
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Station Name'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Winter FD');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HaloDialog), findsNothing);
+      expect(find.text('Winter FD'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['stationName'], 'Winter FD');
+    });
+
+    testWidgets('closing without typing anything writes nothing', (tester) async {
+      // Closing IS the commit gesture here, so an untouched open-and-Escape
+      // would otherwise fire onChange — a real write, with whatever the
+      // presenter hung off it (an account revalidating, a sync kicking).
+      final committed = <String>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'text',
+                  'key': 'stationName',
+                  'label': 'Station Name',
+                  'icon': 'account',
+                  'value': 'Field Day',
+                },
+              ],
+            },
+            initialState: const {},
+            onChange: (key, value, state) async {
+              committed.add('$key=$value');
+              return null;
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Station Name'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(committed, isEmpty);
+
+      // And a real edit still commits exactly once, however it closed.
+      await tester.tap(find.text('Station Name'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Winter FD');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(committed, ['stationName=Winter FD']);
+    });
+
+    testWidgets('a field declaring a defaultValue offers Defaults, and one without does not', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'text',
+                  'key': 'report',
+                  'label': 'Default Report',
+                  'icon': 'account',
+                  'value': '5NN',
+                  'defaultValue': '599',
+                },
+                {
+                  'type': 'field',
+                  'fieldType': 'text',
+                  'key': 'stationName',
+                  'label': 'Station Name',
+                  'icon': 'account',
+                  'value': 'Field Day',
+                },
+              ],
+            },
             initialState: const {},
             onSubmit: (_) {},
             onCancel: () {},
@@ -1610,19 +1762,96 @@ void main() {
         ),
       ));
 
-      // The input sits below the title, not trailing beside it — at every
-      // panel width now, not just narrow ones.
-      final titleBottom = tester.getBottomLeft(find.text('Station Name')).dy;
-      final fieldTop = tester.getTopLeft(find.byType(TextField)).dy;
-      expect(fieldTop, greaterThan(titleBottom));
+      // No declared default, nothing to restore — the button is offered only
+      // where the definition says what the default IS.
+      await tester.tap(find.text('Station Name'));
+      await tester.pumpAndSettle();
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Defaults')), findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
 
-      // And it spans the row above it. Stacking alone doesn't say that: the
-      // layout this replaced put the input in a fixed 140px box, which would
-      // still sit below the title and still pass the check above.
-      expect(
-        tester.getSize(find.byType(TextField)).width,
-        closeTo(tester.getSize(find.byType(ListTile)).width, 1),
-      );
+      await tester.tap(find.text('Default Report'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Defaults')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('599'), findsOneWidget);
+      expect(find.text('5NN'), findsNothing);
+    });
+
+    testWidgets('a toggle row is worked by the whole row, not just its switch', (tester) async {
+      // A row that looks like every other settings row but only answers a
+      // 12pt switch at its far edge reads as broken — and on a phone it is
+      // the hardest target in the panel.
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'checkbox',
+                  'key': 'shareData',
+                  'label': 'Share app usage data',
+                  'icon': 'chart-box',
+                  'description': 'Help us improve the app',
+                  'value': false,
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+      // The description, specifically: the furthest thing on the row from the
+      // switch, and the part an operator reads before deciding to tap.
+      await tester.tap(find.text('Help us improve the app'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['shareData'], isTrue);
+    });
+
+    testWidgets('a disabled toggle row does not answer a tap anywhere on it', (tester) async {
+      // `disabled` greys a row rather than hiding it, so the row still looks
+      // tappable — the switch refusing while the row still toggled would be
+      // the worst of both.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'checkbox',
+                  'key': 'shareData',
+                  'label': 'Share app usage data',
+                  'icon': 'chart-box',
+                  'description': 'Not available here',
+                  'value': false,
+                  'disabled': true,
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Not available here'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
     });
 
     testWidgets('a toggle (checkbox) field stays trailing even on a narrow panel', (tester) async {
@@ -1664,7 +1893,7 @@ void main() {
     // The full-width layout has always honored it (via poloFieldDecoration),
     // so without this the same element rendered its hint or silently dropped
     // it depending only on whether it also carried an `icon`.
-    testWidgets('an icon-row field shows its placeholder as a hint, secret fields included', (tester) async {
+    testWidgets('an icon-row field shows its placeholder in place of an empty value', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: FormRenderer(
@@ -1695,36 +1924,67 @@ void main() {
         ),
       ));
 
-      // Both fields took the icon-row path — a ListTile holding the label,
-      // with the input stacked beneath and no label of its own. That's what
-      // makes the hints below the compact decoration's, not
-      // poloFieldDecoration's.
+      // Both fields took the icon-row path: a ListTile each, nothing to type
+      // into until one is opened.
       expect(find.byType(ListTile), findsNWidgets(2));
-      final fields = tester.widgetList<TextField>(find.byType(TextField)).toList();
-      expect(fields, hasLength(2));
-      for (final field in fields) {
-        expect(field.decoration?.labelText, isNull);
-      }
+      expect(find.byType(TextField), findsNothing);
 
       expect(find.text('Same as the operator'), findsOneWidget);
       // The secret's placeholder is the case that motivates this: a panel
       // showing that a password is already in the keychain without loading it
-      // into the form. It has to render as a hint, never as the value.
+      // into the form.
       expect(find.text('Already stored'), findsOneWidget);
-      expect(tester.widget<TextField>(find.byType(TextField).last).controller?.text, isEmpty);
 
-      // And it has to *read* as a hint. Material's default renders a hint at
-      // full strength, which beside an empty field is indistinguishable from
-      // a real value — so a "password already saved" placeholder would look
-      // like the password itself. The full-width layout dims to 0.38 for the
-      // same reason; both hints here must be equally faint.
+      // At full strength, not dimmed like an input's hint: on a row the
+      // placeholder IS what the setting currently amounts to ("Same as the
+      // operator" is the callsign in force), and greying it reads as a
+      // disabled setting rather than as an unset one.
       for (final hint in ['Same as the operator', 'Already stored']) {
-        expect(tester.widget<Text>(find.text(hint)).style?.color?.a, lessThan(0.5), reason: '$hint renders value-weight');
+        final color = tester.widget<Text>(find.text(hint)).style?.color;
+        // Null means the row's own default — full strength. What must not
+        // come back is the 0.38 an input's hint takes.
+        expect(color?.a ?? 1.0, 1.0, reason: '$hint is dimmed like a hint');
       }
-    });
-  });
 
-  group('FormRenderer header style', () {
+      // Opening the secret hands the editor an EMPTY field, never the
+      // placeholder as text: saving an untouched dialog would otherwise
+      // overwrite the real password with the words on the row.
+      await tester.tap(find.text('API Key'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, isEmpty);
+      expect(tester.widget<TextField>(find.byType(TextField)).decoration?.hintText, 'Already stored');
+    });
+
+    testWidgets('a secret with a value is masked on the row', (tester) async {
+      // Settings panels get read over shoulders and screen-shared. A stored
+      // secret has to show that it IS stored without showing what it is —
+      // and without leaking its length either.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'secret',
+                  'key': 'apiKey',
+                  'label': 'API Key',
+                  'icon': 'shield-account',
+                  'value': 'hunter2-and-then-some',
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('hunter2-and-then-some'), findsNothing);
+      expect(find.text('••••••••'), findsOneWidget);
+    });
+
     testWidgets('a header with no style (or style: default) keeps the bold form-title look', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -1746,12 +2006,13 @@ void main() {
       expect(header.style?.fontFamily, 'RobotoSlab');
     });
 
-    testWidgets("style: 'section' switches to the smaller Sync/Accounts section-header look", (tester) async {
+    testWidgets("style: 'section' is a banded header, smaller than a form's own title", (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: FormRenderer(
             formDefinition: const {
               'elements': [
+                {'type': 'header', 'title': 'Plain Title'},
                 {'type': 'header', 'title': 'Section Header', 'style': 'section'},
               ],
             },
@@ -1762,9 +2023,22 @@ void main() {
         ),
       ));
 
+      final plain = tester.widget<Text>(find.text('Plain Title'));
       final header = tester.widget<Text>(find.text('Section Header'));
-      expect(header.style?.fontWeight, isNot(FontWeight.w900));
-      expect(header.style?.fontFamily, isNot('RobotoSlab'));
+      // Same slab face as a form's own title, one step down in size.
+      expect(header.style?.fontFamily, 'RobotoSlab');
+      expect(header.style?.fontSize, lessThan(plain.style!.fontSize!));
+
+      // The band runs FULL WIDTH, with the row inset spent inside it. Inset
+      // to match the rows instead, it would read as one highlighted row
+      // rather than as the start of a section.
+      final band = find.ancestor(of: find.text('Section Header'), matching: find.byType(Container)).first;
+      expect(tester.widget<Container>(band).color, isNotNull);
+      expect(tester.getSize(band).width, tester.getSize(find.byType(FormRenderer)).width);
+
+      // And the plain header takes no band at all — every FormRenderer
+      // caller renders `type: 'header'`, not just settings panels.
+      expect(find.ancestor(of: find.text('Plain Title'), matching: find.byType(Container)), findsNothing);
     });
   });
 

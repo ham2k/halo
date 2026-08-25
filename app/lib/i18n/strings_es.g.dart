@@ -475,7 +475,6 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$layoutCustomization$es layoutCustomization = _Translations$settings$layoutCustomization$es._(_root);
 	@override String get layoutDensity => 'Densidad del Diseño';
 	@override late final _Translations$settings$layoutDensityOpts$es layoutDensityOpts = _Translations$settings$layoutDensityOpts$es._(_root);
-	@override late final _Translations$settings$layoutDensityDescription$es layoutDensityDescription = _Translations$settings$layoutDensityDescription$es._(_root);
 	@override String layoutDensityClamped({required Object effective}) => 'la ventana es muy baja, usando ${effective}';
 	@override String get layoutDensityAtLimit => 'es lo máximo';
 	@override String get distanceUnits => 'Unidades de distancia';
@@ -483,6 +482,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get userInterface => 'Interfaz de Usuario';
 	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
 	@override late final _Translations$settings$radio$es radio = _Translations$settings$radio$es._(_root);
+	@override late final _Translations$settings$help$es help = _Translations$settings$help$es._(_root);
 	@override late final _Translations$settings$map$es map = _Translations$settings$map$es._(_root);
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
@@ -1233,21 +1233,6 @@ class _Translations$settings$layoutDensityOpts$es extends Translations$settings$
 	@override String get sparsest => 'Muy amplia';
 }
 
-// Path: settings.layoutDensityDescription
-class _Translations$settings$layoutDensityDescription$es extends Translations$settings$layoutDensityDescription$en {
-	_Translations$settings$layoutDensityDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get auto => 'Según la altura de la ventana';
-	@override String get densest => 'Muestra todo lo que sea posible';
-	@override String get dense => 'Muestra más en pantalla';
-	@override String get normal => 'El diseño estándar';
-	@override String get sparse => 'Más espacio alrededor de todo';
-	@override String get sparsest => 'El máximo espacio alrededor de todo';
-}
-
 // Path: settings.distanceUnitsOpts
 class _Translations$settings$distanceUnitsOpts$es extends Translations$settings$distanceUnitsOpts$en {
 	_Translations$settings$distanceUnitsOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1299,6 +1284,29 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$snapMinSpeed$es snapMinSpeed = _Translations$settings$radio$snapMinSpeed$es._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$es avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$es._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$es zeroBeatRange = _Translations$settings$radio$zeroBeatRange$es._(_root);
+}
+
+// Path: settings.help
+class _Translations$settings$help$es extends Translations$settings$help$en {
+	_Translations$settings$help$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ayuda y Recursos';
+	@override String get description => 'Comunidad y soporte';
+	@override String get forums => 'Foros de Ham2K';
+	@override String get forumsDescription => 'Encuentra ayuda, danos tu opinión, comparte ideas…';
+	@override String get chat => 'Chat de Ham2K';
+	@override String get chatDescription => 'El servidor de Discord de nuestra comunidad';
+	@override String get youtube => 'Ham2K en YouTube';
+	@override String get youtubeDescription => 'Vídeos y transmisiones en directo';
+	@override String get instagram => 'Ham2K en Instagram';
+	@override String get instagramDescription => 'Porque nunca hay demasiadas fotos…';
+	@override String get bluesky => 'Ham2K en BlueSky';
+	@override String get blueskyDescription => 'Síguenos para novedades y actualizaciones';
+	@override String get contact => 'Contáctanos';
+	@override String get contactDescription => 'help@ham2k.com — ¡pero prueba primero los Foros o el Chat!';
 }
 
 // Path: settings.map
@@ -2117,7 +2125,6 @@ class _Translations$settings$map$style$es extends Translations$settings$map$styl
 
 	// Translations
 	@override String get title => 'Estilo del Mapa';
-	@override String get description => 'Qué mapa base usa la pestaña Mapa. Automático sigue el tema claro/oscuro de la app.';
 }
 
 // Path: settings.map.styleOpts
@@ -2760,12 +2767,6 @@ extension on TranslationsEs {
 			'settings.layoutDensityOpts.normal' => 'Normal',
 			'settings.layoutDensityOpts.sparse' => 'Amplia',
 			'settings.layoutDensityOpts.sparsest' => 'Muy amplia',
-			'settings.layoutDensityDescription.auto' => 'Según la altura de la ventana',
-			'settings.layoutDensityDescription.densest' => 'Muestra todo lo que sea posible',
-			'settings.layoutDensityDescription.dense' => 'Muestra más en pantalla',
-			'settings.layoutDensityDescription.normal' => 'El diseño estándar',
-			'settings.layoutDensityDescription.sparse' => 'Más espacio alrededor de todo',
-			'settings.layoutDensityDescription.sparsest' => 'El máximo espacio alrededor de todo',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'la ventana es muy baja, usando ${effective}',
 			'settings.layoutDensityAtLimit' => 'es lo máximo',
 			'settings.distanceUnits' => 'Unidades de distancia',
@@ -2827,9 +2828,22 @@ extension on TranslationsEs {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',
 			'settings.radio.zeroBeatRange.title' => 'Batido cero: margen de separación',
 			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
+			'settings.help.title' => 'Ayuda y Recursos',
+			'settings.help.description' => 'Comunidad y soporte',
+			'settings.help.forums' => 'Foros de Ham2K',
+			'settings.help.forumsDescription' => 'Encuentra ayuda, danos tu opinión, comparte ideas…',
+			'settings.help.chat' => 'Chat de Ham2K',
+			'settings.help.chatDescription' => 'El servidor de Discord de nuestra comunidad',
+			'settings.help.youtube' => 'Ham2K en YouTube',
+			'settings.help.youtubeDescription' => 'Vídeos y transmisiones en directo',
+			'settings.help.instagram' => 'Ham2K en Instagram',
+			'settings.help.instagramDescription' => 'Porque nunca hay demasiadas fotos…',
+			'settings.help.bluesky' => 'Ham2K en BlueSky',
+			'settings.help.blueskyDescription' => 'Síguenos para novedades y actualizaciones',
+			'settings.help.contact' => 'Contáctanos',
+			'settings.help.contactDescription' => 'help@ham2k.com — ¡pero prueba primero los Foros o el Chat!',
 			'settings.map.title' => 'Mapa',
 			'settings.map.style.title' => 'Estilo del Mapa',
-			'settings.map.style.description' => 'Qué mapa base usa la pestaña Mapa. Automático sigue el tema claro/oscuro de la app.',
 			'settings.map.styleOpts.automatic' => 'Automático',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
@@ -3255,6 +3269,8 @@ extension on TranslationsEs {
 			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
 			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
 			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.malformedRequest' => 'El servidor envió una solicitud que esta app no pudo leer. Pide al otro dispositivo que lo intente de nuevo.',
 			'confirmDevice.linkIt' => 'Vincular dispositivo',
 			'switchAccounts.noAccountDetails' => 'Aún sin detalles de la cuenta',
@@ -3262,8 +3278,6 @@ extension on TranslationsEs {
 			'switchAccounts.otherAccounts' => 'Otras cuentas',
 			'switchAccounts.linkToAnother' => 'Vincular a otra cuenta',
 			'switchAccounts.linkWithQr' => 'Vincular con un código QR',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
 			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',

@@ -983,7 +983,6 @@ class Translations$settings$en {
 	String get layoutDensity => 'Layout Density';
 
 	late final Translations$settings$layoutDensityOpts$en layoutDensityOpts = Translations$settings$layoutDensityOpts$en.internal(_root);
-	late final Translations$settings$layoutDensityDescription$en layoutDensityDescription = Translations$settings$layoutDensityDescription$en.internal(_root);
 
 	/// en: 'the window is too short, using ${effective}'
 	String layoutDensityClamped({required Object effective}) => 'the window is too short, using ${effective}';
@@ -1001,6 +1000,7 @@ class Translations$settings$en {
 
 	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
+	late final Translations$settings$help$en help = Translations$settings$help$en.internal(_root);
 	late final Translations$settings$map$en map = Translations$settings$map$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
 
@@ -2271,8 +2271,8 @@ class Translations$operation$spots$en {
 	/// en: 'Other'
 	String get unknownBand => 'Other';
 
-	/// en: 'Auto'
-	String get auto => 'Auto';
+	/// en: 'Automatic'
+	String get auto => 'Automatic';
 
 	/// en: 'Auto (${value})'
 	String autoValue({required Object value}) => 'Auto (${value})';
@@ -2648,8 +2648,8 @@ class Translations$settings$layoutDensityOpts$en {
 
 	// Translations
 
-	/// en: 'Auto'
-	String get auto => 'Auto';
+	/// en: 'Automatic'
+	String get auto => 'Automatic';
 
 	/// en: 'Densest'
 	String get densest => 'Densest';
@@ -2665,33 +2665,6 @@ class Translations$settings$layoutDensityOpts$en {
 
 	/// en: 'Sparsest'
 	String get sparsest => 'Sparsest';
-}
-
-// Path: settings.layoutDensityDescription
-class Translations$settings$layoutDensityDescription$en {
-	Translations$settings$layoutDensityDescription$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Chosen from the height of the window'
-	String get auto => 'Chosen from the height of the window';
-
-	/// en: 'As much on screen as possible'
-	String get densest => 'As much on screen as possible';
-
-	/// en: 'Fits more on screen'
-	String get dense => 'Fits more on screen';
-
-	/// en: 'The standard layout'
-	String get normal => 'The standard layout';
-
-	/// en: 'More room around everything'
-	String get sparse => 'More room around everything';
-
-	/// en: 'The most room around everything'
-	String get sparsest => 'The most room around everything';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -2759,6 +2732,57 @@ class Translations$settings$radio$en {
 	late final Translations$settings$radio$snapMinSpeed$en snapMinSpeed = Translations$settings$radio$snapMinSpeed$en.internal(_root);
 	late final Translations$settings$radio$avoidZeroBeat$en avoidZeroBeat = Translations$settings$radio$avoidZeroBeat$en.internal(_root);
 	late final Translations$settings$radio$zeroBeatRange$en zeroBeatRange = Translations$settings$radio$zeroBeatRange$en.internal(_root);
+}
+
+// Path: settings.help
+class Translations$settings$help$en {
+	Translations$settings$help$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Help & Resources'
+	String get title => 'Help & Resources';
+
+	/// en: 'Community and support'
+	String get description => 'Community and support';
+
+	/// en: 'Ham2K Forums'
+	String get forums => 'Ham2K Forums';
+
+	/// en: 'Find help, give feedback, discuss ideas…'
+	String get forumsDescription => 'Find help, give feedback, discuss ideas…';
+
+	/// en: 'Ham2K Chat'
+	String get chat => 'Ham2K Chat';
+
+	/// en: 'The Discord server for our online community'
+	String get chatDescription => 'The Discord server for our online community';
+
+	/// en: 'Ham2K YouTube'
+	String get youtube => 'Ham2K YouTube';
+
+	/// en: 'Videos and live streams'
+	String get youtubeDescription => 'Videos and live streams';
+
+	/// en: 'Ham2K Instagram'
+	String get instagram => 'Ham2K Instagram';
+
+	/// en: 'Because you cannot have too many photos…'
+	String get instagramDescription => 'Because you cannot have too many photos…';
+
+	/// en: 'Ham2K BlueSky'
+	String get bluesky => 'Ham2K BlueSky';
+
+	/// en: 'Follow us for news and updates'
+	String get blueskyDescription => 'Follow us for news and updates';
+
+	/// en: 'Contact Us'
+	String get contact => 'Contact Us';
+
+	/// en: 'help@ham2k.com — but try the Forums or Chat first!'
+	String get contactDescription => 'help@ham2k.com — but try the Forums or Chat first!';
 }
 
 // Path: settings.map
@@ -4505,9 +4529,6 @@ class Translations$settings$map$style$en {
 
 	/// en: 'Map Style'
 	String get title => 'Map Style';
-
-	/// en: 'Which basemap the Map tab uses. Automatic follows the app's light/dark theme.'
-	String get description => 'Which basemap the Map tab uses. Automatic follows the app\'s light/dark theme.';
 }
 
 // Path: settings.map.styleOpts
@@ -5082,7 +5103,7 @@ extension on Translations {
 			'operation.spots.empty' => 'No spots match your filters',
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
 			'operation.spots.unknownBand' => 'Other',
-			'operation.spots.auto' => 'Auto',
+			'operation.spots.auto' => 'Automatic',
 			'operation.spots.autoValue' => ({required Object value}) => 'Auto (${value})',
 			'operation.spots.any' => 'Any',
 			'operation.spots.allBands' => 'All Bands',
@@ -5370,18 +5391,12 @@ extension on Translations {
 			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
 			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
 			'settings.layoutDensity' => 'Layout Density',
-			'settings.layoutDensityOpts.auto' => 'Auto',
+			'settings.layoutDensityOpts.auto' => 'Automatic',
 			'settings.layoutDensityOpts.densest' => 'Densest',
 			'settings.layoutDensityOpts.dense' => 'Dense',
 			'settings.layoutDensityOpts.normal' => 'Normal',
 			'settings.layoutDensityOpts.sparse' => 'Sparse',
 			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
-			'settings.layoutDensityDescription.auto' => 'Chosen from the height of the window',
-			'settings.layoutDensityDescription.densest' => 'As much on screen as possible',
-			'settings.layoutDensityDescription.dense' => 'Fits more on screen',
-			'settings.layoutDensityDescription.normal' => 'The standard layout',
-			'settings.layoutDensityDescription.sparse' => 'More room around everything',
-			'settings.layoutDensityDescription.sparsest' => 'The most room around everything',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
@@ -5443,9 +5458,22 @@ extension on Translations {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tune exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
+			'settings.help.title' => 'Help & Resources',
+			'settings.help.description' => 'Community and support',
+			'settings.help.forums' => 'Ham2K Forums',
+			'settings.help.forumsDescription' => 'Find help, give feedback, discuss ideas…',
+			'settings.help.chat' => 'Ham2K Chat',
+			'settings.help.chatDescription' => 'The Discord server for our online community',
+			'settings.help.youtube' => 'Ham2K YouTube',
+			'settings.help.youtubeDescription' => 'Videos and live streams',
+			'settings.help.instagram' => 'Ham2K Instagram',
+			'settings.help.instagramDescription' => 'Because you cannot have too many photos…',
+			'settings.help.bluesky' => 'Ham2K BlueSky',
+			'settings.help.blueskyDescription' => 'Follow us for news and updates',
+			'settings.help.contact' => 'Contact Us',
+			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
 			'settings.map.title' => 'Map',
 			'settings.map.style.title' => 'Map Style',
-			'settings.map.style.description' => 'Which basemap the Map tab uses. Automatic follows the app\'s light/dark theme.',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
@@ -5819,6 +5847,8 @@ extension on Translations {
 			'commands.settingExpectsNumber' => 'a number',
 			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',
@@ -5826,8 +5856,6 @@ extension on Translations {
 			'commandDialog.sectionOperations' => 'Operations',
 			'commandDialog.goHome' => 'Home',
 			'commandDialog.goSettings' => 'Settings',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
