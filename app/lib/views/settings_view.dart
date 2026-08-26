@@ -3901,7 +3901,14 @@ class _AccountPaneState extends State<_AccountPane> {
         ],
         const SizedBox(height: Space.xxl),
         haloDialogFooterRow(
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+          // Disabled during a sign-in, like Save: closing the whole dialog
+          // abandons the login through `dispose`, which reads as the same
+          // gesture as the waiting body's own "Cancel sign-in" and is not.
+          // The pane's header close button remains, so this is about telling
+          // the two apart, not about trapping the operator in the wait.
+          cancel: TextButton(
+              onPressed: oauthLogin == null ? () => Navigator.of(context).pop() : null,
+              child: Text(context.t.common.cancel)),
           actions: [
             FilledButton(onPressed: oauthLogin == null ? _save : null, child: Text(context.t.common.save)),
           ],

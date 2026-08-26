@@ -1359,7 +1359,13 @@ class HaLoServices {
   /// widget test of what those states put on screen has no other way in.
   final LocationService? _locationOverride;
   late final LocationService location = _locationOverride ?? LocationService();
-  final DeepLinkService deepLinks = DeepLinkService();
+  /// Injectable like [_exportsOverride]: the real one reads
+  /// `AppLinks().uriLinkStream`, a platform channel with no implementation
+  /// under `flutter test`, so a redirect coming back from the OS is
+  /// otherwise unreachable — and the OAuth login it completes is the one
+  /// flow whose happy path exists nowhere else.
+  final DeepLinkService? _deepLinksOverride;
+  late final DeepLinkService deepLinks = _deepLinksOverride ?? DeepLinkService();
 
   /// Pusher app key + cluster for the realtime client — public,
   /// non-secret values (every Pusher client SDK ships them this way), but
@@ -1854,7 +1860,9 @@ class HaLoServices {
     LocationService? location,
     InboundQsoListenerService? inboundQsos,
     PeerService? peerService,
+    DeepLinkService? deepLinks,
   })  : _catOverride = cat,
+        _deepLinksOverride = deepLinks,
         _peerServiceOverride = peerService,
         _inboundQsosOverride = inboundQsos,
         _locationOverride = location,
