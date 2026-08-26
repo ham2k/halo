@@ -91,6 +91,33 @@ void main() {
     expect(find.text('Add equipment'), findsOneWidget);
   });
 
+  testWidgets('the Current Configuration fields start where the list rows do', (tester) async {
+    // On a wide pane the rows are centred to the ideal reading width by an
+    // inset that rides the ambient ListTileTheme. A hand-built row that names
+    // a spacing rung instead spans the whole pane, and the fields sit a
+    // couple of hundred pixels left of every row around them.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1600, 1200));
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+
+    final field = tester.getRect(find.byType(DropdownButtonFormField<String?>));
+    // The leading glyph of a plain row in the same list — where a row's
+    // contents actually start, inset and centring included.
+    final row = tester.getRect(find.widgetWithText(ListTile, 'Add equipment'));
+    final rowContentLeft = tester
+        .getRect(find.descendant(
+          of: find.widgetWithText(ListTile, 'Add equipment'),
+          matching: find.byType(Icon),
+        ))
+        .left;
+
+    expect(field.left, rowContentLeft);
+    // And that both of them are where a WIDE pane puts them. Comparing the
+    // field to a sibling row alone would stay green with the panel's centring
+    // gone altogether — the row moves with it.
+    expect(field.left - row.left, greaterThan(settingsRowInset + settingsRowCentering(row.width) / 2));
+  });
+
   testWidgets('configured equipment lists with its address and status', (tester) async {
     await pumpSettings(tester, catEnabled: true, equipment: {
       'version': 1,

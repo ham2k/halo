@@ -280,9 +280,28 @@ class HaloDialog extends StatelessWidget {
     this.list = false,
   });
 
-  /// A list dialog publishes the settings row inset its rows read from;
-  /// anything else is left exactly as the caller built it.
-  Widget _wrapContent(Widget content) => list ? SettingsList(child: content) : content;
+  /// A list dialog publishes the settings row inset its rows read from; any
+  /// other dialog is put back to the row theme it would have with no ancestor
+  /// `ListTileTheme` at all — the app theme's, which is what every consumer's
+  /// own fallback is written against.
+  ///
+  /// Not an inherited value, deliberately: `showDialog` CAPTURES the themes in
+  /// force where it was called and re-installs them inside the route, so a
+  /// dialog opened from a settings pane inherits that pane's row inset —
+  /// which carries the pane's centring offset (`settingsRowCentering`),
+  /// hundreds of pixels on a wide window. Left to inherit, a `ListTile` in
+  /// the dialog indents its contents by it and its title wraps to a letter a
+  /// line.
+  ///
+  /// Restated rather than merged, and a bare value rather than a number of
+  /// our own: a dialog's rows have to land where they do when the same dialog
+  /// is opened from anywhere else, and the consumers disagree about what "no
+  /// inset" means — `SectionHeader` reads Space.xxl, `FormRenderer`'s rows
+  /// zero, a plain `ListTile` Material's 16. Naming one of those here would
+  /// move the other two in every dialog in the app.
+  Widget _wrapContent(BuildContext context, Widget content) => list
+      ? SettingsList(child: content)
+      : ListTileTheme(data: Theme.of(context).listTileTheme, child: content);
 
   @override
   Widget build(BuildContext context) {
@@ -301,8 +320,8 @@ class HaloDialog extends StatelessWidget {
       body = Material(
         color: colors.surface,
         child: scrollable
-            ? SingleChildScrollView(padding: padding, child: _wrapContent(content!))
-            : Padding(padding: padding, child: _wrapContent(content!)),
+            ? SingleChildScrollView(padding: padding, child: _wrapContent(context, content!))
+            : Padding(padding: padding, child: _wrapContent(context, content!)),
       );
     }
 

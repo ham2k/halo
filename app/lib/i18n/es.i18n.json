@@ -1120,7 +1120,7 @@
       "unavailableTitle": "Algunos ajustes no están disponibles",
       "unavailableText": "El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.",
       "station": "Configuración de Estación",
-      "stationDescription": "Radios y otros equipos",
+      "stationDescription": "Control CAT y más opciones",
       "peers": "Dispositivos",
       "peersDescription": "Comparte una operación con tus otros dispositivos en la misma red"
     },

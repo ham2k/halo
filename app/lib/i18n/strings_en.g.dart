@@ -3820,8 +3820,8 @@ class Translations$settings$panels$en {
 	/// en: 'Station Configuration'
 	String get station => 'Station Configuration';
 
-	/// en: 'Radios and other equipment'
-	String get stationDescription => 'Radios and other equipment';
+	/// en: 'CAT control & more options'
+	String get stationDescription => 'CAT control & more options';
 
 	/// en: 'Peer Devices'
 	String get peers => 'Peer Devices';
@@ -5821,7 +5821,7 @@ extension on Translations {
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
-			'settings.panels.stationDescription' => 'Radios and other equipment',
+			'settings.panels.stationDescription' => 'CAT control & more options',
 			'settings.panels.peers' => 'Peer Devices',
 			'settings.panels.peersDescription' => 'Share an operation with your other devices on the same network',
 			'settings.showMoreSettings' => 'Show more settings',

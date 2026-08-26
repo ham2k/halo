@@ -1217,7 +1217,7 @@
       "unavailableTitle": "Some settings are unavailable",
       "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing.",
       "station": "Station Configuration",
-      "stationDescription": "Radios and other equipment",
+      "stationDescription": "CAT control & more options",
       "peers": "Peer Devices",
       "peersDescription": "Share an operation with your other devices on the same network"
     },

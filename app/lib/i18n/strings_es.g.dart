@@ -1719,7 +1719,7 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get unavailableTitle => 'Algunos ajustes no están disponibles';
 	@override String get unavailableText => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.';
 	@override String get station => 'Configuración de Estación';
-	@override String get stationDescription => 'Radios y otros equipos';
+	@override String get stationDescription => 'Control CAT y más opciones';
 	@override String get peers => 'Dispositivos';
 	@override String get peersDescription => 'Comparte una operación con tus otros dispositivos en la misma red';
 }
@@ -3148,7 +3148,7 @@ extension on TranslationsEs {
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
 			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
-			'settings.panels.stationDescription' => 'Radios y otros equipos',
+			'settings.panels.stationDescription' => 'Control CAT y más opciones',
 			'settings.panels.peers' => 'Dispositivos',
 			'settings.panels.peersDescription' => 'Comparte una operación con tus otros dispositivos en la misma red',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',

@@ -11,6 +11,7 @@
 // new type contributes its settings without touching this file.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -35,6 +36,22 @@ import 'equipment_report.dart';
 ///
 /// A fixed count, deliberately. Matching the real length would leak it.
 const _storedSecretPlaceholder = '••••••••';
+
+/// The inset the rows of this panel take: the ambient `ListTileTheme`, which
+/// in the settings pane is the `SettingsList` one plus the pane's centring
+/// offset, and which every `ListTile`, [SectionHeader] and [FormRenderer] row
+/// here already reads for itself.
+///
+/// The hand-built rows below have to ask for it: one that names a spacing
+/// rung instead spans the whole pane while the list rows above and below it
+/// are centred in it.
+///
+/// The fallback is a `ListTile`'s own — this panel also presents with no
+/// ambient theme at all (`compact`, in a modal pane), and there the rows to
+/// line up with are plain tiles at Material's inset.
+EdgeInsets _rowInset(BuildContext context) =>
+    (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl))
+        .resolve(Directionality.of(context));
 
 class StationPanel extends StatelessWidget {
   final HaLoServices services;
@@ -402,7 +419,7 @@ class StationPanel extends StatelessWidget {
       // invisible until something else happened to rebuild this.
       listenable: Listenable.merge([_cat, services.settings]),
       builder: (context, _) {
-        final safeLeft = PaneSafeArea.leftOf(context);
+        final rowInset = _rowInset(context);
         final nodes = _cat.nodes;
         // Every transceiver the station knows about, connected or not —
         // this is the station's configuration, not its current link state.
@@ -426,7 +443,9 @@ class StationPanel extends StatelessWidget {
             // rest of the app behaves. Today that is one question.
             SectionHeader(st.currentConfiguration),
             Padding(
-              padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, Space.md, Space.xs, Space.md),
+              // Trailing edge short by the tune button's own padding, so the
+              // glyph lands on the inset rather than the button's box does.
+              padding: EdgeInsets.fromLTRB(rowInset.left, Space.md, math.max(0.0, rowInset.right - Space.lg), Space.md),
               child: Row(
                 children: [
                   Expanded(
@@ -490,7 +509,7 @@ class StationPanel extends StatelessWidget {
             // row since neither needs the tune button beside the main VFO.
             if (antennas.isNotEmpty || keys.isNotEmpty)
               Padding(
-                padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, 0, Space.xl, Space.md),
+                padding: EdgeInsets.fromLTRB(rowInset.left, 0, rowInset.right, Space.md),
                 child: Row(
                   children: [
                     if (antennas.isNotEmpty)
@@ -563,7 +582,7 @@ class StationPanel extends StatelessWidget {
                 mouseCursor: SystemMouseCursors.click,
               ),
             ],
-            if (compact) _powerField(context, safeLeft: safeLeft),
+            if (compact) _powerField(context, inset: rowInset),
             if (!compact) ...[
               const SizedBox(height: Space.xl * 2),
               // A section of its own — Space.xl of top padding from
@@ -603,7 +622,7 @@ class StationPanel extends StatelessWidget {
   /// stretching the row, with "Watts" after it — baseline-aligned with the
   /// field's own text, not merely centered beside it — standing in for the
   /// unit label a bare number field doesn't carry.
-  Widget _powerField(BuildContext context, {required double safeLeft}) {
+  Widget _powerField(BuildContext context, {required EdgeInsets inset}) {
     final st = context.t.settings.station;
     final style = Theme.of(context).textTheme.titleMedium ?? const TextStyle();
     // 4 digits' width, plus poloFieldDecoration's own horizontal content
@@ -612,7 +631,7 @@ class StationPanel extends StatelessWidget {
     final scale = MediaQuery.textScalerOf(context).scale(1.0);
     final fieldWidth = textWidth(context, '0000', style) + 8 * scale + 3 * scale;
     return Padding(
-      padding: EdgeInsets.fromLTRB(safeLeft + Space.xl, Space.md, Space.xl, Space.md),
+      padding: EdgeInsets.fromLTRB(inset.left, Space.md, inset.right, Space.md),
       child: _PowerField(
         power: _cat.displayedPower,
         label: st.trackFieldPower,

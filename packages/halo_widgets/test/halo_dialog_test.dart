@@ -82,6 +82,51 @@ void main() {
     expect(card.width, lessThanOrEqualTo(maxDialogWidth));
   });
 
+  testWidgets('a row inset captured from the calling pane does not reach the dialog', (tester) async {
+    // The trap: `showDialog` re-installs the inherited themes in force where
+    // it was called, and a settings pane's ambient ListTileTheme carries its
+    // centring offset — so the dialog's own rows indent by a settings pane's
+    // width unless the shell puts the row theme back.
+    //
+    // Measured against the SAME dialog opened with nothing ambient, not
+    // against a threshold: the fix has to leave every dialog that never had a
+    // theme to inherit exactly where it was, and a bound that only rules out
+    // the 220px leak would pass for any inset this shell invented instead.
+    Future<double> rowLeft({EdgeInsets? ambient}) async {
+      Widget app = MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showHaloDialog<void>(
+              context: context,
+              builder: (_) => const HaloDialog(
+                title: Text('T'),
+                wide: true,
+                content: ListTile(title: Text('a row')),
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      );
+      if (ambient != null) app = ListTileTheme.merge(contentPadding: ambient, child: app);
+      await tester.pumpWidget(app);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      final card = tester.getRect(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first);
+      final left = tester.getRect(find.text('a row')).left - card.left;
+      // Dismiss, or the next open taps this dialog's barrier instead.
+      tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+      await tester.pumpAndSettle();
+      return left;
+    }
+
+    expect(
+      await rowLeft(ambient: const EdgeInsets.symmetric(horizontal: 220)),
+      await rowLeft(),
+    );
+  });
+
   testWidgets('a plain prompt stays compact; wide dialogs get the full cap', (tester) async {
     Future<double> cardWidth({required bool wide}) async {
       await tester.pumpWidget(MaterialApp(
