@@ -846,6 +846,13 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// Keeps one row's actions open at a time.
   final _SlideGroup _slideGroup = _SlideGroup();
 
+  /// The call the open row's peek put in the logging fields, uppercased, or
+  /// null when no peek is standing. Written by the same two callbacks that
+  /// make and take back the fill, so it tracks the fill rather than the row:
+  /// a peek the logging panel held back above work in progress never became
+  /// the current call, and must not suppress that call's reveal.
+  String? _peekedCall;
+
   /// Whether [_metrics] holds a reading yet — `late` cannot be asked. The
   /// FIRST `didChangeDependencies` has no previous rung to convert a scale
   /// from, and reading `_metrics` to find that out would throw.
@@ -1624,13 +1631,26 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                 // different one.
                                 background: theme.colorScheme.tertiary,
                                 foreground: theme.colorScheme.onTertiary,
-                                onPressed: () => _logSpot(spot),
+                                // The peek is SPENT here, not withdrawn (see
+                                // [_SlidableSpotRowState._fire]), so nothing
+                                // fires `onWithdrawn` on this path and the
+                                // call has to be given up by hand — otherwise
+                                // it stays this panel's peek for the session,
+                                // and meeting the same station again on
+                                // another band would silently reveal nothing.
+                                onPressed: () {
+                                  _peekedCall = null;
+                                  _logSpot(spot);
+                                },
                                 // Opening fills the logging fields with this
                                 // spot, so what the commit is about to log is
                                 // on screen before it is logged.
                                 onRevealed: widget.onSuggestQso == null
                                     ? null
-                                    : () => widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false),
+                                    : () {
+                                        _peekedCall = _callOf(spot)?.toUpperCase();
+                                        widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false);
+                                      },
                                 // The fill lasts as long as the row is open —
                                 // a spot the operator dragged back or set
                                 // aside is not the station they are working,
@@ -1638,9 +1658,21 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                 // Log a contact with whoever was slid last.
                                 // Scrolling is not one of those: it leaves the
                                 // row open, and so leaves the fill alone.
-                                onWithdrawn: widget.onWithdrawSuggestion == null
-                                    ? null
-                                    : () => widget.onWithdrawSuggestion!(_callOf(spot)),
+                                // Unconditional, unlike the suggestion it
+                                // reports: [_peekedCall] is this panel's own
+                                // state, and hanging its clearing off an
+                                // optional callback would leave the peek
+                                // standing for good wherever that callback is
+                                // absent.
+                                onWithdrawn: () {
+                                  // Only its own: dragging out through the
+                                  // middle and back out the other side
+                                  // withdraws before the incoming side
+                                  // reveals, and a blind clear there would
+                                  // drop the new peek.
+                                  if (_peekedCall == _callOf(spot)?.toUpperCase()) _peekedCall = null;
+                                  widget.onWithdrawSuggestion?.call(_callOf(spot));
+                                },
                                 onSettled: widget.onSuggestionSettled,
                               ),
                         // Always the reverse of what the row currently says, so
@@ -1862,6 +1894,18 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _revealedCall = currentCall;
     _correctedRevealFor = null;
     if (currentCall == null) return;
+    // A slide put this call in the fields — the operator is looking straight
+    // at its row and dragging it, so there is nothing to bring into view and
+    // moving the list would pull the row out from under the finger. Latched
+    // rather than skipped, so the scroll does not simply arrive late once the
+    // row closes with the call still in the fields.
+    //
+    // The peeked call, not merely "some row is open": this is the one give-up
+    // in this machine that a later frame does NOT recover from, so it may only
+    // retire the call the slide itself put there. A call from anywhere else —
+    // typed while a row sits open, or a peek held back above work in progress
+    // — is nobody's peek and still reveals.
+    if (currentCall == _peekedCall) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // The latch moving between arming and here means something in the same
       // post-frame batch superseded this reveal — [_calibrateRowHeight] clears

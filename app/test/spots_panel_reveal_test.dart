@@ -1213,6 +1213,125 @@ void main() {
       expect(openDx(tester, 'K0002', closed: 'K0003'), greaterThan(0),
           reason: 'the second row is open — its slide was not suspended by the first closing');
     });
+
+    /// The last spot whose row the fold cuts: rendered, its text still on
+    /// screen, but the row itself running past the bottom edge. That is the
+    /// only row a reveal would move for — one entirely on screen is already
+    /// revealed and never scrolls — so a slide test that used the top row
+    /// would pass with the suppression taken back out.
+    String callCutByTheFold(WidgetTester tester, int count) {
+      final fold = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final pitch = tester.getRect(find.text('K0002')).top - tester.getRect(find.text('K0001')).top;
+      for (var i = count - 1; i >= 0; i--) {
+        final call = 'K${i.toString().padLeft(4, '0')}';
+        final found = find.text(call);
+        if (found.evaluate().isEmpty) continue;
+        final centre = tester.getRect(found).center.dy;
+        // Its centre is still on screen — the drag has to land on it — while
+        // the row it sits in runs past the bottom edge.
+        if (centre < fold && centre + pitch / 2 > fold) return call;
+      }
+      fail('no row is cut by the fold — the board is too short to test a reveal');
+    }
+
+    testWidgets('sliding the row the fold cuts leaves the list where it is', (tester) async {
+      final services = await servicesWith(_board(20));
+      Map<String, dynamic>? suggested;
+      final setCall = await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested = qso,
+        onLogQso: (_) {},
+      );
+
+      // Scrolled off a row boundary, the way a board the operator has scanned
+      // sits: without this every row lands whole inside the viewport and no
+      // reveal would move the list even with the suppression taken out.
+      final controller = tester.widget<ListView>(find.byType(ListView)).controller!;
+      controller.jumpTo(25);
+      await tester.pump();
+
+      final call = callCutByTheFold(tester, 20);
+      final gesture = await tester.startGesture(tester.getCenter(find.text(call)));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+      expect(suggested?['their'], {'call': call}, reason: 'the peek filled the fields');
+
+      // What the operation view does with that suggestion: the call comes
+      // straight back down as the current QSO. The finger is still on the row.
+      await setCall(_entering(call));
+
+      expect(offsetOf(tester), 25, reason: 'the row may not be scrolled out from under the finger');
+
+      await gesture.up();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(offsetOf(tester), 25,
+          reason: 'nor once the row comes to rest open with the call still in the fields');
+
+      // Dragged back shut, with the call left in the fields — what a peek the
+      // operator typed over leaves behind, since the withdrawal declines to
+      // take back an entry that is no longer the peek's own. This is what the
+      // LATCH buys over simply skipping the scroll: skipping would let the
+      // very next build arm the call afresh and scroll to it a moment after
+      // the gesture ended, which is the yank arriving late rather than not at
+      // all.
+      final back = await tester.startGesture(tester.getCenter(find.text(call)));
+      for (var i = 0; i < 10; i++) {
+        await back.moveBy(const Offset(-12, 0));
+        await tester.pump();
+      }
+      await back.up();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      // The rebuild matters: the row closing does not rebuild the PANEL, so
+      // without one nothing re-arms and even an un-latched call sits still.
+      // The board polls, so a rebuild always comes — here it is a fresh
+      // callInfo carrying the same call, which is what the operation view
+      // pushes down on every one of its own rebuilds.
+      await setCall(_entering(call));
+
+      expect(offsetOf(tester), 25, reason: 'and not once the row has closed either');
+    });
+
+    testWidgets('a call the open row did not put there is still revealed', (tester) async {
+      final services = await servicesWith(_board(20));
+      final setCall = await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: (_) {},
+      );
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(12, 0));
+        await tester.pump();
+      }
+
+      // Typing a call closes open rows — but only AFTER the frame, and the
+      // build carrying the typed call runs first. Suppressing on "some row is
+      // open" would latch this call while the row was still registered and
+      // retire it for good: the operator types a spotted call and the list
+      // never goes to it, then or ever.
+      await setCall(_entering('K0015'));
+
+      expect(offsetOf(tester), greaterThan(0), reason: 'a call that is nobody\'s peek still reveals');
+      expect(find.text('K0015').hitTestable(), findsOneWidget);
+
+      await gesture.up();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    });
   });
 
   group('visibility', () {
