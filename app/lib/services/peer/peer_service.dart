@@ -26,9 +26,9 @@ import '../../tools/backoff.dart';
 import '../error_reporting_service.dart';
 import 'ble/peer_ble_gateway.dart';
 import 'ble/peer_ble_transport.dart';
-import 'peer_beacon.dart';
 import 'peer_beacon_types.dart';
 import 'peer_link.dart';
+import 'peer_network.dart';
 
 /// How often this device says it is here. Frequent enough that opening the
 /// app on a second device feels immediate, cheap enough to ignore: one small
@@ -90,6 +90,7 @@ class PeerService extends ChangeNotifier {
     this.bleGateway,
     this.bleHeadStart = const Duration(seconds: 5),
     this.bleJitter = true,
+    this.network = const RealPeerNetwork(),
   })  : cursors = PeerCursorStore(db),
         trust = PeerTrustStore(db) {
     // The ONLY thing that turns a local write into a live push. Without it
@@ -131,6 +132,11 @@ class PeerService extends ChangeNotifier {
   /// here can read it.
   String? Function()? localAccountTag;
   final int beaconPort;
+
+  /// Where sockets come from. Production is [RealPeerNetwork]; the tests
+  /// pass a fake LAN so nothing binds a real port — see
+  /// `test/peer_network_fakes.dart` for what that does and does not model.
+  final PeerNetwork network;
 
   /// The BLE radio, or null where the platform has none (web, tests that
   /// don't care). Constructing it touches nothing; the radio is only woken
@@ -543,7 +549,7 @@ class PeerService extends ChangeNotifier {
     _discoveryError = null;
     _linkError = null;
     try {
-      _linkServer = await PeerLinkServer.bind();
+      _linkServer = await network.bindLinkServer();
     } catch (e, st) {
       // A device that cannot listen can still dial out, so this is degraded
       // rather than fatal — but it must be visible, since a firewall prompt
@@ -576,7 +582,7 @@ class PeerService extends ChangeNotifier {
     // nothing on screen saying so.
     final PeerBeaconSocket socket;
     try {
-      socket = await openPeerBeaconSocket(port: beaconPort);
+      socket = await network.openBeaconSocket(port: beaconPort);
     } catch (e, st) {
       error = 'Discovery failed: $e';
       debugPrint('[peer] beacon socket FAILED: $e');
@@ -744,7 +750,7 @@ class PeerService extends ChangeNotifier {
     final beacon = runtime.beacon;
 
     try {
-      final link = await dialPeerLink(beacon.address!, beacon.port);
+      final link = await network.dial(beacon.address!, beacon.port);
       // Superseded while the dial was in flight — a teardown, a revoke, or a
       // newer beacon. Closing the link we just opened is the only way it
       // gets released.

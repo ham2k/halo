@@ -5,25 +5,10 @@
 
 import 'package:halo_core/halo_core.dart';
 
-class PeerMediaConnection {
-  final String ticket;
-  final PeerLink link;
+import 'peer_link_types.dart';
 
-  const PeerMediaConnection({required this.ticket, required this.link});
-}
-
-class PeerLinkServer {
-  static const mediaPath = '/media';
-
-  static Future<PeerLinkServer> bind({int port = 0}) =>
-      throw UnsupportedError('Peer links need dart:io');
-
-  int get port => throw UnsupportedError('Peer links need dart:io');
-  Stream<PeerLink> get connections => throw UnsupportedError('Peer links need dart:io');
-  Stream<PeerMediaConnection> get mediaConnections =>
-      throw UnsupportedError('Peer links need dart:io');
-  Future<void> close() async {}
-}
+Future<PeerLinkServer> bindPeerLinkServer({int port = 0}) =>
+    throw UnsupportedError('Peer links need dart:io');
 
 Future<PeerLink> dialPeerLink(
   String address,

@@ -1,28 +1,23 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// PeerService end to end (HALO-310): two services on real sockets finding
-// each other by beacon, pairing, and syncing a log — the closest thing to
-// "two devices at a park" this suite can run.
+// PeerService end to end (HALO-310): two services finding each other by
+// beacon, pairing, and syncing a log — the closest thing to "two devices at
+// a park" this suite can run.
 //
-// Both services share one ephemeral beacon port on loopback, so the test
-// never depends on the machine's network or collides with a real HaLo
-// running on the standard port.
+// Both run the REAL beacon socket, link handling and sessions; only the
+// sockets underneath are fake (`peer_network_fakes.dart`), so the test never
+// depends on the machine's network, never collides with a HaLo running on
+// the standard port, and never puts a broadcast on the operator's LAN.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 
-Future<int> freeUdpPort() async {
-  final probe = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
-  final port = probe.port;
-  probe.close();
-  return port;
-}
+import 'peer_network_fakes.dart';
 
 /// Polls until [condition] holds, so a test waits on the thing it cares
 /// about rather than on a guessed sleep. Real sockets and timers are
@@ -42,7 +37,7 @@ Future<void> waitFor(
 }
 
 class _Device {
-  _Device(this.deviceId, this.name, int beaconPort) {
+  _Device(this.deviceId, this.name, FakeHost host) {
     db = HaLoDatabase(NativeDatabase.memory());
     outbox = PeerOutbox(db);
     // Wired exactly as HaLoServices._onLocalWrite does. Without this the
@@ -57,7 +52,8 @@ class _Device {
       qsos: qsos,
       localDeviceId: deviceId,
       localDeviceName: name,
-      beaconPort: beaconPort,
+      beaconPort: fakeBeaconPort,
+      network: host.network,
     );
     // One operator's own devices, which is what lets an operation the other
     // has never seen cross at all (`PeerSession`'s header). Wired here the
@@ -87,15 +83,15 @@ class _Device {
 }
 
 void main() {
-  late int beaconPort;
+  late FakeLan lan;
   late _Device deviceA;
   late _Device deviceB;
 
   setUp(() async {
-    beaconPort = await freeUdpPort();
+    lan = FakeLan();
     // 'device-a' sorts below 'device-b', so A is the side that dials.
-    deviceA = _Device('device-a', 'Laptop', beaconPort);
-    deviceB = _Device('device-b', 'Phone', beaconPort);
+    deviceA = _Device('device-a', 'Laptop', lan.host());
+    deviceB = _Device('device-b', 'Phone', lan.host());
   });
 
   tearDown(() async {
@@ -373,12 +369,21 @@ void main() {
     await deviceB.service.setOpenOperation(op);
     await waitFor('peers to find each other', () => deviceA.service.peers.isNotEmpty);
 
+    // B's, still up — so the counts below are A's alone.
+    final othersSockets = lan.openSockets - 1;
+    final othersServers = lan.openLinkServers - 1;
+
     await deviceA.service.setEnabled(false);
     expect(deviceA.service.peers, isEmpty);
     expect(deviceA.service.running, isFalse);
 
-    // The real assertion: the beacon port and listen socket were released, so
-    // starting again works rather than failing to bind.
+    // RELEASED, not merely dereferenced. Asserted as a count because over an
+    // in-memory segment no later bind can fail: "starting again works" is
+    // evidence on real sockets and none at all here, so a teardown that
+    // leaked both would look identical without this.
+    await waitFor('A\'s sockets to be released',
+        () => lan.openSockets == othersSockets && lan.openLinkServers == othersServers);
+
     await deviceA.service.setEnabled(true);
     await waitFor('discovery to work a second time', () => deviceA.service.peers.isNotEmpty);
     expect(deviceA.service.error, isNull);

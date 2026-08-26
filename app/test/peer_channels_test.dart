@@ -1,15 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The ephemeral channel end to end (HALO-334): two real services on loopback
-// sockets, PeerChannels routing GPS between them. The sender's location is a
+// The ephemeral channel end to end (HALO-334): two real services on an
+// in-memory LAN segment (`peer_network_fakes.dart`), PeerChannels routing
+// GPS between them. The sender's location is a
 // fake with a settable fix — a VM test has no GPS to grant — but the
 // receiver's LocationService is REAL, so what these prove is the whole
 // inbound path: wire → session gate → router → the fallback layer consumers
 // actually read.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,14 +19,10 @@ import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<int> freeUdpPort() async {
-  final probe = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
-  final port = probe.port;
-  probe.close();
-  return port;
-}
+import 'peer_network_fakes.dart';
 
 Future<void> waitFor(
   String what,
@@ -94,7 +90,7 @@ class _FakeGpsLocation extends LocationService {
 }
 
 class _Device {
-  _Device(this.deviceId, this.name, int beaconPort,
+  _Device(this.deviceId, this.name, FakeHost host,
       {LocationService? locationOverride, required SharedPreferences prefs, bool ownsRadio = false}) {
     db = HaLoDatabase(NativeDatabase.memory());
     outbox = PeerOutbox(db);
@@ -112,7 +108,8 @@ class _Device {
       qsos: qsos,
       localDeviceId: deviceId,
       localDeviceName: name,
-      beaconPort: beaconPort,
+      beaconPort: fakeBeaconPort,
+      network: host.network,
     );
     channels = PeerChannels(
       peers: service,
@@ -148,20 +145,20 @@ class _Device {
 }
 
 void main() {
-  late int beaconPort;
+  late FakeLan lan;
   late _FakeGpsLocation phoneGps;
   late _Device phone;
   late _Device laptop;
 
   setUp(() async {
-    beaconPort = await freeUdpPort();
+    lan = FakeLan();
     phoneGps = _FakeGpsLocation();
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     // 'device-a' sorts lower, so the laptop dials the phone. The laptop is
     // the radio owner throughout — the park setup.
-    laptop = _Device('device-a', 'Laptop', beaconPort, prefs: prefs, ownsRadio: true);
-    phone = _Device('device-b', 'Phone', beaconPort, locationOverride: phoneGps, prefs: prefs);
+    laptop = _Device('device-a', 'Laptop', lan.host(), prefs: prefs, ownsRadio: true);
+    phone = _Device('device-b', 'Phone', lan.host(), locationOverride: phoneGps, prefs: prefs);
   });
 
   tearDown(() async {

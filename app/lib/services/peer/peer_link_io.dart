@@ -21,25 +21,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
-/// A media link and the ticket it presented (HALO-369).
-///
-/// The media path carries no `hello` and cannot be admitted the way the
-/// control link is, so it arrives bearing a one-time ticket the control
-/// link — which IS trusted and established — handed out. The server does not
-/// judge the ticket; it hands both to whoever minted it.
-class PeerMediaConnection {
-  final String ticket;
-  final PeerLink link;
-
-  const PeerMediaConnection({required this.ticket, required this.link});
-}
+import 'peer_link_types.dart';
 
 /// Accepts incoming peer links on an ephemeral port.
 ///
 /// The port is chosen by the OS (bind to 0) and published in the beacon
 /// rather than fixed: two HaLo windows on one machine must both be able to
 /// listen, which a hard-coded port would prevent.
-class PeerLinkServer {
+class WebSocketPeerLinkServer implements PeerLinkServer {
   /// Media links upgrade at this path. Everything else on this port is the
   /// control protocol, so one bound socket and one published beacon serve
   /// both and a viewer needs nothing it did not already know.
@@ -53,7 +42,7 @@ class PeerLinkServer {
   /// ends already handle.
   static const Duration mediaPingInterval = Duration(seconds: 10);
 
-  PeerLinkServer._(this._server, this._controller, this._mediaController) {
+  WebSocketPeerLinkServer._(this._server, this._controller, this._mediaController) {
     _server.listen(
       (request) async {
         if (!WebSocketTransformer.isUpgradeRequest(request)) {
@@ -115,34 +104,40 @@ class PeerLinkServer {
   final StreamController<PeerLink> _controller;
   final StreamController<PeerMediaConnection> _mediaController;
 
-  /// Binds on all interfaces, letting the OS pick the port.
-  ///
-  /// Throws if the bind fails — unlike the beacon socket, which degrades to
-  /// "no peers found". A device that cannot listen can still dial out, but
-  /// the caller has to know that so it can say so; silently returning a
-  /// server that never accepts anything would be untestable in the field.
-  static Future<PeerLinkServer> bind({int port = 0}) async {
-    final server = await HttpServer.bind(InternetAddress.anyIPv4, port, shared: false);
-    return PeerLinkServer._(
-      server,
-      StreamController<PeerLink>.broadcast(),
-      StreamController<PeerMediaConnection>.broadcast(),
-    );
-  }
-
-  /// What to publish in the beacon.
+  @override
   int get port => _server.port;
 
+  @override
   Stream<PeerLink> get connections => _controller.stream;
 
-  /// Inbound media links, each with the ticket it presented.
+  @override
   Stream<PeerMediaConnection> get mediaConnections => _mediaController.stream;
 
+  @override
   Future<void> close() async {
     if (!_controller.isClosed) await _controller.close();
     if (!_mediaController.isClosed) await _mediaController.close();
     await _server.close(force: true);
   }
+}
+
+/// Binds a link listener on all interfaces, letting the OS pick the port.
+///
+/// Throws if the bind fails — unlike the beacon socket, which degrades to
+/// "no peers found". A device that cannot listen can still dial out, but the
+/// caller has to know that so it can say so; silently returning a server that
+/// never accepts anything would be untestable in the field.
+///
+/// A top-level function rather than a static on the class, matching
+/// [dialPeerLink]: the class is now an interface ([PeerLinkServer]), and a
+/// static factory on the implementation cannot be swapped for a fake.
+Future<PeerLinkServer> bindPeerLinkServer({int port = 0}) async {
+  final server = await HttpServer.bind(InternetAddress.anyIPv4, port, shared: false);
+  return WebSocketPeerLinkServer._(
+    server,
+    StreamController<PeerLink>.broadcast(),
+    StreamController<PeerMediaConnection>.broadcast(),
+  );
 }
 
 /// Dials [address]:[port].
@@ -161,7 +156,7 @@ Future<PeerLink> dialPeerLink(
   // bound socket, same beacon — and is told apart by its path alone.
   final url = mediaTicket == null
       ? 'ws://$address:$port'
-      : 'ws://$address:$port${PeerLinkServer.mediaPath}'
+      : 'ws://$address:$port${WebSocketPeerLinkServer.mediaPath}'
           '?ticket=${Uri.encodeQueryComponent(mediaTicket)}';
   final pending = WebSocket.connect(url);
   // `.timeout()` fails the future it returns; it does NOT cancel the connect
@@ -178,7 +173,7 @@ Future<PeerLink> dialPeerLink(
     timedOut = true;
     throw TimeoutException('peer dial to $address:$port timed out', timeout);
   });
-  if (mediaTicket != null) socket.pingInterval = PeerLinkServer.mediaPingInterval;
+  if (mediaTicket != null) socket.pingInterval = WebSocketPeerLinkServer.mediaPingInterval;
   return WebSocketPeerLink(socket);
 }
 

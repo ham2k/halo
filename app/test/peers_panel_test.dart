@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Peer Devices settings panel (HALO-310). The service beneath it has its
-// own real-socket tests; these cover what those cannot — that the panel
+// own end-to-end tests; these cover what those cannot — that the panel
 // reflects the switch, lists what is paired, and that the destructive action
 // asks first.
-
-import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +19,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 import 'package:ham2k_logger/views/peers_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'peer_network_fakes.dart';
 
 /// The real ExtensionService boots a JS runtime and leaves timers running,
 /// which a widget test fails on ("A Timer is still pending"). Every other
@@ -101,17 +101,10 @@ void main() {
   }
 
   group('the EXP P2P gate', () {
-    Future<int> freePort() async {
-      final probe = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
-      final port = probe.port;
-      probe.close();
-      return port;
-    }
-
-    /// A services bundle whose peer service beacons on an ephemeral port, so
+    /// A services bundle whose peer service runs on an in-memory segment, so
     /// the "gate open" case can actually start without touching the real
     /// discovery port (or another HaLo running on this machine).
-    Future<HaLoServices> servicesOnFreePort() async {
+    Future<HaLoServices> servicesOnFakeLan() async {
       final peer = PeerService(
         db: db,
         outbox: PeerOutbox(db),
@@ -119,7 +112,7 @@ void main() {
         qsos: QsosRepository(db),
         localDeviceId: 'local',
         localDeviceName: 'Local',
-        beaconPort: await freePort(),
+        network: FakeLan().host().network,
       );
       addTearDown(() async {
         await peer.setEnabled(false);
@@ -130,7 +123,7 @@ void main() {
     }
 
     test('with the experiment off, an open operation and the switch on start nothing', () async {
-      final withPeer = await servicesOnFreePort();
+      final withPeer = await servicesOnFakeLan();
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
       // Not merely "no UI": nothing may bind, announce, or be reachable.
@@ -139,7 +132,7 @@ void main() {
 
     test('with the experiment on, the same state does start sharing', () async {
       await settings.setExperimentEnabled('p2p', true);
-      final withPeer = await servicesOnFreePort();
+      final withPeer = await servicesOnFakeLan();
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
       await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -149,7 +142,7 @@ void main() {
 
     test('turning the experiment back off tears down a running session', () async {
       await settings.setExperimentEnabled('p2p', true);
-      final withPeer = await servicesOnFreePort();
+      final withPeer = await servicesOnFakeLan();
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
       await Future<void>.delayed(const Duration(milliseconds: 200));

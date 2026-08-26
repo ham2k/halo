@@ -38,8 +38,9 @@ import 'peer_beacon_types.dart';
 Future<PeerBeaconSocket> openPeerBeaconSocket({
   int port = peerBeaconPort,
   @visibleForTesting String broadcastAddress = '255.255.255.255',
+  @visibleForTesting DatagramBinder bind = _bind,
 }) async {
-  final socket = _PeerBeaconSocket(port, broadcastAddress);
+  final socket = _PeerBeaconSocket(port, broadcastAddress, bind);
   // Awaited so an ordinary open still behaves exactly as it always did: the
   // caller gets a socket that is already bound and listening, not one that
   // will be a tick later.
@@ -47,8 +48,15 @@ Future<PeerBeaconSocket> openPeerBeaconSocket({
   return socket;
 }
 
+/// How this socket gets a [RawDatagramSocket]. The only seam the tests need
+/// to drive the retry ladder: a held port, a sandbox denial and an interface
+/// that is not up yet all reach this class as a throw from here, and none of
+/// them can be produced on demand from a real socket without racing the
+/// machine for a port.
+typedef DatagramBinder = Future<RawDatagramSocket> Function(int port);
+
 class _PeerBeaconSocket implements PeerBeaconSocket {
-  _PeerBeaconSocket(this._port, this._broadcastAddress) {
+  _PeerBeaconSocket(this._port, this._broadcastAddress, this._bind) {
     // Deferred to the FIRST listener rather than added when it happens. A
     // broadcast controller drops anything added while nobody is subscribed,
     // and the opening failure lands before the caller can possibly have
@@ -66,6 +74,8 @@ class _PeerBeaconSocket implements PeerBeaconSocket {
   /// interfaces, which would make the test pass or fail on the machine
   /// rather than on the code.
   final String _broadcastAddress;
+
+  final DatagramBinder _bind;
 
   /// Null between losing a socket and getting one back. dart:io closes a
   /// datagram socket after ANY error event of its own, so the socket this

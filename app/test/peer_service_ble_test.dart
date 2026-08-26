@@ -8,7 +8,6 @@
 // layer, transport, session, trust, outbox) works over the radio path.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,13 +17,7 @@ import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 
 import 'peer_ble_fakes.dart';
-
-Future<int> freeUdpPort() async {
-  final probe = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
-  final port = probe.port;
-  probe.close();
-  return port;
-}
+import 'peer_network_fakes.dart';
 
 Future<void> waitFor(
   String what,
@@ -40,7 +33,7 @@ Future<void> waitFor(
 }
 
 class _Device {
-  _Device(this.deviceId, this.name, int beaconPort, FakeBleWorld world, String bleAddress) {
+  _Device(this.deviceId, this.name, FakeHost host, FakeBleWorld world, String bleAddress) {
     db = HaLoDatabase(NativeDatabase.memory());
     outbox = PeerOutbox(db);
     operations = OperationsRepository(db, onChange: outbox.notifyChanged);
@@ -53,7 +46,10 @@ class _Device {
       qsos: qsos,
       localDeviceId: deviceId,
       localDeviceName: name,
-      beaconPort: beaconPort,
+      // Shared by both devices deliberately — they are on separate segments,
+      // so the same number cannot let them find each other.
+      beaconPort: fakeBeaconPort,
+      network: host.network,
       bleGateway: gateway,
       bleHeadStart: const Duration(milliseconds: 50),
       bleJitter: false,
@@ -84,10 +80,13 @@ void main() {
 
   setUp(() async {
     world = FakeBleWorld();
-    // DIFFERENT beacon ports: LAN discovery cannot happen, so any contact
-    // is BLE's. The ids sort a-before-b for the hint election.
-    deviceA = _Device('aaaaaaaa-0000-0000-0000-000000000001', 'Laptop', await freeUdpPort(), world, 'addr-a');
-    deviceB = _Device('bbbbbbbb-0000-0000-0000-000000000002', 'Phone', await freeUdpPort(), world, 'addr-b');
+    // SEPARATE LAN segments, so LAN discovery cannot happen however the
+    // ports line up and any contact is BLE's. Two devices on one segment
+    // that merely disagreed about the port would start passing the moment
+    // someone made the port a constant. The ids sort a-before-b for the
+    // hint election.
+    deviceA = _Device('aaaaaaaa-0000-0000-0000-000000000001', 'Laptop', FakeLan().host(), world, 'addr-a');
+    deviceB = _Device('bbbbbbbb-0000-0000-0000-000000000002', 'Phone', FakeLan().host(), world, 'addr-b');
     // The radio repeats advertisements continuously; so does the fake.
     advertising = Timer.periodic(const Duration(milliseconds: 100), (_) => world.tick());
   });

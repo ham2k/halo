@@ -8,3 +8,6 @@
 // hearing about.
 
 export 'peer_link_stub.dart' if (dart.library.io) 'peer_link_io.dart';
+// The listener interface both halves implement, so a caller needs one import
+// rather than knowing the split exists.
+export 'peer_link_types.dart';
