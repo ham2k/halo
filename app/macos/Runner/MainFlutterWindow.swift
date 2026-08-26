@@ -18,6 +18,14 @@ class MainFlutterWindow: NSWindow {
 
   private var windowChromeChannel: FlutterMethodChannel?
 
+  // Screen sharing for the `remote` experiment. Held for the window's life
+  // because it owns running SCStreams; letting it go would stop every capture
+  // the moment ARC noticed. It must live in the app process and not a helper:
+  // macOS attributes a Screen Recording grant to the RESPONSIBLE process, and
+  // capture from one of Sparkle's XPC services would ask the operator for a
+  // permission that lands on the wrong app.
+  private var screenCaptureChannel: ScreenCaptureChannel?
+
   // The frame restored from the saved geometry, held only through the initial
   // layout. Flutter resizes the window once shortly after its first frame
   // (~1s), which would clobber the restore; while this is set, that resize is
@@ -59,6 +67,9 @@ class MainFlutterWindow: NSWindow {
     self.styleMask.insert(.fullSizeContentView)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+
+    screenCaptureChannel = ScreenCaptureChannel(
+      messenger: flutterViewController.engine.binaryMessenger)
 
     // Flutter tells us the real AppBar height; we recenter whenever it does.
     let channel = FlutterMethodChannel(

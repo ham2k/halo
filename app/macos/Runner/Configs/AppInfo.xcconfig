@@ -48,3 +48,15 @@ PRODUCT_COPYRIGHT = Copyright © 2026 com.ham2k. All rights reserved.
 // both — signing, and HALO_EDITION for official builds. See Local.xcconfig.sample
 // and README.md "Building locally on macOS".
 #include? "Local.xcconfig"
+
+// --- ScreenCaptureKit (HALO-369) -----------------------------------------
+// SCK is macOS 12.3 and the app's floor is 12.0, so every use is behind an
+// availability check and the framework must be a WEAK import — otherwise dyld
+// refuses to launch the app at all on 12.0–12.2, where the framework is
+// absent. Swift infers the weak import from those checks on its own, but the
+// inference is silently lost the moment anyone adds ScreenCaptureKit to "Link
+// Binary With Libraries" while no symbol is referenced from this target: the
+// load command reverts to a hard LC_LOAD_DYLIB, nothing warns, and it is
+// invisible on any development Mac. Naming it here forces the weak import
+// regardless of how it comes to be linked.
+OTHER_LDFLAGS = $(inherited) -weak_framework ScreenCaptureKit

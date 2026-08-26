@@ -211,10 +211,51 @@ class PeerService extends ChangeNotifier {
     }
   }
 
+  /// Sends [message] to one peer, and only over a LAN link.
+  ///
+  /// The BLE exclusion is the point. [broadcastEphemeral] fans out to every
+  /// session, and the BLE conduit chunks at a few hundred bytes behind a
+  /// 32 KiB credit window — a stream of anything sizeable there is tens of
+  /// seconds of head-of-line blocking with every GPS fix and tune request
+  /// stuck behind it. Screen sharing is LAN-only for that reason, and this
+  /// is where it is enforced rather than at each call site.
+  ///
+  /// Returns whether it went anywhere. Lossy like the broadcast: a peer
+  /// mid-handshake, on Bluetooth, or gone simply does not receive it.
+  bool sendEphemeralTo(String peerDeviceId, PeerMessage message) {
+    final session = _peers[peerDeviceId]?.session;
+    if (session == null || !session.established) return false;
+    if (session.link is PeerBleLink) return false;
+    session.sendEphemeral(message);
+    return true;
+  }
+
+  /// Whether [peerDeviceId] is reachable over the LAN right now — what
+  /// decides if a media link to it is even possible.
+  bool hasLanSession(String peerDeviceId) {
+    final session = _peers[peerDeviceId]?.session;
+    return session != null && session.established && session.link is! PeerBleLink;
+  }
+
+  /// The port this device is listening on, or null while it is not.
+  /// Published in the beacon already; named here for the media link, whose
+  /// port a viewer must be TOLD when this device was the one that dialled.
+  int? get linkServerPort => _linkServer?.port;
+
+  /// Inbound media links (HALO-369), each with the ticket it presented.
+  ///
+  /// Its own controller rather than a getter onto [_linkServer]: the server
+  /// is rebuilt on every start, and a listener bound to one instance would
+  /// go deaf the first time peer sync was switched off and on again.
+  Stream<PeerMediaConnection> get mediaConnections => _mediaConnections.stream;
+
+  final _mediaConnections = StreamController<PeerMediaConnection>.broadcast();
+
   PeerBeaconSocket? _beaconSocket;
   PeerLinkServer? _linkServer;
   StreamSubscription<PeerBeacon>? _beaconSubscription;
   StreamSubscription<PeerLink>? _linkSubscription;
+  StreamSubscription<PeerMediaConnection>? _mediaSubscription;
   Timer? _announceTimer;
   Timer? _sweepTimer;
 
@@ -513,6 +554,19 @@ class PeerService extends ChangeNotifier {
       ErrorReportingService.report(e, st, context: 'PeerService:bindLinkServer');
     }
     _linkSubscription = _linkServer?.connections.listen(_onInboundLink);
+    _mediaSubscription = _linkServer?.mediaConnections.listen((connection) {
+      // `hasListener` as well as `isClosed`: this is a BROADCAST controller,
+      // so with the screen-sharing experiment off nothing subscribes and an
+      // added event is silently dropped — leaving an upgraded socket open
+      // forever. Anything on this network segment could then hold file
+      // descriptors open on every install with peer sync on, simply by
+      // dialling /media repeatedly.
+      if (_mediaConnections.isClosed || !_mediaConnections.hasListener) {
+        unawaited(connection.link.close());
+        return;
+      }
+      _mediaConnections.add(connection);
+    });
 
     // `openPeerBeaconSocket` owns every way opening a socket can fail — the
     // bind and enabling broadcast on it alike — reporting the reason on
@@ -583,6 +637,8 @@ class PeerService extends ChangeNotifier {
     _beaconSubscription = null;
     await _linkSubscription?.cancel();
     _linkSubscription = null;
+    await _mediaSubscription?.cancel();
+    _mediaSubscription = null;
     // Snapshotted: a session identifying itself can putIfAbsent into
     // _peers while this awaits a close (see _pushToPeers).
     for (final runtime in _peers.values.toList()) {
@@ -869,6 +925,7 @@ class PeerService extends ChangeNotifier {
     final transport = _bleTransport;
     _bleTransport = null;
     if (transport != null) unawaited(transport.stop());
+    unawaited(_mediaConnections.close());
     super.dispose();
   }
 }

@@ -21,13 +21,39 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+/// A media link and the ticket it presented (HALO-369).
+///
+/// The media path carries no `hello` and cannot be admitted the way the
+/// control link is, so it arrives bearing a one-time ticket the control
+/// link — which IS trusted and established — handed out. The server does not
+/// judge the ticket; it hands both to whoever minted it.
+class PeerMediaConnection {
+  final String ticket;
+  final PeerLink link;
+
+  const PeerMediaConnection({required this.ticket, required this.link});
+}
+
 /// Accepts incoming peer links on an ephemeral port.
 ///
 /// The port is chosen by the OS (bind to 0) and published in the beacon
 /// rather than fixed: two HaLo windows on one machine must both be able to
 /// listen, which a hard-coded port would prevent.
 class PeerLinkServer {
-  PeerLinkServer._(this._server, this._controller) {
+  /// Media links upgrade at this path. Everything else on this port is the
+  /// control protocol, so one bound socket and one published beacon serve
+  /// both and a viewer needs nothing it did not already know.
+  static const mediaPath = '/media';
+
+  /// Keeps a media link honest. A frame stream carries no application-level
+  /// heartbeat, and a link that dies without a FIN — a device roaming to
+  /// another AP, a laptop lid closing — otherwise stays open for as long as
+  /// the OS takes to notice, while the pane shows a perfectly sharp, frozen
+  /// picture. With a ping interval the socket CLOSES, which is a state both
+  /// ends already handle.
+  static const Duration mediaPingInterval = Duration(seconds: 10);
+
+  PeerLinkServer._(this._server, this._controller, this._mediaController) {
     _server.listen(
       (request) async {
         if (!WebSocketTransformer.isUpgradeRequest(request)) {
@@ -48,13 +74,31 @@ class PeerLinkServer {
           unawaited(request.response.close());
           return;
         }
+        // Read BEFORE the upgrade: the request is consumed by it.
+        final isMedia = request.uri.path == mediaPath;
+        final ticket = request.uri.queryParameters['ticket'] ?? '';
+        // A media upgrade with no ticket cannot be matched to anything and
+        // is refused here rather than accepted and dropped later — an open
+        // socket nobody owns is a socket nobody closes.
+        if (isMedia && ticket.isEmpty) {
+          request.response.statusCode = HttpStatus.forbidden;
+          unawaited(request.response.close());
+          return;
+        }
         try {
           final socket = await WebSocketTransformer.upgrade(request);
-          if (_controller.isClosed) {
+          final target = isMedia ? _mediaController : _controller;
+          if (target.isClosed) {
             unawaited(socket.close());
             return;
           }
-          _controller.add(WebSocketPeerLink(socket));
+          if (isMedia) socket.pingInterval = mediaPingInterval;
+          final link = WebSocketPeerLink(socket);
+          if (isMedia) {
+            _mediaController.add(PeerMediaConnection(ticket: ticket, link: link));
+          } else {
+            _controller.add(link);
+          }
         } catch (e) {
           debugPrint('[peer] rejected an inbound link: $e');
         }
@@ -62,12 +106,14 @@ class PeerLinkServer {
       onError: (Object e) => debugPrint('[peer] link server error: $e'),
       onDone: () {
         if (!_controller.isClosed) _controller.close();
+        if (!_mediaController.isClosed) _mediaController.close();
       },
     );
   }
 
   final HttpServer _server;
   final StreamController<PeerLink> _controller;
+  final StreamController<PeerMediaConnection> _mediaController;
 
   /// Binds on all interfaces, letting the OS pick the port.
   ///
@@ -77,7 +123,11 @@ class PeerLinkServer {
   /// server that never accepts anything would be untestable in the field.
   static Future<PeerLinkServer> bind({int port = 0}) async {
     final server = await HttpServer.bind(InternetAddress.anyIPv4, port, shared: false);
-    return PeerLinkServer._(server, StreamController<PeerLink>.broadcast());
+    return PeerLinkServer._(
+      server,
+      StreamController<PeerLink>.broadcast(),
+      StreamController<PeerMediaConnection>.broadcast(),
+    );
   }
 
   /// What to publish in the beacon.
@@ -85,8 +135,12 @@ class PeerLinkServer {
 
   Stream<PeerLink> get connections => _controller.stream;
 
+  /// Inbound media links, each with the ticket it presented.
+  Stream<PeerMediaConnection> get mediaConnections => _mediaController.stream;
+
   Future<void> close() async {
     if (!_controller.isClosed) await _controller.close();
+    if (!_mediaController.isClosed) await _mediaController.close();
     await _server.close(force: true);
   }
 }
@@ -100,9 +154,16 @@ Future<PeerLink> dialPeerLink(
   String address,
   int port, {
   Duration timeout = const Duration(seconds: 5),
+  String? mediaTicket,
 }) async {
   var timedOut = false;
-  final pending = WebSocket.connect('ws://$address:$port');
+  // A media link goes to the same host and port as the control one — same
+  // bound socket, same beacon — and is told apart by its path alone.
+  final url = mediaTicket == null
+      ? 'ws://$address:$port'
+      : 'ws://$address:$port${PeerLinkServer.mediaPath}'
+          '?ticket=${Uri.encodeQueryComponent(mediaTicket)}';
+  final pending = WebSocket.connect(url);
   // `.timeout()` fails the future it returns; it does NOT cancel the connect
   // underneath. A slow peer that answers afterwards would leave an open
   // socket nothing holds — and an accepted session on the far side for a
@@ -117,6 +178,7 @@ Future<PeerLink> dialPeerLink(
     timedOut = true;
     throw TimeoutException('peer dial to $address:$port timed out', timeout);
   });
+  if (mediaTicket != null) socket.pingInterval = PeerLinkServer.mediaPingInterval;
   return WebSocketPeerLink(socket);
 }
 

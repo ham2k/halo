@@ -16,7 +16,7 @@ The plugin's `Package.swift` declares `.macOS("10.14")`, but its own
 `presentationAnchor(for:)` — the witness for that protocol — is annotated
 `@available(macOS 10.15, *)`, and Swift requires a witness to be available at
 the conformance's minimum. Under CocoaPods this never bit, because Flutter's
-podhelper raises every pod's `MACOSX_DEPLOYMENT_TARGET` to the app's (10.15);
+podhelper raises every pod's `MACOSX_DEPLOYMENT_TARGET` to the app's (12.0);
 SPM honours the package's own declaration and an app cannot raise it. 6.2 is
 the first version to ship an SPM manifest, so the bug arrives with it. iOS is
 unaffected — there the same witness is annotated `@available(iOS 12.0, *)`,

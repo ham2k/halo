@@ -482,7 +482,11 @@ constant in the view. Two sources write into it:
   Clock, Weather and Web Site are the exception: every customizable view
   offers all three, so `DockHost.registerSharedDashboardPanels` (used by
   every view via the mixin) is what registers them, and
-  `DockHost.sharedDashboardPanes` is what builds their widgets. Registering
+  `DockHost.sharedDashboardPanes` is what builds their widgets. Remote
+  Screen joins them while the `remote` experiment is on — registered from
+  the same place and gated there, so a saved arrangement holding one falls
+  to the missing-panel placeholder with the experiment off rather than
+  losing the operator their pane. Registering
   from every view rather than a single owner is deliberate —
   `PanelService.registerNative` no-ops on an identical re-registration, so
   whichever view mounts first wins and the other calls cost nothing, and no
@@ -595,6 +599,17 @@ nowhere else — outside edit mode there is no layout to have options about.
   (`EmbeddedPanelSettingsForm`), and a native panel whose settings are more
   than a form (logging, map) embeds `settingsFormForTarget` — the same
   target-scoped settings widget a standalone dialog would otherwise show.
+
+  A shared dashboard panel may answer for its own settings instead, through
+  `DockHost.sharedDashboardPanelSettings`, and then that ONE widget serves
+  both routes — this embed and the tab's own settings button. Required, not
+  a preference, for a panel whose real control is an action: the embed
+  strips every `type: 'action'` element (an action here has no route of its
+  own to close on), which would otherwise leave such a panel showing
+  nothing but its stored value with no way to change it. Serving both routes
+  from one widget is the point — the same panel offering two different
+  settings surfaces depending on which way in the operator took is worse
+  than either.
   Both autosave per field, same as the rest of this dialog. Scrolls in its
   own bounded region so a long panel settings list doesn't push Title or the
   footer off screen.

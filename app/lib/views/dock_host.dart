@@ -34,6 +34,8 @@ import 'operation/missing_panel_pane.dart';
 import 'operation/pane_layout_options.dart';
 import 'operation/panel_settings.dart';
 import 'operation/weather/weather_panel.dart';
+import 'operation/remote_screen/remote_screen_panel.dart';
+import 'operation/remote_screen/remote_screen_picker.dart';
 import 'operation/website/website_panel.dart';
 
 /// Where one view's layout lives in settings. Four keys rather than one: the
@@ -836,7 +838,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // A plain-form extension panel's settings embed as an
     // [EmbeddedPanelSettingsForm]; a pane the VIEW answers for natively is
     // reached through a target instead and builds its own form above.
-    final embeddablePanel = nativePanelSettingsForm(context, id) == null && panel != null && panel.formFields.isNotEmpty
+    final embeddablePanel = _panelSettingsOverride(context, id) == null && panel != null && panel.formFields.isNotEmpty
         ? panel
         : null;
     return IconButton(
@@ -892,7 +894,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         // action here would need a route of its own to signal "done" by
         // closing, and this embed has none — it lives inside the pane layout
         // options dialog, not behind a route it owns.
-        panelSettingsBuilder: nativePanelSettingsForm(context, id) ??
+        panelSettingsBuilder: _panelSettingsOverride(context, id) ??
             (embeddablePanel != null && panelConfig != null
                 ? (builderContext) => EmbeddedPanelSettingsForm(
                       fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
@@ -946,7 +948,25 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
           semanticLabel: _t.panelSettings(panel: panel.title),
         ),
-        onPressed: () => unawaited(showPanelSettings(buttonContext, services: dockServices, panel: panel)),
+        onPressed: () => unawaited(
+          // The shared-dashboard panels that answer for their own settings
+          // do so from BOTH routes — this button and the pane layout
+          // options' embed — or the same panel would offer two different
+          // settings surfaces depending on which way in the operator took.
+          PanelDefinition.descriptorIdOf(panel.id) == remoteScreenPanelId
+              ? showHaloDialog<void>(
+                  context: buttonContext,
+                  builder: (dialogContext) => HaloDialog(
+                    title: Text(panel.title),
+                    content: RemoteScreenSettingsRow(panelId: panel.id, services: dockServices),
+                    cancel: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: Text(dialogContext.t.common.done),
+                    ),
+                  ),
+                )
+              : showPanelSettings(buttonContext, services: dockServices, panel: panel),
+        ),
       ),
     );
   }
@@ -1267,6 +1287,29 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     }
   }
 
+  /// A purpose-built settings widget for [id], from the VIEW's own panes
+  /// ([nativePanelSettingsForm]) or from the shared dashboard set, or null to
+  /// fall through to the generic `formFields` embed.
+  ///
+  /// The shared arm exists because that embed strips every `type: 'action'`
+  /// element — an action there has no route of its own to close on — and a
+  /// panel whose only real control IS an action would show nothing but its
+  /// stored value. Registered centrally rather than in each view's switch,
+  /// the same reason [registerSharedDashboardPanels] is.
+  WidgetBuilder? _panelSettingsOverride(BuildContext context, String id) =>
+      nativePanelSettingsForm(context, id) ?? sharedDashboardPanelSettings(context, id);
+
+  /// The shared dashboard panels that answer for their own settings. Only
+  /// Remote Screen does: its source is picked from a live catalog of what
+  /// other devices offer, which is a dialog rather than a form field.
+  WidgetBuilder? sharedDashboardPanelSettings(BuildContext context, String id) {
+    if (PanelDefinition.descriptorIdOf(id) != remoteScreenPanelId) return null;
+    return (builderContext) => RemoteScreenSettingsRow(
+          panelId: id,
+          services: dockServices,
+        );
+  }
+
   /// Clock, Weather and Web Site: the three native panels every customizable
   /// view offers (docs/design/layouts.md), built here once so a change to one
   /// of them doesn't have to reach every view that hosts a dock. See
@@ -1305,6 +1348,29 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           panels: dockServices.panels,
           onTitle: (title) => onPanelTitle(id, title),
           isEnteringQso: isEnteringQso,
+        )
+      else if (PanelDefinition.descriptorIdOf(id) == remoteScreenPanelId)
+        id: Builder(
+          builder: (paneContext) => RemoteScreenPanel(
+            key: ValueKey('panel-$id'),
+            panelId: id,
+            panels: dockServices.panels,
+            views: dockServices.peerScreenViews,
+            onTitle: (title) => onPanelTitle(id, title),
+            // The pane offers the picker itself. The panel's settings dialog
+            // also does, but it is not always reachable — the pane layout
+            // options' embedded form strips `type: 'action'` elements, which
+            // leaves this panel's settings as a bare target string.
+            onChooseSource: () => unawaited(
+              chooseRemoteScreenFor(paneContext, services: dockServices, panelId: id),
+            ),
+            onSaveView: (zoom, pan) => unawaited(saveRemoteScreenView(
+              services: dockServices,
+              panelId: id,
+              zoom: zoom,
+              pan: pan,
+            )),
+          ),
         ),
   };
 
@@ -1457,6 +1523,56 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         },
       ],
     ));
+    // Registered only with the experiment on. A saved arrangement holding one
+    // of these then falls to the missing-panel placeholder rather than
+    // vanishing, which is the same deal an uninstalled extension's panel
+    // gets — the operator keeps their arrangement and is told.
+    if (dockServices.settings.experimentEnabled('remote') /* stored key, see experiments.yaml */) {
+      service.registerNative(PanelDefinition(
+        id: remoteScreenPanelId,
+        title: t.tabs.remoteScreen,
+        description: t.layout.panels.remoteScreenDescription,
+        icon: 'monitor-share',
+        source: PanelSource.native,
+        views: sharedViews,
+        multiple: true,
+        // A screen is unreadable in a three-unit pane, and unlike a clock
+        // there is no smaller rendering to fall back to.
+        minWidth: 3,
+        minHeight: 4,
+        formFields: [
+          // An ACTION, never a select. The options would have to be the live
+          // catalog of what peers offer, and `PanelDefinition.==` compares
+          // only `formFields.length` — a rebuilt list of the same size
+          // re-registers as identical, no-ops, and the picker goes
+          // permanently stale.
+          {
+            'type': 'action',
+            'key': 'chooseScreen',
+            'label': t.layout.panels.remoteScreenChoose,
+            'method': remoteScreenChooseMethod,
+          },
+          // What the action writes, shown so the operator can see what is
+          // stored and clear it without a second control.
+          {
+            'type': 'field',
+            'key': remoteScreenTargetKey,
+            'fieldType': 'text',
+            'label': t.layout.panels.remoteScreenTarget,
+            'value': '',
+          },
+          // How the operator framed the picture. Declared, though no form
+          // ever renders them: `forgetInstanceConfig` forgets only DECLARED
+          // fields, so an undeclared zoom would outlive the pane that set it
+          // and be inherited by whatever is placed in that slot next. Both
+          // routes to this panel's settings are its own widget, so these are
+          // never shown.
+          {'type': 'field', 'key': remoteScreenZoomKey, 'fieldType': 'number', 'label': '', 'value': 1.0},
+          {'type': 'field', 'key': remoteScreenPanXKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
+          {'type': 'field', 'key': remoteScreenPanYKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
+        ],
+      ));
+    }
   }
 
   // ----------------------------------------------------------------- the dock

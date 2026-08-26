@@ -68,6 +68,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _listenForOtherAppsEnabledKey = 'listenForOtherAppsEnabled';
   static const _peerSyncEnabledKey = 'peerSyncEnabled';
   static const _peerBleEnabledKey = 'peerBleEnabled';
+  static const _peerScreenShareEnabledKey = 'peerScreenShareEnabled';
+  static const _peerSharedScreenIdsKey = 'peerSharedScreenIds';
   static const _peerDeviceIdKey = 'peerDeviceId';
   static const _peerDeviceNameKey = 'peerDeviceName';
   static const _n1mmProtocolEnabledKey = 'n1mmProtocolEnabled';
@@ -379,6 +381,33 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setPeerBleEnabled(bool enabled) async {
     await _prefs.setBool(_peerBleEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// The screen-sharing sub-switch under [peerSyncEnabled] (HALO-369), and
+  /// its own opt-in for the same reason BLE has one: turning it on does
+  /// something the master switch never implied. A shared operation is the
+  /// operator's own log; a shared screen is their email, their browser and
+  /// whatever else is on that display, and on macOS it also asks the OS for
+  /// a Screen Recording grant that outlives the app.
+  bool get peerScreenShareEnabled => _prefs.getBool(_peerScreenShareEnabledKey) ?? false;
+
+  Future<void> setPeerScreenShareEnabled(bool enabled) async {
+    await _prefs.setBool(_peerScreenShareEnabledKey, enabled);
+    notifyListeners();
+  }
+
+  /// Which sources this device offers — nothing is shared merely because the
+  /// switch above is on, so a mis-tapped switch cannot expose a screen.
+  ///
+  /// Ids, not names, and deliberately kept even when a source is not
+  /// currently present: an application that is closed and reopened, or an
+  /// external display unplugged over lunch, must come back offered rather
+  /// than silently dropped from the list the operator built.
+  List<String> get peerSharedScreenIds => _prefs.getStringList(_peerSharedScreenIdsKey) ?? const [];
+
+  Future<void> setPeerSharedScreenIds(List<String> ids) async {
+    await _prefs.setStringList(_peerSharedScreenIdsKey, ids);
     notifyListeners();
   }
 

@@ -30,6 +30,8 @@ import 'package:halo_core/halo_core.dart';
 
 import '../location_service.dart';
 import '../radio_service.dart';
+import 'peer_screen_views.dart';
+import 'peer_screens.dart';
 import 'peer_service.dart';
 
 class PeerChannels {
@@ -37,6 +39,8 @@ class PeerChannels {
     required this.peers,
     required this.location,
     this.radio,
+    this.screens,
+    this.views,
     this.hasLocalRadio,
     this.radioIsLive,
   }) {
@@ -50,6 +54,18 @@ class PeerChannels {
   final PeerService peers;
   final LocationService location;
   final RadioService? radio;
+
+  /// Screen sharing (HALO-369), each half optional so a build with the
+  /// experiment off constructs neither and this router simply has nothing to
+  /// hand those messages to.
+  final PeerScreens? screens;
+  final PeerScreenViews? views;
+
+  /// Peers that had an established session when this last looked — the
+  /// before-picture a loss is spotted against. `PeerService` reports
+  /// connection changes through a single callback slot that the status bar
+  /// already holds, so a second consumer reconciles rather than subscribes.
+  final Set<String> _establishedPeers = {};
 
   /// Whether THIS device has a designated radio (`CatService.radio1`) — the
   /// role switch for the whole bridge. A callback, read fresh on every
@@ -147,6 +163,8 @@ class PeerChannels {
       _lastSentLat = null;
       _lastSentLon = null;
     }
+
+    _reconcileScreenPeers();
 
     // A peer that dropped must not keep standing in for this device's
     // location: its last fix could be hours old by the time anyone looks.
@@ -259,6 +277,75 @@ class PeerChannels {
     // this session — the others already have it.
     _broadcastOwnFix(to: session);
     if (_ownsRadio && _radioLive) _broadcastOwnVfo(to: session);
+    final peerDeviceId = session.peer?.deviceId;
+    if (peerDeviceId != null) {
+      _establishedPeers.add(peerDeviceId);
+      // The offer is latest-value-wins like the rest, so an arrival that
+      // missed the last announcement is caught up here rather than waiting
+      // for the operator to change something.
+      screens?.announceOffers(to: peerDeviceId);
+      // And anything a pane on THIS device still wants from that peer is
+      // asked for again — a producer that restarted remembers no
+      // subscriptions.
+      views?.onPeerAvailable(peerDeviceId);
+    }
+  }
+
+  void _reconcileScreenPeers() {
+    if (screens == null && views == null) return;
+    final live = <String>{
+      for (final entry in peers.peers.entries)
+        if (entry.value.session?.established ?? false) entry.key,
+    };
+    for (final gone in _establishedPeers.difference(live)) {
+      unawaited(screens?.forgetPeer(gone) ?? Future<void>.value());
+      views?.forgetPeer(gone);
+    }
+    _establishedPeers
+      ..clear()
+      ..addAll(live);
+  }
+
+  /// Returns whether [message] belonged to screen sharing — true even when
+  /// neither half is constructed, so a build with the experiment off drops
+  /// these quietly instead of logging every one as unhandled.
+  bool _handleScreenMessage(String peerDeviceId, PeerMessage message) {
+    switch (message.type) {
+      case PeerMessageType.screenSources:
+        final sources = message.screenSourcesOrNull;
+        if (sources != null) views?.setOffer(peerDeviceId, sources);
+        return true;
+      case PeerMessageType.screenSubscribe:
+        final request = message.screenSubscriptionOrNull;
+        if (request != null) {
+          unawaited(screens?.handleSubscribe(peerDeviceId, request) ?? Future<void>.value());
+        }
+        return true;
+      case PeerMessageType.screenUnsubscribe:
+        final sourceId = message.screenSourceId;
+        if (sourceId != null) screens?.handleUnsubscribe(peerDeviceId, sourceId);
+        return true;
+      case PeerMessageType.screenGrant:
+        final grant = message.screenGrantOrNull;
+        if (grant != null) views?.onGrant(peerDeviceId, grant);
+        return true;
+      case PeerMessageType.screenRefuse:
+        final sourceId = message.screenSourceId;
+        if (sourceId != null) views?.onRefused(peerDeviceId, sourceId, message.reason);
+        return true;
+      case PeerMessageType.screenThumbRequest:
+        final sourceId = message.screenSourceId;
+        if (sourceId != null) {
+          unawaited(screens?.handleThumbRequest(peerDeviceId, sourceId) ?? Future<void>.value());
+        }
+        return true;
+      case PeerMessageType.screenThumb:
+        final sourceId = message.screenSourceId;
+        if (sourceId != null) views?.onThumb(peerDeviceId, sourceId, message.screenThumbOrNull);
+        return true;
+      default:
+        return false;
+    }
   }
 
   void _onEphemeral(String peerDeviceId, PeerMessage message) {
@@ -284,6 +371,8 @@ class PeerChannels {
       }
       return;
     }
+    if (_handleScreenMessage(peerDeviceId, message)) return;
+
     final fix = message.positionOrNull;
     if (fix != null) {
       final peerName = peers.peers[peerDeviceId]?.beacon.deviceName;

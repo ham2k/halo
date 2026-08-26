@@ -23,6 +23,7 @@ export 'src/n1mm/n1mm_contact_info.dart';
 export 'src/peer/peer_link.dart';
 export 'src/peer/peer_outbox.dart';
 export 'src/peer/peer_protocol.dart';
+export 'src/peer/peer_screen.dart';
 export 'src/peer/peer_session.dart';
 export 'src/peer/peer_trust.dart';
 export 'src/repo/repositories.dart';

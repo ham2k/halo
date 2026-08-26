@@ -72,6 +72,8 @@ import 'services/cat/equipment.dart' show EquipmentStatus;
 import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
 import 'services/peer/peer_account_tag.dart';
+import 'services/peer/peer_screen_views.dart';
+import 'services/peer/peer_screens.dart';
 import 'services/peer/peer_service.dart';
 import 'views/peer_pairing_dialog.dart';
 import 'services/inbound_qso_listener_service.dart';
@@ -1288,12 +1290,32 @@ class HaLoServices {
     peers: peerService,
     location: location,
     radio: radio,
+    // Both halves of screen sharing, constructed only when the experiment
+    // is on: touching either lazy field is what registers a native channel
+    // handler and what makes this router route those messages at all.
+    screens: settings.experimentEnabled('remote') ? peerScreens : null,
+    views: settings.experimentEnabled('remote') ? peerScreenViews : null,
     hasLocalRadio: () => cat.radio1 != null,
     radioIsLive: () {
       final uuid = cat.radio1;
       return uuid != null && cat.stateFor(uuid).status == EquipmentStatus.connected;
     },
   );
+  /// The producer half of screen sharing (HALO-369). Lazy like the rest, and
+  /// for a stronger reason than most: constructing it registers the native
+  /// capture channel's handlers, and an install that never turns the
+  /// experiment on should never so much as name ScreenCaptureKit.
+  late final PeerScreens peerScreens = PeerScreens(settings: settings, peers: peerService);
+
+  /// The viewer half — what this device's peers offer, and what its Remote
+  /// Screen panes are watching (HALO-369).
+  late final PeerScreenViews peerScreenViews = PeerScreenViews(
+    peers: peerService,
+    // Its own producer, so a pane here can show a screen THIS device shares.
+    screens: peerScreens,
+    localName: t.settings.peers.screenThisDevice,
+  );
+
   late final LookupRepository lookups = LookupRepository(db);
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
@@ -1669,9 +1691,35 @@ class HaLoServices {
     unawaited(peerService.setEnabled(wanted));
     unawaited(peerService.setBleEnabled(settings.peerBleEnabled));
     unawaited(peerService.setOpenOperation(front));
+
+    // Screen sharing (HALO-369) rides on top of peer sharing: with no
+    // session there is nothing to carry an offer, so it ends whenever peer
+    // sharing does. Its gate sits HERE for the same reason p2p's does —
+    // this is the one path that can leave a capture running, and an install
+    // without the experiment must not hold a Screen Recording grant open.
+    // The latch mirrors [_peerSyncTouched]: once the feature has been wanted
+    // it stays reachable to be torn down. It does NOT keep [peerScreens]
+    // unconstructed — the router builds it whenever the experiment is on,
+    // and so does opening the Peers panel; the experiment is what gates the
+    // native channel, not this.
+    final wantsScreens =
+        wanted && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */ && settings.peerScreenShareEnabled;
+    if (wantsScreens || _peerScreensTouched) {
+      _peerScreensTouched = true;
+      if (wantsScreens) {
+        // Nothing else populates the OS source list, and what this device
+        // OFFERS is that list intersected with what the operator picked — so
+        // without this a relaunch announces nothing at all, however many
+        // sources are still ticked, until someone opens the settings panel.
+        unawaited(peerScreens.ensureSourcesFresh());
+      } else {
+        unawaited(peerScreens.stopAll());
+      }
+    }
   }
 
   bool _peerSyncTouched = false;
+  bool _peerScreensTouched = false;
 
   /// Attaches (or detaches) a logging panel's dispatcher to the innermost open
   /// entry for [uuid]. Looked up rather than passed down so the logging panel

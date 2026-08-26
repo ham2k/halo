@@ -22,6 +22,7 @@ import '../main.dart';
 import '../services/peer/ble/peer_ble_transport.dart';
 import '../services/peer/peer_service.dart';
 import 'peer_pairing_dialog.dart';
+import 'peer_screen_sources.dart';
 
 class PeersPanel extends StatefulWidget {
   final HaLoServices services;
@@ -210,7 +211,11 @@ class _PeersPanelState extends State<PeersPanel> {
           ),
         SectionHeader(t.thisDevice),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
+          // The list's OWN inset, read from the ambient ListTileTheme rather
+          // than guessed at — a hard-coded number drifts out of line with
+          // every row around it the moment the theme's changes.
+          padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
+              .add(const EdgeInsets.symmetric(vertical: Space.md)),
           child: TextField(
             controller: _nameController,
             focusNode: _nameFocus,
@@ -252,6 +257,11 @@ class _PeersPanelState extends State<PeersPanel> {
                   : null,
             ),
         ],
+        // Last, past Nearby: it is a section in its own right rather than a
+        // sub-switch of the master one, and everything above it is about
+        // reaching the other devices at all.
+        if (enabled && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */)
+          PeerScreenSources(services: widget.services),
       ],
     );
   }

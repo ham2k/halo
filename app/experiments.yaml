@@ -78,3 +78,20 @@ experiments:
     description: Share the open operation with your other devices on the same network.
     aliases: [peers, peer]
 
+  # Screen sharing between paired devices (HALO-369): a device offers a set
+  # of screens, applications and windows, and a peer's Remote Screen panel
+  # subscribes to one of them over the LAN peer link.
+  #
+  # Sits ON TOP of p2p rather than beside it — with peer sharing off there is
+  # no session to carry an offer, so this key does nothing on its own. The
+  # gate belongs at the path that STARTS CAPTURE, not only on the settings
+  # row: an install without the experiment must never hold a Screen Recording
+  # grant open or run an SCStream, the same reasoning that puts p2p's gate at
+  # updatePeerSharing rather than on its panel.
+  #
+  # macOS is the only device that can offer a screen today; every platform
+  # with a peer link can view one.
+  - key: remote
+    name: Remote Screens
+    description: Show a screen or window from one of your other devices in a panel.
+    aliases: [screens, screenshare]

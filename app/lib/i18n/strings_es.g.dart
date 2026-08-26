@@ -955,6 +955,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get clock => 'Reloj';
 	@override String get weather => 'El Tiempo';
 	@override String get website => 'Sitio Web';
+	@override String get remoteScreen => 'Pantalla remota';
 }
 
 // Path: operation.menu
@@ -1394,6 +1395,27 @@ class _Translations$settings$peers$es extends Translations$settings$peers$en {
 	@override String bleProblem({required Object error}) => 'Bluetooth: ${error}';
 	@override String statusConnected({required Object device}) => 'Conectado a ${device}';
 	@override String statusLost({required Object device}) => 'Se perdió la conexión con ${device}';
+	@override String get screenEnable => 'Compartir pantallas y ventanas';
+	@override String get screenDescription => 'Permite que otros dispositivos muestren pantallas o ventanas de este ordenador';
+	@override String get screenSources => 'Pantallas y ventanas';
+	@override String get screenRefresh => 'Actualizar la lista';
+	@override String get screenUnsupportedPlatform => 'Este dispositivo no puede compartir su pantalla. macOS sí puede; cualquier dispositivo puede mostrar una pantalla compartida por otro.';
+	@override String get screenUnsupportedVersion => 'Compartir la pantalla necesita macOS 12.3 o posterior. Este dispositivo sí puede mostrar una pantalla compartida por otro.';
+	@override String get screenNeedsPermission => 'macOS necesita tu permiso para grabar la pantalla antes de que esta app pueda compartir una.';
+	@override String get screenGrantPermission => 'Pedir permiso';
+	@override String get screenRelaunchAfterGranting => 'Permítelo en Ajustes del Sistema, en Privacidad y seguridad → Grabación de pantalla, y luego cierra y vuelve a abrir esta app — macOS solo se lo comunica a la app en el siguiente arranque.';
+	@override String screenProblem({required Object error}) => 'Compartir pantalla: ${error}';
+	@override String get screenChooseTitle => 'Elegir qué compartir';
+	@override String get screenChooseButton => 'Elegir qué compartir…';
+	@override String get screenTabScreens => 'Pantallas';
+	@override String get screenTabApps => 'Apps';
+	@override String get screenTabWindows => 'Ventanas';
+	@override String get screenTabEmpty => 'No se encontró nada de este tipo.';
+	@override String get screenSharedSummaryNone => 'No has elegido nada todavía.';
+	@override String get screenThisDevice => 'Este dispositivo';
+	@override String screenSharedTo({required Object devices}) => 'Se muestra en ${devices}';
+	@override String get screenSharedToNobody => 'No se está mostrando';
+	@override String screenStopSharing({required Object name}) => 'Dejar de compartir ${name}';
 }
 
 // Path: settings.syncPanel
@@ -1812,6 +1834,27 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get websiteUnsupported => 'En este sistema no se pueden mostrar páginas web en un panel.';
 	@override String get websiteOpenExternally => 'Abrir en el navegador';
 	@override String websiteLoadFailed({required Object reason}) => 'No se pudo cargar la página: ${reason}';
+	@override String get remoteScreenDescription => 'Una pantalla, app o ventana compartida por otro de tus dispositivos.';
+	@override String get remoteScreenTarget => 'Pantalla';
+	@override String get remoteScreenChoose => 'Elegir una pantalla…';
+	@override String get remoteScreenPickerTitle => 'Pantallas compartidas';
+	@override String get remoteScreenPickerEmpty => 'Ninguno de tus dispositivos está compartiendo una pantalla. Activa Compartir pantallas y ventanas en Ajustes → Dispositivos, en el dispositivo que quieras ver.';
+	@override String get remoteScreenUnset => 'No has elegido una pantalla. Abre los ajustes de este panel para elegir una de las que comparten tus otros dispositivos.';
+	@override String get remoteScreenConnecting => 'Conectando…';
+	@override String get remoteScreenPeerAway => 'Ese dispositivo no está conectado ahora mismo.';
+	@override String get remoteScreenNotOffered => 'Ese dispositivo dejó de compartir esta pantalla.';
+	@override String get remoteScreenNoListener => 'Ese dispositivo no puede aceptar conexiones — revisa su cortafuegos.';
+	@override String get remoteScreenNoLan => 'Las pantallas solo se comparten por la red local, no por Bluetooth.';
+	@override String get remoteScreenRefused => 'Ese dispositivo no quiso compartir esta pantalla.';
+	@override String get remoteScreenSettings => 'Ajustes del panel';
+	@override String get remoteScreenAdjust => 'Ajustar vista';
+	@override String get remoteScreenAdjustDone => 'Listo';
+	@override String get remoteScreenZoomIn => 'Acercar';
+	@override String get remoteScreenZoomOut => 'Alejar';
+	@override String get remoteScreenStopped => 'Esa pantalla o ventana ya no se está mostrando.';
+	@override String get remoteScreenCaptureFailed => 'Ese dispositivo no pudo capturar esa pantalla — puede que necesite permiso de grabación de pantalla.';
+	@override String get remoteScreenNoAnswer => 'Ese dispositivo no respondió. Puede que no tenga activado compartir pantalla.';
+	@override String get remoteScreenNoMedia => 'No se pudo abrir una conexión para la imagen. Revisa el cortafuegos de este dispositivo.';
 }
 
 // Path: operation.export.compactFileNames
@@ -2357,6 +2400,7 @@ extension on TranslationsEs {
 			'operation.tabs.clock' => 'Reloj',
 			'operation.tabs.weather' => 'El Tiempo',
 			'operation.tabs.website' => 'Sitio Web',
+			'operation.tabs.remoteScreen' => 'Pantalla remota',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -2478,6 +2522,27 @@ extension on TranslationsEs {
 			'operation.layout.panels.websiteUnsupported' => 'En este sistema no se pueden mostrar páginas web en un panel.',
 			'operation.layout.panels.websiteOpenExternally' => 'Abrir en el navegador',
 			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'No se pudo cargar la página: ${reason}',
+			'operation.layout.panels.remoteScreenDescription' => 'Una pantalla, app o ventana compartida por otro de tus dispositivos.',
+			'operation.layout.panels.remoteScreenTarget' => 'Pantalla',
+			'operation.layout.panels.remoteScreenChoose' => 'Elegir una pantalla…',
+			'operation.layout.panels.remoteScreenPickerTitle' => 'Pantallas compartidas',
+			'operation.layout.panels.remoteScreenPickerEmpty' => 'Ninguno de tus dispositivos está compartiendo una pantalla. Activa Compartir pantallas y ventanas en Ajustes → Dispositivos, en el dispositivo que quieras ver.',
+			'operation.layout.panels.remoteScreenUnset' => 'No has elegido una pantalla. Abre los ajustes de este panel para elegir una de las que comparten tus otros dispositivos.',
+			'operation.layout.panels.remoteScreenConnecting' => 'Conectando…',
+			'operation.layout.panels.remoteScreenPeerAway' => 'Ese dispositivo no está conectado ahora mismo.',
+			'operation.layout.panels.remoteScreenNotOffered' => 'Ese dispositivo dejó de compartir esta pantalla.',
+			'operation.layout.panels.remoteScreenNoListener' => 'Ese dispositivo no puede aceptar conexiones — revisa su cortafuegos.',
+			'operation.layout.panels.remoteScreenNoLan' => 'Las pantallas solo se comparten por la red local, no por Bluetooth.',
+			'operation.layout.panels.remoteScreenRefused' => 'Ese dispositivo no quiso compartir esta pantalla.',
+			'operation.layout.panels.remoteScreenSettings' => 'Ajustes del panel',
+			'operation.layout.panels.remoteScreenAdjust' => 'Ajustar vista',
+			'operation.layout.panels.remoteScreenAdjustDone' => 'Listo',
+			'operation.layout.panels.remoteScreenZoomIn' => 'Acercar',
+			'operation.layout.panels.remoteScreenZoomOut' => 'Alejar',
+			'operation.layout.panels.remoteScreenStopped' => 'Esa pantalla o ventana ya no se está mostrando.',
+			'operation.layout.panels.remoteScreenCaptureFailed' => 'Ese dispositivo no pudo capturar esa pantalla — puede que necesite permiso de grabación de pantalla.',
+			'operation.layout.panels.remoteScreenNoAnswer' => 'Ese dispositivo no respondió. Puede que no tenga activado compartir pantalla.',
+			'operation.layout.panels.remoteScreenNoMedia' => 'No se pudo abrir una conexión para la imagen. Revisa el cortafuegos de este dispositivo.',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -2738,6 +2803,8 @@ extension on TranslationsEs {
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} a',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
 			'callInfo.distanceAway' => ({required Object distance}) => 'a ${distance}',
+			_ => null,
+		} ?? switch (path) {
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
 			'callInfo.thisOpCountOne' => '1 QSO en esta operación',
 			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs en esta operación',
@@ -2760,8 +2827,6 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.smallest' => 'Más pequeña',
 			'settings.fontScaleOpts.smaller' => 'Pequeña',
 			'settings.fontScaleOpts.normal' => 'Normal',
-			_ => null,
-		} ?? switch (path) {
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
@@ -2907,6 +2972,27 @@ extension on TranslationsEs {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Conectado a ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Se perdió la conexión con ${device}',
+			'settings.peers.screenEnable' => 'Compartir pantallas y ventanas',
+			'settings.peers.screenDescription' => 'Permite que otros dispositivos muestren pantallas o ventanas de este ordenador',
+			'settings.peers.screenSources' => 'Pantallas y ventanas',
+			'settings.peers.screenRefresh' => 'Actualizar la lista',
+			'settings.peers.screenUnsupportedPlatform' => 'Este dispositivo no puede compartir su pantalla. macOS sí puede; cualquier dispositivo puede mostrar una pantalla compartida por otro.',
+			'settings.peers.screenUnsupportedVersion' => 'Compartir la pantalla necesita macOS 12.3 o posterior. Este dispositivo sí puede mostrar una pantalla compartida por otro.',
+			'settings.peers.screenNeedsPermission' => 'macOS necesita tu permiso para grabar la pantalla antes de que esta app pueda compartir una.',
+			'settings.peers.screenGrantPermission' => 'Pedir permiso',
+			'settings.peers.screenRelaunchAfterGranting' => 'Permítelo en Ajustes del Sistema, en Privacidad y seguridad → Grabación de pantalla, y luego cierra y vuelve a abrir esta app — macOS solo se lo comunica a la app en el siguiente arranque.',
+			'settings.peers.screenProblem' => ({required Object error}) => 'Compartir pantalla: ${error}',
+			'settings.peers.screenChooseTitle' => 'Elegir qué compartir',
+			'settings.peers.screenChooseButton' => 'Elegir qué compartir…',
+			'settings.peers.screenTabScreens' => 'Pantallas',
+			'settings.peers.screenTabApps' => 'Apps',
+			'settings.peers.screenTabWindows' => 'Ventanas',
+			'settings.peers.screenTabEmpty' => 'No se encontró nada de este tipo.',
+			'settings.peers.screenSharedSummaryNone' => 'No has elegido nada todavía.',
+			'settings.peers.screenThisDevice' => 'Este dispositivo',
+			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Se muestra en ${devices}',
+			'settings.peers.screenSharedToNobody' => 'No se está mostrando',
+			'settings.peers.screenStopSharing' => ({required Object name}) => 'Dejar de compartir ${name}',
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
@@ -3231,6 +3317,8 @@ extension on TranslationsEs {
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
 			'updates.upToDate' => 'Actualizado',
+			_ => null,
+		} ?? switch (path) {
 			'updates.automaticChecks' => 'Buscar automáticamente',
 			'updates.automaticChecksDescription' => 'Buscar nuevas versiones en segundo plano, a partir del próximo inicio',
 			'extensionService.runtimeNotReady' => 'El motor de extensiones aún no está listo.',
@@ -3274,8 +3362,6 @@ extension on TranslationsEs {
 			'confirmDevice.lookUp' => 'Buscar',
 			'confirmDevice.codeNotFound' => 'Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.',
 			'confirmDevice.linkExpired' => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
 			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
 			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',

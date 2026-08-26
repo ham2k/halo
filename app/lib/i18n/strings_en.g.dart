@@ -1983,6 +1983,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'Web Site'
 	String get website => 'Web Site';
+
+	/// en: 'Remote Screen'
+	String get remoteScreen => 'Remote Screen';
 }
 
 // Path: operation.menu
@@ -2966,6 +2969,69 @@ class Translations$settings$peers$en {
 
 	/// en: 'Lost connection to ${device}'
 	String statusLost({required Object device}) => 'Lost connection to ${device}';
+
+	/// en: 'Share screens and windows'
+	String get screenEnable => 'Share screens and windows';
+
+	/// en: 'Allow other devices to show screens or windows from this computer'
+	String get screenDescription => 'Allow other devices to show screens or windows from this computer';
+
+	/// en: 'Screens and Windows'
+	String get screenSources => 'Screens and Windows';
+
+	/// en: 'Refresh the list'
+	String get screenRefresh => 'Refresh the list';
+
+	/// en: 'This device can't share its screen. macOS can; every device can show one shared by another.'
+	String get screenUnsupportedPlatform => 'This device can\'t share its screen. macOS can; every device can show one shared by another.';
+
+	/// en: 'Sharing a screen needs macOS 12.3 or later. This device can still show a screen shared by another.'
+	String get screenUnsupportedVersion => 'Sharing a screen needs macOS 12.3 or later. This device can still show a screen shared by another.';
+
+	/// en: 'macOS needs your permission to record the screen before this app can share one.'
+	String get screenNeedsPermission => 'macOS needs your permission to record the screen before this app can share one.';
+
+	/// en: 'Ask for permission'
+	String get screenGrantPermission => 'Ask for permission';
+
+	/// en: 'Allow it in System Settings under Privacy & Security → Screen Recording, then quit and reopen this app — macOS only tells an app about the change on its next launch.'
+	String get screenRelaunchAfterGranting => 'Allow it in System Settings under Privacy & Security → Screen Recording, then quit and reopen this app — macOS only tells an app about the change on its next launch.';
+
+	/// en: 'Screen sharing: ${error}'
+	String screenProblem({required Object error}) => 'Screen sharing: ${error}';
+
+	/// en: 'Choose What to Share'
+	String get screenChooseTitle => 'Choose What to Share';
+
+	/// en: 'Choose what to share…'
+	String get screenChooseButton => 'Choose what to share…';
+
+	/// en: 'Screens'
+	String get screenTabScreens => 'Screens';
+
+	/// en: 'Apps'
+	String get screenTabApps => 'Apps';
+
+	/// en: 'Windows'
+	String get screenTabWindows => 'Windows';
+
+	/// en: 'Nothing of this kind was found.'
+	String get screenTabEmpty => 'Nothing of this kind was found.';
+
+	/// en: 'Nothing chosen yet.'
+	String get screenSharedSummaryNone => 'Nothing chosen yet.';
+
+	/// en: 'This device'
+	String get screenThisDevice => 'This device';
+
+	/// en: 'Shown on ${devices}'
+	String screenSharedTo({required Object devices}) => 'Shown on ${devices}';
+
+	/// en: 'Not being shown'
+	String get screenSharedToNobody => 'Not being shown';
+
+	/// en: 'Stop sharing ${name}'
+	String screenStopSharing({required Object name}) => 'Stop sharing ${name}';
 }
 
 // Path: settings.syncPanel
@@ -4058,6 +4124,69 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'Couldn’t load the page: ${reason}'
 	String websiteLoadFailed({required Object reason}) => 'Couldn’t load the page: ${reason}';
+
+	/// en: 'A screen, app or window shared by another of your devices.'
+	String get remoteScreenDescription => 'A screen, app or window shared by another of your devices.';
+
+	/// en: 'Screen'
+	String get remoteScreenTarget => 'Screen';
+
+	/// en: 'Choose a screen…'
+	String get remoteScreenChoose => 'Choose a screen…';
+
+	/// en: 'Shared Screens'
+	String get remoteScreenPickerTitle => 'Shared Screens';
+
+	/// en: 'None of your devices is sharing a screen. Turn Share screens and windows on under Settings → Peer Devices, on the device you want to see.'
+	String get remoteScreenPickerEmpty => 'None of your devices is sharing a screen. Turn Share screens and windows on under Settings → Peer Devices, on the device you want to see.';
+
+	/// en: 'No screen chosen. Open this panel's settings to pick one your other devices are sharing.'
+	String get remoteScreenUnset => 'No screen chosen. Open this panel\'s settings to pick one your other devices are sharing.';
+
+	/// en: 'Connecting…'
+	String get remoteScreenConnecting => 'Connecting…';
+
+	/// en: 'That device isn't connected right now.'
+	String get remoteScreenPeerAway => 'That device isn\'t connected right now.';
+
+	/// en: 'That device stopped sharing this screen.'
+	String get remoteScreenNotOffered => 'That device stopped sharing this screen.';
+
+	/// en: 'That device can't accept connections — check its firewall.'
+	String get remoteScreenNoListener => 'That device can\'t accept connections — check its firewall.';
+
+	/// en: 'Screens are only shared over the local network, not Bluetooth.'
+	String get remoteScreenNoLan => 'Screens are only shared over the local network, not Bluetooth.';
+
+	/// en: 'That device wouldn't share this screen.'
+	String get remoteScreenRefused => 'That device wouldn\'t share this screen.';
+
+	/// en: 'Panel settings'
+	String get remoteScreenSettings => 'Panel settings';
+
+	/// en: 'Adjust View'
+	String get remoteScreenAdjust => 'Adjust View';
+
+	/// en: 'OK'
+	String get remoteScreenAdjustDone => 'OK';
+
+	/// en: 'Zoom in'
+	String get remoteScreenZoomIn => 'Zoom in';
+
+	/// en: 'Zoom out'
+	String get remoteScreenZoomOut => 'Zoom out';
+
+	/// en: 'That screen or window is no longer being shown.'
+	String get remoteScreenStopped => 'That screen or window is no longer being shown.';
+
+	/// en: 'That device couldn't capture that screen — it may need Screen Recording permission.'
+	String get remoteScreenCaptureFailed => 'That device couldn\'t capture that screen — it may need Screen Recording permission.';
+
+	/// en: 'That device didn't answer. It may not have screen sharing turned on.'
+	String get remoteScreenNoAnswer => 'That device didn\'t answer. It may not have screen sharing turned on.';
+
+	/// en: 'Couldn't open a connection for the picture. Check the firewall on this device.'
+	String get remoteScreenNoMedia => 'Couldn\'t open a connection for the picture. Check the firewall on this device.';
 }
 
 // Path: operation.export.compactFileNames
@@ -4957,6 +5086,7 @@ extension on Translations {
 			'operation.tabs.clock' => 'Clock',
 			'operation.tabs.weather' => 'Weather',
 			'operation.tabs.website' => 'Web Site',
+			'operation.tabs.remoteScreen' => 'Remote Screen',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -5079,6 +5209,27 @@ extension on Translations {
 			'operation.layout.panels.websiteUnsupported' => 'Web pages can’t be shown in a panel on this system.',
 			'operation.layout.panels.websiteOpenExternally' => 'Open in Browser',
 			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'Couldn’t load the page: ${reason}',
+			'operation.layout.panels.remoteScreenDescription' => 'A screen, app or window shared by another of your devices.',
+			'operation.layout.panels.remoteScreenTarget' => 'Screen',
+			'operation.layout.panels.remoteScreenChoose' => 'Choose a screen…',
+			'operation.layout.panels.remoteScreenPickerTitle' => 'Shared Screens',
+			'operation.layout.panels.remoteScreenPickerEmpty' => 'None of your devices is sharing a screen. Turn Share screens and windows on under Settings → Peer Devices, on the device you want to see.',
+			'operation.layout.panels.remoteScreenUnset' => 'No screen chosen. Open this panel\'s settings to pick one your other devices are sharing.',
+			'operation.layout.panels.remoteScreenConnecting' => 'Connecting…',
+			'operation.layout.panels.remoteScreenPeerAway' => 'That device isn\'t connected right now.',
+			'operation.layout.panels.remoteScreenNotOffered' => 'That device stopped sharing this screen.',
+			'operation.layout.panels.remoteScreenNoListener' => 'That device can\'t accept connections — check its firewall.',
+			'operation.layout.panels.remoteScreenNoLan' => 'Screens are only shared over the local network, not Bluetooth.',
+			'operation.layout.panels.remoteScreenRefused' => 'That device wouldn\'t share this screen.',
+			'operation.layout.panels.remoteScreenSettings' => 'Panel settings',
+			'operation.layout.panels.remoteScreenAdjust' => 'Adjust View',
+			'operation.layout.panels.remoteScreenAdjustDone' => 'OK',
+			'operation.layout.panels.remoteScreenZoomIn' => 'Zoom in',
+			'operation.layout.panels.remoteScreenZoomOut' => 'Zoom out',
+			'operation.layout.panels.remoteScreenStopped' => 'That screen or window is no longer being shown.',
+			'operation.layout.panels.remoteScreenCaptureFailed' => 'That device couldn\'t capture that screen — it may need Screen Recording permission.',
+			'operation.layout.panels.remoteScreenNoAnswer' => 'That device didn\'t answer. It may not have screen sharing turned on.',
+			'operation.layout.panels.remoteScreenNoMedia' => 'Couldn\'t open a connection for the picture. Check the firewall on this device.',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
@@ -5326,6 +5477,8 @@ extension on Translations {
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
@@ -5348,8 +5501,6 @@ extension on Translations {
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'formChrome.removeItem' => 'Remove',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
@@ -5547,6 +5698,27 @@ extension on Translations {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Connected to ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Lost connection to ${device}',
+			'settings.peers.screenEnable' => 'Share screens and windows',
+			'settings.peers.screenDescription' => 'Allow other devices to show screens or windows from this computer',
+			'settings.peers.screenSources' => 'Screens and Windows',
+			'settings.peers.screenRefresh' => 'Refresh the list',
+			'settings.peers.screenUnsupportedPlatform' => 'This device can\'t share its screen. macOS can; every device can show one shared by another.',
+			'settings.peers.screenUnsupportedVersion' => 'Sharing a screen needs macOS 12.3 or later. This device can still show a screen shared by another.',
+			'settings.peers.screenNeedsPermission' => 'macOS needs your permission to record the screen before this app can share one.',
+			'settings.peers.screenGrantPermission' => 'Ask for permission',
+			'settings.peers.screenRelaunchAfterGranting' => 'Allow it in System Settings under Privacy & Security → Screen Recording, then quit and reopen this app — macOS only tells an app about the change on its next launch.',
+			'settings.peers.screenProblem' => ({required Object error}) => 'Screen sharing: ${error}',
+			'settings.peers.screenChooseTitle' => 'Choose What to Share',
+			'settings.peers.screenChooseButton' => 'Choose what to share…',
+			'settings.peers.screenTabScreens' => 'Screens',
+			'settings.peers.screenTabApps' => 'Apps',
+			'settings.peers.screenTabWindows' => 'Windows',
+			'settings.peers.screenTabEmpty' => 'Nothing of this kind was found.',
+			'settings.peers.screenSharedSummaryNone' => 'Nothing chosen yet.',
+			'settings.peers.screenThisDevice' => 'This device',
+			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Shown on ${devices}',
+			'settings.peers.screenSharedToNobody' => 'Not being shown',
+			'settings.peers.screenStopSharing' => ({required Object name}) => 'Stop sharing ${name}',
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
@@ -5819,6 +5991,8 @@ extension on Translations {
 			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.dataFiles' => 'Data Files',
 			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
 			'settings.panels.developerSettings' => 'Developer Settings',
@@ -5862,8 +6036,6 @@ extension on Translations {
 			'commands.settingSecretSet' => '(set)',
 			'commands.settingSecretUnset' => '(not set)',
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} selected',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingExpectsOnOff' => 'on or off',
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
 			'commands.settingExpectsNumber' => 'a number',

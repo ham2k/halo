@@ -16,6 +16,9 @@
 // exists to be bumped for.
 
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'peer_screen.dart';
 
 /// Bumped whenever a change would make a peer running an older version
 /// MISREAD something this one sends. Adding a new message type does not
@@ -87,6 +90,46 @@ abstract final class PeerMessageType {
   /// never ride a transport that admits anyone but the operator's own
   /// paired devices.
   static const catSet = 'catSet';
+
+  /// Ephemeral, latest-value-wins: every screen, application and window this
+  /// device is currently willing to show (HALO-369). Broadcast when the set
+  /// changes and snapshotted to a session as it establishes, the same shape
+  /// as [position] — a viewer that missed one is corrected by the next.
+  ///
+  /// An empty list is a real state and the one that MUST arrive: it is how
+  /// a device says it has stopped sharing, and a viewer that treats it as
+  /// "nothing to update" keeps offering sources that are gone.
+  static const screenSources = 'screenSources';
+
+  /// A viewer asking for one source, at a size and rate of its choosing.
+  static const screenSubscribe = 'screenSubscribe';
+
+  /// A viewer letting go of one source. Not required for correctness — the
+  /// media link closing says the same thing — but it lets the producer stop
+  /// capturing on the pane being closed rather than on a socket timeout.
+  static const screenUnsubscribe = 'screenUnsubscribe';
+
+  /// The producer accepting a [screenSubscribe]: where to collect the
+  /// frames, and the one-time ticket that admits the media link.
+  static const screenGrant = 'screenGrant';
+
+  /// The producer declining, with a reason the viewer can show. A pane that
+  /// says why it is empty is the whole point of sending this rather than
+  /// letting the request go unanswered.
+  static const screenRefuse = 'screenRefuse';
+
+  /// "Send me one still of this source, so I can show the operator what
+  /// they would be picking." Answered with [screenThumb].
+  ///
+  /// On demand and one at a time rather than carried on the offer: a picture
+  /// per source would put tens of kilobytes each into a message that is
+  /// broadcast whenever anything changes, for sources nobody is looking at.
+  static const screenThumbRequest = 'screenThumbRequest';
+
+  /// One still, base64 in JSON — the picker shows a handful on demand, which
+  /// is not the traffic the binary media link exists for. An answer with no
+  /// image is a real answer: the source has gone, or is not offered.
+  static const screenThumb = 'screenThumb';
 }
 
 /// Why a session was refused. On the wire so the far side can SAY why to its
@@ -217,6 +260,69 @@ class PeerMessage {
     if (freqKHz == null && mode is! String) return null;
     if (freqKHz != null && (freqKHz <= 0 || !freqKHz.isFinite)) return null;
     return PeerVfoPayload(freqKHz: freqKHz, mode: mode is String && mode.isNotEmpty ? mode : null);
+  }
+
+  static PeerMessage screenSources(List<PeerScreenSource> sources) => PeerMessage(
+      PeerMessageType.screenSources, {'sources': [for (final s in sources) s.toJson()]});
+
+  static PeerMessage screenSubscribe(PeerScreenSubscription request) =>
+      PeerMessage(PeerMessageType.screenSubscribe, request.toJson());
+
+  static PeerMessage screenUnsubscribe(String sourceId) =>
+      PeerMessage(PeerMessageType.screenUnsubscribe, {'id': sourceId});
+
+  static PeerMessage screenGrant(PeerScreenGrant grant) =>
+      PeerMessage(PeerMessageType.screenGrant, grant.toJson());
+
+  static PeerMessage screenRefuse(String sourceId, String reason) =>
+      PeerMessage(PeerMessageType.screenRefuse, {'id': sourceId, 'reason': reason});
+
+  static PeerMessage screenThumbRequest(String sourceId) =>
+      PeerMessage(PeerMessageType.screenThumbRequest, {'id': sourceId});
+
+  /// [image] null means "nothing to show" — see [PeerMessageType.screenThumb].
+  static PeerMessage screenThumb(String sourceId, List<int>? image) => PeerMessage(
+      PeerMessageType.screenThumb,
+      {'id': sourceId, if (image != null && image.isNotEmpty) 'jpeg': base64Encode(image)});
+
+  /// The still a [PeerMessageType.screenThumb] carries, or null when it
+  /// carries none — which is a real answer, not a malformed message.
+  Uint8List? get screenThumbOrNull {
+    if (type != PeerMessageType.screenThumb) return null;
+    final encoded = fields['jpeg'];
+    if (encoded is! String || encoded.isEmpty) return null;
+    try {
+      return base64Decode(encoded);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Null unless this is a [PeerMessageType.screenSources]. An EMPTY list is
+  /// a valid answer and must be distinguishable from "not that message" —
+  /// which is why this returns null rather than a bare list for the latter.
+  List<PeerScreenSource>? get screenSourcesOrNull {
+    if (type != PeerMessageType.screenSources) return null;
+    final raw = fields['sources'];
+    if (raw is! List) return const [];
+    return [
+      for (final entry in raw) ?PeerScreenSource.from(entry),
+    ];
+  }
+
+  /// Null unless this is a well-formed [PeerMessageType.screenSubscribe].
+  PeerScreenSubscription? get screenSubscriptionOrNull =>
+      type == PeerMessageType.screenSubscribe ? PeerScreenSubscription.from(fields) : null;
+
+  /// Null unless this is a well-formed [PeerMessageType.screenGrant].
+  PeerScreenGrant? get screenGrantOrNull =>
+      type == PeerMessageType.screenGrant ? PeerScreenGrant.from(fields) : null;
+
+  /// The source a [PeerMessageType.screenUnsubscribe] or
+  /// [PeerMessageType.screenRefuse] names.
+  String? get screenSourceId {
+    final value = fields['id'];
+    return value is String && value.isNotEmpty ? value : null;
   }
 
   int? get intSeq => (fields['seq'] as num?)?.toInt();

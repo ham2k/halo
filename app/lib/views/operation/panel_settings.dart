@@ -17,6 +17,8 @@ import '../../i18n/strings.g.dart';
 import '../../main.dart';
 import '../../services/panel_service.dart';
 import '../../tools/form_chrome_labels.dart';
+import 'remote_screen/remote_screen_panel.dart';
+import 'remote_screen/remote_screen_picker.dart';
 
 /// The `method` a panel's `type: 'action'` element names to reload whatever
 /// its pane is showing, without closing the sheet or saving anything.
@@ -80,6 +82,14 @@ Future<void> showPanelSettings(
             if (method == panelRefreshMethod) {
               services.panels.requestRefresh(panel.id);
               return null;
+            }
+            if (method == remoteScreenChooseMethod) {
+              if (!context.mounted) return null;
+              final chosen = await showRemoteScreenPicker(context, views: services.peerScreenViews);
+              // Dismissed, not chosen — leave whatever the pane already
+              // shows rather than clearing it out from under the operator.
+              if (chosen == null) return null;
+              return FormActionResult(fieldUpdates: {remoteScreenTargetKey: chosen.encode()});
             }
             debugPrint('[panels] ${panel.id}: no action named "$method"');
             return null;
