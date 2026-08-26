@@ -269,6 +269,71 @@ HookPartition partitionHookEntries(List<Map<String, dynamic>> entries) {
   return (items: items, succeeded: succeeded, unreachable: unreachable, failed: failed);
 }
 
+/// The canonical form of a multi-station position: the digits with no
+/// leading zeros, or `''` for no position at all.
+///
+/// `0` means none. A station numbers its operators from 1, so zero is free
+/// to mean off — it is what `POSITION 0` types, and what an operator who read
+/// that types into the details dialog. Anything unparseable is none too:
+/// `/OP` followed by nonsense is a callsign no hunter can use.
+///
+/// Every writer goes through this — the Operation Details dialog and the
+/// POSITION command alike — so the two cannot disagree about what `0` or
+/// `02` mean, and [spotCallForSelfSpot] applies it again on the way out, so
+/// whatever is in the row, the air gets the canonical form.
+String normalizedMultiIdentifier(String raw) {
+  final parsed = int.tryParse(raw.trim());
+  return parsed == null || parsed <= 0 ? '' : parsed.toString();
+}
+
+/// The station call a SELF-spot is posted under: the operation's own
+/// `stationCall` carrying the two suffixes the app applies centrally, rather
+/// than in each activity extension — every one of them builds its spotted
+/// call straight from `operation.stationCall`, so a rule left to them is a
+/// rule the next spot extension forgets.
+///
+///  * A Test Operation reports `/TEST` (`KI2D/TEST`) rather than whatever
+///    shorter suffix the operation itself uses (`KI2D/T`), so the spot reads
+///    unambiguously to hunters. Every comma-separated call takes it.
+///  * A multi-station operation — several operators logging one operation
+///    under one station call, a device each — appends this device's `/OP<n>`
+///    so the devices' spots stay distinguishable (`KI2D/OP1`, `KI2D/OP2`).
+///    `n` is `localData['multiIdentifier']`, reaching this payload as
+///    `operation['local']` (app-polo's `operation.local`); absent or empty
+///    means a plain single-station operation. Only the FIRST of a
+///    comma-separated call takes it, as in app-polo, where the additional
+///    calls (`stationCallPlusArray`) are spotted bare.
+///
+/// Other-spots post the spotted station's OWN call, so neither rule reaches
+/// them — see [ExtensionService.sendSpot].
+String spotCallForSelfSpot(Map<String, dynamic> operation) {
+  // Probed, not cast, like the identifier below: this operation blob crossed
+  // the extension bridge, and a cast that throws here takes the spot with it.
+  final stationCall = asQsonString(operation['stationCall']) ?? '';
+  final withTest =
+      Operation(uuid: '', data: operation).isTestOperation ? _spotCallForTestOperation(stationCall) : stationCall;
+  final local = operation['local'];
+  // `toString()`, not a cast: this arrives across the extension bridge, where
+  // a number would throw inside the spot path and surface as a generic
+  // "something went wrong" with nothing to say a spot had failed.
+  final identifier = normalizedMultiIdentifier(local is Map ? (local['multiIdentifier']?.toString() ?? '') : '');
+  if (identifier.isEmpty) return withTest;
+  final calls = withTest.split(',');
+  if (calls.first.trim().isEmpty) return withTest;
+  calls[0] = '${calls.first.trim()}/OP$identifier';
+  return calls.join(',');
+}
+
+/// Rewrites every comma-separated call's trailing `/T` to `/TEST` — see
+/// [spotCallForSelfSpot]. A call already ending `/TEST` is left alone.
+String _spotCallForTestOperation(String stationCall) => stationCall
+    .split(',')
+    .map((call) {
+      final trimmed = call.trim().toUpperCase();
+      return trimmed.endsWith('/T') ? '${trimmed.substring(0, trimmed.length - 2)}/TEST' : trimmed;
+    })
+    .join(',');
+
 class ExtensionService implements PanelExtensionSource {
   ExtensionHost? _host;
   Future<void>? _starting;
@@ -738,14 +803,11 @@ class ExtensionService implements PanelExtensionSource {
     final host = _host;
     if (host == null) return const {};
     final method = qso == null ? 'postSelfSpot' : 'postOtherSpot';
-    // Self-spotting a Test Operation reports `/TEST` (`KI2D/TEST`) rather
-    // than whatever shorter suffix the operation itself uses (`KI2D/T`), so
-    // the spot reads unambiguously to hunters — done once here rather than
-    // in each activity extension, since every one of them builds its own
-    // spotted call straight from `operation.stationCall`.
-    final spotOperation = qso == null && Operation(uuid: '', data: operation).isTestOperation
-        ? {...operation, 'stationCall': _spotCallForTestOperation(operation['stationCall'] as String? ?? '')}
-        : operation;
+    var spotOperation = operation;
+    if (qso == null) {
+      final spotCall = spotCallForSelfSpot(operation);
+      if (spotCall != operation['stationCall']) spotOperation = {...operation, 'stationCall': spotCall};
+    }
     final args = qso == null
         ? {'operation': spotOperation, 'freq': freq, 'mode': mode, 'comment': comment}
         : {'qso': qso, 'comment': comment, 'spotterCall': spotterCall};
@@ -773,17 +835,6 @@ class ExtensionService implements PanelExtensionSource {
     }
     return {for (final entry in entries) entry.key: entry.value};
   }
-
-  /// Rewrites every comma-separated call's trailing `/T` to `/TEST` — see
-  /// [sendSpot]'s self-spot handling. A call already ending `/TEST` is left
-  /// alone.
-  String _spotCallForTestOperation(String stationCall) => stationCall
-      .split(',')
-      .map((call) {
-        final trimmed = call.trim().toUpperCase();
-        return trimmed.endsWith('/T') ? '${trimmed.substring(0, trimmed.length - 2)}/TEST' : trimmed;
-      })
-      .join(',');
 
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
     final host = _host;

@@ -1,0 +1,13 @@
+{
+  "needsOperation": "This needs an open operation",
+  "setOperator": "Log as operator {{call}}?",
+  "settingOperator": "Operator: {{call}}",
+  "positionNeedsNumber": "POSITION takes a number from 0 to 99, e.g. POSITION 2 (0 for none)",
+  "setPosition": "Operate as position {{position}}?",
+  "settingPosition": "Position: {{position}}",
+  "clearPosition": "Clear this device's operating position?",
+  "clearingPosition": "Position cleared",
+  "catalogCategory": "Operation",
+  "catalogOperator": "Set who is at the key for this operation",
+  "catalogPosition": "Set this device's operating position (0 for none)"
+}

@@ -83,6 +83,29 @@ void main() {
     expect(body['reference'], 'US-0001');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  test('a multi-station Test Operation still spots the K-TEST sandbox ref, not its real park', () async {
+    // The app appends BOTH suffixes before the hook sees the call
+    // (`ExtensionService.spotCallForSelfSpot`), so what arrives here is
+    // `KI2D/TEST/OP1`. If the extension stops recognizing that as a test
+    // call, this posts a live spot to a park nobody is at — the one failure
+    // the /TEST rewrite exists to prevent, and one no local check can see.
+    final rec = recorder('{}');
+    final host = await hostWith(rec.client);
+
+    await host.invokeHook('spots', key: 'pota', method: 'postSelfSpot', args: {
+      'operation': {
+        'stationCall': 'KI2D/TEST/OP1',
+        'refs': [{'type': 'potaActivation', 'ref': 'US-0001'}],
+      },
+      'freq': 14285,
+      'mode': 'SSB',
+    }, timeout: const Duration(seconds: 20));
+
+    final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
+    expect(body['reference'], 'K-TEST');
+    expect(body['activator'], 'KI2D/TEST/OP1');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   test('the canonical User-Agent is still stamped', () async {
     // Proof the seam is below the host's own behaviour rather than replacing
     // it: an extension cannot become anonymous by being tested.

@@ -24,6 +24,10 @@ import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServic
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  /// The services the most recent [engine] was built on, for the one test
+  /// that needs to open an operation context on them.
+  late HaLoServices lastServices;
+
   /// An engine with nothing registered to take over dispatch, which is the
   /// no-operation-open case these local branches exist for. With a logging
   /// panel mounted `services.currentCommandDispatch` swallows the batch first
@@ -37,6 +41,7 @@ void main() {
     addTearDown(db.close);
 
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    lastServices = services;
     final commandEngine = CommandEngine(
       services: services,
       operationContext: () => null,
@@ -64,6 +69,42 @@ void main() {
     expect(dispatched, hasLength(1));
     expect(dispatched.single.key, 'devHammer');
     expect(dispatched.single.value, {'seconds': 20});
+  });
+
+  test('updateOperation reaches runAction, carrying the open operation\'s uuid', () async {
+    // OPER/POSITION are app-scoped: the logging panel contributes only the
+    // uuid, which the open operation's context has too. Without a branch here
+    // a POSITION run from ⌘K while no logging panel is mounted prints
+    // "Position: 2" and writes nothing — a confirmation for a write that
+    // never happened is worse than no command at all.
+    final (commandEngine, dispatched) = await engine();
+    final entry = lastServices.openOperationContext('op-uuid');
+    entry.operation = {'uuid': 'op-uuid', 'stationCall': 'KI2D'};
+    addTearDown(() => lastServices.closeOperationContext(entry));
+
+    await commandEngine.dispatchActions([
+      {
+        'updateOperation': {'multiIdentifier': '2'},
+      },
+    ]);
+
+    expect(dispatched.single.key, 'updateOperation');
+    expect(dispatched.single.value, {'multiIdentifier': '2', 'uuid': 'op-uuid'});
+  });
+
+  test('with no operation open updateOperation still reaches runAction, which reports the failure', () async {
+    // Dropping it here would be the silent path all over again: the action
+    // itself is what tells the operator there is nothing to write to.
+    final (commandEngine, dispatched) = await engine();
+
+    await commandEngine.dispatchActions([
+      {
+        'updateOperation': {'operatorCall': 'KI2D'},
+      },
+    ]);
+
+    expect(dispatched.single.key, 'updateOperation');
+    expect(dispatched.single.value, {'operatorCall': 'KI2D'});
   });
 
   test('a batch is dispatched whole, in order', () async {

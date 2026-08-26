@@ -6230,6 +6230,51 @@ void main() {
     expect((params['qso'] as Map)['their'], {'call': 'W1XYZ'});
   });
 
+  testWidgets("a spot carries the operation's device-local data, where the multi-station identifier lives",
+      (tester) async {
+    // `ExtensionService.spotCallForSelfSpot` builds `KI2D/OP2` out of
+    // `operation['local']`. Drop it from the payload and every device of a
+    // multi-station operation self-spots as the same bare call — the exact
+    // collision the identifier exists to prevent, and one nothing inside this
+    // widget would report.
+    await operations.updateLocalData(operation.uuid, {'multiIdentifier': '2'});
+    operation = (await operations.get(operation.uuid))!;
+
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeSpotCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != 'SPOT') return null;
+      return {
+        'describe': 'Self-spot?',
+        'confirm': 'Spotting…',
+        'commands': [
+          {'sendSpots': <String, dynamic>{}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeSpotCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SPOT');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched.single.key, 'sendSpots');
+    final spotted = (dispatched.single.value!['operation'] as Map).cast<String, dynamic>();
+    expect((spotted['local'] as Map)['multiIdentifier'], '2');
+    expect(spotted['stationCall'], 'KI2D', reason: 'the suffix is applied downstream, not here');
+  });
+
   group('Spotting control pill label', () {
     // The collapsed pill is always one of the two short, fixed labels —
     // never the longer dynamic button text ("Self-spot at 7.200", "First

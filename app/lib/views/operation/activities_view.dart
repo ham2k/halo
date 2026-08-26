@@ -1599,6 +1599,7 @@ class OperationSheetState extends State<OperationSheet> {
     final operatorCall = asQsonString(_operation.data['operatorCall']);
     final operationTitle = _operation.userTitle;
     final notes = asQsonString(_operation.data['notes']) ?? '';
+    final multiIdentifier = asQsonString(_operation.localData['multiIdentifier']) ?? '';
 
     // Only the station chip carries the full teal; its companions are the
     // same hue a step lighter, so the station callsign reads first.
@@ -1691,6 +1692,14 @@ class OperationSheetState extends State<OperationSheet> {
       const TextSpan(text: 'Op: '),
       TextSpan(text: operatorCall ?? '', style: callStyle),
     ];
+    // Shown to anyone who has a position set, developer mode or not: the
+    // identifier keeps suffixing this device's spots (`K2SUL/OP2`) after
+    // developer mode goes off, and this pill is the only thing on the sheet
+    // that explains where that came from.
+    final positionSpans = [
+      const TextSpan(text: 'Pos: '),
+      TextSpan(text: multiIdentifier, style: callStyle),
+    ];
 
     // What the pills may take before they start shedding: the title keeps
     // _headerTitleMinWidth of the row for its count and subtitle. They can
@@ -1701,6 +1710,14 @@ class OperationSheetState extends State<OperationSheet> {
 
     // The operation's identity — always the top line, in this order.
     final identity = <_HeaderPill>[
+      if (multiIdentifier.isNotEmpty)
+        _HeaderPill(
+          chip(light: true, Text.rich(TextSpan(children: positionSpans))),
+          measure(positionSpans),
+          // Last of the droppable pills to go: it is short, and losing it
+          // leaves the row saying nothing about a call that goes out modified.
+          dropOrder: 4,
+        ),
       if (operatorCall != null && operatorCall.isNotEmpty)
         _HeaderPill(
           chip(light: true, Text.rich(TextSpan(children: operatorSpans))),

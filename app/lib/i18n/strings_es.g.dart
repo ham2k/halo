@@ -200,6 +200,7 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	@override String get operationDetails => 'Detalles de la operación';
 	@override String get activities => 'Actividades';
 	@override String get stationCallsign => 'Indicativo de la estación';
+	@override String get multiStationIdentifier => 'Identificador multiestación (solo números)';
 	@override String get notes => 'Notas';
 	@override String get deleteOperationTitle => 'Borrar operación';
 	@override String purgeTestsLooseQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
@@ -513,6 +514,7 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String get enableSyncFirst => 'Primero habilita la sincronización en la Configuración.';
 	@override String get fullResyncStarted => 'Resincronización completa iniciada — los datos locales se respaldaron primero.';
 	@override String noDataFilesMatched({required Object target}) => 'Ningún archivo de datos coincide con «${target}».';
+	@override String get noOperationOpen => 'Ese comando necesita una operación abierta';
 	@override String reloadFailed({required Object error}) => 'Error al recargar: ${error}';
 	@override String get reloadingAll => 'Recargando todos los archivos de datos…';
 	@override String reloadingTarget({required Object target}) => 'Recargando archivos de datos de ${target}…';
@@ -2339,6 +2341,7 @@ extension on TranslationsEs {
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
+			'dialogs.multiStationIdentifier' => 'Identificador multiestación (solo números)',
 			'dialogs.notes' => 'Notas',
 			'dialogs.deleteOperationTitle' => 'Borrar operación',
 			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Más ${count} contacto de prueba que no pertenece a ninguna operación.', other: 'Más ${count} contactos de prueba que no pertenecen a ninguna operación.', ), 
@@ -2757,9 +2760,9 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.smallest' => 'Más pequeña',
 			'settings.fontScaleOpts.smaller' => 'Pequeña',
 			'settings.fontScaleOpts.normal' => 'Normal',
-			'settings.fontScaleOpts.larger' => 'Grande',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
@@ -3155,6 +3158,7 @@ extension on TranslationsEs {
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
+			'commands.noOperationOpen' => 'Ese comando necesita una operación abierta',
 			'commands.reloadFailed' => ({required Object error}) => 'Error al recargar: ${error}',
 			'commands.reloadingAll' => 'Recargando todos los archivos de datos…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',
@@ -3270,10 +3274,10 @@ extension on TranslationsEs {
 			'confirmDevice.lookUp' => 'Buscar',
 			'confirmDevice.codeNotFound' => 'Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.',
 			'confirmDevice.linkExpired' => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.',
-			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
-			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
+			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
 			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
 			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
 			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',

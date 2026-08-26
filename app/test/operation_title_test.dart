@@ -197,4 +197,33 @@ void main() {
       expect(title, 'General Operation');
     });
   });
+
+  group('headerCallsignFor', () {
+    // The Operation View's header is the one place with room to say who is at
+    // the key and which device this is. A list is not: two operations of the
+    // same station must still be told apart by their titles, not by a
+    // parenthetical that is the same on both.
+    Operation withCalls(String stationCall, {String operatorCall = '', String position = ''}) => Operation(
+          uuid: 'u',
+          data: {'stationCall': stationCall, 'operatorCall': operatorCall},
+          localData: position.isEmpty ? const {} : {'multiIdentifier': position},
+        );
+
+    test('a station logged by its own licensee names nobody new', () {
+      expect(headerCallsignFor(withCalls('KI2D', operatorCall: 'KI2D')), 'KI2D');
+      expect(headerCallsignFor(withCalls('KI2D')), 'KI2D');
+    });
+
+    test('a club call names the operator behind it', () {
+      expect(headerCallsignFor(withCalls('K2SUL', operatorCall: 'KI2D')), 'K2SUL (op KI2D)');
+    });
+
+    test("a multi-station position qualifies the operator it belongs to", () {
+      expect(headerCallsignFor(withCalls('K2SUL', operatorCall: 'KI2D', position: '2')), 'K2SUL (op KI2D /OP2)');
+    });
+
+    test('a position with no separate operator still shows, since the spot still carries it', () {
+      expect(headerCallsignFor(withCalls('K2SUL', position: '2')), 'K2SUL (/OP2)');
+    });
+  });
 }

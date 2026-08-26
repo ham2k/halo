@@ -2403,6 +2403,8 @@ class HaLoServices {
         if (settingKey == null || settingKey.isEmpty) return null;
         final rejected = await applySettingCommand(this, key: settingKey, value: params?['value']);
         return rejected == null ? null : (text: rejected, failed: true);
+      case 'updateOperation':
+        return _updateOperation(params ?? const {});
       case 'setPower':
         // POWER command (e.g. "5W" typed into the call field): same pair of
         // writes as the Station Configuration Power field's own onCommit —
@@ -2433,6 +2435,45 @@ class HaLoServices {
       default:
         return null;
     }
+  }
+
+  /// OPER / POSITION: writes one edit to the open operation. The hook parsed
+  /// the text and its own `confirm` already told the operator what is
+  /// happening, so success returns null, exactly as `updateSetting` does —
+  /// a non-null return is a failure the hook could not have known about.
+  ///
+  /// The two fields deliberately go to different places: the operator
+  /// callsign is the operation's own data and syncs with it, while the
+  /// position names THIS device and must not (see `spotCallForSelfSpot`).
+  Future<CommandActionOutcome?> _updateOperation(Map<String, dynamic> params) async {
+    final uuid = asQsonString(params['uuid']) ?? '';
+    final operation = uuid.isEmpty ? null : await operations.get(uuid);
+    if (operation == null) return (text: t.commands.noOperationOpen, failed: true);
+
+    final operatorCall = params['operatorCall']?.toString();
+    // Guarded on the change like the local write below, for a different
+    // reason: `saveData` stamps a new revision and clears `synced`, so
+    // re-running OPER with the callsign already set would queue an empty
+    // revision for every device on the account to fetch.
+    if (operatorCall != null && operatorCall != (asQsonString(operation.data['operatorCall']) ?? '')) {
+      await operations.saveData(Operation(
+        uuid: operation.uuid,
+        data: {...operation.data, 'operatorCall': operatorCall},
+        qsoCount: operation.qsoCount,
+        startAtMillisMin: operation.startAtMillisMin,
+        startAtMillisMax: operation.startAtMillisMax,
+        localData: operation.localData,
+      ));
+    }
+    final raw = params['multiIdentifier']?.toString();
+    final multiIdentifier = raw == null ? null : normalizedMultiIdentifier(raw);
+    // And guarded here because a local_data write rebuilds the Operation
+    // View — see the details dialog's own write.
+    if (multiIdentifier != null &&
+        multiIdentifier != normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? '')) {
+      await operations.updateLocalData(operation.uuid, {'multiIdentifier': multiIdentifier});
+    }
+    return null;
   }
 
   /// Backs both the Spotting control's send button and the SPOT/QRV/QRT/

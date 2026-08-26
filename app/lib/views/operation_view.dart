@@ -1446,6 +1446,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               widget.services.operations,
               _draftOperation ?? operation,
               save: false,
+              developerMode: widget.services.settings.developerMode,
             );
             if (updated != null && mounted) {
               setState(() {
@@ -1458,7 +1459,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   qsoCount: _draftOperation!.qsoCount,
                   startAtMillisMin: _draftOperation!.startAtMillisMin,
                   startAtMillisMax: _draftOperation!.startAtMillisMax,
-                  localData: _draftOperation!.localData,
+                  // The dialog persists local data itself, so the draft takes
+                  // what came back rather than keeping its own stale copy.
+                  localData: updated.localData,
                 );
               });
               sheetKey.currentState?.updateOperation(_draftOperation!);
@@ -1650,7 +1653,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               title: Text(t.operationDetails),
               onTap: () {
                 Navigator.of(dialogContext).pop();
-                unawaited(editOperationDetails(context, widget.services.operations, operation));
+                unawaited(editOperationDetails(context, widget.services.operations, operation,
+                    developerMode: widget.services.settings.developerMode));
               },
             ),
             if (includeImport)
@@ -2568,7 +2572,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                               Text(
                                 editingHeader
                                     ? (viewOptions.title ?? context.t.operation.layout.viewName)
-                                    : '${operation.stationCall} ${displayTitleFor(context, operation)}',
+                                    : '${headerCallsignFor(operation)} ${displayTitleFor(context, operation)}',
                               ),
                             ),
                             if (!editingHeader && refsLine.isNotEmpty)

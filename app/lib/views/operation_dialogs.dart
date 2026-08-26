@@ -12,6 +12,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../services/extension_service.dart';
 import '../tools/operation_title.dart';
 
 const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -247,18 +248,24 @@ Future<Operation?> editOperationDetails(
   OperationsRepository operations,
   Operation operation, {
   bool save = true,
+  bool developerMode = false,
 }) async {
-  final result = await showHaloDialog<(String, String, String, String)>(
+  final multiIdentifier = normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? '');
+  final result = await showHaloDialog<(String, String, String, String, String)>(
     context: context,
     builder: (context) => _OperationDetailsDialog(
       stationCall: operation.stationCall,
       operatorCall: asQsonString(operation.data['operatorCall']) ?? '',
       userTitle: operation.userTitle,
       notes: asQsonString(operation.data['notes']) ?? '',
+      multiIdentifier: multiIdentifier,
+      showMultiIdentifier: developerMode,
     ),
   );
   if (result == null || result.$1.trim().isEmpty) return null;
 
+  final newMultiIdentifier = normalizedMultiIdentifier(result.$5);
+  final multiIdentifierChanged = newMultiIdentifier != multiIdentifier;
   final updated = Operation(
     uuid: operation.uuid,
     data: {
@@ -271,10 +278,18 @@ Future<Operation?> editOperationDetails(
     qsoCount: operation.qsoCount,
     startAtMillisMin: operation.startAtMillisMin,
     startAtMillisMax: operation.startAtMillisMax,
-    localData: operation.localData,
+    localData: multiIdentifierChanged
+        ? {...operation.localData, 'multiIdentifier': newMultiIdentifier}
+        : operation.localData,
   );
-  if (save) {
-    await operations.saveData(updated);
+  if (save) await operations.saveData(updated);
+  // Written whatever `save` says: `save: false` stages the operation's SHARED
+  // data in the sheet's draft until it closes, and this identifier is neither
+  // — it is device-local, and its row already exists (the sheet only ever
+  // opens on a created operation). Guarded on the change, because a
+  // local_data write is a UI event: it rebuilds the Operation View.
+  if (multiIdentifierChanged) {
+    await operations.updateLocalData(operation.uuid, {'multiIdentifier': newMultiIdentifier});
   }
   return updated;
 }
@@ -466,11 +481,21 @@ class _OperationDetailsDialog extends StatefulWidget {
   final String userTitle;
   final String notes;
 
+  /// This device's number within a multi-station operation — several
+  /// operators logging the same operation under one station call, each
+  /// device self-spotting as `KI2D/OP1`, `KI2D/OP2` and so on (see
+  /// `ExtensionService.sendSpot`). Empty means a plain single-station
+  /// operation and no suffix at all.
+  final String multiIdentifier;
+  final bool showMultiIdentifier;
+
   const _OperationDetailsDialog({
     required this.stationCall,
     required this.operatorCall,
     required this.userTitle,
     required this.notes,
+    required this.multiIdentifier,
+    required this.showMultiIdentifier,
   });
 
   @override
@@ -482,6 +507,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   late final _operatorCallController = TextEditingController(text: widget.operatorCall);
   late final _titleController = TextEditingController(text: widget.userTitle);
   late final _notesController = TextEditingController(text: widget.notes);
+  late final _multiIdentifierController = TextEditingController(text: widget.multiIdentifier);
 
   @override
   void dispose() {
@@ -489,6 +515,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
     _operatorCallController.dispose();
     _titleController.dispose();
     _notesController.dispose();
+    _multiIdentifierController.dispose();
     super.dispose();
   }
 
@@ -498,6 +525,9 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
       _operatorCallController.text.trim().toUpperCase(),
       _titleController.text.trim(),
       _notesController.text.trim(),
+      // Hidden means untouched: the controller still holds what came in, so
+      // the caller's change check sees no change and writes nothing.
+      _multiIdentifierController.text.trim(),
     ));
   }
 
@@ -538,6 +568,30 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               decoration: poloFieldDecoration(context, context.t.settings.operatorCall),
               onSubmitted: (_) => _save(),
             ),
+            if (widget.showMultiIdentifier) ...[
+              const SizedBox(height: Space.lg),
+              TextField(
+                selectAllOnFocus: false,
+                controller: _multiIdentifierController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontFamily: 'RobotoMono'),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  // Same ceiling the POSITION command enforces: a station has
+                  // operators, not thousands of them.
+                  LengthLimitingTextInputFormatter(2),
+                ],
+                // Label only, matching FormRenderer's treatment of a
+                // `devMode: true` text field — the value itself stays in the
+                // ordinary field colour.
+                decoration: poloFieldDecoration(
+                  context,
+                  context.t.dialogs.multiStationIdentifier,
+                  labelColor: HaLoColors.of(context).devMode,
+                ),
+                onSubmitted: (_) => _save(),
+              ),
+            ],
             const SizedBox(height: Space.xxl),
             TextField(
               selectAllOnFocus: false,

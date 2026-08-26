@@ -112,6 +112,7 @@ const bundles = [
   { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
   { key: 'settings-commands', entry: 'core/settings-commands/src/index.ts', kind: 'extension' },
   { key: 'test-ops-commands', entry: 'core/test-ops-commands/src/index.ts', kind: 'extension' },
+  { key: 'operation-commands', entry: 'core/operation-commands/src/index.ts', kind: 'extension' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lookup', entry: 'lookups/ham2k-lookup/src/index.ts', kind: 'extension' },
   { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },

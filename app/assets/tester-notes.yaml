@@ -4,6 +4,11 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - Type `OPER KI2D` in the call field to set who is at the key for an operation
+    - "`POSITION 2` marks this device in a multi-station op; its spots go out as /OP2"
+
 "150":
   changes:
     - Radio pill and QSO frequencies turn red when there is no band

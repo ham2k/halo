@@ -595,10 +595,11 @@ interface CommandHook {
 }
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
-// CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
-//   syncAll?, updateSettings?, updateSetting?, openSettings?, setCallField?,
-//   reloadDataFiles?, devNotice?, devStatus?, devProgress?, devHammer?,
-//   devSplash?, devOnboard?, devTester?, devPopup?, devTimeTravel?, toggleExperiment?}
+// CommandAction (closed set): {setVfo?, setPower?, updateQso?, addQso?,
+//   sendSpots?, syncAll?, updateSettings?, updateSetting?, openSettings?,
+//   updateOperation?, setCallField?, reloadDataFiles?, devNotice?, devStatus?,
+//   devProgress?, devHammer?, devSplash?, devOnboard?, devTester?, devPopup?,
+//   devTimeTravel?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"

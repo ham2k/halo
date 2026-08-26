@@ -10,13 +10,19 @@
 
 import type { JSONValue } from "./types"
 
-/// True when any comma-separated call in `stationCall` ends in `/T` or
-/// `/TEST` — checked per-call, not on the joined string, so a real call
-/// isn't hidden behind a test one earlier or later in a multi-operator
+/// True when any comma-separated call in `stationCall` carries a `T` or
+/// `TEST` SEGMENT — checked per-call, not on the joined string, so a real
+/// call isn't hidden behind a test one earlier or later in a multi-operator
 /// list (`"W1AW/T, KI2D"` is still a Test Operation).
+///
+/// Segments, not a suffix, exactly as `halo_core`'s `isTestCall` explains:
+/// a substring match would opt `W1AW/TESTER` in, and matching only the last
+/// segment would miss `KI2D/T/P` — or `KI2D/TEST/OP1`, the call a
+/// multi-station Test Operation self-spots under, which arrives here already
+/// carrying both suffixes (`ExtensionService.spotCallForSelfSpot`).
 export function isTestOperation(stationCall: JSONValue | undefined): boolean {
   return String(stationCall ?? "")
     .split(",")
-    .map((call) => call.trim().toUpperCase())
-    .some((call) => call.endsWith("/T") || call.endsWith("/TEST"))
+    .flatMap((call) => call.trim().toUpperCase().split("/"))
+    .some((segment) => segment === "T" || segment === "TEST")
 }

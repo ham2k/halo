@@ -68,6 +68,31 @@ String displayTitleFor(BuildContext context, Operation operation) {
   return operation.isTestOperation ? '$base ${context.t.operation.testOperationSuffix}' : base;
 }
 
+/// The callsign line the Operation View's header leads with: the station
+/// call, plus who is at the key when that is a different callsign, plus this
+/// device's multi-station position when it has one — `K2SUL (op KI2D /OP2)`.
+///
+/// Deliberately NOT what a list uses: the station call alone is what tells
+/// one operation from another at a glance, so the home screen keeps rendering
+/// [Operation.stationCall] straight. This is for the one place with the room
+/// to say more.
+String headerCallsignFor(Operation operation) {
+  final stationCall = operation.stationCall;
+  final operatorCall = (asQsonString(operation.data['operatorCall']) ?? '').trim();
+  final position = (asQsonString(operation.localData['multiIdentifier']) ?? '').trim();
+  final parts = [
+    // A club station logged by its own licensee names nobody new — app-polo
+    // draws the same line (`operationTemplates.js`).
+    if (operatorCall.isNotEmpty && operatorCall.toUpperCase() != stationCall.trim().toUpperCase())
+      'op $operatorCall',
+    // The suffix goes on the STATION call over the air (see
+    // `spotCallForSelfSpot`); here it rides with the operator, because what
+    // it names is which operator this device belongs to.
+    if (position.isNotEmpty) '/OP$position',
+  ];
+  return parts.isEmpty ? stationCall : '$stationCall (${parts.join(' ')})';
+}
+
 /// The operation's display subtitle: always the ref-derived detail (there's
 /// no user override for this, unlike the title) — empty when nothing
 /// contributed one.

@@ -115,6 +115,7 @@
     "operationDetails": "Detalles de la operación",
     "activities": "Actividades",
     "stationCallsign": "Indicativo de la estación",
+    "multiStationIdentifier": "Identificador multiestación (solo números)",
     "notes": "Notas",
     "deleteOperationTitle": "Borrar operación",
     "purgeTestsLooseQsos": {
@@ -1130,6 +1131,7 @@
     "enableSyncFirst": "Primero habilita la sincronización en la Configuración.",
     "fullResyncStarted": "Resincronización completa iniciada — los datos locales se respaldaron primero.",
     "noDataFilesMatched": "Ningún archivo de datos coincide con «${target}».",
+    "noOperationOpen": "Ese comando necesita una operación abierta",
     "reloadFailed": "Error al recargar: ${error}",
     "reloadingAll": "Recargando todos los archivos de datos…",
     "reloadingTarget": "Recargando archivos de datos de ${target}…",

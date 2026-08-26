@@ -49,6 +49,7 @@ void main() {
     String stationCall = 'VK9/AB1CDE/P',
     String operatorCall = 'VE3ABC/VE2',
     String userTitle = 'A Long Operation Title',
+    String multiIdentifier = '',
     double textScaler = 1.0,
   }) async {
     SharedPreferences.setMockInitialValues({});
@@ -66,6 +67,9 @@ void main() {
       data: {...created.data, 'operatorCall': operatorCall, 'notes': 'some notes'},
     );
     await services.operations.saveData(operation);
+    if (multiIdentifier.isNotEmpty) {
+      await services.operations.updateLocalData(operation.uuid, {'multiIdentifier': multiIdentifier});
+    }
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -88,6 +92,37 @@ void main() {
     tester.view.physicalSize = Size(width, 900);
     await tester.pumpAndSettle();
   }
+
+  testWidgets('a multi-station position rides on the identity line, ahead of the operator', (tester) async {
+    // The position is what turns this device's spots into `.../OP2`, so it
+    // belongs with the callsigns it modifies rather than among the extras —
+    // and ahead of the operator, whose call it qualifies.
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester, multiIdentifier: '2', textScaler: 0.5);
+
+    final sheet = find.byType(OperationSheet);
+    final position = find.descendant(of: sheet, matching: find.textContaining('Pos: '));
+    final operator = find.descendant(of: sheet, matching: find.textContaining('Op: '));
+    expect(position, findsOneWidget);
+    expect(tester.getTopLeft(position).dx, lessThan(tester.getTopLeft(operator).dx));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('no position, no pill', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester, textScaler: 0.5);
+
+    expect(find.descendant(of: find.byType(OperationSheet), matching: find.textContaining('Pos: ')), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 
   testWidgets('the operation pills keep the callsigns and pencil on the top line, shedding extras below',
       (tester) async {

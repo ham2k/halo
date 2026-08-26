@@ -835,6 +835,17 @@ class CommandEngine extends ChangeNotifier {
         await runAction('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
       } else if (map['openSettings'] is Map) {
         await runAction('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
+      } else if (map['updateOperation'] is Map) {
+        // App-scoped like setPower below — the logging panel only contributes
+        // the uuid, which the open operation's own context has too. Without
+        // this branch OPER/POSITION run from the ⌘K dialog while no logging
+        // panel is mounted would show their "Operator: KI2D" confirmation and
+        // write nothing. With no operation open there is no uuid, and the
+        // action reports that rather than going quiet.
+        await runAction('updateOperation', {
+          ...(map['updateOperation'] as Map).cast<String, dynamic>(),
+          if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
+        });
       } else if (map['setPower'] is Map) {
         // Not QSO-scoped, unlike the actions this fallback path can't serve
         // (addQso, updateQso, setCallField — see the comment below) — so,

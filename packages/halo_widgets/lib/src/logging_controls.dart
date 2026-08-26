@@ -5294,6 +5294,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
+  /// The operation as a spot sees it: its shared data plus `local`, this
+  /// device's own — where the multi-station identifier that turns `KI2D` into
+  /// `KI2D/OP1` lives. Mirrors app-polo's `operation.local`;
+  /// `ExtensionService.spotCallForSelfSpot` is what reads it.
+  ///
+  /// Only the identifier, not the whole of `localData`: the scoring cache and
+  /// the title fragments live there too, and neither belongs on the wire to
+  /// every spot extension on every spot.
+  Map<String, dynamic> get _spotOperationPayload => {
+        ...widget.operation.data,
+        'local': {'multiIdentifier': widget.operation.localData['multiIdentifier']},
+      };
+
   Future<void> _sendSpot() async {
     final sendSpot = widget.sendSpot;
     if (sendSpot == null || _spotSending) return;
@@ -5315,7 +5328,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final comment = _spotCommentController.text.trim();
       final results = await sendSpot(
         sources: sentSources,
-        operation: widget.operation.data,
+        operation: _spotOperationPayload,
         qso: editingQso?.data,
         freq: editingQso == null ? vfo?.freq : null,
         mode: editingQso == null ? vfo?.mode : null,
@@ -6320,7 +6333,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         }
         final vfo = widget.radioService?.vfoA;
         await widget.onCommandAction?.call('sendSpots', {
-          'operation': widget.operation.data,
+          'operation': _spotOperationPayload,
           'target': target,
           if (qso != null) 'qso': qso.data,
           if (comment != null) 'comment': comment,
@@ -6353,6 +6366,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.onCommandAction?.call('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
       } else if (map['openSettings'] is Map) {
         await widget.onCommandAction?.call('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
+      } else if (map['updateOperation'] is Map) {
+        // The uuid is added here because only this widget knows which
+        // operation is open; the app owns the write, since the operator
+        // callsign and the position land in different columns.
+        await widget.onCommandAction?.call('updateOperation', {
+          ...(map['updateOperation'] as Map).cast<String, dynamic>(),
+          'uuid': widget.operation.uuid,
+        });
       } else if (map['setPower'] is Map) {
         // No QSO-scoped widget state of its own — same dispatch shape as
         // updateSetting/openSettings above, straight through to the app layer.

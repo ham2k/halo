@@ -328,6 +328,9 @@ class Translations$dialogs$en {
 	/// en: 'Station Callsign'
 	String get stationCallsign => 'Station Callsign';
 
+	/// en: 'Multi-station identifier (numbers only)'
+	String get multiStationIdentifier => 'Multi-station identifier (numbers only)';
+
 	/// en: 'Notes'
 	String get notes => 'Notes';
 
@@ -1073,6 +1076,9 @@ class Translations$commands$en {
 
 	/// en: 'Sentry is disabled in this build — test error logged locally only'
 	String get sentryTestLocalOnly => 'Sentry is disabled in this build — test error logged locally only';
+
+	/// en: 'That command needs an open operation'
+	String get noOperationOpen => 'That command needs an open operation';
 
 	/// en: 'No Test Operations to purge'
 	String get noTestOperations => 'No Test Operations to purge';
@@ -4929,6 +4935,7 @@ extension on Translations {
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
+			'dialogs.multiStationIdentifier' => 'Multi-station identifier (numbers only)',
 			'dialogs.notes' => 'Notes',
 			'dialogs.deleteOperationTitle' => 'Delete Operation',
 			'dialogs.purgeTestsTitle' => 'Purge Test Operations',
@@ -5341,9 +5348,9 @@ extension on Translations {
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'formChrome.removeItem' => 'Remove',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
-			'qsoEditForm.title' => 'Edit QSO',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
@@ -5836,6 +5843,7 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
+			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.noTestOperations' => 'No Test Operations to purge',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
@@ -5854,10 +5862,10 @@ extension on Translations {
 			'commands.settingSecretSet' => '(set)',
 			'commands.settingSecretUnset' => '(not set)',
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} selected',
-			'commands.settingExpectsOnOff' => 'on or off',
-			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
 			_ => null,
 		} ?? switch (path) {
+			'commands.settingExpectsOnOff' => 'on or off',
+			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
 			'commands.settingExpectsNumber' => 'a number',
 			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
