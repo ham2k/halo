@@ -1,6 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
@@ -593,6 +596,123 @@ void main() {
 
       expect(seen, contains('qsos:mergeFromSync mode'));
       expect(seen, contains('qsos:mergeFromSync their.guess.name'));
+    });
+
+    test('a row stored BEFORE the writers coerced anything is healed on read', () async {
+      // Written straight to the table, bypassing the repository — the only
+      // way to produce what a device upgrading into this build actually
+      // holds. The write-side normalizer cannot reach such a row: nothing
+      // writes to it, so nothing heals it, and it is exactly the population
+      // that reported the crash.
+      final op = await operations.create(stationCall: 'KI2D');
+      await db.into(db.qsos).insert(QsosCompanion.insert(
+            uuid: 'legacy-row',
+            operation: op.uuid,
+            data: Value(jsonEncode({
+              'their': {'call': 'W1AW'},
+              'mode': true,
+              'freq': '14074.5',
+              'band': '20m',
+              'startAtMillis': 1000,
+            })),
+          ));
+
+      final stored = (await qsos.get('legacy-row'))!;
+      // `data` itself, not just the getters: SyncEngine._buildPayload and
+      // ExportService both SPREAD this map, so a getter-only fix would still
+      // hand the ADIF hook the raw value while the QSO list showed the
+      // coerced one — the screen and the submitted log disagreeing silently.
+      expect(stored.data.containsKey('mode'), isFalse);
+      expect(stored.data['freq'], 14074.5);
+      expect(stored.theirCall, 'W1AW');
+    });
+
+    test('an operation row is healed on read the same way', () async {
+      await db.into(db.operations).insert(OperationsCompanion.insert(
+            uuid: 'legacy-op',
+            data: Value(jsonEncode({
+              'stationCall': 'KI2D',
+              'refs': 'POTA',
+              'createdAtMillis': '1721736000000',
+            })),
+          ));
+
+      final stored = (await operations.get('legacy-op'))!;
+      expect(stored.data.containsKey('refs'), isFalse,
+          reason: 'a refs that is not a list drives no scoring and no export');
+      expect(stored.data['createdAtMillis'], 1721736000000);
+    });
+
+    test('healing a stored row still reports it, on both sides of the isolate threshold', () async {
+      // The trap this exists to catch: healing on read hands the WRITE path
+      // a clean map, so an edit to a legacy bad record stops reporting it —
+      // the fix would quietly cost the signal that says such records exist.
+      //
+      // And it must report the SAME either side of the 200-row isolate
+      // threshold. `onQsonTypeViolation` is a top-level global and null in a
+      // spawned isolate, so reporting in place would fire for a small
+      // operation and silently not for a large one — which reads as
+      // sampling of the damage rather than as a hole in the instrument.
+      final seen = <String>[];
+      onQsonTypeViolation = (context, violation) => seen.add('$context ${violation.path}');
+      addTearDown(() => onQsonTypeViolation = null);
+
+      final op = await operations.create(stationCall: 'KI2D');
+      Future<void> insertBad(String uuid) => db.into(db.qsos).insert(QsosCompanion.insert(
+            uuid: uuid,
+            operation: op.uuid,
+            data: Value(jsonEncode({'their': {'call': 'W1AW'}, 'mode': true})),
+          ));
+
+      await insertBad('bad-0');
+      await qsos.watchForOperation(op.uuid).first;
+      expect(seen, contains('qsos:read mode'), reason: 'inline decode reports');
+
+      // Past the threshold the decode moves to an isolate, and the
+      // violations have to travel back as data to be reported at all.
+      seen.clear();
+      // Comfortably past the decoder's private 200-row isolate threshold.
+      for (var i = 1; i <= 210; i++) {
+        await insertBad('bad-$i');
+      }
+      await qsos.watchForOperation(op.uuid).first;
+      expect(seen, contains('qsos:read mode'), reason: 'off-isolate decode reports too');
+    });
+
+    test('a batch of damage reports a sample, not one report per bad row', () async {
+      // A log with thousands of bad rows must not build a violation list the
+      // size of the damage, nor hand every entry to the reporter: the
+      // question is WHICH fields arrive wrong-typed, and the first few
+      // settle it.
+      final seen = <String>[];
+      onQsonTypeViolation = (context, violation) => seen.add(violation.path);
+      addTearDown(() => onQsonTypeViolation = null);
+
+      final op = await operations.create(stationCall: 'KI2D');
+      for (var i = 0; i < 300; i++) {
+        await db.into(db.qsos).insert(QsosCompanion.insert(
+              uuid: 'bad-$i',
+              operation: op.uuid,
+              data: Value(jsonEncode({'their': {'call': 'W1AW'}, 'mode': true})),
+            ));
+      }
+      await qsos.watchForOperation(op.uuid).first;
+
+      expect(seen, isNotEmpty);
+      expect(seen.length, lessThan(300), reason: 'sampled, not one per row');
+    });
+
+    test('an operation row reports what healing it found', () async {
+      final seen = <String>[];
+      onQsonTypeViolation = (context, violation) => seen.add('$context ${violation.path}');
+      addTearDown(() => onQsonTypeViolation = null);
+
+      await db.into(db.operations).insert(OperationsCompanion.insert(
+            uuid: 'legacy-op-2',
+            data: Value(jsonEncode({'stationCall': 'KI2D', 'refs': 'POTA'})),
+          ));
+      await operations.get('legacy-op-2');
+      expect(seen, contains('operations:read refs'));
     });
 
     test('mergeFromSync (operations) applies the same staleness rule', () async {

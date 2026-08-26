@@ -633,9 +633,29 @@ class OperationsRepository {
     });
   }
 
-  Operation _operationFromRow(OperationRow row) => Operation(
+  /// Normalizes on the way out as well as on the way in ([_encodeOperationData]):
+  /// a row stored before the writers coerced anything still holds whatever
+  /// type it was given, and the writers cannot reach a row nothing writes to.
+  ///
+  /// NOT every reader comes through here — `_operationFor`, `sequences.dart`
+  /// and `peer_outbox.dart` each decode the same blob raw, so a record can
+  /// still be seen un-normalized by those. They survive on the model's
+  /// probing getters rather than on this.
+  ///
+  /// `localData` is device-local rather than QSON, so it is decoded as-is.
+  Operation _operationFromRow(OperationRow row) {
+    // Never off-isolate, unlike the QSO decoder, so it reports in place.
+    final violations = <QsonTypeViolation>[];
+    final operation = _operationRowToModel(row, violations);
+    for (final violation in violations) {
+      onQsonTypeViolation?.call('operations:read', violation);
+    }
+    return operation;
+  }
+
+  Operation _operationRowToModel(OperationRow row, List<QsonTypeViolation> violations) => Operation(
         uuid: row.uuid,
-        data: jsonDecode(row.data) as Map<String, dynamic>,
+        data: normalizeOperationQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
         qsoCount: row.qsoCount,
         startAtMillisMin: row.startAtMillisMin,
         startAtMillisMax: row.startAtMillisMax,
@@ -660,14 +680,63 @@ class OperationsRepository {
   }
 }
 
-Qso _qsoFromRow(QsoRow row) => Qso(
+/// Normalizing here, not only in [_encodeQsoData], is what reaches a record
+/// that was already stored: the writers cannot heal a row nothing writes to.
+/// It also settles what the rest of the app is handed, because `data` is the
+/// map itself — `SyncEngine._buildPayload` and `ExportService` both spread
+/// it, so without this an export's ADIF hook reads the raw wrong-typed value
+/// while the QSO list beside it shows the coerced one, and a push carries
+/// the bad value back out to every other device.
+///
+/// The scan costs about 2.5µs against `jsonDecode`'s 3.4µs on a typical QSO,
+/// and returns the same map untouched when there is nothing to fix — which
+/// is every row but the rare bad one.
+///
+/// Reporting what it heals is not optional here: healing a stored record
+/// hands the write path a clean map, so an operator editing that record
+/// would otherwise stop reporting it too — losing the signal rather than
+/// merely declining to add one. [violations] carries what was found back to
+/// a caller that can report it.
+///
+/// `jsonDecode(...) as Map` is deliberately still a cast: a blob that is not
+/// a JSON object is a corrupt row, not a wrong-typed field, and coercing it
+/// would swallow real database corruption.
+Qso _qsoFromRow(QsoRow row, {List<QsonTypeViolation>? violations}) => Qso(
       uuid: row.uuid,
       operationUuid: row.operation,
-      data: jsonDecode(row.data) as Map<String, dynamic>,
+      data: normalizeQsoQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
       deleted: row.deleted,
       purged: row.purged,
       scoreCache: row.scoreCache,
     );
+
+/// How many violations one decode batch carries back. A log with thousands
+/// of bad rows would otherwise build a list the size of the damage and hand
+/// every entry to the reporter, when the question being answered — WHICH
+/// fields arrive wrong-typed — is settled by the first few. Sampling here
+/// rather than at the reporter keeps the cost off the isolate hop too.
+const _readViolationSampleLimit = 16;
+
+/// The rows plus what healing them found, because a violation cannot report
+/// itself from inside an isolate: `onQsonTypeViolation` is a top-level
+/// global, so it is null in a spawned isolate and a report there would
+/// simply vanish. Carrying them back as DATA is what keeps coverage uniform
+/// — reporting in place would fire for small batches and silently not for
+/// large ones, which reads as sampling rather than as a hole.
+class _DecodedQsos {
+  const _DecodedQsos(this.qsos, this.violations);
+  final List<Qso> qsos;
+  final List<QsonTypeViolation> violations;
+}
+
+_DecodedQsos _decodeQsos(List<QsoRow> rows) {
+  final violations = <QsonTypeViolation>[];
+  final qsos = [
+    for (final row in rows)
+      _qsoFromRow(row, violations: violations.length < _readViolationSampleLimit ? violations : null),
+  ];
+  return _DecodedQsos(qsos, violations);
+}
 
 /// Below this, decoding inline is cheaper than an isolate's spawn cost;
 /// above it, [_qsoFromRow]'s per-row `jsonDecode` is real enough CPU work
@@ -678,10 +747,19 @@ Qso _qsoFromRow(QsoRow row) => Qso(
 /// animate the transition while it waits.
 const _qsoRowDecodeIsolateThreshold = 200;
 
+/// Reports on THIS isolate whatever the decode healed, wherever it ran —
+/// see [_DecodedQsos] for why the violations travel as data.
+List<Qso> _reportedQsos(_DecodedQsos decoded) {
+  for (final violation in decoded.violations) {
+    onQsonTypeViolation?.call('qsos:read', violation);
+  }
+  return decoded.qsos;
+}
+
 Future<List<Qso>> _qsosFromRows(List<QsoRow> rows) async {
-  if (rows.length < _qsoRowDecodeIsolateThreshold) return rows.map(_qsoFromRow).toList();
+  if (rows.length < _qsoRowDecodeIsolateThreshold) return _reportedQsos(_decodeQsos(rows));
   try {
-    return await Isolate.run(() => rows.map(_qsoFromRow).toList());
+    return _reportedQsos(await Isolate.run(() => _decodeQsos(rows)));
   } catch (_) {
     // Isolate.spawn doesn't exist on web (dart2js/DDC) — halo_core is pure
     // Dart with no Flutter dependency, so there's no `kIsWeb` to branch on
@@ -692,7 +770,7 @@ Future<List<Qso>> _qsosFromRows(List<QsoRow> rows) async {
     // of just costing a slower decode. A genuinely malformed row still
     // throws the same way it did before this existed — inline decoding
     // doesn't change what a bad row does, only where a healthy one runs.
-    return rows.map(_qsoFromRow).toList();
+    return _reportedQsos(_decodeQsos(rows));
   }
 }
 

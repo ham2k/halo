@@ -170,6 +170,17 @@ final _qsoGuessFields = <String, QsonFieldType>{
 /// `event`'s own kind, which [Qso.eventKind] reads.
 const _qsoEventFields = <String, QsonFieldType>{'event': QsonFieldType.string};
 
+/// The sub-maps [normalizeQsoQson] descends into, and the one `their`
+/// descends into in turn. Hoisted rather than written at the call site: this
+/// runs once per row on every query, so a map literal there would allocate
+/// per row for a table that never changes.
+final _qsoNested = <String, Map<String, QsonFieldType>>{
+  'our': _qsoOurFields,
+  'their': _qsoTheirFields,
+  'event': _qsoEventFields,
+};
+final _theirNested = <String, Map<String, QsonFieldType>>{'guess': _qsoGuessFields};
+
 const _operationFields = <String, QsonFieldType>{
   'stationCall': QsonFieldType.string,
   'userTitle': QsonFieldType.string,
@@ -215,7 +226,7 @@ Map<String, dynamic> _normalize(
   Map<String, dynamic> data,
   Map<String, QsonFieldType> fields,
   String prefix,
-  List<QsonTypeViolation> found,
+  List<QsonTypeViolation>? found,
   Map<String, Map<String, QsonFieldType>> nested,
 ) {
   Map<String, dynamic>? rebuilt;
@@ -229,7 +240,7 @@ Map<String, dynamic> _normalize(
     // getter already handles — only a PRESENT wrong type is a violation.
     if (value == null || _isClean(value, entry.value)) continue;
 
-    found.add(QsonTypeViolation('$prefix$key', entry.value, value.runtimeType.toString()));
+    found?.add(QsonTypeViolation('$prefix$key', entry.value, value.runtimeType.toString()));
     final coerced = _coerce(value, entry.value);
     if (coerced == null) {
       mutable().remove(key);
@@ -249,7 +260,7 @@ Map<String, dynamic> _normalize(
       entry.value,
       '$prefix$key.',
       found,
-      key == 'their' ? {'guess': _qsoGuessFields} : const {},
+      key == 'their' ? _theirNested : const {},
     );
     if (!identical(normalizedSub, sub)) mutable()[key] = normalizedSub;
   }
@@ -265,22 +276,20 @@ Map<String, dynamic> _normalize(
 ///
 /// Every violation found is appended to [violations] when one is supplied,
 /// so the caller can report what it saw. Reporting belongs to the caller
-/// rather than here: this runs on the write path, where each record passes
-/// once, whereas the getters run per frame per row and must stay free of
-/// side effects.
+/// because the two callers want opposite things: the write paths report what
+/// they find, while the row decoders (`_qsoFromRow`) pass no list at all —
+/// they run per row on every query, and a record healed there has no writer
+/// left to name. Passing no list also costs no allocation, which is what
+/// keeps the read path to the scan alone.
 Map<String, dynamic> normalizeQsoQson(
   Map<String, dynamic> data, {
   List<QsonTypeViolation>? violations,
 }) =>
-    _normalize(data, _qsoFields, '', violations ?? [], {
-      'our': _qsoOurFields,
-      'their': _qsoTheirFields,
-      'event': _qsoEventFields,
-    });
+    _normalize(data, _qsoFields, '', violations, _qsoNested);
 
 /// [normalizeQsoQson] for an operation's QSON.
 Map<String, dynamic> normalizeOperationQson(
   Map<String, dynamic> data, {
   List<QsonTypeViolation>? violations,
 }) =>
-    _normalize(data, _operationFields, '', violations ?? [], const {});
+    _normalize(data, _operationFields, '', violations, const {});
