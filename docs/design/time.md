@@ -88,7 +88,9 @@ clock is the entire point of the feature.
 A `Timer` fires on real time and knows nothing about travel, so any duration
 handed to one has to be measured on the same clock it will be counted on.
 
-Tests are not policed: a test constructs the times it needs.
+Tests are not policed on *which* clock they use: a test constructs the times
+it needs. What a test does have to get right is driving the code's clock and
+its timers off the same one — see §7.
 
 ---
 
@@ -352,7 +354,90 @@ time the message arrived, and under a factor the error would keep growing.
 
 ---
 
-## 7. Where the tests are
+## 7. Time in tests
+
+Two clocks are in play whenever a test drives a delay: the one the test
+advances, and whatever the code under test reads the time from. Getting one
+right and not the other is the whole of this section.
+
+### Real timers are the default, and the direction of the assertion decides
+
+A timer can fire **late, never early**. So an assertion that something has
+**not happened yet** is safe on the real clock — a loaded machine only makes
+it more true — and a test built that way stays honest with no machinery at
+all. `app/test/peer_ble_transport_test.dart` is written to this rule and says
+so in its header.
+
+The other direction has no such protection. *Still* alive after a while, it
+retried *at least* n times, the gap *grew* — each of these is falsified by a
+timer that merely ran late, which is precisely what a loaded CI box produces.
+An assertion of that shape does not belong on real timers at any margin;
+widening the durations buys probability, not correctness, and pays for it in
+suite runtime.
+
+So: **assert in the safe direction on real timers, or move to a fake clock.**
+There is no third option that is merely "careful".
+
+### Faking the timer is not enough
+
+`fakeAsync` replaces `Timer` and `clock`. It does **not** replace
+`DateTime.now()`, and therefore does not replace `realNowMillis()` — which is
+exactly what §1 tells you to use for a staleness check or a protocol timeout.
+
+Put those two facts together and the failure is silent. The code's timer fires
+on fake time while its own comparison still reads the wall clock, so the
+elapsed value it computes is always about zero however far the test elapses.
+Nothing throws. The branch under test simply never runs, and the test passes
+for the rest of its life without exercising the thing it names.
+
+**Both halves have to come off one clock.** Inside a `fakeAsync` zone, `clock`
+IS the fake clock that `elapse` advances, so a `now`-shaped seam handed
+`clock.now()` puts the code's arithmetic on the same timeline as its timers:
+
+```dart
+fakeAsync((async) {
+  final link = PeerBleLink(..., now: () => clock.now().millisecondsSinceEpoch);
+  async.elapse(const Duration(milliseconds: 150));   // exact, not a bet
+});
+```
+
+### A clock seam's DEFAULT is the contract, so pin it
+
+Code that reads a clock needs that read behind a parameter before a test can
+drive it, and the parameter must default to the real function so production is
+unchanged. That default is then load-bearing and completely unguarded: swapping
+`realNowMillis` for `nowMillis` reads as an ordinary application of §1's own
+"everything goes through the app clock" rule, and `check_clock_discipline`
+greps for `DateTime.now()` — which this still isn't — so nothing catches it.
+The suite stays green while a travelled session silently expires every timeout
+at once.
+
+A seam therefore ships with a test that travels the clock and asserts the value
+does **not** follow. Assert it through behaviour rather than by comparing
+function references — what matters is that the number does not move, not which
+function produced it.
+
+### Elapse inside the boundary, not onto it
+
+`elapse` lands the clock on an exact instant, which makes it easy to write an
+assertion that pins `>` against `>=` at the boundary of a comparison. A
+millisecond either side of a sixty-second timeout is nobody's intended
+behaviour, and a test that fails a behaviourally identical refactor is a cost
+with no benefit. Land comfortably inside the interval on one side and
+comfortably past it on the other; the boundary itself is not the contract.
+
+### The same shape, for things that are not clocks
+
+A test that races the machine for a **port** fails the same way and for the
+same reason — the resource is shared, the timing is not the test's to control,
+and the failure lands on whichever test happens to be running. The answer has
+the same shape: a seam, an in-memory stand-in, and a small number of real
+tests kept to pin what the stand-in assumes.
+`app/test/peer_network_fakes.dart` is the worked example.
+
+---
+
+## 8. Where the tests are
 
 Each layer is tested where its failure would actually appear:
 
@@ -366,6 +451,7 @@ Each layer is tested where its failure would actually appear:
 | The `Date` substitution's whole surface | `extensions/sdk/src/appClock.test.ts` |
 | Ordinary rounds running while travelled, and the destructive pair still refusing | `packages/halo_core/test/sync_engine_test.dart` |
 | **The write gate** — what a travelled session may author, and its escape hatches | `packages/halo_core/test/travel_write_gate_test.dart` |
+| **A clock seam's default** — that an injected real-clock read does not follow travel (§7) | `app/test/peer_ble_transport_test.dart` |
 
 The sandbox test runs the real kernel and the real clock-dashboard bundle
 deliberately. Replacing a global `Date` either works completely or fails
