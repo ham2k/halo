@@ -210,8 +210,8 @@ as a `layoutPolicy` const on the view class:
   too) toggles it from the command bar — `SET LAYOUT` reaches the same
   setting, but the word an operator is told over the air is this one. Currently only the **Operation** view.
   The **`panels` experiment** is a separate switch and stays one: it gates
-  the dashboard PANEL extensions (weather, solar, custom text), which
-  declare it in their manifests, and nothing else. It answers to `PANELS` and `PANEL` and
+  every dashboard PANEL extension — Custom Text is the only one today, and it
+  declares the key in its manifest — and nothing else. It answers to `PANELS` and `PANEL` and
   nothing else: it is what the `layouts` experiment became once the dock
   stopped being a tester's feature, and every dock word now belongs to the
   setting's own command. State does not follow a key change either. Rearranging what already
@@ -479,8 +479,8 @@ constant in the view. Two sources write into it:
   that builds it, which is what lets the Add a Panel sheet list a panel it
   has no way to build.
 
-  Clock, Weather and Web Site are the exception: every customizable view
-  offers all three, so `DockHost.registerSharedDashboardPanels` (used by
+  Clock, Weather, Solar and Web Site are the exception: every customizable
+  view offers all four, so `DockHost.registerSharedDashboardPanels` (used by
   every view via the mixin) is what registers them, and
   `DockHost.sharedDashboardPanes` is what builds their widgets. Remote
   Screen joins them while the `remote` experiment is on — registered from

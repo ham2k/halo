@@ -956,6 +956,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get weather => 'El Tiempo';
 	@override String get website => 'Sitio Web';
 	@override String get remoteScreen => 'Pantalla remota';
+	@override String get solar => 'Solar';
 }
 
 // Path: operation.menu
@@ -1809,12 +1810,12 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get weatherUnreachable => 'No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.';
 	@override String get weatherUnreadable => 'Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.';
 	@override String weatherGusts({required Object speed}) => 'rachas ${speed}';
-	@override String get weatherAgeNow => 'ahora mismo';
-	@override String weatherAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String get panelAgeNow => 'ahora mismo';
+	@override String panelAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'hace ${count} min',
 		other: 'hace ${count} min',
 	);
-	@override String weatherAgeHours({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+	@override String panelAgeHours({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'hace ${count} h',
 		other: 'hace ${count} h',
 	);
@@ -1855,6 +1856,17 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get remoteScreenCaptureFailed => 'Ese dispositivo no pudo capturar esa pantalla — puede que necesite permiso de grabación de pantalla.';
 	@override String get remoteScreenNoAnswer => 'Ese dispositivo no respondió. Puede que no tenga activado compartir pantalla.';
 	@override String get remoteScreenNoMedia => 'No se pudo abrir una conexión para la imagen. Revisa el cortafuegos de este dispositivo.';
+	@override String get solarDescription => 'Condiciones solares y geomagnéticas, con propagación banda por banda';
+	@override String get solarUnreachable => 'No se pudo conectar con hamqsl.com — ¿sin red? Se intentará de nuevo en breve.';
+	@override String get solarUnreadable => 'hamqsl.com respondió, pero no con datos que podamos usar. Se intentará de nuevo en breve.';
+	@override String get solarAIndex => 'A';
+	@override String get solarKIndex => 'Kp';
+	@override String get solarBandDay => 'Día';
+	@override String get solarBandNight => 'Noche';
+	@override String get solarBandGood => 'Buena';
+	@override String get solarBandFair => 'Regular';
+	@override String get solarBandPoor => 'Mala';
+	@override String solarSources({required Object primary, required Object secondary}) => 'Fuentes: ${primary}, ${secondary}';
 }
 
 // Path: operation.export.compactFileNames
@@ -2401,6 +2413,7 @@ extension on TranslationsEs {
 			'operation.tabs.weather' => 'El Tiempo',
 			'operation.tabs.website' => 'Sitio Web',
 			'operation.tabs.remoteScreen' => 'Pantalla remota',
+			'operation.tabs.solar' => 'Solar',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -2473,9 +2486,9 @@ extension on TranslationsEs {
 			'operation.layout.panels.weatherUnreachable' => 'No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'rachas ${speed}',
-			'operation.layout.panels.weatherAgeNow' => 'ahora mismo',
-			'operation.layout.panels.weatherAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'hace ${count} min', other: 'hace ${count} min', ), 
-			'operation.layout.panels.weatherAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'hace ${count} h', other: 'hace ${count} h', ), 
+			'operation.layout.panels.panelAgeNow' => 'ahora mismo',
+			'operation.layout.panels.panelAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'hace ${count} min', other: 'hace ${count} min', ), 
+			'operation.layout.panels.panelAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'hace ${count} h', other: 'hace ${count} h', ), 
 			'operation.layout.panels.weatherConditions.unknown' => 'Desconocido',
 			'operation.layout.panels.weatherConditions.sunny' => 'Soleado',
 			'operation.layout.panels.weatherConditions.clear' => 'Despejado',
@@ -2543,6 +2556,17 @@ extension on TranslationsEs {
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'Ese dispositivo no pudo capturar esa pantalla — puede que necesite permiso de grabación de pantalla.',
 			'operation.layout.panels.remoteScreenNoAnswer' => 'Ese dispositivo no respondió. Puede que no tenga activado compartir pantalla.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'No se pudo abrir una conexión para la imagen. Revisa el cortafuegos de este dispositivo.',
+			'operation.layout.panels.solarDescription' => 'Condiciones solares y geomagnéticas, con propagación banda por banda',
+			'operation.layout.panels.solarUnreachable' => 'No se pudo conectar con hamqsl.com — ¿sin red? Se intentará de nuevo en breve.',
+			'operation.layout.panels.solarUnreadable' => 'hamqsl.com respondió, pero no con datos que podamos usar. Se intentará de nuevo en breve.',
+			'operation.layout.panels.solarAIndex' => 'A',
+			'operation.layout.panels.solarKIndex' => 'Kp',
+			'operation.layout.panels.solarBandDay' => 'Día',
+			'operation.layout.panels.solarBandNight' => 'Noche',
+			'operation.layout.panels.solarBandGood' => 'Buena',
+			'operation.layout.panels.solarBandFair' => 'Regular',
+			'operation.layout.panels.solarBandPoor' => 'Mala',
+			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Fuentes: ${primary}, ${secondary}',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -2791,6 +2815,8 @@ extension on TranslationsEs {
 			'qsoList.eventEnded' => 'Operación finalizada',
 			'loggingPanel.stats' => 'Estadísticas de la Operación',
 			'loggingPanel.scoring' => 'Puntuación',
+			_ => null,
+		} ?? switch (path) {
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
 			'loggingPanel.statesWorked' => 'Estados',
 			'loggingPanel.provincesWorked' => 'Provincias',
@@ -2803,8 +2829,6 @@ extension on TranslationsEs {
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} a',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
 			'callInfo.distanceAway' => ({required Object distance}) => 'a ${distance}',
-			_ => null,
-		} ?? switch (path) {
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
 			'callInfo.thisOpCountOne' => '1 QSO en esta operación',
 			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs en esta operación',
@@ -3305,6 +3329,8 @@ extension on TranslationsEs {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
 			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
 			'updates.updateAvailable' => 'Actualización disponible',
+			_ => null,
+		} ?? switch (path) {
 			'updates.newVersionAvailable' => ({required Object version}) => 'Hay una nueva versión (${version}) disponible.',
 			'updates.getIt' => 'Obtener',
 			'updates.ok' => 'OK',
@@ -3317,8 +3343,6 @@ extension on TranslationsEs {
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
 			'updates.upToDate' => 'Actualizado',
-			_ => null,
-		} ?? switch (path) {
 			'updates.automaticChecks' => 'Buscar automáticamente',
 			'updates.automaticChecksDescription' => 'Buscar nuevas versiones en segundo plano, a partir del próximo inicio',
 			'extensionService.runtimeNotReady' => 'El motor de extensiones aún no está listo.',

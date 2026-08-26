@@ -32,7 +32,7 @@ const _testExtensions = [
       key: 'qrz', file: 'qrz.js', core: false, name: 'QRZ.com Callsign Lookups', category: 'lookup',
       enabledByDefault: false),
   ExtensionInfo(
-      key: 'solar-panel', file: 'solar-panel.js', core: false, name: 'Solar Panel', category: 'dashboard',
+      key: 'custom-text', file: 'custom-text.js', core: false, name: 'Custom Text', category: 'dashboard',
       experiments: ['layouts']),
 ];
 
@@ -132,29 +132,29 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
-    final solar = _testExtensions.firstWhere((e) => e.key == 'solar-panel');
+    final gated = _testExtensions.firstWhere((e) => e.key == 'custom-text');
 
-    expect(extensions.isExtensionAvailable(solar), isFalse, reason: 'layouts experiment off → gated');
+    expect(extensions.isExtensionAvailable(gated), isFalse, reason: 'layouts experiment off → gated');
 
     await settings.setExperimentEnabled('layouts', true);
-    expect(extensions.isExtensionAvailable(solar), isTrue);
+    expect(extensions.isExtensionAvailable(gated), isTrue);
 
     // The user enables it, then the experiment goes away: the override must
     // survive the round trip — turning the experiment back on restores the
     // extension as enabled without the user touching anything.
-    await extensions.setExtensionsEnabled({'solar-panel': true});
+    await extensions.setExtensionsEnabled({'custom-text': true});
     await settings.setExperimentEnabled('layouts', false);
     await extensions.applyExtensionAvailability();
-    expect(extensions.isExtensionAvailable(solar), isFalse);
-    expect(settings.extensionOverrides['solar-panel'], isTrue, reason: 'gating must not rewrite overrides');
+    expect(extensions.isExtensionAvailable(gated), isFalse);
+    expect(settings.extensionOverrides['custom-text'], isTrue, reason: 'gating must not rewrite overrides');
     // Gated counts as disabled for the data-purge grace clock.
-    expect(settings.extensionDisabledSince.keys, contains('solar-panel'));
+    expect(settings.extensionDisabledSince.keys, contains('custom-text'));
 
     await settings.setExperimentEnabled('layouts', true);
     await extensions.applyExtensionAvailability();
-    expect(extensions.isExtensionAvailable(solar), isTrue);
-    expect(extensions.isExtensionEnabled(solar), isTrue);
-    expect(settings.extensionDisabledSince.keys, isNot(contains('solar-panel')));
+    expect(extensions.isExtensionAvailable(gated), isTrue);
+    expect(extensions.isExtensionEnabled(gated), isTrue);
+    expect(settings.extensionDisabledSince.keys, isNot(contains('custom-text')));
   });
 
   test('listActiveExtensions surfaces the kernel-info listing', () async {
@@ -234,17 +234,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // Gated, not disabled: neither the tile nor its category header shows.
-    expect(find.text('Solar Panel'), findsNothing);
+    expect(find.text('Custom Text'), findsNothing);
     expect(find.text('Dashboard Panels'), findsNothing);
 
     // The panel listens to settings, so flipping the experiment reveals the
     // extension live, with its stored (default) state.
     await settings.setExperimentEnabled('layouts', true);
     await tester.pumpAndSettle();
-    expect(find.text('Solar Panel'), findsOneWidget);
+    expect(find.text('Custom Text'), findsOneWidget);
 
     await settings.setExperimentEnabled('layouts', false);
     await tester.pumpAndSettle();
-    expect(find.text('Solar Panel'), findsNothing);
+    expect(find.text('Custom Text'), findsNothing);
   });
 }

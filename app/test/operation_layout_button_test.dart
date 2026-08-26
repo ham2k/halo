@@ -162,7 +162,7 @@ void main() {
     // whether or not one is already in the view, and none of the three ships
     // in the default arrangement besides. Every pane the discard restored is
     // gone from this list, which is what it is asserting.
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website'],
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'],
         reason: 'every single-placement pane is in the view again');
 
     await unmount(tester);
@@ -178,7 +178,7 @@ void main() {
     // the repeatable panes plus the ones that ship outside it. (The empty
     // sheet's own rendering is layout_sheet's to prove — it cannot be
     // reached from this view any more.)
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website']);
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website']);
     await tester.tap(find.byIcon(MdiIcons.check));
     await tester.pumpAndSettle();
 
@@ -188,10 +188,10 @@ void main() {
     // A pane taken out has to have a way back that isn't Reset Layout.
     // Catalog order is registration order, so the repeatable Clock trails the
     // single-placement panes.
-    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'weather', 'website']);
+    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'weather', 'solar', 'website']);
     sheetOf(tester).onAdd!('info');
     await tester.pumpAndSettle();
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'website'],
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'],
         reason: 'and once back, it is no longer on offer');
 
     await unmount(tester);

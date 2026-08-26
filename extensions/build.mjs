@@ -150,7 +150,6 @@ const bundles = [
   { key: 'rsgb-vhf-tests', entry: 'contests/rsgb-vhf-tests/src/index.ts', kind: 'extension' },
   { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
   { key: 'custom-text', entry: 'dashboard/custom-text/src/index.ts', kind: 'extension' },
-  { key: 'solar-panel', entry: 'dashboard/solar/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

@@ -881,9 +881,9 @@ class _WeatherReadout extends StatelessWidget {
 
   String _ageText(BuildContext context, Duration age) {
     final t = context.t.operation.layout.panels;
-    if (age.inMinutes < 1) return t.weatherAgeNow;
-    if (age.inHours < 1) return t.weatherAgeMinutes(count: age.inMinutes);
-    return t.weatherAgeHours(count: age.inHours);
+    if (age.inMinutes < 1) return t.panelAgeNow;
+    if (age.inHours < 1) return t.panelAgeMinutes(count: age.inMinutes);
+    return t.panelAgeHours(count: age.inHours);
   }
 }
 

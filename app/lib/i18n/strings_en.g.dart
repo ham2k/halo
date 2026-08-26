@@ -1986,6 +1986,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'Remote Screen'
 	String get remoteScreen => 'Remote Screen';
+
+	/// en: 'Solar'
+	String get solar => 'Solar';
 }
 
 // Path: operation.menu
@@ -4064,16 +4067,16 @@ class Translations$operation$layout$panels$en {
 	String weatherGusts({required Object speed}) => 'gusts ${speed}';
 
 	/// en: 'just now'
-	String get weatherAgeNow => 'just now';
+	String get panelAgeNow => 'just now';
 
 	/// en: '(one) {${count} min ago} (other) {${count} min ago}'
-	String weatherAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	String panelAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} min ago',
 		other: '${count} min ago',
 	);
 
 	/// en: '(one) {${count} hr ago} (other) {${count} hrs ago}'
-	String weatherAgeHours({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+	String panelAgeHours({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} hr ago',
 		other: '${count} hrs ago',
 	);
@@ -4187,6 +4190,39 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'Couldn't open a connection for the picture. Check the firewall on this device.'
 	String get remoteScreenNoMedia => 'Couldn\'t open a connection for the picture. Check the firewall on this device.';
+
+	/// en: 'Solar and geomagnetic conditions, with band-by-band propagation'
+	String get solarDescription => 'Solar and geomagnetic conditions, with band-by-band propagation';
+
+	/// en: 'Couldn't reach hamqsl.com — no network? Will try again shortly.'
+	String get solarUnreachable => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.';
+
+	/// en: 'hamqsl.com answered, but not with a reading we could use. Will try again shortly.'
+	String get solarUnreadable => 'hamqsl.com answered, but not with a reading we could use. Will try again shortly.';
+
+	/// en: 'A'
+	String get solarAIndex => 'A';
+
+	/// en: 'Kp'
+	String get solarKIndex => 'Kp';
+
+	/// en: 'Day'
+	String get solarBandDay => 'Day';
+
+	/// en: 'Night'
+	String get solarBandNight => 'Night';
+
+	/// en: 'Good'
+	String get solarBandGood => 'Good';
+
+	/// en: 'Fair'
+	String get solarBandFair => 'Fair';
+
+	/// en: 'Poor'
+	String get solarBandPoor => 'Poor';
+
+	/// en: 'Sources: ${primary}, ${secondary}'
+	String solarSources({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}';
 }
 
 // Path: operation.export.compactFileNames
@@ -5087,6 +5123,7 @@ extension on Translations {
 			'operation.tabs.weather' => 'Weather',
 			'operation.tabs.website' => 'Web Site',
 			'operation.tabs.remoteScreen' => 'Remote Screen',
+			'operation.tabs.solar' => 'Solar',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -5160,9 +5197,9 @@ extension on Translations {
 			'operation.layout.panels.weatherUnreachable' => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo answered, but not with anything readable. Will try again shortly.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'gusts ${speed}',
-			'operation.layout.panels.weatherAgeNow' => 'just now',
-			'operation.layout.panels.weatherAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} min ago', other: '${count} min ago', ), 
-			'operation.layout.panels.weatherAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} hr ago', other: '${count} hrs ago', ), 
+			'operation.layout.panels.panelAgeNow' => 'just now',
+			'operation.layout.panels.panelAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} min ago', other: '${count} min ago', ), 
+			'operation.layout.panels.panelAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} hr ago', other: '${count} hrs ago', ), 
 			'operation.layout.panels.weatherConditions.unknown' => 'Unknown',
 			'operation.layout.panels.weatherConditions.sunny' => 'Sunny',
 			'operation.layout.panels.weatherConditions.clear' => 'Clear',
@@ -5230,6 +5267,17 @@ extension on Translations {
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'That device couldn\'t capture that screen — it may need Screen Recording permission.',
 			'operation.layout.panels.remoteScreenNoAnswer' => 'That device didn\'t answer. It may not have screen sharing turned on.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'Couldn\'t open a connection for the picture. Check the firewall on this device.',
+			'operation.layout.panels.solarDescription' => 'Solar and geomagnetic conditions, with band-by-band propagation',
+			'operation.layout.panels.solarUnreachable' => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.',
+			'operation.layout.panels.solarUnreadable' => 'hamqsl.com answered, but not with a reading we could use. Will try again shortly.',
+			'operation.layout.panels.solarAIndex' => 'A',
+			'operation.layout.panels.solarKIndex' => 'Kp',
+			'operation.layout.panels.solarBandDay' => 'Day',
+			'operation.layout.panels.solarBandNight' => 'Night',
+			'operation.layout.panels.solarBandGood' => 'Good',
+			'operation.layout.panels.solarBandFair' => 'Fair',
+			'operation.layout.panels.solarBandPoor' => 'Poor',
+			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
@@ -5465,6 +5513,8 @@ extension on Translations {
 			'loggingControls.info.noticeNewProvince' => 'New Province',
 			'loggingControls.info.noticeNewDay' => 'New Day',
 			'loggingControls.info.noticeNewRef' => 'New Ref',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMult' => 'New Mult',
 			'loggingControls.info.noticeNewZone' => 'New Zone',
 			'loggingControls.info.noticeInvalidMode' => 'Wrong Mode',
@@ -5477,8 +5527,6 @@ extension on Translations {
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
@@ -5979,6 +6027,8 @@ extension on Translations {
 			'settings.developer.categoryCore' => 'Core & Runtime',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
+			_ => null,
+		} ?? switch (path) {
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
 			'settings.panels.commonPreferences' => 'Common Preferences',
@@ -5991,8 +6041,6 @@ extension on Translations {
 			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.dataFiles' => 'Data Files',
 			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
 			'settings.panels.developerSettings' => 'Developer Settings',

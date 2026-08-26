@@ -154,7 +154,9 @@
       "clock": "Clock",
       "weather": "Weather",
       "website": "Web Site",
-      "remoteScreen": "Remote Screen"
+      "remoteScreen": "Remote Screen",
+      "solar": "Solar",
+      "website": "Web Site"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
@@ -233,12 +235,12 @@
         "weatherUnreachable": "Couldn't reach Open-Meteo — no network? Will try again shortly.",
         "weatherUnreadable": "Open-Meteo answered, but not with anything readable. Will try again shortly.",
         "weatherGusts": "gusts ${speed}",
-        "weatherAgeNow": "just now",
-        "weatherAgeMinutes": {
+        "panelAgeNow": "just now",
+        "panelAgeMinutes": {
           "one": "${count} min ago",
           "other": "${count} min ago"
         },
-        "weatherAgeHours": {
+        "panelAgeHours": {
           "one": "${count} hr ago",
           "other": "${count} hrs ago"
         },
@@ -310,7 +312,18 @@
         "remoteScreenStopped": "That screen or window is no longer being shown.",
         "remoteScreenCaptureFailed": "That device couldn't capture that screen — it may need Screen Recording permission.",
         "remoteScreenNoAnswer": "That device didn't answer. It may not have screen sharing turned on.",
-        "remoteScreenNoMedia": "Couldn't open a connection for the picture. Check the firewall on this device."
+        "remoteScreenNoMedia": "Couldn't open a connection for the picture. Check the firewall on this device.",
+        "solarDescription": "Solar and geomagnetic conditions, with band-by-band propagation",
+        "solarUnreachable": "Couldn't reach hamqsl.com — no network? Will try again shortly.",
+        "solarUnreadable": "hamqsl.com answered, but not with a reading we could use. Will try again shortly.",
+        "solarAIndex": "A",
+        "solarKIndex": "Kp",
+        "solarBandDay": "Day",
+        "solarBandNight": "Night",
+        "solarBandGood": "Good",
+        "solarBandFair": "Fair",
+        "solarBandPoor": "Poor",
+        "solarSources": "Sources: ${primary}, ${secondary}"
       },
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },

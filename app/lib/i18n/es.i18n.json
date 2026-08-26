@@ -140,7 +140,9 @@
       "clock": "Reloj",
       "weather": "El Tiempo",
       "website": "Sitio Web",
-      "remoteScreen": "Pantalla remota"
+      "remoteScreen": "Pantalla remota",
+      "solar": "Solar",
+      "website": "Sitio Web"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
@@ -218,12 +220,12 @@
         "weatherUnreachable": "No se pudo conectar con Open-Meteo — ¿sin red? Se intentará de nuevo en breve.",
         "weatherUnreadable": "Open-Meteo respondió, pero con algo ilegible. Se intentará de nuevo en breve.",
         "weatherGusts": "rachas ${speed}",
-        "weatherAgeNow": "ahora mismo",
-        "weatherAgeMinutes": {
+        "panelAgeNow": "ahora mismo",
+        "panelAgeMinutes": {
           "one": "hace ${count} min",
           "other": "hace ${count} min"
         },
-        "weatherAgeHours": {
+        "panelAgeHours": {
           "one": "hace ${count} h",
           "other": "hace ${count} h"
         },
@@ -295,7 +297,18 @@
         "remoteScreenStopped": "Esa pantalla o ventana ya no se está mostrando.",
         "remoteScreenCaptureFailed": "Ese dispositivo no pudo capturar esa pantalla — puede que necesite permiso de grabación de pantalla.",
         "remoteScreenNoAnswer": "Ese dispositivo no respondió. Puede que no tenga activado compartir pantalla.",
-        "remoteScreenNoMedia": "No se pudo abrir una conexión para la imagen. Revisa el cortafuegos de este dispositivo."
+        "remoteScreenNoMedia": "No se pudo abrir una conexión para la imagen. Revisa el cortafuegos de este dispositivo.",
+        "solarDescription": "Condiciones solares y geomagnéticas, con propagación banda por banda",
+        "solarUnreachable": "No se pudo conectar con hamqsl.com — ¿sin red? Se intentará de nuevo en breve.",
+        "solarUnreadable": "hamqsl.com respondió, pero no con datos que podamos usar. Se intentará de nuevo en breve.",
+        "solarAIndex": "A",
+        "solarKIndex": "Kp",
+        "solarBandDay": "Día",
+        "solarBandNight": "Noche",
+        "solarBandGood": "Buena",
+        "solarBandFair": "Regular",
+        "solarBandPoor": "Mala",
+        "solarSources": "Fuentes: ${primary}, ${secondary}"
       },
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },

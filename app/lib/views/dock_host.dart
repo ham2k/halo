@@ -33,6 +33,7 @@ import 'operation/layout_sheet.dart';
 import 'operation/missing_panel_pane.dart';
 import 'operation/pane_layout_options.dart';
 import 'operation/panel_settings.dart';
+import 'operation/solar/solar_panel.dart';
 import 'operation/weather/weather_panel.dart';
 import 'operation/remote_screen/remote_screen_panel.dart';
 import 'operation/remote_screen/remote_screen_picker.dart';
@@ -1310,7 +1311,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         );
   }
 
-  /// Clock, Weather and Web Site: the three native panels every customizable
+  /// Clock, Weather, Solar, Web Site and Remote Screen: the native panels every
   /// view offers (docs/design/layouts.md), built here once so a change to one
   /// of them doesn't have to reach every view that hosts a dock. See
   /// [registerSharedDashboardPanels] for their catalog entry — this only
@@ -1341,6 +1342,11 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           operationGrid: operationGrid,
           onTitle: (title) => onPanelTitle(id, title),
         )
+      else if (PanelDefinition.descriptorIdOf(id) == solarPanelId)
+        // No config and no title of its own: solar conditions are the same
+        // everywhere, so there is nothing for a placement to say about
+        // itself that the tab's own name does not.
+        id: SolarPanel(key: ValueKey('panel-$id'))
       else if (PanelDefinition.descriptorIdOf(id) == websitePanelId)
         id: WebsitePanel(
           key: ValueKey('panel-$id'),
@@ -1374,7 +1380,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         ),
   };
 
-  /// Clock, Weather and Web Site's catalog entries — see
+  /// Clock, Weather, Solar, Web Site and Remote Screen's catalog entries — see
   /// [sharedDashboardPanes] for the widgets. Every view that hosts a dock
   /// calls this from its own `_registerNativePanels`: [PanelService.registerNative]
   /// no-ops on an identical re-registration, so whichever view mounts first
@@ -1470,6 +1476,21 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           // — or fixes — that disagreement out of reach.
         },
       ],
+    ));
+    service.registerNative(PanelDefinition(
+      id: solarPanelId,
+      title: t.tabs.solar,
+      description: t.layout.panels.solarDescription,
+      icon: 'white-balance-sunny',
+      source: PanelSource.native,
+      views: sharedViews,
+      // Instanceable for the cross-view case only, like Weather: a placement
+      // in Home and one in an operation are independent locations. Two in one
+      // dock would be the same numbers twice — there is nothing to configure
+      // that would make them differ.
+      multiple: true,
+      // Nothing to configure. The pane's own size decides what it shows.
+      formFields: [],
     ));
     service.registerNative(PanelDefinition(
       id: websitePanelId,
