@@ -252,9 +252,9 @@ Future<Operation?> editOperationDetails(
     context: context,
     builder: (context) => _OperationDetailsDialog(
       stationCall: operation.stationCall,
-      operatorCall: (operation.data['operatorCall'] as String?) ?? '',
+      operatorCall: asQsonString(operation.data['operatorCall']) ?? '',
       userTitle: operation.userTitle,
-      notes: (operation.data['notes'] as String?) ?? '',
+      notes: asQsonString(operation.data['notes']) ?? '',
     ),
   );
   if (result == null || result.$1.trim().isEmpty) return null;

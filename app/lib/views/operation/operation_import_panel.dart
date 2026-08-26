@@ -290,10 +290,10 @@ class _CaptureTile extends StatelessWidget {
     final t = context.t.operation.import;
     final qso = row.qso;
     final their = (qso['their'] as Map?)?.cast<String, dynamic>() ?? const {};
-    final our = (qso['our'] as Map?)?.cast<String, dynamic>() ?? const {};
-    final call = (their['call'] as String?) ?? '?';
-    final band = qso['band'] as String?;
-    final mode = qso['mode'] as String?;
+    final our = asQsonMap(qso['our']) ?? const {};
+    final call = asQsonString(their['call']) ?? '?';
+    final band = asQsonString(qso['band']);
+    final mode = asQsonString(qso['mode']);
     // Same check ADIF import uses (`qso_merge.dart`'s `foreignStationCalls`)
     // to warn about a call that doesn't match the operation it's landing in.
     final mismatch = operationStationCall != null &&
@@ -307,7 +307,7 @@ class _CaptureTile extends StatelessWidget {
       title: Text([call, band, mode].whereType<String>().join(' · ')),
       subtitle: Text(
         mismatch
-            ? t.stationMismatch(call: (our['call'] as String?) ?? '?')
+            ? t.stationMismatch(call: asQsonString(our['call']) ?? '?')
             : fmtTimeBetween(row.receivedAtMillis, nowMillis()),
       ),
       trailing: IconButton(

@@ -125,6 +125,58 @@ void main() {
     });
   });
 
+  group('wrong-typed QSON degrades the field instead of throwing', () {
+    // Every getter here reads a blob written by a peer, LoFi, an ADIF import
+    // or app-polo — none of which this app's types can enforce. A cast that
+    // throws does not degrade one field, it takes down whatever is reading
+    // it: a cast on `freq` kills every frame that renders the QSO list, and
+    // one on `mode` aborts the mergeFromSync transaction. See
+    // qson_values.dart.
+    test('a String freq is parsed, not thrown on', () {
+      expect(_qsoData({'freq': '14074.5'}).freq, 14074.5);
+      expect(_qsoData({'freq': 'twenty metres'}).freq, isNull);
+    });
+
+    test('a bool mode reads as absent', () {
+      expect(_qsoData({'mode': true}).mode, isNull);
+    });
+
+    test('band and notes survive a wrong type the same way', () {
+      expect(_qsoData({'band': 20}).band, isNull);
+      expect(_qsoData({'notes': false}).notes, isNull);
+    });
+
+    test('a their that is not a map leaves every their-field absent rather than throwing', () {
+      // The container itself, not a field in it — `data['their'] as Map<...>`
+      // is the cast that fires before any getter gets a chance to coalesce.
+      final q = _qsoData({'their': 'W1AW'});
+      expect(q.theirCall, '');
+      expect(q.theirName, isNull);
+      expect(q.theirGrid, isNull);
+    });
+
+    test('a dynamically-keyed their still reads, because the bridge produces them', () {
+      final q = _qsoData({'their': <dynamic, dynamic>{'call': 'W1AW'}});
+      expect(q.theirCall, 'W1AW');
+    });
+
+    test('a refs that is not a list is no refs, not a crash', () {
+      expect(_qsoData({'refs': 'POTA'}).refs, isEmpty);
+    });
+
+    test('a String startAtMillis is parsed', () {
+      // Imports carry these as strings; drift's typed column would throw on
+      // one, so the getter is what has to settle it.
+      expect(_qsoData({'startAtMillis': '1721736000000'}).startAtMillis, 1721736000000);
+    });
+
+    test("an operation's stationCall and stamps degrade too", () {
+      final o = Operation(uuid: 'op', data: {'stationCall': 42, 'createdOnMillis': '1721736000000'});
+      expect(o.stationCall, '');
+      expect(o.createdAtMillis, 1721736000000);
+    });
+  });
+
   group('Operation location', () {
     Operation op(Map<String, dynamic> data) => Operation(uuid: 'op', data: data);
 

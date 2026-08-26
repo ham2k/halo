@@ -2568,26 +2568,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// push a `data` map from a `Qso`/`_getCurrentQsoData()` shape back into
   /// the live controllers/state.
   void _applyFieldsFromData(Map<String, dynamic> data) {
-    final our = data['our'] as Map<String, dynamic>? ?? const {};
-    final their = data['their'] as Map<String, dynamic>? ?? const {};
-    _callController.text = (their['call'] as String?) ?? '';
-    _sentController.text = (our['sent'] as String?) ?? '';
-    _rcvdController.text = (their['sent'] as String?) ?? '';
+    final our = asQsonMap(data['our']) ?? const {};
+    final their = asQsonMap(data['their']) ?? const {};
+    _callController.text = asQsonString(their['call']) ?? '';
+    _sentController.text = asQsonString(our['sent']) ?? '';
+    _rcvdController.text = asQsonString(their['sent']) ?? '';
     // Only the entered value fills the field; a guess (their.guess) stays a
     // faint placeholder (see the Grid/State decorations) instead of being
     // pre-filled as if it were a confirmed value.
-    _gridController.text = (their['grid'] as String?) ?? '';
-    _stateController.text = (their['state'] as String?) ?? '';
+    _gridController.text = asQsonString(their['grid']) ?? '';
+    _stateController.text = asQsonString(their['state']) ?? '';
     // Restore the name override too, or wipe-then-undo would silently drop a
     // name set via the "More" pane (it round-trips as `their.name`).
-    final theirName = (their['name'] as String?)?.trim();
+    final theirName = asQsonString(their['name'])?.trim();
     _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
-    final freq = (data['freq'] as num?)?.toDouble();
+    final freq = asQsonNum(data['freq'])?.toDouble();
     // Full precision (not fmtFreq's 100Hz display rounding): selecting a QSO
     // logged at 14074.25 must not flag it as changed or save "14074.3" back.
     _freqController.text = freq != null ? fmtFreqInput(freq) : '';
-    _mode = data['mode'] as String? ?? _mode;
-    _manualBand = freq == null ? data['band'] as String? : null;
+    _mode = asQsonString(data['mode']) ?? _mode;
+    _manualBand = freq == null ? asQsonString(data['band']) : null;
     // A wholesale repopulate — a spot tapped, a QSO opened for editing —
     // replaces every field, so nothing in a dropdown survives it either.
     _resyncDropdownFieldsToSelection();
@@ -2606,7 +2606,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _guessedRefsForCall = null;
     _unmatchedRefs = [];
     _clearTextControls();
-    final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    final refs = (asQsonList(data['refs']))?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
       String? key;
       for (final control in _effectiveActivityControls) {
@@ -5253,7 +5253,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ({String summary, String buttonLabel, bool enabled, bool showComment}) get _spotState {
     final editingQso = widget.editingQso;
     if (editingQso != null) {
-      final call = (editingQso.data['their'] as Map?)?['call'] as String? ?? '?';
+      final call = asQsonString(asQsonMap(editingQso.data['their'])?['call']) ?? '?';
       final ageMillis =
           editingQso.startAtMillis == null ? null : nowMillis() - editingQso.startAtMillis!;
       final tooOld = ageMillis == null || ageMillis > _spotStaleAfter.inMilliseconds;
@@ -5433,7 +5433,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.editingQso != null || _fieldsLocked || _populating) return false;
     final guess = result?['guess'];
     if (guess is! Map) return false;
-    final proposed = (guess['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    final proposed = asQsonList(guess['refs'])?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
     if (proposed.isEmpty) return false;
 
     final claimedTypes = <Object?>{
@@ -6523,7 +6523,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // guess) so a guessed-only name shows as the placeholder above instead
         // of being pre-filled — and merely viewing the pane never promotes a
         // passive guess to a sticky entered value.
-        'theirName': _theirNameOverride ?? (widget.editingQso?.data['their'] as Map<String, dynamic>?)?['name'] as String? ?? '',
+        'theirName': _theirNameOverride ?? asQsonString(asQsonMap(widget.editingQso?.data['their'])?['name']) ?? '',
         'theirGrid': gridBeforePane,
         'theirState': stateBeforePane,
         'sent': _sentController.text.trim(),
@@ -8333,7 +8333,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     Map<String, dynamic>? savedGuess;
     final editing = widget.editingQso;
     if (editing != null) {
-      final their = editing.data['their'] as Map<String, dynamic>?;
+      final their = asQsonMap(editing.data['their']);
       final savedCall = (their?['call'] as String?)?.toUpperCase();
       if (savedCall != null && savedCall == _callAtCursor && their?['guess'] is Map) {
         savedGuess = (their!['guess'] as Map).cast<String, dynamic>();
@@ -8349,9 +8349,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// guess has neither.
   ({String text, bool isNote})? _stationNameOrNote(Map<String, dynamic>? guess) {
     if (guess == null) return null;
-    final note = guess['note'] as String?;
+    final note = asQsonString(guess['note']);
     if (note != null && note.isNotEmpty) return (text: note, isNote: true);
-    final name = guess['name'] as String?;
+    final name = asQsonString(guess['name']);
     if (name != null && name.isNotEmpty) return (text: name, isNote: false);
     return null;
   }
@@ -8700,10 +8700,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// which carry the call-notes `notes` array the merge doesn't fold into
   /// `guess`).
   List<Map<String, dynamic>> get _currentLookups {
-    final live = (_lookupResult?['lookups'] as List?)?.whereType<Map<String, dynamic>>().toList();
+    final live = asQsonList(_lookupResult?['lookups'])?.whereType<Map<String, dynamic>>().toList();
     if (live != null && _lookupFor == _callAtCursor) return live;
-    final their = widget.editingQso?.data['their'] as Map<String, dynamic>?;
-    return (their?['lookups'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
+    final their = asQsonMap(widget.editingQso?.data['their']);
+    return asQsonList(their?['lookups'])?.whereType<Map<String, dynamic>>().toList() ?? const [];
   }
 
   /// The current call-info payload for the detail panel, or null when the

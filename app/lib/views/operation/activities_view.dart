@@ -1596,9 +1596,9 @@ class OperationSheetState extends State<OperationSheet> {
   /// opens the details editor (see [OperationSheet.onEditDetails]).
   Widget _operationPills(ThemeData theme, double availableWidth) {
     final stationCall = _operation.stationCall;
-    final operatorCall = _operation.data['operatorCall'] as String?;
+    final operatorCall = asQsonString(_operation.data['operatorCall']);
     final operationTitle = _operation.userTitle;
-    final notes = (_operation.data['notes'] as String?) ?? '';
+    final notes = asQsonString(_operation.data['notes']) ?? '';
 
     // Only the station chip carries the full teal; its companions are the
     // same hue a step lighter, so the station callsign reads first.
@@ -2024,7 +2024,7 @@ class OperationSheetState extends State<OperationSheet> {
                   // 6-character grid, so matching them against a live fix's
                   // 8-character locator can never be equal, and every legacy
                   // GPS-set operation would quietly lose its green pin.
-                  final gridSource = _operation.data['gridSource'] as String? ?? (
+                  final gridSource = asQsonString(_operation.data['gridSource']) ?? (
                     (_operation.location != null &&
                             widget.services.location.grid != null &&
                             locationToGrid6(_operation.location!.latitude, _operation.location!.longitude) ==

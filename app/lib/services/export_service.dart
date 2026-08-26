@@ -174,8 +174,8 @@ class ExportService {
       for (final qso in qsoList)
         () {
           final data = {...qso.data};
-          final our = {...?(data['our'] as Map?)?.cast<String, dynamic>()};
-          final theirCall = ((data['their'] as Map?)?['call'] as String?)?.toUpperCase();
+          final our = {...?asQsonMap(data['our'])};
+          final theirCall = asQsonString(asQsonMap(data['their'])?['call'])?.toUpperCase();
           our['call'] = stationCall;
           data['our'] = our;
           return theirCall == stationCall.toUpperCase() ? null : data;

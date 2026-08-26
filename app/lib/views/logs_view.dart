@@ -1855,7 +1855,7 @@ class _LogsInfoPanelState extends State<_LogsInfoPanel> {
       setState(() {
         _resolvedFor = call;
         _guess = result?['guess'] as Map<String, dynamic>?;
-        _lookups = (result?['lookups'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
+        _lookups = asQsonList(result?['lookups'])?.whereType<Map<String, dynamic>>().toList() ?? const [];
       });
     }, onError: (Object e, StackTrace stack) {
       ErrorReportingService.report(e, stack, context: 'logsInfoPanel:lookupCall');
@@ -2322,8 +2322,8 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     final qso = _loadedQso;
     setState(() => _saving = true);
     try {
-      final their = <String, dynamic>{...?(qso.data['their'] as Map?)?.cast<String, dynamic>()};
-      final our = <String, dynamic>{...?(qso.data['our'] as Map?)?.cast<String, dynamic>()};
+      final their = <String, dynamic>{...?asQsonMap(qso.data['their'])};
+      final our = <String, dynamic>{...?asQsonMap(qso.data['our'])};
       their['call'] = _call.text.trim().toUpperCase();
       their['sent'] = _rcvdRst.text.trim();
       our['sent'] = _sentRst.text.trim();

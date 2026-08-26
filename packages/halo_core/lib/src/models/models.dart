@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import '../ham/grid.dart';
 import 'operation_title.dart';
+import 'qson_values.dart';
 
 /// Whether [call] carries `T` or `TEST` as a whole SEGMENT — `KI2D/T`,
 /// `KI2D/TEST`, `KI2D/T/P`, but never `W1AW/TESTER`.
@@ -56,7 +57,7 @@ class Operation {
     this.localData = const {},
   });
 
-  String get stationCall => (data['stationCall'] as String?) ?? '';
+  String get stationCall => asQsonString(data['stationCall']) ?? '';
 
   /// The station callsigns this operation was run under, in the order they
   /// were entered. Usually one; several when a multi-operator station logs
@@ -91,14 +92,14 @@ class Operation {
   /// The user's own title, entered via the operation details dialog —
   /// distinct from [title], which holds the ref-generated one. Empty when
   /// the user hasn't set one.
-  String get userTitle => (data['userTitle'] as String?) ?? '';
+  String get userTitle => asQsonString(data['userTitle']) ?? '';
 
   /// The generated title, built from the operation's refs (activity/contest
   /// info) and persisted on save (`ActivitiesView.saveAndClose`,
   /// `app/lib/tools/operation_title.dart`). Empty until the first save after
   /// refs produce a suggestion.
-  String get title => (data['title'] as String?) ?? '';
-  String? get grid => data['grid'] as String?;
+  String get title => asQsonString(data['title']) ?? '';
+  String? get grid => asQsonString(data['grid']);
 
   /// The operation's exact position, when the location it was set from knew
   /// one — a GPS fix, or the published coordinate of a park/summit ref that
@@ -120,7 +121,7 @@ class Operation {
   String? get displayGrid => gridForDisplay(lat: data['lat'], lon: data['lon'], grid: grid);
 
   List<Map<String, dynamic>> get refs =>
-      ((data['refs'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+      (asQsonList(data['refs']) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
 
   /// The ref-derived title/subtitle fragments `OperationTitleService` cached
   /// under `localData['titleSuggestion']` — device-
@@ -132,10 +133,10 @@ class Operation {
     final cached = localData['titleSuggestion'];
     if (cached is! Map) return const OperationTitleFragments();
     return OperationTitleFragments(
-      title: (cached['title'] as String?) ?? '',
-      forText: (cached['for'] as String?) ?? '',
-      atText: (cached['at'] as String?) ?? '',
-      subtitle: (cached['subtitle'] as String?) ?? '',
+      title: asQsonString(cached['title']) ?? '',
+      forText: asQsonString(cached['for']) ?? '',
+      atText: asQsonString(cached['at']) ?? '',
+      subtitle: asQsonString(cached['subtitle']) ?? '',
     );
   }
 
@@ -147,13 +148,13 @@ class Operation {
   /// the same on read — `operationsDB.js`). Without the fallback an
   /// operation with no QSOs has no date at all to sort by, so every legacy
   /// empty operation collapses to the bottom of the home list together.
-  int? get createdAtMillis => ((data['createdAtMillis'] ?? data['createdOnMillis']) as num?)?.toInt();
+  int? get createdAtMillis => asQsonNum(data['createdAtMillis'] ?? data['createdOnMillis'])?.toInt();
 
   /// Revision stamp, set by the repositories on every local write (app-polo
   /// convention: it lives in the QSON so it round-trips through sync). Same
   /// legacy fallback as [createdAtMillis] — this one decides which side of a
   /// sync merge wins, so a null would make a legacy record look revision-less.
-  int? get updatedAtMillis => ((data['updatedAtMillis'] ?? data['updatedOnMillis']) as num?)?.toInt();
+  int? get updatedAtMillis => asQsonNum(data['updatedAtMillis'] ?? data['updatedOnMillis'])?.toInt();
 }
 
 /// One contact. QSON shape (same as app-polo):
@@ -193,18 +194,18 @@ class Qso {
     }
   }
 
-  Map<String, dynamic> get _our => (data['our'] as Map<String, dynamic>?) ?? const {};
-  Map<String, dynamic> get _their => (data['their'] as Map<String, dynamic>?) ?? const {};
+  Map<String, dynamic> get _our => asQsonMap(data['our']) ?? const {};
+  Map<String, dynamic> get _their => asQsonMap(data['their']) ?? const {};
 
-  Map<String, dynamic> get _theirGuess => (_their['guess'] as Map<String, dynamic>?) ?? const {};
+  Map<String, dynamic> get _theirGuess => asQsonMap(_their['guess']) ?? const {};
 
-  String get ourCall => (_our['call'] as String?) ?? '';
+  String get ourCall => asQsonString(_our['call']) ?? '';
 
   /// Our own grid at the time of this QSO, when captured — QSON allows the
   /// station to move mid-operation (e.g. a location change across a break),
   /// so consumers like the Map tab prefer this over `Operation.grid` when
   /// present. Nothing in HaLo writes it yet; imports/sync may carry it.
-  String? get ourGrid => _our['grid'] as String?;
+  String? get ourGrid => asQsonString(_our['grid']);
 
   /// Our exact position at the time of this QSO, when captured — the same
   /// relationship to [ourGrid] that [Operation.location] has to
@@ -227,17 +228,17 @@ class Qso {
   /// transceiver/antenna/CW key display name captured at log time, when the
   /// operator has that field turned on. Null whenever tracking is off, the
   /// field isn't selected, or nothing was designated to capture from.
-  String? get ourRig => _our['rig'] as String?;
-  String? get ourAntenna => _our['antenna'] as String?;
-  String? get ourKey => _our['key'] as String?;
+  String? get ourRig => asQsonString(_our['rig']);
+  String? get ourAntenna => asQsonString(_our['antenna']);
+  String? get ourKey => asQsonString(_our['key']);
 
-  String get theirCall => (_their['call'] as String?) ?? '';
+  String get theirCall => asQsonString(_their['call']) ?? '';
   // `guess` (the merged lookup result) stays nested rather than flattened
   // onto `their`,
   // matching lib-qson-tools' `AnnotatedCallInfo` type; a manually
   // entered/edited top-level value always wins over the guess.
-  String? get theirName => (_their['name'] as String?) ?? (_theirGuess['name'] as String?);
-  String? get theirGrid => (_their['grid'] as String?) ?? (_theirGuess['grid'] as String?);
+  String? get theirName => asQsonString(_their['name']) ?? asQsonString(_theirGuess['name']);
+  String? get theirGrid => asQsonString(_their['grid']) ?? asQsonString(_theirGuess['grid']);
 
   /// The other station's exact position, when something knew one — imported
   /// ADIF `LAT`/`LON`, or a callsign lookup that reported coordinates
@@ -251,44 +252,45 @@ class Qso {
   /// grid — same precedence as everywhere else.
   GridLocation? get theirExactLocation {
     if (locationFromLatLon(_their['lat'], _their['lon']) case final entered?) return entered;
-    if (_their['grid'] != null) return null;
+    if (asQsonString(_their['grid']) != null) return null;
     return locationFromLatLon(_theirGuess['lat'], _theirGuess['lon']);
   }
-  String? get theirState => (_their['state'] as String?) ?? (_theirGuess['state'] as String?);
+  String? get theirState => asQsonString(_their['state']) ?? asQsonString(_theirGuess['state']);
   // Both set by the callsign-annotation lookup step
   // (`annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the
   // QSO row's DX/domestic column, `flag` is that entity's emoji flag,
   // resolved JS-side (extensions/core/lookups/src/annotate.ts) so Dart
   // doesn't need its own copy of the DXCC entity table.
-  String? get theirEntityPrefix => (_their['entityPrefix'] as String?) ?? (_theirGuess['entityPrefix'] as String?);
-  String? get theirFlag => (_their['flag'] as String?) ?? (_theirGuess['flag'] as String?);
-  String? get sentRST => _our['sent'] as String?;
-  String? get receivedRST => _their['sent'] as String?;
+  String? get theirEntityPrefix => asQsonString(_their['entityPrefix']) ?? asQsonString(_theirGuess['entityPrefix']);
+  String? get theirFlag => asQsonString(_their['flag']) ?? asQsonString(_theirGuess['flag']);
+  String? get sentRST => asQsonString(_our['sent']);
+  String? get receivedRST => asQsonString(_their['sent']);
 
   /// The contest/activity exchange the other station sent (QSON `their.exchange`,
   /// alongside their RST) — a serial number, name, zone, etc. HaLo has no
   /// exchange input field yet, so today this is populated only via import/sync
   /// or a lookup guess; the QSO row shows it after the signal reports.
-  String? get theirExchange => (_their['exchange'] as String?) ?? (_theirGuess['exchange'] as String?);
+  String? get theirExchange => asQsonString(_their['exchange']) ?? asQsonString(_theirGuess['exchange']);
 
   /// The other station's transmit power in watts — nested under `their`
   /// (unlike [power], which is ours and lives top-level), matching how
   /// `sentRST`/`receivedRST` split. Nothing in HaLo captures this at log
   /// time; the ADIF import target for `RX_PWR` (`adif_to_qson.dart`) is the
   /// only writer today.
-  num? get theirPower => _coercedPower(_their['power']);
+  num? get theirPower => asQsonNum(_their['power']);
 
   /// Whether the value returned for `their[field]` (e.g. `'name'`, `'grid'`,
   /// `'state'`, `'entityPrefix'`, `'flag'`) is coming from the nested `guess`
   /// rather than an entered value — true exactly when the coalescing getters
   /// above fell back to the guess (no top-level value). Callers like the QSO
   /// row use it to render guessed-but-unconfirmed values more faintly.
-  bool theirFieldIsGuessed(String field) => _their[field] == null && _theirGuess[field] != null;
+  bool theirFieldIsGuessed(String field) =>
+      asQsonString(_their[field]) == null && asQsonString(_theirGuess[field]) != null;
 
-  double? get freq => (data['freq'] as num?)?.toDouble();
-  String? get band => data['band'] as String?;
-  String? get mode => data['mode'] as String?;
-  String? get notes => data['notes'] as String?;
+  double? get freq => asQsonNum(data['freq'])?.toDouble();
+  String? get band => asQsonString(data['band']);
+  String? get mode => asQsonString(data['mode']);
+  String? get notes => asQsonString(data['notes']);
 
   /// Our transmit power in watts — top-level, alongside [freq]/[band]/[mode],
   /// matching QSON convention elsewhere in the ecosystem (app-polo) rather
@@ -297,29 +299,20 @@ class Qso {
   /// `TX_PWR` (`adif_to_qson.dart`) writes here too, so an imported QSO may
   /// carry this even when HaLo's own tracking is off.
   ///
-  /// Coerced rather than cast: a QSO imported by an older build, or synced
-  /// from a client that never converted `TX_PWR`, stores this as a raw
-  /// String — `as num?` throws on those rows instead of returning null.
-  num? get power => _coercedPower(data['power']);
+  /// A QSO imported by an older build, or synced from a client that never
+  /// converted `TX_PWR`, stores this as a raw String, which
+  /// [asQsonNum] parses rather than rejecting.
+  num? get power => asQsonNum(data['power']);
 
-  /// Shared by [power] and [theirPower]: a raw `power` value is a `num` from
-  /// CAT capture or a fresh ADIF import, or a `String` from a QSO imported
-  /// before the ADIF importer's own fix — `as num?` throws on the latter.
-  static num? _coercedPower(Object? value) {
-    if (value is num) return value;
-    if (value is String) return num.tryParse(value);
-    return null;
-  }
-
-  int? get startAtMillis => (data['startAtMillis'] as num?)?.toInt();
+  int? get startAtMillis => asQsonNum(data['startAtMillis'])?.toInt();
   DateTime? get startAt =>
       startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillis!, isUtc: true);
 
   /// See `Operation.updatedAtMillis`.
-  int? get updatedAtMillis => (data['updatedAtMillis'] as num?)?.toInt();
+  int? get updatedAtMillis => asQsonNum(data['updatedAtMillis'])?.toInt();
 
   List<Map<String, dynamic>> get refs =>
-      ((data['refs'] as List?) ?? const []).whereType<Map<String, dynamic>>().toList();
+      (asQsonList(data['refs']) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
 
   /// Start/break/end markers ride the QSO timeline as pseudo-QSOs with
   /// `band == 'event'`, same convention as web-lofi/app-polo — see
@@ -331,8 +324,8 @@ class Qso {
   /// per-band/per-mode stats — excludes event markers and soft-deleted QSOs.
   bool get isRealContact => !isEvent && !deleted;
 
-  Map<String, dynamic>? get event => data['event'] as Map<String, dynamic>?;
+  Map<String, dynamic>? get event => asQsonMap(data['event']);
 
   /// The event's kind, e.g. `'start'`, `'break'`, `'end'`. Null for real QSOs.
-  String? get eventKind => event?['event'] as String?;
+  String? get eventKind => asQsonString(event?['event']);
 }

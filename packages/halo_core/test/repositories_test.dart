@@ -509,6 +509,92 @@ void main() {
       expect(await qsos.hasUnsynced(), isFalse);
     });
 
+    test('a wrong-typed inbound record commits its round instead of retrying forever', () async {
+      // The failure this exists to catch is NOT "one QSO renders wrong".
+      // `mode` is an indexed column, so it is read by `_companionFor` INSIDE
+      // mergeFromSync's transaction: a cast there rolls the whole round
+      // back, the server serves the identical record next round, and sync
+      // never advances again on that device — taking every good record
+      // travelling alongside the bad one with it.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.mergeFromSync([
+        {
+          'uuid': 'bad-record',
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'mode': true,
+          'freq': '14074.5',
+          'band': '20m',
+          'startAtMillis': 1000,
+          'updatedAtMillis': 1000,
+          'syncedAtMillis': 1,
+        },
+        {
+          'uuid': 'good-record',
+          'operation': op.uuid,
+          'their': {'call': 'K1ABC'},
+          'mode': 'FT8',
+          'band': '20m',
+          'startAtMillis': 2000,
+          'updatedAtMillis': 2000,
+          'syncedAtMillis': 2,
+        },
+      ]);
+
+      final stored = await qsos.watchForOperation(op.uuid).first;
+      expect(stored, hasLength(2), reason: 'the good record must not be lost with the bad one');
+
+      final bad = stored.firstWhere((q) => q.uuid == 'bad-record');
+      expect(bad.mode, isNull, reason: 'an unusable mode is absent, never the string "true"');
+      expect(bad.freq, 14074.5, reason: 'a numeric string names a real frequency, so it is kept');
+      expect(bad.theirCall, 'W1AW', reason: 'the rest of the record survives the one bad field');
+    });
+
+    test('a wrong-typed field is normalized in the stored blob, not just on read', () async {
+      // Read-side coercion alone would leave the bad value in the JSON
+      // forever, so every future reader — including one that has not been
+      // taught to coerce — trips over it again. The write is what heals it.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.mergeFromSync([
+        {
+          'uuid': 'bad-record',
+          'operation': op.uuid,
+          'their': {'call': 'W1AW', 'power': '5'},
+          'mode': true,
+          'updatedAtMillis': 1000,
+        },
+      ]);
+
+      final stored = (await qsos.watchForOperation(op.uuid).first).single;
+      expect(stored.data.containsKey('mode'), isFalse);
+      expect((stored.data['their'] as Map)['power'], 5);
+    });
+
+    test('a wrong-typed field reports its write path and dotted field', () async {
+      // Coercion alone fixes the symptom and leaves the WRITER unknown, so
+      // this hook is the entire mechanism for identifying whatever produces
+      // a bool mode. Untested, it can silently stop firing and the fix looks
+      // fine from every other angle. The write path must distinguish a peer
+      // from our own importer, or the report cannot answer that question.
+      final seen = <String>[];
+      onQsonTypeViolation = (context, violation) => seen.add('$context ${violation.path}');
+      addTearDown(() => onQsonTypeViolation = null);
+
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.mergeFromSync([
+        {
+          'uuid': 'bad-record',
+          'operation': op.uuid,
+          'their': {'call': 'W1AW', 'guess': {'name': 7}},
+          'mode': true,
+          'updatedAtMillis': 1000,
+        },
+      ]);
+
+      expect(seen, contains('qsos:mergeFromSync mode'));
+      expect(seen, contains('qsos:mergeFromSync their.guess.name'));
+    });
+
     test('mergeFromSync (operations) applies the same staleness rule', () async {
       final op = await operations.create(stationCall: 'KI2D', userTitle: 'Local title');
 

@@ -20,10 +20,41 @@ import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
 import '../models/qso_merge.dart';
+import '../models/qson_values.dart';
 import 'write_policy.dart';
 
 const _uuidGenerator = Uuid();
 
+/// Encodes a QSO's QSON for storage, normalizing wrong-typed fields on the
+/// way — see [normalizeQsoQson]. Storage is the one chokepoint every write
+/// path already passes through, and normalizing here is what lets a bad
+/// value heal instead of being handed to the next reader: the getters coerce
+/// on read, but only a write puts the corrected value back.
+///
+/// The indexed columns are derived from these same fields, so normalizing
+/// here is also what keeps a record from aborting the transaction that
+/// writes it: without it, a `bool` mode throws out of `_companionFor`,
+/// rolls back the whole `mergeFromSync` round, and the server serves the
+/// identical record again next round, forever.
+String _encodeQsoData(Map<String, dynamic> data, String context) =>
+    jsonEncode(_normalizedReporting(data, normalizeQsoQson, context));
+
+/// [_encodeQsoData] for an operation.
+String _encodeOperationData(Map<String, dynamic> data, String context) =>
+    jsonEncode(_normalizedReporting(data, normalizeOperationQson, context));
+
+Map<String, dynamic> _normalizedReporting(
+  Map<String, dynamic> data,
+  Map<String, dynamic> Function(Map<String, dynamic>, {List<QsonTypeViolation>? violations}) normalize,
+  String context,
+) {
+  final violations = <QsonTypeViolation>[];
+  final normalized = normalize(data, violations: violations);
+  for (final violation in violations) {
+    onQsonTypeViolation?.call(context, violation);
+  }
+  return normalized;
+}
 
 /// Whether an inbound sync record should be skipped in favor of the local
 /// row it would overwrite. Both sides carry a revision stamp
@@ -109,10 +140,10 @@ class OperationsRepository {
     );
     await db.into(db.operations).insert(OperationsCompanion.insert(
           uuid: operation.uuid,
-          data: Value(jsonEncode(operation.data)),
+          data: Value(_encodeOperationData(operation.data, 'operations:create')),
           // The column mirrors the revision stamp inside `data`, so it reads
           // the same real clock.
-          updatedAtMillis: Value(operation.data['updatedAtMillis'] as int),
+          updatedAtMillis: Value(asQsonNum(operation.data['updatedAtMillis'])!.toInt()),
         ));
     onChange?.call();
     return operation;
@@ -171,7 +202,7 @@ class OperationsRepository {
         WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
     if (refusal != null) throw refusal;
     var companion = OperationsCompanion(
-      data: Value(jsonEncode(data)),
+      data: Value(_encodeOperationData(data, 'operations:saveData')),
       synced: const Value(false),
       updatedAtMillis: Value(now),
     );
@@ -238,7 +269,8 @@ class OperationsRepository {
       updatedAtMillis: Value(now),
     );
     if (operation != null) {
-      companion = companion.copyWith(data: Value(jsonEncode({...operation.data, 'updatedAtMillis': now})));
+      companion = companion.copyWith(
+          data: Value(_encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:delete')));
     }
     await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
     onChange?.call();
@@ -457,7 +489,7 @@ class OperationsRepository {
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in operations) {
-        final uuid = incoming['uuid'] as String?;
+        final uuid = asQsonString(incoming['uuid']);
         if (uuid == null) continue;
         final data = Map<String, dynamic>.from(incoming)..remove('uuid');
         final deleted = data.remove('deleted') == true;
@@ -468,7 +500,7 @@ class OperationsRepository {
         // (`SyncEngine`, after its own push is acknowledged).
         final purged = data.remove('purged') == true;
         _normalizeLegacyStamps(data);
-        watermark.include((data['syncedAtMillis'] as num?)?.toInt());
+        watermark.include(asQsonNum(data['syncedAtMillis'])?.toInt());
 
         final existing = existingByUuid[uuid];
         // A purge tombstone for an operation this device doesn't have
@@ -486,18 +518,18 @@ class OperationsRepository {
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
-              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
             )) {
           continue;
         }
 
         await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
               uuid: Value(uuid),
-              data: Value(jsonEncode(data)),
+              data: Value(_encodeOperationData(data, 'operations:mergeFromSync')),
               deleted: Value(deleted),
               purged: Value(purged),
               synced: const Value(true),
-              updatedAtMillis: Value((data['updatedAtMillis'] as num?)?.toInt()),
+              updatedAtMillis: Value(asQsonNum(data['updatedAtMillis'])?.toInt()),
             ));
       }
     });
@@ -524,7 +556,7 @@ class OperationsRepository {
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in operations) {
-        final uuid = incoming['uuid'] as String?;
+        final uuid = asQsonString(incoming['uuid']);
         if (uuid == null) continue;
         final data = Map<String, dynamic>.from(incoming)..remove('uuid');
         final deleted = data.remove('deleted') == true;
@@ -547,18 +579,18 @@ class OperationsRepository {
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
-              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
             )) {
           continue;
         }
 
         await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
               uuid: Value(uuid),
-              data: Value(jsonEncode(data)),
+              data: Value(_encodeOperationData(data, 'operations:mergeFromPeer')),
               deleted: Value(deleted),
               purged: Value(purged),
               synced: const Value(false),
-              updatedAtMillis: Value((data['updatedAtMillis'] as num?)?.toInt()),
+              updatedAtMillis: Value(asQsonNum(data['updatedAtMillis'])?.toInt()),
             ));
       }
     });
@@ -833,7 +865,7 @@ class QsosRepository {
         // next peek re-derive rather than issue a number already in the log.
         if (serialSequences.isEmpty && qso.refs.isNotEmpty) sequences!.invalidate();
       }
-      await db.into(db.qsos).insert(_companionFor(qso));
+      await db.into(db.qsos).insert(_companionFor(qso, 'qsos:add'));
       await refreshOperationCounters(operationUuid);
     });
     onChange?.call();
@@ -989,7 +1021,7 @@ class QsosRepository {
       if (toInsert.isNotEmpty) {
         await db.batch((batch) {
           for (final qso in toInsert) {
-            batch.insert(db.qsos, _companionFor(qso));
+            batch.insert(db.qsos, _companionFor(qso, 'qsos:writeBatch'));
           }
         });
         written += toInsert.length;
@@ -1077,7 +1109,8 @@ class QsosRepository {
         }
         await db.batch((batch) {
           for (final uuid in existingUuids) {
-            batch.update(db.qsos, _companionFor(stampedByUuid[uuid]!), where: (q) => q.uuid.equals(uuid));
+            batch.update(db.qsos, _companionFor(stampedByUuid[uuid]!, 'qsos:writeBatch'),
+                where: (q) => q.uuid.equals(uuid));
           }
         });
         written += existingUuids.length;
@@ -1113,7 +1146,8 @@ class QsosRepository {
           ));
         }
       }
-      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped));
+      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid)))
+          .write(_companionFor(stamped, 'qsos:update'));
       await refreshOperationCounters(stamped.operationUuid);
     });
     // An edit can change a serial by hand, and never routes through the
@@ -1150,7 +1184,7 @@ class QsosRepository {
         QsosCompanion(
           deleted: Value(deleted),
           synced: const Value(false),
-          data: Value(jsonEncode(stamped.data)),
+          data: Value(_encodeQsoData(stamped.data, 'qsos:writeDeleted')),
           updatedAtMillis: Value(stamped.updatedAtMillis),
         ),
       );
@@ -1216,7 +1250,7 @@ class QsosRepository {
             deleted: const Value(true),
             purged: const Value(true),
             synced: const Value(false),
-            data: Value(jsonEncode(stamped.data)),
+            data: Value(_encodeQsoData(stamped.data, 'qsos:purge')),
             updatedAtMillis: Value(stamped.updatedAtMillis),
           ),
         );
@@ -1248,7 +1282,7 @@ class QsosRepository {
             deleted: const Value(true),
             purged: const Value(true),
             synced: const Value(false),
-            data: Value(jsonEncode(stamped.data)),
+            data: Value(_encodeQsoData(stamped.data, 'qsos:purge')),
             updatedAtMillis: Value(stamped.updatedAtMillis),
           ),
         );
@@ -1620,8 +1654,8 @@ class QsosRepository {
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in qsos) {
-        final uuid = incoming['uuid'] as String?;
-        final operationUuid = incoming['operation'] as String?;
+        final uuid = asQsonString(incoming['uuid']);
+        final operationUuid = asQsonString(incoming['operation']);
         if (uuid == null || operationUuid == null) continue;
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
@@ -1630,7 +1664,7 @@ class QsosRepository {
         // acted on by a receiving device.
         final purged = data.remove('purged') == true;
         _normalizeLegacyStamps(data);
-        watermark.include((data['syncedAtMillis'] as num?)?.toInt());
+        watermark.include(asQsonNum(data['syncedAtMillis'])?.toInt());
 
         final existing = existingByUuid[uuid];
         // Never create a row from a purge tombstone — see
@@ -1644,7 +1678,7 @@ class QsosRepository {
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
-              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
             )) {
           continue;
         }
@@ -1652,7 +1686,8 @@ class QsosRepository {
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
 
         await db.into(db.qsos).insertOnConflictUpdate(
-              _companionFor(qso).copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
+              _companionFor(qso, 'qsos:mergeFromSync')
+                  .copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
             );
         affectedOperations.add(operationUuid);
       }
@@ -1683,8 +1718,8 @@ class QsosRepository {
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in qsos) {
-        final uuid = incoming['uuid'] as String?;
-        final operationUuid = incoming['operation'] as String?;
+        final uuid = asQsonString(incoming['uuid']);
+        final operationUuid = asQsonString(incoming['operation']);
         if (uuid == null || operationUuid == null) continue;
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
@@ -1701,14 +1736,14 @@ class QsosRepository {
             _inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
-              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
             )) {
           continue;
         }
 
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
         await db.into(db.qsos).insertOnConflictUpdate(
-              _companionFor(qso).copyWith(deleted: Value(deleted), purged: Value(purged)),
+              _companionFor(qso, 'qsos:mergeFromPeer').copyWith(deleted: Value(deleted), purged: Value(purged)),
             );
         affectedOperations.add(operationUuid);
       }
@@ -1765,7 +1800,12 @@ class QsosRepository {
     });
   }
 
-  QsosCompanion _companionFor(Qso qso) => QsosCompanion(
+  /// [context] names the write path for [_encodeQsoData]'s violation
+  /// reports. Required rather than defaulted: a single shared label would
+  /// make a wrong-typed field arriving from a peer indistinguishable from one
+  /// our own importer wrote, which is the only question those reports exist
+  /// to answer.
+  QsosCompanion _companionFor(Qso qso, String context) => QsosCompanion(
         uuid: Value(qso.uuid),
         operation: Value(qso.operationUuid),
         ourCall: Value(qso.ourCall),
@@ -1773,7 +1813,7 @@ class QsosRepository {
         band: Value(qso.band),
         mode: Value(qso.mode),
         startAtMillis: Value(qso.startAtMillis),
-        data: Value(jsonEncode(qso.data)),
+        data: Value(_encodeQsoData(qso.data, context)),
         synced: const Value(false),
         updatedAtMillis: Value(qso.updatedAtMillis),
       );
@@ -1961,6 +2001,11 @@ class InboundCaptureRepository {
             uuid: uuid,
             source: source,
             dedupeKey: dedupeKey,
+            // Deliberately NOT normalized (unlike every other QSON write
+            // here): this table stages what a peer app actually sent, and
+            // repairing it in place would destroy the evidence of what
+            // arrived. Normalization happens when a capture is promoted into
+            // a real QSO.
             data: jsonEncode(qsoData),
             receivedAtMillis: nowMillis(),
           ),

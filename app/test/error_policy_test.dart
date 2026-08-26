@@ -28,6 +28,7 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:halo_core/halo_core.dart' show MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
 import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
@@ -530,6 +531,24 @@ void main() {
     test('reported, not noticed — the operator cannot fix another extension\'s bug', () {
       expect(
         dispositionFor(MalformedSpotDataException('wwff', 'freq', '14285.0')),
+        ErrorDisposition.report,
+      );
+    });
+  });
+
+  group('malformed QSON data', () {
+    // Uploaded, never noticed: by the time this is raised the value has
+    // already been parsed or dropped and the record stored, so there is
+    // nothing for the operator to act on — it exists only to name whatever
+    // WROTE a bool mode, which read-side coercion alone leaves unknown.
+    // Loosening it to `notify` would put a notice in front of an operator
+    // for a peer app's defect, on every wrong-typed field that syncs in.
+    test('reported, not noticed — nothing is broken by the time it is raised', () {
+      expect(
+        dispositionFor(MalformedQsonDataException(
+          'qsos:mergeFromSync',
+          const QsonTypeViolation('mode', QsonFieldType.string, 'bool'),
+        )),
         ErrorDisposition.report,
       );
     });

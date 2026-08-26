@@ -577,7 +577,7 @@ class CommandEngine extends ChangeNotifier {
     // A callsign note takes the name's slot outright rather
     // than joining it — same rule as the logging panel's _lookupLine
     // (packages/halo_widgets/lib/src/logging_controls.dart).
-    final note = guess['note'] as String?;
+    final note = asQsonString(guess['note']);
     final parts = [
       (note != null && note.isNotEmpty) ? note : guess['name'],
       guess['location'],
@@ -585,7 +585,7 @@ class CommandEngine extends ChangeNotifier {
       // The locator the lookup's own coordinate justifies, where it reported
       // one — the merge derives `guess.grid` from it at six characters, which
       // is coarser than what was actually known.
-      gridForDisplay(lat: guess['lat'], lon: guess['lon'], grid: guess['grid'] as String?),
+      gridForDisplay(lat: guess['lat'], lon: guess['lon'], grid: asQsonString(guess['grid'])),
     ].whereType<String>().where((s) => s.isNotEmpty).toList();
     return parts.isEmpty ? null : parts.join(' • ');
   }

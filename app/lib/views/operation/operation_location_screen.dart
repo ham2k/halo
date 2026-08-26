@@ -37,8 +37,8 @@ class OperationLocationScreen extends StatefulWidget {
 
 class _OperationLocationScreenState extends State<OperationLocationScreen> {
   late final _gridController = TextEditingController(text: widget.operation.displayGrid ?? '');
-  late final _stateController = TextEditingController(text: (widget.operation.data['state'] as String?) ?? '');
-  late final _countyController = TextEditingController(text: (widget.operation.data['county'] as String?) ?? '');
+  late final _stateController = TextEditingController(text: asQsonString(widget.operation.data['state']) ?? '');
+  late final _countyController = TextEditingController(text: asQsonString(widget.operation.data['county']) ?? '');
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
   final _countyFocus = FocusNode();
@@ -72,7 +72,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   @override
   void initState() {
     super.initState();
-    _gridSource = widget.operation.data['gridSource'] as String?;
+    _gridSource = asQsonString(widget.operation.data['gridSource']);
     _gridController.addListener(_onGridTextChanged);
     _stateFocus.addListener(_onStateFocusChange);
     _loadControls();

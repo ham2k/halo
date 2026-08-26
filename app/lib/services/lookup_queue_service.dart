@@ -188,7 +188,7 @@ class LookupQueueService {
   /// counts here, without this queue needing to know any of those sources
   /// by name.
   bool _hasOnlineLookup(Qso qso) {
-    final lookups = ((qso.data['their'] as Map?)?['lookups'] as List?)?.whereType<Map>();
+    final lookups = asQsonList(asQsonMap(qso.data['their'])?['lookups'])?.whereType<Map>();
     if (lookups == null) return false;
     return lookups.any((l) =>
         l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source'])));
@@ -319,7 +319,7 @@ class LookupQueueService {
     // own lookup when (re-)enqueued.
     if (current.theirCall != item.call) return;
 
-    final their = ((current.data['their'] as Map?)?.cast<String, dynamic>()) ?? <String, dynamic>{};
+    final their = asQsonMap(current.data['their']) ?? <String, dynamic>{};
     final newGuess = item.result['guess'];
     final newLookups = item.result['lookups'];
 
@@ -330,7 +330,7 @@ class LookupQueueService {
     // "wrong station's name on a QSO" bug. Drop it rather than write it, and
     // log loudly: this path is unreproduced locally, so a hit in the wild is
     // the trace we need. A guess with no `call` at all still passes through.
-    final guessCall = (newGuess is Map ? newGuess['call'] : null) as String?;
+    final guessCall = asQsonString(asQsonMap(newGuess)?['call']);
     if (guessCall != null && guessCall.toUpperCase() != item.call.toUpperCase()) {
       debugPrint('[lookup queue] DROPPED crossed result: asked for ${item.call}, '
           'guess was for $guessCall (qso ${item.entry.qsoUuid})');
@@ -346,7 +346,7 @@ class LookupQueueService {
     // richer stored data: the pipeline always returns at least the offline
     // annotation entry, so "sources that answered" is the real signal. Only
     // write when the new result covers every source already stored.
-    Set<String> sourcesOf(dynamic lookups) => ((lookups as List?) ?? const [])
+    Set<String> sourcesOf(dynamic lookups) => (asQsonList(lookups) ?? const [])
         .whereType<Map>()
         .map((l) => l['source'])
         .whereType<String>()
@@ -378,8 +378,8 @@ class LookupQueueService {
             ...current.data,
             'their': {
               ...their,
-              'guess': ?newGuess,
-              'lookups': ?newLookups,
+              'guess': ?asQsonMap(newGuess),
+              'lookups': ?asQsonList(newLookups),
             },
           },
           deleted: current.deleted,

@@ -24,7 +24,7 @@ import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTest
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
-import 'package:halo_core/halo_core.dart' show WriteRefused;
+import 'package:halo_core/halo_core.dart' show MalformedQsonDataException, WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -275,6 +275,15 @@ class ErrorPolicy {
           'and the spot is already dropped so the panel\'s other sources are unaffected',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is MalformedSpotDataException,
+    ),
+    ErrorRule(
+      id: 'malformed-qson-data',
+      reason: 'a QSON record reached storage carrying a field of the wrong type (qson_values.dart\'s '
+          'normalizer) — the value is already coerced or dropped, so nothing is broken by the time '
+          'this is raised; it is uploaded purely to name whatever WROTE it, which coercion alone '
+          'would leave unknown',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is MalformedQsonDataException,
     ),
     ErrorRule(
       id: 'scoring-hook-failed',

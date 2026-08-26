@@ -91,6 +91,44 @@ void main() {
     expect(((storedA.data['their'] as Map)['lookups'] as List), hasLength(1));
   });
 
+  test('a wrong-typed lookup result enriches what it can instead of throwing out of the queue', () async {
+    // The trap: `guess` and `lookups` come back over the extension bridge,
+    // which enforces no types at all, and this service reaches INTO both.
+    // A cast there does not degrade one field — it throws out of the queue
+    // run, so the QSO stays bare AND every call queued behind it is stranded.
+    // Same class of bug as the model getters; see qson_values.dart.
+    final bad = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final after = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      if (call == 'W1AW') {
+        return {
+          'guess': {'name': true, 'grid': 'FN31pr'},
+          // Not a list — the shape `lookups` is dereferenced as.
+          'lookups': 'not-a-list',
+        };
+      }
+      return {'guess': {'name': 'Name for $call'}};
+    });
+
+    queue.enqueue(bad);
+    queue.enqueue(after);
+    await queue.idle;
+
+    final storedBad = (await qsos.get(bad.uuid))!;
+    expect(storedBad.theirName, isNull, reason: 'an unusable name is absent, never the string "true"');
+    expect(storedBad.theirGrid, 'FN31pr', reason: 'the usable half of the same guess still lands');
+
+    // Not merely "it did not throw": an unusable `lookups` must not be
+    // STORED either. Persisting it would hand the same bad shape to the
+    // call-info panel, which dereferences their.lookups as a list during
+    // build — moving the crash rather than fixing it.
+    expect(asQsonList((storedBad.data['their'] as Map)['lookups']), anyOf(isNull, isEmpty));
+
+    // The point of the test: the queue kept going.
+    expect((await qsos.get(after.uuid))!.theirName, 'Name for K1ABC');
+  });
+
   test('merges onto the freshest record: an edit made while the lookup was in flight survives', () async {
     final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}, 'freq': 7100.0});
 

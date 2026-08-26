@@ -119,11 +119,11 @@ Map<String, dynamic> zeroBeatSuggestion(
   required double rangeHz,
   required double draw,
 }) {
-  final freqKHz = (qso['freq'] as num?)?.toDouble();
+  final freqKHz = asQsonNum(qso['freq'])?.toDouble();
   if (!shouldAvoidZeroBeat(
     enabled: enabled,
     radioConnected: radioConnected,
-    mode: qso['mode'] as String?,
+    mode: asQsonString(qso['mode']),
     freqKHz: freqKHz,
   )) {
     return qso;
@@ -185,8 +185,8 @@ class ZeroBeatOffsetter {
     if (!shouldAvoidZeroBeat(
       enabled: enabled,
       radioConnected: radioConnected,
-      mode: qso['mode'] as String?,
-      freqKHz: (qso['freq'] as num?)?.toDouble(),
+      mode: asQsonString(qso['mode']),
+      freqKHz: asQsonNum(qso['freq'])?.toDouble(),
     )) {
       return qso;
     }

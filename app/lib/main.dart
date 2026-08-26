@@ -169,6 +169,22 @@ void _mainBody({
   // builds — console output + a buffer window.__halo.recentLog() can query.
   // Off in release, so nothing is emitted or buffered there.
   DevLog.instance.enabled = !kReleaseMode;
+  // `halo_core` normalizes wrong-typed QSON on its way into storage but is
+  // pure Dart and cannot reach the crash backend itself. Coercion alone
+  // fixes the symptom and leaves the WRITER of a bool mode unknown, which is
+  // the thing worth learning — so route what it finds here. Reported at the
+  // first occurrence (like malformed spot data), keyed by write path and
+  // field so a device holding one bad record reports once rather than once
+  // per sync round.
+  onQsonTypeViolation = (context, violation) {
+    ErrorReportingService.reportIfRepeated(
+      'qson:malformed:$context:${violation.path}',
+      MalformedQsonDataException(context, violation),
+      null,
+      context: 'qson:malformed:$context',
+      threshold: 1,
+    );
+  };
   // Before bootstrap, so the offline flag is answered by the time anything
   // can fail (map errors are stamped with it — see MapError).
   ConnectivityService.start();

@@ -649,14 +649,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// from a centroid (not a real grid) is shown approximate ("~") and rounded.
   String? _callLocationLine(BuildContext context, Map<String, dynamic> guess) {
     final t = context.t.loggingControls.info;
-    final entityPrefix = guess['entityPrefix'] as String?;
+    final entityPrefix = asQsonString(guess['entityPrefix']);
 
     final ourLoc = widget.operation.location;
     final resolved = locationForQsoInfoWithSource(
       exact: locationFromLatLon(guess['lat'], guess['lon']),
-      grid: guess['grid'] as String?,
+      grid: asQsonString(guess['grid']),
       entityPrefix: entityPrefix,
-      state: guess['state'] as String?,
+      state: asQsonString(guess['state']),
     );
 
     String? distStr;
@@ -677,8 +677,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
       }
     }
 
-    final location = (guess['location'] as String?)?.trim();
-    final country = (guess['country'] as String?)?.trim();
+    final location = asQsonString(guess['location'])?.trim();
+    final country = asQsonString(guess['country'])?.trim();
     // Location + country (country for DX only, never our own entity), joined
     // with an en dash rather than a bullet.
     final label = [
