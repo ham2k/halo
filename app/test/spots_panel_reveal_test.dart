@@ -491,6 +491,9 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    double openDx(WidgetTester tester, String call, {required String closed}) =>
+        tester.getTopLeft(find.text(call)).dx - tester.getTopLeft(find.text(closed)).dx;
+
     testWidgets('a short drag right rests open and suggests, without logging', (tester) async {
       final services = await servicesWith(_board(6));
       final suggested = <Map<String, dynamic>>[];
@@ -636,6 +639,116 @@ void main() {
     // stops being open has to take it back, or the logging fields keep a
     // station the operator has visibly moved on from — and the next Log is a
     // contact with whoever was slid last.
+    // A touch taken away rather than lifted — a system gesture claiming it,
+    // the app backgrounded. Flutter reports that to an ACCEPTED drag as an
+    // ordinary `onEnd` (`onHorizontalDragCancel` fires only before acceptance),
+    // so the row cannot tell the two apart on its own and a takeover past the
+    // commit point would log a contact nobody released.
+    testWidgets('a drag past the commit point that is cancelled logs nothing', (tester) async {
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      final withdrawn = <String?>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onWithdrawSuggestion: withdrawn.add,
+        onLogQso: logged.add,
+      );
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 20; i++) {
+        await gesture.moveBy(const Offset(25, 0));
+        await tester.pump();
+      }
+      await gesture.cancel();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(logged, isEmpty, reason: 'a cancelled gesture was never released');
+      expect(openDx(tester, 'K0001', closed: 'K0003'), 0, reason: 'and the row shuts rather than resting open');
+      // Shutting is what takes the peek back. A cancel that left the fill
+      // behind would leave a station the operator never chose sitting in the
+      // logging fields, with no open row left to take it away.
+      expect(withdrawn, ['K0001'], reason: 'the peek goes back with the row');
+    });
+
+    // The cancel guard must key on the pointer that ENDS the gesture, not on
+    // any cancel over the row: a second touch the system takes away would
+    // otherwise disarm a release the operator did make, swallowing the contact
+    // with no log, no error and nothing in the console to find it by.
+    testWidgets('a second touch cancelled mid-drag still lets the release log', (tester) async {
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: logged.add,
+      );
+
+      final row = tester.getCenter(find.text('K0001'));
+      final a = await tester.startGesture(row, pointer: 7);
+      for (var i = 0; i < 20; i++) {
+        await a.moveBy(const Offset(25, 0));
+        await tester.pump();
+      }
+      // A palm or second thumb landing on the same row, which the OS then
+      // takes away. The drag under finger A was never interrupted.
+      final b = await tester.startGesture(row, pointer: 8);
+      await tester.pump();
+      await b.cancel();
+      await tester.pump();
+      await a.up();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(logged, hasLength(1), reason: 'the operator released past the commit point');
+    });
+
+    // The guard is armed per gesture, so it has to be disarmed per gesture
+    // too. A flag left set outlives the touch that set it — the row's State
+    // survives an ordinary re-spot — and every later release on that row would
+    // shut it without logging, losing contacts with nothing to find them by.
+    testWidgets('a row whose drag was cancelled can still be slid to log', (tester) async {
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: logged.add,
+      );
+
+      final cancelled = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 20; i++) {
+        await cancelled.moveBy(const Offset(25, 0));
+        await tester.pump();
+      }
+      await cancelled.cancel();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(logged, isEmpty, reason: 'the cancelled gesture logged nothing');
+
+      final released = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      for (var i = 0; i < 20; i++) {
+        await released.moveBy(const Offset(25, 0));
+        await tester.pump();
+      }
+      await released.up();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(logged, hasLength(1), reason: 'the next release on the same row still logs');
+    });
+
     testWidgets('dragging back takes the suggestion away again', (tester) async {
       final services = await servicesWith(_board(6));
       final suggested = <Map<String, dynamic>>[];
@@ -1008,9 +1121,6 @@ void main() {
     /// against a row that is certainly shut, because the list itself may have
     /// scrolled: counting "Log it" buttons cannot tell an open SECOND row
     /// from a first row that never closed.
-    double openDx(WidgetTester tester, String call, {required String closed}) =>
-        tester.getTopLeft(find.text(call)).dx - tester.getTopLeft(find.text(closed)).dx;
-
     // The real sequence a slide sets off: opening the row suggests the QSO,
     // the logging panel fills, and the call comes back as this panel's
     // `callInfo` — which makes the slid row the CURRENT one and moves

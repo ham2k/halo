@@ -2482,8 +2482,11 @@ class _SlideGroup extends ChangeNotifier {
   void _closeAllExcept(_SlidableSpotRowState? keep) {
     for (final row in _open.toList()) {
       if (identical(row, keep)) continue;
-      // `close` deregisters through [closed] when it succeeds; a refusal
-      // leaves the row here to be closed the next time something asks.
+      // A row that actually moves deregisters through [closed] on its way to
+      // rest. The other two answers leave it here, and both are fine: a
+      // refusal (a finger still on it) is closed the next time something asks,
+      // and a row already at zero displacement — registered on drag start,
+      // not yet moved — is deregistered by its own drag ending.
       row.close();
     }
   }
@@ -2546,6 +2549,20 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
   /// two durations, rather than a controller this row would have to own and
   /// tear down as the list recycles it.
   bool _dragging = false;
+
+  /// The pointers currently down on this row, and whether the one that ended
+  /// the gesture was taken away rather than lifted. Both are written from the
+  /// `Listener` below, which sees each event BEFORE the gesture recognizer
+  /// does: render objects on the hit-test path are dispatched to ahead of
+  /// `GestureBinding`, which is what routes the event on to the recognizer
+  /// that then reports the end.
+  ///
+  /// Counted rather than a bare flag because a cancel is only this gesture's
+  /// end when it is the LAST pointer to go: a palm or second thumb the system
+  /// takes away mid-drag must not disarm the release the operator still
+  /// makes, which would swallow the contact with no trace anywhere.
+  final Set<int> _downPointers = <int>{};
+  bool _cancelled = false;
 
   @override
   void dispose() {
@@ -2619,6 +2636,8 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
   }
 
   void _onDragStart(DragStartDetails details) {
+    _cancelled = false;
+
     setState(() => _dragging = true);
     widget.group.opened(this);
   }
@@ -2656,6 +2675,21 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
   }
 
   void _onDragEnd(DragEndDetails details, double width) {
+    // Act only on evidence that the operator actually let go. An ACCEPTED drag
+    // reports a cancelled pointer as an ordinary end — and `onHorizontalDrag
+    // Cancel` only ever fires BEFORE acceptance, where no row has been touched
+    // — so without this a system gesture claiming the touch, or the app going
+    // to the background, LOGS A CONTACT nobody released. A pointer still down
+    // at the end means the same thing by another route: the recognizer also
+    // ends a drag whose buttons change mid-gesture, with no cancel to see.
+    //
+    // Shutting the row rather than resting it open takes the peek back with
+    // it — [_animateTo] withdraws at zero — which is what keeps a station the
+    // operator never chose out of the logging fields.
+    if (_cancelled || _downPointers.isNotEmpty) {
+      _animateTo(0);
+      return;
+    }
     final action = _dx > 0 ? widget.leading : widget.trailing;
     if (_pastCommit && action != null) {
       // Fire on release, then slide shut — the row has done its job and
@@ -2743,57 +2777,69 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     return ruled(LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        return GestureDetector(
-          // Horizontal only — the enclosing ListView keeps the vertical axis,
-          // and the narrow layout's TabBarView has page-swiping disabled, so
-          // nothing else is competing for this drag.
-          onHorizontalDragStart: _onDragStart,
-          onHorizontalDragUpdate: (d) => _onDragUpdate(d, width),
-          onHorizontalDragEnd: (d) => _onDragEnd(d, width),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: _dx),
-            // Zero while the finger is down, so the row tracks it exactly
-            // rather than lagging behind its own gesture.
-            duration: _dragging ? Duration.zero : const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            // The panel behind is sized from the SAME animating value as the
-            // row in front, so the two stay edge to edge through a snap
-            // instead of the panel jumping to its target while the row eases.
-            builder: (context, dx, child) {
-              final stack = Stack(
-                children: [
-                  // Only while there is something to see: an idle row pays for
-                  // no extra layer, which matters on a board scrolled fast.
-                  if (dx != 0)
-                    Positioned.fill(
-                      child: dx > 0
-                          ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
-                          : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
+        return Listener(
+          // The only place a cancelled touch can be told apart from a lifted
+          // one — see [_downPointers]. Behaviour left at the default,
+          // `deferToChild`, so this listens over exactly the region the
+          // gesture below it drags on, and widens nothing.
+          onPointerDown: (event) => _downPointers.add(event.pointer),
+          onPointerUp: (event) => _downPointers.remove(event.pointer),
+          onPointerCancel: (event) {
+            _downPointers.remove(event.pointer);
+            if (_downPointers.isEmpty) _cancelled = true;
+          },
+          child: GestureDetector(
+            // Horizontal only — the enclosing ListView keeps the vertical axis,
+            // and the narrow layout's TabBarView has page-swiping disabled, so
+            // nothing else is competing for this drag.
+            onHorizontalDragStart: _onDragStart,
+            onHorizontalDragUpdate: (d) => _onDragUpdate(d, width),
+            onHorizontalDragEnd: (d) => _onDragEnd(d, width),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: _dx),
+              // Zero while the finger is down, so the row tracks it exactly
+              // rather than lagging behind its own gesture.
+              duration: _dragging ? Duration.zero : const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              // The panel behind is sized from the SAME animating value as the
+              // row in front, so the two stay edge to edge through a snap
+              // instead of the panel jumping to its target while the row eases.
+              builder: (context, dx, child) {
+                final stack = Stack(
+                  children: [
+                    // Only while there is something to see: an idle row pays for
+                    // no extra layer, which matters on a board scrolled fast.
+                    if (dx != 0)
+                      Positioned.fill(
+                        child: dx > 0
+                            ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
+                            : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
+                      ),
+                    Transform.translate(
+                      offset: Offset(dx, 0),
+                      // Opaque ONLY while displaced: the actions sit behind the
+                      // row, so a transparent row would show the one it has not
+                      // uncovered — but a row at rest must paint exactly what it
+                      // painted before it could slide, down to having no fill.
+                      child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
                     ),
-                  Transform.translate(
-                    offset: Offset(dx, 0),
-                    // Opaque ONLY while displaced: the actions sit behind the
-                    // row, so a transparent row would show the one it has not
-                    // uncovered — but a row at rest must paint exactly what it
-                    // painted before it could slide, down to having no fill.
-                    child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
-                  ),
-                ],
-              );
-              // The displaced content is clipped to the row's box — the width
-              // of the list itself — so a row dragged to the edge stops at it
-              // instead of painting over whatever sits beside the spot list.
-              // `Clip.none` rather than dropping the widget while the row
-              // rests: it allocates no layer either, and keeping the widget
-              // type stable across that boundary keeps the row's subtree —
-              // global keys, ink splashes and all — from being re-inflated at
-              // the frame a slide starts and again at the one it ends.
-              return ClipRect(
-                clipBehavior: dx == 0 ? Clip.none : Clip.hardEdge,
-                child: stack,
-              );
-            },
-            child: widget.child,
+                  ],
+                );
+                // The displaced content is clipped to the row's box — the width
+                // of the list itself — so a row dragged to the edge stops at it
+                // instead of painting over whatever sits beside the spot list.
+                // `Clip.none` rather than dropping the widget while the row
+                // rests: it allocates no layer either, and keeping the widget
+                // type stable across that boundary keeps the row's subtree —
+                // global keys, ink splashes and all — from being re-inflated at
+                // the frame a slide starts and again at the one it ends.
+                return ClipRect(
+                  clipBehavior: dx == 0 ? Clip.none : Clip.hardEdge,
+                  child: stack,
+                );
+              },
+              child: widget.child,
+            ),
           ),
         );
       },
