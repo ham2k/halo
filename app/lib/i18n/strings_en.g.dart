@@ -3111,8 +3111,8 @@ class Translations$settings$accounts$en {
 	/// en: 'Connected'
 	String get connected => 'Connected';
 
-	/// en: 'Connect to ${label}'
-	String connectTo({required Object label}) => 'Connect to ${label}';
+	/// en: 'Cancel sign-in'
+	String get cancelLogin => 'Cancel sign-in';
 
 	/// en: 'Open in Browser'
 	String get openInBrowser => 'Open in Browser';
@@ -3177,11 +3177,11 @@ class Translations$settings$accounts$en {
 	/// en: 'That link looks cut off. Copy the whole thing and paste it again.'
 	String get pastedLinkMalformed => 'That link looks cut off. Copy the whole thing and paste it again.';
 
-	/// en: 'Waiting for you to finish signing in — this page will continue automatically once you do.'
-	String get relayLoginWaiting => 'Waiting for you to finish signing in — this page will continue automatically once you do.';
+	/// en: 'Waiting for you to finish signing in — this will continue automatically once you do.'
+	String get relayLoginWaiting => 'Waiting for you to finish signing in — this will continue automatically once you do.';
 
-	/// en: 'This device hasn't heard back from the sign-in yet. If you already finished in your browser, close this and try connecting again.'
-	String get loginNoResponse => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, close this and try connecting again.';
+	/// en: 'This device hasn't heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.'
+	String get loginNoResponse => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.';
 
 	/// en: 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.'
 	String get relayLoginNotOpened => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.';
@@ -3190,7 +3190,7 @@ class Translations$settings$accounts$en {
 	String get relayLoginUnavailable => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.';
 
 	/// en: 'That login attempt didn't complete correctly. Please try connecting again.'
-	String get relayLoginMalformedEvent => 'That login attempt didn\'t complete correctly. Please try connecting again.';
+	String get loginIncompleteResponse => 'That login attempt didn\'t complete correctly. Please try connecting again.';
 
 	/// en: 'Account logins can’t be saved'
 	String get noKeyringTitle => 'Account logins can’t be saved';
@@ -5582,7 +5582,7 @@ extension on Translations {
 			'settings.accounts.none' => 'No active extensions with accounts',
 			'settings.accounts.notConfigured' => 'Not configured',
 			'settings.accounts.connected' => 'Connected',
-			'settings.accounts.connectTo' => ({required Object label}) => 'Connect to ${label}',
+			'settings.accounts.cancelLogin' => 'Cancel sign-in',
 			'settings.accounts.openInBrowser' => 'Open in Browser',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Logged in as ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Press Save to keep this account connected.',
@@ -5604,11 +5604,11 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
-			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
-			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, close this and try connecting again.',
+			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
+			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
-			'settings.accounts.relayLoginMalformedEvent' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
+			'settings.accounts.loginIncompleteResponse' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',

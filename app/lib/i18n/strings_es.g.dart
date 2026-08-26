@@ -1460,7 +1460,7 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get none => 'No hay extensiones activas con cuentas';
 	@override String get notConfigured => 'Sin configurar';
 	@override String get connected => 'Conectado';
-	@override String connectTo({required Object label}) => 'Conectar con ${label}';
+	@override String get cancelLogin => 'Cancelar el inicio de sesión';
 	@override String get openInBrowser => 'Abrir en el navegador';
 	@override String loggedInAs({required Object identity}) => 'Sesión iniciada como ${identity}';
 	@override String get pressSaveToKeep => 'Pulsa Guardar para mantener esta cuenta conectada.';
@@ -1482,11 +1482,11 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get pastedLinkWrongLogin => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.';
 	@override String get pastedLinkNoCode => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.';
 	@override String get pastedLinkMalformed => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.';
-	@override String get relayLoginWaiting => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.';
-	@override String get loginNoResponse => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cierra esto e intenta conectar de nuevo.';
+	@override String get relayLoginWaiting => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.';
+	@override String get loginNoResponse => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.';
 	@override String get relayLoginNotOpened => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.';
 	@override String get relayLoginUnavailable => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.';
-	@override String get relayLoginMalformedEvent => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.';
+	@override String get loginIncompleteResponse => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.';
 	@override String get noKeyringTitle => 'No se pueden guardar las cuentas';
 	@override String get noKeyringText => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.';
 	@override String get noKeyringInline => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.';
@@ -2946,7 +2946,7 @@ extension on TranslationsEs {
 			'settings.accounts.none' => 'No hay extensiones activas con cuentas',
 			'settings.accounts.notConfigured' => 'Sin configurar',
 			'settings.accounts.connected' => 'Conectado',
-			'settings.accounts.connectTo' => ({required Object label}) => 'Conectar con ${label}',
+			'settings.accounts.cancelLogin' => 'Cancelar el inicio de sesión',
 			'settings.accounts.openInBrowser' => 'Abrir en el navegador',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Sesión iniciada como ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Pulsa Guardar para mantener esta cuenta conectada.',
@@ -2968,11 +2968,11 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
-			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esta página continuará automáticamente en cuanto lo hagas.',
-			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cierra esto e intenta conectar de nuevo.',
+			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
+			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
-			'settings.accounts.relayLoginMalformedEvent' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
+			'settings.accounts.loginIncompleteResponse' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
 			'settings.accounts.noKeyringInline' => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.',

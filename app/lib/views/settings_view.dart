@@ -3323,6 +3323,28 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
   );
 }
 
+/// A sign-in the account pane is waiting on: what the waiting body needs to
+/// render, and the completer `_doOAuth` is parked on until something — the
+/// relay, a deep link, the operator, or the pane's own disposal — ends it.
+class _PendingOAuthLogin {
+  final Uri authUri;
+  final String? expectedState;
+  final Stream<PusherEvent>? webhookEvents;
+  final Future<List<Map<String, dynamic>>> Function()? fetchWebhookEvents;
+  final Completer<String?> completer = Completer<String?>();
+
+  /// Set alongside the completion when the login ended in a message rather
+  /// than a code — read once, by the `_doOAuth` the completion wakes.
+  String? error;
+
+  _PendingOAuthLogin({
+    required this.authUri,
+    this.expectedState,
+    this.webhookEvents,
+    this.fetchWebhookEvents,
+  });
+}
+
 /// One extension account's credentials, shown as a Modal Pane
 /// (docs/design/layouts.md): a dialog on wide layouts, a full screen on
 /// phones. The route provides the
@@ -3349,6 +3371,41 @@ class _AccountPaneState extends State<_AccountPane> {
   /// OAuth tokens obtained from a Login that haven't been saved yet — only
   /// persisted when the user presses Save, discarded on Cancel/close.
   Map<String, String>? _pendingCredentials;
+
+  /// The sign-in in flight, or null when none is. Non-null is what puts the
+  /// waiting body on screen in place of the Connect button, and what
+  /// `_doOAuth` is parked on.
+  _PendingOAuthLogin? _oauthLogin;
+
+  /// True from the press of Connect until `_doOAuth` returns. The login has no
+  /// on-screen presence during its network prologue — the LoFi registration
+  /// and the OIDC discovery fetch — so without this the button stays live
+  /// through it, and a second press strands the first attempt: nothing holds
+  /// its completer once `_oauthLogin` is overwritten, so its await never
+  /// returns and its deep-link subscription is never cancelled.
+  bool _startingOAuth = false;
+
+  /// Ends [login], waking the `_doOAuth` parked on it.
+  ///
+  /// Takes the login rather than reading `_oauthLogin`, so a result can only
+  /// end the attempt it belongs to: handing one attempt's code to another's
+  /// completer would exchange it against the wrong PKCE verifier.
+  ///
+  /// Idempotent, and must stay that way: a Completer throws on a second
+  /// `complete` where the route pop this replaces was forgiving, and two
+  /// results really can race — a deep link the OS delivers while the operator
+  /// is already pressing Cancel, or `dispose` after either.
+  void _resolveOAuth(_PendingOAuthLogin? login, String? code, {String? error}) {
+    if (login == null) return;
+    if (login.completer.isCompleted) {
+      // Dropping it is right — this login is already over — but dropping it
+      // in silence leaves no record that an answer came back after the fact.
+      debugPrint('[oauth] a result arrived after its login had already ended');
+      return;
+    }
+    login.error = error;
+    login.completer.complete(code);
+  }
 
   String? _fieldError(String key, String value) {
     if (widget.account['key'] == 'qrz' && key == 'username' && value.contains('@')) {
@@ -3391,6 +3448,9 @@ class _AccountPaneState extends State<_AccountPane> {
 
   @override
   void dispose() {
+    // A login still parked on its completer would strand `_doOAuth`'s await
+    // for the life of the isolate once this pane is gone.
+    _resolveOAuth(_oauthLogin, null);
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -3474,6 +3534,8 @@ class _AccountPaneState extends State<_AccountPane> {
   }
 
   Future<void> _doOAuth() async {
+    if (_startingOAuth) return;
+    setState(() => _startingOAuth = true);
     final oauth2 = _oauth2!;
     final issuer = oauth2['issuer'] as String;
     final clientId = oauth2['clientId'] as String;
@@ -3495,7 +3557,7 @@ class _AccountPaneState extends State<_AccountPane> {
       }
 
       // Only the relay path needs this device's LoFi identity — the native
-      // webview/deep-link path (used on macOS/Windows/Android/iOS) never
+      // deep-link path (used on macOS/Android/iOS) never
       // touches LoFi at all. Goes through
       // `connectLofiRealtime` itself (register-and-subscribe, same as boot
       // does) rather than re-deriving that sequence inline — boot may not
@@ -3552,54 +3614,68 @@ class _AccountPaneState extends State<_AccountPane> {
 
       if (!mounted) return;
 
-      String? authError;
-      final String? code;
-      if (useRelay) {
-        code = await Navigator.of(context).push<String>(
-          MaterialPageRoute(
-            builder: (context) => OAuthBrowserLoginPage(
-              accountLabel: '${widget.account['label']}',
-              authUri: authUri,
-              expectedState: state,
-              webhookEvents: widget.services.webhookEvents,
-              fetchWebhookEvents: widget.services.extensions.fetchLofiWebhookEvents,
-              // A redirect that carries `error` instead of `code` ends the
-              // login the same way a code does.
-              onError: (error) => authError = error,
-            ),
-          ),
-        );
-      } else {
+      final login = _PendingOAuthLogin(
+        authUri: authUri,
+        // The waiting body only resolves a login on the relay platforms; on
+        // the deep-link ones the listener below is what ends it, so it gets
+        // no relay wiring at all.
+        expectedState: useRelay ? state : null,
+        webhookEvents: useRelay ? widget.services.webhookEvents : null,
+        fetchWebhookEvents: useRelay ? widget.services.extensions.fetchLofiWebhookEvents : null,
+      );
+
+      StreamSubscription<Uri>? linkSub;
+      if (!useRelay) {
         // The sign-in page opens in the operator's own browser, same as the
         // relay platforms; here the provider redirects to a
         // com.ham2k.*.auth:// URL these platforms register, and the OS hands
         // it back through DeepLinkService. This listener is what completes
-        // the login — the waiting page itself carries no relay wiring and
-        // never resolves on its own.
-        final navigator = Navigator.of(context);
-        final linkSub = widget.services.deepLinks.links.listen((uri) {
+        // the login — the waiting body carries no relay wiring and never
+        // resolves on its own.
+        linkSub = widget.services.deepLinks.links.listen((uri) {
           if (!DeepLinkService.isAuthCallback(uri)) return;
           if (uri.queryParameters['state'] != state) {
             // A redirect from an attempt the operator abandoned, or one meant
             // for another login. Dropping it is right; dropping it in silence
-            // leaves a page waiting with no record that anything came back.
+            // leaves a pane waiting with no record that anything came back.
             debugPrint('[oauth] ignoring an auth callback for a different attempt');
             return;
           }
-          authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
-          navigator.pop(uri.queryParameters['code']);
+          final callbackCode = uri.queryParameters['code'];
+          final callbackError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
+          _resolveOAuth(
+            login,
+            callbackCode,
+            // A redirect whose state matched but that carries neither a code
+            // nor an error is the same incomplete answer the relay path
+            // names, and it ends the login the same way: with a message,
+            // rather than returning the operator to Connect with nothing
+            // said and nothing to try differently.
+            error: callbackError ?? (callbackCode == null ? t.settings.accounts.loginIncompleteResponse : null),
+          );
         }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:auth-callback'));
-
-        code = await navigator.push<String>(
-          MaterialPageRoute(
-            builder: (context) => OAuthBrowserLoginPage(
-              accountLabel: '${widget.account['label']}',
-              authUri: authUri,
-            ),
-          ),
-        );
-        await linkSub.cancel();
       }
+
+      String? code;
+      setState(() => _oauthLogin = login);
+      try {
+        code = await login.completer.future;
+      } finally {
+        // The UI comes back FIRST, and a cancel that misbehaves cannot stop
+        // it: `linkSub` rides a plugin event channel, and one that throws (or
+        // never returns) would otherwise leave the spinner up for good, with
+        // Connect unreachable behind it and "login failed" in the status bar
+        // beside it. Not `mounted` when the pane was closed mid-login:
+        // `dispose` resolved the completer on the way out, and there is no
+        // State left to update.
+        if (mounted) setState(() => _oauthLogin = null);
+        try {
+          await linkSub?.cancel();
+        } catch (e, stack) {
+          ErrorReportingService.report(e, stack, context: 'oauth:cancelLinkSub');
+        }
+      }
+      final authError = login.error;
 
       if (code == null) {
         if (authError != null) throw Exception(authError);
@@ -3607,7 +3683,7 @@ class _AccountPaneState extends State<_AccountPane> {
       }
 
       // The pane (an Escape-dismissible ModalPaneRoute) can have been closed
-      // while the webview/system-browser login above was in progress —
+      // while the system-browser login above was in progress —
       // nothing left to update, and no Save button left to hold
       // `_pendingCredentials` for.
       if (!mounted) return;
@@ -3650,6 +3726,12 @@ class _AccountPaneState extends State<_AccountPane> {
         setState(() => _testing = false);
         widget.services.statusBar.setMessage(key: 'accounts:login', text: t.settings.accounts.loginFailed(error: e));
       }
+    } finally {
+      if (mounted) {
+        setState(() => _startingOAuth = false);
+      } else {
+        _startingOAuth = false;
+      }
     }
   }
 
@@ -3668,13 +3750,28 @@ class _AccountPaneState extends State<_AccountPane> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final oauthLogin = _oauthLogin;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_oauth2 != null) ...[
-          if (_pendingCredentials != null) ...[
+          if (oauthLogin != null) ...[
+            OAuthBrowserLoginBody(
+              // A second attempt is a fresh wait, not the previous one
+              // carrying over its timers, its launch failure and its
+              // 90-seconds-of-silence message.
+              key: ObjectKey(oauthLogin),
+              authUri: oauthLogin.authUri,
+              expectedState: oauthLogin.expectedState,
+              webhookEvents: oauthLogin.webhookEvents,
+              fetchWebhookEvents: oauthLogin.fetchWebhookEvents,
+              onCode: (code) => _resolveOAuth(oauthLogin, code),
+              onError: (error) => _resolveOAuth(oauthLogin, null, error: error),
+              onCancel: () => _resolveOAuth(oauthLogin, null),
+            ),
+          ] else if (_pendingCredentials != null) ...[
             Text(
               context.t.settings.accounts.loggedInAs(
                   identity: ExtensionService.identityFromCredentials(_pendingCredentials!) ??
@@ -3702,7 +3799,8 @@ class _AccountPaneState extends State<_AccountPane> {
             ),
           ] else ...[
             OutlinedButton(
-                onPressed: _testing ? null : _doOAuth, child: Text(context.t.settings.accounts.connect)),
+                onPressed: (_testing || _startingOAuth) ? null : _doOAuth,
+                child: Text(context.t.settings.accounts.connect)),
           ],
         ] else ...[
           ..._fields.map((field) {
@@ -3762,44 +3860,50 @@ class _AccountPaneState extends State<_AccountPane> {
             ),
           ),
         ],
-        const SizedBox(height: Space.xl),
-        const Divider(),
-        const SizedBox(height: Space.md),
-        Text(
-          context.t.settings.accounts.connectedAs,
-          style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
-        ),
-        const SizedBox(height: Space.md),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(Space.md),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
+        // Hidden while a sign-in is in flight: it can only report on the
+        // credentials this dialog opened with, which are the ones being
+        // replaced — and a stale verdict beside a spinner reads as this
+        // login's own progress.
+        if (oauthLogin == null) ...[
+          const SizedBox(height: Space.xl),
+          const Divider(),
+          const SizedBox(height: Space.md),
+          Text(
+            context.t.settings.accounts.connectedAs,
+            style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
+          ),
+          const SizedBox(height: Space.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(Space.md),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _testing
+                      ? const SizedBox(
+                          height: 20,
+                          child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+                        )
+                      : MarkdownBody(
+                          data: _testResult ?? '—',
+                          styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme)),
+                        ),
                 ),
-                child: _testing
-                    ? const SizedBox(
-                        height: 20,
-                        child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
-                      )
-                    : MarkdownBody(
-                        data: _testResult ?? '—',
-                        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme)),
-                      ),
               ),
-            ),
-            const SizedBox(width: Space.md),
-            TextButton(onPressed: _testing ? null : _test, child: Text(context.t.settings.accounts.test)),
-          ],
-        ),
+              const SizedBox(width: Space.md),
+              TextButton(onPressed: _testing ? null : _test, child: Text(context.t.settings.accounts.test)),
+            ],
+          ),
+        ],
         const SizedBox(height: Space.xxl),
         haloDialogFooterRow(
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
           actions: [
-            FilledButton(onPressed: _save, child: Text(context.t.common.save)),
+            FilledButton(onPressed: oauthLogin == null ? _save : null, child: Text(context.t.common.save)),
           ],
         ),
       ],
