@@ -3,14 +3,26 @@
 //
 // The BLE transport's policy (HALO-342), over the fake world: when it
 // connects, when it deliberately does not, and that what it hands over
-// honors the PeerLink contract. Real timers throughout — the delays under
-// test ARE timer behavior — kept fast via injected durations, with checks
-// only in the direction a loaded machine cannot break (a timer can fire
-// late, never early).
+// honors the PeerLink contract.
+//
+// Real timers by DEFAULT — the delays under test ARE timer behavior — kept
+// fast via injected durations, and asserted only in the direction a loaded
+// machine cannot break: a timer can fire late, never early, so "not yet" is
+// safe and "still, after a while" is not.
+//
+// An assertion that needs the UNSAFE direction — that something is still
+// alive after a wait, which a timer firing late is exactly what breaks —
+// does not belong on real timers at all. Put it on `fakeAsync`, and give
+// whatever the code under test reads the time from the same fake clock, or
+// the two run on different clocks and the test quietly stops testing. The
+// keepalive test at the bottom is the worked example and the only one here
+// that needs it.
 
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_gateway.dart';
@@ -240,44 +252,100 @@ void main() {
         reason: 'a Bluetooth blip must never pop a permission dialog the operator did not invite');
   });
 
-  test('keepalive: a silent peer is dropped, a pinging one is kept', () async {
-    // Link-level, wired directly — the death being detected is the one the
-    // radio cannot report.
-    Future<void> Function(Uint8List) feedInto(PeerBleLink Function() link, bool Function() drop) {
-      return (packet) async {
-        if (!drop()) link().feed(packet);
-      };
-    }
+  test('the keepalive clock does NOT time travel', () {
+    // The seam that makes the test below possible also makes it one word's
+    // edit to hand this a travelling clock — `nowMillis` instead of
+    // `realNowMillis` reads as an ordinary application of the house rule,
+    // and scripts/test.sh's clock-discipline grep only bans `DateTime.now()`
+    // so it would not fire. The whole suite would stay green while a
+    // developer time-travelling the app dropped every BLE link on the
+    // network at once, mid-field-day, for reasons nothing would explain.
+    //
+    // Asserted through behaviour rather than by comparing tear-offs: what
+    // matters is that the value does not follow travel, not which function
+    // supplies it.
+    final link = PeerBleLink(sendPacket: (_) async {}, shutdown: () async {});
+    addTearDown(link.close);
+    final before = link.now();
+    AppClock.instance.travel(delta: const Duration(days: 3));
+    addTearDown(AppClock.instance.reset);
+    expect((link.now() - before).abs(), lessThan(const Duration(minutes: 1).inMilliseconds),
+        reason: 'a protocol timeout reads the real clock (docs/design/time.md §1)');
+  });
 
-    var dropTowardsA = false;
-    late PeerBleLink linkA;
-    late PeerBleLink linkB;
-    linkA = PeerBleLink(
-      sendPacket: feedInto(() => linkB, () => false),
-      shutdown: () async {},
-      keepaliveInterval: const Duration(milliseconds: 50),
-      idleCutoff: const Duration(milliseconds: 200),
-    );
-    linkB = PeerBleLink(
-      sendPacket: feedInto(() => linkA, () => dropTowardsA),
-      shutdown: () async {},
-      keepaliveInterval: const Duration(milliseconds: 50),
-      idleCutoff: const Duration(milliseconds: 200),
-    );
-    linkA.start(50);
-    linkB.start(50);
-    await waitFor('handshake', () async => await linkA.ready && await linkB.ready);
+  test('keepalive: a silent peer is dropped, a pinging one is kept', () {
+    // The ONE test in this file on a fake clock, and it has to be: every
+    // other test here asserts only in the direction a loaded machine cannot
+    // break (see the header — a timer can fire late, never early). This one
+    // asserts a link is STILL OPEN after a while, which a keepalive firing
+    // late is exactly what breaks. On real timers it failed under a loaded
+    // suite, and the failure landed on whichever test ran next.
+    //
+    // The link's staleness check reads `now` and its pings come off a
+    // Timer — two different clocks unless something drives both. Inside
+    // `fakeAsync`, `clock` IS the fake clock that `elapse` advances, so
+    // handing it to the link keeps them in lockstep and every gap below is
+    // exact rather than a bet on scheduler latency.
+    fakeAsync((async) {
+      // Link-level, wired directly — the death being detected is the one the
+      // radio cannot report.
+      Future<void> Function(Uint8List) feedInto(PeerBleLink Function() link, bool Function() drop) {
+        return (packet) async {
+          if (!drop()) link().feed(packet);
+        };
+      }
 
-    // Healthy but idle: pings alone must keep it alive well past the cutoff.
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    var aClosed = false;
-    unawaited(linkA.closed.then((_) => aClosed = true));
-    await Future<void>.delayed(Duration.zero);
-    expect(aClosed, isFalse, reason: 'pings are proof of life; an idle link is not a dead one');
+      int fakeNow() => clock.now().millisecondsSinceEpoch;
 
-    // Now B's traffic stops reaching A entirely.
-    dropTowardsA = true;
-    await linkA.closed.timeout(const Duration(seconds: 5));
-    await linkB.close();
+      var dropTowardsA = false;
+      late PeerBleLink linkA;
+      late PeerBleLink linkB;
+      linkA = PeerBleLink(
+        sendPacket: feedInto(() => linkB, () => false),
+        shutdown: () async {},
+        keepaliveInterval: const Duration(milliseconds: 50),
+        idleCutoff: const Duration(milliseconds: 200),
+        now: fakeNow,
+      );
+      linkB = PeerBleLink(
+        sendPacket: feedInto(() => linkA, () => dropTowardsA),
+        shutdown: () async {},
+        keepaliveInterval: const Duration(milliseconds: 50),
+        idleCutoff: const Duration(milliseconds: 200),
+        now: fakeNow,
+      );
+      var aReady = false;
+      var bReady = false;
+      unawaited(linkA.ready.then((value) => aReady = value));
+      unawaited(linkB.ready.then((value) => bReady = value));
+      var aClosed = false;
+      unawaited(linkA.closed.then((_) => aClosed = true));
+
+      linkA.start(50);
+      linkB.start(50);
+      async.flushMicrotasks();
+      expect(aReady && bReady, isTrue, reason: 'the handshake crosses without any time passing');
+
+      // Healthy but idle: pings alone must keep it alive well past the
+      // cutoff. Two and a half seconds of it — twelve cutoffs' worth, which
+      // on the real clock would have meant sleeping for exactly that long.
+      async.elapse(const Duration(milliseconds: 2500));
+      expect(aClosed, isFalse, reason: 'pings are proof of life; an idle link is not a dead one');
+
+      // Now B's traffic stops reaching A entirely. A hears nothing, and its
+      // own pings still leave — so only the staleness check can notice.
+      dropTowardsA = true;
+      // Comfortably INSIDE the cutoff, not exactly on it: landing on the
+      // boundary tick would pin `>` against `>=`, and one millisecond of a
+      // 65-second protocol timeout is nobody's intended invariant — it would
+      // only make a behaviourally identical refactor fail.
+      async.elapse(const Duration(milliseconds: 150));
+      expect(aClosed, isFalse, reason: 'the cutoff spans three missed pings; one is not a death');
+      async.elapse(const Duration(milliseconds: 150));
+      expect(aClosed, isTrue, reason: 'silent past the cutoff, so the link is dropped');
+
+      unawaited(linkB.close());
+      async.flushMicrotasks();
+    });
   });
 }

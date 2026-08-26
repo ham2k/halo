@@ -474,7 +474,17 @@ class PeerBleLink implements PeerLink {
     this.log,
     this.keepaliveInterval = const Duration(seconds: 20),
     this.idleCutoff = const Duration(seconds: 65),
-  });
+    this.now = realNowMillis,
+  }) {
+    // In the body, not a `late` field initializer: an instance initializer
+    // cannot reference `this.now`, and `late` would move this stamp from
+    // construction to the first READ of it. That is invisible today, since
+    // `feed` always writes it before the keepalive timer looks — but a
+    // keepalive started before the first packet (to catch a peer that
+    // connects and never handshakes) would silently take its origin from
+    // its own first tick, and the cutoff would slip by a whole interval.
+    _lastHeardMillis = now();
+  }
 
   /// Names this link in log lines — the address or central id.
   final String label;
@@ -498,6 +508,18 @@ class PeerBleLink implements PeerLink {
   final Duration keepaliveInterval;
   final Duration idleCutoff;
 
+  /// Where "how long since I last heard the peer" is read from. The default
+  /// is the REAL clock and must stay so in production: this is a protocol
+  /// timeout, and a developer time-travelling the app must not make every
+  /// BLE link on the network look silent at once (docs/design/time.md §1).
+  ///
+  /// Injected only so a test can drive it in lockstep with the keepalive
+  /// timer. Without that, the two run on different clocks — the timer on
+  /// whatever a test can fake, the staleness check on wall time — and the
+  /// only way left to test this is to sleep and hope, which is exactly how
+  /// it flaked.
+  final int Function() now;
+
   late final BleFrameConduit _conduit = BleFrameConduit(
     onMessage: (message) {
       if (!_controller.isClosed) _controller.add(message);
@@ -518,8 +540,10 @@ class PeerBleLink implements PeerLink {
   Timer? _keepaliveTimer;
   Timer? _helloRetryTimer;
 
-  /// Real clock — a protocol timeout (docs/design/time.md).
-  int _lastHeardMillis = realNowMillis();
+  /// When this side last heard the peer, stamped at construction and
+  /// refreshed by [feed]. Real clock — a protocol timeout
+  /// (docs/design/time.md §1). See [now].
+  late int _lastHeardMillis;
 
   /// Completes true when both HELLOs have crossed, false if the link dies
   /// first. The transport gates [PeerLink] hand-off on it.
@@ -549,7 +573,7 @@ class PeerBleLink implements PeerLink {
   /// One received packet from the air.
   void feed(Uint8List packet) {
     if (_isClosed) return;
-    _lastHeardMillis = realNowMillis();
+    _lastHeardMillis = now();
     _conduit.feed(packet);
     _checkReady();
   }
@@ -567,7 +591,7 @@ class PeerBleLink implements PeerLink {
     log?.call('BLE link $label ready '
         '(packet size: local ${_conduit.localChunkLimit}, peer ${_conduit.peerChunkLimit})');
     _keepaliveTimer = Timer.periodic(keepaliveInterval, (_) {
-      if (realNowMillis() - _lastHeardMillis > idleCutoff.inMilliseconds) {
+      if (now() - _lastHeardMillis > idleCutoff.inMilliseconds) {
         log?.call('BLE link $label silent past ${idleCutoff.inSeconds}s; dropping');
         unawaited(close());
         return;

@@ -121,6 +121,12 @@ dev_dependencies:
   # see cat_flexradio_driver_test.dart. Comes in transitively with
   # flutter_test, but importing it directly means declaring it directly.
   fake_async: ^1.3.0
+  # `clock` is the OTHER half of fake_async: inside its zone, `clock.now()`
+  # is the fake clock `elapse` advances, which is how a test drives a
+  # timer and a staleness check off one clock — see
+  # peer_ble_transport_test.dart. Same rule as fake_async: transitive
+  # through it, imported directly, so declared directly.
+  clock: ^1.1.1
   # Faking the url_launcher platform to fence openExternalUrl's scheme
   # allowlist — see link_opener_test.dart. Same rule as fake_async: transitive
   # via url_launcher, but imported directly, so declared directly.

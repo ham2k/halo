@@ -82,6 +82,7 @@ clock is the entire point of the feature.
 | `dev_log.dart` — event timestamps | Read against the operator's own wall clock |
 | `peer_outbox.dart` — scan debounce window | Its remainder becomes a `Timer` duration |
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
+| `peer_ble_transport.dart` — the link keepalive cutoff (`PeerBleLink.now`), candidate `lastSeenMillis` and dial cooldowns, link uptime | Protocol timeouts and rate limiting a real radio. The keepalive's clock is behind a default argument so a test can drive it; the DEFAULT is the contract, and `peer_ble_transport_test.dart` pins it |
 | `weather_panel.dart` — fetch-attempt throttle | Rate limiting a real request |
 
 A `Timer` fires on real time and knows nothing about travel, so any duration
