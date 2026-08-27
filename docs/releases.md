@@ -708,6 +708,15 @@ Linux 3.32.6 — are all below it). `--flutter-version` is a *release*-only flag
 **code pushes inherit the release's Flutter version**, so a Flutter-pin bump is
 inherently a new binary release, never a code push (which reinforces §4.2).
 
+**CLI version — pinned, not `stable`.** The Shorebird CLI is a git checkout, and
+its upstream installer clones the `stable` branch — so CI would otherwise run
+whatever shipped most recently, and a release cut is the worst place to meet a
+breaking CLI. `shorebird_install` clones **one tag** instead
+(`SHOREBIRD_CLI_VERSION`), chosen so the Flutter it bundles shares a minor with
+the pin above: bump the two together, or the CLI reaches for engine artifacts a
+whole minor away from what the release is built with. A detached tag is not the
+`stable` branch, so the CLI's own auto-update check stays off.
+
 **Release step.** For Next/Regular the official builds swap `flutter build
 <ipa|apk|…>` for `shorebird release <platform> --flutter-version=<pin> -- <the
 existing flutter args>`. The `--build-name` / `--build-number` projection (§2.2)
