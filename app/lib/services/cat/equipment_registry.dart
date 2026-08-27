@@ -26,6 +26,7 @@ import '../../i18n/strings.g.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/antenna_driver.dart';
+import 'drivers/fake_radio_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
@@ -35,6 +36,7 @@ import 'drivers/key_driver.dart';
 import 'drivers/rigctld_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
+import 'transports/fake_transport.dart';
 import 'transports/icom_network_protocol.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/none_transport.dart';
@@ -155,12 +157,25 @@ class EquipmentModel {
   /// other radio, so it leaves this false.
   final bool hiddenFromCatalog;
 
+  /// True for a model the Add dialog offers only under developer mode —
+  /// [fakeRadioModel] today.
+  ///
+  /// A catalogue flag rather than a filtered registry: the model stays in
+  /// [EquipmentRegistry.models] in every build and whatever the setting
+  /// says, so a node already configured against it still resolves, still
+  /// connects, and still appears in the equipment list after developer mode
+  /// is switched back off. Hiding the model would take the node with it —
+  /// silently, since an unresolvable typeKey renders as "unknown type" with
+  /// the operator's configuration unreachable inside it.
+  final bool developerOnly;
+
   const EquipmentModel({
     required this.key,
     required this.category,
     required String Function() name,
     required this.variants,
     this.hiddenFromCatalog = false,
+    this.developerOnly = false,
   }) : _nameBuilder = name;
 
   String get name => _nameBuilder();
@@ -307,6 +322,7 @@ String? transportLabelFor(String transportKey) {
     TcpTransport.transportKey => labels.network,
     SerialTransport.transportKey => labels.usbSerial,
     IcomNetworkTransport.transportKey => labels.wifi,
+    FakeTransport.transportKey => labels.simulated,
     _ => null,
   };
 }
@@ -327,6 +343,9 @@ String? transportLabelFor(String transportKey) {
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
       SerialTransport.transportKey => 'usb-port',
       TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
+      // Not a way of plugging anything in — the exception the rule above
+      // allows for, because what this transport connects to is nothing.
+      FakeTransport.transportKey => 'flask-outline',
       _ => null,
     };
 
@@ -339,6 +358,7 @@ const _yaesuSerialKey = 'yaesu-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
+const _fakeRadioKey = 'fake-radio';
 
 /// FlexRadio radios reachable over the SmartSDR TCP API.
 ///
@@ -671,6 +691,39 @@ List<Map<String, dynamic>> _ic705NetworkNotes() => [
       },
     ];
 
+/// A radio that isn't there — see fake_radio_driver.dart and
+/// fake_transport.dart for what it is for and what it deliberately isn't.
+///
+/// Developer mode only, but present in every edition: a Dev-edition gate
+/// would put it out of reach of exactly the build handed round for checking.
+const fakeRadioModel = EquipmentModel(
+  key: 'fake-radio',
+  category: kCategoryTransceiver,
+  name: _fakeRadioName,
+  developerOnly: true,
+  variants: [
+    EquipmentVariant(
+      key: _fakeRadioKey,
+      driver: FakeRadioDriver(),
+      transport: FakeTransport(),
+      // Every numeric knob is prefilled, not just the three that describe
+      // the rig: their validators reject a blank box (fake_transport.dart
+      // says why), so a form that opened with one empty would refuse to
+      // submit until the operator typed a zero nobody asked them for.
+      defaultConfig: {
+        'fakeFreq': fakeRadioDefaultFreqKHz,
+        'fakeMode': fakeRadioDefaultMode,
+        'fakePower': fakeRadioDefaultWatts,
+        'fakeConnectDelay': 0,
+        'fakeDropAfter': 0,
+        'fakeReplyDelay': 0,
+      },
+    ),
+  ],
+);
+
+String _fakeRadioName() => t.settings.station.models.fakeRadio;
+
 const _antennaKey = 'antenna-none';
 const _keyKey = 'key-none';
 
@@ -718,6 +771,7 @@ const _defaultModels = [
   kenwoodGenericModel,
   rigctldModel,
   flrigModel,
+  fakeRadioModel,
   antennaModel,
   keyModel,
 ];
@@ -742,6 +796,7 @@ class EquipmentRegistry {
               TcpTransport.transportKey: const TcpTransport(),
               SerialTransport.transportKey: const SerialTransport(),
               IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
+              FakeTransport.transportKey: const FakeTransport(),
             };
 
   /// Every config key that is a credential for ANY pairing in the catalogue.

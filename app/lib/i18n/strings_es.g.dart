@@ -1617,6 +1617,23 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get ic705Troubleshooting => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.';
 	@override String get statusStale => 'Sin respuesta';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
+	@override String get fakeConnectDelay => 'Retraso de conexión (ms)';
+	@override String get fakeConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
+	@override String get fakeDropAfter => 'Desconectar tras (segundos)';
+	@override String get fakeDropAfterDescription => 'Cierra la conexión por su cuenta, para probar la reconexión. Vacío o 0 nunca desconecta.';
+	@override String get fakeFailConnect => 'Fallar siempre al conectar';
+	@override String get fakeConnectFailure => 'Se le indicó a la radio simulada que rechazara esta conexión';
+	@override String get fakeFreq => 'Frecuencia (kHz)';
+	@override String get fakeFreqDescription => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.';
+	@override String get fakeMode => 'Modo';
+	@override String get fakeModeDescription => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.';
+	@override String get fakePower => 'Potencia (vatios)';
+	@override String get fakeReplyDelay => 'Retraso de respuesta (ms)';
+	@override String get fakeReplyDelayDescription => 'Cuánto tarda la radio simulada en informar de un cambio. Vacío o 0 responde de inmediato.';
+	@override String get fakeDiagnostic => 'Simulada';
+	@override String get fakeWholeNumberInvalid => 'Debe ser un número entero, 0 o más';
+	@override String get fakeFreqInvalid => 'Debe ser una frecuencia en kHz, mayor que cero';
+	@override String get fakeModeInvalid => 'Debe ser un nombre de modo, por ejemplo USB, CW, FT8';
 }
 
 // Path: settings.offlineData
@@ -2244,6 +2261,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get ic705 => 'Icom IC-705';
 	@override String get rigctld => 'Radio genérica vía rigctld';
 	@override String get flrig => 'Radio genérica vía flrig';
+	@override String get fakeRadio => 'Radio Simulada';
 }
 
 // Path: settings.station.transports
@@ -2256,6 +2274,7 @@ class _Translations$settings$station$transports$es extends Translations$settings
 	@override String get network => 'Red';
 	@override String get usbSerial => 'USB serie';
 	@override String get wifi => 'WiFi';
+	@override String get simulated => 'Simulada';
 }
 
 // Path: operation.layout.panels.weatherConditions
@@ -3172,9 +3191,11 @@ extension on TranslationsEs {
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
+			'settings.station.models.fakeRadio' => 'Radio Simulada',
 			'settings.station.transports.network' => 'Red',
 			'settings.station.transports.usbSerial' => 'USB serie',
 			'settings.station.transports.wifi' => 'WiFi',
+			'settings.station.transports.simulated' => 'Simulada',
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
@@ -3196,6 +3217,23 @@ extension on TranslationsEs {
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
+			'settings.station.fakeConnectDelay' => 'Retraso de conexión (ms)',
+			'settings.station.fakeConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
+			'settings.station.fakeDropAfter' => 'Desconectar tras (segundos)',
+			'settings.station.fakeDropAfterDescription' => 'Cierra la conexión por su cuenta, para probar la reconexión. Vacío o 0 nunca desconecta.',
+			'settings.station.fakeFailConnect' => 'Fallar siempre al conectar',
+			'settings.station.fakeConnectFailure' => 'Se le indicó a la radio simulada que rechazara esta conexión',
+			'settings.station.fakeFreq' => 'Frecuencia (kHz)',
+			'settings.station.fakeFreqDescription' => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.',
+			'settings.station.fakeMode' => 'Modo',
+			'settings.station.fakeModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',
+			'settings.station.fakePower' => 'Potencia (vatios)',
+			'settings.station.fakeReplyDelay' => 'Retraso de respuesta (ms)',
+			'settings.station.fakeReplyDelayDescription' => 'Cuánto tarda la radio simulada en informar de un cambio. Vacío o 0 responde de inmediato.',
+			'settings.station.fakeDiagnostic' => 'Simulada',
+			'settings.station.fakeWholeNumberInvalid' => 'Debe ser un número entero, 0 o más',
+			'settings.station.fakeFreqInvalid' => 'Debe ser una frecuencia en kHz, mayor que cero',
+			'settings.station.fakeModeInvalid' => 'Debe ser un nombre de modo, por ejemplo USB, CW, FT8',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -3313,6 +3351,8 @@ extension on TranslationsEs {
 			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
 			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',
 			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.quitAndReopen' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.reopenToApply' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.ignoreForNow' => 'Ignorar por ahora',
@@ -3332,8 +3372,6 @@ extension on TranslationsEs {
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
 			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
 			'updates.updateAvailable' => 'Actualización disponible',

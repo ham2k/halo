@@ -9,6 +9,7 @@ upcoming:
     - Type `OPER KI2D` in the call field to set who is at the key for an operation
     - "`POSITION 2` marks this device in a multi-station op; its spots go out as /OP2"
     - "New Solar panel: flux, wind and Kp charts, band conditions, hover for values"
+    - "With Developer Mode on, add a Fake Radio to try radio control with no rig"
 
 "150":
   changes:

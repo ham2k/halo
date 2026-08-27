@@ -3627,6 +3627,57 @@ class Translations$settings$station$en {
 
 	/// en: 'CW Key'
 	String get trackFieldKey => 'CW Key';
+
+	/// en: 'Connect delay (ms)'
+	String get fakeConnectDelay => 'Connect delay (ms)';
+
+	/// en: 'How long the simulated handshake takes. Blank or 0 connects instantly.'
+	String get fakeConnectDelayDescription => 'How long the simulated handshake takes. Blank or 0 connects instantly.';
+
+	/// en: 'Drop after (seconds)'
+	String get fakeDropAfter => 'Drop after (seconds)';
+
+	/// en: 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.'
+	String get fakeDropAfterDescription => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.';
+
+	/// en: 'Always fail to connect'
+	String get fakeFailConnect => 'Always fail to connect';
+
+	/// en: 'The fake radio was told to refuse this connection'
+	String get fakeConnectFailure => 'The fake radio was told to refuse this connection';
+
+	/// en: 'Frequency (kHz)'
+	String get fakeFreq => 'Frequency (kHz)';
+
+	/// en: 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.'
+	String get fakeFreqDescription => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.';
+
+	/// en: 'Mode'
+	String get fakeMode => 'Mode';
+
+	/// en: 'The mode the fake radio starts on, e.g. USB, CW, FT8.'
+	String get fakeModeDescription => 'The mode the fake radio starts on, e.g. USB, CW, FT8.';
+
+	/// en: 'Power (watts)'
+	String get fakePower => 'Power (watts)';
+
+	/// en: 'Reply delay (ms)'
+	String get fakeReplyDelay => 'Reply delay (ms)';
+
+	/// en: 'How long the fake radio takes to report a change back. Blank or 0 replies at once.'
+	String get fakeReplyDelayDescription => 'How long the fake radio takes to report a change back. Blank or 0 replies at once.';
+
+	/// en: 'Simulated'
+	String get fakeDiagnostic => 'Simulated';
+
+	/// en: 'Must be a whole number, 0 or more'
+	String get fakeWholeNumberInvalid => 'Must be a whole number, 0 or more';
+
+	/// en: 'Must be a frequency in kHz, greater than zero'
+	String get fakeFreqInvalid => 'Must be a frequency in kHz, greater than zero';
+
+	/// en: 'Must be a mode name, e.g. USB, CW, FT8'
+	String get fakeModeInvalid => 'Must be a mode name, e.g. USB, CW, FT8';
 }
 
 // Path: settings.offlineData
@@ -4820,6 +4871,9 @@ class Translations$settings$station$models$en {
 
 	/// en: 'CW Key'
 	String get key => 'CW Key';
+
+	/// en: 'Fake Radio'
+	String get fakeRadio => 'Fake Radio';
 }
 
 // Path: settings.station.transports
@@ -4838,6 +4892,9 @@ class Translations$settings$station$transports$en {
 
 	/// en: 'WiFi'
 	String get wifi => 'WiFi';
+
+	/// en: 'Simulated'
+	String get simulated => 'Simulated';
 }
 
 // Path: settings.station.antennaTypes
@@ -5930,9 +5987,11 @@ extension on Translations {
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
+			'settings.station.models.fakeRadio' => 'Fake Radio',
 			'settings.station.transports.network' => 'Network',
 			'settings.station.transports.usbSerial' => 'USB serial',
 			'settings.station.transports.wifi' => 'WiFi',
+			'settings.station.transports.simulated' => 'Simulated',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -5989,6 +6048,23 @@ extension on Translations {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
+			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
+			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
+			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
+			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
+			'settings.station.fakeFailConnect' => 'Always fail to connect',
+			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
+			'settings.station.fakeFreq' => 'Frequency (kHz)',
+			'settings.station.fakeFreqDescription' => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.',
+			'settings.station.fakeMode' => 'Mode',
+			'settings.station.fakeModeDescription' => 'The mode the fake radio starts on, e.g. USB, CW, FT8.',
+			'settings.station.fakePower' => 'Power (watts)',
+			'settings.station.fakeReplyDelay' => 'Reply delay (ms)',
+			'settings.station.fakeReplyDelayDescription' => 'How long the fake radio takes to report a change back. Blank or 0 replies at once.',
+			'settings.station.fakeDiagnostic' => 'Simulated',
+			'settings.station.fakeWholeNumberInvalid' => 'Must be a whole number, 0 or more',
+			'settings.station.fakeFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
+			'settings.station.fakeModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -6017,6 +6093,8 @@ extension on Translations {
 			'settings.search.hint' => 'Search settings',
 			'settings.developer.options' => 'Developer Options',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'Code Push Track',
@@ -6036,8 +6114,6 @@ extension on Translations {
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.categoryCore' => 'Core & Runtime',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',

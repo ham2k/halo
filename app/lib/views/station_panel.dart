@@ -127,6 +127,7 @@ class StationPanel extends StatelessWidget {
         showDiscovery: showDiscovery,
         showOtherEquipment: services.settings.trackStationInfo &&
             services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
+        showDeveloperEquipment: services.settings.developerMode,
         supportedVariants: _supportedVariants,
       ),
     );
@@ -750,12 +751,19 @@ class _AddEquipmentDialog extends StatefulWidget {
   /// Equipment" section would only ever grow a list nothing reads.
   final bool showOtherEquipment;
 
+  /// Whether the catalogue also offers [EquipmentModel.developerOnly]
+  /// entries. Only what can be ADDED is gated: a node already configured
+  /// against one keeps its row and its Connect action regardless, per that
+  /// flag's own note.
+  final bool showDeveloperEquipment;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const _AddEquipmentDialog({
     required this.cat,
     required this.showDiscovery,
     required this.showOtherEquipment,
+    required this.showDeveloperEquipment,
     required this.supportedVariants,
   });
 
@@ -832,8 +840,9 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
         final rows = [
           for (final model in widget.cat.registry.models)
             if (!model.hiddenFromCatalog)
-              if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
-                (model: model, variants: variants, name: model.name),
+              if (!model.developerOnly || widget.showDeveloperEquipment)
+                if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
+                  (model: model, variants: variants, name: model.name),
         ]
           // Sorted HERE rather than in the registry, because a model's name is
           // read from the current locale at call time — an order fixed at

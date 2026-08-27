@@ -199,6 +199,17 @@ what the user configured; everything about a connection is rebuilt at runtime.
 3. **Loopback** — a real `ServerSocket` on 127.0.0.1 playing a scripted dialogue against
    `CatService`. This is the only tier that catches framing across chunk boundaries, cancellation,
    and the ordering races above.
+4. **Fake Radio** — a catalogue entry, not a test fixture: a transport with no I/O at all and a
+   driver that holds frequency, mode and power and reports every set straight back
+   (`fake_transport.dart`, `fake_radio_driver.dart`). Developer mode only, in every edition. It
+   proves nothing about any driver — what it makes reachable is everything *above* one, on a build
+   where §Platforms leaves no other radio connectable: the Station panel, Smart VFO Snap, zero
+   beat, the radio1/radio2 assignment, power. Its knobs (connect delay, drop-after, refuse to
+   connect, reply delay) are there because the states worth checking by hand are the slow and
+   failing ones. It claims `hardwareVerified` — the one entry for which that flag's usual meaning
+   does not apply, since the caveat below warns about a driver that may not survive contact with a
+   radio and this one never meets one. A protocol emulator — real driver bytes parsed and answered
+   — would live at the transport and is a different thing; this is not it.
 
 None of that tests what a radio actually emits. Polo shipped **one** hardware-verified driver and
 deleted the one it could not make reliable. `EquipmentDriver.hardwareVerified` records which is
