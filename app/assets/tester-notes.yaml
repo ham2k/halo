@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"153":
   changes:
     - Type `OPER KI2D` in the call field to set who is at the key for an operation
     - "`POSITION 2` marks this device in a multi-station op; its spots go out as /OP2"
