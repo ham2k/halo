@@ -63,6 +63,18 @@ EMPTY_SHA="$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')"
 
 [ "${HALO_ALLOW_UNTESTED_MERGE:-}" = "1" ] && exit 0
 
+# `main` here means THIS repo's `main`, the one CI builds and every worktree
+# rebases onto. The open-source mirror has a `main` of its own that none of
+# this describes: `halo-ops publish-code` pushes the generated `public`
+# history to it — a tree that is deliberately not HEAD's, from a worktree
+# holding no lock, and rightly so. The remote's URL ($2, given to every
+# pre-push hook) is what tells them apart, and only the mirror stands the
+# guard down: anything else, named or spelled any other way, is still guarded.
+MIRROR_REPO="ham2k/halo"
+# owner/name from any URL form — ssh, scp-style, https, with or without `.git`.
+TARGET_REPO="$(printf '%s' "${2:-}" | sed -E 's#\.git$##; s#^.*[:/]([^:/]+/[^:/]+)$#\1#')"
+[ "$TARGET_REPO" = "$MIRROR_REPO" ] && exit 0
+
 # Resolved once, outside the loop: a push can carry several refs, and these
 # describe the pushing worktree, not any one of them.
 WORKTREE_STATUS="$(git status --porcelain 2>/dev/null)"
