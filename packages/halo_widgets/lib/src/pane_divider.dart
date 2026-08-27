@@ -123,8 +123,8 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
   /// [Listener], unlike the [GestureDetector] it replaced, enforces no
   /// single-active-gesture invariant on its own: without this, a second
   /// pointer going down mid-drag (a second finger on a touch device) would
-  /// overwrite [_lastPosition] and orphan the current [_captureOverlay] —
-  /// permanently, since nothing left could ever remove it.
+  /// orphan the current [_captureOverlay] — permanently, since nothing left
+  /// could ever remove it.
   int? _trackingPointer;
 
   /// Set once the tracked pointer has actually moved past [_dragSlop] —
@@ -135,7 +135,14 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
   /// would flash the full-window opaque cover for a frame.
   int? _activePointer;
   Offset? _downPosition;
-  Offset? _lastPosition;
+
+  /// Travel made after the press but before the slop threshold, in the local
+  /// space [onDragUpdate] speaks. The pointer came down ON the divider, so
+  /// this is distance the divider already owes it: dropped (the rule
+  /// [DragStartBehavior.start] follows) the divider would trail the finger by
+  /// up to [kTouchSlop] for the whole gesture — the very complaint a divider
+  /// exists not to provoke.
+  double _preSlopDelta = 0;
 
   /// How far the tracked pointer must move before a press reads as a drag.
   /// Mice report sub-pixel jitter on a plain click; touch needs more slack
@@ -154,13 +161,18 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
     if (event.buttons != kPrimaryButton) return;
     _trackingPointer = event.pointer;
     _downPosition = event.position;
-    _lastPosition = event.position;
+    _preSlopDelta = 0;
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
     if (event.pointer != _trackingPointer) return;
+    final horizontal = widget.axis == Axis.horizontal;
+    final localDelta = horizontal ? event.localDelta.dx : event.localDelta.dy;
     if (_activePointer == null) {
-      if ((event.position - _downPosition!).distance < _dragSlop(event.kind)) return;
+      if ((event.position - _downPosition!).distance < _dragSlop(event.kind)) {
+        _preSlopDelta += localDelta;
+        return;
+      }
       _activePointer = event.pointer;
       widget.onDragStart?.call();
       final overlay = Overlay.of(context, rootOverlay: true);
@@ -174,10 +186,17 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
       );
       overlay.insert(_captureOverlay!);
     }
-    final last = _lastPosition!;
-    final horizontal = widget.axis == Axis.horizontal;
-    final delta = horizontal ? event.position.dx - last.dx : event.position.dy - last.dy;
-    _lastPosition = event.position;
+    // localDelta, not a difference of `position`: UiScale lays the tree out in
+    // `size / scale` space and paints it back up through a Transform, so the
+    // pointer's GLOBAL travel is `scale` times the distance it covers in the
+    // space panes are measured in. Feeding global travel to a consumer that
+    // works in that space moves the boundary by the scale factor too far, and
+    // the error compounds over the drag. localDelta applies only the
+    // transform's linear part, so it is also immune to this divider moving out
+    // from under the pointer as the drag proceeds — which a difference of
+    // localPosition would not be.
+    final delta = localDelta + _preSlopDelta;
+    _preSlopDelta = 0;
     widget.onDragUpdate(delta);
   }
 
@@ -196,7 +215,7 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
     _trackingPointer = null;
     _activePointer = null;
     _downPosition = null;
-    _lastPosition = null;
+    _preSlopDelta = 0;
     // A plain click never started a drag (no overlay, no onDragStart) —
     // nothing to end.
     if (!wasActive) return;

@@ -689,6 +689,29 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// map must paint SOMETHING to receive the drop.
   static const double _hitWashAlpha = 0.004;
 
+  void _handleDividerDragEnd(DockSplit split, int index) {
+    _dragOvershoot.remove((split, index));
+    _emit();
+  }
+
+  /// Travel a pointer has made past a boundary's limit, in logical pixels,
+  /// keyed by the boundary it belongs to — the split and the index of the
+  /// child after it. The boundary moves by the CLAMPED shift, so without
+  /// banking the remainder a reversal would move it the instant the pointer
+  /// turned around, leaving the cursor off the divider by however far it had
+  /// pushed into the floor.
+  ///
+  /// Per boundary rather than one for the dock: [SolidPaneDivider] tracks a
+  /// single pointer PER DIVIDER, and drives its drag from a raw [Listener]
+  /// that never enters the gesture arena, so nothing arbitrates between two
+  /// dividers. Two fingers on two of them would otherwise share one
+  /// accumulator — each drag zeroing the other's bank and spending its
+  /// travel — which is the very fault this banking exists to prevent.
+  ///
+  /// [ResizableSplitView] holds the same invariant via its unclamped
+  /// `_dragPosition`; the two must not disagree about it.
+  final Map<(DockSplit, int), double> _dragOvershoot = {};
+
   void _emit() {
     widget.onSpecChanged?.call(_spec);
     // An arrangement change moves panes between groups, so what is on top
@@ -1144,8 +1167,19 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               SolidPaneDivider(
                 axis: split.axis,
                 extent: flat[2 * i - 1],
+                onDragStart: () => _dragOvershoot[(split, i)] = 0,
                 onDragUpdate: (delta) => setState(() {
-                  if (available <= 0) return;
+                  // A run with no room, or weights that sum to nothing, cannot
+                  // convert pixels to weight at all — so the travel IS
+                  // overshoot and is banked rather than dropped. Guarding
+                  // weightSum here too keeps this path's arithmetic as safe as
+                  // the build path's above: `shift / weightSum` would otherwise
+                  // make the bank NaN, and NaN weights persist silently, coming
+                  // back as a layout the loader discards.
+                  if (available <= 0 || weightSum <= 0) {
+                    _dragOvershoot[(split, i)] = (_dragOvershoot[(split, i)] ?? 0) + delta;
+                    return;
+                  }
                   // Against the weights this frame was LAID OUT from, which
                   // are not the stored ones whenever the floor above lifted a
                   // pane: measured from the stored pair instead, a boundary
@@ -1163,22 +1197,40 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                   // minimum (persisted weights in a smaller window) inverts
                   // clamp's limits, which throws — max/min just refuse to
                   // shrink it further.
-                  final deltaWeight = delta / available * weightSum;
+                  // Banked overshoot first, so travel spent pushing against a
+                  // floor has to be paid back before the boundary moves again.
+                  // Kept in PIXELS, not weight: a window resized mid-drag
+                  // changes what a weight is worth, and a debt recorded in the
+                  // old currency would repay the wrong distance.
+                  final desired = delta + (_dragOvershoot[(split, i)] ?? 0);
+                  final deltaWeight = desired / available * weightSum;
                   final maxGive = math.max(0.0, base[i - 1] - floors[i - 1] / available * weightSum);
                   final maxTake = math.max(0.0, base[i] - floors[i] / available * weightSum);
                   final shift = math.min(maxTake, math.max(-maxGive, deltaWeight));
+                  _dragOvershoot[(split, i)] = desired - shift / weightSum * available;
                   base[i - 1] += shift;
                   base[i] -= shift;
                   for (var k = 0; k < split.weights.length; k++) {
                     split.weights[k] = base[k];
+                    // Written back into the frame's own snapshot too, which
+                    // `base` is re-derived from on every event: the pointer
+                    // moves this frame collected are all dispatched before the
+                    // rebuild, so without this the 2nd..Nth each start from the
+                    // same stale values and only the last survives. A
+                    // high-rate mouse delivers several moves per frame and a
+                    // slow frame collects more still, so the boundary would
+                    // advance at a fraction of the pointer's speed exactly
+                    // when the machine is busiest. Harmless when `weights`
+                    // already IS `split.weights` (no floor was lifted).
+                    weights[k] = base[k];
                   }
                 }),
-                onDragEnd: _emit,
+                onDragEnd: () => _handleDividerDragEnd(split, i),
                 // Weights were mutated live during the drag — a cancelled
                 // gesture (pointer lost to another recognizer) must persist
                 // what's on screen too, or the layout silently reverts on
                 // relaunch.
-                onDragCancel: _emit,
+                onDragCancel: () => _handleDividerDragEnd(split, i),
               ),
             );
           }

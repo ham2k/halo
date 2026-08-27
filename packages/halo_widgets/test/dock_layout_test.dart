@@ -86,6 +86,191 @@ void main() {
     DockGroup(['b', 'c']),
   ], [1, 1]);
 
+  testWidgets('a boundary held against a pane floor pays back its overshoot before moving', (tester) async {
+    // The rule ResizableSplitView states on its own `_dragPosition`: travel
+    // spent pushing past a limit is BANKED, so reversing does not move the
+    // boundary until the pointer has come back to it. Without that, the
+    // divider jumps the moment the mouse turns around and ends up nowhere
+    // near the cursor. Mutating the clamp to drop the remainder passes every
+    // other dock test — this is the only one that catches it.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(harness(
+      spec: twoGroups(),
+      // Floors Bravo at 300, so the boundary pins well short of the window.
+      moduleMinimumSizes: const {'b': Size(300, 0)},
+    ));
+    await tester.pumpAndSettle();
+
+    double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
+    final startWidth = paneAWidth();
+    final divider = find.byType(SolidPaneDivider).first;
+    final gesture = await tester.startGesture(tester.getCenter(divider), kind: PointerDeviceKind.mouse);
+
+    // Push far past the floor. The boundary pins; the surplus is banked.
+    await gesture.moveBy(const Offset(2000, 0));
+    await tester.pump();
+    final pinned = paneAWidth();
+    expect(pinned, lessThan(800), reason: 'the floor must actually stop it, or this test proves nothing');
+
+    // Everything the pointer travelled beyond what the boundary could take.
+    final banked = 2000 - (pinned - startWidth);
+
+    // Reverse, but not far enough to work off the debt: nothing moves.
+    await gesture.moveBy(const Offset(-500, 0));
+    await tester.pump();
+    expect(paneAWidth(), pinned, reason: 'reversal is ignored until the pointer is back at the divider');
+
+    // Pay off the rest of the overshoot and go 40 further: it tracks again.
+    await gesture.moveBy(Offset(-(banked - 500) - 40, 0));
+    await tester.pump();
+    expect(paneAWidth(), closeTo(pinned - 40, 1.0), reason: 'movement resumes once the pointer reaches the divider');
+
+    await gesture.up();
+    await tester.pump();
+  });
+
+  testWidgets('travel before the slop threshold is not lost', (tester) async {
+    // The pointer came down ON the divider, so everything it covers from the
+    // press onward is distance the divider owes it. Dropping the travel made
+    // before the drag activates (the rule DragStartBehavior.start follows)
+    // leaves the boundary trailing the finger by up to kTouchSlop for the
+    // whole gesture. Touch, because kPrecisePointerPanSlop is 1px for a mouse
+    // and kTouchSlop is 18 — only touch makes the loss big enough to see.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(harness(spec: twoGroups()));
+    await tester.pumpAndSettle();
+
+    double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
+    final divider = find.byType(SolidPaneDivider).first;
+    final before = paneAWidth();
+
+    final gesture = await tester.startGesture(tester.getCenter(divider), kind: PointerDeviceKind.touch);
+    // Under kTouchSlop: banked, nothing moves yet.
+    await gesture.moveBy(const Offset(-10, 0));
+    await tester.pump();
+    expect(paneAWidth(), before, reason: 'a press that has not yet become a drag moves nothing');
+
+    // Crosses the threshold: the boundary owes the full 20, not just this move.
+    await gesture.moveBy(const Offset(-10, 0));
+    await tester.pump();
+    expect(before - paneAWidth(), closeTo(20, 1.0), reason: 'the travel banked before slop is paid out too');
+
+    await gesture.up();
+    await tester.pump();
+  });
+
+  testWidgets('every pointer move in a frame counts, not just the last', (tester) async {
+    // All of a frame's pointer moves are dispatched before the rebuild, and
+    // each one re-derives its base from the snapshot the frame was laid out
+    // from. Without writing the result back into that snapshot, the 2nd..Nth
+    // move of a frame each start from the same stale values and only the last
+    // survives — the boundary advancing at a fraction of the pointer's speed,
+    // worse the more moves a frame collects. A high-rate mouse does this on
+    // an idle machine; a slow frame does it on any mouse, which is what makes
+    // it read as "the drag lags when the machine is busy".
+    //
+    // Driving the callbacks directly is the point: a gesture helper pumps
+    // between moves, which is exactly the case that already worked.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(harness(spec: twoGroups()));
+    await tester.pumpAndSettle();
+
+    double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
+    final divider = find.byType(SolidPaneDivider).first;
+    final before = paneAWidth();
+
+    SolidPaneDivider d() => tester.widget<SolidPaneDivider>(divider);
+    d().onDragStart!();
+    d().onDragUpdate(-20);
+    d().onDragUpdate(-20);
+    await tester.pump();
+
+    expect(before - paneAWidth(), closeTo(40, 1.0), reason: 'both moves move the boundary, not just the last');
+    d().onDragEnd!();
+    await tester.pump();
+  });
+
+  testWidgets('a boundary tracks the pointer 1:1 at a non-default font scale', (tester) async {
+    // UiScale lays the tree out in `size / scale` space and paints it back up
+    // through a Transform, so a pointer's GLOBAL travel is `scale` times the
+    // distance it covers in the space the boundary is measured in. Feeding
+    // global travel straight into that space moves the boundary by the scale
+    // factor too far, and the error grows with every move until the divider is
+    // nowhere near the cursor. At scale 1.0 the two spaces coincide, so a
+    // test that never leaves the default cannot see this.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    const scale = 1.5;
+    await tester.pumpWidget(UiScale(scale: scale, child: harness(spec: twoGroups())));
+    await tester.pumpAndSettle();
+
+    double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
+    final divider = find.byType(SolidPaneDivider).first;
+    final before = paneAWidth();
+
+    // getCenter/moveBy speak the GLOBAL space the pointer lives in.
+    final gesture = await tester.startGesture(tester.getCenter(divider), kind: PointerDeviceKind.mouse);
+    await gesture.moveBy(const Offset(-90, 0));
+    await tester.pump();
+
+    // 90 global pixels is 60 in the scaled layout space the pane is measured in.
+    expect(paneAWidth(), closeTo(before - 90 / scale, 1.5),
+        reason: 'the boundary follows the pointer, not the pointer times the scale');
+
+    await gesture.up();
+    await tester.pump();
+  });
+
+  testWidgets('a drag lost without an end leaves no debt for the next one', (tester) async {
+    // A divider unmounted mid-drag reports nothing: SolidPaneDivider.dispose
+    // drops its capture overlay without calling onDragCancel, so the bank is
+    // never cleared by the gesture that filled it. Zeroing on drag START is
+    // the only thing that stops that debt freezing the NEXT drag on the same
+    // boundary — the operator would push, and nothing would move until they
+    // had paid off travel from a gesture that no longer exists.
+    //
+    // A drag that ends normally cannot catch this: the end handler drops the
+    // entry, so the reset is redundant on every path that reports itself.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(harness(
+      spec: twoGroups(),
+      moduleMinimumSizes: const {'b': Size(300, 0)},
+    ));
+    await tester.pumpAndSettle();
+
+    double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
+    final divider = find.byType(SolidPaneDivider).first;
+
+    // Bank a large debt by driving the callbacks directly, then abandon the
+    // gesture the way an unmount does — no end, no cancel.
+    tester.widget<SolidPaneDivider>(divider).onDragStart!();
+    tester.widget<SolidPaneDivider>(divider).onDragUpdate(2000);
+    await tester.pump();
+    final stranded = paneAWidth();
+
+    final next = await tester.startGesture(tester.getCenter(divider), kind: PointerDeviceKind.mouse);
+    await next.moveBy(const Offset(-20, 0));
+    await tester.pump();
+    expect(paneAWidth(), closeTo(stranded - 20, 1.0), reason: 'a new drag tracks from its first pixel, carrying no debt');
+
+    await next.up();
+    await tester.pump();
+  });
+
   /// Drags the tab labeled [label] to [target], slowly enough for the drop
   /// regions (which only mount once the drag starts) to appear and hit-test.
   Future<void> dragTab(WidgetTester tester, String label, Offset target) async {
