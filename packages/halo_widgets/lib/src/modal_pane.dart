@@ -708,6 +708,13 @@ class _TopModalPaneScaffold extends StatelessWidget {
                         }
                       }
                     : null,
+                // Same reason as _buildDialog's pair: a full-screen
+                // `role=button` node in the web accessibility DOM sits in
+                // front of every platform view the pane's content embeds and
+                // swallows its clicks. Pure gesture plumbing — a
+                // screen-reader user dismisses through the pane's own close
+                // button or Done.
+                excludeFromSemantics: true,
                 child: const SizedBox.expand(),
               ),
             ),
@@ -728,6 +735,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                         }
                       }
                     : null,
+                excludeFromSemantics: true,
                 child: const SizedBox.expand(),
               ),
             ),
@@ -749,7 +757,10 @@ class _TopModalPaneScaffold extends StatelessWidget {
                     child: Padding(
                       padding: EdgeInsets.only(left: leftInset ?? 0, right: rightInset ?? 0),
                       child: GestureDetector(
+                        // Taps on the sheet itself must not fall through to
+                        // the barrier handler above.
                         onTap: () {},
+                        excludeFromSemantics: true,
                         child: LayoutDensityScope.forHeight(
                           // A pane-sized card is bounded well below the window
                           // (theme.dart's haloDialogConstraints), so a form

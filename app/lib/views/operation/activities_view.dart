@@ -1504,7 +1504,7 @@ class OperationSheetState extends State<OperationSheet> {
     // bring it into view.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _flashingRefRowId != id) return;
-    final rowContext = _refRowKeys[id]?.currentContext;
+    final rowContext = _refRowKeys[_refRowKeyId(id)]?.currentContext;
     if (rowContext != null && rowContext.mounted) {
       await Scrollable.ensureVisible(
         rowContext,
@@ -1519,11 +1519,22 @@ class OperationSheetState extends State<OperationSheet> {
     });
   }
 
+  /// A row's GlobalKey is scoped to the mode that built it: the list and the
+  /// map put the Current Activities rows under different parents, and one
+  /// GlobalKey spanning both migrates its elements — and their semantics
+  /// nodes — to the new parent while the old parent is torn down in the same
+  /// frame. Flutter's semantics update can't express that pairing (the child
+  /// is re-parented, the old parent never dropped), and the web engine
+  /// rejects the whole update with "Semantics node map was inconsistent".
+  /// Nothing needs the key across a toggle — [_flashExistingRef] only ever
+  /// looks up a row in the mode currently on screen.
+  String _refRowKeyId(String id) => '${_showResultsMap ? 'map' : 'list'}/$id';
+
   /// Tags a Current Activities row so [_flashExistingRef] can find it, and
   /// paints the fading highlight over it while it's the flashing one.
   Widget _flashableRow(Map<String, dynamic> ref, Widget row) {
     final id = _refRowId(ref['type'] as String?, ref['ref'] as String?);
-    final rowKey = _refRowKeys.putIfAbsent(id, () => GlobalKey());
+    final rowKey = _refRowKeys.putIfAbsent(_refRowKeyId(id), () => GlobalKey());
     if (id != _flashingRefRowId) return KeyedSubtree(key: rowKey, child: row);
     return KeyedSubtree(
       key: rowKey,
@@ -2043,6 +2054,10 @@ class OperationSheetState extends State<OperationSheet> {
                 final Widget locationPin;
                 final String label;
                 final Color locationColor;
+                // The glyph behind [locationPin], for the results map's own
+                // dot — the pill's widget can't be handed to a map backend
+                // that draws pixels rather than widgets.
+                final IconData locationIcon;
 
                 // The SAME question the empty state asks, so the two can't
                 // contradict each other over a grid the search can't place:
@@ -2064,24 +2079,31 @@ class OperationSheetState extends State<OperationSheet> {
                   );
 
                   if (gridSource == 'gps') {
-                    locationPin = Icon(MdiIcons.mapMarker, color: onLocationColor);
+                    locationIcon = MdiIcons.mapMarker;
+                    locationPin = Icon(locationIcon, color: onLocationColor);
                     label = operationGrid!;
                     locationColor = const Color(0xFF1B5E20);
                   } else {
-                    locationPin = Icon(MdiIcons.pin, color: onLocationColor);
+                    locationIcon = MdiIcons.pin;
+                    locationPin = Icon(locationIcon, color: onLocationColor);
                     label = operationGrid!;
                     locationColor = const Color(0xFF455A64);
                   }
                 } else {
                   if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
+                    // The pulse is an animation over the same glyph, and a
+                    // map marker takes one frame of it.
+                    locationIcon = MdiIcons.mapMarker;
                     locationPin = const _PulsingGpsPin(color: onLocationColor);
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
                   } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid != null) {
-                    locationPin = Icon(MdiIcons.mapMarker, color: onLocationColor);
+                    locationIcon = MdiIcons.mapMarker;
+                    locationPin = Icon(locationIcon, color: onLocationColor);
                     label = widget.services.location.displayGrid!;
                     locationColor = const Color(0xFF1B5E20);
                   } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid == null) {
+                    locationIcon = MdiIcons.mapMarker;
                     locationPin = const _PulsingGpsPin(color: onLocationColor);
                     label = 'GPS…';
                     locationColor = const Color(0xFF1565C0);
@@ -2091,8 +2113,9 @@ class OperationSheetState extends State<OperationSheet> {
                     // is on screen exactly while the notice below tells the
                     // operator to tap it. Named the way this app names an
                     // icon-only button (see no_hover_tooltips_test).
+                    locationIcon = MdiIcons.mapMarkerOff;
                     locationPin = Icon(
-                      MdiIcons.mapMarkerOff,
+                      locationIcon,
                       color: onLocationColor,
                       semanticLabel: context.t.operationLocationScreen.title,
                     );
@@ -2175,13 +2198,20 @@ class OperationSheetState extends State<OperationSheet> {
                             ),
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(
-                            _showResultsMap ? MdiIcons.formatListBulleted : MdiIcons.map,
-                            color: onAccordionColor.withValues(alpha: 0.6),
-                            semanticLabel: _showResultsMap ? t.showResultsList : t.showResultsMap,
+                        Padding(
+                          padding: const EdgeInsets.only(left: Space.md),
+                          // Full-strength, unlike the magnify and clear icons
+                          // inside the field: those decorate the well they sit
+                          // in, while this is an action of its own alongside
+                          // it, and dimming it reads as disabled.
+                          child: IconButton(
+                            icon: Icon(
+                              _showResultsMap ? MdiIcons.formatListBulleted : MdiIcons.map,
+                              color: onAccordionColor,
+                              semanticLabel: _showResultsMap ? t.showResultsList : t.showResultsMap,
+                            ),
+                            onPressed: () => setState(() => _showResultsMap = !_showResultsMap),
                           ),
-                          onPressed: () => setState(() => _showResultsMap = !_showResultsMap),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(left: Space.md),
@@ -2340,9 +2370,10 @@ class OperationSheetState extends State<OperationSheet> {
                           refs: refs,
                           settings: widget.services.settings,
                           onAdd: _addSuggestion,
-                          suggestionsAreSearchResults: _suggestionsAreSearchResults,
                           currentLocation: currentLocation,
                           currentLocationColor: locationColor,
+                          currentLocationIcon: locationIcon,
+                          currentLocationIconColor: onLocationColor,
                         ),
                       ),
                     ],

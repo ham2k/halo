@@ -125,7 +125,7 @@ window.poloMapGl = window.poloMapGl || {
     map.on('load', applySky);
 
     const EMPTY = { type: 'FeatureCollection', features: [] };
-    const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight'];
+    const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight', 'polo-marker-icons'];
 
     // The marker data behind the rendered circles, by feature id — a click
     // gets properties back through the GL layer, and the popup wants the
@@ -287,6 +287,55 @@ window.poloMapGl = window.poloMapGl || {
       };
     }
 
+    // A marker that carries its own pixels (map_marker_data.dart's
+    // MapMarkerImage) — fill, ring and glyph already drawn, because the GL
+    // canvas has no access to the app's icon font.
+    function iconLayer() {
+      return {
+        id: 'polo-marker-icons',
+        type: 'symbol',
+        source: 'polo-marker-icons',
+        layout: {
+          'icon-image': ['get', 'image'],
+          // These markers mean something specific ("you are here", "this is
+          // on the operation"), so they are never the one collision-based
+          // placement drops.
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          // Source order, not the default screen-position sort: the caller
+          // puts the marker that must stay legible last, and a viewport sort
+          // would instead bury it under whichever neighbour happens to sit
+          // further south.
+          'symbol-z-order': 'source',
+        },
+      };
+    }
+
+    // setStyle throws away registered images along with sources and layers,
+    // so this re-registers rather than trusting a flag: hasImage is the only
+    // honest answer after a dark-mode swap.
+    function ensureImage(image) {
+      if (map.hasImage(image.id)) return true;
+      try {
+        const binary = atob(image.rgba);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        map.addImage(
+          image.id,
+          { width: image.width, height: image.height, data: bytes },
+          { pixelRatio: image.pixelRatio }
+        );
+        return true;
+      } catch (err) {
+        // The marker still draws, as a plain circle. Deliberately no
+        // operator-facing notice — a dot in the right place is not worth
+        // interrupting an activation over — so this report IS the evidence,
+        // and without it the missing glyph reads as a design choice.
+        report('image-failed', 'could not register marker image ' + image.id + ': ' + ((err && err.message) || err));
+        return false;
+      }
+    }
+
     function ensureLayer(layer) {
       if (!map.getLayer(layer.id)) map.addLayer(layer);
     }
@@ -316,6 +365,7 @@ window.poloMapGl = window.poloMapGl || {
       try {
         if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
+        if (!map.getSource('polo-marker-icons')) map.addSource('polo-marker-icons', { type: 'geojson', data: EMPTY });
       } catch (err) {
         return false;
       }
@@ -323,6 +373,9 @@ window.poloMapGl = window.poloMapGl || {
       ensureLayer(circleLayer('polo-markers', false));
       ensureLayer(lineLayer('polo-lines-highlight', true, 6));
       ensureLayer(circleLayer('polo-markers-highlight', true));
+      // Last, so a glyph marker is never buried under a plain dot that
+      // happens to share its spot.
+      ensureLayer(iconLayer());
       return true;
     }
 
@@ -394,20 +447,39 @@ window.poloMapGl = window.poloMapGl || {
       markersById = {};
       const baseBounds = new maplibregl.LngLatBounds();
       const baseSig = [];
-      const features = data.map((m) => {
+      const iconFeatures = [];
+      const features = [];
+      data.forEach((m) => {
         markersById[m.id] = m;
         // The sizes are outer diameters. GL strokes outward from the radius
         // rather than inside the box, so the radius gives the stroke its room
         // and a dot keeps the width it had.
-        const size = m.kind === 'qth' ? 12 : 14 * (m.sizeFactor || 1);
-        const strokeWidth = m.kind === 'qth' ? 2 : 1.5;
+        // A marker that WANTED a glyph keeps the glyph's own diameter even
+        // when its image could not be registered: at the plain kind size it
+        // would be pixel-identical to a suggestion dot of the same colour,
+        // and that size is the only thing separating "already on the
+        // operation" from "tap to add".
+        const glyphSize = m.image ? m.image.width / (m.image.pixelRatio || 1) : 0;
+        const size = glyphSize || (m.kind === 'qth' ? 12 : 14 * (m.sizeFactor || 1));
+        const strokeWidth = glyphSize ? 2 : (m.kind === 'qth' ? 2 : 1.5);
         // The camera fits the base markers only, and only when they change, so
         // typing a call (which moves the highlight marker) doesn't refit.
         if (!m.highlight) {
           baseBounds.extend([m.longitude, m.latitude]);
           baseSig.push(m.longitude, m.latitude);
         }
-        return {
+        const geometry = { type: 'Point', coordinates: [m.longitude, m.latitude] };
+        // A marker whose image could not be registered falls back to the
+        // plain circle: a dot in the right place beats no marker at all.
+        if (m.image && ensureImage(m.image)) {
+          iconFeatures.push({
+            type: 'Feature',
+            properties: { id: m.id, image: m.image.id },
+            geometry: geometry,
+          });
+          return;
+        }
+        features.push({
           type: 'Feature',
           properties: {
             id: m.id,
@@ -417,10 +489,11 @@ window.poloMapGl = window.poloMapGl || {
             strokeWidth: strokeWidth,
             strokeColor: m.strokeColor,
           },
-          geometry: { type: 'Point', coordinates: [m.longitude, m.latitude] },
-        };
+          geometry: geometry,
+        });
       });
       map.getSource('polo-markers').setData({ type: 'FeatureCollection', features: features });
+      map.getSource('polo-marker-icons').setData({ type: 'FeatureCollection', features: iconFeatures });
       const sig = baseSig.join(',');
       if (sig !== lastBaseSig && !baseBounds.isEmpty()) {
         lastBaseSig = sig;
@@ -445,7 +518,7 @@ window.poloMapGl = window.poloMapGl || {
       // popup describes the dot the operator can actually see.
       // Querying a layer that does not exist yet fires a map error rather than
       // returning nothing.
-      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight');
+      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight') && map.getLayer('polo-marker-icons');
       const hits = ready ? map.queryRenderedFeatures(e.point, { layers: MARKER_LAYERS }) : [];
       const marker = hits.length ? markersById[hits[0].properties.id] : null;
       if (marker) {
@@ -465,7 +538,7 @@ window.poloMapGl = window.poloMapGl || {
     // mousemove anyway, and their leave/enter can arrive in an order that
     // leaves the cursor wrong over a live dot.
     map.on('mousemove', function (e) {
-      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight');
+      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight') && map.getLayer('polo-marker-icons');
       const hits = ready ? map.queryRenderedFeatures(e.point, { layers: MARKER_LAYERS }) : [];
       map.getCanvas().style.cursor = hits.length ? 'pointer' : '';
     });

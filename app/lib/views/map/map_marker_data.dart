@@ -9,11 +9,84 @@
 // circles (band-colored for QSOs, black for the QTH); lines are
 // pre-densified great-circle polylines, already split at the antimeridian.
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Color;
+import 'package:flutter/material.dart' show Color, IconData;
 import 'package:halo_core/halo_core.dart' show GridLocation;
 
 enum MapMarkerKind { qso, qth }
+
+/// A whole marker — fill, ring and glyph — rasterized once by the facade for
+/// the backends that cannot draw one themselves: the GL canvas and the
+/// desktop/mobile webview have no access to the app's icon font, so a glyph
+/// only reaches them as pixels. The pure-Flutter backend ignores this and
+/// builds the same marker from [MapMarkerGlyph.icon] directly.
+@immutable
+class MapMarkerImage {
+  /// Stable identity for these exact pixels (glyph, colors and size folded
+  /// into one string). The GL backends register the image under it once, and
+  /// [MapMarkerData]'s equality compares it instead of scanning [rgba] on
+  /// every rebuild.
+  final String id;
+
+  /// Premultiplied RGBA, [width] * [height] * 4 bytes — what
+  /// `map.addImage` takes without a decode step, so registering an image
+  /// never has to be asynchronous.
+  final Uint8List rgba;
+  final int width;
+  final int height;
+
+  /// Image pixels per logical pixel, so the marker keeps its intended size
+  /// on a hidpi display instead of rendering at [width] CSS pixels.
+  final double pixelRatio;
+
+  MapMarkerImage({
+    required this.id,
+    required this.rgba,
+    required this.width,
+    required this.height,
+    required this.pixelRatio,
+  });
+
+  /// Encoded once per image rather than once per payload: the marker list is
+  /// rebuilt whenever the search results change, and re-encoding tens of
+  /// kilobytes of pixels on each of those is work whose result is identical
+  /// every time — the receiving side skips the image outright once it holds
+  /// the [id].
+  late final String base64Rgba = base64Encode(rgba);
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is MapMarkerImage && id == other.id);
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+/// A marker that carries a glyph rather than being a plain dot. The two
+/// halves travel together because they are one marker in two forms — the
+/// widget the pure-Flutter backend builds, and the pixels every other
+/// backend needs — and a marker holding only one of them would look
+/// different depending on which backend the platform happened to pick.
+@immutable
+class MapMarkerGlyph {
+  final IconData icon;
+
+  /// The glyph itself, over [MapMarkerData.color]. Both come from whatever
+  /// on-screen control the marker mirrors, so the two read as one object.
+  final Color color;
+  final MapMarkerImage image;
+
+  const MapMarkerGlyph({required this.icon, required this.color, required this.image});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MapMarkerGlyph && icon == other.icon && color == other.color && image == other.image);
+
+  @override
+  int get hashCode => Object.hash(icon, color, image);
+}
 
 enum MapProjection { mercator, globe }
 
@@ -60,6 +133,10 @@ class MapMarkerData {
   /// map_panel.dart's highlight build.
   final bool highlight;
 
+  /// Drawn inside the circle instead of leaving it plain. Null for the plain
+  /// dots that make up every QSO map.
+  final MapMarkerGlyph? glyph;
+
   const MapMarkerData({
     required this.id,
     required this.latitude,
@@ -74,6 +151,7 @@ class MapMarkerData {
     this.popupBand = '',
     this.popupDetailSuffix = '',
     this.highlight = false,
+    this.glyph,
   });
 
   /// Value equality so `didUpdateWidget`/`listEquals` checks can tell a
@@ -95,11 +173,12 @@ class MapMarkerData {
           popupDetailPrefix == other.popupDetailPrefix &&
           popupBand == other.popupBand &&
           popupDetailSuffix == other.popupDetailSuffix &&
-          highlight == other.highlight);
+          highlight == other.highlight &&
+          glyph == other.glyph);
 
   @override
   int get hashCode => Object.hash(id, latitude, longitude, label, kind, color, strokeColor, sizeFactor, popupTitle,
-      popupDetailPrefix, popupBand, popupDetailSuffix, highlight);
+      popupDetailPrefix, popupBand, popupDetailSuffix, highlight, glyph);
 }
 
 /// One contiguous polyline of a QSO's great-circle arc back to its QTH —
@@ -162,6 +241,18 @@ List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
           'popupBand': m.popupBand,
           'popupDetailSuffix': m.popupDetailSuffix,
           'highlight': m.highlight,
+          // Base64 rather than a byte list: both bridges (the webview's
+          // string-only channel and the web view's JS interop) carry a
+          // string unchanged, while a 9KB list would be walked element by
+          // element on the way across.
+          if (m.glyph?.image case final image?)
+            'image': {
+              'id': image.id,
+              'rgba': image.base64Rgba,
+              'width': image.width,
+              'height': image.height,
+              'pixelRatio': image.pixelRatio,
+            },
         },
     ];
 

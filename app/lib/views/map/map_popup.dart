@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'map_marker_data.dart';
+import 'map_marker_icon.dart';
 
 /// A QSO or QTH as a plain circle — band-colored with an outline for QSOs
 /// (sized by signal strength, light/dark-mode aware — see
@@ -24,7 +25,14 @@ class MapCircleMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isQth = marker.kind == MapMarkerKind.qth;
-    final diameter = isQth ? 12.0 : 14.0 * marker.sizeFactor;
+    // A glyph marker takes its geometry from map_marker_icon.dart, the same
+    // constants the rasterized copy the other backends draw is built from.
+    final glyph = marker.glyph;
+    final diameter = glyph != null
+        ? markerIconDiameter
+        : isQth
+            ? 12.0
+            : 14.0 * marker.sizeFactor;
     return Container(
       width: diameter,
       height: diameter,
@@ -33,9 +41,18 @@ class MapCircleMarker extends StatelessWidget {
         color: marker.color,
         border: Border.all(
           color: marker.strokeColor,
-          width: isQth ? 2 : 1.5,
+          width: glyph != null
+              ? markerIconStrokeWidth
+              : isQth
+                  ? 2
+                  : 1.5,
         ),
       ),
+      child: glyph == null
+          ? null
+          : Center(
+              child: Icon(glyph.icon, size: markerIconGlyphSize, color: glyph.color),
+            ),
     );
   }
 }

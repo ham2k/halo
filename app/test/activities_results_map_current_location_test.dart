@@ -44,7 +44,6 @@ void main() {
         refs: const [],
         settings: settings,
         onAdd: (_) {},
-        suggestionsAreSearchResults: false,
         currentLocation: const GridLocation(41.0, -74.0),
         currentLocationColor: green,
       )));
@@ -75,7 +74,6 @@ void main() {
         refs: const [],
         settings: settings,
         onAdd: (_) {},
-        suggestionsAreSearchResults: false,
       )));
       await tester.pumpAndSettle();
 

@@ -17,6 +17,8 @@
 // card with an Add button, so "reveal, then explicitly add" reads the same
 // regardless of which backend rendered the dot.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -28,12 +30,13 @@ import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
+import '../map/map_marker_icon.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
 import 'activities_view.dart'
-    show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle, suggestionHidesAsAlreadyAdded;
+    show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
 
 /// The entry's own coordinate when the activity's lookup table has one
 /// (tighter than decoding a 6-character grid square — see the SDK's `Ref.lat`
@@ -43,31 +46,37 @@ import 'activities_view.dart'
 GridLocation? locationForSuggestion(Map<String, dynamic> suggestion) =>
     locationFromLatLon(suggestion['lat'], suggestion['lon']) ?? gridToLocation(suggestion['grid'] as String?);
 
-/// One marker per [suggestions] entry with a resolvable location (see
-/// [locationForSuggestion]) — entries without one are silently omitted, the
-/// same treatment a location-less QSO gets on the Map tab. The id is the
-/// entry's own index into [suggestions] (stringified): all a tap handler
-/// needs to look the entry back up, and stable enough across a rebuild since
-/// a fresh search always replaces the whole list rather than mutating it in
-/// place.
+/// One marker per [suggestions] entry that is NOT already on the operation
+/// and has a resolvable location (see [locationForSuggestion]) — entries
+/// without one are silently omitted, the same treatment a location-less QSO
+/// gets on the Map tab. The id is the entry's own index into [suggestions]
+/// (stringified): all a tap handler needs to look the entry back up, and
+/// stable enough across a rebuild since a fresh search always replaces the
+/// whole list rather than mutating it in place. Contrast
+/// [selectedRefMarkerId], which cannot be positional.
+///
+/// Unlike the list rows, this takes no "are these search results?" — the
+/// rows keep an already-added search hit and fade it (`suggestionHidesAsAlreadyAdded`),
+/// where the map has [activitySelectedRefMarkers] drawing that same point in
+/// the reference's own icon, and two dots on one point read as two
+/// references. Which is the whole justification for dropping it, so the drop
+/// is conditional on that other marker actually existing: a reference the
+/// operation stored WITHOUT a location gets none, and dropping its
+/// suggestion too would take the only dot that reference had off the map.
 List<MapMarkerData> activitySuggestionMarkers(
   List<Map<String, dynamic>> suggestions, {
   required List<Map<String, dynamic>> controls,
   required List<Map<String, dynamic>> refs,
   required Color defaultColor,
   required Color strokeColor,
-  required bool suggestionsAreSearchResults,
 }) {
   final markers = <MapMarkerData>[];
   for (var i = 0; i < suggestions.length; i++) {
     final suggestion = suggestions[i];
-    final alreadyAdded = refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
-    if (suggestionHidesAsAlreadyAdded(
-      alreadyAdded: alreadyAdded,
-      suggestionsAreSearchResults: suggestionsAreSearchResults,
-    )) {
-      continue;
-    }
+    final storedRef = refs
+        .where((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref'])
+        .firstOrNull;
+    if (storedRef != null && locationForSuggestion(storedRef) != null) continue;
     final location = locationForSuggestion(suggestion);
     if (location == null) continue;
     final control = controlForRefType(controls, suggestion['type'] as String?);
@@ -78,8 +87,52 @@ List<MapMarkerData> activitySuggestionMarkers(
       longitude: location.longitude,
       label: activityRowTitle(control, suggestion),
       kind: MapMarkerKind.qso,
-      color: alreadyAdded ? baseColor.withValues(alpha: 0.4) : baseColor,
+      // Faded when the operation already has it: this dot only survives the
+      // drop above because the stored reference has no location of its own
+      // to draw, and at full strength it would be indistinguishable from a
+      // reference the operator can still add — which its card, offering no
+      // Add button, then contradicts.
+      color: storedRef == null ? baseColor : baseColor.withValues(alpha: 0.4),
       strokeColor: strokeColor,
+    ));
+  }
+  return markers;
+}
+
+/// One marker per operation reference with a resolvable location, in the
+/// reference type's own icon and color — the same pair the Current
+/// Activities rows above the map use, so a dot and its row read as the same
+/// object. Ids are `ref-<index>` so a tap can tell a chosen reference from a
+/// suggestion, which is the difference between a card that offers Add and
+/// one that says the reference is already on the operation.
+///
+/// [glyphFor] returns null while a marker's pixels are still being drawn;
+/// that reference falls back to a plain dot in its color for those frames
+/// rather than vanishing from the map.
+String selectedRefMarkerId(Map<String, dynamic> ref) => 'ref-${ref['type']}/${ref['ref']}';
+
+List<MapMarkerData> activitySelectedRefMarkers(
+  List<Map<String, dynamic>> refs, {
+  required List<Map<String, dynamic>> controls,
+  required Color defaultColor,
+  required Color strokeColor,
+  required MapMarkerGlyph? Function(IconData icon, Color background) glyphFor,
+}) {
+  final markers = <MapMarkerData>[];
+  for (final ref in refs) {
+    final location = locationForSuggestion(ref);
+    if (location == null) continue;
+    final control = controlForRefType(controls, ref['type'] as String?);
+    final color = colorForRefType(controls, ref['type'] as String?) ?? defaultColor;
+    markers.add(MapMarkerData(
+      id: selectedRefMarkerId(ref),
+      latitude: location.latitude,
+      longitude: location.longitude,
+      label: activityRowTitle(control, ref),
+      kind: MapMarkerKind.qso,
+      color: color,
+      strokeColor: strokeColor,
+      glyph: glyphFor(resolveIconName(control?['icon'] as String?), color),
     ));
   }
   return markers;
@@ -92,19 +145,18 @@ class ActivitiesResultsMap extends StatefulWidget {
   final SettingsService settings;
   final ValueChanged<Map<String, dynamic>> onAdd;
 
-  /// Whether [suggestions] came from a typed search rather than the nearby
-  /// list — see activities_view.dart's `_suggestionsAreSearchResults`, which
-  /// this mirrors so an already-added nearby suggestion is dropped the same
-  /// way the list rows drop it, rather than the map showing dots the list
-  /// itself considers noise.
-  final bool suggestionsAreSearchResults;
-
   /// The search band's own location pill, mirrored onto the map as a dot —
   /// null exactly when the pill has nothing to show either (still
   /// determining, denied, or a grid the search can't place). See
   /// activities_view.dart's `currentLocation`.
   final GridLocation? currentLocation;
   final Color? currentLocationColor;
+
+  /// The pill's own glyph and its color, mirrored into the map's dot so the
+  /// two read as the same object rather than as a button and an unrelated
+  /// smudge. See activities_view.dart's `locationPin`.
+  final IconData? currentLocationIcon;
+  final Color? currentLocationIconColor;
 
   const ActivitiesResultsMap({
     super.key,
@@ -113,9 +165,10 @@ class ActivitiesResultsMap extends StatefulWidget {
     required this.refs,
     required this.settings,
     required this.onAdd,
-    required this.suggestionsAreSearchResults,
     this.currentLocation,
     this.currentLocationColor,
+    this.currentLocationIcon,
+    this.currentLocationIconColor,
   });
 
   @override
@@ -123,7 +176,64 @@ class ActivitiesResultsMap extends StatefulWidget {
 }
 
 class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with WebviewSupportProbe<ActivitiesResultsMap> {
-  int? _selectedIndex;
+  /// Which marker's reveal card is open: a suggestion's index as a string,
+  /// one of [selectedRefMarkerId]'s content-addressed `ref-` ids, or the
+  /// current-location dot (which reveals nothing and so just closes the
+  /// card).
+  String? _selectedMarkerId;
+
+  /// The rasterized halves of the glyph markers, keyed by every input that
+  /// changes a pixel. Rasterizing goes through the engine and so is
+  /// asynchronous: a marker draws as a plain dot for the frame or two before
+  /// its pixels land rather than the map waiting for them. The cache grows
+  /// with the reference types on screen times the themes and displays
+  /// visited before this pane closes, which is small enough to leave
+  /// unswept — the whole State goes with the pane.
+  final Map<String, MapMarkerGlyph> _glyphs = {};
+  final Set<String> _glyphsInFlight = {};
+
+  /// The glyph for these inputs if it has been drawn, otherwise null with a
+  /// rasterization started — call it from `build`, and the `setState` that
+  /// lands the pixels brings the marker in.
+  MapMarkerGlyph? _glyphFor({
+    required IconData icon,
+    required Color background,
+    required Color foreground,
+    required Color strokeColor,
+    required double devicePixelRatio,
+  }) {
+    // The font is part of the icon's identity, not decoration: extensions
+    // name icons across two of them (halo_widgets' resolveIconName), so two
+    // different glyphs can share a code point.
+    final key = '${icon.fontFamily}/${icon.fontPackage}/${icon.codePoint}'
+        '/${background.toARGB32()}/${foreground.toARGB32()}'
+        '/${strokeColor.toARGB32()}/$devicePixelRatio';
+    final ready = _glyphs[key];
+    if (ready != null) return ready;
+    if (!_glyphsInFlight.add(key)) return null;
+    unawaited(() async {
+      try {
+        final image = await renderMarkerIconImage(
+          icon: icon,
+          background: background,
+          foreground: foreground,
+          strokeColor: strokeColor,
+          devicePixelRatio: devicePixelRatio,
+        );
+        if (!mounted) return;
+        setState(() => _glyphs[key] = MapMarkerGlyph(icon: icon, color: foreground, image: image));
+      } finally {
+        // In a finally, not after the await: a rasterization that throws
+        // would otherwise leave its key claimed forever, and that marker
+        // would be a plain dot for the rest of the session with nothing
+        // saying why. Freeing it lets the next build try again, and the
+        // throw itself goes on to ErrorPolicy rather than being swallowed
+        // here.
+        _glyphsInFlight.remove(key);
+      }
+    }());
+    return null;
+  }
 
   @override
   void initState() {
@@ -140,14 +250,39 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   @override
   void didUpdateWidget(ActivitiesResultsMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A fresh search invalidates whichever entry was revealed — the index
-    // may now point at an unrelated result, or past the end of the list.
-    if (!identical(oldWidget.suggestions, widget.suggestions)) {
-      setState(() => _selectedIndex = null);
+    // A fresh search invalidates a revealed SUGGESTION — its id is an index,
+    // which may now point at an unrelated result or past the end of the
+    // list. A revealed reference is addressed by what it is, so a search
+    // resolving underneath it (or the nearby list refreshing on a GPS fix)
+    // says nothing about it and must not close its card.
+    final revealedSuggestion = !(_selectedMarkerId?.startsWith('ref-') ?? true);
+    if (revealedSuggestion && !identical(oldWidget.suggestions, widget.suggestions)) {
+      setState(() => _selectedMarkerId = null);
     }
   }
 
-  void _onMarkerTap(String id) => setState(() => _selectedIndex = int.tryParse(id));
+  void _onMarkerTap(String id) => setState(() => _selectedMarkerId = id);
+
+  /// The entry a marker id stands for, or null when it stands for none — the
+  /// current-location dot, or an index left over from a list that has since
+  /// been replaced by a fresh search.
+  Map<String, dynamic>? _markerEntry(String? id) {
+    if (id == null) return null;
+    if (id.startsWith('ref-')) {
+      for (final ref in widget.refs) {
+        if (selectedRefMarkerId(ref) == id) return ref;
+      }
+      // The operator removed it from the rows above while its card was open.
+      return null;
+    }
+    final index = int.tryParse(id);
+    // Lower bound too: the id makes a round trip through the backend's JS,
+    // and this promises null for one that stands for no entry rather than a
+    // RangeError.
+    return index != null && index >= 0 && index < widget.suggestions.length
+        ? widget.suggestions[index]
+        : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,16 +292,36 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // as a hole in a light basemap, a light one does the same job on a dark
     // one.
     final strokeColor = isDark ? const Color(0xFFF2F2F2) : const Color(0xFF1A1A1A);
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    // White, like the location pill's own icon: every glyph on this map sits
+    // on a saturated fill, and one shared foreground is what makes the
+    // chosen references and the "you are here" dot read as one family.
+    const glyphForeground = Colors.white;
     final markers = activitySuggestionMarkers(
       widget.suggestions,
       controls: widget.controls,
       refs: widget.refs,
       defaultColor: theme.colorScheme.primary,
       strokeColor: strokeColor,
-      suggestionsAreSearchResults: widget.suggestionsAreSearchResults,
+    );
+    final refMarkers = activitySelectedRefMarkers(
+      widget.refs,
+      controls: widget.controls,
+      defaultColor: theme.colorScheme.primary,
+      strokeColor: strokeColor,
+      glyphFor: (icon, background) => _glyphFor(
+        icon: icon,
+        background: background,
+        foreground: glyphForeground,
+        strokeColor: strokeColor,
+        devicePixelRatio: devicePixelRatio,
+      ),
     );
 
-    if (markers.isEmpty) {
+    // The hint is about a search that found nothing, so it must not stand in
+    // front of references the operation already has: it shows only when
+    // there is nothing at all to draw.
+    if (markers.isEmpty && refMarkers.isEmpty) {
       final t = context.t.activitiesView;
       return Center(
         child: Padding(
@@ -182,25 +337,35 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       );
     }
 
-    // The "you are here" dot, in the search band's own pill color — given a
-    // non-numeric id so a tap on it parses to no suggestion index (see
-    // `_onMarkerTap`) and just dismisses whatever reveal card was open,
-    // rather than crashing or revealing a bogus one.
+    // The "you are here" dot, in the search band's own pill color — given an
+    // id that matches neither a suggestion index nor a `ref-` one, so a tap
+    // on it reveals nothing and just dismisses whatever card was open.
     final currentLocation = widget.currentLocation;
-    final allMarkers = currentLocation == null
-        ? markers
-        : [
-            ...markers,
-            MapMarkerData(
-              id: 'current-location',
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              label: 'current-location',
-              kind: MapMarkerKind.qth,
-              color: widget.currentLocationColor ?? theme.colorScheme.primary,
-              strokeColor: strokeColor,
-            ),
-          ];
+    final currentLocationIcon = widget.currentLocationIcon;
+    final currentLocationColor = widget.currentLocationColor;
+    final allMarkers = [
+      ...markers,
+      ...refMarkers,
+      if (currentLocation != null)
+        MapMarkerData(
+          id: 'current-location',
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          label: 'current-location',
+          kind: MapMarkerKind.qth,
+          color: currentLocationColor ?? theme.colorScheme.primary,
+          strokeColor: strokeColor,
+          glyph: currentLocationIcon == null || currentLocationColor == null
+              ? null
+              : _glyphFor(
+                  icon: currentLocationIcon,
+                  background: currentLocationColor,
+                  foreground: widget.currentLocationIconColor ?? glyphForeground,
+                  strokeColor: strokeColor,
+                  devicePixelRatio: devicePixelRatio,
+                ),
+        ),
+    ];
 
     final pinnedStyle = widget.settings.mapStyle;
     final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
@@ -242,9 +407,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       map = OsmMapView(markers: allMarkers, isDark: isDark, onMarkerTap: _onMarkerTap);
     }
 
-    final selected = _selectedIndex == null || _selectedIndex! >= widget.suggestions.length
-        ? null
-        : widget.suggestions[_selectedIndex!];
+    final selected = _markerEntry(_selectedMarkerId);
 
     return Stack(
       children: [
@@ -282,9 +445,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
               miles: widget.settings.distanceUnits == DistanceUnits.miles,
               onAdd: () {
                 widget.onAdd(selected);
-                setState(() => _selectedIndex = null);
+                setState(() => _selectedMarkerId = null);
               },
-              onDismiss: () => setState(() => _selectedIndex = null),
+              onDismiss: () => setState(() => _selectedMarkerId = null),
             ),
           ),
       ],
