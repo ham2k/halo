@@ -3579,8 +3579,8 @@ class Translations$settings$station$en {
 	/// en: 'If the radio connects but shows no frequency'
 	String get kenwoodTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'This driver has never been run against a Kenwood — it is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
-	String get kenwoodTroubleshooting => 'This driver has never been run against a Kenwood — it is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
+	/// en: 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
+	String get kenwoodTroubleshooting => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
 
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
@@ -3614,6 +3614,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.'
 	String get icomCivTroubleshooting => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.';
+
+	/// en: 'If the radio never answers'
+	String get civAddressTroubleshootingTitle => 'If the radio never answers';
+
+	/// en: '- **The CI-V address must match** the radio's own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable. - **Speed must match** the radio's CI-V BAUD RATE — or set the radio to Auto, which simply follows this app. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
+	String get civAddressTroubleshooting => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+
+	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here.'
+	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here.';
 
 	/// en: 'If the app cannot connect'
 	String get rigctldTroubleshootingTitle => 'If the app cannot connect';
@@ -4974,6 +4983,12 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu FT-891'
 	String get ft891 => 'Yaesu FT-891';
 
+	/// en: 'Yaesu FT-710'
+	String get ft710 => 'Yaesu FT-710';
+
+	/// en: 'Yaesu FTDX10'
+	String get ftdx10 => 'Yaesu FTDX10';
+
 	/// en: 'Yaesu - Generic'
 	String get yaesuGeneric => 'Yaesu - Generic';
 
@@ -4983,8 +4998,17 @@ class Translations$settings$station$models$en {
 	/// en: 'Kenwood - Generic'
 	String get kenwoodGeneric => 'Kenwood - Generic';
 
+	/// en: 'QRP Labs QMX'
+	String get qmx => 'QRP Labs QMX';
+
 	/// en: 'Icom IC-705'
 	String get ic705 => 'Icom IC-705';
+
+	/// en: 'Icom IC-7300'
+	String get ic7300 => 'Icom IC-7300';
+
+	/// en: 'Icom IC-706MKIIG'
+	String get ic706mkiig => 'Icom IC-706MKIIG';
 
 	/// en: 'Generic Radio via rigctld'
 	String get rigctld => 'Generic Radio via rigctld';
@@ -6136,10 +6160,15 @@ extension on Translations {
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
+			'settings.station.models.ft710' => 'Yaesu FT-710',
+			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
+			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.ic705' => 'Icom IC-705',
+			'settings.station.models.ic7300' => 'Icom IC-7300',
+			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
 			'settings.station.models.antenna' => 'Antenna',
@@ -6154,7 +6183,7 @@ extension on Translations {
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.kenwoodTroubleshooting' => 'This driver has never been run against a Kenwood — it is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
+			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
@@ -6166,6 +6195,9 @@ extension on Translations {
 			'settings.station.moreSettings' => 'More Settings',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
+			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
+			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
@@ -6211,6 +6243,8 @@ extension on Translations {
 			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.fakeFailConnect' => 'Always fail to connect',
 			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.fakeFreq' => 'Frequency (kHz)',
 			'settings.station.fakeFreqDescription' => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.',
 			'settings.station.fakeMode' => 'Mode',
@@ -6219,8 +6253,6 @@ extension on Translations {
 			'settings.station.fakeReplyDelay' => 'Reply delay (ms)',
 			'settings.station.fakeReplyDelayDescription' => 'How long the fake radio takes to report a change back. Blank or 0 replies at once.',
 			'settings.station.fakeDiagnostic' => 'Simulated',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.fakeWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.fakeFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.fakeModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',

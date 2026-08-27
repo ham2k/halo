@@ -69,15 +69,36 @@ void main() {
       // Pins the shape rather than each string: a driver renamed to put the
       // protocol first, or a new one whose brand is two words, breaks the
       // heuristic silently and every report then arrives mislabelled.
+      //
+      // The one-word rule belongs to the DERIVATION, not to brands — a model
+      // that states its own manufacturer is free to be "QRP Labs", and
+      // applying the heuristic's shape check to it would forbid the very
+      // answer declaring one exists to give.
       for (final type in EquipmentRegistry().types) {
         final brand = equipmentReportPrefill(
           EquipmentNode(uuid: 'u1', typeKey: type.key, name: '', config: const {}),
           type,
         )['manufacturer'] as String;
         expect(brand, isNotEmpty, reason: '${type.key} prefills no manufacturer at all');
-        expect(brand, isNot(contains(' ')), reason: '${type.key} prefills "$brand"');
         expect(brand, isNot(contains('(')), reason: '${type.key} prefills "$brand"');
+        if (type.manufacturer == null) {
+          expect(brand, isNot(contains(' ')), reason: '${type.key} prefills "$brand"');
+        }
       }
+    });
+
+    test('a radio whose brand is not its protocol family says so itself', () {
+      // The QMX speaks Kenwood CAT, so the driver-name heuristic labels it
+      // Kenwood — a wrong brand on the one kind of card whose whole value is
+      // naming the hardware correctly.
+      final qmx = EquipmentRegistry().typeFor('qmx-serial')!;
+      final brand = equipmentReportPrefill(
+        EquipmentNode(uuid: 'u1', typeKey: qmx.key, name: 'QMX', config: const {}),
+        qmx,
+      )['manufacturer'];
+
+      expect(qmx.driver.name, 'Kenwood (CAT)');
+      expect(brand, 'QRP Labs');
     });
 
     test('does not answer the outcome', () {

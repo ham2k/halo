@@ -705,11 +705,11 @@ void main() {
   test('the registry offers every model\'s every variant over four transports', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ic705-network')?.key, 'ic705-network');
-    // Eleven models, and the IC-705 contributes two — the flat list is
+    // Sixteen models, and the IC-705 contributes two — the flat list is
     // derived from the models, so a variant added to one has to appear here
     // without anything else being edited.
-    expect(registry.types, hasLength(12));
-    expect(registry.models, hasLength(11));
+    expect(registry.types, hasLength(17));
+    expect(registry.models, hasLength(16));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network', 'fake']));
   });
 

@@ -47,10 +47,10 @@ import 'transports/tcp_transport.dart';
 /// radio's serial and network entries.
 ///
 /// That list is longer than it looks: for the IC-705, the driver's overrides,
-/// the prefilled defaults, the hardware-verified status and the
-/// troubleshooting notes ALL differ between its two transports. Hoisting any
-/// of them onto the model would be wrong for the one radio that has two
-/// variants today.
+/// the prefilled defaults and the troubleshooting notes all differ between
+/// its two transports, and a pairing's hardware-verified status can too.
+/// Hoisting any of them onto the model would be wrong for the one radio that
+/// has two variants today.
 class EquipmentVariant {
   /// Stable id, stored in [EquipmentNode.typeKey]. Never change it once
   /// shipped — a user's configured node is looked up by this.
@@ -86,9 +86,13 @@ class EquipmentVariant {
   final Map<String, dynamic> restrictions;
 
   /// Overrides [driver.hardwareVerified] when this specific pairing's
-  /// hardware status differs from the driver's own — the Icom CI-V driver
-  /// is proven over the network, but that says nothing about the same
-  /// driver over a USB serial port, which has never met a radio.
+  /// hardware status differs from the driver's own. A driver proven on one
+  /// transport says nothing about the same driver on another, and the flag
+  /// belongs to what has actually met a radio.
+  ///
+  /// Null for every pairing today — each one either inherits a proven driver
+  /// or is unproven along with it. The hook stays because the next driver to
+  /// gain a transport nobody has tried arrives in exactly that state.
   final bool? hardwareVerifiedOverride;
 
   /// Set when this pairing's equipment announces itself on the network.
@@ -148,6 +152,18 @@ class EquipmentModel {
   /// [EquipmentVariant.notes].
   final String Function() _nameBuilder;
 
+  /// Who makes it, for a model named after a real radio. Null for the
+  /// generics and the bridges, which are named after a protocol or a program
+  /// and have no brand to state.
+  ///
+  /// Read only by the equipment report's prefill, which otherwise derives a
+  /// manufacturer from the driver's name. That derivation is right whenever
+  /// the protocol family IS the brand and wrong the moment it is not — a QMX
+  /// on the Kenwood driver would arrive labelled "Kenwood".
+  ///
+  /// Not localized: a brand is spelled the same in every language.
+  final String? manufacturer;
+
   /// True for a model that is a generic placeholder rather than something to
   /// pick from a catalogue of makes and models — [antennaModel] and
   /// [keyModel] today. The Add dialog's searchable list excludes these; they
@@ -174,6 +190,7 @@ class EquipmentModel {
     required this.category,
     required String Function() name,
     required this.variants,
+    this.manufacturer,
     this.hiddenFromCatalog = false,
     this.developerOnly = false,
   }) : _nameBuilder = name;
@@ -200,6 +217,8 @@ class EquipmentType {
   String get key => variant.key;
 
   String get category => model.category;
+
+  String? get manufacturer => model.manufacturer;
 
   EquipmentDriver get driver => variant.driver;
 
@@ -353,9 +372,14 @@ const _flexRadioTcpKey = 'flexradio-tcp';
 const _flrigTcpKey = 'flrig-tcp';
 const _rigctldTcpKey = 'rigctld-tcp';
 const _ft891SerialKey = 'ft891-serial';
+const _ft710SerialKey = 'ft710-serial';
+const _ftdx10SerialKey = 'ftdx10-serial';
 const _icomGenericSerialKey = 'icom-generic-serial';
 const _yaesuSerialKey = 'yaesu-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
+const _qmxSerialKey = 'qmx-serial';
+const _ic7300SerialKey = 'ic7300-serial';
+const _ic706mkiigSerialKey = 'ic706mkiig-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
 const _fakeRadioKey = 'fake-radio';
@@ -491,6 +515,50 @@ List<Map<String, dynamic>> _ft891SerialNotes() => [
       },
     ];
 
+/// Yaesu FT-710 over its built-in USB CAT port.
+///
+/// [Ft891Driver] is the Yaesu CAT driver rather than an FT-891-only one (see
+/// [yaesuGenericModel]), and this radio is what proves it: the 710 has been
+/// run here under the FT-891's own entry. It gets a name of its own so it is
+/// found by what is written on the front of the radio, and so the speed it
+/// actually ships on is the one prefilled.
+const ft710Model = EquipmentModel(
+  key: 'ft710',
+  manufacturer: 'Yaesu',
+  category: kCategoryTransceiver,
+  name: _ft710Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft710SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      // The radio's own CAT RATE default, unlike the FT-891's 4800.
+      defaultConfig: {'baudRate': 38400},
+    ),
+  ],
+);
+
+String _ft710Name() => t.settings.station.models.ft710;
+
+/// Yaesu FTDX10 over its built-in USB CAT port. Same driver and the same
+/// reasoning as [ft710Model].
+const ftdx10Model = EquipmentModel(
+  key: 'ftdx10',
+  manufacturer: 'Yaesu',
+  category: kCategoryTransceiver,
+  name: _ftdx10Name,
+  variants: [
+    EquipmentVariant(
+      key: _ftdx10SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': 38400},
+    ),
+  ],
+);
+
+String _ftdx10Name() => t.settings.station.models.ftdx10;
+
 /// Any Yaesu speaking CAT over a serial port — the entry for a radio with no
 /// definition of its own.
 ///
@@ -501,9 +569,9 @@ List<Map<String, dynamic>> _ft891SerialNotes() => [
 ///
 /// The one place the line genuinely diverges is the MODE table, which is the
 /// FT-891's — so a radio numbering its modes differently reports and sets the
-/// wrong one for those, while the frequency stays right. That is what the
-/// notes say, and it is why this pairing ships unverified even though the
-/// driver under it is not.
+/// wrong one for those, while the frequency stays right. The notes say so,
+/// and that caveat outlives the pairing being proven: what a proven radio
+/// proves is the protocol, never another radio's mode table.
 const yaesuGenericModel = EquipmentModel(
   key: 'yaesu-generic',
   category: kCategoryTransceiver,
@@ -516,7 +584,6 @@ const yaesuGenericModel = EquipmentModel(
       // The FT-891's factory rate. Every Yaesu CAT menu offers it, and it is
       // the one a radio nobody has configured is most likely already on.
       defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
-      hardwareVerifiedOverride: false,
       notes: _yaesuSerialNotes,
     ),
   ],
@@ -538,10 +605,11 @@ List<Map<String, dynamic>> _yaesuSerialNotes() => [
 /// equally the Elecraft rigs and SDR front-ends that implement the same
 /// protocol.
 ///
-/// NEVER RUN AGAINST A RADIO: written from published CAT references rather
-/// than a capture, which is exactly what `hardwareVerified: false` is for.
-/// The one field those references disagree about — where the mode sits inside
-/// the `IF` status packet — is learned from the radio at runtime instead of
+/// Written from published CAT references rather than from a capture, and
+/// proven since against a QRP Labs QMX (see [qmxModel]) — but against no
+/// Kenwood-branded radio, which is where those references still carry the
+/// risk. The one field they disagree about — where the mode sits inside the
+/// `IF` status packet — is learned from the radio at runtime instead of
 /// assumed, because a wrong offset would report a plausible wrong mode
 /// forever rather than failing. See kenwood_driver.dart.
 const kenwoodGenericModel = EquipmentModel(
@@ -571,6 +639,31 @@ List<Map<String, dynamic>> _kenwoodSerialNotes() => [
       },
     ];
 
+/// QRP Labs QMX, which speaks Kenwood CAT over its USB serial port.
+///
+/// Pins the `IF` mode offset [KenwoodDriver] would otherwise spend the first
+/// seconds of every connection learning — this radio's layout is known. The
+/// session still checks it against the radio, so a wrong entry here is caught
+/// rather than believed.
+const qmxModel = EquipmentModel(
+  key: 'qmx',
+  manufacturer: 'QRP Labs',
+  category: kCategoryTransceiver,
+  name: _qmxName,
+  variants: [
+    EquipmentVariant(
+      key: _qmxSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      overrides: {KenwoodDriver.ifModeOffsetKey: 27},
+      notes: _kenwoodSerialNotes,
+    ),
+  ],
+);
+
+String _qmxName() => t.settings.station.models.qmx;
+
 /// Any Icom transceiver over CI-V on a serial port — the IC-705's USB
 /// connection, and equally an IC-7300 or IC-9700 with a different address.
 ///
@@ -579,10 +672,8 @@ List<Map<String, dynamic>> _kenwoodSerialNotes() => [
 /// simply ignores frames addressed elsewhere, which looks exactly like a
 /// dead cable.
 ///
-/// The DRIVER is verified (a ten-minute IC-705 session over WiFi), but this
-/// pairing has never been pointed at a radio. The serial transport itself
-/// is proven by the FT-891, so this is likely fine — "likely fine" being
-/// exactly what [EquipmentVariant.hardwareVerifiedOverride] is for.
+/// Verified over the wire as well as over the network: CI-V on a serial port
+/// is what an IC-7300 and an IC-706MKIIG both run on here.
 const icomGenericModel = EquipmentModel(
   key: 'icom-generic',
   category: kCategoryTransceiver,
@@ -599,7 +690,6 @@ const icomGenericModel = EquipmentModel(
         // negotiates nothing and simply follows the host.
         'baudRate': 19200,
       },
-      hardwareVerifiedOverride: false,
       notes: _icomGenericSerialNotes,
     ),
   ],
@@ -616,6 +706,68 @@ List<Map<String, dynamic>> _icomGenericSerialNotes() => [
             '${t.settings.station.icomCivTroubleshooting}',
       },
     ];
+
+/// Icom IC-7300 over its built-in USB CI-V port.
+///
+/// The address is a default rather than an override even though the model is
+/// named: CI-V ADDRESS is in the radio's own menu, the MK2 ships on a
+/// different one, and a rig sharing a bus is exactly where either gets
+/// changed.
+const ic7300Model = EquipmentModel(
+  key: 'ic7300',
+  manufacturer: 'Icom',
+  category: kCategoryTransceiver,
+  name: _ic7300Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7300SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '94', 'baudRate': 19200},
+      notes: _ic7300SerialNotes,
+    ),
+  ],
+);
+
+String _ic7300Name() => t.settings.station.models.ic7300;
+
+/// The shared CI-V "it connected and says nothing" note, plus whatever this
+/// radio adds to it — the MK2's different factory address, for the IC-7300.
+List<Map<String, dynamic>> _civSerialNotes({String extra = ''}) => [
+      {
+        'type': 'markdown',
+        'collapsible': true,
+        'title': t.settings.station.troubleshootingNotes,
+        'text': '**${t.settings.station.civAddressTroubleshootingTitle}**\n\n'
+            '${t.settings.station.civAddressTroubleshooting}$extra',
+      },
+    ];
+
+List<Map<String, dynamic>> _ic7300SerialNotes() =>
+    _civSerialNotes(extra: t.settings.station.ic7300Mk2Note);
+
+List<Map<String, dynamic>> _ic706mkiigSerialNotes() => _civSerialNotes();
+
+/// Icom IC-706MKIIG over CI-V — an external level converter or CI-V cable,
+/// since the radio has no USB of its own. Same driver as every other CI-V
+/// rig; only the factory address differs.
+const ic706mkiigModel = EquipmentModel(
+  key: 'ic706mkiig',
+  manufacturer: 'Icom',
+  category: kCategoryTransceiver,
+  name: _ic706mkiigName,
+  variants: [
+    EquipmentVariant(
+      key: _ic706mkiigSerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '58', 'baudRate': 19200},
+      notes: _ic706mkiigSerialNotes,
+    ),
+  ],
+);
+
+String _ic706mkiigName() => t.settings.station.models.ic706mkiig;
 
 /// An IC-705 over WiFi, using Icom's RS-BA1 network protocol.
 ///
@@ -671,9 +823,6 @@ const ic705Model = EquipmentModel(
       // sharing a bus — a fixed fact about this model, same as the network
       // variant's override above.
       overrides: {'maxWatts': 10, 'batteryMaxWatts': 5},
-      // Same driver, same transport, same untested pairing as the generic
-      // CI-V serial entry.
-      hardwareVerifiedOverride: false,
       notes: _icomGenericSerialNotes,
     ),
   ],
@@ -765,9 +914,14 @@ String _keyModelName() => t.settings.station.models.key;
 const _defaultModels = [
   flexRadioModel,
   ft891Model,
+  ft710Model,
+  ftdx10Model,
   yaesuGenericModel,
   ic705Model,
+  ic7300Model,
+  ic706mkiigModel,
   icomGenericModel,
+  qmxModel,
   kenwoodGenericModel,
   rigctldModel,
   flrigModel,

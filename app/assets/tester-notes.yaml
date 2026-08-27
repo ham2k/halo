@@ -8,6 +8,7 @@ upcoming:
   changes:
     - FlexRadio equipment now picks which slice to follow, and shows what each one is doing
     - Home's quick lookup now shows full call info; press Enter for the whole panel
+    - "Add a radio by name: IC-7300, IC-706MKIIG, FT-710, FTDX10 and QRP Labs QMX"
 
 "153":
   changes:

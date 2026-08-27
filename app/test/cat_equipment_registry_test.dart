@@ -13,6 +13,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
@@ -183,9 +184,14 @@ void main() {
       {
         'flexradio-tcp',
         'ft891-serial',
+        'ft710-serial',
+        'ftdx10-serial',
         'yaesu-serial',
         'icom-generic-serial',
         'kenwood-serial',
+        'qmx-serial',
+        'ic7300-serial',
+        'ic706mkiig-serial',
         'ic705-network',
         'ic705-serial',
         'rigctld-tcp',
@@ -195,6 +201,74 @@ void main() {
         'key-none',
       },
     );
+  });
+
+  // A named radio exists so an operator does not have to know their rig's
+  // CI-V address or CAT speed to get it talking. The prefills ARE the
+  // definition — a model whose defaults drifted to the family's generic ones
+  // would still connect for whoever already knew the numbers, and would have
+  // stopped doing the one thing it was added for.
+  group('radios named after what operators actually run', () {
+    final expected = {
+      'ft710-serial': ('ft891', {'baudRate': 38400}),
+      'ftdx10-serial': ('ft891', {'baudRate': 38400}),
+      'ic7300-serial': ('icom-civ', {'civAddress': '94', 'baudRate': 19200}),
+      'ic706mkiig-serial': ('icom-civ', {'civAddress': '58', 'baudRate': 19200}),
+      'qmx-serial': ('kenwood', {'baudRate': 9600}),
+    };
+
+    expected.forEach((key, spec) {
+      final (driverKey, prefills) = spec;
+      test('$key is $driverKey over serial, prefilled with what the radio ships on', () {
+        final type = registry.typeFor(key)!;
+        expect(type.driver.key, driverKey);
+        expect(type.transportKey, SerialTransport.transportKey);
+        expect(type.category, kCategoryTransceiver);
+        prefills.forEach((field, value) => expect(type.defaultConfig[field], value));
+      });
+
+      test('$key carries no untested caveat — an operator has run this radio', () {
+        expect(registry.typeFor(key)!.hardwareVerified, isTrue);
+      });
+    });
+  });
+
+  // These three are what an operator reaches for when their radio is not in
+  // the catalogue by name, so the caveat on them is the difference between
+  // "worth trying" and "probably pointless". Each is proven by a specific
+  // radio: an IC-7300 and an IC-706MKIIG for Icom, an FT-710 for Yaesu, a
+  // QRP Labs QMX for Kenwood.
+  test('the generic serial entries are no longer marked untested', () {
+    for (final key in ['icom-generic-serial', 'yaesu-serial', 'kenwood-serial']) {
+      expect(registry.typeFor(key)!.hardwareVerified, isTrue, reason: '$key is proven on hardware');
+    }
+  });
+
+  // Every shipped pairing now inherits a proven driver, so nothing in the
+  // catalogue exercises the override any more — delete the `??` in
+  // EquipmentType.hardwareVerified and the rest of this suite stays green.
+  // That matters because the flag is what the next driver-on-a-new-transport
+  // will reach for, and a hook nothing covers is one that silently stops
+  // working: without this, a pairing declaring itself untested would inherit
+  // its driver's `true` and ship with no caveat at all.
+  test('a variant may still declare itself untested against a proven driver', () {
+    const model = EquipmentModel(
+      key: 'synthetic',
+      category: kCategoryTransceiver,
+      name: _syntheticName,
+      variants: [
+        EquipmentVariant(
+          key: 'synthetic-serial',
+          driver: Ft891Driver(),
+          transport: SerialTransport(),
+          hardwareVerifiedOverride: false,
+        ),
+      ],
+    );
+    final type = EquipmentRegistry(models: const [model]).typeFor('synthetic-serial')!;
+
+    expect(type.driver.hardwareVerified, isTrue);
+    expect(type.hardwareVerified, isFalse, reason: 'the pairing overrides what its driver claims');
   });
 
   for (final model in registry.models) {
@@ -315,6 +389,8 @@ void main() {
     }
   });
 }
+
+String _syntheticName() => 'Synthetic Radio';
 
 /// Enough of a sink to construct a session. Nothing here sends or reads —
 /// these tests only ask a session to describe itself.

@@ -160,12 +160,19 @@ Future<void> showEquipmentReportDialog(
 /// own name for the model — an operator who renamed "Icom - Generic" to
 /// "IC-7300" has already answered the second question.
 ///
-/// The first word because `driver.name` names a protocol family rather than a
-/// manufacturer, and everything after the brand is the protocol: "Icom
-/// (CI-V)", "Kenwood (CAT)", "Yaesu FT-891". Cutting there leaves the brand
-/// alone. The two bridges have no brand to leave — "Hamlib", "flrig" — and
-/// that is the honest answer for them: what the app talked to really was the
-/// bridge, and whatever radio sits behind it is the operator's to name.
+/// A model named after a real radio states its own manufacturer, and that is
+/// used when it does. The derivation below is the fallback for the generics
+/// and the bridges, which have no brand to state.
+///
+/// It takes the first word because `driver.name` names a protocol family, and
+/// everything after the brand is the protocol: "Icom (CI-V)", "Kenwood
+/// (CAT)", "Yaesu FT-891". Cutting there leaves the brand alone WHENEVER the
+/// family is a brand — which is exactly the assumption a declared
+/// manufacturer exists to escape, since a QRP Labs QMX rides the Kenwood
+/// driver and would otherwise arrive labelled Kenwood. The two bridges have
+/// no brand to leave — "Hamlib", "flrig" — and that is the honest answer for
+/// them: what the app talked to really was the bridge, and whatever radio
+/// sits behind it is the operator's to name.
 ///
 /// Neither guess is asserted anywhere. What the app is actually sure of goes
 /// in the body, under its own labels, where it cannot be confused with what
@@ -175,7 +182,7 @@ Future<void> showEquipmentReportDialog(
 /// operator's mouth, and it is the one field the whole report turns on.
 @visibleForTesting
 Map<String, dynamic> equipmentReportPrefill(EquipmentNode node, EquipmentType type) => {
-      'manufacturer': type.driver.name.split(RegExp(r'\s')).first,
+      'manufacturer': type.manufacturer ?? type.driver.name.split(RegExp(r'\s')).first,
       'model': node.name,
     };
 

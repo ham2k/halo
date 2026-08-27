@@ -77,12 +77,10 @@ class IcomCivDriver extends EquipmentDriver {
   /// two (see `_reauthInterval` in icom_network_transport_io.dart), so any
   /// shorter run would have looked perfect and proved nothing.
   ///
-  /// PRECISELY WHAT THAT COVERS: this driver over the **network** transport.
-  /// The same driver also backs Icom CI-V over USB serial, and that
-  /// combination has never met a radio. The driver itself is what this flag
-  /// documents, and the serial transport is separately proven by the FT-891 —
-  /// but if someone reports an IC-7300 on USB behaving oddly, that pairing is
-  /// untested and this comment is the reason not to be surprised.
+  /// The same driver over USB serial is proven separately, by an IC-7300 and
+  /// an IC-706MKIIG. Both halves matter and neither stands in for the other:
+  /// this flag documents the DRIVER, and a pairing's own status can still
+  /// differ from it, which is what a variant's own override is for.
   @override
   bool get hardwareVerified => true;
 

@@ -282,6 +282,26 @@ void main() {
       expect(sink.diagnostics, contains('IF mode offset 15 declared, radio says 21'));
     });
 
+    test('a contradicted declaration stops being read, rather than reporting a wrong mode forever', () {
+      // The trap the previous test cannot spring: its wrong index holds a
+      // character that is no mode at all, so parsing there fails safe. Here
+      // index 14 holds '1' — LSB, perfectly valid — while the radio's own
+      // answer is USB. Keep reading at the declared index and every later
+      // packet reports LSB, silently, for the whole connection.
+      final wrong = KenwoodSession(sink, declaredModeOffset: 14);
+      wrong.handleData(Uint8List.fromList(ascii.encode('MD2;IF00014250000' '0001' '+00000' '2;')));
+
+      expect(sink.diagnostics, contains('IF mode offset 14 declared, radio says 21'));
+      expect(sink.readings.last.mode, 'USB',
+          reason: 'the wrong reading is corrected from where the radio says the mode is');
+
+      // A further packet with no fresh MD to lean on: mode now comes from
+      // MD; alone, which is slower and right, rather than from an index the
+      // radio has already contradicted.
+      wrong.handleData(Uint8List.fromList(ascii.encode('IF00014250000' '0001' '+00000' '2;')));
+      expect(sink.readings.last.mode, isNull, reason: 'nothing is read at the discredited index');
+    });
+
     test('a contradiction is reported once, and policing then stops', () {
       // The layout does not change mid-session, so re-deciding it on every
       // packet forever would add nothing — and it writes through to the row.
@@ -297,6 +317,16 @@ void main() {
       final type = EquipmentRegistry().typeFor('kenwood-serial')!;
       final session = type.driver.createSession(sink, {KenwoodDriver.ifModeOffsetKey: 3}) as KenwoodSession;
       expect(session.declaredModeOffset, isNull);
+    });
+
+    test('the QMX definition pins the layout the driver would otherwise spend a connection learning', () {
+      // The override has to travel through driverConfig() to reach the
+      // session: a pinned offset that never arrives costs nothing visible —
+      // the radio is simply read the slow way — so nothing else here would
+      // notice it going missing.
+      final type = EquipmentRegistry().typeFor('qmx-serial')!;
+      final session = type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession;
+      expect(session.declaredModeOffset, 27);
     });
 
     test('the driver declares its offset key, so a radio definition may override it', () {

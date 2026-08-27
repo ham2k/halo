@@ -1631,7 +1631,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get yaesuTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get yaesuTroubleshooting => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.';
 	@override String get kenwoodTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
-	@override String get kenwoodTroubleshooting => 'Este controlador nunca se ha probado con una Kenwood: está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.';
+	@override String get kenwoodTroubleshooting => 'Este controlador está probado con una QRP Labs QMX, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.';
 	@override String get statusConnected => 'Conectado';
 	@override String get currentConfiguration => 'Configuración actual';
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
@@ -1639,6 +1639,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get noTransceiver => 'Ninguno';
 	@override String get icomCivTroubleshootingTitle => 'Si aparecen dos puertos serie para la misma radio';
 	@override String get icomCivTroubleshooting => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.';
+	@override String get civAddressTroubleshootingTitle => 'Si la radio nunca responde';
+	@override String get civAddressTroubleshooting => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
+	@override String get ic7300Mk2Note => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí.';
 	@override String get rigctldTroubleshootingTitle => 'Si la app no puede conectar';
 	@override String get rigctldTroubleshooting => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.';
 	@override String get flrigTroubleshootingTitle => 'Si la app no puede conectar';
@@ -2311,10 +2314,15 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	// Translations
 	@override String get flexRadio => 'FlexRadio (SmartSDR)';
 	@override String get ft891 => 'Yaesu FT-891';
+	@override String get ft710 => 'Yaesu FT-710';
+	@override String get ftdx10 => 'Yaesu FTDX10';
 	@override String get yaesuGeneric => 'Yaesu - Genérico';
 	@override String get icomGeneric => 'Icom - Genérico';
 	@override String get kenwoodGeneric => 'Kenwood - Genérico';
+	@override String get qmx => 'QRP Labs QMX';
 	@override String get ic705 => 'Icom IC-705';
+	@override String get ic7300 => 'Icom IC-7300';
+	@override String get ic706mkiig => 'Icom IC-706MKIIG';
 	@override String get rigctld => 'Radio genérica vía rigctld';
 	@override String get flrig => 'Radio genérica vía flrig';
 	@override String get fakeRadio => 'Radio Simulada';
@@ -3273,10 +3281,15 @@ extension on TranslationsEs {
 			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
+			'settings.station.models.ft710' => 'Yaesu FT-710',
+			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Genérico',
 			'settings.station.models.icomGeneric' => 'Icom - Genérico',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Genérico',
+			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.ic705' => 'Icom IC-705',
+			'settings.station.models.ic7300' => 'Icom IC-7300',
+			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
 			'settings.station.models.fakeRadio' => 'Radio Simulada',
@@ -3289,7 +3302,7 @@ extension on TranslationsEs {
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
-			'settings.station.kenwoodTroubleshooting' => 'Este controlador nunca se ha probado con una Kenwood: está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
+			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con una QRP Labs QMX, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
@@ -3297,6 +3310,9 @@ extension on TranslationsEs {
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
+			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
+			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
+			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
 			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
@@ -3399,6 +3415,8 @@ extension on TranslationsEs {
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
 			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
@@ -3407,8 +3425,6 @@ extension on TranslationsEs {
 			'commands.noOperationOpen' => 'Ese comando necesita una operación abierta',
 			'commands.reloadFailed' => ({required Object error}) => 'Error al recargar: ${error}',
 			'commands.reloadingAll' => 'Recargando todos los archivos de datos…',
-			_ => null,
-		} ?? switch (path) {
 			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Experimento desconocido «${token}»',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} habilitado',

@@ -180,18 +180,13 @@ void main() {
     // "found" would be naming one unfinished activity twice.
     expect(find.text('Looking for new equipment…'), findsOneWidget);
 
-    // The bare caveat belongs to a radio whose EVERY pairing is untested, and
-    // there are three: the generic Icom, whose CI-V driver is proven over
-    // WiFi but never over a cable; the generic Yaesu, whose driver is proven
-    // on an FT-891 and whose mode table is that radio's; and the generic
-    // Kenwood, which has never met a radio at all.
-    expect(find.text('Not tested against this hardware'), findsNWidgets(3));
-    // The IC-705's WiFi is verified on a real radio and its USB side never
-    // tried, so a single marker for the model would be wrong either way
-    // round — the mixed case names only what is untested. It does NOT name
-    // the verified transport: that is what the row's trailing glyph says,
-    // and repeating it in words is the duplication the icons removed.
-    expect(find.text('USB serial (untested)'), findsOneWidget);
+    // Every pairing in the catalogue has now met a radio, so nothing carries
+    // the caveat — neither the whole-model one nor the per-transport marker
+    // the IC-705 used to show while its USB side was untried. A definition
+    // added for a driver or transport nobody has pointed at a rig brings both
+    // back, which is what these two assertions are watching for.
+    expect(find.text('Not tested against this hardware'), findsNothing);
+    expect(find.textContaining('(untested)'), findsNothing);
 
     await tester.tap(find.text('FlexRadio (SmartSDR)'));
     await tester.pump();
@@ -317,28 +312,26 @@ void main() {
         reason: 'back at the top, what announced itself is worth the room again');
   });
 
-  testWidgets('a transport glyph sits beside the radio\'s name, not halfway down the row', (tester) async {
+  testWidgets('a transport glyph is pinned beside the radio\'s name, not centred down the row',
+      (tester) async {
     // Material 3 centres a ListTile's trailing widget against the WHOLE tile
-    // unless titleAlignment says otherwise, so on a row carrying an untested
-    // caveat the glyph drops a full line below the name it belongs to. A
-    // shrink-wrapping Column around the glyph does NOT fix this — it looks
-    // like it should, which is why this measures instead of trusting it.
+    // unless titleAlignment says otherwise, so on a two-line row the glyph
+    // drops a full line below the name it belongs to. A shrink-wrapping
+    // Column around the glyph does NOT fix this — only the alignment does.
     //
-    // Mutation check: remove titleAlignment and the IC-705 row's glyph lands
-    // ~13pt lower than its name.
+    // This asserts the property rather than measuring the geometry, and the
+    // difference is worth stating: no catalogue row is two-line today, since
+    // every pairing is hardware-verified and none carries a caveat under its
+    // name. A measurement would therefore pass with the alignment deleted.
+    // A discovered device's row (`detail` under its name) is two-line and
+    // still needs this, and so does the next radio that ships untested.
     await pumpSettings(tester, catEnabled: true);
     await openAddDialog(tester);
 
-    // A two-line row: "Icom IC-705" over "USB serial (untested)".
-    final nameTop = tester.getRect(find.text('Icom IC-705')).top;
-    final glyphTop = tester
-        .getRect(find.descendant(
-          of: find.widgetWithText(ListTile, 'Icom IC-705'),
-          matching: find.byIcon(resolveIconName('wifi')),
-        ))
-        .top;
-    expect(glyphTop, lessThan(nameTop + 4),
-        reason: 'the glyph belongs level with the name, not centred against the caveat below it');
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Icom IC-705')).titleAlignment,
+      ListTileTitleAlignment.top,
+    );
   });
 
   testWidgets('the fold reopens when the list stops being scrollable under it', (tester) async {
@@ -496,7 +489,7 @@ void main() {
     // start aiming at that instead.
     await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, 'WiFi'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('USB serial (untested)').last);
+    await tester.tap(find.text('USB serial').last);
     await tester.pumpAndSettle();
 
     // The other pairing's fields took over, and its prefill came with it —
@@ -513,8 +506,7 @@ void main() {
     // Switching back finds what was already there. FormRenderer keeps a
     // hidden field's value, which is exactly why nothing here has to thread
     // the old transport's settings anywhere.
-    await tester.tap(
-        find.widgetWithText(DropdownButtonFormField<dynamic>, 'USB serial (untested)'));
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, 'USB serial'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('WiFi').last);
     await tester.pumpAndSettle();

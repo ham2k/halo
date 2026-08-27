@@ -339,13 +339,14 @@ void main() {
     test('rides the serial transport that already shipped — no new transport code', () {
       expect(type.transportKey, SerialTransport.transportKey);
       expect(type.category, kCategoryTransceiver);
-      // The DRIVER is verified on hardware (a real IC-705 over WiFi), but
-      // this type pairs it with the SERIAL transport and that pairing has
-      // never met a radio. Asserting on the type rather
-      // than the driver is the whole point: flipping the driver flag would
-      // otherwise have silently dropped the caveat from this type too.
+      // CI-V over a serial port is proven separately from CI-V over the
+      // network — an IC-7300 and an IC-706MKIIG both run on this pairing.
+      // Asserting on the TYPE rather than the driver is the point: the two
+      // answers are allowed to differ, and a pairing that goes back to
+      // unproven has to say so here rather than inheriting a driver's word
+      // for a transport it was never tested on.
       expect(type.driver.hardwareVerified, isTrue, reason: 'the CI-V driver itself is proven');
-      expect(type.hardwareVerified, isFalse, reason: 'over serial, this pairing is not');
+      expect(type.hardwareVerified, isTrue, reason: 'and proven over serial too, not only over WiFi');
     });
 
     test('defaults to the IC-705 address and Icom\'s CI-V default speed', () {

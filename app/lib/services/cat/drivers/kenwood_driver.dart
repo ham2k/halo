@@ -5,12 +5,11 @@
 // connection — in practice a serial port. Like every driver here it deals
 // only in already-framed bytes handed to it by a transport.
 //
-// No Kenwood has ever been connected to this: the protocol comes from
-// published CAT references rather than from a capture, which is why the
-// pairing ships `hardwareVerified: false`, why its notes ask for a report
-// either way, and why the one field no document settles is learned from the
-// radio instead of assumed. Pointing it at a real rig is exactly what it
-// needs.
+// The protocol comes from published CAT references rather than from a
+// capture. It has since been run against real hardware — a QRP Labs QMX,
+// both directions — but never against a Kenwood-branded radio, which is
+// where those references still carry the risk, and why the one field no
+// document settles is learned from the radio instead of assumed.
 //
 // That field is the mode's position inside the `IF` status packet. The
 // widths ahead of it differ between the TS-2000-era layout and the
@@ -43,7 +42,7 @@ class KenwoodDriver extends EquipmentDriver {
   String get name => 'Kenwood (CAT)';
 
   @override
-  bool get hardwareVerified => false;
+  bool get hardwareVerified => true;
 
   /// A radio whose `IF` layout we DO know — a specific model built on this
   /// driver — pins the mode's offset here rather than letting the session
@@ -252,6 +251,16 @@ class KenwoodSession implements EquipmentSession {
       // is the only place that could ever notice.
       if (offset != declared) {
         _sink.reportDiagnostic('IF mode offset $declared declared, radio says $offset');
+        // The declared index must not be read again. Noticing a wrong
+        // declaration and going on parsing at it is the failure policing
+        // exists to prevent: an index that happens to hold a valid mode code
+        // reports a plausible wrong mode for the rest of the connection, with
+        // one developer-only line as the only trace. Mode falls back to `MD;`
+        // — correct, just slower — and this packet's own reading is corrected
+        // from where the radio says the mode actually is, so the wrong one
+        // just reported upward does not stand until the next poll.
+        _modeOffset = null;
+        _report(VfoReading(mode: parseKenwoodInfoModeAt(params, offset)));
         // Said once and done: the layout does not change mid-session, so
         // re-deciding it on every packet forever would add nothing.
         _settled = true;
