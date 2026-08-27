@@ -25,6 +25,7 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, sotaSsoHost;
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart' show visibleForTesting;
 
@@ -994,15 +995,15 @@ class _HostCore {
   Uri _resolveFetchUri(String urlString) {
     final uri = Uri.parse(urlString);
     if (runningOnWeb) {
-      // OAuth/SSO hosts are never proxied, even on web builds where that
-      // means the call is CORS-blocked instead: refresh grants and the
-      // tokens they return must only ever transit the identity provider
-      // itself, not services.ham2k.net.
-      const ssoDomains = {
-        'sso.sota.org.uk',
-      };
-      if (ssoDomains.contains(uri.host)) {
-        return uri;
+      // SOTA's SSO host routes by PATH, not by host: exactly the two
+      // endpoints services.ham2k.net proxies go through it, and every other
+      // path on that host stays direct. Keeping the rest direct is the point
+      // — a refresh grant and the tokens it returns transit Ham2K
+      // infrastructure only where a browser leaves no alternative, and never
+      // on a native build. See halo_core's ham2kSsoFetchUri for what that
+      // costs and why the discovery document is not among them.
+      if (uri.host == sotaSsoHost) {
+        return ham2kSsoFetchUri(uri, onWeb: true);
       }
       const allowedDomains = {
         'api.pota.app',

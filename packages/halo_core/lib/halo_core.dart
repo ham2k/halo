@@ -20,6 +20,7 @@ export 'src/models/qso_merge.dart';
 export 'src/models/qson_values.dart';
 export 'src/models/segments.dart';
 export 'src/n1mm/n1mm_contact_info.dart';
+export 'src/net/ham2k_sso_proxy.dart';
 export 'src/peer/peer_link.dart';
 export 'src/peer/peer_outbox.dart';
 export 'src/peer/peer_protocol.dart';

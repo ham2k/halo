@@ -40,6 +40,7 @@ import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
 import { spotsFromSOTAApi, type SOTAApiSpot } from "./spotMapping.ts"
+import { oauthErrorCode } from "./oauthErrors.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -426,17 +427,24 @@ const AdifImportHook = activityAdifImport({
 
 const SOTA_SSO_REALM = 'https://sso.sota.org.uk/auth/realms/SOTA'
 
-// SOTA granted HaLo a separate Keycloak client per build edition
-// — each edition is its own app identity
-// (com.ham2k.logger.dev/.next/.prod), so each needs its own registered
-// native redirect URL. HaLo's OAuth webview intercepts that redirect itself
-// (see `_doOAuth` above) on every platform capable of it — an unset/
-// unrecognized edition falls back to `dev`, the same default
+// ONE Keycloak client for every edition — `polo`, shared with PoLo — and a
+// SEPARATE registered redirect URL per edition. That split is not a
+// preference: SOTA's realm has exactly one Ham2K client, and HaLo's
+// per-edition redirects are registered against it. No `com.ham2k.logger.*`
+// client exists in that realm, and Keycloak answers one with "Client not
+// found" before the operator sees a sign-in page at all.
+//
+// So the redirect URL, not the client id, is what tells the editions apart.
+// Each string below is on that client's redirect allowlist as an exact
+// literal; Keycloak matches them exactly and rejects anything else with
+// "Invalid parameter: redirect_uri", so a new edition needs SOTA to register
+// its URL before the entry here means anything. An unset/unrecognized
+// edition falls back to `dev`, the same default
 // `packages/halo_build_tools`' Edition uses for an unset HALO_EDITION define.
 const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: string }> = {
-  prod: { clientId: 'com.ham2k.logger.prod', redirectUrl: 'com.ham2k.logger.prod.auth://sota' },
-  next: { clientId: 'com.ham2k.logger.next', redirectUrl: 'com.ham2k.logger.next.auth://sota' },
-  dev: { clientId: 'com.ham2k.logger.dev', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
+  prod: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.prod.auth://sota' },
+  next: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.next.auth://sota' },
+  dev: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
 }
 
 // Web and Linux can't catch that custom-scheme redirect at all (no
@@ -525,9 +533,17 @@ async function refreshTokens(ctx: HookContext, { persistSession = true } = {}): 
         ].join('&'),
       })
       if (response.status !== 200) {
-        // 4xx is Keycloak rejecting the grant (expired/revoked); anything
-        // else could be transient, so it doesn't justify clearing state.
-        if (response.status >= 400 && response.status < 500) definitivelyRejected = true
+        // Only a response that IDENTIFIES ITSELF as an OAuth rejection may
+        // clear this account's session, because clearing it signs the
+        // operator out. A bare status cannot carry that meaning: on web this
+        // request goes through Ham2K's CORS proxy (halo_core's
+        // `ham2kSsoFetchUri`), so a 4xx may be the hop's own — an unrouted
+        // path, a rate limit — and a hop that is merely misconfigured would
+        // otherwise read exactly like a revoked token. Anything unrecognized
+        // is transient until proven otherwise.
+        if (response.status >= 400 && response.status < 500 && oauthErrorCode(response.body)) {
+          definitivelyRejected = true
+        }
         continue
       }
       const data = JSON.parse(response.body) as Record<string, string>

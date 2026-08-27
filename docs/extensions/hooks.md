@@ -20,8 +20,8 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   (e.g. a spot's `source` field, an ADIF `PROGRAMID` header).
 * `edition?: string` — The running build's edition: `'dev' | 'next' | 'prod'`
   (see `packages/halo_build_tools/lib/src/edition.dart`). For a hook whose
-  static config must vary per-edition — e.g. SOTA's OAuth client, since each
-  edition is a distinct app identity registered as its own client.
+  static config must vary per-edition — e.g. SOTA's OAuth redirect URL, one
+  per edition and each registered separately with the provider.
 * `enabledExperiments?: string[]` — Keys of every experiment
   (`app/experiments.yaml`) currently on for this user. For a hook whose own
   effect must stay invisible until an experiment gating the surface it
@@ -1088,10 +1088,10 @@ description and field labels this way.
 (`{issuer, clientId, redirectUrl, scopes}`), or, for a client that varies by
 build edition, a function `(args, ctx) => OAuth2Config` called the same way
 any other hook method is (`ctx.edition` is `'dev' | 'next' | 'prod'` — see
-`HookContext.edition` below). SOTA registers a separate Keycloak client per
-edition (ham2k/halo-dist#253 — each edition is its own app identity,
-`com.ham2k.logger.dev`/`.next`/`.prod`, each needing its own redirect URL
-registered with SOTA) rather than sharing one client across builds.
+`HookContext.edition` below). SOTA is the one such hook: every edition
+authenticates as the SAME Keycloak client, and what varies is the redirect
+URL — `com.ham2k.logger.<edition>.auth://sota`, one per edition, each
+registered against that one client.
 
 **`synchronizable`** (optional, default `false`) — on Apple platforms (macOS
 and iOS), when `true` the account's stored credentials and session sync across

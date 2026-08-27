@@ -1,17 +1,21 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// SOTA registers a separate OAuth client per build edition with SOTA's
-// Keycloak (ham2k/halo-dist#253) — its account hook's `oauth2` is a
-// function of `ctx.edition`, not a plain object, so the kernel's
-// `account`/`getDefinition` dispatch has to call it (see kernel.ts) rather
-// than read it as a static field. This exercises the whole real path: Dart's
-// getSettings() host call stamping `edition`, the kernel building it into
-// ctx, and SOTA's extension selecting the matching client. `flutter test`
-// compiles with no HALO_EDITION define, so kEdition — and therefore what
-// SOTA resolves — is 'dev' here; the per-edition mapping itself (all three
-// editions' exact client IDs/redirect URLs) is a plain data table with no
-// runtime behavior worth a JS-side unit test.
+// SOTA's OAuth config varies per build edition, so its account hook's
+// `oauth2` is a function of `ctx.edition`, not a plain object, and the
+// kernel's `account`/`getDefinition` dispatch has to CALL it (see kernel.ts)
+// rather than read it as a static field. This exercises the whole real path:
+// Dart's getSettings() host call stamping `edition`, the kernel building it
+// into ctx, and SOTA's extension selecting the matching entry. `flutter
+// test` compiles with no HALO_EDITION define, so kEdition — and therefore
+// what SOTA resolves — is 'dev' here; the mapping itself is a plain data
+// table with no runtime behavior worth a JS-side unit test.
+//
+// What varies per edition is the REDIRECT URL alone. The client id is one
+// shared value, `polo`, because SOTA's realm holds exactly one Ham2K client
+// and registers HaLo's per-edition redirects against it — see the table in
+// extensions/activities/sota/src/index.ts for why a per-edition client id
+// cannot work.
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,7 +27,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test("SOTA's OAuth client resolves to the running edition's, not a shared/borrowed one", () async {
+  test("SOTA's OAuth redirect resolves to the running edition's, behind the one shared client", () async {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final lookups = LookupRepository(db);
@@ -42,14 +46,20 @@ void main() {
     final sota = accounts!.singleWhere((a) => a['key'] == 'sota');
     final oauth2 = (sota['oauth2'] as Map).cast<String, dynamic>();
 
-    // dev — this test binary's own edition (no HALO_EDITION define set).
-    expect(oauth2['clientId'], 'com.ham2k.logger.dev');
+    // dev — this test binary's own edition (no HALO_EDITION define set). The
+    // redirect is the per-edition half, and the only half that is: it must
+    // match a string on the `polo` client's redirect allowlist EXACTLY, or
+    // Keycloak rejects the authorization request outright.
     expect(oauth2['redirectUrl'], 'com.ham2k.logger.dev.auth://sota');
     // One fixed relay URL shared by every edition (HALO-22), used only on
     // platforms oauthUsesWebhookRelay() sends through LoFi (Web/Linux) — see
     // extensions/activities/sota/src/index.ts's SOTA_OAUTH_WEBHOOK_REDIRECT_URL.
     expect(oauth2['webhookRedirectUrl'], 'https://lofi.ham2k.net/v1/webhooks/client/oauth');
-    // Never PoLo's borrowed client, which HaLo used before #253.
-    expect(oauth2['clientId'], isNot('polo'));
+    // The one client SOTA's realm actually has. A per-edition client id
+    // reads as the more careful choice and is the failure this pins: no
+    // `com.ham2k.logger.*` client exists in that realm, so one would take
+    // every edition's sign-in to "Client not found" before a sign-in page
+    // ever loads.
+    expect(oauth2['clientId'], 'polo');
   });
 }

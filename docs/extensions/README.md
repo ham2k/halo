@@ -72,8 +72,8 @@ reads that map directly. See `secrets.dart.example`.
 **Expect null and degrade.** A fresh checkout, a fork, and every build without
 the value configured all have none. A hook that throws instead of returning
 empty takes its whole feature down for them. Where a sensible default exists,
-prefer it: SOTA keeps its per-edition OAuth clients in code as a fallback, so a
-fresh checkout can still log in to SOTAWatch.
+prefer it: SOTA keeps its per-edition OAuth redirect URLs in code as a
+fallback, so a fresh checkout can still log in to SOTAWatch.
 
 **Don't log a URL that carries one.** Some programs take their key as a query
 parameter, and `debugPrint` is not stripped from release builds — the data-file

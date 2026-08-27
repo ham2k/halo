@@ -3690,7 +3690,12 @@ class _AccountPaneState extends State<_AccountPane> {
       setState(() => _testing = true);
 
       final tokenResponse = await http.post(
-        Uri.parse(tokenEndpoint),
+        // Through Ham2K's CORS proxy on web, direct everywhere else — SOTA's
+        // Keycloak sends this endpoint no Access-Control-Allow-Origin, so a
+        // browser refuses the exchange after the sign-in has already
+        // succeeded. The extension's own refresh grant takes the same route
+        // (halo_extension_host's _resolveFetchUri).
+        ham2kSsoFetchUri(Uri.parse(tokenEndpoint), onWeb: kIsWeb),
         headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
         body: {
           'grant_type': 'authorization_code',
@@ -3702,7 +3707,14 @@ class _AccountPaneState extends State<_AccountPane> {
       );
 
       if (tokenResponse.statusCode != 200) {
-        throw Exception('Failed to exchange code: ${tokenResponse.body}');
+        // The status leads, and the body is capped: on web this went through
+        // Ham2K's CORS proxy, so a failure body can be an HTML error page,
+        // and a status bar showing `<!DOCTYPE html>…` buries the one fact
+        // that identifies which hop refused.
+        final detail = tokenResponse.body.length > 200
+            ? '${tokenResponse.body.substring(0, 200)}…'
+            : tokenResponse.body;
+        throw Exception('Failed to exchange code (HTTP ${tokenResponse.statusCode}): $detail');
       }
 
       final tokens = jsonDecode(tokenResponse.body) as Map<String, dynamic>;

@@ -1451,9 +1451,9 @@ export interface AccountHook {
   /// control will be scoped.
   kvKey?: string
   fields?: Localizable<AccountField[]>
-  /// A plain config, or a function for a client that varies per build
-  /// edition (`ctx.edition`) — e.g. SOTA registers a separate Keycloak
-  /// client per edition. Called the same way any
+  /// A plain config, or a function for a config that varies per build
+  /// edition (`ctx.edition`) — e.g. SOTA registers one Keycloak client with a
+  /// separate redirect URL per edition. Called the same way any
   /// other hook method is (`fn(args, ctx)`, `args` always `{}`) — see
   /// docs/extensions/hooks.md's `account` section.
   oauth2?: OAuth2Config | ((args: Record<string, never>, ctx: HookContext) => OAuth2Config | Promise<OAuth2Config>)
