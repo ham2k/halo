@@ -156,25 +156,25 @@ void main() {
     });
   });
 
-  testWidgets('the switch is off by default and says the device is invisible', (tester) async {
+  testWidgets('the switch is off by default, and says what turning it on would do', (tester) async {
     await pump(tester);
     final toggle = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
     expect(toggle.value, isFalse);
-    expect(find.text(t.settings.peers.disabledDescription), findsOneWidget);
+    // One description in both states: it describes what the switch is FOR,
+    // so an operator deciding whether to turn it on reads the same promise
+    // the one who already did sees.
+    expect(find.text(t.settings.peers.enableDescription), findsOneWidget);
     await unmount(tester);
   });
 
-  testWidgets('turning the switch on persists it and changes what the row promises', (tester) async {
+  testWidgets('turning the switch on persists it', (tester) async {
     await pump(tester);
     await tester.tap(find.byType(SwitchListTile));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(settings.peerSyncEnabled, isTrue);
-    expect(find.text(t.settings.peers.enabledDescription), findsOneWidget);
-    // Nothing is being shared until an operation is open, and the panel has
-    // to say so — otherwise "on" looks broken when no peer ever appears.
-    expect(find.text(t.settings.peers.shareNothingOpen), findsOneWidget);
+    expect(find.text(t.settings.peers.enableDescription), findsOneWidget);
     await unmount(tester);
   });
 
@@ -184,14 +184,45 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('a paired device is listed by name, with its id shown to check against', (tester) async {
-    await PeerTrustStore(db).trust('device-b', name: 'Phone');
+  testWidgets('a linked device is listed by name, with a short id to check against', (tester) async {
+    // A real device id is a v4 UUID, and the row shows only its first group:
+    // an 8-character fixture would pass whether the shortening works, breaks,
+    // or is deleted.
+    const deviceId = '6f1c2a90-8f3e-4d21-9b77-2ce20b8dff84';
+    await PeerTrustStore(db).trust(deviceId, name: 'Phone');
     await pump(tester);
 
     expect(find.text('Phone'), findsOneWidget);
-    expect(find.text('device-b'), findsOneWidget);
+    expect(find.text('6f1c2a90'), findsOneWidget);
+    expect(find.text(deviceId), findsNothing,
+        reason: 'the full id belongs to no row — it is what the short form replaces');
     expect(find.text(t.settings.peers.noPairedDevices), findsNothing);
     await unmount(tester);
+  });
+
+  testWidgets('a Bluetooth failure is on screen — it is the only signal there is', (tester) async {
+    // The panel has no positive "Bluetooth is on" row any more, so this
+    // string is the ONLY thing that distinguishes a refused radio from an
+    // empty room. Deleting the row would otherwise break nothing visible.
+    await settings.setPeerSyncEnabled(true);
+    services.peerService.bleError = 'Bluetooth is turned off';
+    await pump(tester);
+
+    expect(find.text(t.settings.peers.bleProblem(error: 'Bluetooth is turned off')), findsOneWidget);
+    await unmount(tester);
+  });
+
+  group('the nearby group', () {
+    test('a linked device that is also beaconing is not listed a second time', () {
+      // It belongs to the linked group, which carries its live status.
+      // Listing it here too shows one box as two — what a Nearby section
+      // beside an Allowed Devices one did.
+      expect(unlinkedPeerDeviceIds({'mine'}, ['mine', 'stranger']), ['stranger']);
+    });
+
+    test('a device nobody has linked is listed', () {
+      expect(unlinkedPeerDeviceIds(const <String>{}, ['stranger']), ['stranger']);
+    });
   });
 
   testWidgets('forgetting a device asks first, and cancelling really does nothing', (tester) async {

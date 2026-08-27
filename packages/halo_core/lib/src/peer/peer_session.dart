@@ -239,6 +239,16 @@ class PeerSession {
     return Future.value();
   }
 
+  /// Whether THIS side has declared trust — the operator answered, or the
+  /// peer was already in the trust store.
+  ///
+  /// Not the same question as [state] leaving [PeerSessionState.needsPairing]:
+  /// that needs BOTH sides, so a session sits in `needsPairing` after this
+  /// operator has confirmed, while the far one has not. A caller asking
+  /// "should I prompt?" must read this, or it re-asks an operator who has
+  /// already answered, once per notification, until the far side confirms.
+  bool get localTrusts => _localTrusts;
+
   /// The operator confirmed the peer shown in [peer]. Records the trust so
   /// this never asks again, then lets the session proceed.
   Future<void> acceptPairing() async {

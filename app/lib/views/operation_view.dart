@@ -37,6 +37,7 @@ import 'operation/operation_import_panel.dart';
 import 'operation/spots_panel.dart';
 import '../tools/operation_operator.dart';
 import 'operation/positions_panel.dart';
+import 'peers_panel.dart';
 import '../tools/operation_title.dart';
 import '../services/extension_service.dart';
 import '../i18n/strings.g.dart';
@@ -2042,6 +2043,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 }));
               },
             ),
+            // Past the destructive row on purpose: it is a readout, not an
+            // action, so it must not sit between two things the operator
+            // taps.
+            //
+            // Both gate terms, not just the experiment: with peer sync off
+            // every row would read "Not connected", and unlike the Settings
+            // panel this dialog carries no switch to say that is the reason.
+            if (widget.services.settings.peerSyncEnabled &&
+                widget.services.settings
+                    .experimentEnabled('p2p') /* stored key, see experiments.yaml */) ...[
+              SectionHeader(dialogContext.t.settings.peers.pairedDevices),
+              LinkedDevicesList(services: widget.services),
+            ],
           ],
         ),
         // Every row here closes the menu itself, so this is a way out rather

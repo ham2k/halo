@@ -217,6 +217,27 @@ void main() {
       expect(sessionB.state, PeerSessionState.live);
     });
 
+    test('a side that has confirmed reports it, while the state waits for the other', () async {
+      final op = await deviceA.operations.create(stationCall: 'KI2D');
+      final links = _LinkPair();
+      final sessionA = deviceA.session(links.a, op.uuid);
+      final sessionB = deviceB.session(links.b, op.uuid);
+      await sessionA.start();
+      await sessionB.start();
+      await settle();
+
+      await sessionB.acceptPairing();
+      await settle();
+
+      // The trap: `needsPairing` means "not yet mutual", NOT "this operator
+      // has not answered". A caller that prompts on the state alone re-asks
+      // B's operator on every notification until A's operator confirms.
+      expect(sessionB.state, PeerSessionState.needsPairing,
+          reason: 'mutual trust still needs A, so the state cannot advance yet');
+      expect(sessionB.localTrusts, isTrue, reason: 'B answered — nothing may ask B again');
+      expect(sessionA.localTrusts, isFalse, reason: 'A has not been asked yet');
+    });
+
     test('accepting pairing records trust, so the next session never asks again', () async {
       final op = await deviceA.operations.create(stationCall: 'KI2D');
       deviceA.outbox.activeOperationUuid = op.uuid;

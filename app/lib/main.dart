@@ -75,6 +75,7 @@ import 'services/peer/peer_drafts.dart';
 import 'services/peer/peer_account_tag.dart';
 import 'services/peer/peer_screen_views.dart';
 import 'services/peer/peer_screens.dart';
+import 'services/peer/ble/peer_ble_transport.dart';
 import 'services/peer/peer_service.dart';
 import 'views/peer_pairing_dialog.dart';
 import 'services/inbound_qso_listener_service.dart';
@@ -451,7 +452,8 @@ void _listenForPeerPairingRequests(HaLoServices services) {
     final pending = services.peerService.pendingPairing;
     final peer = pending?.session?.peer;
     if (peer == null) return;
-    _openPeerPairingPrompt(services, peer.deviceId, peer.deviceName);
+    _openPeerPairingPrompt(services, peer.deviceId, peer.deviceName,
+        viaBluetooth: pending?.session?.link is PeerBleLink);
   });
 }
 
@@ -471,6 +473,7 @@ void _openPeerPairingPrompt(
   HaLoServices services,
   String deviceId,
   String deviceName, {
+  required bool viaBluetooth,
   int attemptsLeft = 20,
 }) {
   if (_peerPairingPromptOpen) return;
@@ -482,7 +485,8 @@ void _openPeerPairingPrompt(
       return;
     }
     Timer(const Duration(milliseconds: 250),
-        () => _openPeerPairingPrompt(services, deviceId, deviceName, attemptsLeft: attemptsLeft - 1));
+        () => _openPeerPairingPrompt(services, deviceId, deviceName,
+            viaBluetooth: viaBluetooth, attemptsLeft: attemptsLeft - 1));
     return;
   }
   _peerPairingPromptOpen = true;
@@ -490,7 +494,8 @@ void _openPeerPairingPrompt(
   // dialog is up completes this future with an ERROR, which `then`'s finally
   // does not run for — and a latched flag suppresses every future pairing
   // prompt for the rest of the process.
-  unawaited(showPeerPairingDialog(context, deviceName: deviceName, deviceId: deviceId)
+  unawaited(showPeerPairingDialog(context,
+          deviceName: deviceName, deviceId: deviceId, viaBluetooth: viaBluetooth)
       .catchError((Object e) {
     debugPrint('[peer] pairing prompt failed: $e');
     return null;

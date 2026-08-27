@@ -155,12 +155,6 @@ class PeerService extends ChangeNotifier {
   /// silently do nothing.
   bool get bleAvailable => bleGateway != null;
 
-  /// Whether the BLE transport is up. With [bleError] null this is the
-  /// panel's positive "the radio is on and looking" signal — without one,
-  /// a working radio and a switch that silently did nothing look
-  /// identical, and the operator has no way to tell which they have.
-  bool get bleRunning => _bleTransport != null;
-
   final Map<String, PeerRuntime> _peers = {};
 
   /// Sessions on inbound links whose peer has not identified itself yet.
@@ -279,12 +273,22 @@ class PeerService extends ChangeNotifier {
   /// the other way around.
   String? bleError;
 
-  /// Whichever peer is waiting on the operator, if any. The UI prompts for
+  /// Whichever peer is waiting on THIS operator, if any. The UI prompts for
   /// this one and re-reads after answering.
+  ///
+  /// `needsPairing` alone is not the question. A session stays in that state
+  /// until BOTH sides have declared trust, so the one this operator just
+  /// confirmed is still `needsPairing` while the far device waits for its
+  /// own operator — and [acceptPairing] notifies. Without the
+  /// [PeerSession.localTrusts] term the prompt reopens on that very
+  /// notification, and again on every beacon after it.
   PeerRuntime? get pendingPairing {
     for (final runtime in _peers.values) {
       final session = runtime.session;
-      if (session != null && session.state == PeerSessionState.needsPairing && !runtime.promptDismissed) {
+      if (session != null &&
+          session.state == PeerSessionState.needsPairing &&
+          !session.localTrusts &&
+          !runtime.promptDismissed) {
         return runtime;
       }
     }

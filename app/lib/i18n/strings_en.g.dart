@@ -2916,23 +2916,17 @@ class Translations$settings$peers$en {
 	/// en: 'Peer Devices'
 	String get title => 'Peer Devices';
 
-	/// en: 'Share with my other devices'
-	String get enable => 'Share with my other devices';
+	/// en: 'Connect to other devices'
+	String get enable => 'Connect to other devices';
 
-	/// en: 'Your paired devices on this network stay connected, the operation each of you has open syncs its contacts as you log — a new one crosses between devices on the same account — and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.'
-	String get enabledDescription => 'Your paired devices on this network stay connected, the operation each of you has open syncs its contacts as you log — a new one crosses between devices on the same account — and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.';
+	/// en: 'Allow sharing operations, logging, CAT and GPS with other devices over the local network'
+	String get enableDescription => 'Allow sharing operations, logging, CAT and GPS with other devices over the local network';
 
-	/// en: 'Off. This device is not visible to others on the network and shares nothing.'
-	String get disabledDescription => 'Off. This device is not visible to others on the network and shares nothing.';
+	/// en: 'Connect over Bluetooth'
+	String get bleEnable => 'Connect over Bluetooth';
 
-	/// en: 'Also connect over Bluetooth'
-	String get bleEnable => 'Also connect over Bluetooth';
-
-	/// en: 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.'
-	String get bleDescription => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.';
-
-	/// en: 'Bluetooth is on — announcing this device and looking for your paired devices.'
-	String get bleActive => 'Bluetooth is on — announcing this device and looking for your paired devices.';
+	/// en: 'Use Bluetooth LE to connect even if there is no local network'
+	String get bleDescription => 'Use Bluetooth LE to connect even if there is no local network';
 
 	/// en: 'This Device'
 	String get thisDevice => 'This Device';
@@ -2940,14 +2934,17 @@ class Translations$settings$peers$en {
 	/// en: 'Name'
 	String get deviceName => 'Name';
 
-	/// en: 'What your other devices call this one'
-	String get deviceNameHint => 'What your other devices call this one';
+	/// en: 'How this device is seen by other devices'
+	String get deviceNameHint => 'How this device is seen by other devices';
 
-	/// en: 'Allowed Devices'
-	String get pairedDevices => 'Allowed Devices';
+	/// en: 'Linked Devices'
+	String get pairedDevices => 'Linked Devices';
 
-	/// en: 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.'
-	String get noPairedDevices => 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.';
+	/// en: 'No devices linked yet. Turn this on, on another device on this network, to link them.'
+	String get noPairedDevices => 'No devices linked yet. Turn this on, on another device on this network, to link them.';
+
+	/// en: 'Can't read your linked devices: ${error}'
+	String deviceListProblem({required Object error}) => 'Can\'t read your linked devices: ${error}';
 
 	/// en: 'Nearby'
 	String get nearby => 'Nearby';
@@ -2957,9 +2954,6 @@ class Translations$settings$peers$en {
 
 	/// en: 'via Bluetooth'
 	String get viaBluetooth => 'via Bluetooth';
-
-	/// en: 'Connected — open the same operation to sync it'
-	String get connectedIdle => 'Connected — open the same operation to sync it';
 
 	/// en: 'Connecting…'
 	String get connecting => 'Connecting…';
@@ -2979,6 +2973,9 @@ class Translations$settings$peers$en {
 	/// en: 'Allow'
 	String get allow => 'Allow';
 
+	/// en: 'Link'
+	String get link => 'Link';
+
 	/// en: 'Reject'
 	String get reject => 'Reject';
 
@@ -2991,20 +2988,23 @@ class Translations$settings$peers$en {
 	/// en: 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.'
 	String get forgetBody => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.';
 
-	/// en: 'Allow ${name}?'
-	String pairTitle({required Object name}) => 'Allow ${name}?';
+	/// en: 'Link with ${name}'
+	String pairTitle({required Object name}) => 'Link with ${name}';
 
-	/// en: 'This device is on your network and wants to sync with this one. Whatever operation each of you has open syncs both ways, contacts and all; one this device has never seen crosses only from a device on the same account.'
-	String get pairBody => 'This device is on your network and wants to sync with this one. Whatever operation each of you has open syncs both ways, contacts and all; one this device has never seen crosses only from a device on the same account.';
+	/// en: 'This device is on your local network and wants to connect.'
+	String get pairBody => 'This device is on your local network and wants to connect.';
+
+	/// en: 'This device is nearby and wants to connect over Bluetooth LE.'
+	String get pairBodyBle => 'This device is nearby and wants to connect over Bluetooth LE.';
 
 	/// en: 'Device ID'
 	String get pairIdLabel => 'Device ID';
 
-	/// en: 'Only allow a device you recognise. Anything on this network can ask.'
-	String get pairWarning => 'Only allow a device you recognise. Anything on this network can ask.';
+	/// en: 'Only link with devices you recognise. Any device on this network can send a request.'
+	String get pairWarning => 'Only link with devices you recognise. Any device on this network can send a request.';
 
-	/// en: 'Open an operation to share it. Whatever your other devices have open still arrives here.'
-	String get shareNothingOpen => 'Open an operation to share it. Whatever your other devices have open still arrives here.';
+	/// en: 'Only link with devices you recognise. Any nearby device can send a request.'
+	String get pairWarningBle => 'Only link with devices you recognise. Any nearby device can send a request.';
 
 	/// en: 'Can't reach the local network: ${error}'
 	String problem({required Object error}) => 'Can\'t reach the local network: ${error}';
@@ -5954,36 +5954,36 @@ extension on Translations {
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.peers.title' => 'Peer Devices',
-			'settings.peers.enable' => 'Share with my other devices',
-			'settings.peers.enabledDescription' => 'Your paired devices on this network stay connected, the operation each of you has open syncs its contacts as you log — a new one crosses between devices on the same account — and your position is shared with them when they have no GPS of their own. Each device has to be allowed once.',
-			'settings.peers.disabledDescription' => 'Off. This device is not visible to others on the network and shares nothing.',
-			'settings.peers.bleEnable' => 'Also connect over Bluetooth',
-			'settings.peers.bleDescription' => 'Reaches your paired devices when there is no shared network, like at a park with no WiFi. Uses the Bluetooth radio while on.',
-			'settings.peers.bleActive' => 'Bluetooth is on — announcing this device and looking for your paired devices.',
+			'settings.peers.enable' => 'Connect to other devices',
+			'settings.peers.enableDescription' => 'Allow sharing operations, logging, CAT and GPS with other devices over the local network',
+			'settings.peers.bleEnable' => 'Connect over Bluetooth',
+			'settings.peers.bleDescription' => 'Use Bluetooth LE to connect even if there is no local network',
 			'settings.peers.thisDevice' => 'This Device',
 			'settings.peers.deviceName' => 'Name',
-			'settings.peers.deviceNameHint' => 'What your other devices call this one',
-			'settings.peers.pairedDevices' => 'Allowed Devices',
-			'settings.peers.noPairedDevices' => 'No devices allowed yet. Turn peer sync on, on another device on this network, to pair them.',
+			'settings.peers.deviceNameHint' => 'How this device is seen by other devices',
+			'settings.peers.pairedDevices' => 'Linked Devices',
+			'settings.peers.noPairedDevices' => 'No devices linked yet. Turn this on, on another device on this network, to link them.',
+			'settings.peers.deviceListProblem' => ({required Object error}) => 'Can\'t read your linked devices: ${error}',
 			'settings.peers.nearby' => 'Nearby',
 			'settings.peers.connected' => 'Connected',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
-			'settings.peers.connectedIdle' => 'Connected — open the same operation to sync it',
 			'settings.peers.connecting' => 'Connecting…',
 			'settings.peers.syncing' => 'Syncing…',
 			'settings.peers.waitingForThem' => 'Waiting for the other device',
 			'settings.peers.notConnected' => 'Not connected',
 			'settings.peers.wantsToPair' => 'wants to share this operation',
 			'settings.peers.allow' => 'Allow',
+			'settings.peers.link' => 'Link',
 			'settings.peers.reject' => 'Reject',
 			'settings.peers.forget' => 'Forget',
 			'settings.peers.forgetTitle' => ({required Object name}) => 'Forget ${name}?',
 			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
-			'settings.peers.pairTitle' => ({required Object name}) => 'Allow ${name}?',
-			'settings.peers.pairBody' => 'This device is on your network and wants to sync with this one. Whatever operation each of you has open syncs both ways, contacts and all; one this device has never seen crosses only from a device on the same account.',
+			'settings.peers.pairTitle' => ({required Object name}) => 'Link with ${name}',
+			'settings.peers.pairBody' => 'This device is on your local network and wants to connect.',
+			'settings.peers.pairBodyBle' => 'This device is nearby and wants to connect over Bluetooth LE.',
 			'settings.peers.pairIdLabel' => 'Device ID',
-			'settings.peers.pairWarning' => 'Only allow a device you recognise. Anything on this network can ask.',
-			'settings.peers.shareNothingOpen' => 'Open an operation to share it. Whatever your other devices have open still arrives here.',
+			'settings.peers.pairWarning' => 'Only link with devices you recognise. Any device on this network can send a request.',
+			'settings.peers.pairWarningBle' => 'Only link with devices you recognise. Any nearby device can send a request.',
 			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Connected to ${device}',

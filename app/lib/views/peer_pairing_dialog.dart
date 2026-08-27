@@ -15,12 +15,25 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 
+/// The first group of a v4 UUID — enough to tell two devices apart at a
+/// glance, and short enough to sit on a row beside a name. Every surface
+/// that shows an id shortens it the same way, or the operator would be
+/// comparing two different things across the two devices.
+String shortPeerDeviceId(String deviceId) =>
+    deviceId.length <= 8 ? deviceId : deviceId.substring(0, 8);
+
 /// Returns true when the operator allows the device, false when they decline,
 /// and null when they dismiss it — a dismissal is deliberately NOT an allow.
+///
+/// [viaBluetooth] only changes the words: which pipe carried the request is
+/// what tells the operator WHICH nearby device this might be — "on your local
+/// network" and "nearby, over Bluetooth" narrow it to different sets of boxes,
+/// and the warning has to name the same set it is warning about.
 Future<bool?> showPeerPairingDialog(
   BuildContext context, {
   required String deviceName,
   required String deviceId,
+  required bool viaBluetooth,
 }) {
   return showHaloDialog<bool>(
     context: context,
@@ -32,21 +45,22 @@ Future<bool?> showPeerPairingDialog(
       final t = dialogContext.t.settings.peers;
       final theme = Theme.of(dialogContext);
       return HaloDialog(
-        title: Text(t.pairTitle(name: deviceName.isEmpty ? deviceId : deviceName)),
+        title: Text(t.pairTitle(name: deviceName.isEmpty ? shortPeerDeviceId(deviceId) : deviceName)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(t.pairBody),
+            Text(viaBluetooth ? t.pairBodyBle : t.pairBody),
             const SizedBox(height: Space.xl),
             Text(t.pairIdLabel, style: theme.textTheme.labelMedium),
-            // Mono, like every other identifier the app shows: the operator
-            // is being asked to compare this against what the other device
-            // displays, character by character.
-            SelectableText(deviceId, style: haloMonoStyle(dialogContext, fontSize: 12)),
+            // Mono, like every other identifier the app shows. The first
+            // group of the id only — the same form the device lists use, so
+            // what the operator reads here matches what the other device
+            // shows for this one.
+            SelectableText(shortPeerDeviceId(deviceId), style: haloMonoStyle(dialogContext, fontSize: 12)),
             const SizedBox(height: Space.xl),
             Text(
-              t.pairWarning,
+              viaBluetooth ? t.pairWarningBle : t.pairWarning,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],

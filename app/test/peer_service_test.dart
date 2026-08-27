@@ -264,6 +264,24 @@ void main() {
         reason: 'the SAME session must carry it — reconnecting would defeat device-bound sessions');
   });
 
+  test('accepting stops asking, even while the other side has not answered', () async {
+    final op = await sharedOperation();
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('B to be asked', () => deviceB.service.pendingPairing != null);
+
+    // Only B's operator answers. A's has not reached their device yet, so
+    // the session stays at needsPairing — the state alone would keep B's
+    // prompt eligible, and acceptPairing notifies, so B's operator would be
+    // re-asked immediately and then on every beacon after it.
+    await deviceB.service.acceptPairing('device-a');
+
+    expect(deviceB.service.pendingPairing, isNull);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    expect(deviceB.service.pendingPairing, isNull,
+        reason: 'beacons keep arriving; an operator who has answered must not be asked again');
+  });
+
   test('declining leaves the peer un-trusted and stops asking', () async {
     final op = await sharedOperation();
     await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
