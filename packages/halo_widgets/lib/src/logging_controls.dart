@@ -3097,6 +3097,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   double? get _freq => parseFreq(_freqController.text);
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
+
+  /// Whether the band plan puts the frequency in the field outside the
+  /// operator's own allocation — scoped by their region/country, so it stays
+  /// false while we don't know where they are (see [isOutOfBandFrequency]).
+  /// Only a typed/tuned frequency can be out of band: a manually picked band
+  /// names no one point to check.
+  bool get _outOfBand {
+    final freq = _freq;
+    return freq != null &&
+        isOutOfBandFrequency(freq, ituRegion: widget.ourItuRegion, countryCode: widget.ourCountryCode);
+  }
+
   bool get _canLog {
     // Call stacking (issue #7): "//" takes priority over a comma-separated
     // list — "//"-separated calls/fragments aren't a single valid callsign,
@@ -4358,7 +4370,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final parts = <String>[
       _freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???'),
     ];
-    parts.add(_mode);
+    // Out of band takes the mode's place rather than sitting beside it: the
+    // pill is the whole warning on a collapsed row, and "not allowed to
+    // transmit here" outranks which mode the log will record. The mode
+    // itself is untouched — [outOfBandMode] is never a value `_mode` can
+    // take, so it can't reach the Mode dropdown or a logged QSO.
+    parts.add(_outOfBand ? outOfBandMode : _mode);
     return parts.join(' • ');
   }
 
@@ -4912,9 +4929,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         icon: _radioChipIcon,
         iconColor: _radioStatusColor(theme, selected: _selectedControlKey == 'radio'),
         // `_band` is null both when nothing is tuned at all and when the
-        // frequency in the field falls outside every ham band, which is the
-        // whole of what the alert is about — a mode is never missing here.
-        alert: _band == null,
+        // frequency in the field falls outside every ham band; `_outOfBand`
+        // catches the case a band name can't — a frequency inside a ham band
+        // that the operator's own region or country doesn't allocate to
+        // amateurs (e.g. 7250 kHz in ITU Region 1).
+        alert: _band == null || _outOfBand,
         summary: _radioSummary,
         expandedBuilder: (context) {
           // Resolved once for both dropdowns below. `dropdownTextScale` is the

@@ -5432,7 +5432,12 @@ void main() {
     // (7060-7300 kHz) that wins when the operator's country isn't known —
     // see the un-scoped assertion below, which pins that as the pre-existing
     // (if not quite right for a US station) default.
-    await tester.pumpWidget(host(ourCountryCode: 'us')); // tunedRadio seeds Mode as SSB
+    //
+    // Both halves of the operator's scope, never just the country: a lone
+    // country code is discarded (see radio.dart's `_bestSegmentFor`), and
+    // the panel is fed both from one DXCC entity anyway — operation_view's
+    // `ourGuess` sets `_ourItuRegion` and `_ourCountryCode` together.
+    await tester.pumpWidget(host(ourItuRegion: 2, ourCountryCode: 'us')); // tunedRadio seeds Mode as SSB
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
 
@@ -9078,6 +9083,67 @@ void main() {
         matching: find.byType(ChoiceChip),
       ));
       expect(chip.backgroundColor, theme.colorScheme.errorContainer);
+    });
+
+    testWidgets('a frequency the operator\'s own region does not allocate alerts and reads OOB', (tester) async {
+      // 7250 kHz IS a band ('40m'), which is the whole trap: a check that
+      // only asks "does this frequency name a band" waves through a Region
+      // 1 operator transmitting where they legally cannot.
+      expect(bandForFrequency(7250), '40m', reason: 'fixture assumes 7250 kHz names a band');
+      final theme = buildHaLoTheme(Brightness.light);
+      Widget panel(int ituRegion) => MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: LoggingControls(
+                radioService: _FakeVfoStore()..setVfo('vfoA', freq: 7250, mode: 'SSB'),
+                operation: operation,
+                qsosRepository: qsos,
+                ourItuRegion: ituRegion,
+              ),
+            ),
+          );
+      ChoiceChip radioChip() => tester.widget<ChoiceChip>(find.ancestor(
+            of: find.byIcon(MdiIcons.radio),
+            matching: find.byType(ChoiceChip),
+          ));
+
+      await tester.pumpWidget(panel(1));
+      expect(radioChip().backgroundColor, theme.colorScheme.errorContainer);
+      expect(find.text('${fmtFreq(7250)} • OOB'), findsOneWidget);
+
+      // The same frequency for a Region 2 operator is an ordinary phone
+      // QSO — the alert is about where the operator is, not the number.
+      await tester.pumpWidget(panel(2));
+      expect(radioChip().backgroundColor, HaLoColors.light.tertiaryLight);
+      expect(find.text('${fmtFreq(7250)} • SSB'), findsOneWidget);
+    });
+
+    testWidgets('out of band shows in the pill only — never as the mode', (tester) async {
+      // The pill's OOB is a warning, not a mode: it must not reach the Mode
+      // field (which is what gets logged) nor the Mode menu's options.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: _FakeVfoStore()..setVfo('vfoA', freq: 14074, mode: 'SSB'),
+            operation: operation,
+            qsosRepository: qsos,
+            ourItuRegion: 1,
+          ),
+        ),
+      ));
+      await openControl(tester, MdiIcons.radio);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7250');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB',
+          reason: 'the out-of-band marker is not a mode guess — the mode stays where it was');
+      expect(find.text('${fmtFreq(7250)} • OOB'), findsOneWidget,
+          reason: 'the warning lands on the keystroke — an out-of-band frequency guesses no mode, '
+              'so nothing about the mode changes to trigger the rebuild that paints it');
+
+      await tester.tap(find.widgetWithText(TextField, 'Mode'));
+      await tester.pumpAndSettle();
+      expect(find.text('OOB'), findsNothing, reason: 'the open Mode menu must not offer OOB as an option');
     });
   });
 

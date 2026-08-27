@@ -75,9 +75,51 @@ for (const [band, info] of Object.entries(bandPlans.bands)) {
           '_BandPlanSegment/modeForFrequency) to carry an `entities` list through before regenerating.',
       )
     }
-    const mode = typeof segment.mode === 'string' ? `'${segment.mode}'` : 'null'
+    // `mode: false` is the source's "amateurs are not allocated this here"
+    // marker, distinct from its `mode: null` ("no single mode conventionally
+    // used here") — folding the two together loses the whole out-of-band
+    // warning, so it carries through as radio.dart's `outOfBandMode`
+    // sentinel, spelled as a literal to keep this file import-free.
+    //
+    // A real mode named 'OOB' would be indistinguishable from that sentinel,
+    // and would turn a legal frequency into an illegality warning; anything
+    // outside the shapes below would collapse to `null`, silently dropping
+    // either a mode guess or an out-of-band warning. Neither is a thing to
+    // discover from a bug report.
+    if (segment.mode === 'OOB') {
+      throw new Error(
+        `${band} "${segment.name}": mode 'OOB' collides with radio.dart's outOfBandMode sentinel. ` +
+          'Rename the sentinel there (and here) before regenerating.',
+      )
+    }
+    if (!(typeof segment.mode === 'string' || segment.mode === null || segment.mode === undefined || segment.mode === false)) {
+      throw new Error(`${band} "${segment.name}": unhandled mode ${JSON.stringify(segment.mode)} — teach the generator what it means.`)
+    }
+    const mode = typeof segment.mode === 'string' ? `'${segment.mode}'` : segment.mode === false ? `'OOB'` : 'null'
     const priority = segment.priority ?? 0
+    // Validated the same way as `countries` below, and for the same reason —
+    // a nested `[[1], [2]]` here joins to `1, 2`, which is valid Dart that
+    // silently WIDENS the segment to two regions rather than matching
+    // nobody. Scope that reads as deliberate is the harder failure to spot.
+    if ((segment.regions ?? []).some((r) => typeof r !== 'number' || !Number.isFinite(r))) {
+      throw new Error(
+        `${band} "${segment.name}": regions is not a flat list of numbers (${JSON.stringify(segment.regions)}). ` +
+          'Fix the data upstream in @ham2k/lib-operation-data and reinstall before regenerating.',
+      )
+    }
     const regions = (segment.regions ?? []).join(', ')
+    if ((segment.countries ?? []).some((c) => typeof c !== 'string')) {
+      // Same class of failure as `entities` above, and refused the same
+      // way: `${['a','b']}` stringifies a nested list into ONE bogus
+      // comma-joined country code, which matches no operator — silently
+      // disabling the segment for everyone instead of applying it to the
+      // countries it names.
+      throw new Error(
+        `${band} "${segment.name}": countries is not a flat list of strings (${JSON.stringify(segment.countries)}). ` +
+          'Flattening or coercing it here would hand-correct the source; carrying it through would emit a country code no operator can match. ' +
+          'Fix the data upstream in @ham2k/lib-operation-data and reinstall before regenerating.',
+      )
+    }
     const countries = (segment.countries ?? []).map((c) => `'${c}'`).join(', ')
     lines.push(
       `  (loKHz: ${fmt(lo)}, hiKHz: ${fmt(hi)}, mode: ${mode}, priority: ${priority}, regions: [${regions}], countries: [${countries}]),`,
@@ -95,6 +137,9 @@ const out = `// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // the package's public API — parsed out of its bundle, see the generator).
 //
 // One entry per band-plan segment, read by modeForFrequency (radio.dart).
+// A \`mode\` of \`'OOB'\` is radio.dart's \`outOfBandMode\` sentinel, carrying
+// through the source's \`mode: false\` ("amateurs are not allocated this
+// here") apart from its \`mode: null\` ("no single mode used here").
 // \`regions\`/\`countries\` carry the source's own restriction lists through
 // as-is (HALO-52) — empty on both means the segment applies everywhere. The
 // source's \`entities\` restriction (DXCC-entity-code scoped, distinct from

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_core/src/ham/band_plan_segments.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -122,11 +123,15 @@ void main() {
       // segment and the US-scoped 7000-7125 CW segment it sits inside, so
       // it wins outright once both are still candidates (country match kept
       // in, Phone/SSB not excluded but out-ranked).
-      expect(modeForFrequency(7100, countryCode: 'us'), 'RTTY');
+      expect(modeForFrequency(7100, ituRegion: 2, countryCode: 'us'), 'RTTY');
       // Without knowing the operator's country, this same frequency still
       // guesses the (wrong, for a US station) unscoped Phone/SSB segment —
       // documenting the bug HALO-52 fixes, not a new assertion about it.
       expect(modeForFrequency(7100), 'SSB');
+      // The country code rides along with the region or not at all: on its
+      // own it is discarded, so this is the unknown-operator answer above,
+      // not the US one. A caller cannot half-place the operator.
+      expect(modeForFrequency(7100, countryCode: 'us'), 'SSB');
     });
 
     test('a country-scoped "no restriction" marker resolves to null once it actually matches, not SSB', () {
@@ -135,7 +140,38 @@ void main() {
       // segment can't be trusted to apply. For an actual Australian
       // operator it now wins outright (country match), correctly returning
       // null — the band plan doesn't dictate a mode there.
-      expect(modeForFrequency(1850, countryCode: 'au'), isNull);
+      expect(modeForFrequency(1850, ituRegion: 3, countryCode: 'au'), isNull);
+    });
+
+    test('the operator\'s own COUNTRY outranks a narrower segment scoped only to their region', () {
+      // 30m 10125 kHz for a Kenyan operator: the "Africa south of the
+      // Equator" marker (10100-10150, no single mode, country-scoped) sits
+      // inside the narrower Region 1 CW segment (10100-10130). Ranking by
+      // width alone hands back CW and the country-specific entry — the more
+      // specific rule, and the only one written for this operator — never
+      // applies at all.
+      expect(modeForFrequency(10125, ituRegion: 1, countryCode: 'ke'), isNull);
+      // The same frequency for a Region 1 operator the marker does not name
+      // still gets the region's CW segment.
+      expect(modeForFrequency(10125, ituRegion: 1, countryCode: 'gb'), 'CW');
+      // 80m 3600 kHz, same shape: Australia's whole-band marker (3500-3800)
+      // over the narrower Region 3 Phone segment (3535-3800).
+      expect(modeForFrequency(3600, ituRegion: 3, countryCode: 'au'), isNull);
+      expect(modeForFrequency(3600, ituRegion: 3, countryCode: 'nz'), 'SSB');
+    });
+
+    test('a lone country code places nobody: a region-scoped carve-out is not excluded on a dimension the caller never gave', () {
+      // 80m 3568-3571 kHz is the Region 3 FT8 window. Honouring a bare
+      // 'us' would exclude it — on the REGION, which the caller never
+      // supplied — and hand back the wider CW segment instead. The country
+      // and the region always travel together out of the DXCC table
+      // (`regionAndCountryForDxccCode`; no entity there has a country code
+      // without a region), so a lone country code is discarded rather than
+      // half-applied.
+      expect(modeForFrequency(3568, countryCode: 'us'), 'FT8');
+      expect(modeForFrequency(3568), 'FT8');
+      // Told the region as well, the window really is excluded.
+      expect(modeForFrequency(3568, ituRegion: 2, countryCode: 'us'), 'CW');
     });
 
     test('a scoped segment for a different country is still excluded even when the operator\'s region is known', () {
@@ -144,6 +180,92 @@ void main() {
       // countries-only scope), so the unscoped SSB segment wins, same as
       // the unknown-operator default.
       expect(modeForFrequency(1850, ituRegion: 3), 'SSB');
+    });
+  });
+
+  group('isOutOfBandFrequency', () {
+    test('flags a frequency the operator\'s own region does not allocate to amateurs', () {
+      // 40m 7200-7300 kHz is Region 1's "Out of band" segment: a Region 2
+      // operator transmits there legally every day, so the flag has to be
+      // scoped, not a property of the frequency.
+      expect(isOutOfBandFrequency(7250, ituRegion: 1), isTrue);
+      expect(isOutOfBandFrequency(7250, ituRegion: 2), isFalse);
+      // 2m above 146 MHz, same shape.
+      expect(isOutOfBandFrequency(146520, ituRegion: 1), isTrue);
+      expect(isOutOfBandFrequency(146520, ituRegion: 2), isFalse);
+    });
+
+    test('160m: only the sliver Region 1 really lacks, not the phone band above it', () {
+      // Region 1's out-of-band sliver is 1800-1810; everything above it on
+      // this band is licensed. A span reaching further up — the whole band
+      // with only 1810-1838 carved back out, say — fires on 160m phone, the
+      // busiest part of the band, and a warning that goes off during
+      // ordinary operating is worse than no warning at all: it teaches the
+      // operator to ignore the four spans where it is right.
+      expect(isOutOfBandFrequency(1805, ituRegion: 1), isTrue);
+      for (final khz in [1820.0, 1839.0, 1845.0, 1900.0, 1990.0]) {
+        expect(isOutOfBandFrequency(khz, ituRegion: 1), isFalse, reason: '$khz kHz is licensed in Region 1');
+      }
+      // Region 2 has the whole band and is never warned anywhere on it.
+      expect(isOutOfBandFrequency(1805, ituRegion: 2), isFalse);
+    });
+
+    test('an allocation\'s own edge frequency is not an accusation', () {
+      // An out-of-band span ABUTS an allocation rather than overlapping it,
+      // so the frequency they share is the first (or last) one the operator
+      // may legally use — and 1810.000 is an ordinary Region 1 CW frequency,
+      // not a corner case. Segment edges are inclusive for the mode guess,
+      // which is what makes the shared edge land inside the span.
+      expect(isOutOfBandFrequency(1810, ituRegion: 1), isFalse, reason: "Region 1's 160m opens here");
+      expect(isOutOfBandFrequency(7200, ituRegion: 1), isFalse, reason: "Region 1's 40m ends here");
+      expect(isOutOfBandFrequency(440000, ituRegion: 1), isFalse, reason: "Region 1's 70cm ends here");
+      // A hair inside is still out of band — the rule gives up the edge
+      // itself, not the span.
+      expect(isOutOfBandFrequency(1809.9, ituRegion: 1), isTrue);
+      expect(isOutOfBandFrequency(7200.1, ituRegion: 1), isTrue);
+    });
+
+    test('says nothing when the operator\'s region and country are both unknown', () {
+      // Every out-of-band segment in the band plan is region- or
+      // country-scoped, so an unscoped caller can never be told they are
+      // transmitting illegally — accusing an operator whose location we
+      // haven't resolved yet would be worse than staying quiet.
+      expect(isOutOfBandFrequency(7250), isFalse);
+      expect(isOutOfBandFrequency(146520), isFalse);
+    });
+
+    test('is false where the band plan simply has no opinion', () {
+      // Not the same answer as "no segment settles on a mode": both make
+      // modeForFrequency return null, and collapsing them is exactly the
+      // bug this flag exists to undo.
+      expect(modeForFrequency(5332), isNull);
+      expect(isOutOfBandFrequency(5332), isFalse);
+      expect(isOutOfBandFrequency(10160, ituRegion: 1), isFalse);
+    });
+
+    test('every out-of-band segment is scoped, which is what lets an unplaced operator be left alone', () {
+      // [isOutOfBandFrequency]'s whole safety argument — that an operator we
+      // cannot place is never told they are transmitting illegally — is a
+      // property of the DATA, not of the code: it holds only while every
+      // out-of-band segment carries a region or country restriction. An
+      // unscoped one arriving from upstream would start accusing every
+      // caller who passed no scope at all, and nothing else here would
+      // notice.
+      final unscoped = bandPlanModeSegments
+          .where((s) => s.mode == outOfBandMode && s.regions.isEmpty && s.countries.isEmpty);
+      expect(unscoped, isEmpty);
+    });
+
+    test('the sentinel never escapes as a mode', () {
+      // `outOfBandMode` is a display value, not something that can be
+      // logged or offered in the Mode dropdown — modeForFrequency folds it
+      // back to null for every caller guessing what to log.
+      expect(modeForFrequency(7250, ituRegion: 1), isNull);
+      expect(modeForFrequency(146520, ituRegion: 1), isNull);
+      expect(modes, isNot(contains(outOfBandMode)));
+      expect(mainModes, isNot(contains(outOfBandMode)));
+      expect(popularModes, isNot(contains(outOfBandMode)));
+      expect(adifModes, isNot(contains(outOfBandMode)));
     });
   });
 

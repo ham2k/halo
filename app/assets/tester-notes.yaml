@@ -11,6 +11,7 @@ upcoming:
     - "New Solar panel: flux, wind and Kp charts, band conditions, hover for values"
     - "With Developer Mode on, add a Fake Radio to try radio control with no rig"
     - "Settings › General › Number Formatting: period or comma decimals, or follow your device"
+    - Radio pill reads OOB, in red, on frequencies your ITU region does not allow
 
 "150":
   changes:

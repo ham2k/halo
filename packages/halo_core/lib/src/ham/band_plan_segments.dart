@@ -3,10 +3,13 @@
 //
 // GENERATED FILE — do not edit by hand.
 // Regenerate with: node packages/halo_core/tool/generate_band_plan_segments.mjs
-// Source: @ham2k/lib-operation-data 1.1.0 (bandPlans data, not part of
+// Source: @ham2k/lib-operation-data 1.1.3 (bandPlans data, not part of
 // the package's public API — parsed out of its bundle, see the generator).
 //
 // One entry per band-plan segment, read by modeForFrequency (radio.dart).
+// A `mode` of `'OOB'` is radio.dart's `outOfBandMode` sentinel, carrying
+// through the source's `mode: false` ("amateurs are not allocated this
+// here") apart from its `mode: null` ("no single mode used here").
 // `regions`/`countries` carry the source's own restriction lists through
 // as-is (HALO-52) — empty on both means the segment applies everywhere. The
 // source's `entities` restriction (DXCC-entity-code scoped, distinct from
@@ -22,7 +25,7 @@
 const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> regions, List<String> countries})>
     bandPlanModeSegments = [
   // 160m
-  (loKHz: 1800, hiKHz: 2000, mode: null, priority: 0, regions: [1], countries: []),
+  (loKHz: 1800, hiKHz: 1810, mode: 'OOB', priority: 0, regions: [1], countries: []),
   (loKHz: 1810, hiKHz: 1838, mode: 'CW', priority: 0, regions: [1], countries: []),
   (loKHz: 1800, hiKHz: 1810, mode: 'RTTY', priority: 0, regions: [], countries: []),
   (loKHz: 1800, hiKHz: 1843, mode: 'CW', priority: 0, regions: [], countries: []),
@@ -54,14 +57,15 @@ const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> r
   (loKHz: 7080, hiKHz: 7125, mode: 'RTTY', priority: 0, regions: [], countries: ['us']),
   (loKHz: 7125, hiKHz: 7300, mode: 'SSB', priority: 0, regions: [], countries: ['us']),
   (loKHz: 7000, hiKHz: 7300, mode: null, priority: 0, regions: [], countries: ['au']),
-  (loKHz: 7200, hiKHz: 7300, mode: null, priority: 0, regions: [1], countries: []),
+  (loKHz: 7200, hiKHz: 7300, mode: 'OOB', priority: 0, regions: [1], countries: []),
   // 30m
   (loKHz: 10100, hiKHz: 10150, mode: 'CW', priority: 0, regions: [], countries: []),
   (loKHz: 10100, hiKHz: 10130, mode: 'CW', priority: 0, regions: [1], countries: []),
   (loKHz: 10130, hiKHz: 10140, mode: 'RTTY', priority: 0, regions: [], countries: []),
   (loKHz: 10136, hiKHz: 10139, mode: 'FT8', priority: 100, regions: [], countries: []),
   (loKHz: 10140, hiKHz: 10143, mode: 'FT4', priority: 100, regions: [], countries: []),
-  (loKHz: 10100, hiKHz: 10150, mode: null, priority: 0, regions: [], countries: ['au', 'za']),
+  (loKHz: 10100, hiKHz: 10150, mode: null, priority: 0, regions: [], countries: ['au', 'nz']),
+  (loKHz: 10100, hiKHz: 10150, mode: null, priority: 0, regions: [], countries: ['ao', 'bi', 'bw', 'cd', 'cg', 'ga', 'ke', 'km', 'ls', 'mg', 'mu', 'mw', 'mz', 'na', 'rw', 'sc', 'so', 'st', 'sz', 'tz', 'ug', 'za', 'zm', 'zw']),
   // 20m
   (loKHz: 14000, hiKHz: 14150, mode: 'CW', priority: 0, regions: [], countries: []),
   (loKHz: 14000, hiKHz: 14070, mode: 'CW', priority: 0, regions: [1], countries: []),
@@ -155,20 +159,20 @@ const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> r
   (loKHz: 144500, hiKHz: 144794, mode: null, priority: 0, regions: [1], countries: []),
   (loKHz: 145194, hiKHz: 145206, mode: 'FM', priority: 0, regions: [1], countries: []),
   (loKHz: 145206, hiKHz: 145563, mode: 'FM', priority: 0, regions: [1], countries: []),
-  (loKHz: 146000, hiKHz: 148000, mode: null, priority: 0, regions: [1], countries: []),
+  (loKHz: 146000, hiKHz: 148000, mode: 'OOB', priority: 0, regions: [1], countries: []),
   // 1.25m
   (loKHz: 222000, hiKHz: 222070, mode: 'CW', priority: 0, regions: [], countries: []),
   (loKHz: 222070, hiKHz: 222150, mode: 'SSB', priority: 0, regions: [], countries: []),
   (loKHz: 222200, hiKHz: 225000, mode: 'FM', priority: 0, regions: [], countries: []),
   // 70cm
-  (loKHz: 420000, hiKHz: 430000, mode: null, priority: 0, regions: [1], countries: []),
+  (loKHz: 420000, hiKHz: 430000, mode: 'OOB', priority: 0, regions: [1], countries: []),
   (loKHz: 432000, hiKHz: 432100, mode: 'CW', priority: 0, regions: [], countries: []),
   (loKHz: 432100, hiKHz: 432300, mode: 'SSB', priority: 0, regions: [], countries: []),
   (loKHz: 432420, hiKHz: 433000, mode: 'SSB', priority: 0, regions: [], countries: []),
   (loKHz: 432100, hiKHz: 432400, mode: 'SSB', priority: 0, regions: [1], countries: []),
   (loKHz: 420000, hiKHz: 450000, mode: 'FM', priority: 0, regions: [], countries: []),
   (loKHz: 433400, hiKHz: 433575, mode: 'FM', priority: 0, regions: [1], countries: []),
-  (loKHz: 440000, hiKHz: 450000, mode: null, priority: 0, regions: [1], countries: []),
+  (loKHz: 440000, hiKHz: 450000, mode: 'OOB', priority: 0, regions: [1], countries: []),
   // 33cm
   (loKHz: 927000, hiKHz: 928000, mode: 'FM', priority: 0, regions: [], countries: []),
 ];

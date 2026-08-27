@@ -66,14 +66,18 @@ typedef _BandPlanSegment = ({
 /// the generous, worldwide segments (CW/Phone/Data sub-bands) where a
 /// specific mode is conventionally used, not a regulatory boundary (that's
 /// [bandForFrequency]'s job). Returns null where the band plan doesn't settle
-/// on one mode for [khz] (e.g. a repeater/beacon segment, or no segment
-/// covers it at all) — callers should fall back to the current/default mode.
+/// on one mode for [khz] (e.g. a repeater/beacon segment, no segment covers
+/// it at all, or the winning segment marks [khz] out of band — see
+/// [isOutOfBandFrequency]) — callers should fall back to the current/default
+/// mode.
 ///
 /// [ituRegion]/[countryCode] are the operator's own — from the
 /// callsign-annotation guess, e.g. `guess['ituRegion']`/`guess['countryCode']`
-/// — when the caller has them. Only [bandPlanModeSegments] entries scoped to
-/// a *different* region/country are affected: with both null (the default),
-/// scope can't be checked at all and every segment stays a candidate.
+/// — when the caller has them. [countryCode] is only honoured alongside an
+/// [ituRegion] (see [_bestSegmentFor]); on its own it is ignored. Only
+/// [bandPlanModeSegments] entries scoped to a *different* region/country are
+/// affected: with the region null (the default), scope can't be checked at
+/// all and every segment stays a candidate.
 ///
 /// Priority always wins first, matching the source library: a narrowband
 /// digital carve-out (FT8/FT4, priority 100) beats the wider CW/Phone/Data
@@ -82,19 +86,19 @@ typedef _BandPlanSegment = ({
 /// unscoped 3573-3576 kHz window, not the Region-3-only one at 3568-3571).
 /// Only among same-priority candidates does scope break the tie:
 ///
-///  - Operator region/country unknown: prefer an unscoped segment over a
+///  - Operator region unknown: prefer an unscoped segment over a
 ///    scoped one, since there's no way to tell whether a scoped one actually
 ///    applies — letting it win anyway risks e.g. a blanket "unrestricted"
 ///    marker scoped to one specific country winning a narrowest-segment
 ///    tie-break and returning a null guess for a frequency that's plainly
 ///    SSB everywhere else.
-///  - Operator region/country known: a segment scoped to somewhere else is
+///  - Operator region known: a segment scoped to somewhere else is
 ///    excluded outright, before priority is even compared — it plainly
-///    doesn't apply. Among what's left, a segment scoped to the operator's
-///    own region/country wins over a same-priority unscoped one (it's the
-///    more specific, actually-applicable rule) — the opposite preference
-///    from the unknown case above, now that "scoped" here only ever means
-///    "scoped to the operator".
+///    doesn't apply. Among what's left, the most specific rule that
+///    actually applies wins: a country match, then a region match, then an
+///    unscoped segment (see [_scopeRank]) — the opposite preference from
+///    the unknown case above, now that a restriction list here only ever
+///    means "restricted to the operator".
 ///
 /// A final tie among same-priority, same-scope-preference candidates goes to
 /// the narrowest segment, and then — deliberately, not by accident — to
@@ -104,16 +108,75 @@ typedef _BandPlanSegment = ({
 /// depending on `List.sort`'s documented-unstable ordering for equal
 /// elements.
 String? modeForFrequency(double khz, {int? ituRegion, String? countryCode}) {
-  final knowsOperatorScope = ituRegion != null || countryCode != null;
+  final mode = _bestSegmentFor(khz, ituRegion, countryCode)?.mode;
+  // Out of band is not a mode: callers guessing what to log get the same
+  // null they get for a segment with no single mode, so nothing can end up
+  // logged — or offered in the Mode dropdown — as [outOfBandMode]. Use
+  // [isOutOfBandFrequency] to ask the question this hides.
+  return mode == outOfBandMode ? null : mode;
+}
+
+/// The band plan's own marker for "amateurs are not allocated [khz] here"
+/// — the source data's `mode: false` segments (e.g. 40m's 7200-7300 in ITU
+/// Region 1), carried through the generated table as this sentinel to keep
+/// them apart from its `mode: null` ones ("no single mode conventionally
+/// used here"). Not a mode, and deliberately not a member of [modes] or any
+/// of the other vocabularies below: it is a display/alert value only.
+const String outOfBandMode = 'OOB';
+
+/// Whether the band plan says [khz] is outside the operator's own amateur
+/// allocation. Scoped exactly like [modeForFrequency], and answers false
+/// outright without an [ituRegion] ([countryCode] alone places nobody, see
+/// [_bestSegmentFor]): telling an operator whose location we don't know
+/// that they are transmitting illegally is worse than saying nothing.
+///
+/// That refusal is structural rather than a property of the data. Ranking
+/// alone would not deliver it: an unscoped segment merely OUTRANKS a scoped
+/// one when the operator can't be placed, so a scoped out-of-band segment
+/// still wins by default over no candidate at all. It only looks safe today
+/// because some unscoped segment happens to overlap all five out-of-band
+/// spans — nothing enforces that, and a `mode: false` arriving on 4m, which
+/// has no unscoped segment whatsoever, would start accusing every caller
+/// who passed no region.
+bool isOutOfBandFrequency(double khz, {int? ituRegion, String? countryCode}) {
+  if (ituRegion == null) return false;
+  final best = _bestSegmentFor(khz, ituRegion, countryCode);
+  if (best?.mode != outOfBandMode) return false;
+  // Strictly INSIDE the segment, where [modeForFrequency] treats both edges
+  // as covered. An out-of-band span abuts an allocation rather than
+  // overlapping it — 160m Region 1 runs 1800-1810 against a band that opens
+  // at 1810 — and a segment's edge frequency is therefore the first or last
+  // one the operator may legally use. A mode guess that lands on the wrong
+  // side of that shared edge costs a keystroke to correct; an accusation
+  // costs the operator's confidence in every other time this fires. The
+  // deliberate cost is the exact top edge of a span (7300.000 kHz for
+  // Region 1's 40m) going unwarned.
+  return best!.loKHz < khz && khz < best.hiKHz;
+}
+
+/// The single band-plan segment that wins for [khz] — see
+/// [modeForFrequency]'s doc comment for the whole tie-break order. Shared so
+/// that [isOutOfBandFrequency] answers about the very segment
+/// [modeForFrequency] read, rather than re-deriving the winner with a scan
+/// that could drift from it.
+_BandPlanSegment? _bestSegmentFor(double khz, int? ituRegion, String? countryCode) {
+  // A country code on its own is ignored: knowing the country says nothing
+  // checkable about a REGION-scoped segment, so honouring it would exclude
+  // every one of those on a dimension the caller never supplied — a US
+  // operator would lose the (globally unscoped-in-practice) Region 3 FT8
+  // window at 3568 kHz. The two always travel together in the app anyway:
+  // both come from one DXCC entity via `regionAndCountryForDxccCode`, and
+  // no entity in that table carries a country code without a region.
+  final country = ituRegion == null ? null : countryCode;
   _BandPlanSegment? best;
   for (final segment in bandPlanModeSegments) {
     if (segment.loKHz > khz || segment.hiKHz < khz) continue;
-    if (_isScopedElsewhere(segment, ituRegion, countryCode)) continue;
-    if (best == null || _isBetterModeMatch(segment, best, preferScopedOnTie: knowsOperatorScope)) {
+    if (_isScopedElsewhere(segment, ituRegion, country)) continue;
+    if (best == null || _isBetterModeMatch(segment, best, ituRegion: ituRegion, countryCode: country)) {
       best = segment;
     }
   }
-  return best?.mode;
+  return best;
 }
 
 /// Whether [segment] restricts to at least one region or country — the
@@ -139,22 +202,50 @@ bool _isScopedElsewhere(_BandPlanSegment segment, int? ituRegion, String? countr
   return true;
 }
 
+/// How specific [segment] is to the operator, for [_isBetterModeMatch]'s
+/// same-priority tie-break — higher wins.
+///
+/// With the operator's region known, the most specific rule that actually
+/// applies wins: a country match, then a region match, then an unscoped
+/// segment. Matching the source library, which breaks the same tie in the
+/// same order (entity, then country, then region) before it ever reaches
+/// width — without this a wide country-specific marker loses to a narrow
+/// region-scoped segment, and e.g. 30m's "Africa south of the Equator"
+/// entry never applies to the Kenyan operator it names.
+///
+/// Ranked on the list that MATCHED, not on which lists the segment carries.
+/// [_isScopedElsewhere] keeps a segment when EITHER list matches, so a
+/// segment restricted by region and country at once survives for an
+/// operator only its region matches — and scoring that as a country match
+/// would beat a segment genuinely scoped to where they are.
+///
+/// With the region unknown, no restriction list can be checked at all, so
+/// the ranking collapses to "prefer the unscoped one" — see
+/// [modeForFrequency]'s doc comment for why that direction is the safe one.
+int _scopeRank(_BandPlanSegment segment, {required int? ituRegion, required String? countryCode}) {
+  if (ituRegion == null) return _isScoped(segment) ? 0 : 1;
+  if (countryCode != null && segment.countries.contains(countryCode)) return 3;
+  if (segment.regions.contains(ituRegion)) return 2;
+  return 1;
+}
+
 /// Whether [candidate] should replace [current] as the best match in
 /// [modeForFrequency]'s scan — see that function's doc comment for the
-/// tie-break order. [preferScopedOnTie] flips which side of a same-priority
-/// scope tie wins: false (operator region/country unknown) prefers the
-/// unscoped side, true (known — [modeForFrequency] has already excluded any
-/// non-matching-scope candidate via [_isScopedElsewhere], so "scoped" here
-/// only ever means "scoped to the operator") prefers the scoped side. Strict
-/// comparisons throughout (`<`, not `<=`) so an exact tie leaves [current] in
-/// place, making the scan's result depend only on [bandPlanModeSegments]'
-/// fixed order, never on comparator left/right argument order the way a sort
-/// comparator would.
-bool _isBetterModeMatch(_BandPlanSegment candidate, _BandPlanSegment current, {required bool preferScopedOnTie}) {
+/// tie-break order, and [_scopeRank] for how a same-priority scope tie is
+/// settled. Strict comparisons throughout (`<`, not `<=`) so an exact tie
+/// leaves [current] in place, making the scan's result depend only on
+/// [bandPlanModeSegments]' fixed order, never on comparator left/right
+/// argument order the way a sort comparator would.
+bool _isBetterModeMatch(
+  _BandPlanSegment candidate,
+  _BandPlanSegment current, {
+  required int? ituRegion,
+  required String? countryCode,
+}) {
   if (candidate.priority != current.priority) return candidate.priority > current.priority;
-  final candidateScoped = _isScoped(candidate);
-  final currentScoped = _isScoped(current);
-  if (candidateScoped != currentScoped) return candidateScoped == preferScopedOnTie;
+  final candidateRank = _scopeRank(candidate, ituRegion: ituRegion, countryCode: countryCode);
+  final currentRank = _scopeRank(current, ituRegion: ituRegion, countryCode: countryCode);
+  if (candidateRank != currentRank) return candidateRank > currentRank;
   final candidateWidth = candidate.hiKHz - candidate.loKHz;
   final currentWidth = current.hiKHz - current.loKHz;
   return candidateWidth < currentWidth;
@@ -227,7 +318,7 @@ int hzDigitsNeeded(Iterable<double?> freqsInKHz) {
 const List<String> modes = ['SSB', 'CW', 'FT8', 'FT4', 'FM', 'AM', 'RTTY', 'DATA'];
 
 // The full band/mode vocabularies, snapshotted from
-// @ham2k/lib-operation-data v1.1.0 (EXTENDED_BANDS / POPULAR_BANDS /
+// @ham2k/lib-operation-data v1.1.3 (EXTENDED_BANDS / POPULAR_BANDS /
 // MAIN_MODES / ADIF_MODES_AND_SUBMODES) — regenerate from the lib when it
 // changes. Band names must agree with [bands] above for the frequencies
 // that table covers (the '2190m' note), and with the extension runtime,
