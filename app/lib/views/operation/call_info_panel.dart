@@ -30,6 +30,25 @@ const _otherOpsToShow = 3;
 const _thumbnailMaxWidth = 200.0;
 const _thumbnailMaxHeight = 160.0;
 
+/// The operation a [CallInfoPanel] outside the Operation view measures
+/// against: whichever operation is open behind the surface, or an empty one
+/// when none is.
+///
+/// An empty operation is a real answer, not a placeholder — the panel reads it
+/// for a location to measure a distance from and a uuid to split the QSO
+/// history by, and with neither it simply shows no distance and no "this
+/// operation" section. Shared by the ⌘K dialog and Home's Quick Lookup so the
+/// two cannot answer the question differently.
+Operation operationForCallInfo(HaLoServices services) {
+  final context = services.currentOperationContext;
+  if (context == null) return const Operation(uuid: '', data: {});
+  final uuid = context['uuid'];
+  // Read, not cast: a wrong-typed value in the operation context would throw
+  // from inside a build, and an unsplit QSO history is a far better answer
+  // than a crashed panel.
+  return Operation(uuid: uuid is String ? uuid : '', data: context);
+}
+
 class CallInfoPanel extends StatefulWidget {
   final Operation operation;
   final HaLoServices services;

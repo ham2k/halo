@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - FlexRadio equipment now picks which slice to follow, and shows what each one is doing
+    - Home's quick lookup now shows full call info; press Enter for the whole panel
 
 "153":
   changes:

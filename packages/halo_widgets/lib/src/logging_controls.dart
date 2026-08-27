@@ -39,8 +39,8 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'call_info_summary.dart';
 import 'density.dart';
-import 'flags.dart';
 import 'form_renderer.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
@@ -159,32 +159,6 @@ typedef ScoreQso = Future<Map<String, dynamic>?> Function({
   List<Map<String, dynamic>>? segments,
 });
 
-/// A snapshot of the current call-info for the detail panel (the Info tab on
-/// wide layouts, a modal on narrow) — the same data the compact call-info line
-/// renders, handed up so a richer view can present it. Immutable value.
-class CallInfoData {
-  final String call;
-  final Map<String, dynamic>? guess;
-  final List<Map<String, dynamic>> lookups;
-  final List<String> alertKeys;
-  final List<String> noticeKeys;
-
-  /// Whether this call-info is for an existing QSO being edited (vs a new one
-  /// being composed) — the map uses it to pick the highlight colour (blue
-  /// editing, orange composing), the same new-vs-editing accent the logging
-  /// panel itself uses.
-  final bool isEditing;
-
-  const CallInfoData({
-    required this.call,
-    this.guess,
-    this.lookups = const [],
-    this.alertKeys = const [],
-    this.noticeKeys = const [],
-    this.isEditing = false,
-  });
-}
-
 /// Fires when the current call-info changes (call/lookup/score), or null when
 /// the call-info panel isn't showing. Deduped by the widget.
 typedef CallInfoChanged = void Function(CallInfoData? info);
@@ -249,13 +223,6 @@ const _exchangeFieldMinWidth = 76.0;
 const _mainFieldGap = 8.0;
 const _mainFieldGroupGap = 10.0;
 const _logButtonGap = 12.0;
-
-/// The app's positive green — matching app-polo's red/green pill
-/// convention, [_noticePill] pairs this with `theme.colorScheme.error` for
-/// alert/notice, and the Radio control's status color pairs it the same way
-/// for connected/configured-but-disconnected. One constant so the two
-/// "things are good" indicators can't drift apart.
-const _positiveGreen = Color(0xFF2E7D32);
 
 /// The Radio control's Station Configuration icon — plain [Icon], not
 /// [IconButton], so this is its actual glyph size rather than a tap target.
@@ -5267,7 +5234,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   IconData get _radioChipIcon => widget.hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
 
   /// Red (configured but not connected) or green (connected) — the same
-  /// red/green convention [_noticePill] uses. Null when there's no radio to
+  /// red/green convention [CallInfoSummary]'s notice pills use. Null when there's no radio to
   /// report on, so a caller can fall back to the theme default.
   ///
   /// [selected] is the pill's own — the SAME `iconColor` renders on two
@@ -5291,7 +5258,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (dark) {
       // dark+selected: colorScheme.tertiary there is only moderately
       // light — the scheme's own error and a mid green already read fine.
-      return connected ? _positiveGreen : theme.colorScheme.error;
+      return connected ? positiveGreen : theme.colorScheme.error;
     }
     // light+unselected: tertiaryLight is a fairly bright tan — needs a
     // properly dark pair to clear 3:1.
@@ -5487,7 +5454,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         false => theme.colorScheme.error,
                         null => theme.colorScheme.onTertiaryContainer,
                       },
-                      shadows: _glyphGlow(theme),
+                      shadows: glyphGlow(theme),
                     ),
                   ),
               ],
@@ -8477,18 +8444,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return liveGuess ?? savedGuess;
   }
 
-  /// The call-info panel's line 2: a callsign note (issue #17), which takes the
-  /// slot outright and renders as markdown, else the plain name. Null when the
-  /// guess has neither.
-  ({String text, bool isNote})? _stationNameOrNote(Map<String, dynamic>? guess) {
-    if (guess == null) return null;
-    final note = asQsonString(guess['note']);
-    if (note != null && note.isNotEmpty) return (text: note, isNote: true);
-    final name = asQsonString(guess['name']);
-    if (name != null && name.isNotEmpty) return (text: name, isNote: false);
-    return null;
-  }
-
   /// The info area has three states (issue #40): a command message (markdown)
   /// takes priority; otherwise, once a callsign of ≥3 letters/digits is in the
   /// field, the call-info panel; otherwise the operation-statistics default.
@@ -8728,7 +8683,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Widget _buildOperationStats(ThemeData theme) => OncePerSecond(builder: (context, _) {
     final lines = widget.operationStatsLines?.call(widget.qsos) ?? const <String>[];
     if (lines.isEmpty) return const SizedBox.shrink();
-    return _iconRows(
+    return infoIconRows(
       theme,
       // Filled icon in the same accent as the main buttons (tertiary, or
       // secondary while editing — see `accentTheme`).
@@ -8746,8 +8701,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   });
 
-  /// Call-info state: line 1 flag + location, line 2 note/name, line 3 scoring
-  /// notices — all in a column aligned past the leading person icon.
+  /// Call-info state — rendered by the shared [CallInfoSummary], the same
+  /// widget Home's Quick Lookup bar uses, so a change to either lands on both.
+  /// The distance line and the notice labels stay here: only the app layer
+  /// knows the operation's own location and the current locale, and this panel
+  /// is where they arrive.
   Widget _buildCallInfo(ThemeData theme) {
     // When editing an existing QSO, hold the panel's data until scoring has run
     // (`_scoreFor == _callAtCursor`), so the saved lookup and the pills appear
@@ -8755,76 +8713,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // pills pop in a moment later. Composing streams in as the user types.
     final ready = widget.editingQso == null || widget.scoreQso == null || _scoreFor == _callAtCursor;
     final guess = ready ? _currentGuess : null;
-    final flag = guess?['flag'] as String?;
-    final location = guess == null ? null : widget.callLocationLine?.call(guess);
-    final nameInfo = _stationNameOrNote(guess);
-    final notices = ready ? _scoringNotices() : const <({String label, bool alert})>[];
+    // Scoring keys only once they belong to the call in the field: stale keys
+    // would paint the previous callsign's DUPE against this one.
+    final scored = ready && _scoreFor == _callAtCursor;
 
-    // Line 1: optional flag, then the location slot — which is always present
-    // (a blank space when there's no location) so the line keeps a consistent
-    // height whether or not a location resolved.
-    final firstLine = <Widget>[
-      if (flag != null && flag.isNotEmpty) ...[
-        flagGlyph(flag, fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14, shadows: _glyphGlow(theme)),
-        const SizedBox(width: Space.sm),
-      ],
-      Expanded(
-        child: Text(
-          (location != null && location.isNotEmpty) ? location : ' ',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
-        ),
+    return CallInfoSummary(
+      data: CallInfoData(
+        call: _callAtCursor,
+        guess: guess,
+        lookups: _currentLookups,
+        alertKeys: scored ? _scoreAlertKeys : const [],
+        noticeKeys: scored ? _scoreNoticeKeys : const [],
+        isEditing: widget.editingQso != null,
       ),
-    ];
-
-    // Always render the panel (at least the person icon + the reserved first
-    // line) once a call is active, so the lookup and score data fill it in
-    // place rather than the panel flashing between empty and full — the switcher
-    // keys only on the call, so this whole subtree updates without a re-fade.
-    return _iconRows(
-      theme,
-      // Filled icon in the same accent as the main buttons (tertiary, or
-      // secondary while editing — see `accentTheme`).
-      icon: MdiIcons.account,
+      locationLine: guess == null ? null : widget.callLocationLine?.call(guess),
+      noticeLabel: widget.scoreNoticeLabel,
+      // The panel's own tertiaryContainer fill, and the accent the main
+      // buttons use (tertiary, or secondary while editing — see `accentTheme`).
+      foregroundColor: theme.colorScheme.onTertiaryContainer,
       iconColor: theme.colorScheme.tertiary,
-      children: [
-        // Line 1 — flag + distance/location (blank until the lookup resolves),
-        // keeping the pills and note on the second line even before it appears.
-        Row(children: firstLine),
-        // Line 2 (+ 3 when they don't fit): scoring pills and the note/name.
-        if (nameInfo != null || notices.isNotEmpty) _buildNoticesAndNote(theme, notices, nameInfo),
-      ],
-    );
-  }
-
-  /// Shared layout for the stats and call-info states: a top-aligned leading
-  /// icon with a column of lines to its right (which naturally indents lines 2+
-  /// past the icon, per issue #40's "align past the icon" requirement).
-  Widget _iconRows(
-    ThemeData theme, {
-    required IconData icon,
-    required Color iconColor,
-    required List<Widget> children,
-  }) {
-    // No Align: the info-area container top-left-aligns and animates this
-    // (see the AnimatedSize/AnimatedSwitcher in build).
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: Space.xxs),
-          child: Icon(icon, size: 16, color: iconColor),
-        ),
-        const SizedBox(width: Space.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          ),
-        ),
-      ],
+      onOpenLink: widget.onOpenLink,
     );
   }
 
@@ -8934,208 +8842,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ),
       ];
 
-  /// The scoring notices for the call-info line — from the scoring hook only
-  /// (dupe included: whether a QSO is a dupe depends on the operation's
-  /// activities, which the hook knows and a client-side check can't). Alerts
-  /// (red) first, then notices (green); each carries its localized label.
-  List<({String label, bool alert})> _scoringNotices() {
-    if (_scoreFor != _callAtCursor) return const [];
-    final labelOf = widget.scoreNoticeLabel ?? (key) => key;
-    return [
-      for (final key in _scoreAlertKeys) (label: labelOf(key), alert: true),
-      for (final key in _scoreNoticeKeys) (label: labelOf(key), alert: false),
-    ];
-  }
-
-  /// Line 2 (and, when it doesn't fit, line 3): the scoring pills and the
-  /// note/name. When pills + note fit the available width, the pills lead and
-  /// the note trails on one line; otherwise the note takes line 2 and the pills
-  /// stack below on line 3 (measured with a TextPainter — the app scales at the
-  /// root, so logical-pixel measurements match what's painted).
-  Widget _buildNoticesAndNote(
-    ThemeData theme,
-    List<({String label, bool alert})> notices,
-    ({String text, bool isNote})? nameInfo,
-  ) {
-    final pillsRow = <Widget>[
-      for (var i = 0; i < notices.length; i++) ...[
-        if (i > 0) const SizedBox(width: Space.xs),
-        _noticePill(theme, notices[i].label, alert: notices[i].alert),
-      ],
-    ];
-    final note = nameInfo == null ? null : _buildNoteOrName(theme, nameInfo);
-
-    if (notices.isEmpty) return note ?? const SizedBox.shrink();
-    if (note == null) return Row(children: pillsRow);
-
-    // Measured outside the LayoutBuilder: none of it reads `constraints`, and
-    // leaving it inside re-parsed the note's markdown on every frame of a
-    // window resize or pane-divider drag.
-    final pillStyle = theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600);
-    final noteStyle = _noteTextStyle(theme);
-    var pillsWidth = 0.0;
-    for (var i = 0; i < notices.length; i++) {
-      // Both halves of each pair must name the same constant the widget does:
-      // a hand-copied number here measures a pill that is no longer that wide
-      // the moment the spacing rung moves, and the row silently mis-wraps.
-      pillsWidth += _measureTextWidth(notices[i].label, pillStyle) + Space.sm * 2; // _noticePill's padding
-      if (i > 0) pillsWidth += Space.xs; // the inter-pill SizedBox in pillsRow
-    }
-    final noteWidth = nameInfo!.isNote
-        ? _measureNoteWidth(theme, nameInfo.text, noteStyle)
-        : _measureTextWidth(nameInfo.text, noteStyle);
-    const gap = 8.0;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (pillsWidth + gap + noteWidth <= constraints.maxWidth) {
-          // Fits: pills lead, note trails.
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [...pillsRow, const SizedBox(width: gap), Flexible(child: note)],
-          );
-        }
-        // Doesn't fit: note on its own line, pills stacked below.
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [note, const SizedBox(height: Space.xxs), Row(children: pillsRow)],
-        );
-      },
-    );
-  }
-
-  double _measureTextWidth(String text, TextStyle? style) =>
-      spansWidth(context, [TextSpan(text: text)], style);
-
-  /// The note's width, built from exactly what [_buildNoteOrName] paints: the
-  /// same [_noteParts] split and the same styles.
-  ///
-  /// The leading glyph is an approximation: it paints as an emoji-font glyph
-  /// and is measured here as text at the same size.
-  double _measureNoteWidth(ThemeData theme, String text, TextStyle? noteStyle) {
-    final parts = _noteParts(text);
-    final fontSize = noteStyle?.fontSize ?? flagGlyphDefaultFontSize;
-    final spans = inlineMarkdownSpans(
-      parts.markdown,
-      baseFontSize: fontSize,
-      linkStyle: _noteLinkStyle(theme),
-      codeStyle: _noteCodeStyle(fontSize),
-    );
-    var width = spansWidth(context, spans, noteStyle);
-    // Names the same rung the rendered gap does — see the pill measurement above.
-    if (parts.lead != null) width += _measureTextWidth(parts.lead!, noteStyle) + Space.xs; // the SizedBox beside the glyph
-    return width;
-  }
-
-  /// The style line 2 paints its note in, and the one [_measureNoteWidth] is
-  /// handed. ONE definition, because the two must not diverge: a measurement
-  /// style without [emojiFontFamily] resolves an emoji to no glyph at all and
-  /// under-measures the note by a glyph per flag, and the row then picks the
-  /// wrong wrap branch — while looking correct in every note that has none.
-  TextStyle? _noteTextStyle(ThemeData theme) => theme.textTheme.bodyMedium?.copyWith(
-        color: theme.colorScheme.onTertiaryContainer,
-        fontWeight: FontWeight.w600,
-        // A note carries emoji past its leading cluster — a flag naming a
-        // country mid-sentence. Roboto resolves none of them on web
-        // (theme.dart's emojiFontFamily).
-        fontFamilyFallback: const [emojiFontFamily],
-      );
-
-  /// The note split the way it paints: the leading emoji cluster, which gets its
-  /// own glowed glyph, and the markdown for everything after it.
-  ({String? lead, String markdown}) _noteParts(String text) {
-    final leadMatch = _leadingEmoji.firstMatch(text);
-    final rest = leadMatch == null ? text : text.substring(leadMatch.end).trimLeft();
-    return (lead: leadMatch?.group(0), markdown: rest);
-  }
-
-  /// `code` in a note, matching MarkdownStyleSheet.fromTheme's own code style
-  /// — without this, backticks vanish and the run reads as ordinary prose.
-  TextStyle _noteCodeStyle(double fontSize) => haloMonoStyle(context, fontSize: fontSize * 0.85);
-
-  /// A link blue tuned per theme so the note's socials/URLs read clearly on the
-  /// panel's fill — darker on light, lighter on dark. Shared with
-  /// [_measureNoteWidth], so the measurement styles links the way they paint.
-  TextStyle _noteLinkStyle(ThemeData theme) => TextStyle(
-        color: theme.brightness == Brightness.dark ? Colors.blue.shade200 : Colors.blue.shade800,
-        fontWeight: FontWeight.w600,
-      );
-
-  /// A soft halo behind small glyphs (the call-info flag/note emoji, the
-  /// spotting control's source-status icons) so they stay legible against a
-  /// tinted fill — white on light themes, dark on dark themes.
-  List<Shadow> _glyphGlow(ThemeData theme) {
-    final color = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
-    return [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 6)];
-  }
-
-  /// The leading emoji cluster of a call note — call notes always prefix their
-  /// emoji (see the call-notes extension's `combineNotes`), so isolating this
-  /// run lets the glow ride only the emoji, not the note's prose. Covers the
-  /// common pictographic ranges plus ZWJ / variation-selector / keycap /
-  /// regional-indicator (flag) code points; deliberately not exhaustive.
-  static final _leadingEmoji = RegExp(
-    r'^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{200D}\u{FE0F}\u{20E3}]+',
-    unicode: true,
-  );
-
-  /// Line 2 of the call-info panel: the plain name, or the note rendered as
-  /// markdown with its leading emoji cluster glowed (emoji only, not the prose).
-  Widget _buildNoteOrName(ThemeData theme, ({String text, bool isNote}) info) {
-    final textStyle = _noteTextStyle(theme);
-    if (!info.isNote) {
-      return Text(info.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle);
-    }
-
-    final parts = _noteParts(info.text);
-    final markdown = parts.markdown.isEmpty
-        ? null
-        : InlineMarkdownText(
-            parts.markdown,
-            style: textStyle,
-            linkStyle: _noteLinkStyle(theme),
-            codeStyle: _noteCodeStyle(textStyle?.fontSize ?? flagGlyphDefaultFontSize),
-            onOpenLink: widget.onOpenLink,
-            // Deliberately no maxLines: a long note still wraps onto a third
-            // panel line, which this area has always allowed. Spans buy the
-            // note tappable links, not an ellipsis.
-            overflow: TextOverflow.clip,
-          );
-
-    if (parts.lead == null) return markdown ?? const SizedBox.shrink();
-
-    // Leading emoji (glowed) + the rest of the note (markdown, no glow).
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Any pictographic emoji, flag or not, needs emojiFontFamily rather
-        // than textStyle's Roboto, or it renders as nothing at all — same as
-        // call_info_panel.dart's flag Text.
-        flagGlyph(parts.lead!, fontSize: textStyle?.fontSize ?? 14, shadows: _glyphGlow(theme)),
-        if (markdown != null) ...[
-          const SizedBox(width: Space.xs),
-          Flexible(child: markdown),
-        ],
-      ],
-    );
-  }
-
-  Widget _noticePill(ThemeData theme, String label, {required bool alert}) {
-    // Alerts are the error color; notices a positive green (matching app-polo's
-    // red/green pill convention) — the panel's own tertiaryContainer fill rules
-    // out relying on the neutral scheme containers for contrast.
-    final background = alert ? theme.colorScheme.error : _positiveGreen;
-    final foreground = alert ? theme.colorScheme.onError : Colors.white;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
 }
 
 /// On mobile, "." often gets typed where "/" was meant — portable/mobile

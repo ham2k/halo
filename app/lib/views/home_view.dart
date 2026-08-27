@@ -3,6 +3,7 @@ import 'dart:io' as io;
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -13,6 +14,7 @@ import '../config/release_notes.dart';
 import '../config/dev_flags.dart';
 import '../config/web_preview_label.dart';
 import '../main.dart';
+import '../services/link_opener.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../tools/operation_title.dart';
@@ -21,6 +23,7 @@ import 'dock_host.dart';
 import 'header_profile_label.dart';
 import 'home_navigation_rail.dart';
 import 'logs_view.dart';
+import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
@@ -1315,6 +1318,9 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
   /// between the two. This widget only renders it.
   late final CommandEngine _engine;
 
+  /// Whether an Enter is still being resolved — see [_submit].
+  bool _submitting = false;
+
   @override
   void initState() {
     super.initState();
@@ -1438,13 +1444,77 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
     );
   }
 
+  /// Enter: run whatever is typed, and — only when nothing ran and the engine
+  /// had nothing to say about why — open the full Call Info for the callsign
+  /// that was looked up.
+  ///
+  /// The command wins outright. A callsign that is also a command word must
+  /// keep running as a command, and a command that refused (an error on the
+  /// message line) has already answered the Enter; opening a panel over either
+  /// would bury the answer.
+  Future<void> _submit() async {
+    // A second Enter while the first is still in `interpretCommand` gets
+    // `false` back from the engine's own re-entrancy guard, which is not
+    // "nothing ran" — without this, key auto-repeat stacks a Call Info modal
+    // on top of another one, and the operator dismisses the same panel twice.
+    if (_submitting) return;
+    _submitting = true;
+    try {
+      // Read BEFORE submitting. Enter on this bar clears the field, which
+      // resets the lookup state on the way through `_onTextChanged` — so by
+      // the time the panel is opened there is nothing left to open it with.
+      final info = _engine.callInfo;
+      final executed = await _engine.submit();
+      // `isError`, not `message != null`: the message line also carries a
+      // previous command's confirmation, which `_onTextChanged` deliberately
+      // holds until this keystroke's interpretation answers. Reading that as
+      // "already answered" would eat an Enter typed inside the window.
+      if (!mounted || executed || _engine.isError) return;
+      if (info != null) await _openCallInfo(info);
+    } finally {
+      _submitting = false;
+    }
+  }
+
+  /// Escape empties the bar, wherever the operator got to — a half-typed
+  /// callsign, a command mid-parameter, or an answer still on the line.
+  /// Clearing the controller runs the engine's own text handler, so the lookup
+  /// state and the message go with it.
+  void _clearField() {
+    if (_controller.text.isEmpty) return;
+    _controller.clear();
+  }
+
+  /// The full Call Info panel — the same one the Call Info pane and the ⌘K
+  /// dialog render, so what Enter opens here is not a second, thinner view of
+  /// the same callsign.
+  Future<void> _openCallInfo(CallInfoData info) => showModalPane<void>(
+        context,
+        title: info.call,
+        closeLabel: context.t.common.close,
+        // The panel is a ListView and scrolls itself; wrapped in the pane's own
+        // scroll view it would sit in unbounded height and lay out blank.
+        scrollable: false,
+        builder: (context) => CallInfoPanel(
+          operation: operationForCallInfo(widget.services),
+          services: widget.services,
+          call: info.call,
+          guess: info.guess,
+          lookups: info.lookups,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lookupLine = _engine.lookupLine;
+    final callInfo = _engine.callInfo;
 
     final commandMessage = _engine.message;
-    final hasContent = commandMessage != null || lookupLine != null;
+    // A guess is what the summary draws from; without one there is nothing to
+    // paint but the icon and a blank line. Enter still opens the panel, which
+    // has the QSO history to show even when no callbook answered.
+    final hasSummary = callInfo?.guess != null;
+    final hasContent = commandMessage != null || hasSummary;
 
     // The Home Scaffold doesn't resize for the keyboard, so this bar
     // reserves the bottom safe area itself below the field (and the numbers
@@ -1466,7 +1536,11 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
     final bottomReserve = keyboardUp ? 0.0 : mq.viewPadding.bottom;
     _syncNumbersRow(context, theme);
 
-    return Material(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): _clearField,
+      },
+      child: Material(
       elevation: 8,
       color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
       child: Column(
@@ -1501,21 +1575,22 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                         ),
                       ],
                     ),
-                  if (commandMessage == null && lookupLine != null)
-                    Row(
-                      children: [
-                        Icon(MdiIcons.accountSearch, size: 16, color: theme.colorScheme.onPrimary),
-                        const SizedBox(width: Space.md),
-                        Expanded(
-                          child: Text(
-                            lookupLine,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
+                  // The very widget the logging panel's info area is, so a
+                  // callsign reads the same in both places. No distance line:
+                  // Home has no operation, so there is no location to measure
+                  // from, and no scoring keys for the same reason — see
+                  // `CommandEngine.lookupLocationLine`.
+                  if (commandMessage == null && hasSummary)
+                    InkWell(
+                      onTap: () => _openCallInfo(callInfo),
+                      child: CallInfoSummary(
+                        data: callInfo!,
+                        locationLine: _engine.lookupLocationLine,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        iconColor: theme.colorScheme.onPrimary,
+                        linkColor: theme.colorScheme.onPrimary,
+                        onOpenLink: openExternalUrl,
+                      ),
                     ),
                 ],
               ),
@@ -1561,7 +1636,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
               // unfocuses (closing the keyboard) before onSubmitted even
               // runs. onEditingComplete replaces that default entirely, so
               // the field keeps focus for the next command.
-              onEditingComplete: () => _engine.submit(),
+              onEditingComplete: _submit,
               ),
             ),
           ),
@@ -1572,6 +1647,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
           // itself under it.
           if (bottomReserve > 0) SizedBox(width: double.infinity, height: bottomReserve),
         ],
+      ),
       ),
     );
   }

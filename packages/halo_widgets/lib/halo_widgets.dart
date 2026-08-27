@@ -4,6 +4,7 @@
 library;
 
 export 'src/activity_controls.dart';
+export 'src/call_info_summary.dart';
 export 'src/chrome_edge.dart';
 export 'src/density.dart';
 export 'src/dock_layout.dart';

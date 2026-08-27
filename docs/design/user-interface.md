@@ -108,7 +108,22 @@ on mobile, plus a button that opens the Settings View.
 
 At the bottom, a "Quick Lookup Panel" has a field where the user can enter a
 callsign to see information about it, or enter commands. Results appear just
-above the field.
+above the field: a command's answer, or — for a callsign — the same compact
+call-info area the logging controls show, rendered by the same
+`CallInfoSummary` widget so the two cannot drift. It carries no distance and
+no scoring pills here, deliberately: both are an operation's measurements and
+the home screen has no open operation.
+
+Enter belongs to a command whenever the text is one, including a command that
+answered with an error — that answer is what the operator asked for and
+nothing may cover it. Only when nothing ran does Enter open the full
+`CallInfoPanel` for the callsign, the same panel the Call Info pane and the
+⌘K dialog render.
+
+Enter empties the field either way, as it always has, and **Escape** empties it
+too. That ordering is a constraint, not a detail: clearing the field resets the
+lookup on its way through the engine's text handler, so the call-info the panel
+is built from has to be read *before* the submit that clears it.
 
 ### Operation View
 
@@ -190,7 +205,7 @@ Three rules that are not obvious:
 - **A measurement that mirrors a gap must name the same rung, never repeat
   its value.** `TextPainter` width math that hand-copies a widget's padding
   measures the wrong widget the moment the rung moves, and the layout still
-  builds — it just reserves the wrong width and mis-wraps. `logging_controls
+  builds — it just reserves the wrong width and mis-wraps. `call_info_summary
   .dart`'s notice-pill and call-note measurements are the worked examples.
 - **`Space` is not [`ShirtSize`](layouts.md).** They share the t-shirt idiom
   and nothing else: `ShirtSize` classifies a *window* to choose a pane

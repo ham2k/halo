@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -24,6 +25,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 
 /// Canned command interpretations — the real runtime's contract, without
 /// booting a JS engine inside a fake-async widget test.
@@ -35,6 +37,11 @@ class _CannedCommandExtensions extends ExtensionService {
   Future<void> start() async {}
 
   int interpretCalls = 0;
+
+  /// Held open by a test that needs to press Enter again while the FIRST
+  /// Enter's interpret is still in flight — `executeGate` only covers the
+  /// execute pass, and a plain callsign never reaches one.
+  Completer<void>? interpretGate;
 
   /// Execute-time calls only — what a non-idempotent command actually runs.
   int executeCalls = 0;
@@ -50,6 +57,7 @@ class _CannedCommandExtensions extends ExtensionService {
     bool execute = false,
   ]) async {
     interpretCalls++;
+    if (interpretGate != null) await interpretGate!.future;
     if (execute) {
       executeCalls++;
       if (executeGate != null) await executeGate!.future;
@@ -88,6 +96,22 @@ class _CannedCommandExtensions extends ExtensionService {
     if (trimmed.startsWith('NOTE')) return {'describe': 'add a note', 'mixedCase': true};
     return null;
   }
+
+  /// What `lookupCall` answers with, for the tests that need a resolved
+  /// callsign. Both passes return it, so the offline pass alone is enough to
+  /// paint the bar — which is what a test can reach without waiting on a
+  /// second round trip it would have to fake anyway.
+  Map<String, dynamic>? cannedLookup;
+
+  @override
+  Future<Map<String, dynamic>?> lookupCall(
+    String call, {
+    required Map<String, dynamic> qso,
+    required Map<String, dynamic> operation,
+    bool online = true,
+    bool recentContext = false,
+  }) async =>
+      cannedLookup;
 
   /// Stands in for the extension runtime's `host.updateInterpretation`
   /// channel, which the real service feeds from the host.
@@ -675,6 +699,237 @@ void main() {
       expect(extensions.executeCalls, 1); // ...and the command still ran exactly once
     });
 
+  });
+
+  group('the call-info the bar shows (HALO-408)', () {
+    /// A guess with everything the compact area draws from, INCLUDING a
+    /// coordinate: the no-distance rule below has to be tested against a
+    /// lookup that could have been measured, or it passes for the wrong
+    /// reason.
+    const guess = <String, dynamic>{
+      'name': 'Hiram Percy Maxim',
+      'location': 'Newington, CT',
+      'country': 'United States',
+      'entityName': 'United States',
+      'flag': '🇺🇸',
+      'grid': 'FN31pr',
+      'lat': 41.714,
+      'lon': -72.727,
+    };
+
+    Future<(HaLoServices, _CannedCommandExtensions)> makeServices() async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final extensions = _CannedCommandExtensions();
+      return (HaLoServices(db, settings, extensions: extensions), extensions);
+    }
+
+    /// Types a callsign and lets the 300ms lookup debounce fire.
+    Future<void> lookUp(WidgetTester tester, String call) async {
+      await tester.enterText(find.byType(TextField), call);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+    }
+
+    Future<void> pumpBar(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(home: Scaffold(body: HomeQuickLookup(services: services))),
+          ),
+        );
+
+    testWidgets('a resolved callsign renders the shared summary, not a line of its own', (tester) async {
+      // The point of the card: the bar and the logging panel's info area are
+      // ONE widget. Asserting on CallInfoSummary — rather than on the text it
+      // happens to contain — is what fails if the bar goes back to formatting
+      // its own joined string, which would read the same to a text finder
+      // while drifting from the logging panel again.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+
+      expect(find.byType(CallInfoSummary), findsOneWidget);
+      // The name gets its own line, as it does in the logging panel — it is
+      // not folded into the location line.
+      expect(find.text('Hiram Percy Maxim'), findsOneWidget);
+      expect(find.textContaining('Newington, CT'), findsOneWidget);
+    });
+
+    testWidgets('no distance or bearing, because Home has no operation to measure from', (tester) async {
+      // A settled decision, not an oversight (HALO-408): the logging panel
+      // measures from the open operation's location, and Home has none. The
+      // guess above carries a lat/lon precisely so that a future change which
+      // starts measuring from some other reference — the operator's saved
+      // station location, say — fails here and gets discussed rather than
+      // shipping a distance from a point the operator never chose.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+
+      final summary = tester.widget<CallInfoSummary>(find.byType(CallInfoSummary));
+      expect(summary.locationLine, 'Newington, CT • United States • FN31pr21');
+      // Nothing to label a distance with, so no scoring either: pills are the
+      // operation's verdict on a QSO, and there is no operation.
+      expect(summary.data.alertKeys, isEmpty);
+      expect(summary.data.noticeKeys, isEmpty);
+    });
+
+    testWidgets('Enter on a plain callsign opens the full Call Info panel', (tester) async {
+      // The gap HALO-56 reports: the joined line never carried the QSO
+      // history, and the full panel does. The assertion is on CallInfoPanel —
+      // the same widget the Call Info pane and the ⌘K dialog render — so a
+      // modal built out of some thinner Home-only view would not satisfy it.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+      expect(find.byType(CallInfoPanel), findsNothing);
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CallInfoPanel), findsOneWidget);
+      // Enter clears the bar as it always has — and the panel still opened,
+      // which only works because the call-info is read before the submit that
+      // clears it. Read it after and the clear has already reset the lookup,
+      // leaving nothing to open.
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    });
+
+    testWidgets('Escape empties the bar', (tester) async {
+      // Esc means "forget it" everywhere else in the app (the logging panel
+      // wipes the entry, the ⌘K dialog closes), and this bar had no answer for
+      // it at all — a half-typed callsign could only be removed a character at
+      // a time.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+      expect(find.byType(CallInfoSummary), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+      // The lookup goes with the text, rather than leaving the info area
+      // showing a callsign that is no longer in the field.
+      expect(find.byType(CallInfoSummary), findsNothing);
+    });
+
+    testWidgets('a second callsign typed over a resolved one opens nothing until it answers', (tester) async {
+      // The trap: the engine clears the guess when a new lookup starts but
+      // keeps the call, so anything gating on "is there a lookup" rather than
+      // "has one answered" is non-null here with nothing in it — and Enter
+      // then opens a Call Info panel holding the callsign and no data, over
+      // the previous call's residue.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+      expect(find.byType(CallInfoSummary), findsOneWidget);
+
+      // Typed, not awaited: the second lookup's debounce is still running.
+      await tester.enterText(find.byType(TextField), 'K2PTC');
+      await tester.pump();
+
+      expect(find.byType(CallInfoSummary), findsNothing);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.byType(CallInfoPanel), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+    });
+
+    testWidgets('a callsign nothing could look up still opens its panel, for the QSO history', (tester) async {
+      // HALO-56's reporter had no QRZ subscription. A lookup that answers with
+      // nothing is still an answer about a known callsign, and the history the
+      // panel loads is precisely what they were missing — so this must not be
+      // folded in with "no match" and have its Enter clear the field.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = null;
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+      // Nothing to summarise, so the bar paints no info area rather than an
+      // icon over a blank line.
+      expect(find.byType(CallInfoSummary), findsNothing);
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.byType(CallInfoPanel), findsOneWidget);
+    });
+
+    testWidgets('a second Enter during the first does not stack a second panel', (tester) async {
+      // `CommandEngine.submit()` answers a re-entrant call with the same
+      // `false` it uses for "nothing ran", so without a guard of its own this
+      // path reads a rejected submit as an invitation to open a panel. Key
+      // auto-repeat reaches it on any desktop keyboard, and the operator then
+      // dismisses the same panel twice.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await lookUp(tester, 'W1AW');
+
+      // The first Enter parks inside interpretCommand; the second arrives
+      // while it is still there.
+      extensions.interpretGate = Completer<void>();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      extensions.interpretGate!.complete();
+      extensions.interpretGate = null;
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CallInfoPanel), findsOneWidget);
+    });
+
+    testWidgets('a command still wins Enter, and opens no panel', (tester) async {
+      // The precedence rule. DEVMODE is not a callsign, so nothing looked it
+      // up — but a callsign-shaped command word would take this same path,
+      // and the operator who typed a command must get the command.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await tester.enterText(find.byType(TextField), 'DEVMODE');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CallInfoPanel), findsNothing);
+      expect(find.text('Developer mode activated'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5)); // the confirm's auto-clear
+    });
+
+    testWidgets("a command's error keeps the Enter, so the panel does not bury it", (tester) async {
+      // SEED can't run here and says so. Opening a modal over that answer
+      // would hide the only explanation the operator gets — and the text is
+      // still sitting in the field for them to fix.
+      final (services, extensions) = await makeServices();
+      extensions.cannedLookup = {'guess': guess, 'lookups': const []};
+      await pumpBar(tester, services);
+
+      await tester.enterText(find.byType(TextField), 'SEED');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CallInfoPanel), findsNothing);
+      expect(find.text('SEED needs an open operation'), findsOneWidget);
+    });
   });
 
   group('mobile numbers row on the quick lookup (issue #27)', () {

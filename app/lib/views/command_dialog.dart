@@ -993,12 +993,8 @@ class _CommandDialogState extends State<CommandDialog> {
   /// no `grid` to measure a distance from, and the history is empty — the
   /// panel handles both.
   Widget _callInfo(ThemeData theme) {
-    final context = widget.services.currentOperationContext;
-    final operation = context == null
-        ? const Operation(uuid: '', data: {})
-        : Operation(uuid: (context['uuid'] as String?) ?? '', data: context);
     return CallInfoPanel(
-      operation: operation,
+      operation: operationForCallInfo(widget.services),
       services: widget.services,
       call: _engine.lookupCall ?? '',
       guess: _engine.lookupGuess,

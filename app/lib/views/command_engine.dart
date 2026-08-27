@@ -276,7 +276,6 @@ class CommandEngine extends ChangeNotifier {
   Timer? _lookupDebounce;
 
   String? _lookupFor;
-  Map<String, dynamic>? _lookupResult;
   CallLookupStage _lookupStage = CallLookupStage.none;
   Map<String, dynamic>? _lookupGuess;
   List<Map<String, dynamic>> _lookupRecords = const [];
@@ -443,7 +442,6 @@ class CommandEngine extends ChangeNotifier {
   /// stale-text guard and never replaces it.
   void _resetLookup() {
     _lookupFor = null;
-    _lookupResult = null;
     _lookupGuess = null;
     _lookupRecords = const [];
     _lookupStage = CallLookupStage.none;
@@ -557,7 +555,6 @@ class CommandEngine extends ChangeNotifier {
   /// offline) must not wipe out what the offline pass already found.
   void _applyLookup(String call, Map<String, dynamic>? result, CallLookupStage stage) {
     if (result != null) {
-      _lookupResult = result;
       _lookupGuess = (result['guess'] as Map?)?.cast<String, dynamic>();
       final records = result['lookups'];
       _lookupRecords = records is List
@@ -568,18 +565,38 @@ class CommandEngine extends ChangeNotifier {
     _lookupStage = stage;
   }
 
-  /// The one-line summary of the current callsign lookup, or null when there
-  /// isn't one for the text as it stands.
-  String? get lookupLine {
-    final result = _lookupResult;
-    if (result == null || _lookupFor != trimmedText) return null;
-    final guess = result['guess'] as Map<String, dynamic>? ?? const {};
-    // A callsign note takes the name's slot outright rather
-    // than joining it — same rule as the logging panel's _lookupLine
-    // (packages/halo_widgets/lib/src/logging_controls.dart).
-    final note = asQsonString(guess['note']);
+  /// The current callsign lookup as the shared [CallInfoSummary] and
+  /// [CallInfoPanel] both take it, or null when there isn't one for the text
+  /// as it stands.
+  ///
+  /// No scoring keys: scoring is an operation's verdict on a QSO, and a
+  /// surface running this engine may have neither.
+  CallInfoData? get callInfo {
+    final call = lookupCall;
+    if (call == null || _lookupFor != trimmedText) return null;
+    // Only once a pass has actually ANSWERED. `searching` clears the guess but
+    // keeps the call, so a second callsign typed over a resolved one sits here
+    // with nothing in it — and a surface that took that for an answer would
+    // paint an empty info area and open an empty panel over the previous
+    // call's residue.
+    //
+    // A pass that answered with no guess still counts: the callsign is known,
+    // and the QSO history the detail panel loads for it is exactly what an
+    // operator with no callbook subscription is asking for.
+    if (_lookupStage == CallLookupStage.searching) return null;
+    return CallInfoData(call: call, guess: _lookupGuess, lookups: _lookupRecords);
+  }
+
+  /// Line 1 of the compact call-info, where no operation supplies a reference
+  /// point to measure a distance from: where the station is, and nothing more.
+  ///
+  /// The name and any callsign note are deliberately absent — the summary
+  /// widget gives those their own line, and repeating them here would show
+  /// each twice.
+  String? get lookupLocationLine {
+    final guess = _lookupGuess;
+    if (guess == null || _lookupFor != trimmedText) return null;
     final parts = [
-      (note != null && note.isNotEmpty) ? note : guess['name'],
       guess['location'],
       guess['country'],
       // The locator the lookup's own coordinate justifies, where it reported

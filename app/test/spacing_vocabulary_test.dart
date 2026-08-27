@@ -216,7 +216,9 @@ void main() {
   // enforce that automatically, so it is stated in spacing.dart's doc and
   // pinned here by the one case that already went wrong.
   test('a measurement that mirrors a gap names the rung, not the number', () {
-    final source = File('../packages/halo_widgets/lib/src/logging_controls.dart').readAsStringSync();
+    // The compact call-info area — shared by the logging panel and Home's
+    // Quick Lookup, which is why both measurements live in one file.
+    final source = File('../packages/halo_widgets/lib/src/call_info_summary.dart').readAsStringSync();
     expect(
       source,
       contains('+ Space.sm * 2; // _noticePill\'s padding'),
