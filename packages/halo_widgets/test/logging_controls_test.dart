@@ -940,47 +940,59 @@ void main() {
     expect(logged, isEmpty);
   });
 
-  testWidgets('call stacking: a field STARTING with "//" is never a stack, even when the rest is a valid callsign',
-      (tester) async {
-    // A note-notes expansion key is usually itself a valid callsign (e.g.
-    // "//W1AW"), which would otherwise let _pickStackedCall treat W1AW as a
-    // real candidate and log it on Enter — racing the note-expansion command
-    // with a stray logged QSO. No interpretCommand wired here, so there's
-    // nothing to shadow this: only the stacking guard itself can stop it.
+  testWidgets('call stacking: a leading "//" is a stack whose first segment is empty', (tester) async {
+    // Nothing here carves a leading "//" out of stacking — what keeps a note
+    // key from logging is _log running command interpretation FIRST, and no
+    // interpretCommand is wired in this host. So the key falls through and
+    // logs as the callsign it looks like, rather than the field being
+    // neither syntax and doing nothing.
     await tester.pumpWidget(host());
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//W1AW');
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
     final logged = await waitForQsos(tester, 1);
-    expect(logged, isEmpty);
+    expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, '');
   });
 
-  testWidgets('call stacking: a leading space before "//" still reads as note-expansion syntax, not a stack',
-      (tester) async {
-    // The field's own inputFormatters block a literal leading space from
-    // ordinary typing (see _fieldAcceptsSpaces), so this reaches the
-    // controller the way setCallField does — a direct .value assignment,
-    // which bypasses those formatters same as it bypasses onChanged. Command
-    // interpretation evaluates the TRIMMED text (_commandInput), so
-    // _isCallStackField's own check has to trim too, or the two would
-    // disagree about whether " //W1AW" is a stack.
+  testWidgets('call stacking: a key leading a stack picks the cursor segment, not the key', (tester) async {
+    // The trap: exclude a leading "//" from stacking and "//KEY//CALL" is
+    // neither syntax — not a stack, and not a whole-field command either,
+    // since the key then reads as "KEY//CALL" and matches nothing. Enter
+    // does nothing at all, and no assertion about a logged QSO catches it.
     await tester.pumpWidget(host());
 
-    // Focuses the field the way ordinary typing would — a direct .value
-    // assignment alone leaves focus untouched, and Enter with no focused
-    // field wouldn't reach _log() at all, proving nothing about the guard.
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-    callField.controller!.value = const TextEditingValue(
-      text: ' //W1AW',
-      selection: TextSelection.collapsed(offset: 7),
-    );
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN//W1AW');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
     final logged = await waitForQsos(tester, 1);
-    expect(logged, isEmpty);
+    expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+    // The key is left intact, still leading, ready for the next Enter to
+    // expand it.
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, '//DAN');
+  });
+
+  testWidgets('call stacking: a cursor at the very start is not a dead spot', (tester) async {
+    // The empty first segment is where offset 0 lands, and it has nothing to
+    // expand and nothing to log — so without treating the leading "//" as a
+    // separator rather than a segment, Enter does nothing here while the same
+    // Enter one character to the right works. An invisible cursor position
+    // selecting between two outcomes is the worst shape this can take.
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//W1AW//QQQ');
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    callField.controller!.selection = const TextSelection.collapsed(offset: 0);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.map((q) => q.theirCall).toList(), ['W1AW']);
+    expect(callField.controller!.text, '//QQQ');
   });
 
   testWidgets('call stacking: a stacked segment that is a comma list logs every call in it', (tester) async {
@@ -6362,9 +6374,9 @@ void main() {
     await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
-    // Leading "//" must reach command interpretation, not be mistaken for
-    // call stacking (a stack's first segment would be empty, so Enter would
-    // otherwise do nothing).
+    // A leading "//" IS a stack (first segment empty), so the only thing
+    // keeping this from logging DAN as a callsign is _log reaching command
+    // interpretation first.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -6428,6 +6440,89 @@ void main() {
       final logged = await waitForQsos(tester, 2);
       expect(logged.map((q) => q.theirCall).toList(), ['WD4DAN', 'WD4JMM']);
       expect(callField(tester).controller!.text, 'KI2D');
+    });
+
+    testWidgets('a key LEADING the stack expands too, then the rest logs', (tester) async {
+      // A leading key is a stack whose first segment is empty, so it takes
+      // the same mid-stack path as any other. Disqualify a leading "//" from
+      // stacking and this field is neither syntax — the whole-field key reads
+      // as "DAN//W1AW" and matches nothing — so Enter does nothing at all.
+      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN//W1AW');
+      // Cursor on the key, at the end of "//DAN".
+      callField(tester).controller!.selection = const TextSelection.collapsed(offset: 5);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // The empty first segment survives the splice, so the call stacked
+      // behind the key is untouched and the key's own "//" is still there.
+      expect(callField(tester).controller!.text, '//WD4DAN,WD4JMM//W1AW');
+      expect(await waitForQsos(tester, 1), isEmpty);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      expect((await waitForQsos(tester, 2)).map((q) => q.theirCall).toList(), ['WD4DAN', 'WD4JMM']);
+      expect(callField(tester).controller!.text, '//W1AW');
+
+      // And what is left is a bare "//W1AW" the hook declines — so it logs
+      // as the callsign it looks like rather than stranding the operator.
+      // Compared as a set: the comma list's own +5s stagger puts W1AW
+      // between its two entries by start time, which says nothing here.
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      expect((await waitForQsos(tester, 3)).map((q) => q.theirCall).toSet(), {'WD4DAN', 'WD4JMM', 'W1AW'});
+      expect(callField(tester).controller!.text, '');
+    });
+
+    testWidgets('a whole-field key that is itself a valid callsign expands, and logs nothing', (tester) async {
+      // What stops "//W1AW" being logged as the callsign it looks like is
+      // ORDER — _log interprets the whole field before stacking ever runs.
+      // Nothing else guards it, so move the stacking path above the command
+      // path and this logs a stray QSO for a station never worked. "//DAN"
+      // cannot catch that: DAN has no digit, so looksLikeCallsign rejects it
+      // and stacking would decline the segment anyway.
+      Future<Map<String, dynamic>?> expandsW1AW(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
+        if (input.trim().toUpperCase() != '//W1AW') return null;
+        return {
+          'commands': [
+            {
+              'setCallField': {'text': 'W1AW,W1AX'},
+            },
+          ],
+        };
+      }
+
+      await tester.pumpWidget(host(interpretCommand: expandsW1AW));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(callField(tester).controller!.text, 'W1AW,W1AX');
+      expect(await waitForQsos(tester, 1), isEmpty);
+    });
+
+    testWidgets('a cursor at the very start still expands the key it precedes', (tester) async {
+      // Offset 0 lands on the stack's empty first segment, which has nothing
+      // to expand — so unless the leading "//" is treated as a separator
+      // rather than a segment, Enter here does nothing while the same Enter
+      // one character right expands normally.
+      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN//W1AW');
+      callField(tester).controller!.selection = const TextSelection.collapsed(offset: 0);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(callField(tester).controller!.text, '//WD4DAN,WD4JMM//W1AW');
+      expect(await waitForQsos(tester, 1), isEmpty);
     });
 
     testWidgets('a stacked segment with no note of its own logs the ordinary way', (tester) async {

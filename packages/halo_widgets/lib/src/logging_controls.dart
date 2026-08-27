@@ -2971,21 +2971,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// list, so this also covers the common case.
   List<String> get _callList => _call.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
 
-  /// Whether the call field is using "//" stack syntax (issue #7) — as
-  /// opposed to note-expansion syntax (issue #17), which STARTS with "//"
-  /// and is never a stack regardless of what follows (see
-  /// [_pickStackedCall]'s own doc). The one predicate every stacking-aware
-  /// getter below shares, so the two syntaxes can't drift out of agreement
-  /// about which fields belong to which.
+  /// Whether the call field is using "//" stack syntax (issue #7). The one
+  /// predicate every stacking-aware getter below shares, so they can't drift
+  /// out of agreement about which fields are stacks.
   ///
-  /// Checks `trimLeft()`, not the raw text: a leading space (`" //W1AW"`)
-  /// must not let stacking treat the note key as a real call to log while
-  /// command interpretation — which evaluates the TRIMMED input — is
-  /// offering to expand the same field.
-  bool get _isCallStackField {
-    final text = _callController.text;
-    return widget.editingQso == null && text.contains('//') && !text.trimLeft().startsWith('//');
-  }
+  /// A field STARTING with "//" is a stack too — its first segment is just
+  /// empty — so "//KEY//W1AW" is both note-expansion syntax (issue #17) and
+  /// a stack, and gets both. Whole-field expansion still wins on Enter, but
+  /// by ORDER (see [_log]), not by this predicate carving it out — exclude
+  /// it here and "//KEY//W1AW" is neither syntax, so Enter does nothing at
+  /// all.
+  bool get _isCallStackField => widget.editingQso == null && _callController.text.contains('//');
 
   /// Every callsign the field currently holds, under either multi-call
   /// syntax: the comma-separated list, or the "//" stack's segments — each
@@ -3089,6 +3085,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         }
       }
     }
+    // A note key's leading "//" is a separator, not a segment the operator
+    // can be inside. Offset 0 otherwise resolves to that empty first segment,
+    // which has nothing to expand and nothing to log — so Enter on "//KEY"
+    // would do nothing at all, and one character to the right would work.
+    if (cursorIndex == 0 && segments.length > 1 && segments[0].trim().isEmpty) {
+      cursorIndex = 1;
+    }
     return (segments: segments, starts: starts, cursorIndex: cursorIndex);
   }
 
@@ -3139,11 +3142,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// list does; the segment leaves the field either way. Only applies to
   /// new QSOs, not editing an existing one.
   ///
-  /// Never fires for a field that STARTS with "//" — that's note-expansion
-  /// syntax (issue #17), not a stack, and a note key is usually itself a
-  /// valid-looking callsign (e.g. `//W1AW`), which would otherwise make this
-  /// pick W1AW as a real candidate to log while the expand command is also
-  /// live on the same input. See [_isCallStackField].
+  /// A field starting with "//" is a stack whose first segment is empty —
+  /// that segment holds no calls, so it is simply skipped. `//W1AW` whose
+  /// key matches a note never reaches here at all: [_log] runs the
+  /// whole-field command first and returns. One that matches nothing does,
+  /// and logs W1AW as the plain callsign it looks like.
   ({List<String> calls, String remainder, int index})? _pickStackedCall() {
     if (!_isCallStackField) return null;
     final stack = _stackSegments();
@@ -3167,11 +3170,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// which the NEXT Enter logs as a stacked call list. Returns whether it
   /// expanded anything, in which case this Enter logs nothing at all.
   ///
-  /// A whole-field "//KEY" never reaches here: it isn't a stack
-  /// ([_isCallStackField]), and [_log]'s ordinary command path already
-  /// interprets it and replaces the field wholesale. This exists because
-  /// that path only ever sees the WHOLE field, so a key stacked alongside
-  /// other calls would never be offered for expansion at all.
+  /// This exists because [_log]'s ordinary command path only ever sees the
+  /// WHOLE field, so a key stacked alongside other calls would never be
+  /// offered for expansion at all. A whole-field "//KEY" that path already
+  /// expanded never arrives here — it returned. One it could not expand does
+  /// arrive, asks the identical question, and gets the identical no.
   Future<bool> _expandStackedNote() async {
     if (widget.editingQso != null || widget.interpretCommand == null || !_isCallStackField) return false;
     // Captured BEFORE the round trips below and reused for the splice, never
@@ -3228,6 +3231,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final key = stack.segments[stack.cursorIndex].trim();
     if (key.isEmpty) return null;
     final input = '//$key';
+    // The cursor segment IS the whole field ("//KEY"), so [_log]'s command
+    // path has already asked this exact question and acted on the answer.
+    // Asking again buys nothing and costs a second JS round trip on the
+    // Enter path, widening the window two auto-repeated Enters race in.
+    if (input == _commandInput) return null;
     // Already spent on this draft — see [_lastExpandedInput]. Checked here,
     // in the one place both the Enter path and the typing preview build
     // their input, so the preview can't go on offering an expansion Enter

@@ -391,7 +391,12 @@ whose note reads as a plain comma list of calls and replaces the field with
 it (the `call-notes` extension's `command` hook; see
 [extensions/hooks.md](../extensions/hooks.md)). The same works on one segment
 of a stack: `KI2D//1AB` expands to `KI2D//W1AB,W1AC`, leaving the calls
-already stacked ahead of it untouched.
+already stacked ahead of it untouched. A key can also lead the stack —
+`//1AB//W1AW` is both syntaxes at once, and gets both, one Enter at a time:
+the stack's first segment is simply empty, and which of the two an Enter acts
+on is decided by the cursor, exactly as step 2 below describes. The leading
+`//` is a separator, never a segment the cursor is inside, so a cursor at the
+very start belongs to the key that follows it.
 
 **An expansion logs nothing.** It is a rewrite of the field that the *next*
 Enter then acts on, and it is exempt from the band-or-frequency refusal
@@ -403,9 +408,11 @@ next Enter has to pick.
 The order on Enter, and why each step is where it is:
 
 1. **A whole-field command runs first**, note expansion included. A field
-   that STARTS with `//` is never read as a stack: a note key is usually
-   itself a valid-looking callsign, and stacking would pick it as a real call
-   to log while the expand command was live on the same input.
+   that starts with `//` is a stack like any other, so what keeps `//W1AW`
+   from logging W1AW — a note key is usually itself a valid-looking callsign
+   — is this step running before stacking does, not stacking refusing the
+   field. A key nothing recognizes falls through and logs as the callsign it
+   looks like.
 2. **Then the segment under the cursor is offered for expansion**, which is
    the only way a key stacked alongside other calls is ever seen — step 1
    only ever looks at the whole field.
