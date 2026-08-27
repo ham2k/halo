@@ -155,8 +155,7 @@
       "weather": "Weather",
       "website": "Web Site",
       "remoteScreen": "Remote Screen",
-      "solar": "Solar",
-      "website": "Web Site"
+      "solar": "Solar"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
@@ -323,7 +322,9 @@
         "solarBandGood": "Good",
         "solarBandFair": "Fair",
         "solarBandPoor": "Poor",
-        "solarSources": "Sources: ${primary}, ${secondary}"
+        "solarSources": "Sources: ${primary}, ${secondary}",
+        "remoteScreenDegraded": "The connection is struggling — skipping frames.",
+        "remoteScreenStalled": "Frames stopped getting through — this connection may be too slow."
       },
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },

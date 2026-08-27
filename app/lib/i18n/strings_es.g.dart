@@ -1867,6 +1867,8 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get solarBandFair => 'Regular';
 	@override String get solarBandPoor => 'Mala';
 	@override String solarSources({required Object primary, required Object secondary}) => 'Fuentes: ${primary}, ${secondary}';
+	@override String get remoteScreenDegraded => 'La conexión va justa — se están omitiendo fotogramas.';
+	@override String get remoteScreenStalled => 'Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta.';
 }
 
 // Path: operation.export.compactFileNames
@@ -2567,6 +2569,8 @@ extension on TranslationsEs {
 			'operation.layout.panels.solarBandFair' => 'Regular',
 			'operation.layout.panels.solarBandPoor' => 'Mala',
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Fuentes: ${primary}, ${secondary}',
+			'operation.layout.panels.remoteScreenDegraded' => 'La conexión va justa — se están omitiendo fotogramas.',
+			'operation.layout.panels.remoteScreenStalled' => 'Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta.',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -2813,10 +2817,10 @@ extension on TranslationsEs {
 			'qsoList.eventStarted' => 'Operación iniciada',
 			'qsoList.eventBreak' => 'Descanso',
 			'qsoList.eventEnded' => 'Operación finalizada',
-			'loggingPanel.stats' => 'Estadísticas de la Operación',
-			'loggingPanel.scoring' => 'Puntuación',
 			_ => null,
 		} ?? switch (path) {
+			'loggingPanel.stats' => 'Estadísticas de la Operación',
+			'loggingPanel.scoring' => 'Puntuación',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
 			'loggingPanel.statesWorked' => 'Estados',
 			'loggingPanel.provincesWorked' => 'Provincias',
@@ -3327,10 +3331,10 @@ extension on TranslationsEs {
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
-			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
-			'updates.updateAvailable' => 'Actualización disponible',
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
+			'updates.updateAvailable' => 'Actualización disponible',
 			'updates.newVersionAvailable' => ({required Object version}) => 'Hay una nueva versión (${version}) disponible.',
 			'updates.getIt' => 'Obtener',
 			'updates.ok' => 'OK',

@@ -67,6 +67,63 @@ class PeerScreens extends ChangeNotifier {
   /// in its header, so a second source costs no second socket.
   final Map<String, PeerLink> _mediaLinks = {};
 
+  final Map<String, StreamSubscription<List<int>>> _mediaAcks = {};
+
+  /// Sequence numbers sent to a viewer and not yet acknowledged, per
+  /// `<peer>/<source>`.
+  ///
+  /// A SET of what is outstanding, not a high-water mark differenced against
+  /// an acknowledgement. Two reasons, both of which bite:
+  ///
+  /// A difference of raw sequences is not a count of frames in flight — a
+  /// dropped frame still widens the gap, so the window tightens itself every
+  /// time it is used and the effective depth is one, not [inFlightWindow].
+  /// And a difference is meaningless across a capture RESTART, which begins
+  /// numbering at one again: a stale high-water mark makes every real frame
+  /// look already-acknowledged (pacing silently switches off) or every
+  /// acknowledgement look stale (the viewer starves).
+  ///
+  /// Per SOURCE, not per link: one link carries every source that peer
+  /// watches, and a single counter would let one struggling source starve a
+  /// healthy one.
+  final Map<String, Set<int>> _unacked = {};
+
+  /// Flows whose viewer said it would acknowledge, keyed like [_unacked].
+  /// Anyone else is served ungated — see [PeerScreenSubscription.acks].
+  ///
+  /// Per SOURCE for the same reason [_unacked] is: one peer can watch two
+  /// sources from two panes, and a per-PEER flag makes the second
+  /// subscription's terms silently rewrite the first one's pacing.
+  final Set<String> _pacedFlows = {};
+
+  /// Armed while a flow's window is full, cancelled the moment it drains.
+  ///
+  /// A TIMER, not a deadline compared on each frame: the capture emits
+  /// nothing while its source is static (the native side drops every
+  /// non-`.complete` buffer), so a clock sampled from frame arrivals stops
+  /// being read exactly when the failure starts. A viewer that quietly
+  /// stopped taking delivery of a still screen would then hold the capture
+  /// open until somebody touched that screen again.
+  final Map<String, Timer> _stallTimers = {};
+
+  /// How long a flow may sit with a full window before the producer stops
+  /// believing anyone is watching.
+  ///
+  /// Generous: a viewer on a slow link is congested, not gone, and dropping
+  /// it costs a reconnect. Six seconds of a ten-a-second stream is sixty
+  /// frames' worth of nothing acknowledged.
+  static const Duration stallDeadline = Duration(seconds: 6);
+
+  /// How many frames may be outstanding before the producer stops sending.
+  ///
+  /// Two, deliberately: this is a live view of somebody's screen, so being
+  /// CURRENT beats being smooth. A deeper window rides out jitter by showing
+  /// a picture that is already old, which is the wrong trade for watching a
+  /// waterfall or a rotator.
+  static const int inFlightWindow = 2;
+
+  static String _flowKey(String watcher, String sourceId) => '$watcher/$sourceId';
+
   final _random = Random.secure();
 
   /// Peers granted a source that have not yet presented a media link.
@@ -108,6 +165,7 @@ class PeerScreens extends ChangeNotifier {
   List<PeerScreenSource> _available = const [];
   String? _error;
   int _framesCaptured = 0;
+  int _framesDropped = 0;
 
   /// Whether this device could ever share, and if not, which reason to show.
   ScreenCaptureAvailability get availability => _availability;
@@ -124,6 +182,13 @@ class PeerScreens extends ChangeNotifier {
   String? get error => _error;
 
   int get framesCaptured => _framesCaptured;
+
+  /// Frames a paced viewer was not sent because it had not caught up.
+  ///
+  /// Exposed because "dropped" is otherwise invisible from the outside — the
+  /// producer keeps capturing, the socket stays open, and the viewer infers
+  /// it only from gaps in the sequence numbers.
+  int get framesDropped => _framesDropped;
 
   /// Sources actually on offer: what the operator picked, resolved against
   /// what the OS currently reports.
@@ -305,6 +370,19 @@ class PeerScreens extends ChangeNotifier {
     _terms.putIfAbsent(request.sourceId, () => {})[watcher] = request;
     final watchers = _watchers.putIfAbsent(request.sourceId, () => <String>{});
     watchers.add(watcher);
+    // Set, not merely added: a viewer that resubscribes without the flag —
+    // a downgrade, or a different build answering for the same device — must
+    // stop being paced rather than keep a stale promise to acknowledge.
+    final flow = _flowKey(watcher, request.sourceId);
+    if (request.acks) {
+      _pacedFlows.add(flow);
+    } else {
+      _pacedFlows.remove(flow);
+    }
+    // A resubscribe restarts delivery: whatever was outstanding on the old
+    // link will never be acknowledged, and carrying it over would leave the
+    // window permanently closed.
+    _forgetFlow(flow);
 
     // Restart when the terms moved, so a viewer joining at a larger size is
     // not served the smaller stream the first one asked for.
@@ -340,6 +418,9 @@ class PeerScreens extends ChangeNotifier {
   Future<void> removeWatcher(String watcher, String sourceId) async {
     final watchers = _watchers[sourceId];
     if (watchers == null || !watchers.remove(watcher)) return;
+    // Here, not in [_dropWatchers]: by the time that runs the watcher is
+    // already out of the set it would iterate.
+    _forgetFlow(_flowKey(watcher, sourceId));
     final before = _mergedTerms(sourceId);
     _terms[sourceId]?.remove(watcher);
     if (watchers.isEmpty) {
@@ -352,7 +433,22 @@ class PeerScreens extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Everything a flow's WINDOW is made of, so no path can forget half of it
+  /// and leave one that nothing will reopen.
+  ///
+  /// [_pacedFlows] is deliberately not here. Whether a viewer acknowledges is
+  /// a property of that viewer, not of the window: a capture restart forgets
+  /// what is outstanding and must NOT also forget that a still-subscribed
+  /// viewer answers, or it would serve it ungated from then on.
+  void _forgetFlow(String flow) {
+    _unacked.remove(flow);
+    _stallTimers.remove(flow)?.cancel();
+  }
+
   void _dropWatchers(String sourceId) {
+    for (final watcher in _watchers[sourceId] ?? const <String>{}) {
+      _forgetFlow(_flowKey(watcher, sourceId));
+    }
     _watchers.remove(sourceId);
     _terms.remove(sourceId);
   }
@@ -381,6 +477,16 @@ class PeerScreens extends ChangeNotifier {
   /// mean the capture stops now, not when the last viewer happens to close
   /// a pane.
   Future<void> stopAll() async {
+    for (final subscription in _mediaAcks.values) {
+      unawaited(subscription.cancel());
+    }
+    _mediaAcks.clear();
+    _unacked.clear();
+    _pacedFlows.clear();
+    for (final timer in _stallTimers.values) {
+      timer.cancel();
+    }
+    _stallTimers.clear();
     // Told before dropped. A peer learns from the empty offer below, but a
     // pane on THIS device reads `offeredSources` directly and has no such
     // message — it would keep a frozen picture that looks exactly like a
@@ -456,7 +562,8 @@ class PeerScreens extends ChangeNotifier {
     peers.sendEphemeralTo(
       peerDeviceId,
       PeerMessage.screenGrant(
-        PeerScreenGrant(sourceId: request.sourceId, ticket: ticket, port: port),
+        PeerScreenGrant(
+            sourceId: request.sourceId, ticket: ticket, port: port, paced: true),
       ),
     );
   }
@@ -487,6 +594,9 @@ class PeerScreens extends ChangeNotifier {
   /// Everything a peer held, and its media link. What a lost session means.
   Future<void> forgetPeer(String peerDeviceId) async {
     _awaitingMedia.remove(peerDeviceId)?.cancel();
+    unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
+    _pacedFlows.removeWhere((key) => key.startsWith('$peerDeviceId/'));
+    _forgetFlowsOf(peerDeviceId);
     _tickets.removeWhere((_, owner) => owner == peerDeviceId);
     for (final waiting in _thumbRequests.values) {
       waiting.remove(peerDeviceId);
@@ -573,14 +683,28 @@ class PeerScreens extends ChangeNotifier {
       return;
     }
     _awaitingMedia.remove(peerDeviceId)?.cancel();
+    unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
+    // Whatever was outstanding went down with the link it was written to.
+    // A half-open socket accepts writes that reach nobody, so those frames
+    // are charged to a window no acknowledgement can ever reopen — and the
+    // replacement link would be sent nothing at all.
+    _forgetFlowsOf(peerDeviceId);
     unawaited(_mediaLinks.remove(peerDeviceId)?.close());
     _mediaLinks[peerDeviceId] = connection.link;
+    // The producer has never read from this socket before. Everything
+    // arriving on it is an acknowledgement.
+    _mediaAcks[peerDeviceId] = connection.link.inbound.listen(
+      (bytes) => _onAck(peerDeviceId, bytes),
+      onError: (Object e) => debugPrint('[peer] media link from $peerDeviceId errored: $e'),
+      cancelOnError: false,
+    );
     unawaited(connection.link.closed.then((_) {
       // Only if it is still THIS link: a peer that redialled has already
       // replaced it, and tearing its watchers down on the old one's close
       // would kill the view that just came back.
       if (_mediaLinks[peerDeviceId] != connection.link) return;
       _mediaLinks.remove(peerDeviceId);
+      unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
       unawaited(removeAllFor(peerDeviceId));
     }));
     notifyListeners();
@@ -595,6 +719,19 @@ class PeerScreens extends ChangeNotifier {
         maxWidth: terms.maxWidth.clamp(160, _maxCaptureWidth),
         fps: terms.fps,
       );
+      // A restart builds a new capture session, which numbers its frames from
+      // one again — so anything outstanding against the OLD numbering can
+      // never be matched, for any watcher, not merely the one that triggered
+      // this.
+      //
+      // AFTER the start, not before: the old session's teardown is
+      // asynchronous on the native side, and a frame already in its encode
+      // pipeline still arrives here. Cleared first, that straggler is charged
+      // into the fresh window with a sequence the new numbering will never
+      // reach, and the flow runs at half depth — or shut — for good.
+      for (final watcher in _watchers[sourceId] ?? const <String>{}) {
+        _forgetFlow(_flowKey(watcher, sourceId));
+      }
       _error = null;
       return true;
     } on ScreenCaptureException catch (e) {
@@ -604,8 +741,18 @@ class PeerScreens extends ChangeNotifier {
   }
 
   void _onFrame(Uint8List frame) {
-    final sourceId = PeerScreenFrame.sourceIdOf(frame);
-    if (sourceId == null) return;
+    // ONE header read for both fields. A frame missing either is dropped
+    // rather than sent: every viewer would fail to decode it anyway, and
+    // sending it would ALSO bypass the window — restoring the unbounded
+    // socket queue this exists to remove, with nothing counting it.
+    final routing = PeerScreenFrame.routingOf(frame);
+    if (routing == null) {
+      if (_unroutableCaptures.add('?')) {
+        debugPrint('[peer] a captured frame has no source or sequence — dropped');
+      }
+      return;
+    }
+    final sourceId = routing.sourceId;
     _framesCaptured++;
     final watchers = _watchers[sourceId];
     if (watchers == null || watchers.isEmpty) return;
@@ -619,22 +766,110 @@ class PeerScreens extends ChangeNotifier {
       // Dropping is right: a live view wants the next frame, not a queue of
       // stale ones replayed at it the moment it connects.
       //
-      // KNOWN LIMIT, and the reason the default rate is modest: there is no
-      // backpressure past this point. `PeerLink.send` is fire-and-forget by
-      // contract and `WebSocket.add` buffers without bound, so a viewer on a
-      // congested link grows this device's heap for as long as it stays
-      // behind and then renders a long tail of stale frames. Nothing dart:io
-      // exposes reports how much is queued in the sink, so fixing it
-      // properly means the viewer acknowledging on the control link and this
-      // side dropping while too many are unacked — a protocol addition, not
-      // a tweak here.
-      _mediaLinks[watcher]?.send(frame);
+      // Checked BEFORE the window is charged. Counting a frame as sent when
+      // there was nothing to send it on leaves the window closed against an
+      // acknowledgement that can never come, and the viewer is starved from
+      // the moment it finally connects.
+      final link = _mediaLinks[watcher];
+      if (link == null) continue;
+
+      // Paced only for a viewer that said it would answer. Left ungated, a
+      // peer on an older build would take a window's worth and then never be
+      // sent another frame.
+      final key = _flowKey(watcher, sourceId);
+      if (_pacedFlows.contains(key)) {
+        final outstanding = _unacked[key] ??= <int>{};
+        // A sequence below what is already outstanding is the first frame of
+        // a RESTARTED capture, which numbers from one again. Whatever the old
+        // session left behind can never be acknowledged now, so it goes —
+        // otherwise the window stays partly, or wholly, shut for good.
+        if (outstanding.any((sent) => sent > routing.sequence)) outstanding.clear();
+        if (outstanding.length >= inFlightWindow) {
+          // Dropped, not queued. What is captured next is always a better
+          // thing to send than what was skipped, and the viewer sees the gap
+          // in the sequence numbers without being told.
+          _framesDropped++;
+          continue;
+        }
+        outstanding.add(routing.sequence);
+        _armStall(watcher, sourceId, key);
+      }
+      link.send(frame);
     }
 
     // Deliberately no notifyListeners: nothing on THIS device draws a
     // captured frame, so a rebuild per frame would be ten a second per
     // running source for no visible change. Watcher-set changes notify from
     // where they happen.
+  }
+
+  void _onAck(String peerDeviceId, List<int> bytes) {
+    final ack = PeerScreenAck.decode(bytes);
+    if (ack == null) {
+      // The producer reads nothing else on this socket, so bytes that are not
+      // an acknowledgement mean a peer whose ack format this build cannot
+      // read. Pacing it would jam every one of its flows at the window and
+      // then refuse them for stalling — the operator told the link is slow
+      // when the real answer is that the two builds disagree. So it is served
+      // UNGATED from here, exactly as a peer that never acks at all: the
+      // picture keeps working, and the queue it risks is the one that was
+      // there before pacing existed.
+      if (_unreadableAcksFrom.add(peerDeviceId)) {
+        debugPrint('[peer] unreadable media-link message from $peerDeviceId'
+            ' — a newer format? serving it ungated');
+      }
+      _pacedFlows.removeWhere((key) => key.startsWith('$peerDeviceId/'));
+      _forgetFlowsOf(peerDeviceId);
+      return;
+    }
+    final key = _flowKey(peerDeviceId, ack.sourceId);
+    // Everything up to and including the acknowledged frame, which makes a
+    // reordered or coalesced acknowledgement harmless WITHIN a capture
+    // session. Across a restart it is looser — a late ack for an old, high
+    // sequence would clear the new session's low ones too — which is why the
+    // charge site drops the old numbering the moment it sees a lower one.
+    final outstanding = _unacked[key];
+    if (outstanding == null) return;
+    outstanding.removeWhere((sequence) => sequence <= ack.sequence);
+    if (outstanding.length < inFlightWindow) _stallTimers.remove(key)?.cancel();
+  }
+
+  /// Peers already reported as sending something unreadable on the media
+  /// link. Once each, not once per message.
+  final Set<String> _unreadableAcksFrom = {};
+
+  /// Captures that carried no usable header. Reported once, not once a frame.
+  final Set<String> _unroutableCaptures = {};
+
+  /// Starts the clock on a flow whose window has just filled, and stops
+  /// pacing it if the clock runs out.
+  ///
+  /// This is the one state pacing made possible: before it, a healthy link
+  /// could not stop delivering. Now it can — both sockets open, capture
+  /// running, nothing moving — and a viewer cannot tell that from a screen
+  /// nobody is touching. So the producer, the side that knows it is holding
+  /// frames it cannot send, says so and frees the capture.
+  void _armStall(String watcher, String sourceId, String key) {
+    if ((_unacked[key]?.length ?? 0) < inFlightWindow) return;
+    if (_stallTimers.containsKey(key)) return;
+    _stallTimers[key] = Timer(stallDeadline, () {
+      _stallTimers.remove(key);
+      debugPrint('[peer] $watcher stopped taking $sourceId — giving up on it');
+      _refuse(watcher, sourceId, 'stalled');
+      unawaited(removeWatcher(watcher, sourceId));
+    });
+  }
+
+  /// Every window this peer held. Its acknowledgements can no longer arrive,
+  /// so nothing else would ever reopen them.
+  void _forgetFlowsOf(String peerDeviceId) {
+    final prefix = '$peerDeviceId/';
+    _unacked.removeWhere((key, _) => key.startsWith(prefix));
+    _stallTimers.removeWhere((key, timer) {
+      if (!key.startsWith(prefix)) return false;
+      timer.cancel();
+      return true;
+    });
   }
 
   void _onCaptureStopped(ScreenCaptureStopped stopped) {
@@ -680,6 +915,14 @@ class PeerScreens extends ChangeNotifier {
       timer.cancel();
     }
     _awaitingMedia.clear();
+    for (final subscription in _mediaAcks.values) {
+      unawaited(subscription.cancel());
+    }
+    _mediaAcks.clear();
+    for (final timer in _stallTimers.values) {
+      timer.cancel();
+    }
+    _stallTimers.clear();
     unawaited(_localFrames.close());
     unawaited(_localRefusals.close());
     unawaited(_capture.dispose());

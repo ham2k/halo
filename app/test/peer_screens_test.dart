@@ -14,6 +14,7 @@
 // isolation and disagree over a socket.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -22,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
+import 'package:ham2k_logger/services/peer/peer_link.dart';
 import 'package:ham2k_logger/services/peer/peer_screen_views.dart';
 import 'package:ham2k_logger/services/peer/peer_screens.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
@@ -83,11 +85,16 @@ class _FakeCapture extends ScreenCaptureService {
   @override
   Future<List<PeerScreenSource>> listSources() async => sources;
 
+  /// Held open by a test that needs to act DURING a restart — the window
+  /// where the old capture session is still delivering.
+  Completer<void>? startGate;
+
   @override
   Future<void> start(String sourceId, {int maxWidth = 1280, int fps = 10, double quality = 0.6}) async {
     if (failStartWith case final message?) {
       throw ScreenCaptureException(message, code: 'capture');
     }
+    if (startGate case final gate?) await gate.future;
     started.add(sourceId);
     startedWidths.add(maxWidth);
   }
@@ -109,6 +116,14 @@ class _FakeCapture extends ScreenCaptureService {
     await _stopped.close();
   }
 
+  /// A frame whose header carries no sequence — what a producer on a format
+  /// this build does not know would look like on the wire.
+  void emitWithoutSequence(String sourceId) {
+    final header = utf8.encode('{"src":"$sourceId","w":640,"h":400,"fmt":"jpeg"}');
+    _frames.add(Uint8List.fromList(
+        [1, header.length >> 8, header.length & 0xFF, ...header, 7, 7, 7]));
+  }
+
   void emit(String sourceId, int sequence, List<int> image) {
     _frames.add(PeerScreenFrame(
       sourceId: sourceId,
@@ -119,6 +134,39 @@ class _FakeCapture extends ScreenCaptureService {
       image: Uint8List.fromList(image),
     ).encode());
   }
+}
+
+/// A viewer's media link, driven by hand: it dials for real and chooses
+/// whether to acknowledge. The only way to model a viewer wedged behind a
+/// congested link, which is exactly what no transport signal reveals.
+class _MediaClient {
+  _MediaClient(this._link, {required bool acks}) : acking = acks {
+    _link.inbound.listen((bytes) {
+      final frame = PeerScreenFrame.decode(bytes);
+      if (frame == null) return;
+      received.add(frame.sequence);
+      if (garbageAcks) {
+        _link.send(utf8.encode('not an acknowledgement'));
+      } else if (acking) {
+        _link.send(
+            PeerScreenAck(sourceId: frame.sourceId, sequence: frame.sequence).encode());
+      }
+    });
+  }
+
+  final PeerLink _link;
+  final List<int> received = [];
+
+  /// Toggleable, so a test can leave a frame outstanding at a chosen moment —
+  /// which is the only way to have anything stale in the producer's flow
+  /// state when a capture restarts and renumbers.
+  bool acking;
+
+  /// Answers on the media link in a format this producer cannot read — a
+  /// peer from a build whose ack format moved on.
+  bool garbageAcks = false;
+
+  Future<void> close() => _link.close();
 }
 
 class _Device {
@@ -615,5 +663,538 @@ void main() {
     expect(shack.screens.isWatched('display:1'), isFalse);
     // The deadline is deliberately longer than a viewer's retry round, so
     // this test outlives the framework's own 30s default.
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a viewer that takes frames but never acknowledges stops being sent them', () async {
+    // The whole point. Without a window a viewer that falls behind takes
+    // frames into an unbounded socket queue and the producer's heap grows for
+    // as long as it stays behind — `dart:io` reports nothing about a sink's
+    // depth, and neither add() nor addStream() pushes back.
+    await paired();
+    await sharing([_display.id]);
+
+    // A hand-rolled viewer: it dials the media link for real and reads
+    // frames, but never sends an ack. That is a viewer wedged behind a
+    // congested link, which is the case no transport signal can reveal.
+    PeerScreenGrant? grant;
+    tablet.channels.dispose();
+    tablet.service.onEphemeral = (peer, message) {
+      grant ??= message.screenGrantOrNull;
+    };
+
+    await shack.screens.handleSubscribe('device-a',
+        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true));
+    await waitFor('the grant arrives', () => grant != null);
+
+    final media = await dialPeerLink(
+        shack.service.peers['device-a']!.beacon.address ?? '127.0.0.1',
+        grant!.port,
+        mediaTicket: grant!.ticket);
+    addTearDown(media.close);
+    final received = <int>[];
+    media.inbound.listen((bytes) {
+      final seq = PeerScreenFrame.decode(bytes)?.sequence;
+      if (seq != null) received.add(seq);
+    });
+    await waitFor('the producer sees the media link', () => shack.screens.watchers.isNotEmpty);
+
+    // Numbered from 5000, as a capture that has been running a while is.
+    // Starting at one would make the count of frames in flight and the
+    // highest sequence outstanding the SAME number, and this assertion could
+    // not tell a correct window from one that differences raw sequences.
+    for (var seq = 5000; seq < 5040; seq++) {
+      shack.capture.emit('display:1', seq, [seq & 0xFF]);
+    }
+    await waitFor('the producer starts dropping', () => shack.screens.framesDropped > 0);
+
+    // EXACTLY the window, not merely bounded by it.
+    expect(received.length, PeerScreens.inFlightWindow);
+    expect(shack.screens.framesDropped, greaterThan(20));
+    // Capture is untouched: pacing gates DELIVERY, and other watchers of the
+    // same source must not pay for this one falling behind.
+    expect(shack.screens.isWatched('display:1'), isTrue);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a viewer that never says it acks is served ungated', () async {
+    // Compatibility, and why `acks` defaults to false. A peer on a build that
+    // predates this never answers, so pacing it unconditionally would send a
+    // window's worth and then stop for good — a worse failure than the queue
+    // this exists to fix, and a silent one.
+    await paired();
+    await sharing([_display.id]);
+
+    PeerScreenGrant? grant;
+    tablet.channels.dispose();
+    tablet.service.onEphemeral = (peer, message) => grant ??= message.screenGrantOrNull;
+
+    // Subscribes the way an older build does: no `acks` field at all.
+    await shack.screens.handleSubscribe('device-a',
+        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
+    await waitFor('the grant arrives', () => grant != null);
+
+    final media = await dialPeerLink(
+        shack.service.peers['device-a']!.beacon.address ?? '127.0.0.1',
+        grant!.port,
+        mediaTicket: grant!.ticket);
+    addTearDown(media.close);
+    var received = 0;
+    media.inbound.listen((_) => received++);
+    await waitFor('the producer sees the media link', () => shack.screens.watchers.isNotEmpty);
+
+    for (var seq = 1; seq < 30; seq++) {
+      shack.capture.emit('display:1', seq, [seq & 0xFF]);
+    }
+    await waitFor('everything reaches it', () => received >= 25);
+    expect(shack.screens.framesDropped, 0,
+        reason: 'an unacking viewer must not be throttled into silence');
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('an acking viewer keeps receiving, and says nothing while it keeps up', () async {
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+
+    var seq = 0;
+    await waitFor('frames keep arriving past the window', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      final view = tablet.views.viewFor(target);
+      // Past the window means the acks are genuinely reopening it: without
+      // them delivery would have stopped at PeerScreens.inFlightWindow.
+      return (view?.frame?.sequence ?? 0) > PeerScreens.inFlightWindow + 3;
+    });
+    expect(tablet.views.viewFor(target)!.degraded, isFalse,
+        reason: 'a viewer that is keeping up has nothing to report');
+  });
+
+  /// Subscribes as a bare media client, bypassing the tablet's own viewer.
+  Future<_MediaClient> rawViewer(_Device shackDevice, _Device viewerDevice,
+      {required String sourceId, required bool acks, required bool declareAcks}) async {
+    PeerScreenGrant? grant;
+    viewerDevice.channels.dispose();
+    viewerDevice.service.onEphemeral = (peer, message) => grant ??= message.screenGrantOrNull;
+    await shackDevice.screens.handleSubscribe(
+        viewerDevice.deviceId,
+        PeerScreenSubscription(sourceId: sourceId, maxWidth: 640, fps: 5, acks: declareAcks));
+    await waitFor('the grant arrives', () => grant != null);
+    final link = await dialPeerLink(
+        shackDevice.service.peers[viewerDevice.deviceId]!.beacon.address ?? '127.0.0.1',
+        grant!.port,
+        mediaTicket: grant!.ticket);
+    final client = _MediaClient(link, acks: acks);
+    addTearDown(client.close);
+    await waitFor('the producer sees the media link', () => shackDevice.screens.watchers.isNotEmpty);
+    return client;
+  }
+
+  test('pacing works on a capture whose sequence numbers do not start at one', () async {
+    // A high-water mark differenced against an acknowledgement is not a count
+    // of frames in flight. Against a real capture — which has been running
+    // and is numbering in the thousands — the very first frame charges the
+    // window by its ABSOLUTE sequence, and everything after it is dropped
+    // until that one frame happens to be acknowledged.
+    await paired();
+    await sharing([_display.id]);
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+
+    for (var i = 0; i < 30; i++) {
+      shack.capture.emit('display:1', 5000 + i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('frames keep flowing', () => viewer.received.length > 10);
+    expect(viewer.received.first, 5000);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a capture restart renumbers, and delivery survives it', () async {
+    // Every restart builds a new capture session, which numbers from one
+    // again. Flow state left over from the old numbering makes each new frame
+    // look already acknowledged — pacing silently off, the unbounded queue
+    // back — or every acknowledgement look stale, which starves the viewer.
+    await paired();
+    await sharing([_display.id]);
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+
+    for (var i = 0; i < 8; i++) {
+      shack.capture.emit('display:1', 5000 + i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('the first session is flowing', () => viewer.received.isNotEmpty);
+    final beforeRestart = viewer.received.length;
+
+    // A second, more demanding watcher raises the merged terms, which is what
+    // restarts the capture.
+    await shack.screens.addWatcher('other',
+        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    expect(shack.capture.started.length, greaterThan(1));
+
+    for (var i = 1; i < 20; i++) {
+      shack.capture.emit('display:1', i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('the renumbered session reaches the same viewer',
+        () => viewer.received.length > beforeRestart + 3);
+    expect(viewer.received.last, lessThan(100), reason: 'these are the new session\'s numbers');
+
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a restart clears what the old numbering left outstanding', () async {
+    // The sharp half of a renumbering restart. An acknowledgement for frame 3
+    // cannot clear an outstanding entry for frame 5007, so anything left over
+    // holds the window shut against every frame the new session produces —
+    // and the viewer never retries, because nothing about its link is wrong.
+    await paired();
+    await sharing([_display.id]);
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+
+    for (var i = 0; i < 4; i++) {
+      shack.capture.emit('display:1', 5000 + i, [i]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('flowing', () => viewer.received.isNotEmpty);
+
+    // Go quiet, then leave the window full of old-numbered frames.
+    viewer.acking = false;
+    for (var i = 10; i < 20; i++) {
+      shack.capture.emit('display:1', 5000 + i, [i]);
+    }
+    await waitFor('the window is full of the old session',
+        () => shack.screens.framesDropped > 0);
+    final beforeRestart = viewer.received.length;
+    viewer.acking = true;
+
+    // Terms change, so the capture restarts and numbers from one again.
+    await shack.screens.addWatcher('other',
+        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+
+    for (var i = 1; i < 20; i++) {
+      shack.capture.emit('display:1', i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('the new session still reaches it',
+        () => viewer.received.length > beforeRestart);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a replaced media link is not starved by what the old one was charged', () async {
+    // A half-open socket accepts writes that reach nobody. Those frames are
+    // charged to a window no acknowledgement can ever reopen, so without
+    // clearing the flow on replacement the NEW link is sent nothing at all —
+    // and the viewer never retries, because as far as it knows its link is up.
+    await paired();
+    await sharing([_display.id]);
+    final deaf = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: false, declareAcks: true);
+
+    for (var i = 1; i <= 10; i++) {
+      shack.capture.emit('display:1', i, [i]);
+    }
+    await waitFor('the window closes against the silent viewer',
+        () => shack.screens.framesDropped > 0);
+    await deaf.close();
+    // Let the producer see the close before resubscribing: its teardown is
+    // asynchronous, and a subscribe that overtakes it would have the old
+    // link's cleanup wipe the new watcher.
+    await waitFor('the producer notices the close', () => shack.screens.watchers.isEmpty);
+
+    // The same peer dials again — its retry, or a reconnect.
+    final fresh = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+    for (var i = 20; i < 30; i++) {
+      shack.capture.emit('display:1', i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('the replacement is served', () => fresh.received.isNotEmpty);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a viewer that is missing frames says so, and stops saying it once they arrive again',
+      () async {
+    // The other half of "says nothing while it keeps up". Pacing DROPS
+    // frames by design, so the notice is what tells the operator that the
+    // picture they are watching is not the one on the other screen — and a
+    // test that only ever asserts isFalse passes just as well against a
+    // build that can never raise it at all.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+
+    // Emitted from inside the wait: frames captured before the media link is
+    // up have nothing to be sent on, and are dropped rather than queued.
+    var seq = 1000;
+    await waitFor('the first frame lands', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return tablet.views.viewFor(target)?.frame != null;
+    });
+
+    // Gaps wider than the notice threshold — what a paced producer leaves
+    // behind when a viewer cannot keep up, or a congested link swallows.
+    await waitFor('the notice goes up', () {
+      seq += 100;
+      shack.capture.emit('display:1', seq, [seq & 0xFF]);
+      return tablet.views.viewFor(target)!.degraded;
+    });
+
+    // And comes down: the drop window is a RECENT-history window, so a
+    // stream that recovers must clear the notice rather than wear it for the
+    // rest of the session.
+    await waitFor('the notice comes down', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return !tablet.views.viewFor(target)!.degraded;
+    }, timeout: const Duration(seconds: 40));
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a viewer that takes delivery of nothing is given up on rather than paced forever',
+      () async {
+    // The state this change creates: both sockets healthy, capture running,
+    // window shut against a viewer that declared it acks and then never did.
+    // Nothing on the viewer can tell that from a screen nobody is touching —
+    // a static source legitimately sends nothing — so the producer, the only
+    // side that knows it is holding frames it cannot send, has to say so.
+    await paired();
+    await sharing([_display.id]);
+    final deaf = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: false, declareAcks: true);
+    // Installed after rawViewer, which takes the same hook to catch the grant.
+    final refusals = <String>[];
+    tablet.service.onEphemeral = (peer, message) {
+      if (message.type == PeerMessageType.screenRefuse) refusals.add(message.reason ?? '');
+    };
+
+    var seq = 0;
+    await waitFor('the producer gives up and says why', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return refusals.contains('stalled');
+    }, timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    // Freeing the capture is the point: a source held open for a viewer that
+    // is not watching it costs the operator's machine for nothing.
+    expect(shack.screens.watchers, isEmpty);
+    expect(deaf.received, isNotEmpty, reason: 'it was served before it went quiet');
+  }, timeout: const Timeout(Duration(seconds: 120)));
+
+  test('a viewer told the producer does not read acks sends none', () async {
+    // The compatibility half, from the viewer's side. A producer that
+    // predates pacing never listens to its end of the media link, and a
+    // PeerLink's inbound controller is single-subscription — so acks sent to
+    // one are buffered in ITS memory for the life of the link, ten a second
+    // per source. Acking unconditionally would move the unbounded queue this
+    // change removes onto the other device.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    // Grants reach the viewer with `paced` cleared, the way an older
+    // producer's would. Everything else is the real path.
+    tablet.channels.dispose();
+    tablet.service.onEphemeral = (peer, message) {
+      final grant = message.screenGrantOrNull;
+      if (grant != null) {
+        tablet.views.onGrant(
+            peer,
+            PeerScreenGrant(
+                sourceId: grant.sourceId, ticket: grant.ticket, port: grant.port));
+      }
+    };
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    var seq = 0;
+    await waitFor('the producer runs out of window for want of acks', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return shack.screens.framesDropped > 0;
+    });
+    expect(tablet.views.viewFor(target)?.frame, isNotNull,
+        reason: 'the window it did get through is not the failure being caught');
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a viewer that stops taking delivery is given up on even while the screen sits still',
+      () async {
+    // The capture emits nothing while its source is static — the native side
+    // drops every non-complete buffer — so a deadline compared on each frame
+    // stops being read at exactly the moment the failure starts. A viewer
+    // that goes quiet in front of a still screen would hold that capture open
+    // until somebody happened to touch it.
+    await paired();
+    await sharing([_display.id]);
+    final refusals = <String>[];
+    final deaf = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: false, declareAcks: true);
+    tablet.service.onEphemeral = (peer, message) {
+      if (message.type == PeerMessageType.screenRefuse) refusals.add(message.reason ?? '');
+    };
+
+    var seq = 0;
+    await waitFor('the window shuts', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return shack.screens.framesDropped > 0;
+    });
+
+    // The screen now sits still: nothing more is captured, ever.
+    final capturedWhenQuiet = shack.screens.framesCaptured;
+    await waitFor('the producer gives up anyway', () => refusals.contains('stalled'),
+        timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    expect(shack.screens.framesCaptured, capturedWhenQuiet,
+        reason: 'nothing may have been captured — that is the whole point');
+    expect(shack.screens.watchers, isEmpty);
+    expect(deaf.received, isNotEmpty);
+  }, timeout: const Timeout(Duration(seconds: 120)));
+
+  test('a frame from the old capture session does not shut the new one out', () async {
+    // A restart stops the old session asynchronously on the native side, so a
+    // frame already in its encode pipeline still arrives. Charged into the
+    // fresh window with the OLD numbering, it can never be acknowledged: the
+    // flow runs at half depth, or shut, for the rest of the session — the
+    // exact failure the unacked SET is designed to prevent.
+    await paired();
+    await sharing([_display.id]);
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+
+    for (var i = 0; i < 3; i++) {
+      shack.capture.emit('display:1', 5000 + i, [i]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('flowing', () => viewer.received.isNotEmpty);
+
+    // Terms change, so the capture restarts — and stragglers land mid-restart,
+    // unacknowledged, which is the state that outlives the old session.
+    final gate = Completer<void>();
+    shack.capture.startGate = gate;
+    viewer.acking = false;
+    final restarted = shack.screens.addWatcher('other',
+        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    for (var i = 20; i < 24; i++) {
+      shack.capture.emit('display:1', 5000 + i, [i]);
+    }
+    await waitFor('the stragglers are charged to the window',
+        () => shack.screens.framesDropped > 0);
+    gate.complete();
+    shack.capture.startGate = null;
+    await restarted;
+    viewer.acking = true;
+
+    final beforeRenumber = viewer.received.length;
+    for (var i = 1; i < 12; i++) {
+      shack.capture.emit('display:1', i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('the renumbered session flows at full depth',
+        () => viewer.received.length > beforeRenumber + 5);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a capture with no usable header is dropped, never sent past the window', () async {
+    // Sending it would be worse than useless: every viewer fails to decode
+    // it, AND an unroutable frame cannot be charged to any window — so it
+    // would travel ungated, restoring the unbounded socket queue with
+    // nothing counting it.
+    await paired();
+    await sharing([_display.id]);
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+
+    for (var i = 0; i < 20; i++) {
+      shack.capture.emitWithoutSequence('display:1');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(viewer.received, isEmpty);
+    expect(shack.screens.framesCaptured, 0, reason: 'nothing usable was captured');
+
+    shack.capture.emit('display:1', 1, [1]);
+    await waitFor('a usable frame still gets through', () => viewer.received.isNotEmpty);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a peer whose acks this build cannot read is served ungated, not refused', () async {
+    // A version skew in the ack format is not congestion. Pacing such a peer
+    // jams every one of its flows and then refuses them for stalling, so the
+    // operator is told the link is slow when the real answer is that the two
+    // builds disagree — and no amount of moving closer to the router helps.
+    await paired();
+    await sharing([_display.id]);
+    final refusals = <String>[];
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: false, declareAcks: true);
+    viewer.garbageAcks = true;
+    tablet.service.onEphemeral = (peer, message) {
+      if (message.type == PeerMessageType.screenRefuse) refusals.add(message.reason ?? '');
+    };
+
+    var seq = 0;
+    await waitFor('it keeps receiving well past the window', () {
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return viewer.received.length > PeerScreens.inFlightWindow + 10;
+    }, timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    expect(refusals, isEmpty, reason: 'a build mismatch must not be reported as a slow link');
+    expect(shack.screens.watchers, isNotEmpty);
+  }, timeout: const Timeout(Duration(seconds: 120)));
+
+  test('a pane re-asks after a stall, but not forever', () async {
+    // Each re-ask costs the OTHER device a full capture stop and restart. A
+    // viewer that cannot keep up fails the same way every time, so an
+    // unbounded retry drives someone else's machine in a loop — with the
+    // Screen Recording indicator blinking in their menu bar — that nothing
+    // on this device counts.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('the producer is serving it', () => shack.screens.watchers.isNotEmpty);
+
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      await shack.screens.removeWatcher('device-a', 'display:1');
+      tablet.views.onRefused('device-b', 'display:1', 'stalled');
+      await waitFor('re-asked after stall $attempt',
+          () => shack.screens.watchers.isNotEmpty,
+          timeout: PeerScreenViews.retryDelay + const Duration(seconds: 10));
+    }
+
+    await shack.screens.removeWatcher('device-a', 'display:1');
+    tablet.views.onRefused('device-b', 'display:1', 'stalled');
+    // Waiting well past the retry rather than just past it: this asserts
+    // something has NOT happened, so a timer that merely ran late would hide
+    // a re-ask rather than expose one (time.md §7).
+    await Future<void>.delayed(PeerScreenViews.retryDelay * 3);
+    expect(shack.screens.watchers, isEmpty, reason: 'it stops asking and leaves the notice up');
+    expect(tablet.views.viewFor(target)!.refusal, 'stalled');
+  }, timeout: const Timeout(Duration(seconds: 120)));
+
+  test('a straggler that lands after the restart is cleared by the renumbering', () async {
+    // Ordering the flow reset after the capture starts covers the frames
+    // already in the old session's encode pipeline at that moment, but the
+    // native teardown is asynchronous and unbounded — one can arrive later
+    // still. Two of them shut the window against a session whose numbering
+    // can never reach them, and no acknowledgement will ever reopen it.
+    await paired();
+    await sharing([_display.id]);
+    final viewer = await rawViewer(shack, tablet,
+        sourceId: _display.id, acks: true, declareAcks: true);
+    shack.capture.emit('display:1', 5000, [1]);
+    await waitFor('flowing', () => viewer.received.isNotEmpty);
+
+    await shack.screens.addWatcher('other',
+        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+
+    // Late stragglers, unacknowledged: the window is now shut on numbers the
+    // restarted session will not produce for another eight minutes.
+    viewer.acking = false;
+    for (var i = 0; i < PeerScreens.inFlightWindow; i++) {
+      shack.capture.emit('display:1', 5100 + i, [i]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    viewer.acking = true;
+
+    final beforeRenumber = viewer.received.length;
+    for (var i = 1; i < 12; i++) {
+      shack.capture.emit('display:1', i, [i & 0xFF]);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+    }
+    await waitFor('the renumbered session is served',
+        () => viewer.received.length > beforeRenumber + 5);
   }, timeout: const Timeout(Duration(seconds: 90)));
 }

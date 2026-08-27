@@ -141,8 +141,7 @@
       "weather": "El Tiempo",
       "website": "Sitio Web",
       "remoteScreen": "Pantalla remota",
-      "solar": "Solar",
-      "website": "Sitio Web"
+      "solar": "Solar"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
@@ -308,7 +307,9 @@
         "solarBandGood": "Buena",
         "solarBandFair": "Regular",
         "solarBandPoor": "Mala",
-        "solarSources": "Fuentes: ${primary}, ${secondary}"
+        "solarSources": "Fuentes: ${primary}, ${secondary}",
+        "remoteScreenDegraded": "La conexión va justa — se están omitiendo fotogramas.",
+        "remoteScreenStalled": "Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta."
       },
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },

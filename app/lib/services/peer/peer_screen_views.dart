@@ -65,12 +65,18 @@ class PeerScreenView {
 
   final PeerScreenFrame? frame;
 
+  /// Whether frames are being dropped on the way here often enough to be
+  /// worth saying. Still LIVE — the picture is current, just intermittent —
+  /// which is why the pane marks it differently from a stalled one.
+  final bool degraded;
+
   const PeerScreenView({
     required this.peerDeviceId,
     required this.sourceId,
     required this.status,
     this.refusal,
     this.frame,
+    this.degraded = false,
   });
 
   /// [refusal] is tied to [status] rather than carried forward: a view that
@@ -82,6 +88,7 @@ class PeerScreenView {
     PeerScreenViewStatus? status,
     String? refusal,
     PeerScreenFrame? frame,
+    bool? degraded,
   }) {
     final nextStatus = status ?? this.status;
     return PeerScreenView(
@@ -90,6 +97,9 @@ class PeerScreenView {
       status: nextStatus,
       refusal: nextStatus == PeerScreenViewStatus.refused ? (refusal ?? this.refusal) : null,
       frame: frame ?? this.frame,
+      // Only a live view can be degraded: a stalled one has its own reason
+      // to show, and two notices about the same pane would contradict.
+      degraded: nextStatus == PeerScreenViewStatus.live && (degraded ?? this.degraded),
     );
   }
 }
@@ -238,8 +248,59 @@ class PeerScreenViews extends ChangeNotifier {
   /// the first is connecting must not open a second socket.
   final Set<String> _dialling = {};
 
+  /// Targets whose grant said the producer reads acknowledgements.
+  ///
+  /// Acking one that does not is not merely wasted: a producer predating
+  /// pacing never listens to its end of the media link, and a `PeerLink`'s
+  /// inbound controller is single-subscription — so every ack is BUFFERED
+  /// there for the life of the link. That is the unbounded growth this
+  /// feature removes, handed to the other device instead.
+  ///
+  /// Per TARGET, matching how the producer keys its own half: a grant is per
+  /// source, and one keyed per peer would let a single ungated grant stop
+  /// acking every other source that peer is streaming — jamming flows it IS
+  /// pacing, which it would then refuse for stalling.
+  final Set<PeerScreenTarget> _pacedTargets = {};
+
+  /// Targets given up on for stalling, and how many times.
+  ///
+  /// A stall says this viewer did not take delivery. Asking again is right
+  /// once — a passing squeeze on the link — but a viewer that cannot keep up
+  /// fails the same way every time, and each cycle costs the OTHER device a
+  /// full capture stop and restart. So it stops asking and leaves the notice
+  /// up for the operator.
+  final Map<PeerScreenTarget, int> _stalls = {};
+
+  /// How many times a target is re-asked after a stall before it is left
+  /// alone.
+  static const int _stallRetries = 2;
+
   /// Peers already reported as sending frames this build cannot decode.
   final Set<String> _unreadableFrom = {};
+
+  /// The last sequence seen per target, and how many were missing from the
+  /// recent past. The producer drops silently by design, so the GAPS are the
+  /// only evidence this side has — and they are exact, because a sequence is
+  /// stamped per captured frame rather than per sent one.
+  final Map<PeerScreenTarget, int> _lastSeq = {};
+  final Map<PeerScreenTarget, List<bool>> _recent = {};
+
+  /// Frames to judge over, and how many of them may be missing before the
+  /// pane says so. A brief hiccup is normal on any wireless link; this is
+  /// meant to catch a viewer that is persistently behind.
+  static const int _dropWindow = 40;
+  static const int _dropsBeforeSaying = 12;
+
+  /// Forgets what this target's delivery looked like.
+  ///
+  /// Called wherever a view stops being live. The source may keep capturing
+  /// for another watcher while this one is away, so the first frame after
+  /// recovery carries a large sequence jump — counted as drops, that pins the
+  /// struggling notice on for a whole window of a perfectly healthy stream.
+  void _resetDeliveryStats(PeerScreenTarget target) {
+    _lastSeq.remove(target);
+    _recent.remove(target);
+  }
 
   /// Pending re-asks, per peer. A media link can drop while the control link
   /// stays perfectly healthy (any transient on the second socket), and
@@ -346,12 +407,16 @@ class PeerScreenViews extends ChangeNotifier {
   /// reason written over it.
   void forgetPeer(String peerDeviceId) {
     _retries.remove(peerDeviceId)?.cancel();
+    _lastSeq.removeWhere((target, _) => target.peerDeviceId == peerDeviceId);
+    _recent.removeWhere((target, _) => target.peerDeviceId == peerDeviceId);
     _offers.remove(peerDeviceId);
     _thumbnails.removeWhere((key, _) => key.startsWith('$peerDeviceId/'));
     _thumbnailsAsked.removeWhere((key) => key.startsWith('$peerDeviceId/'));
     unawaited(_mediaSubscriptions.remove(peerDeviceId)?.cancel());
     unawaited(_mediaLinks.remove(peerDeviceId)?.close());
     _dialling.remove(peerDeviceId);
+    _pacedTargets.removeWhere((target) => target.peerDeviceId == peerDeviceId);
+    _stalls.removeWhere((target, _) => target.peerDeviceId == peerDeviceId);
     for (final target in _views.keys.toList()) {
       if (target.peerDeviceId != peerDeviceId) continue;
       _views[target] = _views[target]!._with(status: PeerScreenViewStatus.peerUnreachable);
@@ -383,6 +448,11 @@ class PeerScreenViews extends ChangeNotifier {
   void onGrant(String peerDeviceId, PeerScreenGrant grant) {
     final target = PeerScreenTarget(peerDeviceId, grant.sourceId);
     _answered(target);
+    if (grant.paced) {
+      _pacedTargets.add(target);
+    } else {
+      _pacedTargets.remove(target);
+    }
     _views[target] = (_views[target] ?? _blank(target))._with(status: PeerScreenViewStatus.connecting);
     notifyListeners();
     // Frames arrive on the media link, which is per peer — a grant for a
@@ -394,6 +464,7 @@ class PeerScreenViews extends ChangeNotifier {
   void onRefused(String peerDeviceId, String sourceId, String? reason) {
     final target = PeerScreenTarget(peerDeviceId, sourceId);
     _answered(target);
+    _resetDeliveryStats(target);
     _views[target] = (_views[target] ?? _blank(target))._with(
       status: PeerScreenViewStatus.refused,
       refusal: reason ?? 'refused',
@@ -403,6 +474,11 @@ class PeerScreenViews extends ChangeNotifier {
     // window reopens, the permission is granted — unlike being told the
     // source is not offered, which only the operator can change. Asking
     // again is what makes those recover on their own.
+    if (reason == 'stalled') {
+      final attempts = _stalls.update(target, (n) => n + 1, ifAbsent: () => 1);
+      if (attempts <= _stallRetries) _scheduleRetry(peerDeviceId);
+      return;
+    }
     if (reason == 'stopped' || reason == 'captureFailed') _scheduleRetry(peerDeviceId);
   }
 
@@ -459,6 +535,8 @@ class PeerScreenViews extends ChangeNotifier {
         sourceId: target.sourceId,
         maxWidth: maxWidth,
         fps: fps,
+        // This build answers, so the producer may pace it.
+        acks: true,
       )),
     );
     _armAnswerDeadline(target);
@@ -474,6 +552,7 @@ class PeerScreenViews extends ChangeNotifier {
   void _releaseIfUnwanted(PeerScreenTarget target) {
     if (_subscribers.values.contains(target)) return;
     _views.remove(target);
+    _resetDeliveryStats(target);
     if (target.peerDeviceId == localScreenPeerId) {
       unawaited(screens?.removeWatcher(localViewerWatcher, target.sourceId) ?? Future<void>.value());
       notifyListeners();
@@ -519,6 +598,7 @@ class PeerScreenViews extends ChangeNotifier {
       for (final target in _views.keys.toList()) {
         if (target.peerDeviceId != peerDeviceId) continue;
         _views[target] = _views[target]!._with(status: PeerScreenViewStatus.peerUnreachable);
+        _resetDeliveryStats(target);
       }
       notifyListeners();
       _scheduleRetry(peerDeviceId);
@@ -549,6 +629,7 @@ class PeerScreenViews extends ChangeNotifier {
         for (final target in _views.keys.toList()) {
           if (target.peerDeviceId != peerDeviceId) continue;
           _views[target] = _views[target]!._with(status: PeerScreenViewStatus.connecting);
+          _resetDeliveryStats(target);
         }
         notifyListeners();
         // The producer stopped capturing when its end of this closed, so
@@ -580,6 +661,24 @@ class PeerScreenViews extends ChangeNotifier {
   void _onLocalFrame(Uint8List frame) => _onFrameBytes(localScreenPeerId, frame);
 
   void _onFrameBytes(String peerDeviceId, List<int> bytes) {
+    // Acknowledged from the HEADER, ahead of everything that can drop this
+    // frame. Taking delivery is flow control, not rendering: a frame this
+    // build cannot draw is still one it received, and two undrawable frames
+    // in a row would otherwise shut the producer's window for good, with
+    // nothing left arriving to reopen it.
+    final routing = PeerScreenFrame.routingOf(bytes);
+    if (routing != null) {
+      final acked = PeerScreenTarget(peerDeviceId, routing.sourceId);
+      if (_pacedTargets.contains(acked)) {
+        _mediaLinks[peerDeviceId]?.send(
+            PeerScreenAck(sourceId: routing.sourceId, sequence: routing.sequence).encode());
+      }
+      // Delivery resumed, so whatever stalled it has passed. Without this a
+      // pane that recovers twice over a long session is left un-retryable
+      // for the rest of it.
+      _stalls.remove(acked);
+    }
+
     final frame = PeerScreenFrame.decode(bytes is Uint8List ? bytes : Uint8List.fromList(bytes));
     if (frame == null) {
       // Once per peer, not per frame: a producer sending a format this build
@@ -595,9 +694,31 @@ class PeerScreenViews extends ChangeNotifier {
     // stored: it is a race with an unsubscribe, and holding it would keep a
     // picture of someone's screen for a pane that has gone.
     if (!_views.containsKey(target)) return;
+    // The backstop for the resets at each way OUT of live. The source may
+    // keep capturing for another watcher while this one is away, so the
+    // first frame after any absence carries a large jump — counted as drops,
+    // that pins the struggling notice on a healthy stream. Reading the
+    // status on the way back in is the one place a status transition added
+    // later cannot forget.
+    if (_views[target]!.status != PeerScreenViewStatus.live) _resetDeliveryStats(target);
+
+    final previous = _lastSeq[target];
+    _lastSeq[target] = frame.sequence;
+    final missed = (previous == null || frame.sequence <= previous)
+        ? 0
+        : frame.sequence - previous - 1;
+    final recent = _recent.putIfAbsent(target, () => <bool>[])
+      ..addAll(List<bool>.filled(missed.clamp(0, _dropWindow), true))
+      ..add(false);
+    if (recent.length > _dropWindow) {
+      recent.removeRange(0, recent.length - _dropWindow);
+    }
+    final dropped = recent.where((wasDropped) => wasDropped).length;
+
     _views[target] = _views[target]!._with(
       status: PeerScreenViewStatus.live,
       frame: frame,
+      degraded: dropped >= _dropsBeforeSaying,
     );
     notifyListeners();
   }

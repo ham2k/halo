@@ -4223,6 +4223,12 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'Sources: ${primary}, ${secondary}'
 	String solarSources({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}';
+
+	/// en: 'The connection is struggling — skipping frames.'
+	String get remoteScreenDegraded => 'The connection is struggling — skipping frames.';
+
+	/// en: 'Frames stopped getting through — this connection may be too slow.'
+	String get remoteScreenStalled => 'Frames stopped getting through — this connection may be too slow.';
 }
 
 // Path: operation.export.compactFileNames
@@ -5278,6 +5284,8 @@ extension on Translations {
 			'operation.layout.panels.solarBandFair' => 'Fair',
 			'operation.layout.panels.solarBandPoor' => 'Poor',
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}',
+			'operation.layout.panels.remoteScreenDegraded' => 'The connection is struggling — skipping frames.',
+			'operation.layout.panels.remoteScreenStalled' => 'Frames stopped getting through — this connection may be too slow.',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
@@ -5511,10 +5519,10 @@ extension on Translations {
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
 			'loggingControls.info.noticeNewState' => 'New State',
 			'loggingControls.info.noticeNewProvince' => 'New Province',
-			'loggingControls.info.noticeNewDay' => 'New Day',
-			'loggingControls.info.noticeNewRef' => 'New Ref',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.info.noticeNewDay' => 'New Day',
+			'loggingControls.info.noticeNewRef' => 'New Ref',
 			'loggingControls.info.noticeNewMult' => 'New Mult',
 			'loggingControls.info.noticeNewZone' => 'New Zone',
 			'loggingControls.info.noticeInvalidMode' => 'Wrong Mode',
@@ -6025,10 +6033,10 @@ extension on Translations {
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.categoryCore' => 'Core & Runtime',
-			'settings.about.notices' => 'Notices & Messages',
-			'settings.about.noticesDescription' => 'Announcements and status messages',
 			_ => null,
 		} ?? switch (path) {
+			'settings.about.notices' => 'Notices & Messages',
+			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
 			'settings.panels.commonPreferences' => 'Common Preferences',

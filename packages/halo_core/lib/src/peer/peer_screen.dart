@@ -169,24 +169,94 @@ class PeerScreenFrame {
   /// discriminator before committing to either reader.
   static bool looksLikeFrame(List<int> raw) => raw.isNotEmpty && raw[0] == formatVersion;
 
+  /// This frame's sequence number, reading the header and nothing else.
+  static int? sequenceOf(List<int> raw) => (_header(raw)?['seq'] as num?)?.toInt();
+
+  /// Both of the fields a producer needs to route and pace a frame, from ONE
+  /// read of the header. Reading them separately parses and copies the header
+  /// twice per frame, per watcher — against the whole point of not unpacking
+  /// a frame that is about to be forwarded unchanged.
+  static ({String sourceId, int sequence})? routingOf(List<int> raw) {
+    final header = _header(raw);
+    if (header == null) return null;
+    final sourceId = header['src'];
+    final sequence = (header['seq'] as num?)?.toInt();
+    if (sourceId is! String || sourceId.isEmpty || sequence == null) return null;
+    return (sourceId: sourceId, sequence: sequence);
+  }
+
   /// Which source [raw] came from, reading the header and nothing else.
   ///
   /// A producer routing a frame to whoever subscribed needs the id and not
   /// the picture; [decode] would copy every image byte out of the buffer it
   /// is about to forward unchanged, ten times a second per viewer.
   static String? sourceIdOf(List<int> raw) {
+    final id = _header(raw)?['src'];
+    return id is String && id.isNotEmpty ? id : null;
+  }
+
+  static Map<Object?, Object?>? _header(List<int> raw) {
     if (raw.length < 3 || raw[0] != formatVersion) return null;
     final headerLength = (raw[1] << 8) | raw[2];
     if (headerLength == 0 || headerLength > maxHeaderBytes) return null;
     if (raw.length < 3 + headerLength) return null;
     try {
       final header = jsonDecode(utf8.decode(raw.sublist(3, 3 + headerLength)));
-      if (header is! Map) return null;
-      final id = header['src'];
-      return id is String && id.isNotEmpty ? id : null;
+      return header is Map ? header : null;
     } catch (_) {
       return null;
     }
+  }
+}
+
+/// A viewer saying which frame it has taken delivery of.
+///
+/// Travels back up the MEDIA link, which is bidirectional — the control link
+/// carries QSO sync, CAT and position, and ten of these a second per source
+/// do not belong in front of them. It also means this state dies with the
+/// link that owns it, rather than needing its own cleanup.
+///
+/// Same layout as [PeerScreenFrame] with its own version byte, so one shape
+/// of parser covers both and neither can be mistaken for the other.
+class PeerScreenAck {
+  static const int formatVersion = 2;
+
+  final String sourceId;
+
+  /// The frame's own [PeerScreenFrame.sequence]. Nothing more is needed: the
+  /// producer counts what it has sent against what has come back.
+  final int sequence;
+
+  const PeerScreenAck({required this.sourceId, required this.sequence});
+
+  Uint8List encode() {
+    final header = utf8.encode(jsonEncode({'src': sourceId, 'seq': sequence}));
+    final out = Uint8List(3 + header.length);
+    out[0] = formatVersion;
+    out[1] = (header.length >> 8) & 0xFF;
+    out[2] = header.length & 0xFF;
+    out.setRange(3, out.length, header);
+    return out;
+  }
+
+  /// Null for anything unreadable — an ack is advisory, and one that cannot
+  /// be parsed costs a frame's worth of window, never the link.
+  static PeerScreenAck? decode(List<int> raw) {
+    if (raw.length < 3 || raw[0] != formatVersion) return null;
+    final headerLength = (raw[1] << 8) | raw[2];
+    if (headerLength == 0 || headerLength > PeerScreenFrame.maxHeaderBytes) return null;
+    if (raw.length < 3 + headerLength) return null;
+    final Object? header;
+    try {
+      header = jsonDecode(utf8.decode(raw.sublist(3, 3 + headerLength)));
+    } catch (_) {
+      return null;
+    }
+    if (header is! Map) return null;
+    final sourceId = header['src'];
+    final sequence = (header['seq'] as num?)?.toInt();
+    if (sourceId is! String || sourceId.isEmpty || sequence == null) return null;
+    return PeerScreenAck(sourceId: sourceId, sequence: sequence);
   }
 }
 
@@ -201,9 +271,25 @@ class PeerScreenSubscription {
   final int maxWidth;
   final int fps;
 
-  const PeerScreenSubscription({required this.sourceId, required this.maxWidth, required this.fps});
+  /// Whether this viewer sends [PeerScreenAck]s, and may therefore be paced.
+  ///
+  /// Absent means NO, and that default is load-bearing: a peer on a build
+  /// that predates acking would never answer, so a producer that paced
+  /// unconditionally would send a window's worth of frames and stop for
+  /// good — a worse failure than the unbounded queue this exists to fix, and
+  /// a silent one. An unacked subscription is served exactly as it was
+  /// before any of this.
+  final bool acks;
 
-  Map<String, dynamic> toJson() => {'id': sourceId, 'maxWidth': maxWidth, 'fps': fps};
+  const PeerScreenSubscription({
+    required this.sourceId,
+    required this.maxWidth,
+    required this.fps,
+    this.acks = false,
+  });
+
+  Map<String, dynamic> toJson() =>
+      {'id': sourceId, 'maxWidth': maxWidth, 'fps': fps, if (acks) 'acks': true};
 
   static PeerScreenSubscription? from(Map<String, dynamic> fields) {
     final id = fields['id'];
@@ -212,6 +298,7 @@ class PeerScreenSubscription {
       sourceId: id,
       maxWidth: ((fields['maxWidth'] as num?)?.toInt() ?? 1280).clamp(160, 3840),
       fps: ((fields['fps'] as num?)?.toInt() ?? 10).clamp(1, 30),
+      acks: fields['acks'] == true,
     );
   }
 
@@ -219,6 +306,10 @@ class PeerScreenSubscription {
   /// capture by comparing the terms it is already serving against the ones
   /// just asked for. On identity that comparison is always "different" and
   /// every viewer that joins tears down the stream the others are watching.
+  /// [acks] is deliberately NOT part of this. Equality decides whether a
+  /// running capture must restart at new terms, and how a viewer takes
+  /// delivery is not a term of the capture — restarting a stream because one
+  /// of two viewers acks would drop frames for the other.
   @override
   bool operator ==(Object other) =>
       other is PeerScreenSubscription &&
@@ -242,14 +333,33 @@ class PeerScreenGrant {
   final String sourceId;
   final String ticket;
 
+  /// Whether this producer reads acknowledgements, and the viewer should
+  /// therefore send them.
+  ///
+  /// Absent means NO, and that default is the other half of the
+  /// compatibility story [PeerScreenSubscription.acks] starts. A producer
+  /// that predates pacing never reads its end of the media link, and a
+  /// `PeerLink`'s inbound controller is single-subscription — so acks sent
+  /// to it are BUFFERED for the life of the link, ten a second per source,
+  /// growing that device's heap without bound. Which is the very failure
+  /// this feature exists to remove, reintroduced on the other side of the
+  /// wire by the fix for it.
+  final bool paced;
+
   /// The producer's own listening port. Sent explicitly because the viewer
   /// may know this peer only as the side that dialled IT, in which case it
   /// has the address from the socket and no port at all.
   final int port;
 
-  const PeerScreenGrant({required this.sourceId, required this.ticket, required this.port});
+  const PeerScreenGrant({
+    required this.sourceId,
+    required this.ticket,
+    required this.port,
+    this.paced = false,
+  });
 
-  Map<String, dynamic> toJson() => {'id': sourceId, 'ticket': ticket, 'port': port};
+  Map<String, dynamic> toJson() =>
+      {'id': sourceId, 'ticket': ticket, 'port': port, if (paced) 'paced': true};
 
   static PeerScreenGrant? from(Map<String, dynamic> fields) {
     final id = fields['id'];
@@ -258,6 +368,11 @@ class PeerScreenGrant {
     if (id is! String || id.isEmpty) return null;
     if (ticket is! String || ticket.isEmpty) return null;
     if (port == null || port <= 0 || port > 65535) return null;
-    return PeerScreenGrant(sourceId: id, ticket: ticket, port: port);
+    return PeerScreenGrant(
+      sourceId: id,
+      ticket: ticket,
+      port: port,
+      paced: fields['paced'] == true,
+    );
   }
 }

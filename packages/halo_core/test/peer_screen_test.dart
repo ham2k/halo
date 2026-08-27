@@ -239,4 +239,93 @@ void main() {
       expect(peerProtocolVersion, 2);
     });
   });
+
+  group('PeerScreenAck', () {
+    test('survives a round trip', () {
+      final decoded = PeerScreenAck.decode(
+          const PeerScreenAck(sourceId: 'display:1', sequence: 5007).encode())!;
+      expect(decoded.sourceId, 'display:1');
+      expect(decoded.sequence, 5007);
+    });
+
+    test('an ack and a frame never decode as each other', () {
+      // The whole reason the two share a layout but not a version byte. If
+      // either could read the other, a producer would treat a frame as an
+      // acknowledgement — or a viewer would try to draw one — and the
+      // symptom would be a stalled stream with nothing to say why.
+      final frame = PeerScreenFrame(
+        sourceId: 'display:1',
+        width: 8,
+        height: 8,
+        sequence: 3,
+        format: 'jpeg',
+        image: Uint8List.fromList(const [1, 2, 3]),
+      ).encode();
+      final ack = const PeerScreenAck(sourceId: 'display:1', sequence: 3).encode();
+
+      expect(PeerScreenAck.decode(frame), isNull);
+      expect(PeerScreenFrame.decode(ack), isNull);
+      expect(PeerScreenAck.formatVersion, isNot(PeerScreenFrame.formatVersion));
+    });
+
+    test('refuses rather than throws on anything malformed', () {
+      // Arrives off a socket from a build this one did not compile. A throw
+      // escapes into the link's handler and costs the session.
+      final good = const PeerScreenAck(sourceId: 'display:1', sequence: 3).encode();
+      expect(PeerScreenAck.decode(const []), isNull);
+      expect(PeerScreenAck.decode(good.sublist(0, 2)), isNull);
+      final badVersion = Uint8List.fromList(good)..[0] = 99;
+      expect(PeerScreenAck.decode(badVersion), isNull);
+      final longHeader = Uint8List.fromList(good)
+        ..[1] = 0x0F
+        ..[2] = 0xFF;
+      expect(PeerScreenAck.decode(longHeader), isNull);
+      final junk = utf8.encode('not json');
+      expect(
+          PeerScreenAck.decode(Uint8List.fromList([2, 0, junk.length, ...junk])), isNull);
+      for (final header in ['{"seq":1}', '{"src":"display:1"}', '{"src":"","seq":1}']) {
+        final bytes = utf8.encode(header);
+        expect(
+            PeerScreenAck.decode(
+                Uint8List.fromList([2, bytes.length >> 8, bytes.length & 0xFF, ...bytes])),
+            isNull,
+            reason: header);
+      }
+    });
+  });
+
+  group('the pacing capability survives the wire', () {
+    test('a subscription carries its acks flag through JSON', () {
+      // Everything that proves pacing engages builds a subscription in
+      // process. If this field were lost in encoding — a renamed key, a
+      // reader that never looks — every real viewer would be served ungated,
+      // the feature would be inert in production, and nothing else in the
+      // suite would notice.
+      const request =
+          PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true);
+      final decoded = PeerScreenSubscription.from(request.toJson())!;
+      expect(decoded.acks, isTrue);
+      expect(decoded.sourceId, 'display:1');
+    });
+
+    test('a subscription from a build that never heard of acks reads as false', () {
+      // Load-bearing: pacing a viewer that cannot answer sends one window
+      // and then stops for good.
+      expect(PeerScreenSubscription.from({'id': 'display:1'})!.acks, isFalse);
+    });
+
+    test('a grant carries its paced flag through JSON, and defaults to false', () {
+      // The other direction. A viewer that acks a producer which never reads
+      // its end of the link buffers those acks in that device's memory for
+      // the life of the link.
+      const grant =
+          PeerScreenGrant(sourceId: 'display:1', ticket: 'abc', port: 5000, paced: true);
+      final decoded = PeerScreenGrant.from(
+          PeerMessage.decode(PeerMessage.screenGrant(grant).encode())!.fields)!;
+      expect(decoded.paced, isTrue);
+      expect(
+          PeerScreenGrant.from({'id': 'display:1', 'ticket': 'abc', 'port': 5000})!.paced,
+          isFalse);
+    });
+  });
 }

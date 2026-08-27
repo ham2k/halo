@@ -341,10 +341,15 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
           'captureFailed' => t.remoteScreenCaptureFailed,
           'noAnswer' => t.remoteScreenNoAnswer,
           'noMedia' => t.remoteScreenNoMedia,
+          'stalled' => t.remoteScreenStalled,
           _ => t.remoteScreenRefused,
         },
+      // Live and keeping up. A live view that is NOT keeping up says so
+      // below, but never through this — a notice here dims the picture, and
+      // a struggling stream is current, just intermittent.
       PeerScreenViewStatus.live => null,
     };
+    final degraded = view?.degraded ?? false;
 
     if (image == null) {
       // The picker is offered here too, not only on an unset pane: a source
@@ -359,7 +364,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
       );
     }
 
-    return _viewport(context, image, notice, view?.status);
+    return _viewport(context, image, notice, view?.status, degraded);
   }
 
   /// Roughly the height the Done button and zoom pill occupy, so a notice
@@ -378,8 +383,8 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
 
   /// The picture, framed by the operator, with the adjust-mode chrome over
   /// it when they are framing it.
-  Widget _viewport(
-      BuildContext context, ui.Image image, String? notice, PeerScreenViewStatus? status) {
+  Widget _viewport(BuildContext context, ui.Image image, String? notice,
+      PeerScreenViewStatus? status, bool degraded) {
     final t = context.t.operation.layout.panels;
     final theme = Theme.of(context);
 
@@ -474,6 +479,18 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
             IgnorePointer(
               child: Container(color: theme.colorScheme.scrim.withValues(alpha: 0.45)),
             ),
+          // No scrim for this one: the picture IS current, so dimming it
+          // would say the opposite of what is true. Stalled and struggling
+          // must not look the same.
+          if (notice == null && degraded)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: Space.md +
+                  PaneSafeArea.bottomOf(context) +
+                  (_adjusting ? _adjustChromeHeight : 0),
+              child: Center(child: _NoticePill(icon: MdiIcons.wifiStrength2, text: t.remoteScreenDegraded)),
+            ),
           if (notice != null)
             Positioned(
               left: 0,
@@ -482,32 +499,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
               bottom: Space.md +
                   PaneSafeArea.bottomOf(context) +
                   (_adjusting ? _adjustChromeHeight : 0),
-              child: Center(
-                child: Material(
-                  color: theme.colorScheme.surface.withValues(alpha: 0.9),
-                  shape: const StadiumBorder(),
-                  clipBehavior: Clip.antiAlias,
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: Space.lg, vertical: Space.sm),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_noticeIcon(status), size: 18),
-                        const SizedBox(width: Space.md),
-                        // The reason stays beside the glyph. "Off the
-                        // network" and "they stopped sharing it" both freeze
-                        // the picture, and an icon alone cannot tell an
-                        // operator which of the two to go and fix.
-                        Flexible(
-                          child: Text(notice, style: theme.textTheme.bodySmall),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              child: Center(child: _NoticePill(icon: _noticeIcon(status), text: notice)),
             ),
           if (_adjusting) ...[
             // Same pill the map uses, in the same corner.
@@ -592,6 +584,39 @@ class _ZoomButtons extends StatelessWidget {
             onPressed: onOut,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The badge a pane wears when it has something to say about itself. The
+/// reason stays beside the glyph: several different conditions freeze or
+/// interrupt the picture, and an icon alone cannot tell an operator which of
+/// them to go and fix.
+class _NoticePill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _NoticePill({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface.withValues(alpha: 0.9),
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.sm),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: Space.md),
+            Flexible(child: Text(text, style: theme.textTheme.bodySmall)),
+          ],
+        ),
       ),
     );
   }
