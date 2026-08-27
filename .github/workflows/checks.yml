@@ -1,0 +1,86 @@
+# Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+# SPDX-License-Identifier: MPL-2.0
+#
+# The cheap half of the gate, on every push to `main`: source-scanning guards,
+# the extensions' typecheck, and `dart analyze` across every package. No tests.
+#
+# It CALLS `scripts/test.sh --quick` rather than restating its steps, which is
+# the arrangement HALO-249 specifies. The six-job matrix this replaces restated
+# them, and drifted in the direction that hurts: a check added to the script ran
+# on every developer's machine and never here, so a rule the docs described as
+# enforced silently was not. One invocation cannot drift from itself — add a
+# check to the script and it lands here for free. Keep it that way; do not
+# inline steps into this file.
+#
+# What it deliberately does NOT do is run the suite. That was 59 billed minutes
+# a run across twelve jobs, 326 times in August, and it only re-proved what the
+# local `./scripts/test.sh` had already established before the merge — the gate
+# is still local, and still the only thing standing between a mistake and
+# `main` (AGENTS.md). This catches the narrow class that survives a local run:
+# a merge resolved by hand and pushed without re-running, or a tree that
+# analyzed clean on one machine's cached toolchain.
+#
+# ONE job, deliberately. Billing rounds every job up to the whole minute, so a
+# matrix of short jobs costs several times its own wall clock; the retired CI
+# spent 38 of its 59 minutes on three test shards that together ran for 14.
+
+name: Checks
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.agents/**'
+      - '.claude/**'
+  workflow_dispatch:
+
+# Keyed on the SHA, not the ref: cancelling is right for a deploy, where only
+# the newest commit matters, and wrong for a check, where each commit is its
+# own claim. Two merges inside this job's window would otherwise cancel the
+# first — leaving a commit on `main` that was never checked, showing grey
+# rather than red.
+concurrency:
+  group: checks-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    # A backstop against the 6-hour default, not a performance target. This
+    # single job does sequentially what the retired matrix spread over jobs
+    # capped at 5/10/15 minutes each — npm ci and typecheck, then pub get and
+    # analyze for nine packages, on top of a cold Flutter install — so a cap
+    # near the observed runtime would redden `main` for a slow runner rather
+    # than for a real fault. Measure a real run before tightening it.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/package-lock.json
+
+      # mise provides the Flutter version pinned in mise.toml, so this and a
+      # local run analyze against exactly the same toolchain.
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      # `pub get` for nine packages is most of this job's runtime once the
+      # toolchain is cached. Most of them are path-dependency packages with no
+      # tracked lockfile, so the pubspecs carry the key in practice.
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock', '**/pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      # The script generates lib/config/secrets.dart itself (blank template on
+      # a checkout without app_dist), so nothing to do here.
+      - name: Guards, typecheck and analyze
+        run: ./scripts/test.sh --quick

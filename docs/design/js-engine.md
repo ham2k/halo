@@ -327,13 +327,14 @@ isolate never runs the timer behind `flutter test`'s own per-test timeout — a
 does not turn these tests red, it hangs the run: the assertions after the eval
 simply never execute, and the suite neither passes nor fails.
 
-Only a kill from outside the process converts that back into a failure, which
-is what `timeout-minutes` on every `ci.yml` job is for — without it a hang runs
-to GitHub's 6-hour default. Locally there is no such backstop: a hung
-`./scripts/test.sh` waits for a Ctrl-C. An in-script watchdog is the wrong way
-to add one — `scripts/test.sh` is not what CI runs (see its own note), and
-wrapping the runner risks making a broken environment look like a pass, which
-is far worse than the hang it would prevent.
+Only a kill from outside the process converts that back into a failure, and
+**nothing provides one**: these tests belong to the full gate, which runs only
+on a developer's machine (the Checks workflow analyzes but never tests), so a
+hung `./scripts/test.sh` waits for a Ctrl-C rather than for a runner timeout.
+An in-script watchdog is the wrong way to add one — wrapping the runner risks
+making a broken environment look like a pass, which is far worse than the hang
+it would prevent. Recognising the hang for what it is remains the operator's
+job: a gate that has stopped producing output has not "nearly finished".
 
 **Native code is not Shorebird-patchable** (docs/releases.md §4), so a change
 here ships in a normal release cycle, not a code push.

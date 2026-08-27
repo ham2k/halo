@@ -16,9 +16,10 @@
 #                            convenience, not a gate.
 #   test.sh --quick          basic checks only — extension typecheck + Dart
 #                            analyze, no tests (and therefore no bundle build,
-#                            which only the tests consume). CI uses it for
-#                            pull requests; the full run happens on push to
-#                            the protected branches (see .github/workflows/ci.yml).
+#                            which only the tests consume). The Checks workflow
+#                            (.github/workflows/checks.yml) runs exactly this
+#                            on a push to `main` and nothing more; the full
+#                            gate above runs only here, before the merge.
 #   test.sh <group>...       subset run for fast iteration: only the named
 #                            groups' tests, skipping npm ci / pub get /
 #                            analyze, rebuilding the extension bundles only
@@ -28,10 +29,11 @@
 #                            uncommitted + untracked).
 #   test.sh --list [group]   list the groups, or one group's files.
 #   test.sh --guards         the source-scanning guards alone (no toolchain,
-#                            no build) — what CI runs so a rule enforced only
-#                            by this script still reaches `main`.
+#                            no build). Folded into --quick, so the Checks
+#                            workflow gets them without naming them.
 #   test.sh --browser        the browser-platform tests alone, fatal rather
-#                            than skipped when no Chrome is present. Also CI's.
+#                            than skipped when no Chrome is present. Part of
+#                            the full gate; nothing on GitHub runs it.
 #
 # Subset runs trade coverage for speed on purpose: they do not run analyze,
 # do not run dependent packages (a halo_core change can break app tests that
@@ -313,11 +315,14 @@ ensure_pub() {
 # Keep this list to genuinely platform-sensitive, dependency-free tests —
 # anything touching drift or dart:io cannot run here at all.
 #
-# Missing Chrome is a loud skip locally and a failure under [BROWSER_REQUIRED]
-# (CI): a developer machine without Chrome must still be able to finish the
-# gate rather than being pushed to `--quick`, which runs no tests at all, but a
-# CI job that quietly skipped the only web coverage there is would be worse
-# than not having the job.
+# Missing Chrome is a skip, not a failure: a developer machine without Chrome
+# must still be able to finish the gate rather than be pushed to `--quick`,
+# which runs no tests at all. [BROWSER_REQUIRED] makes it fatal for a run that
+# exists only to cover this ground (`--browser`).
+#
+# But a skip must never be reported as a pass. Nothing else covers web number
+# semantics — no CI runs any test — so a full run that skipped this ends with a
+# verdict that says so rather than "all checks passed" (AGENTS.md Rule 12).
 run_browser_tests() {
   # `-x`, not just `-n`: a CHROME_EXECUTABLE left over from an uninstall
   # would otherwise read as "Chrome present" and skip (or fail) for the wrong
@@ -333,6 +338,7 @@ run_browser_tests() {
     echo "❌ browser-platform tests: no Chrome found, and this run requires one." >&2
     exit 1
   else
+    BROWSER_SKIPPED=1
     echo "⚠️  SKIPPED: browser-platform tests — no Chrome found."
     echo "⚠️  Web-only defects (see the comment above) are NOT covered by this run."
     echo "⚠️  Install Chrome or set CHROME_EXECUTABLE before trusting this as the merge gate."
@@ -714,7 +720,9 @@ case "${1:-}" in
 esac
 
 # ---------------------------------------------------------------------------
-# Full gate (and --quick), exactly as CI mirrors it
+# Full gate (and --quick). Nothing mirrors this — the Checks workflow invokes
+# --quick rather than restating it, so a check added below reaches `main`
+# without anyone editing a workflow.
 # ---------------------------------------------------------------------------
 
 # First, because it costs a fraction of a second and its failure is a one-line
@@ -782,5 +790,12 @@ fi
 if [[ "$QUICK" -eq 1 ]]; then
   echo "✅ quick checks passed (typecheck + analyze; tests NOT run)"
 else
-  echo "✅ all checks passed"
+  if [[ "${BROWSER_SKIPPED:-0}" -eq 1 ]]; then
+    # Not a pass. Nothing downstream re-runs these, so the verdict line is the
+    # only place the gap can show — and a green one above a skipped suite is
+    # how untested code ships.
+    echo "⚠️  passed, WITHOUT browser coverage — see the skip above"
+  else
+    echo "✅ all checks passed"
+  fi
 fi

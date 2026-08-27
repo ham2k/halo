@@ -26,7 +26,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
-- **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the branch name and plan once work starts, findings that redefine the task, and the merge. **GitHub PRs are not part of the workflow** — GitHub is the remote (and runs CI on `main` only); the card is where a task's plan and state live.
+- **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the branch name and plan once work starts, findings that redefine the task, and the merge. **GitHub PRs are not part of the workflow** — GitHub is the remote, and runs no tests; the card is where a task's plan and state live.
 
 - Agents should always work on a worktree, with a branch off of the `main` branch on `origin` (ham2k/halo-dist; usually available as `main` locally too, tracking `origin/main`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
@@ -36,7 +36,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Keep `main` updated. Rebase your branches on top of the latest `main` before finalizing or merging.
 
-- **Merging to `main` requires the developer's approval, every time.** Never land work on `main` on your own initiative. CI runs only on pushes to `main`, so the local `./scripts/test.sh` run before merging IS the gate; there is no CI safety net on branches.
+- **Merging to `main` requires the developer's approval, every time.** Never land work on `main` on your own initiative. **No test runs anywhere but here** — the Checks workflow re-runs the guards, the extensions' typecheck and `dart analyze` on a push to `main`, and nothing else, so the local `./scripts/test.sh` run before merging is not merely the first gate for the suite, it is the only one. A green run there is the sole evidence the tests passed; treat a skipped or partial run as shipping untested code.
 
 - Steps when tackling a new task:
   - Open a new branch, off the latest `main`. Look for updates to AGENTS.md.
@@ -46,7 +46,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
   - If the work gives a Dev/Next tester something new to go and try, add a note under the `upcoming` key of `app/assets/tester-notes.yaml`, in the same commit — about a dozen words on one line, one per change and never one per detail. Most changes get no note at all: a new feature or control earns one, bug fixes and refinements to existing behaviour usually don't, and work with no tester-visible surface never does. **Anything behind an experiment never does either** — neither tester notes nor release notes ever mention an experiment, the `EXP` word that toggles it, or the feature it gates; that work earns a note only once it ships without the gate. The release cut renames that key to the build that ships it, so never type a build number there. [releases.md §2.7](file:///Users/sd/Work/ham2k/halo-dist/docs/releases.md) is the spec for both these and the public `release-notes.yaml` — the YAML files carry no guidance of their own, so read it before writing a note.
   - Once the work has settled, run a code review, present the results to the developer and ask for followups.
   - When the followups have been addressed, rebase on top of an updated `main`, run the full suite, and ask the developer to approve the merge.
-  - Work stays local. Push the branch to `origin` only as a **backup** when a task stretches past a couple of hours (or holds unmerged work between sessions) — pushed branches trigger no CI and invite no review; delete them after the merge.
+  - Work stays local. Push the branch to `origin` only as a **backup** when a task stretches past a couple of hours (or holds unmerged work between sessions) — pushed branches run nothing (the workflows are `main`-only) and invite no review; delete them after the merge.
 
 - Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/halo-dist/DEVELOPMENT.md).
 
@@ -66,7 +66,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 ## Tooling
 
 - **Verify with `./scripts/test.sh`** (or `mise run test`) before saying tests
-  pass or merging — it is what CI runs. For the inner loop, run **subsets**
+  pass or merging — it is the whole gate, and the only place the tests run. For the inner loop, run **subsets**
   through the same script: `./scripts/test.sh <group>...` (see `--list`) or
   `./scripts/test.sh --changed` — it keeps the extension bundles fresh (the
   stale-bundle trap raw `flutter test` falls into) while skipping

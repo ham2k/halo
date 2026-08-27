@@ -24,7 +24,7 @@ Add to this list whenever something bites; that is what it is for.
 | Each release cut | Build expiration dates, Shorebird token, appcast health |
 | Monthly | Reference data files, tzdata, extension npm deps, Flutter/Dart pin |
 | Quarterly | quickjs-ng, signing certificates, dependency audit, this document |
-| Whenever CI goes strange | The "silent failure" column below, top to bottom |
+| Whenever a deploy or a release build goes strange | The "silent failure" column below, top to bottom |
 
 ---
 

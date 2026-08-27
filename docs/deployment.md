@@ -31,9 +31,11 @@ mise run deploy-web
 
 ---
 
-## 1b. Automatic Deployment from CI
+## 1b. Automatic Deployment on push to `main`
 
-Every push to the `main` branch of `halo-dist` runs CI, and when CI passes, the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`) runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. A CI failure skips the deploy silently. The workflow can also be run manually from the Actions tab (`workflow_dispatch`), bypassing the CI gate.
+Every push to the `main` branch of `halo-dist` runs the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`), which runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. Commits touching only docs or Markdown are skipped. The workflow can also be run manually from the Actions tab (`workflow_dispatch`).
+
+Nothing gates it: there is no CI on GitHub, and the local `./scripts/test.sh` run before the merge is what validated the commit. A deploy that fails to *build* is therefore the first automated sign that something is wrong on `main`, rather than a Cloudflare problem — read it that way.
 
 The workflow requires two repository secrets on `halo-dist`:
 - `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit** permission (create at Cloudflare Dashboard → My Profile → API Tokens).
@@ -48,7 +50,7 @@ mise run ops -- preview my-feature      # or, by hand:
 git tag web-preview-my-feature && git push origin web-preview-my-feature
 ```
 
-The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview, served at `https://<name>-halo-dev.ham2k.net`. Re-pushing a tag with the same name replaces the preview. There is no CI gate on previews.
+The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview, served at `https://<name>-halo-dev.ham2k.net`. Re-pushing a tag with the same name replaces the preview. Nothing gates previews, as nothing gates any deploy here.
 
 How the URL works: Pages gives every preview a branch alias at `https://<name>.halo-dev-ham2k-net.pages.dev` (which also works directly). The `halo-dev-preview-proxy` Worker (`workers/halo-dev-preview-proxy/`, routed on `*-halo-dev.ham2k.net/*`) proxies the flat subdomain to that alias, and the workflow upserts a proxied placeholder DNS record (`AAAA 100::`) for each preview name so the route receives traffic. Being one-level subdomains of `ham2k.net`, they are covered by Universal SSL.
 
