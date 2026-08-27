@@ -157,6 +157,64 @@ class StationPanel extends StatelessWidget {
     );
   }
 
+  /// [variant]'s config fields, with the channel picker's options saying
+  /// what each channel is doing right now.
+  ///
+  /// Only for a node that is CONNECTED: the inventory is live state, and a
+  /// disconnected node has none, so its picker reads as the plain list of
+  /// letters it was before. That asymmetry is the point — an operator
+  /// choosing between a Flex's slices wants to know which one SmartSDR on
+  /// the other machine already has, and the alternative is picking blind.
+  ///
+  /// Labels only. The values are the driver's, so a form saved while the
+  /// annotation was showing stores exactly what one saved without it does.
+  List<Map<String, dynamic>> _annotateChannels(
+    EquipmentType variant,
+    EquipmentNode? node,
+    BuildContext context,
+  ) {
+    final elements = variant.configElements();
+    final channelKey = variant.driver.channelKey;
+    if (channelKey == null || node == null) return elements;
+    final channels = _cat.stateFor(node.uuid).channels;
+    if (channels.isEmpty) return elements;
+
+    final byKey = {for (final channel in channels) channel.key: channel};
+    return [
+      for (final element in elements)
+        if (element['key'] != channelKey || element['options'] is! List)
+          element
+        else
+          {
+            ...element,
+            'options': [
+              for (final option in (element['options'] as List).cast<Map<String, dynamic>>())
+                if (byKey[option['value']] case final channel?)
+                  {...option, 'label': '${option['label']}${_describeChannel(channel, context)}'}
+                else
+                  option,
+            ],
+          },
+    ];
+  }
+
+  /// What to append to a channel's own label — what it is tuned to, and who
+  /// has it. Empty when the equipment said nothing worth adding, so an
+  /// unremarkable channel does not grow a trailing separator.
+  String _describeChannel(EquipmentChannel channel, BuildContext context) {
+    final st = context.t.settings.station;
+    if (!channel.inUse) return ' — ${st.channelNotInUse}';
+    final parts = [
+      if (channel.freqKHz != null) fmtFreq(channel.freqKHz!),
+      ?channel.mode,
+      // Named where the equipment named them, and said to be held either
+      // way: an owner we could not resolve must not read as a free channel,
+      // which is the one answer this list exists to prevent.
+      channel.usedBy ?? (channel.heldByUnknown ? st.channelHeldByUnknown : null),
+    ].nonNulls;
+    return parts.isEmpty ? '' : ' — ${parts.join(' · ')}';
+  }
+
   /// The name field, how the radio is connected, and whatever that choice
   /// asks for, in one form. [node] is null when adding: the actions below act
   /// on equipment that already exists, so they only appear once it does.
@@ -251,7 +309,7 @@ class StationPanel extends StatelessWidget {
               ],
             },
           for (final candidate in variants)
-            for (final element in candidate.configElements())
+            for (final element in _annotateChannels(candidate, node, context))
               {
                 ...element,
                 if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
@@ -1410,7 +1468,12 @@ class _EquipmentTile extends StatelessWidget {
     ].join('  ');
     final connected = state.status == EquipmentStatus.connected;
 
-    final failed = state.status == EquipmentStatus.error && state.error != null;
+    // A problem is connected-but-misconfigured (a Flex pointed at a slice
+    // the radio isn't running). It takes the same whole-row treatment as a
+    // failure, for the same reason: a reason squeezed beside the frequency
+    // it explains the absence of is not a reason.
+    final trouble = state.status == EquipmentStatus.error ? state.error : state.problem;
+    final failed = trouble != null;
 
     // Two lines. The top one is identity — what it is, then where it is.
     // The bottom is what it is doing, EXCEPT when something went wrong, in
@@ -1488,7 +1551,7 @@ class _EquipmentTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  state.error!,
+                  trouble,
                   // Two lines' worth: these say what to do about it, and the
                   // useful part is rarely in the first forty characters.
                   maxLines: 2,

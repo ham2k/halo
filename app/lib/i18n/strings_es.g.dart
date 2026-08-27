@@ -1609,6 +1609,14 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get civAddress => 'Dirección CI-V de la radio';
 	@override String get civAddressDescription => 'Hexadecimal, como aparece en el menú CI-V de la radio. El IC-705 viene con A4.';
 	@override String get civAddressInvalid => 'Una dirección CI-V son dos dígitos hexadecimales, de 01 a FF';
+	@override String get flexSlice => 'Slice';
+	@override String get flexSliceDescription => 'Cuál de los slices de la radio lee y sintoniza esta conexión.';
+	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
+	@override String get flexSliceInvalid => 'Elige uno de los slices de la radio, de la A a la H';
+	@override String flexSliceMissing({required Object letter}) => 'El slice ${letter} no está en uso en esta radio — elige otro, o créalo en SmartSDR';
+	@override String get channelNotInUse => 'sin usar';
+	@override String get channelHeldByUnknown => 'en uso por otro programa';
+	@override String get flexNoSlices => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse';
 	@override String get radioUser => 'Usuario de la radio';
 	@override String get radioPass => 'Contraseña de la radio';
 	@override String get radioLoginDescription => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.';
@@ -3247,6 +3255,14 @@ extension on TranslationsEs {
 			'settings.station.civAddress' => 'Dirección CI-V de la radio',
 			'settings.station.civAddressDescription' => 'Hexadecimal, como aparece en el menú CI-V de la radio. El IC-705 viene con A4.',
 			'settings.station.civAddressInvalid' => 'Una dirección CI-V son dos dígitos hexadecimales, de 01 a FF',
+			'settings.station.flexSlice' => 'Slice',
+			'settings.station.flexSliceDescription' => 'Cuál de los slices de la radio lee y sintoniza esta conexión.',
+			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
+			'settings.station.flexSliceInvalid' => 'Elige uno de los slices de la radio, de la A a la H',
+			'settings.station.flexSliceMissing' => ({required Object letter}) => 'El slice ${letter} no está en uso en esta radio — elige otro, o créalo en SmartSDR',
+			'settings.station.channelNotInUse' => 'sin usar',
+			'settings.station.channelHeldByUnknown' => 'en uso por otro programa',
+			'settings.station.flexNoSlices' => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse',
 			'settings.station.radioUser' => 'Usuario de la radio',
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
@@ -3390,6 +3406,8 @@ extension on TranslationsEs {
 			'commands.reloadFailed' => ({required Object error}) => 'Error al recargar: ${error}',
 			'commands.reloadingAll' => 'Recargando todos los archivos de datos…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',
+			_ => null,
+		} ?? switch (path) {
 			'commands.unknownExperiment' => ({required Object token}) => 'Experimento desconocido «${token}»',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} habilitado',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
@@ -3398,8 +3416,6 @@ extension on TranslationsEs {
 			'commands.settingOn' => 'Sí',
 			'commands.settingOff' => 'No',
 			'commands.settingEmpty' => '(vacío)',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingSecretSet' => '(definido)',
 			'commands.settingSecretUnset' => '(sin definir)',
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} seleccionados',

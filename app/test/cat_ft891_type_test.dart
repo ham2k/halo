@@ -127,6 +127,8 @@ void main() {
 }
 
 class _FakeSink implements EquipmentSink {
+  final problems = <String?>[];
+  List<EquipmentChannel> channels = const [];
   final sent = <List<int>>[];
   final readings = <VfoReading>[];
   final powers = <num>[];
@@ -143,4 +145,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
+  @override
+  void reportProblem(String? message) => problems.add(message);
+
+  @override
+  void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
 }

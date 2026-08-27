@@ -754,6 +754,8 @@ void main() {
 }
 
 class _CountingSink implements EquipmentSink {
+  final problems = <String?>[];
+  List<EquipmentChannel> channels = const [];
   final sent = <List<int>>[];
   @override
   void send(List<int> bytes) => sent.add(bytes);
@@ -763,4 +765,9 @@ class _CountingSink implements EquipmentSink {
   void reportPower(num watts) {}
   @override
   void reportDiagnostic(String? note) {}
+  @override
+  void reportProblem(String? message) => problems.add(message);
+
+  @override
+  void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
 }

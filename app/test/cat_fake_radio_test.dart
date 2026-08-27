@@ -273,6 +273,8 @@ void main() {
 }
 
 class _RecordingSink implements EquipmentSink {
+  final problems = <String?>[];
+  List<EquipmentChannel> channels = const [];
   final readings = <VfoReading>[];
   final watts = <num>[];
   String? diagnostic;
@@ -288,4 +290,9 @@ class _RecordingSink implements EquipmentSink {
 
   @override
   void reportDiagnostic(String? note) => diagnostic = note;
+  @override
+  void reportProblem(String? message) => problems.add(message);
+
+  @override
+  void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
 }

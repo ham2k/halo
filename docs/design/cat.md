@@ -139,6 +139,24 @@ and what makes a second device a map lookup rather than a rewrite.
 
 `CatService` is the only writer of CAT-sourced state.
 
+The sink carries five kinds of report, and the differences between them are load-bearing:
+
+| Report | Lands on | Says |
+|---|---|---|
+| `report` | `EquipmentState.vfo` | where the radio is |
+| `reportPower` | `.power` | RF output, watts; never called by a driver that has not asked |
+| `reportDiagnostic` | `.diagnostic` | what the driver worked out, developer mode only |
+| `reportProblem` | `.problem` | connected, answering, and unable to do what was configured |
+| `reportChannels` | `.channels` | every channel the equipment offers, for equipment with several |
+
+**A problem is not a connection error.** `EquipmentStatus.error` feeds the retry ladder, and the
+conditions that belong there are ones a retry can clear — a radio switched off, a port held by
+another program. A Flex pointed at a slice the radio is not running is neither: the link is up, the
+radio is answering, and only the operator can fix it. Routing it through the failure path would poke
+the radio forever over a setting; leaving it unsaid is worse, because a connected row whose
+frequency never arrives is indistinguishable from a dead radio. So it is its own field, rendered
+with an error's weight and none of its behaviour.
+
 ## Cancellation, and the races it prevents
 
 `EquipmentTransport.connect` takes a `CatCancelToken` **in its first signature**, deliberately.
@@ -370,6 +388,11 @@ Two rules the UI follows:
   seconds; offering to add it again each time is how you end up with six copies of one radio.
   Findings are keyed by serial where the protocol offers one, so a radio that changes address
   updates in place instead of appearing twice.
+- **"Already configured" is per channel, not per radio**, for equipment that offers several
+  (`EquipmentDriver.channelKey` — a FlexRadio's slices, and nothing else today). A Flex with slice A
+  set up is still something you could add, so it keeps being offered, each offer carrying the lowest
+  channel not yet spoken for and named after it from the second on. Filtering per radio instead is
+  what left the second slice reachable only by typing the address in from the catalogue.
 
 Discovery holds a bound socket, so it runs only while the Add dialog that shows its results is open.
 A bind that fails — the port already held, or a sandbox refusing it — surfaces as a reason in that

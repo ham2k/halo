@@ -22,6 +22,8 @@ import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 
 class _FakeSink implements EquipmentSink {
+  final problems = <String?>[];
+  List<EquipmentChannel> channels = const [];
   final sent = <String>[];
   final readings = <VfoReading>[];
   final powers = <num>[];
@@ -38,6 +40,11 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
+  @override
+  void reportProblem(String? message) => problems.add(message);
+
+  @override
+  void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
 }
 
 extension on Ft891Session {

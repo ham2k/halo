@@ -319,6 +319,8 @@ void main() {
 /// Enough of a sink to construct a session. Nothing here sends or reads —
 /// these tests only ask a session to describe itself.
 class _SilentSink implements EquipmentSink {
+  final problems = <String?>[];
+  List<EquipmentChannel> channels = const [];
   @override
   void send(List<int> bytes) {}
   @override
@@ -327,4 +329,9 @@ class _SilentSink implements EquipmentSink {
   void reportPower(num watts) {}
   @override
   void reportDiagnostic(String? note) {}
+  @override
+  void reportProblem(String? message) => problems.add(message);
+
+  @override
+  void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
 }

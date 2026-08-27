@@ -134,6 +134,75 @@ class VfoReading {
   String toString() => 'VfoReading(freqKHz: $freqKHz, mode: $mode)';
 }
 
+/// One of several independently-tunable channels the same piece of
+/// equipment offers — a FlexRadio's slices, and nothing else today.
+///
+/// A node tracks exactly one of these ([EquipmentDriver.channelKey] names
+/// the config field that picks it). The list exists so the operator can see
+/// what the radio is actually doing before choosing: a slice already held by
+/// SmartSDR on another machine is one they probably do not want, and the
+/// alternative to showing it is picking a letter blind.
+///
+/// Live-only, like everything else in [EquipmentState] — a channel list is
+/// what the radio said a moment ago, never what was configured.
+@immutable
+class EquipmentChannel {
+  /// The value [EquipmentDriver.channelKey]'s field takes to select this
+  /// channel — `'0'`..`'7'` for a Flex slice.
+  final String key;
+
+  /// What the equipment calls it: a Flex slice's own `index_letter`.
+  final String label;
+
+  /// False for a channel the radio knows about but is not running.
+  final bool inUse;
+
+  final double? freqKHz;
+  final String? mode;
+
+  /// Who has this channel, as the equipment describes them — "SmartSDR-Win
+  /// (SHACK-PC)". Null when the equipment named nobody, which is not the
+  /// same as nobody holding it — see [heldByUnknown].
+  final String? usedBy;
+
+  /// Something holds this channel and the equipment has not said what.
+  ///
+  /// Its own flag because the difference decides the operator's answer: an
+  /// unowned channel is one to take, and a channel held by a program we
+  /// could not name is one to leave alone. Collapsing both into a null
+  /// [usedBy] renders the second as the first — worse than showing no
+  /// inventory at all, because by then they believe they checked.
+  final bool heldByUnknown;
+
+  const EquipmentChannel({
+    required this.key,
+    required this.label,
+    this.inUse = false,
+    this.freqKHz,
+    this.mode,
+    this.usedBy,
+    this.heldByUnknown = false,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is EquipmentChannel &&
+      other.key == key &&
+      other.label == label &&
+      other.inUse == inUse &&
+      other.freqKHz == freqKHz &&
+      other.mode == mode &&
+      other.usedBy == usedBy &&
+      other.heldByUnknown == heldByUnknown;
+
+  @override
+  int get hashCode => Object.hash(key, label, inUse, freqKHz, mode, usedBy, heldByUnknown);
+
+  @override
+  String toString() => 'EquipmentChannel($key/$label, inUse: $inUse, freq: $freqKHz, '
+      'mode: $mode, usedBy: ${usedBy ?? (heldByUnknown ? 'unnamed' : 'nobody')})';
+}
+
 /// Everything the UI needs to know about one node's connection.
 @immutable
 class EquipmentState {
@@ -176,6 +245,22 @@ class EquipmentState {
   /// here, and cleared with the connection it belonged to.
   final String? diagnostic;
 
+  /// Connected, and the equipment is answering, but what the operator
+  /// configured cannot be honoured — a Flex node pointed at a slice the
+  /// radio is not running.
+  ///
+  /// Deliberately NOT [EquipmentStatus.error]: the link is up, and the
+  /// connect-time error path feeds a retry ladder. Reconnecting cannot fix a
+  /// wrong slice, so routing this through [error] would hammer the radio
+  /// forever over a setting only the operator can change. The row shows it
+  /// with the same weight as an error because to the operator it is one.
+  final String? problem;
+
+  /// Every channel the equipment currently offers, when it has more than one
+  /// — see [EquipmentChannel]. Empty for equipment with a single channel,
+  /// and for one that has not said yet.
+  final List<EquipmentChannel> channels;
+
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
@@ -184,6 +269,8 @@ class EquipmentState {
     this.power,
     this.stale = false,
     this.diagnostic,
+    this.problem,
+    this.channels = const [],
   });
 
   EquipmentState copyWith({
@@ -195,6 +282,9 @@ class EquipmentState {
     bool? stale,
     String? diagnostic,
     bool clearDiagnostic = false,
+    String? problem,
+    bool clearProblem = false,
+    List<EquipmentChannel>? channels,
   }) =>
       EquipmentState(
         status: status ?? this.status,
@@ -209,5 +299,9 @@ class EquipmentState {
         // "nothing to report any more" and a caller not mentioning it at all
         // are different, and `??` cannot tell them apart.
         diagnostic: clearDiagnostic ? null : (diagnostic ?? this.diagnostic),
+        // Same flag-not-null reasoning as [diagnostic]: "the slice is back"
+        // has to be sayable.
+        problem: clearProblem ? null : (problem ?? this.problem),
+        channels: channels ?? this.channels,
       );
 }

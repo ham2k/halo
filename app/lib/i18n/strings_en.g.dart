@@ -3519,6 +3519,30 @@ class Translations$settings$station$en {
 	/// en: 'A CI-V address is two hex digits, 01 to FF'
 	String get civAddressInvalid => 'A CI-V address is two hex digits, 01 to FF';
 
+	/// en: 'Slice'
+	String get flexSlice => 'Slice';
+
+	/// en: 'Which of the radio's slices this connection reads from and tunes.'
+	String get flexSliceDescription => 'Which of the radio\'s slices this connection reads from and tunes.';
+
+	/// en: 'Slice ${letter}'
+	String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
+
+	/// en: 'Pick one of the radio's slices, A through H'
+	String get flexSliceInvalid => 'Pick one of the radio\'s slices, A through H';
+
+	/// en: 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR'
+	String flexSliceMissing({required Object letter}) => 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR';
+
+	/// en: 'not in use'
+	String get channelNotInUse => 'not in use';
+
+	/// en: 'in use by another program'
+	String get channelHeldByUnknown => 'in use by another program';
+
+	/// en: 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe'
+	String get flexNoSlices => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe';
+
 	/// en: 'Radio username'
 	String get radioUser => 'Radio username';
 
@@ -6096,6 +6120,14 @@ extension on Translations {
 			'settings.station.civAddress' => 'Radio CI-V address',
 			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
+			'settings.station.flexSlice' => 'Slice',
+			'settings.station.flexSliceDescription' => 'Which of the radio\'s slices this connection reads from and tunes.',
+			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
+			'settings.station.flexSliceInvalid' => 'Pick one of the radio\'s slices, A through H',
+			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR',
+			'settings.station.channelNotInUse' => 'not in use',
+			'settings.station.channelHeldByUnknown' => 'in use by another program',
+			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
@@ -6187,6 +6219,8 @@ extension on Translations {
 			'settings.station.fakeReplyDelay' => 'Reply delay (ms)',
 			'settings.station.fakeReplyDelayDescription' => 'How long the fake radio takes to report a change back. Blank or 0 replies at once.',
 			'settings.station.fakeDiagnostic' => 'Simulated',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.fakeWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.fakeFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.fakeModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
@@ -6195,8 +6229,6 @@ extension on Translations {
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
 			'settings.offlineData.refresh' => 'Refresh',
 			'settings.offlineData.refreshing' => 'Refreshing…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.offlineData.updateAll' => 'Update All',
 			'settings.offlineData.updatingAll' => 'Updating all data files…',
 			'settings.offlineData.neverDownloaded' => 'Never downloaded',

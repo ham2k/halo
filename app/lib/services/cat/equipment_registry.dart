@@ -375,7 +375,7 @@ const flexRadioModel = EquipmentModel(
       key: _flexRadioTcpKey,
       driver: FlexRadioDriver(),
       transport: TcpTransport(),
-      defaultConfig: {'port': FlexRadioDriver.defaultPort},
+      defaultConfig: {'port': FlexRadioDriver.defaultPort, FlexRadioDriver.sliceConfigKey: '0'},
       discoverer: FlexRadioDiscoverer(typeKey: _flexRadioTcpKey),
     ),
   ],

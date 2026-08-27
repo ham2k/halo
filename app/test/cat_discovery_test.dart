@@ -275,6 +275,112 @@ void main() {
       expect(cat.discoveryError, contains('Failed to bind'));
     });
   });
+
+  // The same bookkeeping for equipment that offers several channels, driven
+  // by the real FlexRadio driver: what makes two nodes "the same radio" is
+  // the service's business, but which channels exist and what they are
+  // called is the driver's, and a fake driver would only prove the service
+  // agrees with the fake.
+  group('service bookkeeping, multi-channel equipment', () {
+    late StreamController<DiscoveredEquipment> announcements;
+    late CatService cat;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      announcements = StreamController<DiscoveredEquipment>.broadcast();
+      cat = CatService(
+        SettingsService(await SharedPreferences.getInstance()),
+        registry: EquipmentRegistry(
+          models: [
+            EquipmentModel(
+              key: 'fake-flex',
+              category: kCategoryTransceiver,
+              name: () => 'Fake FlexRadio',
+              variants: [
+                EquipmentVariant(
+                  key: 'fake-flex-tcp',
+                  driver: const FlexRadioDriver(),
+                  transport: const _NeverConnectsTransport(),
+                  defaultConfig: const {'port': 4992, FlexRadioDriver.sliceConfigKey: '0'},
+                  discoverer: _FakeDiscoverer(announcements.stream),
+                ),
+              ],
+            ),
+          ],
+          transports: const {},
+        ),
+      );
+    });
+
+    tearDown(() async {
+      cat.dispose();
+      await announcements.close();
+    });
+
+    Future<void> announce() async {
+      announcements.add(const DiscoveredEquipment(
+        typeKey: 'fake-flex-tcp',
+        id: 'serial-1',
+        name: 'RadioRoom',
+        config: {'host': '192.168.1.50', 'port': 4992},
+      ));
+      await pumpEventQueue();
+    }
+
+    test('a radio keeps being offered for the slices that are still free', () async {
+      cat.startDiscovery();
+      await announce();
+      expect(cat.discovered.single.config['slice'], '0', reason: 'the first offer is slice A');
+
+      await cat.addDiscovered(cat.discovered.single);
+      expect(cat.nodes.single.config, {'host': '192.168.1.50', 'port': 4992, 'slice': '0'});
+
+      // A Flex runs several slices at once, so one configured node does not
+      // exhaust the radio. Dropping it here is what left the second slice
+      // reachable only by typing the address in from the catalogue.
+      await announce();
+      expect(cat.discovered, hasLength(1));
+      expect(cat.discovered.single.config['slice'], '1');
+      // Named for its slice from the second on, so two rows for one radio
+      // are told apart before either is added.
+      expect(cat.discovered.single.name, 'RadioRoom · Slice B');
+    });
+
+    test('an offer accepted twice never produces two nodes on one slice', () async {
+      cat.startDiscovery();
+      await announce();
+      await cat.addDiscovered(cat.discovered.single);
+      await cat.addDiscovered(cat.discovered.single);
+
+      expect(cat.nodes.map((node) => node.config['slice']), ['0', '1']);
+    });
+
+    test('a radio with every slice configured drops off the found list', () async {
+      cat.startDiscovery();
+      await announce();
+      // It keeps announcing itself every few seconds; offering to add it
+      // again once there is nothing left to add is how you end up with six
+      // copies of one radio.
+      for (var i = 0; i < FlexRadioDriver.sliceLabels.length; i++) {
+        await cat.addDiscovered(cat.discovered.single);
+      }
+      expect(cat.discovered, isEmpty);
+
+      await announce();
+      expect(cat.discovered, isEmpty);
+    });
+
+    test('a node stored before the slice setting existed still holds slice A', () async {
+      // The trap: such a record names no slice at all, and a target key that
+      // read the missing value literally would not match the slice-A offer —
+      // so the radio would be offered for a slice it is already on.
+      await cat.addNode(typeKey: 'fake-flex-tcp', config: const {'host': '192.168.1.50', 'port': 4992});
+      cat.startDiscovery();
+      await announce();
+
+      expect(cat.discovered.single.config['slice'], '1');
+    });
+  });
 }
 
 /// A type that announces itself on a stream the test controls, so the

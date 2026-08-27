@@ -28,12 +28,19 @@ const _sliceStatusLineWithDecimals =
     'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.071820 client_handle=0x1C61D553 index_letter=A mode=CW wide=0';
 const _otherSliceStatusLine = 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 mode=USB';
 const _transmitStatusLine = 'S5AC2F980|transmit tune=0 show_tx_in_waterfall=0 rfpower=75 tunepower=10';
+const _sliceBStatusLine =
+    'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 client_handle=0x9F0012AB index_letter=B mode=LSB wide=0';
+const _clientConnectedLine =
+    'S5AC2F980|client 0x9F0012AB connected client_id=42 local_ptt=0 program=SmartSDR-Win station=SHACK-PC';
+const _clientDisconnectedLine = 'S5AC2F980|client 0x9F0012AB disconnected forced=0';
 
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
   final powers = <num>[];
   final diagnostics = <String?>[];
+  final problems = <String?>[];
+  List<EquipmentChannel> channels = const [];
 
   @override
   void send(List<int> bytes) => sent.add(utf8.decode(bytes));
@@ -46,6 +53,14 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
+
+  @override
+  void reportProblem(String? message) => problems.add(message);
+
+  @override
+  void reportChannels(List<EquipmentChannel> list) => channels = list;
+
+  EquipmentChannel channel(String key) => channels.firstWhere((c) => c.key == key);
 }
 
 extension on FlexRadioSession {
@@ -252,4 +267,261 @@ void main() {
       });
     });
   });
+
+  group('choosing a slice', () {
+    // A Flex runs several slices at once. Tracking whichever one is index 0
+    // is only right for an operator who happens to be working slice A —
+    // everyone else was reading a frequency they were not transmitting on.
+    late FlexRadioSession sliceB;
+
+    setUp(() => sliceB = FlexRadioSession(sink, slice: 1));
+
+    test('reads the configured slice, and ignores the others', () {
+      sliceB.feed('$_sliceStatusLine\n$_sliceBStatusLine\n');
+      expect(sink.readings, [const VfoReading(freqKHz: 7123, mode: 'LSB')],
+          reason: 'slice 0 is another slice now, not the tracked one');
+    });
+
+    // Read and write must name the SAME slice: a node watching B while
+    // tuning A logs a frequency the radio never transmitted on, and nothing
+    // about the row would say so.
+    test('tunes and sets the mode on the configured slice', () {
+      sliceB.setFrequency(7123);
+      sliceB.setMode('lsb');
+      expect(sink.sent.any((line) => line.contains('slice tune 1 7.123000')), isTrue);
+      expect(sink.sent.any((line) => line.contains('slice set 1 mode=LSB')), isTrue);
+    });
+
+    test('power stays radio-wide, not per slice', () {
+      sliceB.setPower(50);
+      expect(sink.sent.any((line) => line.contains('transmit set rfpower=50')), isTrue);
+    });
+
+    test('a node stored before this setting existed still tracks slice A', () {
+      expect(FlexRadioDriver.sliceFromConfig(const {}), 0);
+      expect(FlexRadioDriver.sliceFromConfig(const {'slice': '3'}), 3);
+      // A value round-tripped through JSON arrives as a num on some paths.
+      expect(FlexRadioDriver.sliceFromConfig(const {'slice': 3}), 3);
+      // Out of range falls back to slice A here, and the reason that is not
+      // a silent wrong answer is the validator below: a value this rejects
+      // cannot be saved, so the fallback only ever covers a config no form
+      // produced.
+      expect(FlexRadioDriver.sliceFromConfig(const {'slice': '99'}), 0);
+    });
+
+    // The trap: a node stored before this setting existed carries no `slice`
+    // key, and the service validates every recognized key on the way to
+    // connect. Rejecting the absent one stops a radio that had been working
+    // for months from connecting at all, with a form error as the only clue.
+    test('an unset slice validates, so an existing node still connects', () {
+      const driver = FlexRadioDriver();
+      expect(driver.validateField('slice', null, const {}), isNull);
+      expect(driver.validateField('slice', '', const {}), isNull);
+      expect(driver.validateField('slice', '2', const {}), isNull);
+      expect(driver.validateField('slice', '9', const {}), isNotNull);
+    });
+
+    test('the equipment row always says which slice, like the CI-V row says its address', () {
+      const driver = FlexRadioDriver();
+      expect(driver.describeSuffix(const {}), contains('A'));
+      expect(driver.describeSuffix(const {'slice': '1'}), contains('B'));
+      // A pairing that fixes the slice shows no field, so it shows no
+      // suffix either — the value is not something the operator picked.
+      expect(driver.describeSuffix(const {'slice': '1'}, overrides: const {'slice': '1'}), isNull);
+    });
+  });
+
+  group('slice inventory', () {
+    test('reports every slice the radio has, with what it is doing', () {
+      session.feed('$_sliceStatusLine\n$_sliceBStatusLine\n');
+      expect(sink.channel('0').label, 'A');
+      expect(sink.channel('0').inUse, isTrue);
+      expect(sink.channel('0').freqKHz, 14074);
+      expect(sink.channel('0').mode, 'DIGU');
+      expect(sink.channel('1').label, 'B');
+      expect(sink.channel('1').freqKHz, 7123);
+      // A slice the radio has never mentioned is offered, and empty.
+      expect(sink.channel('7').inUse, isFalse);
+      expect(sink.channel('7').freqKHz, isNull);
+    });
+
+    // A status push carries only what CHANGED. Replacing rather than merging
+    // would blank the mode out of the inventory on every retune, which reads
+    // as a slice that lost its mode rather than one that moved.
+    test('merges a partial status push into what the slice already said', () {
+      session.feed('$_sliceBStatusLine\n');
+      session.feed('S5AC2F980|slice 1 RF_frequency=7.150000\n');
+      expect(sink.channel('1').freqKHz, 7150);
+      expect(sink.channel('1').mode, 'LSB');
+      expect(sink.channel('1').inUse, isTrue);
+    });
+
+    test('names the client holding a slice, not its handle', () {
+      session.feed('$_clientConnectedLine\n$_sliceBStatusLine\n');
+      expect(sink.channel('1').usedBy, 'SmartSDR-Win (SHACK-PC)');
+    });
+
+    // Losing the name must not turn into "nobody has it": the slice still
+    // carries a client handle, and the operator's answer to a slice held by
+    // something unnamed is the same as to one held by SmartSDR — leave it.
+    test('a client that goes away leaves the slice held, not free', () {
+      session.feed('$_clientConnectedLine\n$_sliceBStatusLine\n');
+      session.feed('$_clientDisconnectedLine\n');
+      expect(sink.channel('1').usedBy, isNull);
+      expect(sink.channel('1').heldByUnknown, isTrue);
+    });
+
+    // The trap: `sub client all` refused, or a handle the radio formats
+    // differently in the two places it appears, leaves every held slice
+    // looking free — worse than showing no inventory at all, because by then
+    // the operator believes they checked.
+    test('a slice whose owner we never learn still reads as held', () {
+      session.feed('$_sliceBStatusLine\n');
+      expect(sink.channel('1').usedBy, isNull);
+      expect(sink.channel('1').heldByUnknown, isTrue);
+      // A slice with no client handle at all is genuinely unheld.
+      session.feed('S5AC2F980|slice 2 in_use=1 RF_frequency=21.030000 mode=USB index_letter=C\n');
+      expect(sink.channel('2').heldByUnknown, isFalse);
+    });
+
+    test('a removed slice drops out of the inventory', () {
+      session.feed('$_sliceBStatusLine\n');
+      expect(sink.channel('1').inUse, isTrue);
+      session.feed('S5AC2F980|slice 1 in_use=0 removed=1\n');
+      expect(sink.channel('1').inUse, isFalse);
+      expect(sink.channel('1').freqKHz, isNull, reason: 'a removed slice keeps nothing');
+    });
+
+    test('subscribes to client status, so a slice can name who holds it', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        expect(sentAny('sub client all'), isTrue);
+        session.stopUpdates();
+        expect(sentAny('unsub client all'), isTrue);
+        async.flushTimers();
+      });
+    });
+  });
+
+  group('a slice that is not there', () {
+    // Connected, link healthy, and nothing ever arrives: identical to a dead
+    // radio from the row, which is the failure error-reporting.md exists to
+    // prevent. Reconnecting cannot fix it, so it is a problem and not an
+    // error — see EquipmentState.problem.
+    test('a slice the radio never mentions is reported once the refresh has settled', () {
+      fakeAsync((async) {
+        final sliceD = FlexRadioSession(sink, slice: 3);
+        sliceD.feed('${_handshakeLines.join('\n')}\n');
+        sliceD.startUpdates();
+        sliceD.feed('$_sliceStatusLine\n$_sliceBStatusLine\n');
+        expect(sink.problems, isEmpty, reason: 'the refresh is still arriving');
+
+        async.elapse(const Duration(seconds: 4));
+        expect(sink.problems.last, contains('D'));
+
+        sliceD.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a slice that is present raises nothing', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('$_sliceStatusLine\n');
+
+        async.elapse(const Duration(seconds: 4));
+        expect(sink.problems.where((p) => p != null), isEmpty);
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a slice torn down while connected is reported, and cleared when it returns', () {
+      fakeAsync((async) {
+        final sliceB = FlexRadioSession(sink, slice: 1);
+        sliceB.feed('${_handshakeLines.join('\n')}\n');
+        sliceB.startUpdates();
+        sliceB.feed('$_sliceBStatusLine\n');
+        async.elapse(const Duration(seconds: 4));
+        // Nulls are the driver saying "nothing wrong" — CatService holds the
+        // value and dedupes them, so what matters here is that no MESSAGE
+        // was raised.
+        expect(sink.problems.where((p) => p != null), isEmpty);
+
+        sliceB.feed('S5AC2F980|slice 1 in_use=0\n');
+        expect(sink.problems.last, contains('B'));
+
+        sliceB.feed('$_sliceBStatusLine\n');
+        expect(sink.problems.last, isNull, reason: 'null is how a problem is withdrawn');
+
+        sliceB.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // A slice the radio has not described is a DIFFERENT fault from one it
+    // has described as idle, and they take different remedies: the first is
+    // a subscription or handshake that failed, and telling that operator to
+    // pick another slice sends them to change a setting that was right.
+    test('no slices at all is reported as no slices, not as the wrong slice', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+
+        async.elapse(const Duration(seconds: 4));
+        expect(sink.problems.last, isNotNull);
+        expect(sink.problems.last, isNot(contains('Slice A')));
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The trap: every path that would say a slice is missing hangs off the
+    // subscription, and the subscription hangs off a handshake that may
+    // never land. The staleness watchdog would eventually flag the row, but
+    // with the same word it uses for a radio that was unplugged.
+    test('a handshake that never lands is still reported', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        expect(sink.sent, isEmpty, reason: 'nothing is subscribed without the handshake');
+
+        async.elapse(const Duration(seconds: 4));
+        expect(sink.problems.last, isNotNull);
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The trap: a slice the radio has mentioned WITHOUT ever saying whether
+    // it runs is not evidence of anything, and guessing goes wrong in both
+    // directions — guess "running" and a real missing-slice warning is
+    // withdrawn with no transition left to raise it again, guess "not
+    // running" and the operator is sent to change a setting that was right.
+    // So it changes no verdict at all.
+    test('a slice mentioned without saying whether it runs accuses nobody', () {
+      fakeAsync((async) {
+        final sliceD = FlexRadioSession(sink, slice: 3);
+        sliceD.feed('${_handshakeLines.join('\n')}\n');
+        sliceD.startUpdates();
+        // Slice 3 named, with no in_use= anywhere in the line.
+        sliceD.feed('$_sliceStatusLine\nS5AC2F980|slice 3 RF_frequency=21.030000\n');
+
+        async.elapse(const Duration(seconds: 4));
+        expect(sink.problems.where((p) => p != null), isEmpty);
+        // And the picker shows it as running: it has an entry, which no idle
+        // slice gets.
+        expect(sink.channel('3').inUse, isTrue);
+        expect(sink.channel('3').freqKHz, 21030);
+
+        sliceD.teardown();
+        async.flushTimers();
+      });
+    });
+  });
+
 }

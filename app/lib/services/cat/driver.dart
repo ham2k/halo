@@ -42,6 +42,21 @@ abstract class EquipmentSink {
   /// someone's radio the alternative to reporting it is a bench session with
   /// hardware nobody on the project owns.
   void reportDiagnostic(String? note);
+
+  /// Connected and answering, but what the operator configured cannot be
+  /// honoured — see [EquipmentState.problem]. Null clears it, which is how a
+  /// slice that comes back into use stops being reported as missing.
+  ///
+  /// Not an error: a driver calls this for a condition RECONNECTING WOULD
+  /// NOT FIX. Anything a retry could clear belongs in the connection's own
+  /// failure path instead.
+  void reportProblem(String? message);
+
+  /// The channels this equipment currently offers, for a driver whose
+  /// equipment has more than one — see [EquipmentChannel]. Called with the
+  /// full list each time any of it changes; a driver with a single channel
+  /// never calls it.
+  void reportChannels(List<EquipmentChannel> channels);
 }
 
 /// One driver's state for one open connection.
@@ -150,6 +165,28 @@ abstract class EquipmentDriver {
   /// of them.
   Set<String> get recognizedConfigKeys =>
       configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+
+  /// The config field that picks which of the equipment's channels this
+  /// node tracks, for equipment that has more than one — `slice` on a
+  /// FlexRadio. Null for every other driver, where one target is one node.
+  ///
+  /// Two things read this. [CatService] uses it to tell two nodes on the
+  /// SAME radio apart, so adding the second one is not mistaken for a
+  /// duplicate of the first; the Station panel uses it to find the field
+  /// whose options it should annotate with what each channel is doing.
+  String? get channelKey => null;
+
+  /// Every value [channelKey]'s field may take, in the order they are
+  /// offered. Empty when [channelKey] is null.
+  ///
+  /// The FIRST is what a node that names no channel is tracking — a record
+  /// written before the setting existed, which must keep pointing at the
+  /// same channel it always did. Both this driver and [CatService] rely on
+  /// that, so the order is a contract, not a presentation choice.
+  ///
+  /// Declared rather than read back out of [configElements] so the service
+  /// can reason about free channels without parsing form definitions.
+  List<String> get channelValues => const [];
 
   /// An optional trailing fragment for the equipment list's one-line
   /// summary — e.g. ` · CI-V A4`. Null for a driver with nothing to add.
