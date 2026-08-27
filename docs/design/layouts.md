@@ -483,14 +483,28 @@ constant in the view. Two sources write into it:
   view offers all four, so `DockHost.registerSharedDashboardPanels` (used by
   every view via the mixin) is what registers them, and
   `DockHost.sharedDashboardPanes` is what builds their widgets. Remote
-  Screen joins them while the `remote` experiment is on — registered from
-  the same place and gated there, so a saved arrangement holding one falls
-  to the missing-panel placeholder with the experiment off rather than
-  losing the operator their pane. Registering
+  Screen and Radio join them while their experiments (`remote`, `gato`) are
+  on — registered from the same place and gated there, so a saved
+  arrangement holding one falls to the missing-panel placeholder with the
+  experiment off rather than losing the operator their pane. Registering
   from every view rather than a single owner is deliberate —
   `PanelService.registerNative` no-ops on an identical re-registration, so
   whichever view mounts first wins and the other calls cost nothing, and no
   view's catalog depends on another view having mounted first.
+
+  **Registering is how a descriptor built from live state is published, so
+  identity compares the form's CONTENT.** The Radio panel's picker lists the
+  configured radios and names whichever one drives VFO A; that list rebuilds
+  to the same field *count* every time it changes, so an equality comparing
+  `formFields.length` reads a changed picker as identical, the registration
+  no-ops, and the operator is left choosing from a list frozen at whenever
+  the view first mounted — with nothing on screen to say so. Two rules
+  follow, and a panel with a live form needs both: `PanelDefinition.==`
+  deep-compares `formFields`, and something has to *call* `registerNative`
+  again when the state behind the form moves (`DockHost` listens to
+  `CatService` for exactly this). The no-op is what makes the second rule
+  cheap — a radio connecting notifies several times a minute and costs one
+  comparison.
 
   A native panel may also carry `formFields` — the same declarative schema an
   extension panel's `form` uses, rendered by the same `FormRenderer` and

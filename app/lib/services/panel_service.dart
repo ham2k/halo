@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:halo_widgets/halo_widgets.dart' show WallClock;
@@ -171,7 +172,7 @@ class PanelDefinition {
       other.multiple == multiple &&
       setEquals(other.views, views) &&
       listEquals(other.triggers, triggers) &&
-      other.formFields.length == formFields.length &&
+      _formFieldsEqual.equals(other.formFields, formFields) &&
       other.minWidth == minWidth &&
       other.minHeight == minHeight;
 
@@ -231,6 +232,18 @@ class PanelDefinition {
       multiple: entry['multiple'] == true,
     );
   }
+
+  /// Deep, because a form's CONTENT is what a re-registration has to be
+  /// judged on. A descriptor whose options are live — the Radio panel's list
+  /// of configured radios, the label naming whichever one drives VFO A —
+  /// rebuilds to the same field COUNT every time, so comparing lengths reads
+  /// a changed picker as identical, [registerNative] no-ops, and the operator
+  /// is left choosing from a list frozen at whenever the view first mounted.
+  ///
+  /// The cost is one walk of a handful of small maps per registration, which
+  /// happens on `didChangeDependencies` and when a service that feeds a form
+  /// notifies — not per build, and not per frame.
+  static const _formFieldsEqual = DeepCollectionEquality();
 
   static String extensionPanelId({required String hookKey, required String panelKey}) => 'ext:$hookKey:$panelKey';
 

@@ -958,6 +958,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get website => 'Sitio Web';
 	@override String get remoteScreen => 'Pantalla remota';
 	@override String get solar => 'Solar';
+	@override String get radio => 'Radio';
 }
 
 // Path: operation.menu
@@ -1887,6 +1888,20 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String solarSources({required Object primary, required Object secondary}) => 'Fuentes: ${primary}, ${secondary}';
 	@override String get remoteScreenDegraded => 'La conexión va justa — se están omitiendo fotogramas.';
 	@override String get remoteScreenStalled => 'Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta.';
+	@override String get radioDescription => 'El frente de una radio: frecuencia, modo y potencia, bajo control CAT';
+	@override String get radioStyle => 'Estilo';
+	@override String get radioStyleLcd => 'LCD';
+	@override String get radioStyleModern => 'Moderno';
+	@override String get radioRadio => 'Radio';
+	@override String radioAutoNamed({required Object name}) => 'VFO A — ${name}';
+	@override String get radioAutoNone => 'VFO A — ninguna radio designada';
+	@override String get radioNoRadio => 'No hay radio que mostrar. Elige una en la configuración de este panel, o agrega una en Configuración de Estación.';
+	@override String get radioNoFrequency => '—';
+	@override String get radioOff => 'Radio no conectada';
+	@override String get radioWatts => 'W';
+	@override String get radioConnect => 'Conectar esta radio';
+	@override String get radioDisconnect => 'Desconectar esta radio';
+	@override String get radioStale => 'SIN DATOS';
 }
 
 // Path: operation.export.compactFileNames
@@ -2436,6 +2451,7 @@ extension on TranslationsEs {
 			'operation.tabs.website' => 'Sitio Web',
 			'operation.tabs.remoteScreen' => 'Pantalla remota',
 			'operation.tabs.solar' => 'Solar',
+			'operation.tabs.radio' => 'Radio',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -2591,6 +2607,20 @@ extension on TranslationsEs {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Fuentes: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'La conexión va justa — se están omitiendo fotogramas.',
 			'operation.layout.panels.remoteScreenStalled' => 'Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta.',
+			'operation.layout.panels.radioDescription' => 'El frente de una radio: frecuencia, modo y potencia, bajo control CAT',
+			'operation.layout.panels.radioStyle' => 'Estilo',
+			'operation.layout.panels.radioStyleLcd' => 'LCD',
+			'operation.layout.panels.radioStyleModern' => 'Moderno',
+			'operation.layout.panels.radioRadio' => 'Radio',
+			'operation.layout.panels.radioAutoNamed' => ({required Object name}) => 'VFO A — ${name}',
+			'operation.layout.panels.radioAutoNone' => 'VFO A — ninguna radio designada',
+			'operation.layout.panels.radioNoRadio' => 'No hay radio que mostrar. Elige una en la configuración de este panel, o agrega una en Configuración de Estación.',
+			'operation.layout.panels.radioNoFrequency' => '—',
+			'operation.layout.panels.radioOff' => 'Radio no conectada',
+			'operation.layout.panels.radioWatts' => 'W',
+			'operation.layout.panels.radioConnect' => 'Conectar esta radio',
+			'operation.layout.panels.radioDisconnect' => 'Desconectar esta radio',
+			'operation.layout.panels.radioStale' => 'SIN DATOS',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -2822,6 +2852,8 @@ extension on TranslationsEs {
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'formChrome.removeItem' => 'Quitar',
 			'formChrome.storageUnavailable' => 'Cuentas no disponibles',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
@@ -2837,8 +2869,6 @@ extension on TranslationsEs {
 			'qsoList.tomorrow' => 'Mañana',
 			'qsoList.eventStarted' => 'Operación iniciada',
 			'qsoList.eventBreak' => 'Descanso',
-			_ => null,
-		} ?? switch (path) {
 			'qsoList.eventEnded' => 'Operación finalizada',
 			'loggingPanel.stats' => 'Estadísticas de la Operación',
 			'loggingPanel.scoring' => 'Puntuación',
@@ -3336,6 +3366,8 @@ extension on TranslationsEs {
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.sectionGoTo' => 'Ir a',
 			'commandDialog.sectionOperations' => 'Operaciones',
 			'commandDialog.goHome' => 'Inicio',
@@ -3351,8 +3383,6 @@ extension on TranslationsEs {
 			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
 			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',
 			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
-			_ => null,
-		} ?? switch (path) {
 			'staleness.quitAndReopen' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.reopenToApply' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.ignoreForNow' => 'Ignorar por ahora',

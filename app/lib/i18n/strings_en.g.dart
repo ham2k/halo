@@ -1992,6 +1992,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'Solar'
 	String get solar => 'Solar';
+
+	/// en: 'Radio'
+	String get radio => 'Radio';
 }
 
 // Path: operation.menu
@@ -4283,6 +4286,48 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'Frames stopped getting through — this connection may be too slow.'
 	String get remoteScreenStalled => 'Frames stopped getting through — this connection may be too slow.';
+
+	/// en: 'A radio's front panel — frequency, mode and power, under CAT control'
+	String get radioDescription => 'A radio\'s front panel — frequency, mode and power, under CAT control';
+
+	/// en: 'Style'
+	String get radioStyle => 'Style';
+
+	/// en: 'LCD'
+	String get radioStyleLcd => 'LCD';
+
+	/// en: 'Modern'
+	String get radioStyleModern => 'Modern';
+
+	/// en: 'Radio'
+	String get radioRadio => 'Radio';
+
+	/// en: 'VFO A — ${name}'
+	String radioAutoNamed({required Object name}) => 'VFO A — ${name}';
+
+	/// en: 'VFO A — no radio designated'
+	String get radioAutoNone => 'VFO A — no radio designated';
+
+	/// en: 'No radio to show. Pick one in this panel's settings, or add one under Station Configuration.'
+	String get radioNoRadio => 'No radio to show. Pick one in this panel\'s settings, or add one under Station Configuration.';
+
+	/// en: '—'
+	String get radioNoFrequency => '—';
+
+	/// en: 'Radio not connected'
+	String get radioOff => 'Radio not connected';
+
+	/// en: 'W'
+	String get radioWatts => 'W';
+
+	/// en: 'Connect this radio'
+	String get radioConnect => 'Connect this radio';
+
+	/// en: 'Disconnect this radio'
+	String get radioDisconnect => 'Disconnect this radio';
+
+	/// en: 'NO DATA'
+	String get radioStale => 'NO DATA';
 }
 
 // Path: operation.export.compactFileNames
@@ -5190,6 +5235,7 @@ extension on Translations {
 			'operation.tabs.website' => 'Web Site',
 			'operation.tabs.remoteScreen' => 'Remote Screen',
 			'operation.tabs.solar' => 'Solar',
+			'operation.tabs.radio' => 'Radio',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -5346,6 +5392,20 @@ extension on Translations {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'The connection is struggling — skipping frames.',
 			'operation.layout.panels.remoteScreenStalled' => 'Frames stopped getting through — this connection may be too slow.',
+			'operation.layout.panels.radioDescription' => 'A radio\'s front panel — frequency, mode and power, under CAT control',
+			'operation.layout.panels.radioStyle' => 'Style',
+			'operation.layout.panels.radioStyleLcd' => 'LCD',
+			'operation.layout.panels.radioStyleModern' => 'Modern',
+			'operation.layout.panels.radioRadio' => 'Radio',
+			'operation.layout.panels.radioAutoNamed' => ({required Object name}) => 'VFO A — ${name}',
+			'operation.layout.panels.radioAutoNone' => 'VFO A — no radio designated',
+			'operation.layout.panels.radioNoRadio' => 'No radio to show. Pick one in this panel\'s settings, or add one under Station Configuration.',
+			'operation.layout.panels.radioNoFrequency' => '—',
+			'operation.layout.panels.radioOff' => 'Radio not connected',
+			'operation.layout.panels.radioWatts' => 'W',
+			'operation.layout.panels.radioConnect' => 'Connect this radio',
+			'operation.layout.panels.radioDisconnect' => 'Disconnect this radio',
+			'operation.layout.panels.radioStale' => 'NO DATA',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
@@ -5564,6 +5624,8 @@ extension on Translations {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
@@ -5579,8 +5641,6 @@ extension on Translations {
 			'loggingControls.info.noticeNewMode' => 'New Mode',
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
 			'loggingControls.info.noticeNewState' => 'New State',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'New Province',
 			'loggingControls.info.noticeNewDay' => 'New Day',
 			'loggingControls.info.noticeNewRef' => 'New Ref',
@@ -6078,6 +6138,8 @@ extension on Translations {
 			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'Updated ${days}d ${hours}h ago',
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
@@ -6093,8 +6155,6 @@ extension on Translations {
 			'settings.search.hint' => 'Search settings',
 			'settings.developer.options' => 'Developer Options',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'Code Push Track',

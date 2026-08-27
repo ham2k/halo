@@ -21,6 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../services/cat/equipment.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
@@ -35,6 +36,7 @@ import 'operation/pane_layout_options.dart';
 import 'operation/panel_settings.dart';
 import 'operation/solar/solar_panel.dart';
 import 'operation/weather/weather_panel.dart';
+import 'operation/radio/radio_panel.dart';
 import 'operation/remote_screen/remote_screen_panel.dart';
 import 'operation/remote_screen/remote_screen_picker.dart';
 import 'operation/website/website_panel.dart';
@@ -266,6 +268,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   void initState() {
     super.initState();
     dockServices.panels.addListener(_onPanelCatalogChanged);
+    dockServices.cat.addListener(_onEquipmentChanged);
     // Extensions are asked for their panels once per view, not once per build:
     // the runtime restarts when an extension is enabled or disabled, and a
     // view is rebuilt from scratch either way.
@@ -275,10 +278,51 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   @override
   void dispose() {
     dockServices.panels.removeListener(_onPanelCatalogChanged);
+    dockServices.cat.removeListener(_onEquipmentChanged);
     if (_recoveredDefaultNoticeListener case final listener?) {
       dockServices.statusBar.removeListener(listener);
     }
     super.dispose();
+  }
+
+  /// What the Radio panel's descriptor is built from, as a single string.
+  ///
+  /// CatService notifies on every READING — `_applyReading` sets state, and
+  /// that is knob-spin rate on a live rig, not the "few times a minute" a
+  /// connection status change would be. Re-registering on each one would
+  /// re-resolve translations and rebuild every shared descriptor's form just
+  /// to deep-compare it back to equal, on the UI thread, per mounted view.
+  /// So the listener compares what the form actually shows — which radios
+  /// exist, what they are called, and which one drives VFO A — and does
+  /// nothing when a frequency moves.
+  String _equipmentDescriptorKey() {
+    final cat = dockServices.cat;
+    return [
+      cat.radio1 ?? '',
+      for (final node in cat.nodes) '${node.uuid}:${cat.displayNameFor(node)}',
+    ].join('|');
+  }
+
+  String? _lastEquipmentKey;
+
+  /// The station's equipment changed in a way the panel catalog can see — a
+  /// radio added, removed or renamed, or a different one designated for
+  /// VFO A.
+  ///
+  /// The Radio panel's descriptor names the designated radio and lists the
+  /// configured ones, so its form is only as fresh as its last registration
+  /// (docs/design/layouts.md). Registering is what publishes it.
+  ///
+  /// In the mixin, and unconditional on the experiment, for the same reason
+  /// the catalog listener is: a view that installed this only while CAT was
+  /// on would leave the picker stale for exactly the operator who turned it
+  /// on mid-session.
+  void _onEquipmentChanged() {
+    if (!mounted) return;
+    final key = _equipmentDescriptorKey();
+    if (key == _lastEquipmentKey) return;
+    _lastEquipmentKey = key;
+    registerSharedDashboardPanels();
   }
 
   /// The catalog changed — an extension enabled, disabled, or its runtime
@@ -1311,8 +1355,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         );
   }
 
-  /// Clock, Weather, Solar, Web Site and Remote Screen: the native panels every
-  /// view offers (docs/design/layouts.md), built here once so a change to one
+  /// Clock, Weather, Solar, Web Site, Radio and Remote Screen: the native
+  /// panels every view offers (docs/design/layouts.md), built here once so a
+  /// change to one
   /// of them doesn't have to reach every view that hosts a dock. See
   /// [registerSharedDashboardPanels] for their catalog entry — this only
   /// builds the widget for whatever placement [inLayout] holds.
@@ -1355,6 +1400,13 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           onTitle: (title) => onPanelTitle(id, title),
           isEnteringQso: isEnteringQso,
         )
+      else if (PanelDefinition.descriptorIdOf(id) == radioPanelId)
+        id: RadioPanel(
+          key: ValueKey('panel-$id'),
+          panelId: id,
+          services: dockServices,
+          onTitle: (title) => onPanelTitle(id, title),
+        )
       else if (PanelDefinition.descriptorIdOf(id) == remoteScreenPanelId)
         id: Builder(
           builder: (paneContext) => RemoteScreenPanel(
@@ -1380,7 +1432,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         ),
   };
 
-  /// Clock, Weather, Solar, Web Site and Remote Screen's catalog entries — see
+  /// Clock, Weather, Solar, Web Site, Radio and Remote Screen's catalog
+  /// entries — see
   /// [sharedDashboardPanes] for the widgets. Every view that hosts a dock
   /// calls this from its own `_registerNativePanels`: [PanelService.registerNative]
   /// no-ops on an identical re-registration, so whichever view mounts first
@@ -1544,6 +1597,67 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         },
       ],
     ));
+    // Registered only with the CAT experiment on, and re-registered whenever
+    // CatService notifies — see [_onEquipmentChanged], which is what keeps
+    // the radio picker's options and the Automatic option's name current.
+    if (dockServices.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) {
+      final cat = dockServices.cat;
+      final designated = cat.radio1 == null ? null : cat.nodeFor(cat.radio1!);
+      service.registerNative(PanelDefinition(
+        id: radioPanelId,
+        title: t.tabs.radio,
+        description: t.layout.panels.radioDescription,
+        icon: 'radio',
+        source: PanelSource.native,
+        views: sharedViews,
+        // A two-radio shack wants both front panels side by side, which is
+        // the case this exists for — and, as with Clock and Weather, a
+        // placement in Home and one in an operation are independent
+        // locations rather than one shared config.
+        multiple: true,
+        // Frequency, mode and power on a row that has to stay legible: the
+        // seven-segment readout scales down with the pane, but below this
+        // the digits stop being readable across a room, which is the only
+        // reason to have a rig's display on screen at all.
+        minWidth: 3,
+        minHeight: 2,
+        formFields: [
+          {
+            'type': 'field',
+            'key': radioNodeKey,
+            'fieldType': 'select',
+            'label': t.layout.panels.radioRadio,
+            'value': radioNodeAuto,
+            'options': [
+              {
+                // The label carries the designated radio's NAME, so the
+                // settings row reads "Radio: VFO A — Left Radio" and the
+                // operator can see which rig Automatic currently means
+                // without opening Station Configuration to find out.
+                'label': designated == null
+                    ? t.layout.panels.radioAutoNone
+                    : t.layout.panels.radioAutoNamed(name: cat.displayNameFor(designated)),
+                'value': radioNodeAuto,
+              },
+              for (final node in cat.nodes)
+                if (cat.typeFor(node)?.category == kCategoryTransceiver)
+                  {'label': cat.displayNameFor(node), 'value': node.uuid},
+            ],
+          },
+          {
+            'type': 'field',
+            'key': radioStyleKey,
+            'fieldType': 'select',
+            'label': t.layout.panels.radioStyle,
+            'value': radioStyleLcd,
+            'options': [
+              {'label': t.layout.panels.radioStyleLcd, 'value': radioStyleLcd},
+              {'label': t.layout.panels.radioStyleModern, 'value': radioStyleModern},
+            ],
+          },
+        ],
+      ));
+    }
     // Registered only with the experiment on. A saved arrangement holding one
     // of these then falls to the missing-panel placeholder rather than
     // vanishing, which is the same deal an uninstalled extension's panel
@@ -1563,10 +1677,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         minHeight: 4,
         formFields: [
           // An ACTION, never a select. The options would have to be the live
-          // catalog of what peers offer, and `PanelDefinition.==` compares
-          // only `formFields.length` — a rebuilt list of the same size
-          // re-registers as identical, no-ops, and the picker goes
-          // permanently stale.
+          // catalog of what peers offer, which arrives asynchronously and
+          // turns over as devices come and go — nothing re-registers this
+          // descriptor when it does, so a select would show whatever was on
+          // offer the moment the view mounted.
           {
             'type': 'action',
             'key': 'chooseScreen',

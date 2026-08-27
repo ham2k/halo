@@ -141,7 +141,8 @@
       "weather": "El Tiempo",
       "website": "Sitio Web",
       "remoteScreen": "Pantalla remota",
-      "solar": "Solar"
+      "solar": "Solar",
+      "radio": "Radio"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
@@ -309,7 +310,21 @@
         "solarBandPoor": "Mala",
         "solarSources": "Fuentes: ${primary}, ${secondary}",
         "remoteScreenDegraded": "La conexión va justa — se están omitiendo fotogramas.",
-        "remoteScreenStalled": "Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta."
+        "remoteScreenStalled": "Los cuadros dejaron de llegar — puede que esta conexión sea demasiado lenta.",
+        "radioDescription": "El frente de una radio: frecuencia, modo y potencia, bajo control CAT",
+        "radioStyle": "Estilo",
+        "radioStyleLcd": "LCD",
+        "radioStyleModern": "Moderno",
+        "radioRadio": "Radio",
+        "radioAutoNamed": "VFO A — ${name}",
+        "radioAutoNone": "VFO A — ninguna radio designada",
+        "radioNoRadio": "No hay radio que mostrar. Elige una en la configuración de este panel, o agrega una en Configuración de Estación.",
+        "radioNoFrequency": "—",
+        "radioOff": "Radio no conectada",
+        "radioWatts": "W",
+        "radioConnect": "Conectar esta radio",
+        "radioDisconnect": "Desconectar esta radio",
+        "radioStale": "SIN DATOS"
       },
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
     },

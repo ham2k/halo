@@ -155,7 +155,8 @@
       "weather": "Weather",
       "website": "Web Site",
       "remoteScreen": "Remote Screen",
-      "solar": "Solar"
+      "solar": "Solar",
+      "radio": "Radio"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
@@ -324,7 +325,21 @@
         "solarBandPoor": "Poor",
         "solarSources": "Sources: ${primary}, ${secondary}",
         "remoteScreenDegraded": "The connection is struggling — skipping frames.",
-        "remoteScreenStalled": "Frames stopped getting through — this connection may be too slow."
+        "remoteScreenStalled": "Frames stopped getting through — this connection may be too slow.",
+        "radioDescription": "A radio's front panel — frequency, mode and power, under CAT control",
+        "radioStyle": "Style",
+        "radioStyleLcd": "LCD",
+        "radioStyleModern": "Modern",
+        "radioRadio": "Radio",
+        "radioAutoNamed": "VFO A — ${name}",
+        "radioAutoNone": "VFO A — no radio designated",
+        "radioNoRadio": "No radio to show. Pick one in this panel's settings, or add one under Station Configuration.",
+        "radioNoFrequency": "—",
+        "radioOff": "Radio not connected",
+        "radioWatts": "W",
+        "radioConnect": "Connect this radio",
+        "radioDisconnect": "Disconnect this radio",
+        "radioStale": "NO DATA"
       },
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
     },
