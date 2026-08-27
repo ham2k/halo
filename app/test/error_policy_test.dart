@@ -16,7 +16,8 @@ import 'dart:io' show FileSystemException, SocketException;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+import 'package:halo_extension_host/halo_extension_host.dart'
+    show ExtensionHostException, HookTimeoutException;
 import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
@@ -283,9 +284,10 @@ void main() {
     });
 
     test('other host exceptions are still loud', () {
-      // The exemption is the teardown races only. A timeout, a fetch
-      // failure or a hook's own throw arrives as the same type and must
-      // keep the default tier — those are the bugs worth seeing.
+      // The exemption is the teardown races only. A hook's own throw
+      // arrives as the same type and must keep the default tier — those
+      // are the bugs worth seeing. The timeout text without the timeout
+      // TYPE is some other failure quoting it, not the host's own timeout.
       expect(
         dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')),
         ErrorDisposition.notify,
@@ -303,6 +305,40 @@ void main() {
       // alone would let a wrapper of ours ride along.
       expect(dispositionFor(StateError('extension host disposed')), ErrorDisposition.notify);
       expect(dispositionFor(StateError('extension runtime is dead')), ErrorDisposition.notify);
+    });
+  });
+
+  group('a hook that timed out', () {
+    // The lookup pipeline is the loud case: it runs on a debounced
+    // keystroke, so one slow upstream turns every few characters typed
+    // into a "Something went wrong". Nothing is lost that the operator
+    // could act on — the lookup returns nothing and the next keystroke
+    // asks again — but the rate is worth having, hence report not logOnly.
+    test('reported, not noticed', () {
+      final decision = ErrorPolicy.decide(
+        HookTimeoutException('hook lookupService.lookupCallInfo timed out after 8000ms'),
+      );
+      expect(decision.disposition, ErrorDisposition.report);
+      expect(decision.rule?.id, 'hook-timed-out');
+    });
+
+    // The matcher does not unwrap. A scoring timeout arrives wrapped in
+    // ScoringHookFailure and must keep ITS rule, which is what carries the
+    // reasoning about a board that reads available rather than worked.
+    test('a timeout wrapped in another exception keeps that rule', () {
+      final decision = ErrorPolicy.decide(
+        ScoringHookFailure('core', 'scoreCandidates', HookTimeoutException('hook scoring.scoreCandidates timed out')),
+      );
+      expect(decision.rule?.id, 'scoring-hook-failed');
+    });
+
+    // Matched on the type alone. A hook that throws its OWN "timed out"
+    // message is an extension defect, and stays at the default tier.
+    test('a hook throwing its own timeout message is still loud', () {
+      expect(
+        dispositionFor(ExtensionHostException('lookupCallInfo: the QRZ request timed out')),
+        ErrorDisposition.notify,
+      );
     });
   });
 
@@ -451,11 +487,16 @@ void main() {
       );
     });
 
-    test('a hook call timing out on its own is NOT swallowed', () {
+    test('a hook call timing out is not claimed by THIS rule', () {
       // Distinct from _hostFetch's transport timeout: a hook that simply
-      // takes too long (spots.fetchSpots, say) throws its own message,
-      // which does not start with "TimeoutException" — that's a real
-      // extension-side hang, not TCP flakiness.
+      // takes too long throws its own message, which does not start with
+      // "TimeoutException". The real one carries the host's timeout type
+      // and lands on `hook-timed-out`; the same text on a bare host
+      // exception is some other failure quoting it, and stays loud.
+      expect(
+        ErrorPolicy.decide(HookTimeoutException('hook spots.fetchSpots timed out after 5000ms')).rule?.id,
+        'hook-timed-out',
+      );
       expect(
         dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')),
         ErrorDisposition.notify,

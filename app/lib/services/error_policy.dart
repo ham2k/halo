@@ -23,7 +23,8 @@ import 'dart:io' show FileSystemException, SocketException;
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
-import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+import 'package:halo_extension_host/halo_extension_host.dart'
+    show ExtensionHostException, HookTimeoutException;
 import 'package:halo_core/halo_core.dart' show MalformedQsonDataException, WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
@@ -200,6 +201,19 @@ class ErrorPolicy {
           'the crash itself is reported separately (extensions:restart)',
       disposition: ErrorDisposition.logOnly,
       matches: _isExtensionRuntimeDead,
+    ),
+    ErrorRule(
+      id: 'hook-timed-out',
+      reason: 'a hook did not answer within the timeout its caller allowed (a slow upstream '
+          'service, or an extension taking too long over a large local pass). Every caller '
+          'already degrades on its own — a lookup returns nothing and the next keystroke asks '
+          'again, a fan-out keeps the hooks that did answer — so there is nothing here for the '
+          'operator to act on, and the "Something went wrong" notice fires once per SESSION: '
+          'spending it on a slow callsign lookup means the next error that does matter arrives '
+          'silently. Uploaded rather than dropped: the rate is what says whether a timeout is '
+          'too tight or a hook is genuinely hung',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is HookTimeoutException,
     ),
     ErrorRule(
       id: 'connectivity-backend-unavailable',

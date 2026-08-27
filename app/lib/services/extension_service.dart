@@ -2381,6 +2381,10 @@ class ExtensionService implements PanelExtensionSource {
     if (stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
     final host = _host;
     if (host == null || call.length < 3) return null;
+    // One key for the whole pipeline, unlike _syncTransportCall's per-method
+    // one: `lookupCallInfo` is a single coarse hook, so there is no
+    // per-source failure to keep apart here.
+    const streakKey = 'extensions:lookup-call';
 
     // While we believe we have no internet the pipeline still runs, but every
     // hook is asked to stay local — call history, call notes, cached data
@@ -2408,11 +2412,18 @@ class ExtensionService implements PanelExtensionSource {
         },
         timeout: const Duration(seconds: 8),
       );
+      ErrorReportingService.recordSuccess(streakKey);
       if (result is! Map) return null;
       return result.cast<String, dynamic>();
     } on ExtensionHostException catch (e, st) {
+      // The lookup runs on a debounced keystroke, so an upstream service
+      // that is merely slow or briefly down would otherwise upload one
+      // event per callsign typed for the length of the session. The streak
+      // is what distinguishes that from a lookup pipeline that answers
+      // nothing at all, which is a defect and whose only other trace would
+      // be somebody writing in about empty callsign details.
       debugPrint('[extensions] lookup failed: $e');
-      ErrorReportingService.report(e, st, context: 'extensions:lookup-call');
+      ErrorReportingService.reportIfRepeated(streakKey, e, st);
       return null;
     }
   }
