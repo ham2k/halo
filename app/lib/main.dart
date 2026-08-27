@@ -71,6 +71,7 @@ import 'services/cat/cat_service.dart';
 import 'services/cat/equipment.dart' show EquipmentStatus;
 import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
+import 'services/peer/peer_drafts.dart';
 import 'services/peer/peer_account_tag.dart';
 import 'services/peer/peer_screen_views.dart';
 import 'services/peer/peer_screens.dart';
@@ -108,6 +109,7 @@ import 'services/update_notices.dart';
 import 'services/shorebird_update_service.dart';
 import 'services/data_file_manager.dart';
 import 'services/flags_service.dart';
+import 'tools/operation_operator.dart';
 import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -1295,6 +1297,9 @@ class HaLoServices {
     // handler and what makes this router route those messages at all.
     screens: settings.experimentEnabled('remote') ? peerScreens : null,
     views: settings.experimentEnabled('remote') ? peerScreenViews : null,
+    // Gated on p2p rather than on `remote`: this is peer sync's own live
+    // logging view, not screen sharing.
+    drafts: settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ? peerDrafts : null,
     hasLocalRadio: () => cat.radio1 != null,
     radioIsLive: () {
       final uuid = cat.radio1;
@@ -1306,6 +1311,12 @@ class HaLoServices {
   /// capture channel's handlers, and an install that never turns the
   /// experiment on should never so much as name ScreenCaptureKit.
   late final PeerScreens peerScreens = PeerScreens(settings: settings, peers: peerService);
+
+  /// What every operating position sharing the open operation is composing
+  /// (HALO-395) — this device's own block included. Lazy like the rest: an
+  /// install that never turns the experiment on never constructs it, and
+  /// `PeerChannels` then has nowhere to route a `qsoDraft`.
+  late final PeerDrafts peerDrafts = PeerDrafts(peers: peerService);
 
   /// The viewer half — what this device's peers offer, and what its Remote
   /// Screen panes are watching (HALO-369).
@@ -1716,6 +1727,14 @@ class HaLoServices {
       } else {
         unawaited(peerScreens.stopAll());
       }
+    }
+
+    // With sharing off there is no block for this device and nothing true
+    // left to say about anyone else's: every draft held was read against an
+    // operation this device is no longer in. Reached through the same latch,
+    // so switching OFF still tears down what switching on built.
+    if (!wanted && settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */) {
+      peerDrafts.clearLocal();
     }
   }
 
@@ -2569,29 +2588,20 @@ class HaLoServices {
     final operation = uuid.isEmpty ? null : await operations.get(uuid);
     if (operation == null) return (text: t.commands.noOperationOpen, failed: true);
 
+    // Both device-local, so both are `updateLocalData` writes — who is at the
+    // key is per-device for the same reason the position beside it is (see
+    // `operatorCallFor`). Guarded on the change because a local_data write
+    // rebuilds the Operation View — see the details dialog's own write.
     final operatorCall = params['operatorCall']?.toString();
-    // Guarded on the change like the local write below, for a different
-    // reason: `saveData` stamps a new revision and clears `synced`, so
-    // re-running OPER with the callsign already set would queue an empty
-    // revision for every device on the account to fetch.
-    if (operatorCall != null && operatorCall != (asQsonString(operation.data['operatorCall']) ?? '')) {
-      await operations.saveData(Operation(
-        uuid: operation.uuid,
-        data: {...operation.data, 'operatorCall': operatorCall},
-        qsoCount: operation.qsoCount,
-        startAtMillisMin: operation.startAtMillisMin,
-        startAtMillisMax: operation.startAtMillisMax,
-        localData: operation.localData,
-      ));
-    }
     final raw = params['multiIdentifier']?.toString();
     final multiIdentifier = raw == null ? null : normalizedMultiIdentifier(raw);
-    // And guarded here because a local_data write rebuilds the Operation
-    // View — see the details dialog's own write.
-    if (multiIdentifier != null &&
-        multiIdentifier != normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? '')) {
-      await operations.updateLocalData(operation.uuid, {'multiIdentifier': multiIdentifier});
-    }
+    final localPatch = {
+      if (operatorCall != null && operatorCall != operatorCallFor(operation)) operatorCallKey: operatorCall,
+      if (multiIdentifier != null &&
+          multiIdentifier != normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? ''))
+        'multiIdentifier': multiIdentifier,
+    };
+    if (localPatch.isNotEmpty) await operations.updateLocalData(operation.uuid, localPatch);
     return null;
   }
 

@@ -130,6 +130,16 @@ abstract final class PeerMessageType {
   /// is not the traffic the binary media link exists for. An answer with no
   /// image is a real answer: the source has gone, or is not offered.
   static const screenThumb = 'screenThumb';
+
+  /// Ephemeral, latest-value-wins: the contact the sender is composing right
+  /// now, so every operating position sharing an operation can be seen at
+  /// once. Never persisted and never logged — this is the QSO BEFORE it is a
+  /// QSO, and the durable path for a logged one is the outbox, not this.
+  ///
+  /// A draft with no callsign is a real state and must arrive: it is how a
+  /// position says it has just logged or wiped, and a viewer that treats it
+  /// as "nothing to update" leaves the last contact on screen indefinitely.
+  static const qsoDraft = 'qsoDraft';
 }
 
 /// Why a session was refused. On the wire so the far side can SAY why to its
@@ -241,6 +251,67 @@ class PeerMessage {
       longitude: lon,
       accuracyMeters: (fields['acc'] as num?)?.toDouble(),
       atMillis: at,
+    );
+  }
+
+  /// The contact this device is composing. [qso] is sent as-is apart from
+  /// `lookups`, which is dropped: it is the bulky raw evidence behind
+  /// `their.guess`, nothing on the receiving end reads it, and it would ride
+  /// the wire on every keystroke that changed anything.
+  /// [left] says this device has stopped being a position in [operationUuid]
+  /// — the operator closed it. Distinct from a draft with an empty callsign,
+  /// which means they just logged or wiped and are still sitting there: one
+  /// removes the block, the other keeps it and empties it.
+  static PeerMessage qsoDraft({
+    required Map<String, dynamic> qso,
+    required String operationUuid,
+    List<PeerDraftFieldPayload> fields = const [],
+    String position = '',
+    String operatorCall = '',
+    bool left = false,
+  }) {
+    final their = qso['their'];
+    return PeerMessage(PeerMessageType.qsoDraft, {
+      'qso': {
+        ...qso,
+        if (their is Map) 'their': {...their}..remove('lookups'),
+      },
+      'opUuid': operationUuid,
+      if (left) 'left': true,
+      'fields': [for (final field in fields) field.toJson()],
+      if (position.isNotEmpty) 'pos': position,
+      if (operatorCall.isNotEmpty) 'oper': operatorCall,
+    });
+  }
+
+  /// Null unless this is a well-formed [PeerMessageType.qsoDraft].
+  ///
+  /// A draft carrying no callsign is well-formed — that is how a position
+  /// says it just logged or wiped (see [PeerMessageType.qsoDraft]) — so the
+  /// only thing rejected here is a `qso` that is not an object at all.
+  PeerQsoDraftPayload? get qsoDraftOrNull {
+    if (type != PeerMessageType.qsoDraft) return null;
+    final qso = fields['qso'];
+    final operationUuid = fields['opUuid'];
+    // A draft that names no operation is refused rather than shown against
+    // whatever the reader happens to have open: the two devices may well be
+    // in different operations, and a contact attributed to the wrong one is
+    // worse than a block that never appears.
+    if (qso is! Map || operationUuid is! String || operationUuid.isEmpty) return null;
+    final row = this.fields['fields'];
+    return PeerQsoDraftPayload(
+      qso: qso.cast<String, dynamic>(),
+      operationUuid: operationUuid,
+      // Malformed entries are dropped one at a time rather than costing the
+      // draft: this list crossed a network from a build whose row may hold
+      // controls this one has never heard of, and a block missing one field
+      // still says what the position is working.
+      fields: row is List
+          ? [for (final raw in row) if (PeerDraftFieldPayload.from(raw) case final field?) field]
+          : const [],
+      position: this.fields['pos'] is String ? this.fields['pos'] as String : '',
+      operatorCall: this.fields['oper'] is String ? this.fields['oper'] as String : '',
+      left: this.fields['left'] == true,
     );
   }
 
@@ -429,6 +500,93 @@ class PeerPositionPayload {
     this.accuracyMeters,
     required this.atMillis,
   });
+}
+
+/// What one operating position is composing, as its peers see it.
+///
+/// [qso] is the draft in the app's usual QSON shape, so a reader pulls
+/// `their.call`, `our.sent` and the rest out of it exactly as it would from a
+/// logged contact — and reads a lookup's answer from `their.guess` by the
+/// same `AnnotatedCallInfo` convention the logging panel itself follows.
+///
+/// [fields] is the sender's main logging row, in the order THEIR operator
+/// sees it — labels included, so a contest exchange this reader's own build
+/// would not know how to name still renders under the name its extension gave
+/// it. It also carries the one distinction the draft cannot: a report the
+/// operator left alone arrives with an empty value and its placeholder as the
+/// hint, where the draft has already folded the placeholder in and a default
+/// `59` is indistinguishable from a typed one.
+///
+/// [position] is the sender's multi-station number (`localData
+/// ['multiIdentifier']`), empty when it has none, and [operatorCall] is who is
+/// at that device's key. Both are device-local, which is precisely why they
+/// travel: no amount of reading the shared operation would recover them.
+///
+/// [operationUuid] is the operation the draft belongs to, and the reason a
+/// reader can trust what it shows. A session outlives an operation change on
+/// either side, so without it a peer that switched operations would leave its
+/// last contact sitting in a panel that means something else entirely.
+class PeerQsoDraftPayload {
+  final Map<String, dynamic> qso;
+  final String operationUuid;
+  final List<PeerDraftFieldPayload> fields;
+  final String position;
+  final String operatorCall;
+
+  /// The sender has left this operation and is no longer a position in it —
+  /// its block goes, rather than going blank. See [PeerMessage.qsoDraft].
+  final bool left;
+
+  const PeerQsoDraftPayload({
+    required this.qso,
+    required this.operationUuid,
+    this.fields = const [],
+    this.position = '',
+    this.operatorCall = '',
+    this.left = false,
+  });
+}
+
+/// One control from the sender's main logging row.
+///
+/// [value] is what the operator typed, [hint] the suggestion standing in while
+/// they have not — a lookup's answer for a grid or state, an extension's
+/// placeholder for an exchange, the report the app would send. A reader draws
+/// a value as the operator's own and a hint as the app's, which is the whole
+/// reason both travel rather than one resolved string.
+class PeerDraftFieldPayload {
+  final String key;
+  final String label;
+  final String value;
+  final String? hint;
+
+  const PeerDraftFieldPayload({
+    required this.key,
+    this.label = '',
+    this.value = '',
+    this.hint,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'k': key,
+        if (label.isNotEmpty) 'l': label,
+        if (value.isNotEmpty) 'v': value,
+        if (hint != null && hint!.isNotEmpty) 'h': hint,
+      };
+
+  /// Null for anything without a key — a control nothing can be said about,
+  /// which is not worth a slot in somebody's row.
+  static PeerDraftFieldPayload? from(Object? raw) {
+    if (raw is! Map) return null;
+    final key = raw['k'];
+    if (key is! String || key.isEmpty) return null;
+    return PeerDraftFieldPayload(
+      key: key,
+      label: raw['l'] is String ? raw['l'] as String : '',
+      value: raw['v'] is String ? raw['v'] as String : '',
+      hint: raw['h'] is String ? raw['h'] as String : null,
+    );
+  }
 }
 
 /// A VFO on the wire — a radio owner's report (`catStatus`) or a

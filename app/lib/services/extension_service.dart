@@ -37,6 +37,7 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import 'link_opener.dart';
 import '../tools/backoff.dart';
+import '../tools/operation_operator.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
@@ -71,10 +72,29 @@ enum ControlsLoadState { loading, loaded, failed }
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
 /// with `uuid` folded in, plus each QSO's raw QSON `data`.
-Map<String, dynamic> qsonPayloadFor({required Operation operation, required List<Qso> qsos}) => {
-      'operation': {...operation.data, 'uuid': operation.uuid},
-      'qsos': [for (final qso in qsos) qso.data],
-    };
+///
+/// The operator is RESOLVED here rather than left to `operation.data`, because
+/// who is at the key is device-local now (see [operatorCallFor]) and only this
+/// side can answer it. It is written under both names the extensions read:
+/// `operation.operatorCall` for the REG1TEST/EDI writers, and
+/// `operation.local.operatorCall` for the ADIF `OPERATORS` header — without
+/// which those exports name nobody, or fall back to the station call.
+///
+/// `local` carries that one field and not the whole blob: `localData` also
+/// holds the scoring cache and the title fragments, which have no business in
+/// an export payload crossing the extension bridge.
+Map<String, dynamic> qsonPayloadFor({required Operation operation, required List<Qso> qsos}) {
+  final operatorCall = operatorCallFor(operation);
+  return {
+    'operation': {
+      ...operation.data,
+      'uuid': operation.uuid,
+      'operatorCall': operatorCall,
+      'local': {'operatorCall': operatorCall},
+    },
+    'qsos': [for (final qso in qsos) qso.data],
+  };
+}
 
 /// What one `invokeHookAll` fan-out actually produced, split by outcome.
 typedef HookPartition = ({

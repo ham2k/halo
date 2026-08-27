@@ -13,6 +13,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../services/extension_service.dart';
+import '../tools/operation_operator.dart';
 import '../tools/operation_title.dart';
 
 const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -251,11 +252,12 @@ Future<Operation?> editOperationDetails(
   bool developerMode = false,
 }) async {
   final multiIdentifier = normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? '');
+  final operatorCall = operatorCallFor(operation);
   final result = await showHaloDialog<(String, String, String, String, String)>(
     context: context,
     builder: (context) => _OperationDetailsDialog(
       stationCall: operation.stationCall,
-      operatorCall: asQsonString(operation.data['operatorCall']) ?? '',
+      operatorCall: operatorCall,
       userTitle: operation.userTitle,
       notes: asQsonString(operation.data['notes']) ?? '',
       multiIdentifier: multiIdentifier,
@@ -265,31 +267,38 @@ Future<Operation?> editOperationDetails(
   if (result == null || result.$1.trim().isEmpty) return null;
 
   final newMultiIdentifier = normalizedMultiIdentifier(result.$5);
-  final multiIdentifierChanged = newMultiIdentifier != multiIdentifier;
+  // Both device-local, so both ride the same guarded `updateLocalData` write
+  // below rather than the operation's shared data. The stale synced
+  // `data['operatorCall']` on an operation that predates this is deliberately
+  // left where it is: `operatorCallFor` stops consulting it the moment this
+  // device writes its own, and CLEARING it here would push that removal to
+  // every other device, which is exactly the shared-operator behaviour this
+  // is undoing.
+  final localPatch = {
+    if (newMultiIdentifier != multiIdentifier) 'multiIdentifier': newMultiIdentifier,
+    if (result.$2.trim().toUpperCase() != operatorCall) operatorCallKey: result.$2.trim().toUpperCase(),
+  };
   final updated = Operation(
     uuid: operation.uuid,
     data: {
       ...operation.data,
       'stationCall': result.$1.trim().toUpperCase(),
-      'operatorCall': result.$2.trim().toUpperCase(),
       'userTitle': result.$3.trim(),
       'notes': result.$4.trim(),
     },
     qsoCount: operation.qsoCount,
     startAtMillisMin: operation.startAtMillisMin,
     startAtMillisMax: operation.startAtMillisMax,
-    localData: multiIdentifierChanged
-        ? {...operation.localData, 'multiIdentifier': newMultiIdentifier}
-        : operation.localData,
+    localData: localPatch.isEmpty ? operation.localData : {...operation.localData, ...localPatch},
   );
   if (save) await operations.saveData(updated);
   // Written whatever `save` says: `save: false` stages the operation's SHARED
-  // data in the sheet's draft until it closes, and this identifier is neither
-  // — it is device-local, and its row already exists (the sheet only ever
+  // data in the sheet's draft until it closes, and neither of these is that
+  // — both are device-local, and the row already exists (the sheet only ever
   // opens on a created operation). Guarded on the change, because a
   // local_data write is a UI event: it rebuilds the Operation View.
-  if (multiIdentifierChanged) {
-    await operations.updateLocalData(operation.uuid, {'multiIdentifier': newMultiIdentifier});
+  if (localPatch.isNotEmpty) {
+    await operations.updateLocalData(operation.uuid, localPatch);
   }
   return updated;
 }

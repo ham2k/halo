@@ -17,7 +17,7 @@ import '../../services/cat/equipment.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
-import '../../tools/distance_format.dart';
+import '../../tools/call_location_line.dart';
 import '../../tools/form_chrome_labels.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
@@ -110,6 +110,12 @@ class LoggingPanel extends StatefulWidget {
   /// while this is null.
   final QsoDraftChanged? onQsoChanged;
 
+  /// Forwards the same draft plus which fields the operator actually filled,
+  /// for the peers sharing this operation. Independent of [onQsoChanged]:
+  /// what reads it is a panel on ANOTHER device, so the layout here has no
+  /// say in whether it is wanted. See LoggingControls' `onPeerDraftChanged`.
+  final PeerDraftChanged? onPeerDraftChanged;
+
   /// Fires when the compact call-info area is tapped — the operation view opens
   /// the detail (modal on narrow, focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
@@ -146,6 +152,7 @@ class LoggingPanel extends StatefulWidget {
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
     this.onQsoChanged,
+    this.onPeerDraftChanged,
     this.onCallInfoTap,
     this.onOperationInfoTap,
   });
@@ -643,66 +650,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
     widget.services.settings.setHiddenSecondaryControls(hidden);
   }
 
-  /// The call-info panel's line-1 location string — distance (and
-  /// bearing, if the setting is on) to the contact, then a location label.
-  /// Country is shown only for DX contacts, never our own entity. A distance
-  /// from a centroid (not a real grid) is shown approximate ("~") and rounded.
-  String? _callLocationLine(BuildContext context, Map<String, dynamic> guess) {
-    final t = context.t.loggingControls.info;
-    final entityPrefix = asQsonString(guess['entityPrefix']);
-
-    final ourLoc = widget.operation.location;
-    final resolved = locationForQsoInfoWithSource(
-      exact: locationFromLatLon(guess['lat'], guess['lon']),
-      grid: asQsonString(guess['grid']),
-      entityPrefix: entityPrefix,
-      state: asQsonString(guess['state']),
-    );
-
-    String? distStr;
-    int? bearingDeg;
-    // Skip an entity-centroid distance for the largest countries — the country
-    // center is a poor estimate; show a distance for them only once we know the
-    // state (a state-centroid fix).
-    final skipCentroid =
-        resolved?.source == QsoLocationSource.entity && kLargeEntities.contains(entityPrefix);
-    if (ourLoc != null && resolved != null && !skipCentroid) {
-      final miles = widget.services.settings.distanceUnits == DistanceUnits.miles;
-      final approximate = resolved.source.isApproximate;
-      final km = distanceOnEarthKm(resolved.location, ourLoc);
-      distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
-      if (approximate) distStr = '~$distStr'; // centroid-based, not a real fix
-      if (widget.services.settings.showBearing) {
-        bearingDeg = bearingOnEarthDeg(ourLoc, resolved.location).round();
-      }
-    }
-
-    final location = asQsonString(guess['location'])?.trim();
-    final country = asQsonString(guess['country'])?.trim();
-    // Location + country (country for DX only, never our own entity), joined
-    // with an en dash rather than a bullet.
-    final label = [
-      if (location != null && location.isNotEmpty) location,
-      if (country != null && country.isNotEmpty && entityPrefix != widget.ourEntityPrefix) country,
-    ].join(' – ');
-
-    if (distStr != null && label.isNotEmpty) {
-      // The distance's "to" flows straight into the place — "2,605 km to
-      // Santo Domingo, DN – Dominican Republic".
-      final phrase = bearingDeg != null
-          ? t.distanceBearingTo(distance: distStr, bearing: bearingDeg)
-          : t.distanceTo(distance: distStr);
-      return '$phrase $label';
-    }
-    if (label.isNotEmpty) return label;
-    // No place to point "to" — say the distance "away" instead ("15 km away").
-    if (distStr != null) {
-      return bearingDeg != null
-          ? t.distanceBearingAway(distance: distStr, bearing: bearingDeg)
-          : t.distanceAway(distance: distStr);
-    }
-    return null;
-  }
+  /// The call-info panel's line-1 location string, against THIS operation
+  /// and this device's own units — see [callLocationLine], which the peer
+  /// positions panel composes the same line with.
+  String? _callLocationLine(BuildContext context, Map<String, dynamic> guess) => callLocationLine(
+        context,
+        guess,
+        ourLocation: widget.operation.location,
+        miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
+        showBearing: widget.services.settings.showBearing,
+        ourEntityPrefix: widget.ourEntityPrefix,
+      );
 
 
   @override
@@ -886,6 +844,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
             onCallInfoChanged: widget.onCallInfoChanged,
             onQsoChanged: widget.onQsoChanged,
+            onPeerDraftChanged: widget.onPeerDraftChanged,
             onCallInfoTap: widget.onCallInfoTap,
             showRSTFields: widget.showRSTFields,
             showStateField: widget.showStateField,

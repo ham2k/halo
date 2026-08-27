@@ -22,6 +22,8 @@ import 'package:ham2k_logger/services/radio_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/peer/peer_drafts.dart';
+
 import 'peer_network_fakes.dart';
 
 Future<void> waitFor(
@@ -111,10 +113,12 @@ class _Device {
       beaconPort: fakeBeaconPort,
       network: host.network,
     );
+    drafts = PeerDrafts(peers: service);
     channels = PeerChannels(
       peers: service,
       location: location,
       radio: radio,
+      drafts: drafts,
       hasLocalRadio: () => hasRadio,
       radioIsLive: () => hasRadio && radioLive,
     );
@@ -134,6 +138,7 @@ class _Device {
   late final QsosRepository qsos;
   late final LocationService location;
   late final PeerService service;
+  late final PeerDrafts drafts;
   late final PeerChannels channels;
 
   Future<void> dispose() async {
@@ -368,6 +373,180 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
       expect(laptop.radio.vfoA.freq, 14285.0);
+    });
+  });
+
+  group('live logging state', () {
+    PeerQsoDraftPayload draftOf({
+      String call = 'KN2X',
+      List<PeerDraftFieldPayload> fields = const [PeerDraftFieldPayload(key: 'call', value: 'KN2X')],
+      String position = '',
+      String operatorCall = '',
+      String operationUuid = 'op-1',
+    }) =>
+        PeerQsoDraftPayload(
+          qso: {
+            'their': {
+              'call': call,
+              'sent': '59',
+              'guess': {'name': 'John', 'state': 'NY'},
+            },
+            'our': {'sent': '59'},
+            'band': '20m',
+            'mode': 'CW',
+            'freq': 14025.0,
+          },
+          operationUuid: operationUuid,
+          fields: fields,
+          position: position,
+          operatorCall: operatorCall,
+        );
+
+    test("a position's contact reaches the other position as it is typed", () async {
+      await paired();
+
+      phone.drafts.publishLocal(draftOf(position: '2', operatorCall: 'W2ABC'));
+
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').length == 1);
+      final block = laptop.drafts.blocksFor('op-1').single;
+      expect(block.deviceId, 'device-b');
+      expect((block.draft.qso['their'] as Map)['call'], 'KN2X');
+      expect(block.draft.position, '2');
+      expect(block.draft.operatorCall, 'W2ABC');
+      expect(block.isThisDevice, isFalse);
+    });
+
+    // The distinction the whole panel rests on. Both reports reach the DRAFT
+    // reading '59' — an untouched one has its placeholder folded in — so
+    // nothing but the row can say which the operator actually answered.
+    test("the sender's row crosses with its labels and its answers", () async {
+      await paired();
+
+      phone.drafts.publishLocal(draftOf(fields: const [
+        PeerDraftFieldPayload(key: 'call', label: 'Call', value: 'KN2X'),
+        PeerDraftFieldPayload(key: 'sent', label: 'Sent', value: '599'),
+        PeerDraftFieldPayload(key: 'rcvd', label: 'Rcvd', hint: '599'),
+        PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A'),
+      ]));
+
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+      final row = laptop.drafts.blocksFor('op-1').single.draft.fields;
+      expect(row.map((f) => f.key), ['call', 'sent', 'rcvd', 'wfd_class']);
+      // Sent was typed; Rcvd was not and carries only what the app would send.
+      expect(row[1].value, '599');
+      expect(row[2].value, isEmpty);
+      expect(row[2].hint, '599');
+      // And a control this device has no extension for still has its name.
+      expect(row.last.label, 'Class');
+    });
+
+    // A peer that arrives between two keystrokes would otherwise show an
+    // empty block until the operator next typed something.
+    test('a position that joins late is caught up without anyone typing', () async {
+      phone.drafts.publishLocal(draftOf(position: '2'));
+      await paired();
+
+      await waitFor('the snapshot to arrive', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+      expect(laptop.drafts.blocksFor('op-1').single.draft.position, '2');
+    });
+
+    // A session outlives an operation change on either side. Without the
+    // draft naming its own operation, this contact would appear in a panel
+    // showing something else entirely.
+    test("a draft for another operation never lands in this one's panel", () async {
+      await paired();
+
+      phone.drafts.publishLocal(draftOf(operationUuid: 'op-2'));
+
+      await waitFor('the draft to arrive at all', () => laptop.drafts.blocksFor('op-2').isNotEmpty);
+      expect(laptop.drafts.blocksFor('op-1'), isEmpty);
+    });
+
+    // Half a contact on a device that is no longer here is not a state
+    // anyone can act on, and leaving it up reads as a position still working
+    // that station.
+    test('a position that goes away takes its block with it', () async {
+      await paired();
+      phone.drafts.publishLocal(draftOf());
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+
+      await phone.service.setEnabled(false);
+
+      await waitFor('the block to go', () => laptop.drafts.blocksFor('op-1').isEmpty);
+    });
+
+    test('this device has a block of its own, ordered by position', () async {
+      await paired();
+      laptop.drafts.publishLocal(draftOf(call: 'W1AW', position: '3'));
+      phone.drafts.publishLocal(draftOf(call: 'KN2X', position: '1'));
+
+      await waitFor('both blocks', () => laptop.drafts.blocksFor('op-1').length == 2);
+      final blocks = laptop.drafts.blocksFor('op-1');
+      expect(blocks.map((b) => b.draft.position), ['1', '3']);
+      expect(blocks.last.isThisDevice, isTrue, reason: 'position 3 is this device');
+    });
+
+    // A position with no number sorts last rather than as zero, which would
+    // put it ahead of position 1.
+    test('an unnumbered position sorts after the numbered ones', () async {
+      await paired();
+      laptop.drafts.publishLocal(draftOf(position: ''));
+      phone.drafts.publishLocal(draftOf(position: '1'));
+
+      await waitFor('both blocks', () => laptop.drafts.blocksFor('op-1').length == 2);
+      expect(laptop.drafts.blocksFor('op-1').map((b) => b.draft.position), ['1', '']);
+    });
+
+    // A position that leaves the operation is gone, not blank. Its session is
+    // still up, so nothing else would ever say so — and snapshotTo would keep
+    // seeding the stale contact to peers connecting afterwards.
+    test('a position that leaves the operation takes its block with it', () async {
+      await paired();
+      phone.drafts.publishLocal(draftOf());
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+
+      phone.drafts.clearLocalFor('op-1');
+
+      await waitFor('the block to go', () => laptop.drafts.blocksFor('op-1').isEmpty);
+      expect(phone.drafts.localDraft, isNull);
+    });
+
+    // Distinct from leaving: an empty callsign is how a position says it just
+    // logged or wiped, and it is still sitting there.
+    test('a wiped contact empties the block rather than removing it', () async {
+      await paired();
+      phone.drafts.publishLocal(draftOf());
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+
+      phone.drafts.publishLocal(draftOf(call: '', fields: const []));
+
+      await waitFor('the wipe to cross',
+          () => laptop.drafts.blocksFor('op-1').single.draft.fields.isEmpty);
+      expect(laptop.drafts.blocksFor('op-1'), hasLength(1));
+    });
+
+    test('leaving an operation this device is not in leaves the block alone', () async {
+      await paired();
+      phone.drafts.publishLocal(draftOf());
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+
+      // Opening B from inside A and popping back disposes A's view AFTER B's
+      // has published; retracting here would pull a block that is correct.
+      phone.drafts.clearLocalFor('op-2');
+
+      expect(phone.drafts.localDraft, isNotNull);
+      expect(laptop.drafts.blocksFor('op-1'), hasLength(1));
+    });
+
+    test('sharing turned off leaves nothing standing', () async {
+      await paired();
+      phone.drafts.publishLocal(draftOf());
+      await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
+
+      laptop.drafts.clearLocal();
+
+      expect(laptop.drafts.blocksFor('op-1'), isEmpty);
+      expect(laptop.drafts.localDraft, isNull);
     });
   });
 }

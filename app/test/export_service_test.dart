@@ -592,6 +592,54 @@ void main() {
       expect(callsSentTo(0), ['ONE', 'TWO'], reason: 'one segment carries everything');
     });
   });
+
+  // The payload every coarse hook reads an operation through. The operator
+  // moved to device-local storage (HALO-395), and nothing in Dart reads it
+  // back out — the readers are on the far side of the extension bridge, so a
+  // Dart-only search comes up clean while REG1TEST's RCall and ADIF's
+  // OPERATORS quietly name nobody.
+  group('the operator reaches an export hook', () {
+    Map<String, dynamic> operationIn(Map<String, dynamic> payload) =>
+        (payload['operation'] as Map).cast<String, dynamic>();
+
+    test("this device's own operator is what an export sees", () {
+      final payload = qsonPayloadFor(
+        operation: Operation(
+          uuid: 'u',
+          data: {'stationCall': 'K2SUL'},
+          localData: const {'operatorCall': 'W2ABC'},
+        ),
+        qsos: const [],
+      );
+      // Both names, because the contest writers are split across them:
+      // REG1TEST/EDI reads the first, the ADIF OPERATORS header the second.
+      expect(operationIn(payload)['operatorCall'], 'W2ABC');
+      expect((operationIn(payload)['local'] as Map)['operatorCall'], 'W2ABC');
+    });
+
+    test('an operation from before the move still names its operator', () {
+      final payload = qsonPayloadFor(
+        operation: Operation(uuid: 'u', data: {'stationCall': 'K2SUL', 'operatorCall': 'KI2D'}),
+        qsos: const [],
+      );
+      expect(operationIn(payload)['operatorCall'], 'KI2D');
+      expect((operationIn(payload)['local'] as Map)['operatorCall'], 'KI2D');
+    });
+
+    // localData also holds the scoring cache and the title fragments, which
+    // have no business crossing the extension bridge on every export.
+    test('the rest of the device-local blob stays behind', () {
+      final payload = qsonPayloadFor(
+        operation: Operation(
+          uuid: 'u',
+          data: {'stationCall': 'K2SUL'},
+          localData: const {'operatorCall': 'W2ABC', 'scoring': {'huge': 'blob'}},
+        ),
+        qsos: const [],
+      );
+      expect((operationIn(payload)['local'] as Map).keys, ['operatorCall']);
+    });
+  });
 }
 
 /// Captures what each `generateExport` call was handed, and answers with a
@@ -636,4 +684,6 @@ class _ExtensionsWithHost extends ExtensionService {
 
   @override
   Future<void> start() async {}
+
+
 }

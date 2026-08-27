@@ -30,6 +30,7 @@ import 'package:halo_core/halo_core.dart';
 
 import '../location_service.dart';
 import '../radio_service.dart';
+import 'peer_drafts.dart';
 import 'peer_screen_views.dart';
 import 'peer_screens.dart';
 import 'peer_service.dart';
@@ -41,6 +42,7 @@ class PeerChannels {
     this.radio,
     this.screens,
     this.views,
+    this.drafts,
     this.hasLocalRadio,
     this.radioIsLive,
   }) {
@@ -60,6 +62,12 @@ class PeerChannels {
   /// hand those messages to.
   final PeerScreens? screens;
   final PeerScreenViews? views;
+
+  /// Live logging state, each way (HALO-395). Optional for the same reason
+  /// the screen halves are: a build with the experiment off constructs none
+  /// of it, and this router then has nowhere to hand those messages — which
+  /// is what keeps them from being routed at all.
+  final PeerDrafts? drafts;
 
   /// Peers that had an established session when this last looked — the
   /// before-picture a loss is spotted against. `PeerService` reports
@@ -164,7 +172,7 @@ class PeerChannels {
       _lastSentLon = null;
     }
 
-    _reconcileScreenPeers();
+    _reconcileDepartedPeers();
 
     // A peer that dropped must not keep standing in for this device's
     // location: its last fix could be hours old by the time anyone looks.
@@ -288,11 +296,14 @@ class PeerChannels {
       // asked for again — a producer that restarted remembers no
       // subscriptions.
       views?.onPeerAvailable(peerDeviceId);
+      // A peer that arrives between two keystrokes would otherwise show an
+      // empty block for this device until the operator next types.
+      drafts?.snapshotTo(session);
     }
   }
 
-  void _reconcileScreenPeers() {
-    if (screens == null && views == null) return;
+  void _reconcileDepartedPeers() {
+    if (screens == null && views == null && drafts == null) return;
     final live = <String>{
       for (final entry in peers.peers.entries)
         if (entry.value.session?.established ?? false) entry.key,
@@ -300,6 +311,7 @@ class PeerChannels {
     for (final gone in _establishedPeers.difference(live)) {
       unawaited(screens?.forgetPeer(gone) ?? Future<void>.value());
       views?.forgetPeer(gone);
+      drafts?.forgetPeer(gone);
     }
     _establishedPeers
       ..clear()
@@ -368,6 +380,20 @@ class PeerChannels {
       final vfo = message.vfoOrNull;
       if (vfo != null && _ownsRadio && _radioLive) {
         radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.user);
+      }
+      return;
+    }
+    if (message.type == PeerMessageType.qsoDraft) {
+      final draft = message.qsoDraftOrNull;
+      if (draft == null) {
+        // Reported rather than dropped in silence: this arm is what a build
+        // that renames or rewraps the payload lands in, and every draft from
+        // that peer would vanish behind a panel saying nobody is there.
+        debugPrint('[peer] unreadable qsoDraft from $peerDeviceId');
+      } else if (draft.left) {
+        drafts?.forgetPeer(peerDeviceId);
+      } else {
+        drafts?.onDraft(peerDeviceId, draft);
       }
       return;
     }

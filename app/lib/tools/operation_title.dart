@@ -11,6 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
 import '../i18n/strings.g.dart';
+import 'operation_operator.dart';
 
 /// Assembles [fragments] into the localized "for X at Y" sentence — the
 /// generated (non-user) part of an operation's title. `ActivitiesView.
@@ -78,7 +79,7 @@ String displayTitleFor(BuildContext context, Operation operation) {
 /// to say more.
 String headerCallsignFor(Operation operation) {
   final stationCall = operation.stationCall;
-  final operatorCall = (asQsonString(operation.data['operatorCall']) ?? '').trim();
+  final operatorCall = operatorCallFor(operation);
   final position = (asQsonString(operation.localData['multiIdentifier']) ?? '').trim();
   final parts = [
     // A club station logged by its own licensee names nobody new — app-polo

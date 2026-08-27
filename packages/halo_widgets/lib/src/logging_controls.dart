@@ -193,6 +193,16 @@ typedef CallInfoChanged = void Function(CallInfoData? info);
 /// that would be logged if the operator hit Enter.
 typedef QsoDraftChanged = void Function(Map<String, dynamic> qso);
 
+/// One main logging field, as a peer's panel renders it: what it is called,
+/// what the operator typed, and the suggestion standing in while they have
+/// not. An empty [value] beside a [hint] is the app's answer; a non-empty
+/// [value] is the operator's own.
+typedef PeerDraftField = ({String key, String label, String value, String? hint});
+
+/// The draft, plus the main logging fields in the order the sender's own row
+/// shows them — see [LoggingControls.onPeerDraftChanged].
+typedef PeerDraftChanged = void Function(Map<String, dynamic> qso, List<PeerDraftField> fields);
+
 /// A secondary control's identity for ordering/visibility purposes — the
 /// settings dialog's list and `_effectiveControlOrder` deal in these; the
 /// actual `SecondaryControlSpec` (which carries the live summary and
@@ -308,6 +318,23 @@ typedef _MainField = ({
   double minWidth,
   FocusNode focusNode,
   Widget Function(double width, double padding, Duration duration) build,
+});
+
+/// One main logging field as everything OUTSIDE the row needs it: what it is
+/// called, what the operator has typed into it, and the hint standing in while
+/// they have not.
+///
+/// [hint] is what lets a peer's block tell the operator's own answers from the
+/// app's without a second channel saying so: an untouched field carries an
+/// empty controller and its suggestion here. A report is the case that needs
+/// it — `_rstOrDefault` folds the placeholder into the DRAFT, where a default
+/// `59` and a typed `59` become the same three characters.
+typedef _PrimaryField = ({
+  String key,
+  String label,
+  FocusNode focus,
+  TextEditingController controller,
+  String? hint,
 });
 
 /// What [_LoggingControlsState._resolveMainFieldLayout] settles on for the
@@ -614,6 +641,27 @@ class LoggingControls extends StatefulWidget {
   /// off the keystroke route rather than merely making it cheap.
   final QsoDraftChanged? onQsoChanged;
 
+  /// The same draft, plus the main logging fields in the order this
+  /// operator's own row shows them — what a device sharing this operation
+  /// sends its peers, so their panel reproduces the row rather than guessing
+  /// at it.
+  ///
+  /// The fields are what make a block faithful to an operation the reader
+  /// renders differently, or cannot render at all: a contest exchange arrives
+  /// under the label its extension gave it, and the sent/rcvd order is the
+  /// SENDER's, since the point is showing what they are looking at.
+  ///
+  /// Separate from [onQsoChanged] rather than an argument to it, for a reason
+  /// that outlives the plumbing: these change INDEPENDENTLY of the draft.
+  /// Typing `59` into a report whose placeholder already read `59` moves
+  /// nothing in the draft — `_rstOrDefault` substitutes the placeholder for
+  /// an empty field — while turning that report from the app's answer into
+  /// the operator's. One shared dedupe would swallow exactly the change this
+  /// callback exists to report.
+  ///
+  /// Null-gated like [onQsoChanged], and for the same reason.
+  final PeerDraftChanged? onPeerDraftChanged;
+
   /// Fires when the user taps the compact call-info area — the host opens the
   /// detail panel (a modal on narrow layouts, or focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
@@ -828,6 +876,7 @@ class LoggingControls extends StatefulWidget {
     this.scoreNoticeLabel,
     this.onCallInfoChanged,
     this.onQsoChanged,
+    this.onPeerDraftChanged,
     this.onCallInfoTap,
     this.timeLabel,
     this.dateLabel,
@@ -5972,12 +6021,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
   /// change at runtime, and so does the set of contest controls.
-  List<(FocusNode, TextEditingController)> get _primaryFields => [
-        (_callFocus, _callController),
+  List<_PrimaryField> get _primaryFields => [
+        (
+          key: 'call',
+          label: widget.theirCallLabel ?? 'Call',
+          focus: _callFocus,
+          controller: _callController,
+          hint: null,
+        ),
         // Display order, not Sent-then-Rcvd: the keyboard walks the row the
         // operator is looking at (see [_rstPair]).
         if (widget.showRSTFields)
-          for (final field in _rstPair) (field.focus, field.controller),
+          for (final field in _rstPair)
+            (
+              key: identical(field.controller, _sentController) ? 'sent' : 'rcvd',
+              label: field.label,
+              focus: field.focus,
+              controller: field.controller,
+              hint: _rstPlaceholder,
+            ),
         // Only nodes already attached to a built field: creating one here for a
         // control whose widget hasn't been built leaves an orphan with no
         // context, which Flutter's focus traversal null-checks while sorting —
@@ -5985,16 +6047,33 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         for (final control in _textControls)
           if (_controlTextFocus[control['key'] as String]?.context != null)
             (
-              _controlTextFocus[control['key'] as String]!,
-              _textControllerFor(control['key'] as String),
+              key: control['key'] as String,
+              label: (control['label'] as String?) ?? control['key'] as String,
+              focus: _controlTextFocus[control['key'] as String]!,
+              controller: _textControllerFor(control['key'] as String),
+              hint: (control['input'] as Map?)?['placeholder'] as String?,
             ),
-        if (widget.showStateField) (_stateFocus, _stateController),
-        if (widget.showGridField) (_gridFocus, _gridController),
+        if (widget.showStateField)
+          (
+            key: 'state',
+            label: widget.theirStateLabel ?? 'State',
+            focus: _stateFocus,
+            controller: _stateController,
+            hint: _currentGuess?['state'] as String?,
+          ),
+        if (widget.showGridField)
+          (
+            key: 'grid',
+            label: widget.theirGridLabel ?? 'Grid',
+            focus: _gridFocus,
+            controller: _gridController,
+            hint: _currentGuess?['grid'] as String?,
+          ),
       ];
 
   /// Just the nodes of [_primaryFields], for the callers that only move focus
   /// and never read a value.
-  List<FocusNode> get _primaryFocusOrder => [for (final (node, _) in _primaryFields) node];
+  List<FocusNode> get _primaryFocusOrder => [for (final field in _primaryFields) field.focus];
 
   /// Moves focus to the next primary field, wrapping back to Call after the
   /// last one.
@@ -6043,7 +6122,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// direction the arrow key was pushing it.
   void _movePrimaryFocus(int index, {required bool caretAtStart}) {
     final fields = _primaryFields;
-    final (node, _) = fields[(index + fields.length) % fields.length];
+    final node = fields[(index + fields.length) % fields.length].focus;
     // Assigning null on the end-of-value path also clears any instruction left
     // over from a move whose target never arrived.
     _pendingCaret = caretAtStart ? (node: node, offset: 0) : null;
@@ -6063,7 +6142,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   KeyEventResult _onPrimaryFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
     final fields = _primaryFields;
-    final index = fields.indexWhere((f) => identical(f.$1, node));
+    final index = fields.indexWhere((f) => identical(f.focus, node));
     // A node that isn't currently a primary field (its control stopped being
     // rendered, say) keeps whatever the platform would do.
     if (index < 0) return KeyEventResult.ignored;
@@ -6112,7 +6191,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // arrow collapses it rather than leaving the field. Only a bare caret
     // sitting against an edge is asking to travel.
     if (shift || fields.length < 2) return KeyEventResult.ignored;
-    final controller = fields[index].$2;
+    final controller = fields[index].controller;
     final selection = controller.selection;
     if (!selection.isCollapsed || selection.baseOffset < 0) return KeyEventResult.ignored;
 
@@ -7794,7 +7873,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Push the current call-info and QSO draft up to the host (Info tab /
     // modal, extension panels) after this build settles, so neither ever
     // setStates a parent mid-build.
-    if (widget.onCallInfoChanged != null || widget.onQsoChanged != null) {
+    if (widget.onCallInfoChanged != null || widget.onQsoChanged != null || widget.onPeerDraftChanged != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _notifyCallInfo();
@@ -8809,13 +8888,51 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// mutating a published draft in place moves both sides of the comparison
   /// together, and the panel watching it silently stops updating.
   Map<String, dynamic>? _lastPublishedQso;
+  List<PeerDraftField>? _lastPublishedFields;
   void _notifyQsoDraft() {
-    if (widget.onQsoChanged == null) return;
+    final wantsDraft = widget.onQsoChanged != null;
+    final wantsPeer = widget.onPeerDraftChanged != null;
+    if (!wantsDraft && !wantsPeer) return;
+    // Built once and handed to both — the deep compare below is the expensive
+    // half, not this.
     final qso = _getCurrentQsoData();
-    if (const DeepCollectionEquality().equals(qso, _lastPublishedQso)) return;
+    final unchanged = const DeepCollectionEquality().equals(qso, _lastPublishedQso);
+    // Deduped separately, never on `unchanged` alone: a report the operator
+    // types over its own placeholder leaves the draft identical and changes
+    // only what [_peerDraftFields] answers (see `onPeerDraftChanged`).
+    if (wantsPeer) {
+      final fields = _peerDraftFields();
+      if (!unchanged || !const DeepCollectionEquality().equals(fields, _lastPublishedFields)) {
+        _lastPublishedFields = fields;
+        widget.onPeerDraftChanged!(qso, fields);
+      }
+    }
+    if (wantsDraft && !unchanged) widget.onQsoChanged!(qso);
     _lastPublishedQso = qso;
-    widget.onQsoChanged!(qso);
   }
+
+  /// The main logging row as a peer's panel renders it, in the order this
+  /// operator sees it.
+  ///
+  /// Read straight off [_primaryFields], which IS the row — so a control an
+  /// activity contributes or the operator switches on appears here with no
+  /// second list to keep in step, and sent/rcvd come out whichever way this
+  /// device draws them.
+  ///
+  /// The value is the CONTROLLER's, never the draft's. An untouched field is
+  /// empty here and carries its suggestion in `hint`, which is the whole
+  /// distinction the receiving panel draws; the draft cannot answer it,
+  /// because a report reaches the draft with its placeholder already folded
+  /// in by `_rstOrDefault`.
+  List<PeerDraftField> _peerDraftFields() => [
+        for (final field in _primaryFields)
+          (
+            key: field.key,
+            label: field.label,
+            value: field.controller.text.trim(),
+            hint: field.hint?.trim(),
+          ),
+      ];
 
   /// The scoring notices for the call-info line — from the scoring hook only
   /// (dupe included: whether a QSO is a dupe depends on the operation's

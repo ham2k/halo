@@ -385,6 +385,7 @@ class Translations$operation$en {
 
 	// Translations
 	late final Translations$operation$tabs$en tabs = Translations$operation$tabs$en.internal(_root);
+	late final Translations$operation$positions$en positions = Translations$operation$positions$en.internal(_root);
 
 	/// en: 'No station callsign'
 	String get stationCallsignNone => 'No station callsign';
@@ -2000,6 +2001,39 @@ class Translations$operation$tabs$en {
 
 	/// en: 'Radio'
 	String get radio => 'Radio';
+}
+
+// Path: operation.positions
+class Translations$operation$positions$en {
+	Translations$operation$positions$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No other operating positions are sharing this operation yet.'
+	String get nobodyYet => 'No other operating positions are sharing this operation yet.';
+
+	/// en: 'Pos: $number'
+	String positionLabel({required Object number}) => 'Pos: ${number}';
+
+	/// en: 'Op: $call'
+	String operatorLabel({required Object call}) => 'Op: ${call}';
+
+	/// en: 'Another position'
+	String get unnamedPosition => 'Another position';
+
+	/// en: 'Our operating position'
+	String get thisDevice => 'Our operating position';
+
+	/// en: ' in '
+	String get nameIn => ' in ';
+
+	/// en: 'Positions'
+	String get panelTitle => 'Positions';
+
+	/// en: 'What every operating position sharing this operation is logging right now.'
+	String get panelDescription => 'What every operating position sharing this operation is logging right now.';
 }
 
 // Path: operation.menu
@@ -5259,6 +5293,14 @@ extension on Translations {
 			'operation.tabs.remoteScreen' => 'Remote Screen',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Radio',
+			'operation.positions.nobodyYet' => 'No other operating positions are sharing this operation yet.',
+			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
+			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
+			'operation.positions.unnamedPosition' => 'Another position',
+			'operation.positions.thisDevice' => 'Our operating position',
+			'operation.positions.nameIn' => ' in ',
+			'operation.positions.panelTitle' => 'Positions',
+			'operation.positions.panelDescription' => 'What every operating position sharing this operation is logging right now.',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
@@ -5639,6 +5681,8 @@ extension on Translations {
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} at ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
@@ -5647,8 +5691,6 @@ extension on Translations {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
@@ -6153,6 +6195,8 @@ extension on Translations {
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
 			'settings.offlineData.refresh' => 'Refresh',
 			'settings.offlineData.refreshing' => 'Refreshing…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.updateAll' => 'Update All',
 			'settings.offlineData.updatingAll' => 'Updating all data files…',
 			'settings.offlineData.neverDownloaded' => 'Never downloaded',
@@ -6161,8 +6205,6 @@ extension on Translations {
 			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'Updated ${days}d ${hours}h ago',
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
-			_ => null,
-		} ?? switch (path) {
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',

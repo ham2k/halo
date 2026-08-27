@@ -1044,12 +1044,17 @@ export interface CommandAction {
   /// when no value was given, or when the query matched several settings
   /// equally well — in which case every tied candidate is listed.
   openSettings?: { keys: string[]; title?: string }
-  /// OPER / POSITION (`operation-commands`): edits the OPEN operation. The
-  /// two fields go to different places and the app is what knows the
-  /// difference — `operatorCall` is the operation's own (synced) data, while
-  /// `multiIdentifier` is device-local, the `n` in the `/OP<n>` this device's
-  /// self-spots carry; an empty string clears it. The logging panel supplies
-  /// the operation's `uuid`, since only it knows which one is open.
+  /// OPER / POSITION (`operation-commands`): edits the OPEN operation. Both
+  /// fields are DEVICE-LOCAL — several operators log one operation under one
+  /// station call, a device each, so neither who is at the key nor the `n` in
+  /// the `/OP<n>` this device's self-spots carry may be shared with the other
+  /// devices. An empty string clears either. The logging panel supplies the
+  /// operation's `uuid`, since only it knows which one is open.
+  ///
+  /// An export hook reads the operator back as `operation.operatorCall` (or
+  /// `operation.local.operatorCall`); it is resolved by the app, so an
+  /// operation that predates the move still answers with the callsign it
+  /// was given.
   updateOperation?: { operatorCall?: string; multiIdentifier?: string }
   /// Replaces the call field's entire text, cursor at the end — the
   /// call-notes extension's `//KEY` note expansion. The new text runs

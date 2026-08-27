@@ -76,6 +76,7 @@ void main() {
     CommandActionHandler? onCommandAction,
     CallInfoChanged? onCallInfoChanged,
     QsoDraftChanged? onQsoChanged,
+    PeerDraftChanged? onPeerDraftChanged,
     VfoStore? radioService,
     Qso? editingQso,
     VoidCallback? onEditCanceled,
@@ -129,6 +130,7 @@ void main() {
       onCommandAction: onCommandAction,
       onCallInfoChanged: onCallInfoChanged,
       onQsoChanged: onQsoChanged,
+      onPeerDraftChanged: onPeerDraftChanged,
       // Defaults to a radio already tuned to a band, because that is the
       // ordinary state of a station on the air — and because logging refuses
       // a contact carrying neither band nor frequency (HALO-24), so a test
@@ -11580,6 +11582,72 @@ void main() {
     });
 
   });
+
+  group('the row a peer sees', () {
+    // The producing half of HALO-395, against the real controls rather than a
+    // hand-built payload: what a peer renders is only as honest as what this
+    // publishes.
+
+    testWidgets('a report the operator never touched travels as a hint, not a value', (tester) async {
+      final rows = <List<PeerDraftField>>[];
+      await tester.pumpWidget(host(onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.enterText(find.byType(TextField).first, 'KN2X');
+      await tester.pump();
+
+      final row = rows.last;
+      final sent = row.firstWhere((f) => f.key == 'sent');
+      // The trap: the DRAFT carries '59' here either way, because
+      // `_rstOrDefault` folds the placeholder in. Only the empty value beside
+      // a populated hint says the operator did not answer it.
+      expect(sent.value, isEmpty);
+      expect(sent.hint, isNotEmpty);
+      expect(row.firstWhere((f) => f.key == 'call').value, 'KN2X');
+    });
+
+    testWidgets('a report typed over its own placeholder becomes the operator\'s answer', (tester) async {
+      final rows = <List<PeerDraftField>>[];
+      await tester.pumpWidget(host(onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.enterText(find.byType(TextField).first, 'KN2X');
+      await tester.pump();
+      final before = rows.last.firstWhere((f) => f.key == 'sent');
+
+      // Typing exactly what the placeholder already showed. Nothing in the
+      // draft moves; this must still be reported, or the panel can never show
+      // a deliberate report as deliberate.
+      await tester.enterText(find.byType(TextField).at(1), before.hint!);
+      await tester.pump();
+
+      expect(rows.last.firstWhere((f) => f.key == 'sent').value, before.hint);
+    });
+
+    testWidgets('the row is the operator\'s own order, so switchSentRcvd travels', (tester) async {
+      final rows = <List<PeerDraftField>>[];
+      await tester.pumpWidget(host(switchSentRcvd: true, onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.enterText(find.byType(TextField).first, 'KN2X');
+      await tester.pump();
+
+      expect(rows.last.map((f) => f.key).take(3), ['call', 'rcvd', 'sent']);
+    });
+
+    testWidgets('a field the operator switched on joins the row', (tester) async {
+      final rows = <List<PeerDraftField>>[];
+      await tester.pumpWidget(
+          host(showStateField: true, onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.enterText(find.byType(TextField).first, 'KN2X');
+      await tester.pump();
+
+      expect(rows.last.map((f) => f.key), contains('state'));
+    });
+
+    testWidgets('a host with nothing to tell is never asked', (tester) async {
+      // The null gate is what keeps the whole path off the keystroke route.
+      var built = 0;
+      await tester.pumpWidget(host(onQsoChanged: (_) => built++));
+      await tester.enterText(find.byType(TextField).first, 'KN2X');
+      await tester.pump();
+      expect(built, greaterThan(0), reason: 'the draft path itself still works');
+    });
+  });
 }
 
 /// In-memory stand-in for the app's `RadioService` (which lives outside
@@ -11657,4 +11725,5 @@ class _VfoWatcherState extends State<_VfoWatcher> {
 
   @override
   Widget build(BuildContext context) => Text('vfo changes: $_changes');
+
 }

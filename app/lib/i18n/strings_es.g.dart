@@ -224,6 +224,7 @@ class _Translations$operation$es extends Translations$operation$en {
 
 	// Translations
 	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
+	@override late final _Translations$operation$positions$es positions = _Translations$operation$positions$es._(_root);
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
 	@override String get titleNone => 'Sin título';
 	@override String get deleteOperation => 'Eliminar operación';
@@ -961,6 +962,23 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Pantalla remota';
 	@override String get solar => 'Solar';
 	@override String get radio => 'Radio';
+}
+
+// Path: operation.positions
+class _Translations$operation$positions$es extends Translations$operation$positions$en {
+	_Translations$operation$positions$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get nobodyYet => 'Ninguna otra posición de operación está compartiendo esta operación todavía.';
+	@override String positionLabel({required Object number}) => 'Pos: ${number}';
+	@override String operatorLabel({required Object call}) => 'Op: ${call}';
+	@override String get unnamedPosition => 'Otra posición';
+	@override String get thisDevice => 'Nuestra posición de operación';
+	@override String get nameIn => ' en ';
+	@override String get panelTitle => 'Posiciones';
+	@override String get panelDescription => 'Lo que cada posición de operación que comparte esta operación está registrando ahora mismo.';
 }
 
 // Path: operation.menu
@@ -2466,6 +2484,14 @@ extension on TranslationsEs {
 			'operation.tabs.remoteScreen' => 'Pantalla remota',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Radio',
+			'operation.positions.nobodyYet' => 'Ninguna otra posición de operación está compartiendo esta operación todavía.',
+			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
+			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
+			'operation.positions.unnamedPosition' => 'Otra posición',
+			'operation.positions.thisDevice' => 'Nuestra posición de operación',
+			'operation.positions.nameIn' => ' en ',
+			'operation.positions.panelTitle' => 'Posiciones',
+			'operation.positions.panelDescription' => 'Lo que cada posición de operación que comparte esta operación está registrando ahora mismo.',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.deleteOperation' => 'Eliminar operación',
@@ -2858,6 +2884,8 @@ extension on TranslationsEs {
 			'formChrome.manage' => 'Administrar',
 			'formChrome.connect' => 'Conectar',
 			'formChrome.formTitle' => 'Formulario',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => 'Añadir ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'Editar ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'Mostrando ${shown} de ${total} (${selected} seleccionados)',
@@ -2866,8 +2894,6 @@ extension on TranslationsEs {
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'formChrome.removeItem' => 'Quitar',
 			'formChrome.storageUnavailable' => 'Cuentas no disponibles',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
@@ -3372,6 +3398,8 @@ extension on TranslationsEs {
 			'commands.settingOn' => 'Sí',
 			'commands.settingOff' => 'No',
 			'commands.settingEmpty' => '(vacío)',
+			_ => null,
+		} ?? switch (path) {
 			'commands.settingSecretSet' => '(definido)',
 			'commands.settingSecretUnset' => '(sin definir)',
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} seleccionados',
@@ -3380,8 +3408,6 @@ extension on TranslationsEs {
 			'commands.settingExpectsNumber' => 'un número',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.settingNotStored' => ({required Object label}) => '«${label}» no aceptó ese valor',
-			_ => null,
-		} ?? switch (path) {
 			'commands.syncAllUnavailable' => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí',
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',

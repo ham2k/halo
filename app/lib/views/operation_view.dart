@@ -34,7 +34,10 @@ import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/operation_import_panel.dart';
 import 'operation/spots_panel.dart';
+import '../tools/operation_operator.dart';
+import 'operation/positions_panel.dart';
 import '../tools/operation_title.dart';
+import '../services/extension_service.dart';
 import '../i18n/strings.g.dart';
 
 /// How far into the sheet's open/close slide (0 closed, 1 open) the header's
@@ -91,7 +94,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   );
 
   @override
-  Set<String> get nativeModuleIds => _dockModuleIds.toSet();
+  Set<String> get nativeModuleIds => {
+    ..._dockModuleIds,
+    // Only while the experiment is on — and it must match `children` below
+    // exactly. Named here but absent there renders no pane at all; absent
+    // from both is what routes a saved placement to MissingPanelPane.
+    if (_peerPositionsPanel) 'positions',
+  };
+
+  /// Whether the Positions panel exists in this build at all.
+  bool get _peerPositionsPanel =>
+      widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */;
 
   @override
   Map<String, String> get nativeTitles => {
@@ -101,6 +114,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     'info': context.t.operation.tabs.info,
     'spots': context.t.operation.tabs.spots,
     'map': context.t.operation.tabs.map,
+    if (_peerPositionsPanel) 'positions': context.t.operation.positions.panelTitle,
   };
 
   /// The count the logging tab's label carries, kept as a field because
@@ -756,6 +770,71 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     setState(() => _spotsRevision++);
   }
 
+  /// Whether this device is sharing its logging state with peers at all —
+  /// the experiment, the master switch, and a holder to publish into.
+  bool get _peerSharingDrafts =>
+      widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ &&
+      widget.services.settings.peerSyncEnabled;
+
+  /// Publishes the composed contact to every peer sharing this operation.
+  ///
+  /// Deliberately NOT debounced the way [_onQsoDraftChanged] is. That
+  /// debounce exists to coalesce a keystroke burst into one setState, which
+  /// rebuilds three panes here; this one crosses a socket and rebuilds
+  /// nothing locally, and the whole value of the panel on the other end is
+  /// that it keeps up with the operator. The publisher upstream already
+  /// fires at most once per frame per distinct draft.
+  /// The header last sent, so a change to it can be noticed. Position and
+  /// operator are attached HERE rather than inside the controls, so they are
+  /// in neither of the publisher's dedupe keys — without this, running
+  /// `POSITION 2` or `OPER` mid-contact moves nothing the publisher compares
+  /// and every peer keeps rendering the old header until the next keystroke.
+  (String, String)? _lastPeerHeader;
+
+  /// Re-sends the block this device already published, under a header the
+  /// operator has just changed. Cheap and rare: only a `POSITION`/`OPER`
+  /// write reaches it, and it does nothing until one does.
+  void _republishPeerHeaderIfChanged(Operation operation) {
+    if (!_peerSharingDrafts) return;
+    final drafts = widget.services.peerDrafts;
+    final draft = drafts.localDraft;
+    if (draft == null || draft.operationUuid != operation.uuid) return;
+    final header = _peerHeaderFor(operation);
+    if (header == _lastPeerHeader) return;
+    _lastPeerHeader = header;
+    drafts.publishLocal(PeerQsoDraftPayload(
+      qso: draft.qso,
+      operationUuid: draft.operationUuid,
+      fields: draft.fields,
+      position: header.$1,
+      operatorCall: header.$2,
+    ));
+  }
+
+  /// Both device-local, and read fresh every time: the operator can set
+  /// either from the command bar mid-contact, and a value captured once when
+  /// the view mounted would name the wrong position for the rest of the
+  /// session.
+  (String, String) _peerHeaderFor(Operation operation) => (
+        normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? ''),
+        operatorCallFor(operation),
+      );
+
+  void _onPeerDraft(Operation operation, Map<String, dynamic> qso, List<PeerDraftField> fields) {
+    final header = _peerHeaderFor(operation);
+    _lastPeerHeader = header;
+    widget.services.peerDrafts.publishLocal(PeerQsoDraftPayload(
+      qso: qso,
+      operationUuid: operation.uuid,
+      fields: [
+        for (final field in fields)
+          PeerDraftFieldPayload(key: field.key, label: field.label, value: field.value, hint: field.hint),
+      ],
+      position: header.$1,
+      operatorCall: header.$2,
+    ));
+  }
+
   /// The QSO being composed, republished from the logging panel for panels
   /// declaring `qso`. Null until one of them is in the arrangement — the
   /// render args then leave `qso` out entirely rather than sending `{}`.
@@ -847,6 +926,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     if (DevBridge.instance.stateProvider == _devBridgeState) {
       DevBridge.instance.stateProvider = null;
     }
+    // This device stops being a position in the operation it is leaving.
+    // Nothing else says so: a peer learns a position is gone from its session
+    // dropping, and this device's session is still up.
+    widget.services.peerDrafts.clearLocalFor(widget.operationUuid);
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
@@ -1970,6 +2053,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       source: PanelSource.native,
       views: const {PanelViews.operation},
     ));
+    // Registered only with the experiment on, exactly as Remote Screen is: a
+    // saved arrangement holding one then falls to the missing-panel
+    // placeholder rather than vanishing, and the operator keeps their layout.
+    if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */) {
+      service.registerNative(PanelDefinition(
+        id: 'positions',
+        title: t.positions.panelTitle,
+        description: t.positions.panelDescription,
+        icon: 'accountGroup',
+        source: PanelSource.native,
+        views: const {PanelViews.operation},
+      ));
+    }
     service.registerNative(PanelDefinition(
       id: 'spots',
       title: t.tabs.spots,
@@ -2004,12 +2100,23 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   }) {
     _realQsoCountForTabs = realQsoCount;
     _operationForPanels = operation;
+    // A local_data write rebuilds this view, which is the only signal a
+    // POSITION or OPER change gives — see [_republishPeerHeaderIfChanged].
+    _republishPeerHeaderIfChanged(operation);
     return buildDock(
       children: {
         'logging': loggingPanel,
         'info': infoPanel,
         'spots': spotsPanel,
         'map': mapPanel,
+        if (_peerPositionsPanel)
+          'positions': PositionsPanel(
+            drafts: widget.services.peerDrafts,
+            operation: operation,
+            miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
+            showBearing: widget.services.settings.showBearing,
+            ourEntityPrefix: _ourEntityPrefix,
+          ),
       },
       // What a pane offers while it is being USED. The dock hides all of it
       // while editing, where a tab is a grab handle — a panel's own settings
@@ -2230,6 +2337,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // renders, not this.
             onQsoChanged:
                 _anyPanelWants('qso') || _anyPanelWants('lookup') ? _onQsoDraftChanged : null,
+            // Peer sharing is its own reason to publish, independent of the
+            // layout: the panel that reads this lives on ANOTHER device, so
+            // gating it on what a panel here declares would leave a position
+            // invisible to its peers whenever nothing local happened to want
+            // a draft. Null while sharing is off, which is what keeps the
+            // whole path off the keystroke route.
+            onPeerDraftChanged:
+                _peerSharingDrafts ? (qso, fields) => _onPeerDraft(operation, qso, fields) : null,
             onCallInfoTap: () => _handleCallInfoTap(operation),
             onOperationInfoTap: () => _handleOperationInfoTap(operation, qsos),
             ),

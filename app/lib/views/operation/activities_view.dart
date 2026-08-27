@@ -40,6 +40,7 @@ import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
 import '../../i18n/strings.g.dart';
 import '../../tools/distance_format.dart';
+import '../../tools/operation_operator.dart';
 import '../../tools/operation_title.dart';
 import 'activities_results_map.dart';
 
@@ -1596,7 +1597,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// opens the details editor (see [OperationSheet.onEditDetails]).
   Widget _operationPills(ThemeData theme, double availableWidth) {
     final stationCall = _operation.stationCall;
-    final operatorCall = asQsonString(_operation.data['operatorCall']);
+    final operatorCall = operatorCallFor(_operation);
     final operationTitle = _operation.userTitle;
     final notes = asQsonString(_operation.data['notes']) ?? '';
     final multiIdentifier = asQsonString(_operation.localData['multiIdentifier']) ?? '';
@@ -1690,7 +1691,7 @@ class OperationSheetState extends State<OperationSheet> {
     ];
     final operatorSpans = [
       const TextSpan(text: 'Op: '),
-      TextSpan(text: operatorCall ?? '', style: callStyle),
+      TextSpan(text: operatorCall, style: callStyle),
     ];
     // Shown to anyone who has a position set, developer mode or not: the
     // identifier keeps suffixing this device's spots (`K2SUL/OP2`) after
@@ -1718,7 +1719,7 @@ class OperationSheetState extends State<OperationSheet> {
           // leaves the row saying nothing about a call that goes out modified.
           dropOrder: 4,
         ),
-      if (operatorCall != null && operatorCall.isNotEmpty)
+      if (operatorCall.isNotEmpty)
         _HeaderPill(
           chip(light: true, Text.rich(TextSpan(children: operatorSpans))),
           measure(operatorSpans),

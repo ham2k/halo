@@ -144,6 +144,16 @@
       "solar": "Solar",
       "radio": "Radio"
     },
+    "positions": {
+      "nobodyYet": "Ninguna otra posición de operación está compartiendo esta operación todavía.",
+      "positionLabel": "Pos: $number",
+      "operatorLabel": "Op: $call",
+      "unnamedPosition": "Otra posición",
+      "thisDevice": "Nuestra posición de operación",
+      "nameIn": " en ",
+      "panelTitle": "Posiciones",
+      "panelDescription": "Lo que cada posición de operación que comparte esta operación está registrando ahora mismo."
+    },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
     "deleteOperation": "Eliminar operación",
