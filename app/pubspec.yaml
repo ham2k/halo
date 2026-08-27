@@ -194,6 +194,16 @@ dependency_overrides:
   # PATCH.md.
   usb_serial:
     path: ../packages/usb_serial_patched
+  # TEMPORARY, for HALO-290. Upstream registers this plugin's Windows half
+  # from `RegisterPlugins()` and starts WinRT Bluetooth radio enumeration in
+  # the plugin constructor, before the first frame and with no Dart-side
+  # opt-out — which is the one native change between build 145 (boots) and
+  # 146 (does not) on the reporter's machine. The vendored copy adds a
+  # `HAM2K_BLE_MODE` env switch so one signed release can carry every arm of
+  # the A/B, plus Release PDBs for this plugin's own frames. See the package's
+  # PATCH.md. Revert this override once the A/B has its answer.
+  universal_ble:
+    path: ../packages/universal_ble_patched
 
 flutter:
   # The built-in MaterialIcons font ships ONLY as a safety net for glyphs

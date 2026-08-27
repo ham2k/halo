@@ -1221,10 +1221,9 @@ packages:
   universal_ble:
     dependency: "direct main"
     description:
-      name: universal_ble
-      sha256: acf41bc04affa322fbb48a29ee724408fac7b39e9fe83e9ef45d5925076de5e5
-      url: "https://pub.dev"
-    source: hosted
+      path: "../packages/universal_ble_patched"
+      relative: true
+    source: path
     version: "2.1.1"
   universal_platform:
     dependency: transitive

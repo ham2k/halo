@@ -184,8 +184,31 @@ check_clock_discipline() {
   echo "▶ clock discipline: every 'now' goes through AppClock (docs/design/time.md)"
   local dirs=("$ROOT_DIR/app/lib")
   local d
+  # Vendored upstream copies are third-party code that happens to live under
+  # packages/, and the rule does not reach them: their clock reads cannot be
+  # changed without diverging from upstream for no reason, and every OTHER
+  # third-party package the app depends on sits in the pub cache where this
+  # scan never looked. Listing them by name rather than allow-listing `halo_*`
+  # is deliberate — a future FIRST-PARTY package must fail this check loudly on
+  # its first DateTime.now(), and an allow-list would let it escape in silence.
+  # A newly vendored copy fails here once, and adding it to this list is then a
+  # deliberate act rather than an invisible default.
+  local vendored=(
+    flutter_inappwebview_windows_patched
+    flutter_inappwebview_macos_patched
+    usb_serial_patched
+    universal_ble_patched
+  )
   for d in "$ROOT_DIR"/packages/*/lib; do
     [[ -d "$d" ]] || continue
+    local name
+    name=$(basename "$(dirname "$d")")
+    local skip=""
+    local v
+    for v in "${vendored[@]}"; do
+      [[ "$name" == "$v" ]] && skip=1 && break
+    done
+    [[ -n "$skip" ]] && continue
     dirs+=("$d")
   done
   [[ -d "$ROOT_DIR/app_dist/lib" ]] && dirs+=("$ROOT_DIR/app_dist/lib")
