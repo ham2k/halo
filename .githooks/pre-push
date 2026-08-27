@@ -28,6 +28,34 @@
 # (importing a commit built elsewhere, a revert of a known-good older tree):
 #   HALO_ALLOW_UNTESTED_MERGE=1 git push …
 #   git push --no-verify …
+#
+#
+# One worktree lands on `main` at a time.
+#
+# Several worktrees of this repo are commonly mid-task at once, and each merge
+# is the same stretch: rebase onto `main`, run the suite, push. Nothing there
+# can corrupt `main` — the squash commit's parent is pinned to the base that
+# was rebased onto, so a `main` that moved underneath rejects the push as a
+# non-fast-forward. What it wastes is work: whoever finishes second is told
+# `main` moved and throws the entire run away, and while both were running they
+# were competing for one machine.
+#
+# So that stretch is serialized by an advisory lock — a directory under the
+# shared git directory, created with `mkdir`, which either creates it or fails
+# in one atomic step, so exactly one worktree can hold it:
+#
+#   LOCK="$(git rev-parse --path-format=absolute --git-common-dir)/ham2k-merge.lock"
+#   mkdir "$LOCK" && git rev-parse --show-toplevel > "$LOCK/owner"
+#   …rebase, run the suite, push…
+#   rm -rf "$LOCK"          # on every exit path, not only the successful one
+#
+# The first line of `owner` is the worktree holding it. This refuses a push to
+# `main` from any other — including from one holding no lock at all, which is
+# how the queue actually gets skipped. A lock left behind by a worktree that
+# died mid-merge blocks everyone, so read `owner` before assuming it is live;
+# `rm -rf` is the release either way.
+#
+#   HALO_ALLOW_UNLOCKED_MERGE=1 git push …
 set -uo pipefail
 
 PROTECTED_REF="refs/heads/main"
@@ -39,11 +67,17 @@ EMPTY_SHA="$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')"
 # describe the pushing worktree, not any one of them.
 WORKTREE_STATUS="$(git status --porcelain 2>/dev/null)"
 HEAD_TREE="$(git rev-parse --verify --quiet 'HEAD^{tree}' 2>/dev/null || true)"
+TOPLEVEL="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+LOCK="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/ham2k-merge.lock"
+# Absent lock and unreadable owner both read as empty, and neither can equal a
+# real toplevel — so one comparison covers unheld, held-by-another, and the
+# sliver between `mkdir` and the write of `owner`.
+LOCK_OWNER="$(head -1 "$LOCK/owner" 2>/dev/null || true)"
 
 fail() {
   printf '\n  REFUSING to push to %s — %s\n\n' "$PROTECTED_REF" "$1" >&2
   printf '  %s\n\n' "$2" >&2
-  printf '  Deliberate? HALO_ALLOW_UNTESTED_MERGE=1 git push …   (or --no-verify)\n\n' >&2
+  printf '  Deliberate? %s git push …   (or --no-verify)\n\n' "${3:-HALO_ALLOW_UNTESTED_MERGE=1}" >&2
   exit 1
 }
 
@@ -58,6 +92,22 @@ while read -r _local_ref local_sha remote_ref _remote_sha; do
 $(printf '%s\n' "$WORKTREE_STATUS" | head -5 | sed 's/^/    /')" \
       "Commit, remove or ignore them — then run the suite again, because the tree
   it last passed on is no longer the tree you are shipping."
+  fi
+
+  if [ "${HALO_ALLOW_UNLOCKED_MERGE:-}" != "1" ] && [ "$LOCK_OWNER" != "$TOPLEVEL" ]; then
+    if [ -d "$LOCK" ]; then
+      fail "the merge lock is held by another worktree:
+$(sed 's/^/    /' "$LOCK/owner" 2>/dev/null || printf '    (no owner recorded)')" \
+        "Wait for it to be released, then rebase onto the new \`main\` and run the suite
+  again — whatever it lands is no longer under what you tested." \
+        HALO_ALLOW_UNLOCKED_MERGE=1
+    fi
+    fail "no merge lock is held, so another worktree can land between the run that
+  tested this and this push" \
+      "Take it first, and release it when you are done:
+    LOCK=\"\$(git rev-parse --path-format=absolute --git-common-dir)/ham2k-merge.lock\"
+    mkdir \"\$LOCK\" && git rev-parse --show-toplevel > \"\$LOCK/owner\"" \
+      HALO_ALLOW_UNLOCKED_MERGE=1
   fi
 
   PUSHED_TREE="$(git rev-parse --verify --quiet "${local_sha}^{tree}" 2>/dev/null || true)"
