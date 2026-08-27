@@ -1431,8 +1431,9 @@ class HaLoServices {
   /// Returns the registration so a caller that also needs it directly (e.g.
   /// `_doOAuth`, for the `webhookClientToken` its `state` param carries) can
   /// go through this one place rather than re-registering by hand.
-  Future<LofiClientRegistration?> connectLofiRealtime() async {
-    final registration = await extensions.ensureLofiClientRegistered();
+  Future<LofiClientRegistration?> connectLofiRealtime({bool refreshWebhookToken = false}) async {
+    final registration =
+        await extensions.ensureLofiClientRegistered(refreshWebhookToken: refreshWebhookToken);
     if (registration != null) pusher?.subscribe(registration.pushChannelName);
     return registration;
   }

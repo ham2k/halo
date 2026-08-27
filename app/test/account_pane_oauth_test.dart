@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -28,6 +29,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/deep_link_service.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/oauth_browser_login.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
@@ -187,6 +189,15 @@ class _AccountExtensionService extends ExtensionServiceWithMockHost {
   }
   @override
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async => 'ok';
+
+  /// Every `refreshWebhookToken` this pane asked for, in order.
+  final registrationRefreshes = <bool>[];
+
+  @override
+  Future<LofiClientRegistration?> ensureLofiClientRegistered({bool refreshWebhookToken = false}) async {
+    registrationRefreshes.add(refreshWebhookToken);
+    return (pushChannelName: 'client-test-channel', webhookClientToken: 'signed--token');
+  }
 }
 
 final _accountDefinition = {
@@ -403,6 +414,36 @@ void main() {
       expect(find.byType(OAuthBrowserLoginBody), findsOneWidget, reason: 'this attempt is still waiting');
       await h.links.dispose();
     }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  testWidgets('the relay path asks for a FRESH webhook token, never the cached one', (tester) async {
+    // The token goes straight into this login's `state`, and the server mints
+    // it with a one-hour life. A pane that accepted the cached copy works for
+    // an hour after a device registers and never again — the relay answers an
+    // expired token with "this login link has expired or is invalid", which
+    // the operator cannot act on and retrying never clears.
+    //
+    // Windows, because `oauthUsesWebhookRelay` is what selects this path and
+    // `flutter test` reports `android` (deep-link) otherwise.
+    // Restored in a `finally`, not addTearDown: flutter_test asserts no
+    // foundation debug variable outlived the test body, and it checks before
+    // teardowns run.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final overrides = _OAuthHttpOverrides();
+      await HttpOverrides.runZoned(() async {
+        final h = await _openPane(tester, overrides);
+        await tester.tap(_connect);
+        await _pump(tester);
+
+        expect(h.extensions.registrationRefreshes, [true],
+            reason: 'one login, and it demanded a current token');
+        expect(find.byType(OAuthBrowserLoginBody), findsOneWidget, reason: 'the wait actually started');
+        await h.links.dispose();
+      }, createHttpClient: (c) => _FakeHttpClient(overrides));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('while waiting, the pane offers nothing but the wait', (tester) async {

@@ -30,6 +30,7 @@ import type {
 } from "@ham2k/halo-extension-sdk"
 
 import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
+import { clientIdentityFrom, requireWebhookIdentity } from './clientIdentity.ts'
 import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normalizedEmail } from "./errors.ts"
 import { tFor } from "./i18n.ts"
 import { attachReportContext, buildReportPayload } from "./report.ts"
@@ -276,15 +277,27 @@ async function doRegisterClient(): Promise<string> {
   // caller that only wants the channel/webhook identity (ensureClientRegistered,
   // used regardless of whether QSO sync is enabled — HALO-66) doesn't force a
   // second round trip.
-  const client = json.client
-  if (client && typeof client === 'object') {
-    const pushChannelName = (client as Record<string, JSONValue>).push_channel
-    const webhookClientToken = (client as Record<string, JSONValue>).webhook_client_token
-    if (typeof pushChannelName === 'string') await host.kvSet('push_channel_name', pushChannelName)
-    if (typeof webhookClientToken === 'string') await host.kvSet('webhook_client_token', webhookClientToken)
-  }
+  await cacheClientIdentity(json.client)
 
   return cachedToken
+}
+
+/// Stores the identity fields off a `client` payload, and reports what it
+/// stored.
+///
+/// The two have very different lifetimes and only one of them is durable.
+/// `push_channel` is stable for the life of the client record.
+/// `webhook_client_token` is a SIGNED, ONE-HOUR message (the server mints it
+/// per response, `Client#webhook_client_token`), so what lands in kv is a
+/// snapshot that goes stale on its own — see [ensureClientRegistered] for who
+/// must not trust it.
+async function cacheClientIdentity(
+  client: JSONValue | undefined,
+): Promise<{ pushChannelName?: string; webhookClientToken?: string }> {
+  const { pushChannelName, webhookClientToken } = clientIdentityFrom(client)
+  if (pushChannelName) await host.kvSet('push_channel_name', pushChannelName)
+  if (webhookClientToken) await host.kvSet('webhook_client_token', webhookClientToken)
+  return { pushChannelName, webhookClientToken }
 }
 
 /// Authenticated request with the same retry-once-on-401 shape as the RN
@@ -569,7 +582,7 @@ async function approveLinkRequest(
 /// subscribe to and the signed token used to build the `state` param for a
 /// webhook-relayed OAuth flow (HALO-65).
 async function ensureClientRegistered(
-  _args: Record<string, never>,
+  args: { refreshWebhookToken?: boolean } | undefined,
   _ctx: HookContext,
 ): Promise<{ push_channel_name: string; webhook_client_token: string }> {
   const read = () => Promise.all([host.kvGet('push_channel_name'), host.kvGet('webhook_client_token')])
@@ -578,6 +591,35 @@ async function ensureClientRegistered(
     await registerClient()
     ;[pushChannelName, webhookClientToken] = await read()
   }
+
+  // A caller about to put the webhook token in an OAuth `state` MUST ask for
+  // a fresh one. The cached copy is a one-hour signed message, so a device
+  // that registered longer ago than that carries one the relay refuses — and
+  // its receiver answers only "this login link has expired or is invalid",
+  // which the operator cannot act on and which retrying never clears.
+  //
+  // Opt-in rather than always: boot and every operator-callsign change call
+  // through here too, and they want `push_channel_name`, which does not
+  // expire. Making them all pay a round trip would put the network on paths
+  // that work offline today. A failure here is deliberately fatal to the
+  // caller — a login cannot be completed through a relay we cannot reach,
+  // and sending the stale token instead is the very bug this prevents.
+  if (args?.refreshWebhookToken) {
+    const response = await request('GET', 'v1/client')
+    // Throws unless the answer really carried a token — see
+    // `requireWebhookIdentity`. There is deliberately no fallback to the
+    // cached value here: that is the bug, not the safety net.
+    webhookClientToken = requireWebhookIdentity(response).webhookClientToken
+    await cacheClientIdentity(response.client)
+    // Re-read rather than reusing what was read before the request: a 401
+    // inside `request` re-registers, which can mint a NEW client record and
+    // rewrite this key. Pairing that record's token with the previous
+    // record's channel would subscribe to a channel nobody publishes to, and
+    // the login would simply wait out its deadline.
+    const refreshedChannel = await host.kvGet('push_channel_name')
+    if (typeof refreshedChannel === 'string') pushChannelName = refreshedChannel
+  }
+
   if (typeof pushChannelName !== 'string' || typeof webhookClientToken !== 'string') {
     throw new Error('LoFi registration did not return a push channel/webhook token')
   }

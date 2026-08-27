@@ -3298,11 +3298,24 @@ class ExtensionService implements PanelExtensionSource {
   /// pushes log data. Returns null if the runtime isn't up or registration
   /// failed (e.g. no network) — callers should treat that as "not
   /// available yet", not as "sync is off".
-  Future<LofiClientRegistration?> ensureLofiClientRegistered() async {
-    final host = _host;
+  ///
+  /// [refreshWebhookToken] makes this fetch a CURRENT webhook token instead of
+  /// returning the cached one, at the cost of a round trip. Required of any
+  /// caller putting that token in an OAuth `state`: it is a one-hour signed
+  /// message, so a device registered longer ago than that carries one the
+  /// relay refuses. Off by default because `pushChannelName` — what boot and
+  /// operator-callsign changes come here for — never expires, and they must
+  /// keep working offline.
+  Future<LofiClientRegistration?> ensureLofiClientRegistered({bool refreshWebhookToken = false}) async {
+    // Through the getter, not the `_host` field the neighbours read: the
+    // getter is the seam a test can substitute, and what crosses it here —
+    // the args map, matched by string on the JavaScript side — has no other
+    // way to be checked.
+    final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('syncTransport', method: 'ensureClientRegistered', args: const {});
+      final result = await host.invokeHook('syncTransport',
+          method: 'ensureClientRegistered', args: {'refreshWebhookToken': refreshWebhookToken});
       if (result is! Map) return null;
       final map = result.cast<String, dynamic>();
       final pushChannelName = map['push_channel_name'] as String?;

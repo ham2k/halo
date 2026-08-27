@@ -3565,7 +3565,10 @@ class _AccountPaneState extends State<_AccountPane> {
       // just through the one place that knows how, not a second copy of it.
       LofiClientRegistration? registration;
       if (useRelay) {
-        registration = await widget.services.connectLofiRealtime();
+        // A CURRENT webhook token, not the cached one: it goes straight into
+        // this login's `state`, and the relay refuses an expired one with a
+        // message the operator cannot act on.
+        registration = await widget.services.connectLofiRealtime(refreshWebhookToken: true);
         if (registration == null) {
           throw Exception(t.settings.accounts.relayLoginUnavailable);
         }

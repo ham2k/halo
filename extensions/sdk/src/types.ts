@@ -1378,7 +1378,7 @@ export interface SyncTransportHook {
   /// used to build the `state` param for a webhook-relayed OAuth flow
   /// (HALO-65/66). Optional so transports predating this contract keep
   /// compiling.
-  ensureClientRegistered?(args: Record<string, never>, ctx: HookContext): Promise<{ push_channel_name: string, webhook_client_token: string }>
+  ensureClientRegistered?(args: { refreshWebhookToken?: boolean }, ctx: HookContext): Promise<{ push_channel_name: string, webhook_client_token: string }>
   /// Fetches this device's pending webhook events (HALO-65) — the poll
   /// fallback, and how the app retrieves the actual payload after a Pusher
   /// `webhook_event` ping (which intentionally carries only an id, never the
