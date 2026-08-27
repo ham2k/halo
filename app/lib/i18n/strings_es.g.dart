@@ -305,6 +305,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get archive => 'Archivar';
 	@override String get deleteOperation => 'Borrar operación';
 	@override String get alreadySelected => 'Ya seleccionada';
+	@override String get retiredReference => 'Retirada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
 	@override String get setupUnavailable => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar';
@@ -2706,6 +2707,7 @@ extension on TranslationsEs {
 			'activitiesView.archive' => 'Archivar',
 			'activitiesView.deleteOperation' => 'Borrar operación',
 			'activitiesView.alreadySelected' => 'Ya seleccionada',
+			'activitiesView.retiredReference' => 'Retirada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
 			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
@@ -2816,9 +2818,9 @@ extension on TranslationsEs {
 			'qsoList.tomorrow' => 'Mañana',
 			'qsoList.eventStarted' => 'Operación iniciada',
 			'qsoList.eventBreak' => 'Descanso',
-			'qsoList.eventEnded' => 'Operación finalizada',
 			_ => null,
 		} ?? switch (path) {
+			'qsoList.eventEnded' => 'Operación finalizada',
 			'loggingPanel.stats' => 'Estadísticas de la Operación',
 			'loggingPanel.scoring' => 'Puntuación',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
@@ -3330,9 +3332,9 @@ extension on TranslationsEs {
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
-			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
 			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
 			'updates.updateAvailable' => 'Actualización disponible',
 			'updates.newVersionAvailable' => ({required Object version}) => 'Hay una nueva versión (${version}) disponible.',

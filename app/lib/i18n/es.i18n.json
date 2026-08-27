@@ -498,6 +498,7 @@
     "archive": "Archivar",
     "deleteOperation": "Borrar operación",
     "alreadySelected": "Ya seleccionada",
+    "retiredReference": "Retirada",
     "enableExtension": "Activar ${name}",
     "enableExtensionHint": "Esta extensión coincide con tu búsqueda, pero no está activada",
     "setupUnavailable": "No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar",

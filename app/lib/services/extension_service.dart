@@ -2063,7 +2063,9 @@ class ExtensionService implements PanelExtensionSource {
         final category = params['category'] as String;
         final query = params['query'] as String;
         final subCategory = params['subCategory'] as String?;
-        final list = await lookups?.queryLookups(category, query, subCategory: subCategory) ?? const [];
+        final activeOnly = params['activeOnly'] as bool? ?? false;
+        final list =
+            await lookups?.queryLookups(category, query, subCategory: subCategory, activeOnly: activeOnly) ?? const [];
         return list
             .map((row) => {
                   'category': row.category,
@@ -2081,7 +2083,9 @@ class ExtensionService implements PanelExtensionSource {
         final lat = (params['lat'] as num).toDouble();
         final lon = (params['lon'] as num).toDouble();
         final delta = (params['delta'] as num).toDouble();
-        final list = await lookups?.queryLookupsByLocation(category, lat, lon, delta) ?? const [];
+        final activeOnly = params['activeOnly'] as bool? ?? false;
+        final list =
+            await lookups?.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly) ?? const [];
         return list
             .map((row) => {
                   'category': row.category,

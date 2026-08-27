@@ -1559,9 +1559,9 @@ class _EquipmentTile extends StatelessWidget {
 Color _connectedGreen(ThemeData theme) =>
     theme.brightness == Brightness.dark ? Colors.green.shade600 : Colors.green.shade700;
 
-/// A small rounded label. Same shape as activities_view's
-/// `_AlreadySelectedChip` — nothing pill-like is exported from halo_widgets,
-/// and that chip says the same kind of thing about a row. Plain logical
+/// A small rounded label. Same shape as activities_view's `ActivityRowChip` —
+/// nothing pill-like is exported from halo_widgets, and that chip says the
+/// same kind of thing about a row. Plain logical
 /// pixels: the Font Scale setting scales the whole UI from one root wrapper
 /// (docs/design/ui-scaling.md).
 class _Pill extends StatelessWidget {

@@ -32,7 +32,8 @@ import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
-import 'activities_view.dart' show activityRowDetail, activityRowTitle, suggestionHidesAsAlreadyAdded;
+import 'activities_view.dart'
+    show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle, suggestionHidesAsAlreadyAdded;
 
 /// The entry's own coordinate when the activity's lookup table has one
 /// (tighter than decoding a 6-character grid square — see the SDK's `Ref.lat`
@@ -338,11 +339,22 @@ class _RevealCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    activityRowTitle(control, suggestion),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          activityRowTitle(control, suggestion),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (activityRowIsRetired(suggestion))
+                        Padding(
+                          padding: const EdgeInsets.only(left: Space.md),
+                          child: ActivityRowChip(label: t.retiredReference, unavailable: true),
+                        ),
+                    ],
                   ),
                   if (detail != null || distance != null)
                     Text(

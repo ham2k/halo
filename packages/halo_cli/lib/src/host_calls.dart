@@ -235,13 +235,19 @@ class CliHostCalls {
       case 'dbLookupSelectOne':
         return await lookups?.selectOne(params['category'] as String, params['key'] as String);
       case 'dbLookupSelectAll':
-        return await lookups?.selectAll(params['category'] as String, params['query'] as String) ?? const [];
+        return await lookups?.selectAll(
+              params['category'] as String,
+              params['query'] as String,
+              activeOnly: params['activeOnly'] as bool? ?? false,
+            ) ??
+            const [];
       case 'dbLookupSelectByLocation':
         return await lookups?.selectByLocation(
               params['category'] as String,
               (params['lat'] as num).toDouble(),
               (params['lon'] as num).toDouble(),
               (params['delta'] as num).toDouble(),
+              activeOnly: params['activeOnly'] as bool? ?? false,
             ) ??
             const [];
 

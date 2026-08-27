@@ -49,11 +49,15 @@ class LookupStore {
   Future<Map<String, Object?>?> selectOne(String category, String key) async =>
       _toJson(await repository.getLookup(category, key));
 
-  Future<List<Map<String, Object?>>> selectAll(String category, String query) async =>
-      [for (final row in await repository.queryLookups(category, query)) _toJson(row)!];
+  Future<List<Map<String, Object?>>> selectAll(String category, String query, {bool activeOnly = false}) async =>
+      [for (final row in await repository.queryLookups(category, query, activeOnly: activeOnly)) _toJson(row)!];
 
-  Future<List<Map<String, Object?>>> selectByLocation(String category, double lat, double lon, double delta) async =>
-      [for (final row in await repository.queryLookupsByLocation(category, lat, lon, delta)) _toJson(row)!];
+  Future<List<Map<String, Object?>>> selectByLocation(String category, double lat, double lon, double delta,
+          {bool activeOnly = false}) async =>
+      [
+        for (final row in await repository.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly))
+          _toJson(row)!
+      ];
 
   /// Row counts per category, for `data-files list`.
   Future<Map<String, int>> counts() async {

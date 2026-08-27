@@ -1981,6 +1981,16 @@ class LookupRepository {
         .getSingleOrNull();
   }
 
+  /// A row this program has NOT retired: `flags` 0 is the one value that means
+  /// retired, which every activity's data-file mapper writes for a reference
+  /// its program has delisted.
+  ///
+  /// The null arm is load-bearing, not defensive. `flags` is nullable and most
+  /// mappers never set it, and SQL's `flags != 0` is NULL — therefore false —
+  /// for those rows, so the obvious predicate would silently hide every lookup
+  /// row that simply never said. Unknown is not retired.
+  Expression<bool> _notRetired($LookupsTable l) => l.flags.isNull() | l.flags.equals(0).not();
+
   /// Searches lookups in a category by matching query prefix on key or name.
   ///
   /// [subCategory], when given, filters IN THIS QUERY rather than left to the
@@ -2000,11 +2010,25 @@ class LookupRepository {
   /// the ones a [relevanceForMatch]-style ranking would call most relevant —
   /// so those are what a full 100 rows displaces last.
   ///
+  /// [activeOnly] drops rows a program has RETIRED, and belongs in the query
+  /// for the same reason [subCategory] does. POTA keeps a retired park in its
+  /// parks file rather than dropping it, so retirements arrive in bulk and
+  /// CLUSTER: a program delists a whole class of reference at once, and a
+  /// search for a word those share ("Wildlife Management Area" in an entity
+  /// whose WMAs were swept) can fill all 100 rows with retired ones. Filtered
+  /// afterward, in the caller, that search returns almost nothing while the
+  /// active matches sit just past the cap.
+  ///
   /// [query] is escaped via [_escapeLikePattern] before it's built into any
   /// pattern — a literal `%` or `_` in a searched name (e.g. a park with one
   /// in its title) would otherwise be read as a SQL wildcard instead of the
   /// character it is.
-  Future<List<LookupRow>> queryLookups(String category, String query, {String? subCategory}) async {
+  Future<List<LookupRow>> queryLookups(
+    String category,
+    String query, {
+    String? subCategory,
+    bool activeOnly = false,
+  }) async {
     final escaped = _escapeLikePattern(query);
     final keyPrefixMatch = db.lookups.key.like('$escaped%', escapeChar: r'\');
     final namePrefixMatch = db.lookups.name.like('$escaped%', escapeChar: r'\');
@@ -2012,7 +2036,8 @@ class LookupRepository {
           ..where((l) =>
               l.category.equals(category) &
               (l.key.like('%$escaped%', escapeChar: r'\') | l.name.like('%$escaped%', escapeChar: r'\')) &
-              (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)))
+              (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)) &
+              (activeOnly ? _notRetired(l) : const Constant(true)))
           ..orderBy([
             (l) => OrderingTerm(expression: keyPrefixMatch, mode: OrderingMode.desc),
             (l) => OrderingTerm(expression: namePrefixMatch, mode: OrderingMode.desc),
@@ -2028,8 +2053,17 @@ class LookupRepository {
   /// whichever 100 rows the query planner happens to hit first rather than
   /// the 100 actually nearest to the caller, and a close-by entry can be
   /// dropped in favor of farther ones.
+  ///
+  /// [activeOnly] as in [queryLookups] — and for the same reason it precedes
+  /// the `limit` here too, since a swept class of reference is as likely to
+  /// be clustered in SPACE as in name.
   Future<List<LookupRow>> queryLookupsByLocation(
-      String category, double lat, double lon, double delta) async {
+    String category,
+    double lat,
+    double lon,
+    double delta, {
+    bool activeOnly = false,
+  }) async {
     final latDelta = db.lookups.lat - Variable(lat);
     final lonDelta = db.lookups.lon - Variable(lon);
     final distanceSquared = latDelta * latDelta + lonDelta * lonDelta;
@@ -2037,7 +2071,8 @@ class LookupRepository {
           ..where((l) =>
               l.category.equals(category) &
               l.lat.isBetweenValues(lat - delta, lat + delta) &
-              l.lon.isBetweenValues(lon - delta, lon + delta))
+              l.lon.isBetweenValues(lon - delta, lon + delta) &
+              (activeOnly ? _notRetired(l) : const Constant(true)))
           ..orderBy([(l) => OrderingTerm.asc(distanceSquared)])
           ..limit(100))
         .get();

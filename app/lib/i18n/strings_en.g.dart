@@ -590,6 +590,9 @@ class Translations$activitiesView$en {
 	/// en: 'Already selected'
 	String get alreadySelected => 'Already selected';
 
+	/// en: 'Retired'
+	String get retiredReference => 'Retired';
+
 	/// en: 'Enable ${name}'
 	String enableExtension({required Object name}) => 'Enable ${name}';
 
@@ -5454,6 +5457,7 @@ extension on Translations {
 			'activitiesView.archive' => 'Archive',
 			'activitiesView.deleteOperation' => 'Delete Operation',
 			'activitiesView.alreadySelected' => 'Already selected',
+			'activitiesView.retiredReference' => 'Retired',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
 			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
@@ -5518,9 +5522,9 @@ extension on Translations {
 			'loggingControls.info.noticeNewMode' => 'New Mode',
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
 			'loggingControls.info.noticeNewState' => 'New State',
-			'loggingControls.info.noticeNewProvince' => 'New Province',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.info.noticeNewProvince' => 'New Province',
 			'loggingControls.info.noticeNewDay' => 'New Day',
 			'loggingControls.info.noticeNewRef' => 'New Ref',
 			'loggingControls.info.noticeNewMult' => 'New Mult',
@@ -6032,9 +6036,9 @@ extension on Translations {
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
-			'settings.developer.categoryCore' => 'Core & Runtime',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.categoryCore' => 'Core & Runtime',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',

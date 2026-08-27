@@ -247,6 +247,27 @@ export interface Ref {
   location?: string
   program?: string
 
+  /// The program has RETIRED this reference — it still exists and still names
+  /// itself, but it can no longer be activated. The app marks such a row
+  /// rather than hiding it, so an operator who asked for it by name learns why
+  /// it is not an ordinary choice.
+  ///
+  /// A flag, deliberately, and never a marker folded into [name] or [label]:
+  /// a suggestion is persisted onto the operation VERBATIM (a reference type
+  /// runs no setup form, so nothing re-decorates it on the way in), and those
+  /// two fields feed the operation's own title. A localized word appended to
+  /// either is a UI string baked into stored data, in whatever language the
+  /// operator happened to be running.
+  ///
+  /// Named for what it MEANS, not for what it disables: the app renders it as
+  /// "Retired", and a program wanting to mark a reference unavailable for some
+  /// other reason (out of season, not yet valid) needs its own vocabulary
+  /// rather than this one, which would state a specific and wrong fact.
+  ///
+  /// Set it on every decoration, not only when true — a mark left standing is
+  /// how a reinstated reference stays "retired" forever.
+  retired?: boolean
+
   /// Which record this reference belongs on, for a producer that cannot put it
   /// there itself.
   ///

@@ -548,6 +548,7 @@
     "archive": "Archive",
     "deleteOperation": "Delete Operation",
     "alreadySelected": "Already selected",
+    "retiredReference": "Retired",
     "enableExtension": "Enable ${name}",
     "enableExtensionHint": "This extension matches your search, but it is not currently enabled",
     "setupUnavailable": "Could not load this activity's setup — try again from Manage",

@@ -66,7 +66,9 @@ void main() {
       prefs: prefs,
       bodiesByKey: {
         'pota-all-parks': 'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
-            'US-1234,Test State Park,1,291,US-CA,37.7749,-122.4194,\n',
+            'US-1234,Test State Park,1,291,US-CA,37.7749,-122.4194,\n'
+            'US-9963,Retired Park,0,291,US-VA,36.9434,-77.1106,\n'
+            'US-5555,Oddly Flagged Park,Y,291,US-VA,36.9,-77.1,\n',
         'sota-all-summits': 'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             'W6/CT-001,Test Peak,USA-California,Central,37.5,-122.1,1200,4,01/01/2020,31/12/2099\n',
@@ -81,6 +83,14 @@ void main() {
     expect(potaRow!.name, 'Test State Park');
     expect(potaRow.lat, closeTo(37.7749, 0.001));
     expect(potaRow.flags, 1);
+    // `flags` 0 is the ONLY thing that retires a park, and this mapper is its
+    // only writer — everything downstream merely reads it. Without these two
+    // rows the mapping can be reverted to `r.active === '1'` (which retires
+    // the whole file the first time POTA re-spells the column) or to something
+    // that never writes 0 at all (which switches retirement off entirely), and
+    // the suite stays green either way.
+    expect((await lookups.getLookup('pota', 'US-9963'))!.flags, 0);
+    expect((await lookups.getLookup('pota', 'US-5555'))!.flags, 1);
     // subCategory is the DXCC entity prefix (from entityId 291), not the
     // raw numeric id — same representation SOTA uses below.
     expect(potaRow.subCategory, 'K');
@@ -209,6 +219,131 @@ void main() {
     );
     final nearbySuggestions = (nearbyResults.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
     expect(nearbySuggestions.any((s) => s['ref'] == 'EA-1234'), isTrue);
+  });
+
+  test('POTA suggest() drops parks POTA has retired, but still offers one named exactly', () async {
+    final host = extensions.host!;
+
+    // `flags` 0 is the parks file's `active` 0 — a park POTA has retired,
+    // which can no longer be activated. If the filter is ever dropped, the
+    // retired park comes back as an ordinary nearby suggestion here (it is
+    // the CLOSER of the two, so it would lead the list).
+    await lookups.insertLookupBatch([
+      LookupRow(
+        category: 'pota',
+        key: 'US-9963',
+        name: 'Retired Park',
+        subCategory: 'K',
+        lat: 37.7749,
+        lon: -122.4194,
+        flags: 0,
+        data: '{"reference":"US-9963","name":"Retired Park","active":false}',
+      ),
+      LookupRow(
+        category: 'pota',
+        key: 'US-1234',
+        name: 'Retired Park Neighbor',
+        subCategory: 'K',
+        lat: 37.9,
+        lon: -122.4194,
+        flags: 1,
+        data: '{"reference":"US-1234","name":"Retired Park Neighbor","active":true}',
+      ),
+    ]);
+
+    final nearby = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'location': {'lat': 37.7749, 'lon': -122.4194},
+      },
+    );
+    final nearbySuggestions = (nearby.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    expect(nearbySuggestions.map((s) => s['ref']), ['US-1234']);
+
+    // A name search matches both rows in the lookup table; only the active
+    // one is a park to go operate.
+    final search = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'Retired Park',
+      },
+    );
+    final searchSuggestions = (search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    expect(searchSuggestions.map((s) => s['ref']), ['US-1234']);
+
+    // Naming the retired park exactly still offers it — marked — so the
+    // operator sees why it was absent instead of reading it as a bad code.
+    final exact = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'US-9963',
+      },
+    );
+    final exactSuggestions = (exact.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final retired = exactSuggestions.firstWhere((s) => s['ref'] == 'US-9963');
+    // The marker is a FLAG, never a word appended to the name: a suggestion is
+    // persisted onto the operation verbatim and its name feeds the operation
+    // title, so a localized adjective folded in there is baked into stored
+    // data in whichever language the operator happened to be running.
+    expect(retired['retired'], isTrue);
+    expect(retired['name'], 'Retired Park');
+  });
+
+  test('POTA suggest() keeps a park whose active flag was never recorded', () async {
+    final host = extensions.host!;
+
+    // `flags` null is "this row never said", which is NOT retirement — a
+    // mapper that doesn't write the column, or a park file that changes how it
+    // spells one. SQL's `flags != 0` is NULL for these rows and would hide
+    // every one of them, so the query's null arm is what this pins: drop it
+    // and an ordinary park with no flags vanishes from search and from nearby
+    // results alike, with nothing to say why.
+    await lookups.insertLookupBatch([
+      LookupRow(
+        category: 'pota',
+        key: 'US-4321',
+        name: 'Unflagged Park',
+        subCategory: 'K',
+        lat: 37.7749,
+        lon: -122.4194,
+        data: '{"reference":"US-4321","name":"Unflagged Park"}',
+      ),
+    ]);
+
+    final nearby = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'location': {'lat': 37.7749, 'lon': -122.4194},
+      },
+    );
+    expect(
+      (nearby.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']),
+      contains('US-4321'),
+    );
+
+    final search = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'Unflagged',
+      },
+    );
+    expect(
+      (search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']),
+      contains('US-4321'),
+    );
   });
 
   test('POTA and SOTA suggest() serves nearby results from the populated lookup table', () async {

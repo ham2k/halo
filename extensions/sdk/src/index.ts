@@ -267,12 +267,30 @@ export const host = {
   /// match ([subCategory] here is exact-equals only), so it still filters
   /// after the fact and is exposed to the same truncation bug this exists
   /// to avoid.
-  async dbLookupSelectAll(category: string, query: string, subCategory?: string): Promise<LookupRow[]> {
-    return (await hostCallFn()('dbLookupSelectAll', { category, query, subCategory })) as LookupRow[]
+  ///
+  /// [activeOnly] drops rows whose `flags` is explicitly 0 — the convention a
+  /// data-file mapper follows for a reference its program has RETIRED — and is
+  /// in the query for the same `limit` reason: retirements cluster (a program
+  /// delists a whole class at once), so a search for a word that class shares
+  /// can fill the cap with retired rows and leave the live matches just past
+  /// it. A row that never said (`flags` null) is NOT retired and survives.
+  async dbLookupSelectAll(
+    category: string,
+    query: string,
+    subCategory?: string,
+    activeOnly?: boolean,
+  ): Promise<LookupRow[]> {
+    return (await hostCallFn()('dbLookupSelectAll', { category, query, subCategory, activeOnly })) as LookupRow[]
   },
 
-  async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number): Promise<LookupRow[]> {
-    return (await hostCallFn()('dbLookupSelectByLocation', { category, lat, lon, delta })) as LookupRow[]
+  async dbLookupSelectByLocation(
+    category: string,
+    lat: number,
+    lon: number,
+    delta: number,
+    activeOnly?: boolean,
+  ): Promise<LookupRow[]> {
+    return (await hostCallFn()('dbLookupSelectByLocation', { category, lat, lon, delta, activeOnly })) as LookupRow[]
   },
 
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {

@@ -1887,9 +1887,21 @@ class OperationSheetState extends State<OperationSheet> {
                 leading: _controlsUnreliable && control == null
                     ? const Icon(MdiIcons.toyBrick)
                     : activityRefIcon(_controls, ref['type'] as String?),
-                title: Text(
-                  activityRowTitle(control, ref),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                title: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        activityRowTitle(control, ref),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (activityRowIsRetired(ref))
+                      Padding(
+                        padding: const EdgeInsets.only(left: Space.md),
+                        child: ActivityRowChip(label: t.retiredReference, unavailable: true),
+                      ),
+                  ],
                 ),
                 subtitle: detail == null ? null : Text(detail),
                 // Tappable only for a type that declares it has something to
@@ -2259,10 +2271,19 @@ class OperationSheetState extends State<OperationSheet> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            if (activityRowIsRetired(suggestion))
+                              Padding(
+                                padding: const EdgeInsets.only(left: Space.md),
+                                child: ActivityRowChip(label: t.retiredReference, unavailable: true),
+                              ),
+                            // Marked, not disabled: tapping still goes through
+                            // `_addSuggestion`, which flashes the existing
+                            // Current Activities row rather than adding a
+                            // second copy.
                             if (alreadySelected)
                               Padding(
                                 padding: const EdgeInsets.only(left: Space.md),
-                                child: _AlreadySelectedChip(label: t.alreadySelected),
+                                child: ActivityRowChip(label: t.alreadySelected),
                               ),
                             const Spacer(),
                             if (suggestion['distance'] is num)
@@ -2533,30 +2554,42 @@ class _PinnedSearchBand extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_PinnedSearchBand oldDelegate) => true;
 }
 
-/// Marks a suggestion the operation already carries. Tapping the row still
-/// goes through `_addSuggestion`, which flashes the existing Current
-/// Activities row rather than adding a second copy.
-class _AlreadySelectedChip extends StatelessWidget {
+/// A short marker beside an activity row's title — "already selected" on a
+/// suggestion the operation carries, "retired" on a reference its program has
+/// delisted.
+///
+/// [unavailable] paints the error role rather than the secondary one. The two
+/// say different things and must not read alike: one is a reference the
+/// operator already has, the other is one they cannot activate at all.
+class ActivityRowChip extends StatelessWidget {
   final String label;
+  final bool unavailable;
 
-  const _AlreadySelectedChip({required this.label});
+  const ActivityRowChip({super.key, required this.label, this.unavailable = false});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
+        color: unavailable ? scheme.errorContainer : scheme.secondaryContainer,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+        style: theme.textTheme.labelSmall
+            ?.copyWith(color: unavailable ? scheme.onErrorContainer : scheme.onSecondaryContainer),
       ),
     );
   }
 }
+
+/// Whether an entry's program has retired this reference, so it can no longer
+/// be activated. Set by the extension's `suggest` hook and persisted with the
+/// ref (see the SDK's `ActivitySuggestion.disabled`).
+bool activityRowIsRetired(Map<String, dynamic> entry) => entry['retired'] == true;
 
 class _PulsingGpsPin extends StatefulWidget {
   final Color color;

@@ -153,6 +153,14 @@ const RefHandler = {
       program: 'POTA',
       label: `POTA ${reference}: ${park.name}`,
       shortLabel: `POTA ${reference}`,
+      // Set here as well as in `suggest`, and always to a boolean, so this is
+      // a property of the PARK rather than of how the operator happened to
+      // reach it. A code typed straight into the activation control never
+      // passes through `suggest` at all, and would otherwise render unmarked
+      // beside an identical park picked from the search. Writing it
+      // unconditionally is also what lets a re-decoration CLEAR a stale mark
+      // once POTA reinstates a park.
+      retired: park.active === 0,
     }
   },
 
@@ -226,11 +234,20 @@ const ActivityHook = {
     // thousands of rows worldwide, and the query only returns the first 100
     // it finds — filtering afterward can narrow an already-truncated 100 down
     // to zero even though a real match, in the caller's own country, exists.
+    //
+    // A park POTA has RETIRED (`active` 0 in the parks file, carried as the
+    // row's `flags`) can no longer be activated, so it never belongs in a list
+    // of parks to go operate. Excluded by `activeOnly`, and pushed into the
+    // query for the same reason as above: POTA delists whole classes of park at
+    // once, so a search for a word one of those classes shares could otherwise
+    // fill all 100 rows with retired parks and leave the live ones past the
+    // cap. A retired park the operator names EXACTLY is still offered, by the
+    // fallback below.
     const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
     const rows: LookupRow[] = searchTerm
-      ? await host.dbLookupSelectAll('pota', searchTerm, callerEntity)
+      ? await host.dbLookupSelectAll('pota', searchTerm, callerEntity, true)
       : location
-        ? await host.dbLookupSelectByLocation('pota', location.lat, location.lon, NEARBY_DELTA)
+        ? await host.dbLookupSelectByLocation('pota', location.lat, location.lon, NEARBY_DELTA, true)
         : []
 
     const withDistance = rows.map((row) => ({
@@ -287,6 +304,14 @@ const ActivityHook = {
       // gets everywhere else.
       const resolved = isTestRef ? null : await fetchPark(normalizedSearch)
       const name = resolved?.name || (isTestRef ? t('testParkName') : t('unknownParkName'))
+      // Naming a retired park exactly still offers it — marked, so the
+      // operator learns WHY it was missing from the list rather than reading
+      // its absence as a bad code. Carried as a flag for the picker to render,
+      // never folded into `name`: this suggestion is stored on the operation
+      // as it stands (see Ref.retired). Only an explicit 0 counts — a cached
+      // park record may carry no `active` at all, and a missing value is not
+      // evidence of retirement.
+      const retired = resolved?.active === 0
       if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
       suggestions.unshift({
         type: ACTIVATION_TYPE,
@@ -301,6 +326,7 @@ const ActivityHook = {
         shortLabel: `POTA ${normalizedSearch}`,
         relevance: 1,
         allowsMultiple: true,
+        retired,
       })
     }
 
@@ -571,7 +597,12 @@ const potaDataFile: DataFileDefinition = {
     }
     const lat = parseFloat(r.latitude) || 0
     const lon = parseFloat(r.longitude) || 0
-    const active = r.active === '1'
+    // Only an explicit '0' retires a park. Reading anything-but-'1' as retired
+    // would make every unexpected spelling of this column — a renamed header,
+    // a quoted or padded value, a switch to 'true'/'Y' — mark the WHOLE file
+    // retired on the next refresh, and `activeOnly` would then empty every
+    // search and every nearby result with nothing to say why.
+    const active = r.active !== '0'
     const ref = r.reference.toUpperCase()
     const name = r.name
     const dxccCode = parseInt(r.entityId, 10) || 0
