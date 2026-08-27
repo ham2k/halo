@@ -44,7 +44,7 @@ const kStageLabel = 'ALPHA';
 /// it per release from the `v<version>+<build>` tag ledger and writes it here
 /// (§2.2). Must stay small enough to fit every platform's field —
 /// Windows/Linux cap it at 16 bits.
-const kBuildNumber = 153;
+const kBuildNumber = 154;
 
 /// The short git SHA of the commit this build was cut from, baked in at build
 /// time via `--dart-define=HALO_GIT_SHA=…` (CI). Empty for local/dev builds.
