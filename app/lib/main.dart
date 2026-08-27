@@ -1967,6 +1967,76 @@ class HaLoServices {
     // after it goes off would strand a non-developer app on a fake clock with
     // no visible way back.
     settings.addListener(_enforceTimeTravelGate);
+    // Same reasoning, and the same one place: a Number Formatting change can
+    // arrive from the Settings picker or from a settings command, and every
+    // package reads the answer out of one process-wide singleton. Applied
+    // here at construction too, so the very first frame formats correctly
+    // rather than repainting once the listener happens to fire.
+    //
+    // The listener is enough on its own: a settings listener only marks the
+    // tree dirty, so the rebuild happens on the NEXT frame and the singleton
+    // is already updated whichever order the listeners ran in.
+    settings.addListener(_applyNumberFormatting);
+    _applyNumberFormatting();
+  }
+
+  /// Resolves the operator's Number Formatting choice into the two characters
+  /// [NumberFormatting] hands to every package.
+  ///
+  /// Runs at construction and on every settings change. NOT on a device
+  /// region change while the app is running — nothing observes
+  /// `didChangeLocales`, so under [NumberFormatStyle.locale] that is picked
+  /// up at the next launch.
+  ///
+  /// halo_core is pure Dart and cannot do this itself — it has neither the
+  /// device locale nor ICU. The explicit choices are spelled out rather than
+  /// looked up: "period" and "comma" ARE definitions, and routing them
+  /// through a locale would make them depend on that locale's data being
+  /// bundled. Only [NumberFormatStyle.locale] asks intl anything.
+  void _applyNumberFormatting() {
+    switch (settings.numberFormatStyle) {
+      case NumberFormatStyle.period:
+        NumberFormatting.instance.configure(decimal: '.', grouping: ',', locale: 'en_US');
+      case NumberFormatStyle.comma:
+        // de_DE only for intl's benefit — formatNumber groups through it, and
+        // grouping is not every three digits everywhere.
+        NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'de_DE');
+      case NumberFormatStyle.locale:
+        final tag = dart_ui.PlatformDispatcher.instance.locale.toString();
+        dynamic symbols;
+        try {
+          symbols = NumberFormat.decimalPattern(tag).symbols;
+        } catch (e, stack) {
+          // intl has no symbols for this tag — `verifiedLocale` throws rather
+          // than degrading, so this branch is reachable on a real device (it
+          // ships 313 locales; `mi`, `ceb`, `tt`, `ba`, `sah` are not among
+          // them). `catch`, NOT `on Exception`: what it throws is an
+          // ArgumentError, which is an Error — an `on Exception` clause here
+          // catches nothing at all and the throw escapes the HaLoServices
+          // constructor on the way to the first frame.
+          //
+          // Reported as well as logged. Falling back is the right behaviour
+          // (this runs on the way to the first frame, and US conventions beat
+          // a crash), but an operator who silently gets the wrong separators
+          // has no way to tell that from the setting simply working — and
+          // neither would we.
+          debugPrint('[numberFormatting] no number symbols for "$tag", using US conventions: $e');
+          ErrorReportingService.report(e, stack, context: 'settings:numberFormat:$tag');
+        }
+        // Outside the try, so its own rejection is never mistaken for a
+        // missing locale. A locale that groups with a non-breaking space
+        // (fr, ru) keeps it: coercing that to a comma would contradict what
+        // the device shows everywhere else.
+        final applied = symbols != null &&
+            NumberFormatting.instance.configure(
+              decimal: symbols.DECIMAL_SEP as String,
+              grouping: symbols.GROUP_SEP as String,
+              locale: tag,
+            );
+        if (!applied) {
+          NumberFormatting.instance.configure(decimal: '.', grouping: ',', locale: 'en_US');
+        }
+    }
   }
 
   StreamSubscription<List<Operation>>? _receivedPurgesSub;

@@ -2001,8 +2001,12 @@ double _autoFitColumnWidth(String column, BuildContext context, List<Qso> qsos, 
           for (final qso in qsos)
             if (qso.freq case final khz?)
               (() {
+                // The same string `_freqRow` draws — this measures the
+                // column, so a separator of a different width under-reserves
+                // it.
                 final parts = freqDisplayParts(khz, hzDigits: 0);
-                return '${parts.mhz.padLeft(freqMhzDigits)}.${parts.khz}';
+                return '${groupDigits(parts.mhz).padLeft(freqMhzDigits)}'
+                    '${NumberFormatting.instance.groupingSeparator}${parts.khz}';
               })()
             else
               ?qso.band,
@@ -2035,8 +2039,11 @@ Widget _freqField(double khz, TextStyle? style, {required int mhzDigits}) {
     crossAxisAlignment: CrossAxisAlignment.baseline,
     textBaseline: TextBaseline.alphabetic,
     children: [
-      Text(parts.mhz.padLeft(mhzDigits), style: style?.copyWith(fontWeight: FontWeight.w700)),
-      Text('.', style: style),
+      // kHz, like the QSO list and the spots panel: what divides these is a
+      // thousands mark, not a decimal point. Padded AFTER grouping, so the
+      // column still lines up once a separator has been inserted.
+      Text(groupDigits(parts.mhz).padLeft(mhzDigits), style: style?.copyWith(fontWeight: FontWeight.w700)),
+      Text(NumberFormatting.instance.groupingSeparator, style: style),
       Text(parts.khz, style: style),
     ],
   );
@@ -2273,10 +2280,16 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     _call = TextEditingController(text: qso.theirCall);
     _date = TextEditingController(text: start == null ? '' : _dateFormat.format(start));
     _time = TextEditingController(text: start == null ? '' : _timeFormat.format(start));
-    // QSON `freq` is kHz; the field reads/writes MHz, same as ADIF and every
-    // other frequency entry point in the app.
+    // kHz, seeded by the same formatter the logging panel's own frequency
+    // field uses — and, critically, the inverse of the `parseFreq` that reads
+    // this box back on save. A hand-built MHz string is not: it writes a
+    // period whatever the operator's Number Formatting setting says, so on a
+    // locale whose decimal is a comma `14.285` reads back as grouped kHz and
+    // the QSO is saved three orders of magnitude off, having never been
+    // touched. `fmtFreqInput` also emits no thousands separator at all, which
+    // is what keeps 1296 MHz from parsing as 1296 kHz.
     _freqOrBand =
-        TextEditingController(text: qso.freq != null ? (qso.freq! / 1000).toStringAsFixed(3) : (qso.band ?? ''));
+        TextEditingController(text: qso.freq != null ? fmtFreqInput(qso.freq!) : (qso.band ?? ''));
     _mode = TextEditingController(text: qso.mode ?? '');
     _sentRst = TextEditingController(text: qso.sentRST ?? '');
     _rcvdRst = TextEditingController(text: qso.receivedRST ?? '');

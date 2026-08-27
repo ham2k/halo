@@ -14,6 +14,7 @@ export 'src/ham/entity_locations.dart';
 export 'src/ham/geo.dart';
 export 'src/ham/grid.dart';
 export 'src/ham/radio.dart';
+export 'src/number_formatting.dart';
 export 'src/models/models.dart';
 export 'src/models/operation_title.dart';
 export 'src/models/qso_merge.dart';

@@ -7,6 +7,7 @@
 // runtime per DESIGN.md §2 — only what the core UI needs per keystroke gets
 // a Dart port. Frequencies are in kHz throughout, matching QSON.
 
+import '../number_formatting.dart';
 import 'band_plan_segments.dart';
 
 class BandInfo {
@@ -159,8 +160,13 @@ bool _isBetterModeMatch(_BandPlanSegment candidate, _BandPlanSegment current, {r
   return candidateWidth < currentWidth;
 }
 
-/// MHz/kHz/Hz split for QSO-row display: MHz
-/// bold, kHz regular, Hz (if any) regular at a smaller size, dot-separated.
+/// MHz/kHz/Hz split for QSO-row display: MHz bold, kHz regular, Hz (if any)
+/// regular at a smaller size.
+///
+/// The row reads as kHz, like the spots panel and the radio controls — so the
+/// caller joins [mhz] and [khz] with a THOUSANDS separator and [hz] with a
+/// decimal point (`7,200.5`). The split is for styling and for column
+/// alignment across an operation, not a claim that these are three numbers.
 /// [hz] is null when the operation has no QSO needing sub-kHz precision —
 /// see [hzDigitsNeeded].
 class FreqParts {
@@ -386,15 +392,51 @@ String? superModeForMode(String? mode) {
   return 'Digital';
 }
 
-/// Parses user frequency input into kHz.
-/// Accepts kHz ("14285", "14285.5") and MHz with a decimal point when the
-/// value is too small to be an HF kHz reading ("14.285" → 14285).
+/// Parses user frequency input into kHz, in the operator's own number
+/// conventions ([NumberFormatting]).
+///
+/// Accepts kHz ("14285", "14285.5") and MHz with a decimal separator when the
+/// value is too small to be an HF kHz reading ("14.285" → 14285, and "14,285"
+/// → 14285 where the comma is the decimal).
+///
+/// The MHz heuristic keys off the DECIMAL separator specifically, not off any
+/// punctuation: under comma conventions "14.285" is grouped kHz and "14,285"
+/// is MHz, and reading either mark as "there is a fraction here" would put the
+/// operator three orders of magnitude off the band they typed.
 double? parseFreq(String input) {
-  final cleaned = input.trim().replaceAll(',', '');
+  final formats = NumberFormatting.instance;
+  var cleaned = input.trim();
   if (cleaned.isEmpty) return null;
+  if (formats.groupingSeparator.isNotEmpty) {
+    cleaned = cleaned.replaceAll(formats.groupingSeparator, '');
+  }
+  // Any whitespace, not just the configured mark: several locales group with
+  // a narrow no-break space, which no keyboard produces — what the operator
+  // actually types, or pastes, is an ordinary one. [parseLocalizedNumber]
+  // strips the same set for the same reason.
+  cleaned = cleaned.replaceAll(RegExp(r'[\s\u00a0\u202f]'), '');
+  final hasDecimal = cleaned.contains(formats.decimalSeparator);
+  if (formats.decimalSeparator != '.') {
+    cleaned = cleaned.replaceAll(formats.decimalSeparator, '.');
+  }
   final value = double.tryParse(cleaned);
   if (value == null || value <= 0) return null;
-  if (cleaned.contains('.') && value < 1000) return value * 1000;
+  if (hasDecimal && value < 1000) {
+    // "14.285" is 14.285 MHz — but "472.5" is 630m, in kHz, and the same rule
+    // reads it as 472.5 MHz and lands the operator 1000x away. Both forms are
+    // genuinely ambiguous, so the band plan breaks the tie: scale only when
+    // scaling produces a frequency an amateur could be on, and the unscaled
+    // reading does not.
+    //
+    // Deliberately narrow. When NEITHER reading names a band ("5.0" — WWV, or
+    // a typo) the MHz reading still wins, because that is what someone typing
+    // a decimal into a frequency box means; this only rescues the case where
+    // the kHz reading is unambiguously right. That case is LF/MF — 2200m and
+    // 630m — which is why `fmtFreqInput` can round-trip them at all.
+    final asMHz = value * 1000;
+    if (bandForFrequency(asMHz) == null && bandForFrequency(value) != null) return value;
+    return asMHz;
+  }
   return value;
 }
 
@@ -445,14 +487,31 @@ String fmtFreq(double khz) {
   final wholePart = rounded.truncate();
   final fractionDigit = ((rounded - wholePart) * 10).round();
 
-  final digits = wholePart.toString();
+  final formats = NumberFormatting.instance;
+  final grouped = groupDigits(wholePart.toString());
+  if (fractionDigit != 0) {
+    return '$grouped${formats.decimalSeparator}$fractionDigit';
+  }
+  return grouped;
+}
+
+/// Inserts the operator's thousands separator into a run of ASCII digits.
+///
+/// By hand rather than through `intl`, because intl also rewrites the digits
+/// into the locale's own script (fa, ar) — fine for a whole number, wrong for
+/// a frequency assembled from several parts where only one of them would be
+/// converted. Every caller here is building such a reading.
+///
+/// Plain every-three grouping: the locales that break differently (hi-IN's
+/// `12,34,567`) do so for counts, not for a frequency's MHz part, which is
+/// four digits at most on any band this app knows.
+String groupDigits(String digits) {
+  final separator = NumberFormatting.instance.groupingSeparator;
+  if (separator.isEmpty || digits.length <= 3) return digits;
   final grouped = StringBuffer();
   for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(',');
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(separator);
     grouped.write(digits[i]);
-  }
-  if (fractionDigit != 0) {
-    return '$grouped.$fractionDigit';
   }
   return grouped.toString();
 }
@@ -470,7 +529,8 @@ String fmtFreq(double khz) {
 /// apart directly yields a fraction of 1000 and formats as "14,285.1000".
 String fmtFreqToTheHz(double khz) {
   final totalHz = (khz * 1000).round();
-  return '${fmtFreq((totalHz ~/ 1000).toDouble())}.${(totalHz % 1000).toString().padLeft(3, '0')}';
+  final decimal = NumberFormatting.instance.decimalSeparator;
+  return '${fmtFreq((totalHz ~/ 1000).toDouble())}$decimal${(totalHz % 1000).toString().padLeft(3, '0')}';
 }
 
 /// Formats kHz for an editable frequency field, at full stored precision
@@ -485,7 +545,11 @@ String fmtFreqInput(double khz) {
   if (s.contains('.')) {
     s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
   }
-  return s;
+  // Trimmed while the separator is still a period, so the regexes above stay
+  // literal — then written in the operator's conventions, because this feeds
+  // an editable field that [parseFreq] reads straight back.
+  final decimal = NumberFormatting.instance.decimalSeparator;
+  return decimal == '.' ? s : s.replaceAll('.', decimal);
 }
 
 // `CALLSIGN_REGEXP` from `@ham2k/lib-callsigns`' `parseCallsign` — the same

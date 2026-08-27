@@ -525,8 +525,8 @@ void main() {
         home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
       ));
 
-      // The MHz half of the dot-separated frequency — the whole reading is
-      // styled as one, so one part settles it.
+      // The MHz group of the frequency — the whole reading is styled as one,
+      // so one part settles it.
       expect(tester.widget<Text>(find.text('5')).style?.color, theme.colorScheme.error);
     });
 
@@ -872,7 +872,7 @@ void main() {
 
   group('frequency', () {
     testWidgets(
-      'splits MHz (bold) / kHz, with no Hz segment for a whole-kHz frequency',
+      'splits MHz (bold) / kHz on a thousands mark, with no Hz segment for a whole-kHz frequency',
       (tester) async {
         final operation = await operations.create(stationCall: 'KI2D');
         final qso = await qsos.add(operation.uuid, {
@@ -892,9 +892,11 @@ void main() {
 
         expect(find.text('14'), findsOneWidget);
         expect(find.text('074'), findsOneWidget);
-        // MHz/kHz separated by exactly one period; no fractional-kHz precision
-        // anywhere in the list, so there's no second period for an Hz segment.
-        expect(find.text('.'), findsOneWidget);
+        // The row reads as kHz — `14,074` — so what divides the two parts is
+        // a THOUSANDS separator, not a decimal point. No fractional-kHz
+        // precision anywhere in the list, so no decimal point appears at all.
+        expect(find.text(','), findsOneWidget);
+        expect(find.text('.'), findsNothing);
       },
     );
 

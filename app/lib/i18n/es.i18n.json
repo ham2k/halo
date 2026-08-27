@@ -1217,7 +1217,13 @@
       "peers": "Dispositivos",
       "peersDescription": "Comparte una operación con tus otros dispositivos en la misma red"
     },
-    "showMoreSettings": "Mostrar más ajustes"
+    "showMoreSettings": "Mostrar más ajustes",
+    "numberFormat": "Formato de números",
+    "numberFormatOpts": {
+      "locale": "Usar la configuración del dispositivo",
+      "period": "Usar siempre punto para decimales",
+      "comma": "Usar siempre coma para decimales"
+    }
   },
   "commands": {
     "enableSyncFirst": "Primero habilita la sincronización en la Configuración.",

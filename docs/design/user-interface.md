@@ -812,6 +812,40 @@ All numbers displayed in the user interface (including QSO counts, QSO row index
 - In the Dart/Flutter core, use the `formatNumber` utility function exported by `halo_widgets`.
 - In JS/TS extensions, use the `fmtInteger` (or `fmtNumber`) utility function from `@ham2k/lib-format-tools` when generating user-facing counts.
 
+### Which characters, and who decides
+
+Settings → General → **Number Formatting** picks the decimal and thousands
+separators: the device's own conventions (the default), always a period, or
+always a comma. The two are ONE choice — `14,285.5` or `14.285,5`, never a
+mixture — so they are resolved together and read together.
+
+The resolved pair lives in `NumberFormatting` (halo_core), a process-wide
+singleton on the `AppClock` pattern and for the same reason: a number
+FORMATTED with one separator and PARSED with another does not round-trip, and
+the field that shows a frequency is the field the operator edits. `HaLoServices`
+resolves the preference and pushes the answer in — halo_core is pure Dart, with
+neither the device locale nor ICU.
+
+Every user-facing surface reads from there, and there is no second source:
+`fmtFreq`/`fmtFreqInput`/`parseFreq`, `formatNumber`, FormRenderer's `number`
+fields (display, parse, and the input formatter — a fixed `[0-9.-]` silently
+swallows the decimal key on a comma-conventions keyboard), the QSO row's
+frequency, and the logging panel's numbers-row extra key, which types whatever
+`parseFreq` will read back as a decimal point.
+
+Frequencies read as **kHz** everywhere they are shown — the QSO list, the
+spots panel and the radio controls alike — so `7200.5` kHz is `7,200.5`, and a
+whole 7.2 MHz is `7,200`. The QSO row splits that into MHz/kHz/Hz parts for
+styling and for column alignment across an operation, but the marks between
+them are an ordinary thousands separator and an ordinary decimal point, not a
+notation of their own.
+
+**Machine-facing output is never localized.** ADIF, spots, sync payloads and
+every other wire format carry a plain period-decimal number whatever the
+operator sees. Extensions receive the resolved pair as
+`ctx.decimalSeparator`/`ctx.groupingSeparator` for parsing typed input and
+formatting text shown back — not for anything they transmit.
+
 ## Future directions
 
 - A layout mechanism to drag-reorder secondary controls, and to drag one out

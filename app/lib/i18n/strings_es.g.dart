@@ -503,6 +503,8 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$about$es about = _Translations$settings$about$es._(_root);
 	@override late final _Translations$settings$panels$es panels = _Translations$settings$panels$es._(_root);
 	@override String get showMoreSettings => 'Mostrar más ajustes';
+	@override String get numberFormat => 'Formato de números';
+	@override late final _Translations$settings$numberFormatOpts$es numberFormatOpts = _Translations$settings$numberFormatOpts$es._(_root);
 }
 
 // Path: commands
@@ -1766,6 +1768,18 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Control CAT y más opciones';
 	@override String get peers => 'Dispositivos';
 	@override String get peersDescription => 'Comparte una operación con tus otros dispositivos en la misma red';
+}
+
+// Path: settings.numberFormatOpts
+class _Translations$settings$numberFormatOpts$es extends Translations$settings$numberFormatOpts$en {
+	_Translations$settings$numberFormatOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get locale => 'Usar la configuración del dispositivo';
+	@override String get period => 'Usar siempre punto para decimales';
+	@override String get comma => 'Usar siempre coma para decimales';
 }
 
 // Path: home.logs.panels
@@ -3339,6 +3353,10 @@ extension on TranslationsEs {
 			'settings.panels.peers' => 'Dispositivos',
 			'settings.panels.peersDescription' => 'Comparte una operación con tus otros dispositivos en la misma red',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
+			'settings.numberFormat' => 'Formato de números',
+			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
+			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
+			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
@@ -3362,12 +3380,12 @@ extension on TranslationsEs {
 			'commands.settingExpectsNumber' => 'un número',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.settingNotStored' => ({required Object label}) => '«${label}» no aceptó ese valor',
+			_ => null,
+		} ?? switch (path) {
 			'commands.syncAllUnavailable' => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí',
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.sectionGoTo' => 'Ir a',
 			'commandDialog.sectionOperations' => 'Operaciones',
 			'commandDialog.goHome' => 'Inicio',

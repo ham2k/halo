@@ -1314,7 +1314,13 @@
       "peers": "Peer Devices",
       "peersDescription": "Share an operation with your other devices on the same network"
     },
-    "showMoreSettings": "Show more settings"
+    "showMoreSettings": "Show more settings",
+    "numberFormat": "Number Formatting",
+    "numberFormatOpts": {
+      "locale": "Use device settings",
+      "period": "Always use period for decimals",
+      "comma": "Always use comma for decimals"
+    }
   },
   "commands": {
     "enableSyncFirst": "Enable sync in Settings first.",

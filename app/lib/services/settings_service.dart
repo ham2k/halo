@@ -57,6 +57,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showDeletedQSOsKey = 'showDeletedQSOs';
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
+  static const _numberFormatKey = 'numberFormat';
   static const _spottingFiltersKey = 'spottingFilters';
   static const _stationEquipmentKey = 'stationEquipment';
   static const _experimentsKey = 'experiments';
@@ -1172,6 +1173,22 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   }
 
   Future<void> setDistanceUnits(DistanceUnits units) => setSettingValue(generalGroup, _distanceUnitsKey, units.name);
+
+  /// Which characters numbers are written and read with — see
+  /// [NumberFormatting], which is where the resolved answer lives. Defaults
+  /// to the device's own conventions rather than to either fixed choice: an
+  /// operator whose phone already writes `14.285,5` has told us once
+  /// already, and the two explicit options exist for the ones it gets wrong.
+  NumberFormatStyle get numberFormatStyle {
+    final value = settingValue(generalGroup, _numberFormatKey);
+    for (final style in NumberFormatStyle.values) {
+      if (style.name == value) return style;
+    }
+    return NumberFormatStyle.locale;
+  }
+
+  Future<void> setNumberFormatStyle(NumberFormatStyle style) =>
+      setSettingValue(generalGroup, _numberFormatKey, style.name);
 
   /// The operator's Layout Density choice. [DensityPreference.auto] by
   /// default, which is what makes the height ladder the normal behaviour and

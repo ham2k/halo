@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:halo_core/halo_core.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
@@ -453,8 +454,9 @@ class FormRendererState extends State<FormRenderer> {
       for (final entry in changes.entries) {
         _values[entry.key] = entry.value;
         final controller = _controllers[entry.key];
-        if (controller != null && controller.text != (entry.value?.toString() ?? '')) {
-          controller.text = entry.value?.toString() ?? '';
+        final text = _controllerTextFor(entry.key, entry.value);
+        if (controller != null && controller.text != text) {
+          controller.text = text;
         }
       }
       for (final field in newFields) {
@@ -506,13 +508,19 @@ class FormRendererState extends State<FormRenderer> {
     _focusNodes[key] = focusNode;
 
     if (['text', 'multiline', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
-      final controller = TextEditingController(text: val?.toString() ?? '');
+      // A number is SHOWN in the operator's own conventions and read back in
+      // the same ones — see `_numberText`. `toString()` here would print a
+      // period into a field whose decimal key types a comma, so the first
+      // edit of an untouched value would make it unparseable.
+      final controller = TextEditingController(
+        text: fieldType == 'number' ? _numberText(val) : val?.toString() ?? '',
+      );
       _controllers[key] = controller;
       controller.addListener(() {
         final text = controller.text;
         dynamic parsed = text;
         if (fieldType == 'number') {
-          parsed = num.tryParse(text);
+          parsed = parseLocalizedNumber(text);
         }
         if (_values[key] != parsed) {
           setState(() {
@@ -584,10 +592,9 @@ class FormRendererState extends State<FormRenderer> {
       for (final entry in updates.entries) {
         _values[entry.key] = entry.value;
         final controller = _controllers[entry.key];
-        if (controller != null) {
-          if (controller.text != entry.value?.toString()) {
-            controller.text = entry.value?.toString() ?? '';
-          }
+        final text = _controllerTextFor(entry.key, entry.value);
+        if (controller != null && controller.text != text) {
+          controller.text = text;
         }
       }
     });
@@ -1285,7 +1292,9 @@ class FormRendererState extends State<FormRenderer> {
   /// shared screens, and even the LENGTH of a password is more than the row
   /// needs to say to confirm one is stored.
   String _displayValue(Map<String, dynamic> el, String fieldType) {
-    final raw = _values[el['key']]?.toString() ?? '';
+    // Through the same helper the dialog seeds from, or the row and the
+    // editor it opens show one value two ways, a tap apart.
+    final raw = _controllerTextFor(el['key'] as String, _values[el['key']]);
     if (raw.isEmpty) return '';
     return fieldType == 'secret' ? '••••••••' : raw;
   }
@@ -1309,8 +1318,12 @@ class FormRendererState extends State<FormRenderer> {
         label: el['label'] as String? ?? '',
         placeholder: el['placeholder'] as String?,
         fieldType: fieldType,
-        initialText: _values[key]?.toString() ?? '',
-        defaultText: el.containsKey('defaultValue') ? el['defaultValue']?.toString() ?? '' : null,
+        initialText: _controllerTextFor(key, _values[key]),
+        // Localized like every other text this dialog shows: the Defaults
+        // button assigns straight to the controller, bypassing the input
+        // formatter, so a raw `1.5` under comma conventions would be read
+        // back as 15.
+        defaultText: el.containsKey('defaultValue') ? _controllerTextFor(key, el['defaultValue']) : null,
         keyboardType: _keyboardTypeFor(fieldType),
         textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
         inputFormatters: _inputFormattersFor(fieldType, el),
@@ -1329,7 +1342,7 @@ class FormRendererState extends State<FormRenderer> {
       live.text = text;
     } else {
       setState(() {
-        _values[key] = fieldType == 'number' ? num.tryParse(text) : text;
+        _values[key] = fieldType == 'number' ? parseLocalizedNumber(text) : text;
         _errors.remove(key);
       });
     }
@@ -1366,6 +1379,33 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  /// Digits, a sign, and every mark a keyboard might offer as a decimal
+  /// point — [LocalizedDecimalMarkFormatter] normalizes whichever arrives.
+  static RegExp _numberFieldCharacters() {
+    final marks = {'.', ',', NumberFormatting.instance.decimalSeparator};
+    return RegExp('[0-9-${marks.map(RegExp.escape).join()}]');
+  }
+
+  /// A `number` field's stored value as the operator would write it.
+  ///
+  /// Empty for null, which is what an unset field and an unparseable entry
+  /// both arrive as — the field shows nothing rather than the word "null".
+  static String _numberText(dynamic value) =>
+      value is num ? formatLocalizedNumber(value) : (value?.toString() ?? '');
+
+  /// The controller text for [key]'s [value], in the operator's own number
+  /// conventions when [key] is a `number` field.
+  ///
+  /// Writing a controller directly BYPASSES the input formatter, so the raw
+  /// `toString()` a non-number field wants would put a period into a field
+  /// the controller listener then reads with the comma conventions in force:
+  /// a hook answering `1.5` would be stored back as 15. Every path that
+  /// pushes a value into an existing controller goes through here.
+  String _controllerTextFor(String key, dynamic value) {
+    final field = _fields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+    return field['fieldType'] == 'number' ? _numberText(value) : (value?.toString() ?? '');
+  }
+
   TextInputType? _keyboardTypeFor(String fieldType) => switch (fieldType) {
         'email' => TextInputType.emailAddress,
         'number' => const TextInputType.numberWithOptions(decimal: true, signed: true),
@@ -1386,7 +1426,24 @@ class FormRendererState extends State<FormRenderer> {
       _isUppercase(fieldType, el) ? TextCapitalization.characters : TextCapitalization.none;
 
   List<TextInputFormatter>? _inputFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {
-        'number' => [FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]'))],
+        // BOTH marks are admitted and then normalized, rather than a filter
+        // built from the configured one. A filter admitting a single mark
+        // silently drops the other, and which key the operator's keyboard
+        // actually emits is not something this setting controls: a Spanish
+        // phone puts a comma on the numeric decimal key whatever the app is
+        // set to, and a macOS numpad emits a period regardless of region. So
+        // the failure was never "the wrong mark is configured", it was "a
+        // keypress vanishes" — and admitting one mark just moves who it
+        // happens to.
+        //
+        // Rewriting rather than accepting both at parse time is what keeps it
+        // unambiguous: the field can then only ever contain the configured
+        // decimal, so nothing downstream has to guess whether a lone mark in
+        // `14.285` was a decimal point or a thousands separator.
+        'number' => [
+            FilteringTextInputFormatter.allow(_numberFieldCharacters()),
+            const LocalizedDecimalMarkFormatter(),
+          ],
         _ => _isUppercase(fieldType, el) ? const [UpperCaseTextFormatter()] : null,
       };
 

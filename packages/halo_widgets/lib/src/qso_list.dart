@@ -915,14 +915,40 @@ class _QsoListState extends State<QsoList> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(
-              parts.mhz,
-              style: freqStyle.copyWith(fontWeight: FontWeight.w700),
-            ),
-            Text('.', style: freqStyle),
-            Text(parts.khz, style: freqStyle),
+            // Below 1 MHz there is no thousands group at all: 630m sits at
+            // 472 kHz, and drawing the parts unconditionally would show
+            // `0,472` — a reading that is not a number anyone writes.
+            if (int.parse(parts.mhz) > 0) ...[
+              Text(
+                // Grouped itself, for the rare frequency past 1 GHz: this
+                // part is whole MHz, so 1296 MHz is `1,296,000` kHz and would
+                // read as `1296,000` without it.
+                //
+                // Grouped by hand rather than through `formatNumber`, the way
+                // `fmtFreq` does: intl also translates the DIGITS into the
+                // locale's own script, and the kHz and Hz parts beside this
+                // one are plain ASCII — so on fa the reading would come out
+                // half in Eastern Arabic numerals and half not.
+                groupDigits(parts.mhz),
+                style: freqStyle.copyWith(fontWeight: FontWeight.w700),
+              ),
+              // The row is a kHz reading, like the spots panel and the radio
+              // controls — so this is a THOUSANDS mark and the one below is a
+              // decimal point. They are different characters under comma
+              // conventions (`7.200,5`), and using either for both would put
+              // the reading off by three orders of magnitude to anyone
+              // reading it as written.
+              Text(NumberFormatting.instance.groupingSeparator, style: freqStyle),
+              Text(parts.khz, style: freqStyle),
+            ] else
+              Text(
+                // Unpadded: `khz` is zero-filled to three digits so it can
+                // follow a thousands mark, and nothing precedes it here.
+                int.parse(parts.khz).toString(),
+                style: freqStyle.copyWith(fontWeight: FontWeight.w700),
+              ),
             if (parts.hz != null) ...[
-              Text('.', style: freqStyle),
+              Text(NumberFormatting.instance.decimalSeparator, style: freqStyle),
               Text(
                 parts.hz!,
                 style: freqStyle.copyWith(
@@ -1398,7 +1424,14 @@ _QsoListMetrics _computeMetrics({
   for (final f in freqsInKHz) {
     if (f == null) continue;
     final parts = freqDisplayParts(f, hzDigits: hzDigits);
-    final s = parts.hz != null ? '${parts.mhz}.${parts.khz}.${parts.hz}' : '${parts.mhz}.${parts.khz}';
+    // Exactly what the row draws, grouping and the sub-MHz case included —
+    // this measures the column, so anything narrower here under-reserves it.
+    final decimal = NumberFormatting.instance.decimalSeparator;
+    final mhzValue = int.parse(parts.mhz);
+    final whole = mhzValue > 0
+        ? '${groupDigits(parts.mhz)}${NumberFormatting.instance.groupingSeparator}${parts.khz}'
+        : int.parse(parts.khz).toString();
+    final s = parts.hz != null ? '$whole$decimal${parts.hz}' : whole;
     if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
   }
   final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);

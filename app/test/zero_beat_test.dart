@@ -123,13 +123,13 @@ void main() {
       expect(shouldAvoidZeroBeat(enabled: false, radioConnected: true, mode: 'CW', freqKHz: 14050), isFalse);
     });
 
-    test('LF spots are left alone — an offset there cannot survive the freq field', () {
-      // fmtFreqInput(474.021) is "474.021", and parseFreq reads a sub-1000
-      // value with a decimal point as MHz — so the offset would come back as
-      // 474021 kHz and be both logged and sent to the rig. 630 m and 2190 m
-      // are exactly the bands where CW dominates, and a whole-kHz spot there
-      // round-trips fine today.
-      expect(parseFreq(fmtFreqInput(474.021)), 474021);
+    test('LF spots are left alone, though the freq field would now carry the offset', () {
+      // The round trip that used to make this impossible now holds: parseFreq
+      // breaks the kHz/MHz tie on the band plan, so an LF offset survives the
+      // field. The hold on LF is therefore a deliberate one about on-air
+      // behaviour, not a workaround — asserted here so that removing it is a
+      // decision someone makes rather than a side effect.
+      expect(parseFreq(fmtFreqInput(474.021)), 474.021);
       expect(shouldAvoidZeroBeat(enabled: true, radioConnected: true, mode: 'CW', freqKHz: 474), isFalse);
       expect(shouldAvoidZeroBeat(enabled: true, radioConnected: true, mode: 'CW', freqKHz: 137.5), isFalse);
       // …and the HF spot right above the cutoff still round-trips.

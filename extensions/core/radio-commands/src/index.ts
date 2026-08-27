@@ -13,6 +13,7 @@
 // like "14.285" as well as kHz.
 
 import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
+import { canonicalNumber, localizeFormattedNumber } from "./localizedNumbers.ts"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
@@ -82,7 +83,7 @@ const FrequencyCommand = {
     } else if ((trimmed.startsWith('.') || trimmed.startsWith(',')) && qsoFreq) {
       freq = parseFreq(`${Math.floor(qsoFreq / 1000)}${trimmed}`)
     } else if (FREQUENCY_MATCH.test(trimmed)) {
-      freq = parseFreq(trimmed)
+      freq = parseFreq(canonicalNumber(trimmed, ctx))
     }
 
     if (!freq) return null
@@ -92,7 +93,7 @@ const FrequencyCommand = {
     const band = freq ? bandForFrequency(freq) : undefined
     if (!band || band === 'other') return null
 
-    const formattedFreq = fmtFreq(freq)
+    const formattedFreq = localizeFormattedNumber(fmtFreq(freq), ctx)
     const t = tFor(ctx)
     return {
       describe: t('freqDescribe', { freq: formattedFreq }),

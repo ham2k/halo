@@ -19,6 +19,22 @@ export interface HookContext {
   /// The user's distance-units preference ('kilometers' | 'miles') — for
   /// extensions that localize units (e.g. WEATHER's °F vs °C).
   distanceUnits?: string
+  /// The characters this operator writes numbers with, already resolved from
+  /// their Number Formatting setting — `'.'`/`','` by default, `','`/`'.'`
+  /// under comma conventions. For a hook that PARSES what someone typed
+  /// (a frequency in a command) or formats a number back to them.
+  ///
+  /// Never use these on anything machine-facing: ADIF, a spot posted to an
+  /// external service and every other wire format take a plain
+  /// period-decimal number regardless of what the operator sees.
+  ///
+  /// On fr, ru, sv and pl `groupingSeparator` is a NARROW NO-BREAK SPACE
+  /// (U+202F), not a comma or a period and not a character a keyboard
+  /// produces — strip it, but strip an ordinary space too, because that is
+  /// what someone actually types. It can also be empty; guard for that
+  /// before using it as a delimiter, since `split('')` splits everywhere.
+  decimalSeparator?: string
+  groupingSeparator?: string
   /// The running build's edition ('dev' | 'next' | 'prod' — see
   /// packages/halo_build_tools/lib/src/edition.dart), for a hook whose
   /// static configuration must vary per-edition (e.g. SOTA's OAuth client:

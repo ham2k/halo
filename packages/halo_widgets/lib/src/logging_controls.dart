@@ -6178,9 +6178,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// The contextual extra key: "/" only while the call field holds a partial
   /// callsign (a letter present, not a bare number — a serial being typed
-  /// ahead of letters still reads as numeric), "." for every numeric field.
-  /// Null when the extra key is turned off. Mirrors app-polo's callsign vs
-  /// numbers mode split (H2kCallsignInput / H2kRSTInput).
+  /// ahead of letters still reads as numeric), the operator's own decimal
+  /// separator for every numeric field. Null when the extra key is turned
+  /// off. Mirrors app-polo's callsign vs numbers mode split
+  /// (H2kCallsignInput / H2kRSTInput).
+  ///
+  /// It types whatever [parseFreq] will read back as a decimal point: a key
+  /// that inserted a fixed "." under comma conventions would produce a
+  /// frequency the field beneath it parses as grouping, silently landing the
+  /// operator on a different band.
   String? get _numbersRowExtraKey {
     if (!widget.showExtraInNumbersRow) return null;
     if (_callFocus.hasFocus) {
@@ -6189,7 +6195,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final onlyDigits = RegExp(r'^[0-9]+$').hasMatch(text);
       if (hasLetter && !onlyDigits) return '/';
     }
-    return '.';
+    return NumberFormatting.instance.decimalSeparator;
   }
 
   /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`

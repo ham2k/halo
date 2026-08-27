@@ -15,14 +15,14 @@ import 'package:halo_core/halo_core.dart';
 
 import 'vfo_snap.dart' show staysInBand;
 
-/// Below this, an offset cannot survive the frequency field's own round-trip.
+/// Below this, a spot is left exactly where it is.
 ///
-/// The offsetted value is written into the field with [fmtFreqInput] and read
-/// back with [parseFreq], and `parseFreq` reads a sub-1000 value carrying a
-/// decimal point as MHz — so a 630 m spot at a whole `474` kHz, which works
-/// today, would come back as `474.021` → `474021` kHz and be both logged and
-/// sent to the rig. An offset always introduces that decimal point, so 630 m
-/// and 2190 m are left exactly on the spot rather than mangled.
+/// NOT a limit of the frequency field any more: `parseFreq` breaks the
+/// kHz-versus-MHz tie on the band plan, so an offsetted 630 m spot
+/// (`474.021`) now round-trips through [fmtFreqInput] intact instead of
+/// coming back as 474021 kHz. What remains is a deliberate hold on 630 m and
+/// 2190 m — the offset would reach the air there, and whether it should is a
+/// question about operating practice rather than about parsing.
 const _lowestOffsettableKHz = 1000.0;
 
 /// The inner edge of the draw, as a fraction of the range: an offset lands

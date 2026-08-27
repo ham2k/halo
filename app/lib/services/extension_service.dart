@@ -1931,6 +1931,13 @@ class ExtensionService implements PanelExtensionSource {
           'themeMode': settings?.themeMode.name ?? 'system',
           'fontScale': settings?.fontScale.name ?? 'normal',
           'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',
+          // The RESOLVED characters, not the preference name: an extension
+          // parsing what an operator typed needs to know which mark is the
+          // decimal, and "use the device's settings" is not an answer it
+          // could act on. Read from the same singleton every Dart surface
+          // reads, so a hook and the field beside it cannot disagree.
+          'decimalSeparator': NumberFormatting.instance.decimalSeparator,
+          'groupingSeparator': NumberFormatting.instance.groupingSeparator,
           'syncEnabled': settings?.syncEnabled ?? false,
           'operatorCall': settings?.activeProfile.operatorCall ?? '',
           // The rest of the active profile — personal details a log generator

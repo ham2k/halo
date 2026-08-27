@@ -175,6 +175,19 @@ class GeneralSettingsGroup extends SettingsGroup {
         ],
         common: true,
       ),
+      _select(
+        key: 'numberFormat',
+        aliases: const ['decimals', 'decimalSeparator'],
+        label: t.settings.numberFormat,
+        icon: 'numeric',
+        // Just the current choice's name, matching distanceUnits above.
+        description: t['settings.numberFormatOpts.${settings.numberFormatStyle.name}'] as String,
+        value: settings.numberFormatStyle.name,
+        options: [
+          for (final style in NumberFormatStyle.values)
+            (label: t['settings.numberFormatOpts.${style.name}'] as String, value: style.name),
+        ],
+      ),
       _toggle(
         key: 'layoutCustomization',
         // NOT 'panels': that is the dashboard-panel EXPERIMENT's key, and
@@ -277,6 +290,9 @@ class GeneralSettingsGroup extends SettingsGroup {
       case 'distanceUnits':
         final units = _enumByNameOrNull(DistanceUnits.values, value);
         if (units != null) await settings.setDistanceUnits(units);
+      case 'numberFormat':
+        final style = _enumByNameOrNull(NumberFormatStyle.values, value);
+        if (style != null) await settings.setNumberFormatStyle(style);
     }
     // Locale and theme feed extension HookContexts — invalidate so hooks
     // re-fetch fresh state (labels, theme-dependent assets).

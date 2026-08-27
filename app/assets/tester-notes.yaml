@@ -10,6 +10,7 @@ upcoming:
     - "`POSITION 2` marks this device in a multi-station op; its spots go out as /OP2"
     - "New Solar panel: flux, wind and Kp charts, band conditions, hover for values"
     - "With Developer Mode on, add a Fake Radio to try radio control with no rig"
+    - "Settings › General › Number Formatting: period or comma decimals, or follow your device"
 
 "150":
   changes:

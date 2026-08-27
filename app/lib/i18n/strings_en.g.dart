@@ -1037,6 +1037,11 @@ class Translations$settings$en {
 
 	/// en: 'Show more settings'
 	String get showMoreSettings => 'Show more settings';
+
+	/// en: 'Number Formatting'
+	String get numberFormat => 'Number Formatting';
+
+	late final Translations$settings$numberFormatOpts$en numberFormatOpts = Translations$settings$numberFormatOpts$en.internal(_root);
 }
 
 // Path: commands
@@ -3962,6 +3967,24 @@ class Translations$settings$panels$en {
 	String get peersDescription => 'Share an operation with your other devices on the same network';
 }
 
+// Path: settings.numberFormatOpts
+class Translations$settings$numberFormatOpts$en {
+	Translations$settings$numberFormatOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Use device settings'
+	String get locale => 'Use device settings';
+
+	/// en: 'Always use period for decimals'
+	String get period => 'Always use period for decimals';
+
+	/// en: 'Always use comma for decimals'
+	String get comma => 'Always use comma for decimals';
+}
+
 // Path: home.logs.columns
 class Translations$home$logs$columns$en {
 	Translations$home$logs$columns$en.internal(this._root);
@@ -6202,6 +6225,10 @@ extension on Translations {
 			'settings.panels.peers' => 'Peer Devices',
 			'settings.panels.peersDescription' => 'Share an operation with your other devices on the same network',
 			'settings.showMoreSettings' => 'Show more settings',
+			'settings.numberFormat' => 'Number Formatting',
+			'settings.numberFormatOpts.locale' => 'Use device settings',
+			'settings.numberFormatOpts.period' => 'Always use period for decimals',
+			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
