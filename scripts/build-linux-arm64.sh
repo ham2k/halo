@@ -254,10 +254,17 @@ PIN
   # Signed-By only if the keyring is actually present; naming a missing file
   # makes apt reject the whole source.
   KEYRING=/usr/share/keyrings/ubuntu-archive-keyring.gpg
+  # The arm64 source offers the same suites the amd64 sources do, -security
+  # included. The GTK/glib runtime libraries are Multi-Arch: same, so dpkg
+  # requires the arm64 copy to be the exact same VERSION as the amd64 copy
+  # already on the image: any suite the host can install from and ports cannot
+  # is a version this side can never match. -security is normally a subset of
+  # -updates, so this is coverage parity rather than a fix for one known
+  # failure.
   {
     printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\n'
-    printf 'Suites: %s %s-updates\nComponents: main universe\nArchitectures: arm64\n' \
-      "$UBUNTU_CODENAME" "$UBUNTU_CODENAME"
+    printf 'Suites: %s %s-updates %s-security\nComponents: main universe\nArchitectures: arm64\n' \
+      "$UBUNTU_CODENAME" "$UBUNTU_CODENAME" "$UBUNTU_CODENAME"
     [ -f "$KEYRING" ] && printf 'Signed-By: %s\n' "$KEYRING"
   } | sudo tee /etc/apt/sources.list.d/arm64-ports.sources > /dev/null
 
@@ -297,13 +304,45 @@ fi
 # required, because clang cross-compiles by flag but links against the crt
 # files, libgcc and libstdc++ that the GNU cross toolchain provides, and uses
 # its binutils for as/ld.
-sudo apt-get "${APT_WAIT[@]}" install -y -qq -o Dpkg::Options::=--force-overwrite \
-  clang \
-  crossbuild-essential-arm64 \
-  libgtk-3-dev:arm64 libglib2.0-dev:arm64 \
-  libsecret-1-dev:arm64 libjsoncpp-dev:arm64 \
-  libcurl4-openssl-dev:arm64 libsqlite3-dev:arm64 \
+# -q, not -qq: -qq swallows apt's "The following packages have unmet
+# dependencies" block, leaving a bare "E: Unable to correct problems, you have
+# held broken packages" that names neither the package nor the version it
+# wanted. That is the one line a broken sysroot gets to explain itself with.
+ARM_DEV_PKGS=(
+  clang
+  crossbuild-essential-arm64
+  libgtk-3-dev:arm64 libglib2.0-dev:arm64
+  libsecret-1-dev:arm64 libjsoncpp-dev:arm64
+  libcurl4-openssl-dev:arm64 libsqlite3-dev:arm64
   libudev-dev:arm64
+)
+if ! sudo apt-get "${APT_WAIT[@]}" install -y -q \
+     -o Dpkg::Options::=--force-overwrite "${ARM_DEV_PKGS[@]}"; then
+  # apt reports the FIRST unsatisfiable package and then stops, so a run that
+  # dies here says nothing about the other seven. Ask about each one on its
+  # own, in simulation, and let the log name every offender and the version it
+  # could not reach - one CI round should be enough to diagnose this, not one
+  # per package.
+  echo
+  echo "--- apt could not install the arm64 sysroot; asking package by package ---"
+  for pkg in "${ARM_DEV_PKGS[@]}"; do
+    echo "### $pkg"
+    sudo apt-get "${APT_WAIT[@]}" install -s -o Dpkg::Options::=--force-overwrite \
+      "$pkg" 2>&1 | grep -vE '^(Inst|Conf) ' | tail -25 | sed 's/^/    /' || true
+  done
+  # A Multi-Arch: same library can only be co-installed at the SAME version, so
+  # the amd64 version already on the image and the arm64 candidate on ports
+  # have to agree. Print both for the packages that couple the two sides.
+  echo
+  echo "--- amd64 installed vs arm64 candidate (Multi-Arch: same coupling) ---"
+  for lib in libglib2.0-0t64 libgtk-3-0t64 libsecret-1-0 libjsoncpp25 \
+             libcurl4t64 libsqlite3-0 libudev1 libc6; do
+    printf '  %-18s amd64=%-24s arm64=%s\n' "$lib" \
+      "$(dpkg-query -W -f='${Version}' "$lib:amd64" 2>/dev/null || echo '<none>')" \
+      "$(apt-cache policy "$lib:arm64" 2>/dev/null | awk '/Candidate:/{print $2}')"
+  done
+  exit 1
+fi
 
 # Flutter reads CMAKE_CXX_COMPILER from our cache and then requires a sibling
 # named `clang` (native_assets.dart:89). Prove BOTH exist in the same directory
