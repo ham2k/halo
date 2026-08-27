@@ -390,6 +390,9 @@ class _ModalPaneScaffold extends StatelessWidget {
 /// with a specific control in the header behind it. [rightInset] does the
 /// same from the right edge, for a control living at that end of the header.
 /// Pass at most one.
+///
+/// [narrowLeftInset] overrides [leftInset] for [headerLeading] on a narrow
+/// layout — see [TopModalPaneRoute.narrowLeftInset].
 Future<T?> showTopModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -401,6 +404,7 @@ Future<T?> showTopModalPane<T>(
   String closeLabel = 'Close',
   ValueChanged<Animation<double>>? onAnimation,
   double? leftInset,
+  double? narrowLeftInset,
   double? rightInset,
   double? maxWidth,
   EdgeInsetsGeometry? contentPadding,
@@ -424,6 +428,7 @@ Future<T?> showTopModalPane<T>(
     trailing: trailing,
     closeLabel: closeLabel,
     leftInset: leftInset,
+    narrowLeftInset: narrowLeftInset,
     rightInset: rightInset,
     onDismiss: onDismiss,
     showHeader: showHeader,
@@ -459,6 +464,21 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   final double? leftInset;
   final double? rightInset;
 
+  /// Where [headerLeading] sits on a NARROW layout, when that should not be
+  /// [leftInset].
+  ///
+  /// The two differ because they line up with different things. On wide,
+  /// [leftInset] aligns the card — and the control above it — with a
+  /// specific control in the header behind. On narrow the card is
+  /// full-bleed and has nothing to align with, so [headerLeading] is free to
+  /// take the header's own leading corner, which the control it stands in
+  /// for has vacated.
+  ///
+  /// Resolved per build rather than folded into [leftInset] by the caller:
+  /// a window resized across the breakpoint while the pane is up would
+  /// otherwise keep whichever answer was right when it opened.
+  final double? narrowLeftInset;
+
   /// A narrower card than the shared [maxDialogWidth], for a pane whose
   /// content is a list of short rows rather than a form. Wide layouts only —
   /// a narrow one is full-screen regardless.
@@ -490,8 +510,9 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// wide layouts only — but positioned at [leftInset] instead of the
   /// trailing edge, for a control that belongs where the pane's own leading
   /// button would otherwise sit (see [showHeader]: a pane with no header of
-  /// its own has no leading button to draw there itself). Left unaligned
-  /// (flush to the screen edge) when [leftInset] is null.
+  /// its own has no leading button to draw there itself), or at
+  /// [narrowLeftInset] on a narrow layout that sets one. Left unaligned
+  /// (flush to the screen edge) when both are null.
   final Widget? headerLeading;
 
   /// False removes the [HaloDialogHeader] band entirely — no leading, title,
@@ -524,6 +545,7 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.trailing,
     this.closeLabel = 'Close',
     this.leftInset,
+    this.narrowLeftInset,
     this.rightInset,
     this.maxWidth,
     this.contentPadding,
@@ -873,7 +895,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
               content: route.headerLeading,
               top: MediaQuery.of(context).padding.top,
               height: headerHeight,
-              left: isNarrow ? (route.leftInset ?? 0) : (leftInset ?? 0),
+              left: isNarrow ? (route.narrowLeftInset ?? route.leftInset ?? 0) : (leftInset ?? 0),
               alignment: AlignmentDirectional.centerStart,
               theme: theme,
             ),

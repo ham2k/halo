@@ -176,7 +176,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
     final t = context.t.operation.import;
 
     final importAdifRow = ListTile(
-      leading: const Icon(MdiIcons.fileImportOutline),
+      leading: const Icon(MdiIcons.import),
       title: Text(t.importAdifAction),
       onTap: () => unawaited(pickAndImportAdif(context, services: widget.services, operation: widget.operation)),
     );

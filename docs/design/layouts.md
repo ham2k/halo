@@ -945,8 +945,11 @@ Two distinct surfaces; pick deliberately:
 `.isTwoPane`). If you're comparing `MediaQuery` width against a literal
 number in a view, stop — either it's a shirt-size decision, or the constant
 belongs in `layout.dart` with a name. (Internal component reflow like the
-form renderer's icon-row stacking is exempt: that's content fitting, not
-layout mode.)
+form renderer's icon-row stacking, or the operation header weighing its
+Exports/Imports/Tools labels against the width its title wants, is exempt:
+that's content fitting, not layout mode. Fitting measures what the content
+actually needs — a shirt size cannot, since the title is as long as the
+operator's callsign and refs happen to make it.)
 
 **2. Tolerate mid-life mode flips.** Window resize *and* font-scale changes
 can flip shirt size while a view is on screen. State that must survive the

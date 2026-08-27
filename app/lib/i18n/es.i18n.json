@@ -515,6 +515,7 @@
     "searchUnavailableReason": "Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.",
     "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
     "exports": "Exportar",
+    "imports": "Importar",
     "exportLogs": "Exportar registros",
     "tools": "Herramientas",
     "toolsTitle": "Herramientas de la operación",

@@ -604,18 +604,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsOneWidget);
 
-    // Two of each now — the real one (faded, inert) and the live copy drawn
-    // above the barrier (headerTrailing) — not torn down: a full-screen
-    // sheet used to remove the whole AppBar from view (showHeader: false,
-    // no headerLeading exception for narrow), not merely paint over it.
+    // Flush to the leading corner on narrow, not indented behind the chevron
+    // it replaces: that chevron has faded out, and the pane below is
+    // full-bleed, so there is nothing left for the button to line up with.
+    // The wide layout DOES have something (the card's own edge, at
+    // leftInset), which is why the two insets are separate — a single value
+    // frozen at push time is the mutation this catches.
+    // Zero exactly, since no traffic lights exist in the test environment.
+    final okRect = tester.getRect(find.widgetWithText(FilledButton, 'OK'));
+    expect(okRect.left, 0.0);
+
+    // And the title picks up just after that button — a Space.xs breather,
+    // not a chevron slot. The gap this control reserves is measured from ITS
+    // own left edge while the button starts a slot further left, so
+    // reserving the button's full width leaves exactly that slot (40) of
+    // dead space. The upper bound is what catches that; the lower bound
+    // keeps the two from being jammed together.
+    final titleGap = tester.getRect(find.text('N0CALL Test Op')).left - okRect.right;
+    expect(titleGap, greaterThanOrEqualTo(0.0));
+    expect(titleGap, lessThan(12.0), reason: 'a breather after the button, not the width of the slot it replaced');
+
+    // Two of each — the real one (inert) and the live copy drawn above the
+    // barrier (headerTrailing). Without `keepHeaderVisible` and its
+    // headerLeading exception for narrow, a full-screen pane takes the whole
+    // AppBar out of the tree rather than painting over it, and both counts
+    // drop back to one.
     expect(toolsButton, findsNWidgets(2));
     expect(backButton, findsNWidgets(2));
-    // Above the sheet's own top edge, not underneath it — the regression
-    // this guards: the sheet used to start at y=0 on narrow, covering the
-    // whole AppBar including this icon.
+    // Above the sheet's own top edge, not underneath it: a narrow pane that
+    // starts at y=0 covers the whole AppBar, this icon included, and every
+    // assertion above still passes on the widgets it left mounted.
     final sheetTop = tester.getTopLeft(find.byType(OperationSheet)).dy;
     expect(tester.getRect(toolsButton.hitTestable()).bottom, lessThanOrEqualTo(sheetTop));
-    // Fully hidden, not merely painted over: neither copy takes a tap.
+    // Fully hidden, not merely painted over: neither chevron takes a tap.
     expect(backButton.hitTestable(), findsNothing);
 
     // The accept button is reachable through headerLeading, not by falling
@@ -623,9 +644,11 @@ void main() {
     final acceptButton = find.widgetWithText(FilledButton, 'OK');
     expect(acceptButton.hitTestable(), findsOneWidget);
 
-    // Tools: the live copy (headerTrailing) closes the sheet AND opens
-    // the dialog — not just a generic dismiss, the way tapping empty
-    // header space already does via the barrier's own onDismiss.
+    // The operation's own actions stay LIVE while the sheet is up — that is
+    // the whole reason a copy exists, the real row being under the barrier.
+    // Only the view's layout controls go disabled (not present at this
+    // width). Tools closes the sheet AND opens its dialog, rather than
+    // merely dismissing the way tapping empty header space does.
     await tester.tap(toolsButton.hitTestable());
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsNothing, reason: 'Tools closed the sheet, not just opened its own dialog on top');
@@ -886,6 +909,99 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+  testWidgets('the header actions re-fit their labels as activities change the title', (tester) async {
+    // The trap: whether these carry labels is measured against the title
+    // they share the header with, so adding an activity — which rewrites the
+    // header's ref line — has to re-run that fit. Only a real ref add
+    // reaches it: a plain database write can't, since the view reads its
+    // draft ahead of the saved operation for as long as the sheet is up.
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = _SuggestingExtensions()..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('N0CALL Op'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsOneWidget);
+
+    // Two of each: the AppBar's own row (inert) and the live copy above the
+    // barrier, built from the same shared builder. Both carry labels at this
+    // width with a title this short.
+    expect(find.text('Exports'), findsNWidgets(2));
+
+    await tester.tap(find.text('POTA US-0001 A Very Long Park Name').first);
+    await tester.pumpAndSettle();
+
+    // BOTH shed their labels, not just the one that happens to sit in
+    // OperationView's own build. findsNWidgets(1) is the mutation this
+    // catches: the AppBar's row rebuilds with the view no matter what, so a
+    // copy that never hears about the new title leaves exactly one labeled
+    // group behind — and disagrees with the row it is standing on.
+    expect(find.text('Exports'), findsNothing,
+        reason: "the widened ref line priced the labels out of BOTH rows, the sheet's copy included");
+
+    // Paired with positives, because `findsNothing` alone also passes if the
+    // tap closed the sheet, or tore the trailing row down, or the row failed
+    // to build at all. What should have happened is that both rows survived
+    // and went icon-only.
+    expect(find.byType(OperationSheet), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.export), findsNWidgets(2));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+}
+
+/// The shared MockExtensionHost only overrides the public `host` getter while
+/// the sheet's own calls read the private field, so suggestions would come
+/// back empty and there would be no activity to add. Overrides the two
+/// methods this test depends on instead.
+class _SuggestingExtensions extends ExtensionServiceWithMockHost {
+  _SuggestingExtensions() : super(const MockExtensionHost({}));
+
+  @override
+  Future<ControlsResult> operationControls(
+    Map<String, dynamic> operationData, {
+    Map<String, dynamic>? qso,
+  }) async =>
+      (controls: const <Map<String, dynamic>>[], loadFailed: false);
+
+  @override
+  Future<ActivitySuggestionResult> suggestActivities(
+    Map<String, dynamic> operationData, {
+    String? searchTerm,
+    GridLocation? fallbackLocation,
+    String? activityKey,
+    String? preferredKey,
+    String? preferredSearchTerm,
+  }) async =>
+      (
+        suggestions: const [
+          {
+            'type': 'pota',
+            'ref': 'US-0001',
+            'label': 'POTA US-0001',
+            // Long on purpose: the header's ref line has to outgrow its
+            // title line for the title control to get any wider at all.
+            'shortLabel': 'POTA US-0001 A Very Long Park Name',
+            'name': 'Some Park',
+          }
+        ],
+        allSourcesFailed: false
+      );
 }
 
 class MockExtensionHost implements ExtensionHost {

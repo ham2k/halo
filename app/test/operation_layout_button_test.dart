@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
@@ -89,6 +90,55 @@ void main() {
   }
 
   LayoutSheet sheetOf(WidgetTester tester) => tester.widget<LayoutSheet>(find.byType(LayoutSheet));
+
+  testWidgets('the setup sheet disables the layout button while leaving the operation actions live', (tester) async {
+    // The two groups share the header but not the sheet's business: the sheet
+    // edits the operation, so its Exports/Tools stay pressable, while
+    // rearranging the VIEW is not on offer mid-edit. Both are drawn twice
+    // (the inert row in the AppBar, the live copy above the barrier) from one
+    // builder — a layout control left enabled in that copy is the mutation
+    // this catches, since the copy is the reachable one.
+    final services = await servicesWith(tester, layoutCustomization: true);
+    await pumpWide(tester, services);
+
+    final layoutButton = find.byWidgetPredicate(
+        (w) => w is Icon && w.icon == MdiIcons.viewDashboard && w.semanticLabel == t.editLayout);
+    // No semanticLabel in the predicate: it only exists on the icon-only
+    // variant, and this width carries labels.
+    final toolsButton = find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.tools);
+    expect(layoutButton.hitTestable(), findsOneWidget, reason: 'live before the sheet opens');
+
+    await tester.tap(find.textContaining('KI2D').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsOneWidget);
+
+    // The operation's own actions: still pressable, through the copy.
+    expect(toolsButton, findsNWidgets(2));
+    expect(toolsButton.hitTestable(), findsOneWidget);
+    // The view's layout button: present in BOTH rows and taking no taps.
+    // The count assertion is load-bearing — without it a regression that
+    // REMOVES these controls rather than disabling them satisfies
+    // `findsNothing` and skips the opacity loop entirely.
+    expect(layoutButton, findsNWidgets(2));
+    expect(layoutButton.hitTestable(), findsNothing, reason: 'disabled while the sheet is up');
+
+    // One row paints them at Material's disabled opacity; the other holds
+    // only their width. Dimming both would composite to ~0.62 over an
+    // undimmed header and read as faint rather than disabled — so the pair
+    // is asserted, not each one independently.
+    final opacities = layoutButton.evaluate().map((icon) {
+      return tester
+          .widget<Opacity>(find
+              .ancestor(of: find.byElementPredicate((e) => identical(e, icon)), matching: find.byType(Opacity))
+              .first)
+          .opacity;
+    }).toList()
+      ..sort();
+    expect(opacities.first, closeTo(0.0, 0.01), reason: "the copy reserves the width and paints nothing");
+    expect(opacities.last, closeTo(0.38, 0.01), reason: 'exactly one row reads as disabled');
+
+    await unmount(tester);
+  });
 
   testWidgets('the layout button goes straight into editing, and becomes the edit controls', (tester) async {
     final services = await servicesWith(tester, layoutCustomization: true);

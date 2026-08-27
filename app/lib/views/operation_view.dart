@@ -9,6 +9,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -442,50 +443,32 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// a button that had already stopped growing, and one still catching up on
   /// the way in (or shrinking early on the way out) reads as the button
   /// overlapping the title.
-  double get _leadingGapWidth {
-    const dotsWidth = 10.0;
+  /// Where the sheet's accept button sits on a narrow layout — the header's
+  /// own leading corner, less whatever the native window controls need (see
+  /// `narrowLeftInset` in [_openOperationSheet]). Shared with
+  /// [_leadingGapWidth], which has to know how far LEFT of this control that
+  /// button starts.
+  double _narrowSheetLeftInset(BuildContext context) =>
+      isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0;
+
+  double _leadingGapWidth(BuildContext context, {required bool isTwoPane}) {
+    const dotsWidth = _headerDotsWidth;
     final progress = _sheetAnimation?.value ?? 0.0;
     if (progress == 0.0) return dotsWidth;
     final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
-    final targetWidth = _sheetOkButtonWidth ?? dotsWidth;
-    return dotsWidth + (targetWidth - dotsWidth) * growth;
-  }
-
-  /// The real Exports/Tools group's own left edge, measured the same way as
-  /// [_headerTitleLeftInset] — the sheet's live copy of that group slides
-  /// FROM here, so it starts exactly on top of the group it is replacing
-  /// instead of popping in already in motion.
-  final _headerActionsKey = GlobalKey();
-
-  /// Same cross-route RenderBox race [_sheetOkButtonWidth] guards against,
-  /// and for the same reason: unlike [_headerTitleKey] (always mounted),
-  /// this key's element is conditionally built (`if (!editingHeader)`), so
-  /// entering layout-editing while the sheet's `headerTrailing` reads this
-  /// mid-transition can hit a `findRenderObject()` on an element that's
-  /// deactivating — see that getter's doc for why the catch only matters in
-  /// debug.
-  double? get _headerActionsLeftInset {
-    final element = _headerActionsKey.currentContext;
-    if (element == null || !element.mounted) return null;
-    try {
-      final box = element.findRenderObject() as RenderBox?;
-      final view = context.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached || view == null || !view.attached) return null;
-      return box.localToGlobal(Offset.zero, ancestor: view).dx;
-    } on FlutterError {
-      debugPrint('[operation] header-actions-inset-race: cross-route RenderBox read hit an inactive element');
-      return null;
+    var targetWidth = _sheetOkButtonWidth ?? dotsWidth;
+    if (!isTwoPane) {
+      // Narrow starts that button at the header's leading corner, which is
+      // the width of the (faded) chevron's own slot to the LEFT of where
+      // this control begins — so only the part of it that overhangs into
+      // this control needs room made here. Reserving its full width instead
+      // would leave exactly that slot's width of dead space between the
+      // button and the title. Wide has no overhang: the button starts at
+      // this control's own left edge.
+      final overhang = targetWidth - (_leadingWidthFor(false, context) - _narrowSheetLeftInset(context));
+      targetWidth = math.max(dotsWidth, overhang);
     }
-  }
-
-  /// The dots-and-title control's right edge — where the sheet's live copy
-  /// of Options/Export slides TO, so it reads as landing right after the
-  /// title rather than at some independently-chosen offset.
-  double? get _headerTitleRightInset {
-    final box = _headerTitleKey.currentContext?.findRenderObject() as RenderBox?;
-    final view = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.attached || view == null || !view.attached) return null;
-    return box.localToGlobal(Offset(box.size.width, 0), ancestor: view).dx;
+    return dotsWidth + (targetWidth - dotsWidth) * growth;
   }
 
   /// Shared fade for the AppBar's own leading/Options/Export/layout icons
@@ -500,12 +483,29 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   /// Whether the AppBar's own leading/Options/Export/layout icons should
   /// ignore taps — true for the whole time the sheet is up or animating, not
-  /// just once fully faded: the sheet's live copies sit in DIFFERENT
-  /// positions now (see [_headerActionsLeftInset]/[_headerTitleRightInset])
-  /// rather than exactly overlapping the real ones the way the old design's
-  /// copies did, so the real ones are reachable again the instant they are
-  /// anything but fully transparent unless this stops them explicitly.
+  /// just once fully faded. The Exports/Tools copy sits exactly over the
+  /// group it stands in for and is opaque from the first frame, so the real
+  /// one is reachable underneath for as long as anything but this stops it —
+  /// and a tap it took would act on the operation behind a sheet that is
+  /// buffering edits to it.
   bool get _headerIconsInert => (_sheetAnimation?.value ?? 0.0) > 0.0;
+
+  /// The VIEW's layout controls dim to Material's disabled opacity while the
+  /// operation's setup sheet is up, on the same curve everything else in the
+  /// header uses.
+  ///
+  /// Only those. The operation's own Exports/Imports/Tools stay at full
+  /// strength and stay pressable (see [_headerTrailingControls]) — what the
+  /// sheet edits is the operation, and reaching for its exports mid-edit is
+  /// a reasonable thing to do. Rearranging the view is not, so those go
+  /// disabled rather than away: they do NOT fade out like the chevron,
+  /// because nothing replaces them. [_headerIconsInert] is what actually
+  /// stops the taps; this is only how that reads.
+  double get _layoutControlsDisabledOpacity {
+    final progress = _sheetAnimation?.value ?? 0.0;
+    final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
+    return 1.0 - (1.0 - 0.38) * growth;
+  }
 
   /// Tracks the arrangement across dependency changes so the flip can be
   /// detected BEFORE build (see didChangeDependencies). Null until first
@@ -936,6 +936,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _draftQsoDebounce?.cancel();
     _tabController?.dispose();
     _spotsVisible.dispose();
+    _sheetHeaderLines.dispose();
     widget.services.closeOperationContext(_commandContext);
     _unsubscribeSpots?.call();
     widget.services.spots.removeListener(_onSpotsChanged);
@@ -1353,6 +1354,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // Left-aligned with the dots-and-title control that opens it,
         // rather than centered in the pane.
         leftInset: _headerTitleLeftInset,
+        // Narrow has no card edge to line the accept button up with (the
+        // pane is full-bleed there), and the control it stands in for — the
+        // header's own chevron — has faded out of that corner, so it takes
+        // the corner itself rather than sitting indented behind nothing.
+        // Only the native window controls still get their room.
+        narrowLeftInset: _narrowSheetLeftInset(context),
         scrollable: false,
         barrierDismissible: true,
         onDismiss: () => sheetKey.currentState?.saveAndClose(),
@@ -1402,13 +1409,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // ordinary barrier tap does: the operator tapped a specific control,
         // not empty space, so it should do what it says.
         //
-        // The X copy stays put, exactly over the real one it is standing in
-        // for. Options/Export instead slides from there — where the real
-        // group sits while the sheet is closed — to just past the title, on
-        // the same growth curve the falling dots/accept-button handoff uses,
-        // so the whole header reads as one motion. `SizedBox` sizes this to
-        // the full header width so both the fixed X and the sliding group
-        // can each `Positioned` themselves within it independently.
+        // Both copies stay put, exactly over the real ones they stand in
+        // for — nothing in this header moves because a sheet opened.
+        // `SizedBox` sizes this to the full header width so each can
+        // `Positioned` itself within it independently.
+        // Only the chevron has a copy up here. The operation's own
+        // Exports/Imports/Tools group — and the layout controls beside it —
+        // stay exactly where they are in the AppBar below, untouched and
+        // merely disabled while the sheet is up (see the AppBar's own
+        // `actions`), so nothing about that end of the header moves,
+        // recolours or duplicates itself around a sheet. The chevron is the
+        // exception because something really does replace it: the accept
+        // button takes its corner.
         headerTrailing: Builder(
           builder: (context) {
             final isTwoPane = ShirtSize.of(context).isTwoPane;
@@ -1416,81 +1428,110 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             return SizedBox(
               width: double.infinity,
               height: toolbarHeight,
-              child: AnimatedBuilder(
-                animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
-                builder: (context, _) {
-                  final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
-                  final startLeft = _headerActionsLeftInset;
-                  final actions = _operationHeaderActions(
-                    context,
-                    isTwoPane: isTwoPane,
-                    onOptions: () async {
-                      final op = _draftOperation ?? operation;
-                      await sheetKey.currentState?.saveAndClose();
-                      if (mounted) {
-                        unawaited(_showOperationOptions(op, includeExport: !isTwoPane, includeImport: !isTwoPane));
-                      }
-                    },
-                    onExport: () async {
-                      final op = _draftOperation ?? operation;
-                      await sheetKey.currentState?.saveAndClose();
-                      if (mounted) unawaited(_export(op));
-                    },
-                    onImport: () async {
-                      final op = _draftOperation ?? operation;
-                      await sheetKey.currentState?.saveAndClose();
-                      if (mounted) unawaited(_import(op));
-                    },
-                  );
-                  return Stack(
-                    children: [
-                      // Fades out on the same curve as the real one it stood
-                      // in for — the OK button (headerLeading) is the sheet's
-                      // dismiss control once it's up, so this doesn't need to
-                      // keep offering a second one once the OK button has
-                      // taken over.
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: _leadingWidthFor(isTwoPane, context),
-                        child: IgnorePointer(
-                          ignoring: _headerIconsInert,
-                          child: Opacity(
-                            opacity: _headerIconsFadeOpacity,
-                            // macOSAwareBackButton, not a bare IconButton:
-                            // it's the one place that already knows to clear
-                            // the traffic lights on a chromeless macOS window.
-                            child: Center(
-                              child: macOSAwareBackButton(
-                                context,
-                                close: true,
-                                boxSize: 40,
-                                onPressed: () async {
-                                  await sheetKey.currentState?.saveAndClose();
-                                  if (mounted) Navigator.of(context).maybePop();
-                                },
+              child: ValueListenableBuilder<({String title, String subtitle})?>(
+                valueListenable: _sheetHeaderLines,
+                builder: (context, pushedLines, _) => AnimatedBuilder(
+                  animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
+                  builder: (context, _) {
+                    final growth =
+                        ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
+                    final lines = pushedLines ?? _headerTitleLines(context, _draftOperation ?? operation);
+                    return Stack(
+                      children: [
+                        // Fades out on the same curve as the real one it stood
+                        // in for — the accept button (headerLeading) is the
+                        // sheet's dismiss control once it's up, so this doesn't
+                        // need to keep offering a second one once that button
+                        // has taken over.
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: _leadingWidthFor(isTwoPane, context),
+                          child: IgnorePointer(
+                            ignoring: _headerIconsInert,
+                            child: Opacity(
+                              opacity: _headerIconsFadeOpacity,
+                              // macOSAwareBackButton, not a bare IconButton:
+                              // it's the one place that already knows to clear
+                              // the traffic lights on a chromeless macOS window.
+                              child: Center(
+                                child: macOSAwareBackButton(
+                                  context,
+                                  close: true,
+                                  boxSize: 40,
+                                  onPressed: () async {
+                                    await sheetKey.currentState?.saveAndClose();
+                                    if (mounted) Navigator.of(context).maybePop();
+                                  },
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      // Un-measurable only for the single frame before the
-                      // real group's own key has ever laid out — pinned to
-                      // the right edge then rather than not drawn at all.
-                      if (startLeft == null)
-                        Positioned(right: 0, top: 0, bottom: 0, child: Center(child: actions))
-                      else
+                        // The trailing row, live, standing exactly over the
+                        // inert one in the AppBar — same builder, same children,
+                        // so it lines up without measuring anything. This is the
+                        // copy that makes Exports/Imports/Tools pressable at
+                        // all while the sheet is up; the layout controls come
+                        // along disabled, both to match what is underneath and
+                        // because they occupy width the actions must clear.
+                        //
+                        // Opaque is not the same as live: at progress 0 the REAL
+                        // row underneath is the one taking taps (see
+                        // [_headerIconsInert]), so without the IgnorePointer
+                        // this copy would swallow the tap meant for it.
                         Positioned(
-                          left: startLeft + ((_headerTitleRightInset ?? startLeft) - startLeft) * growth,
+                          right: windowsCaptionClearance(context),
                           top: 0,
                           bottom: 0,
-                          child: Center(child: actions),
+                          child: IgnorePointer(
+                            ignoring: growth <= 0,
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: _headerTrailingControls(
+                                  context,
+                                  isTwoPane: isTwoPane,
+                                  // The sheet cannot coexist with layout
+                                  // editing: the title control that opens it is
+                                  // inert while editing, and the layout button
+                                  // that would start editing is inert while the
+                                  // sheet is up. False is the only value this
+                                  // call site can see.
+                                  editingHeader: false,
+                                  lines: lines,
+                                  // Width only — the AppBar's row underneath is
+                                  // the one that paints them.
+                                  layoutControlsOpacity: 0.0,
+                                  onOptions: () async {
+                                    final op = _draftOperation ?? operation;
+                                    await sheetKey.currentState?.saveAndClose();
+                                    if (mounted) {
+                                      unawaited(_showOperationOptions(op,
+                                          includeExport: !isTwoPane, includeImport: !isTwoPane));
+                                    }
+                                  },
+                                  onExport: () async {
+                                    final op = _draftOperation ?? operation;
+                                    await sheetKey.currentState?.saveAndClose();
+                                    if (mounted) unawaited(_export(op));
+                                  },
+                                  onImport: () async {
+                                    final op = _draftOperation ?? operation;
+                                    await sheetKey.currentState?.saveAndClose();
+                                    if (mounted) unawaited(_import(op));
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      Positioned(right: 0, top: 0, bottom: 0, child: Center(child: windowsCaptionSpacer(context))),
-                    ],
-                  );
-                },
+                        Positioned(right: 0, top: 0, bottom: 0, child: Center(child: windowsCaptionSpacer(context))),
+                      ],
+                    );
+                  },
+                ),
               ),
             );
           },
@@ -1564,6 +1605,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       if (mounted) {
         setState(() {
           _activeSheetKey = null;
+          // Back to the live fallback, so the next open's first frame reads
+          // the title that is on screen rather than the one this session
+          // left behind (see [_sheetHeaderLines]).
+          _sheetHeaderLines.value = null;
           // Carry the draft's final (just-saved — see saveAndClose(), the
           // only path that reaches here today) values into _operation
           // BEFORE dropping the draft, rather than leaving the header to
@@ -1644,6 +1689,217 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Future<void> _import(Operation operation) =>
       showOperationImportPanel(context, services: widget.services, operation: operation);
 
+  /// The header's trailing controls: the operation's own Exports/Imports/
+  /// Tools, and the view's layout controls beside them where the dock layout
+  /// is live.
+  ///
+  /// ONE builder for both the AppBar's own row and the copy the setup sheet
+  /// draws above its barrier, so the copy stands exactly over what it
+  /// replaces by construction — same children, same order, same widths — with
+  /// nothing measured and so nothing to go stale. Copying only the actions
+  /// and pinning them to the trailing edge would land them over the layout
+  /// controls wherever those are present.
+  ///
+  /// The copy exists because the real row cannot be pressed while a modal
+  /// route is up (see [TopModalPaneRoute.headerTrailing]), and the
+  /// operation's actions should still work. The layout controls should not,
+  /// so they carry their own inert treatment here, in the shared builder,
+  /// rather than at either call site.
+  ///
+  /// [layoutControlsOpacity] is which of the two rows actually PAINTS those
+  /// controls. Both must hold them — they are width the actions have to
+  /// clear, and dropping them from one row would misalign it — but the rows
+  /// sit exactly on top of each other over an undimmed header, so painting
+  /// both at Material's disabled 0.38 composites to about 0.62 and reads as
+  /// merely faint. The copy passes 0 and keeps only the space.
+  List<Widget> _headerTrailingControls(
+    BuildContext context, {
+    required bool isTwoPane,
+    required bool editingHeader,
+    required ({String title, String subtitle}) lines,
+    required double layoutControlsOpacity,
+    required VoidCallback onOptions,
+    required VoidCallback onExport,
+    required VoidCallback onImport,
+  }) =>
+      [
+        // Operation-level actions, not scoped to the setup sheet: an operator
+        // reaches for Options/Export without necessarily opening it. Gone
+        // during layout editing along with the rest of the operation's own
+        // identity in this header — nothing about the operation is what's
+        // being arranged then. Narrow keeps only the gear — there isn't room
+        // for a second icon beside the title — with Export Logs folded into
+        // its menu instead of dropped.
+        if (!editingHeader)
+          _operationHeaderActions(
+            context,
+            isTwoPane: isTwoPane,
+            headerTitle: lines.title,
+            headerSubtitle: lines.subtitle,
+            onOptions: onOptions,
+            onExport: onExport,
+            onImport: onImport,
+          ),
+        if (isTwoPane && _customLayout) ...[
+          // The LAYOUT sheet draws its own copy of these while IT is up; two
+          // would be one too many, and the one down here would be the
+          // unreachable one.
+          if (!layoutSheetOpen) ...[
+            // Separates it from Exports/Tools rather than the two groups
+            // sitting flush — they act on different things (the operation vs.
+            // the view's own arrangement), and nothing about a labeled
+            // TextButton.icon's own padding guarantees a gap here the way a
+            // plain IconButton's did.
+            if (!editingHeader) const SizedBox(width: Space.md),
+            IgnorePointer(
+              ignoring: _headerIconsInert,
+              child: Opacity(
+                opacity: layoutControlsOpacity,
+                child: Row(mainAxisSize: MainAxisSize.min, children: layoutHeaderControls(context)),
+              ),
+            ),
+          ],
+        ],
+      ];
+
+  /// The header's two title lines as the sheet's copy of the trailing
+  /// controls last saw them (headerTrailing in [_openOperationSheet]).
+  ///
+  /// That copy lives in the sheet's route rather than in this build, and its
+  /// own AnimatedBuilder stops ticking once the sheet is open and still — so
+  /// adding or removing an activity, which retitles the operation under it,
+  /// reaches it through nothing else. Without this it keeps the label fit it
+  /// was built with (see [_headerActionsFitLabels]) while the title it was
+  /// measured against changes width, and the copy and the row underneath it
+  /// disagree about their own size.
+  ///
+  /// Pushed from a post-frame callback rather than mid-build, where
+  /// notifying a listener would rebuild the route's subtree during this
+  /// one's build.
+  final _sheetHeaderLines = ValueNotifier<({String title, String subtitle})?>(null);
+
+  /// The two lines the header's title control shows for [operation]. One
+  /// derivation, read both by the control itself and by
+  /// [_headerActionsFitLabels] — a second copy of this would let the labels
+  /// be weighed against a title other than the one on screen.
+  ///
+  /// The ref-derived subtitle only exists once OperationTitleService has run
+  /// at least once; until then it falls back to the raw ref labels so the
+  /// header isn't blank.
+  ({String title, String subtitle}) _headerTitleLines(BuildContext context, Operation operation) {
+    final suggested = displaySubtitleFor(operation);
+    return (
+      title: '${headerCallsignFor(operation)} ${displayTitleFor(context, operation)}',
+      subtitle: suggested.isNotEmpty
+          ? suggested
+          : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • '),
+    );
+  }
+
+  /// The falling-dots control's own footprint in the title row — the width
+  /// the leading gap rests at while the sheet is closed.
+  static const double _headerDotsWidth = 10.0;
+
+  /// A labeled header button's own chrome beyond the 48 logical pixels an
+  /// icon-only IconButton spends on the same icon — TextButton.icon's
+  /// start/end padding and the gap it sets between icon and label.
+  /// Approximate on purpose: it decides only WHERE the labels drop out, and
+  /// being a few pixels off moves that point rather than breaking anything.
+  static const double _headerLabelChrome = 12.0;
+
+  /// The same measure for the sheet's accept button, which is a
+  /// FilledButton.icon rather than a TextButton.icon and carries the heavier
+  /// M3 padding of one. Separate from [_headerLabelChrome] because reusing
+  /// that one under-counts this button by enough to keep labels at widths
+  /// that cannot hold them — the exact failure the fit exists to prevent.
+  static const double _acceptButtonChrome = 28.0;
+
+  /// The title control's own insets: the padding either side of the text
+  /// plus the dots slot and the gap after it (see the AppBar's `title`
+  /// below). Derived rather than typed, so a change to [Space] or to the
+  /// dots cannot silently drift the point at which labels drop out. Narrow
+  /// drops the left inset, as the title control itself does.
+  double _headerTitleChrome(bool isTwoPane) =>
+      (isTwoPane ? Space.xs : 0) + _headerDotsWidth + Space.xs + Space.lg;
+
+  /// Whether the header's Exports/Imports/Tools group can afford to carry
+  /// its labels.
+  ///
+  /// The group and the operation's own title share one header, so what the
+  /// labels add over the icon-only group comes out of whatever the title
+  /// does not need. Measured rather than pinned to a shirt size: the title
+  /// runs as long as the operator's callsign, title and refs happen to make
+  /// it, and the labels as long as the locale's words, so no fixed width is
+  /// the right answer for both — an S window with a short title has room a
+  /// wide one with a long title does not.
+  ///
+  /// The title's NATURAL width is what it is weighed at. It can survive on
+  /// less (shrinkToFitText takes it to 75% before ellipsizing), but that
+  /// headroom is there for a title too long for the header at any label
+  /// setting — spending it to buy labels would shrink the operation's own
+  /// name to pay for a word that repeats an icon.
+  bool _headerActionsFitLabels(
+    BuildContext context, {
+    required bool isTwoPane,
+    required String title,
+    required String subtitle,
+  }) {
+    final theme = Theme.of(context);
+    final t = context.t.activitiesView;
+    final titleStyle = theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge ?? const TextStyle();
+    final subtitleStyle = theme.textTheme.labelMedium ?? const TextStyle();
+    final labelStyle = theme.textTheme.labelLarge ?? const TextStyle();
+
+    // What the header gives up to the setup sheet's accept button while the
+    // sheet is up ([_leadingGapWidth] widens the title's leading gap to it),
+    // costed the same way a labeled button above is. Reserved even while the
+    // sheet is closed, and derived rather than read off the live button, so
+    // this answers the same either way: a decision that swung on the sheet
+    // would drop the labels partway through the opening animation and put
+    // them back partway through the close, and [_sheetOkButtonWidth] reads
+    // null between opens besides.
+    final acceptButtonReserve =
+        kMinInteractiveDimension + _acceptButtonChrome + textWidth(context, context.t.common.ok, labelStyle);
+
+    final labels = isTwoPane ? [t.exports, t.imports, t.tools] : [t.tools];
+    final labelsCost = labels.fold<double>(
+      0.0,
+      (sum, label) => sum + _headerLabelChrome + textWidth(context, label, labelStyle),
+    );
+
+    final titleWanted = math.max(
+      textWidth(context, title, titleStyle),
+      subtitle.isEmpty ? 0.0 : textWidth(context, subtitle, subtitleStyle),
+    );
+
+    // The view's layout controls sit in this same row (see
+    // [_headerTrailingControls]) and take width the labels cannot also
+    // spend. One button: the three-button editing form only appears while
+    // layoutEditing, and that is exactly when these actions are not built at
+    // all (`editingHeader`), so it can never coincide with this measurement.
+    //
+    // Untested, deliberately. [acceptButtonReserve] is charged even with the
+    // sheet closed and over-reserves by more than this term is worth, so
+    // omitting it only misjudges a band of title widths roughly this button
+    // wide, and only while the sheet is open. A test tuned to that band
+    // would be measuring the placeholder font's glyph advance more than the
+    // arithmetic, and would break on any padding change. It is here because
+    // the budget must describe the row it is measuring.
+    final layoutControlsWidth = isTwoPane && _customLayout && !layoutSheetOpen
+        ? Space.md + kMinInteractiveDimension
+        : 0.0;
+
+    final slack = MediaQuery.sizeOf(context).width -
+        _leadingWidthFor(isTwoPane, context) -
+        acceptButtonReserve -
+        windowsCaptionClearance(context) -
+        labels.length * kMinInteractiveDimension -
+        layoutControlsWidth -
+        _headerTitleChrome(isTwoPane) -
+        titleWanted;
+    return slack >= labelsCost;
+  }
+
   /// (wide only) Export + Tools — shared between the AppBar's own actions and
   /// their live copy in headerTrailing (see _openOperationSheet): same icons,
   /// only the press handlers differ (immediate here, close-the-sheet-first
@@ -1653,21 +1909,32 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// instead of shifting position as Export appears and disappears across
   /// the width breakpoint.
   ///
-  /// Labeled buttons at L and up, icon-only below: there isn't room for
-  /// labels beside the title on S, and Export is dropped there entirely (its
-  /// only way in is Tools' own menu — see [_showOperationOptions]'s
-  /// `includeExport`).
+  /// Which of the three show at all is L's breakpoint: Exports and Imports
+  /// are dropped on S, where their only way in is Tools' own menu (see
+  /// [_showOperationOptions]'s `includeExport`/`includeImport`).
+  ///
+  /// Whether they carry LABELS is not a breakpoint at all — see
+  /// [_headerActionsFitLabels], which weighs them against the title they
+  /// take the room from.
   Widget _operationHeaderActions(
     BuildContext context, {
     required bool isTwoPane,
+    required String headerTitle,
+    required String headerSubtitle,
     required VoidCallback onOptions,
     required VoidCallback onExport,
     required VoidCallback onImport,
   }) {
     final t = context.t.activitiesView;
+    final labeled = _headerActionsFitLabels(
+      context,
+      isTwoPane: isTwoPane,
+      title: headerTitle,
+      subtitle: headerSubtitle,
+    );
     final onHeader = Theme.of(context).appBarTheme.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
     Widget headerButton({required IconData icon, required String label, required VoidCallback onPressed}) =>
-        isTwoPane
+        labeled
             ? TextButton.icon(
                 icon: Icon(icon),
                 label: Text(label),
@@ -1681,8 +1948,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (isTwoPane) headerButton(icon: MdiIcons.fileExportOutline, label: t.exports, onPressed: onExport),
-        if (isTwoPane) headerButton(icon: MdiIcons.fileImportOutline, label: t.imports, onPressed: onImport),
+        if (isTwoPane) headerButton(icon: MdiIcons.export, label: t.exports, onPressed: onExport),
+        if (isTwoPane) headerButton(icon: MdiIcons.import, label: t.imports, onPressed: onImport),
         headerButton(icon: MdiIcons.tools, label: t.tools, onPressed: onOptions),
       ],
     );
@@ -1699,11 +1966,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// this actually shows. Editing details here saves directly either way
   /// (editOperationDetails' own `save: true` default), not through a draft.
   ///
-  /// [includeExport] and [includeImport] add Export Logs / Imports as the
-  /// top rows — narrow layouts drop the AppBar's own Export/Imports icons
-  /// for lack of room beside the title, so this menu is their only way in
-  /// there; wide layouts keep the icons and leave them out here rather than
-  /// offer the same action twice.
+  /// [includeExport] and [includeImport] add Export Logs and Imports as the
+  /// top two rows, in that order — the header's own group reads
+  /// Exports/Imports left to right, and a menu standing in for it keeps that
+  /// order rather than inventing a second one. Narrow layouts drop those
+  /// icons from the header for lack of room beside the title, so this menu
+  /// is their only way in there; wide layouts keep the icons and leave them
+  /// out here rather than offer the same action twice.
   Future<void> _showOperationOptions(
     Operation operation, {
     bool includeExport = false,
@@ -1724,11 +1993,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           children: [
             if (includeExport)
               ListTile(
-                leading: const Icon(MdiIcons.fileExportOutline),
+                leading: const Icon(MdiIcons.export),
                 title: Text(t.exportLogs),
                 onTap: () {
                   Navigator.of(dialogContext).pop();
                   unawaited(_export(operation));
+                },
+              ),
+            if (includeImport)
+              ListTile(
+                leading: const Icon(MdiIcons.import),
+                title: Text(t.imports),
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(_import(operation));
                 },
               ),
             ListTile(
@@ -1740,15 +2018,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     developerMode: widget.services.settings.developerMode));
               },
             ),
-            if (includeImport)
-              ListTile(
-                leading: const Icon(MdiIcons.fileImportOutline),
-                title: Text(t.imports),
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  unawaited(_import(operation));
-                },
-              ),
             ListTile(
               enabled: false,
               leading: const Icon(MdiIcons.shareVariant),
@@ -2235,13 +2504,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // them inline) but aren't real contacts — every QSO *count* shown to
         // the user excludes them, matching scoring/export.
         final realQsoCount = qsos.where((q) => q.isRealContact).length;
-        // The ref-derived subtitle only exists once
-        // OperationTitleService has run at least once — until then, fall
-        // back to the raw ref labels so the header isn't blank.
-        final suggestedSubtitle = displaySubtitleFor(operation);
-        final refsLine = suggestedSubtitle.isNotEmpty
-            ? suggestedSubtitle
-            : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
+        final headerLines = _headerTitleLines(context, operation);
+        final refsLine = headerLines.subtitle;
+        // The only thing that tells the sheet's copy of the trailing
+        // controls that the title moved under it — see [_sheetHeaderLines].
+        if (_activeSheetKey != null && _sheetHeaderLines.value != headerLines) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _activeSheetKey != null) _sheetHeaderLines.value = headerLines;
+          });
+        }
 
         final isTwoPane = ShirtSize.of(context).isTwoPane;
 
@@ -2526,61 +2797,34 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // an arrangement to edit: the dock layout, which is two-pane
               // and experiment-gated.
               actions: [
-                // Operation-level actions, not scoped to the setup sheet: an
-                // operator reaches for Options/Export without necessarily
-                // opening it. Gone during layout editing along with the rest
-                // of the operation's own identity in this header — nothing
-                // about the operation is what's being arranged then. Narrow
-                // keeps only the gear — there isn't room for a second icon
-                // beside the title — with Export Logs folded into its menu
-                // instead of dropped.
-                // Fades out (and stops taking taps) while the sheet is up —
-                // its live copy slides in from here to just past the title
-                // instead (see headerTrailing in _openOperationSheet), so
-                // this is a relocation, not a duplicate appearing beside it.
-                if (!editingHeader)
-                  IgnorePointer(
-                    ignoring: _headerIconsInert,
-                    child: Opacity(
-                      opacity: _headerIconsFadeOpacity,
-                      child: KeyedSubtree(
-                        key: _headerActionsKey,
-                        child: _operationHeaderActions(
-                          context,
-                          isTwoPane: isTwoPane,
-                          onOptions: () => unawaited(
-                            _showOperationOptions(
-                              _draftOperation ?? operation,
-                              includeExport: !isTwoPane,
-                              includeImport: !isTwoPane,
-                            ),
-                          ),
-                          onExport: () => unawaited(_export(_draftOperation ?? operation)),
-                          onImport: () => unawaited(_import(_draftOperation ?? operation)),
+                // Inert as a whole while the sheet is up: its copy above the
+                // barrier (headerTrailing in _openOperationSheet) is the one
+                // taking taps then, drawn in this same spot from the same
+                // builder. Nothing here moves, fades or duplicates visibly —
+                // only the layout controls change, going dim and disabled
+                // inside the shared builder.
+                IgnorePointer(
+                  ignoring: _headerIconsInert,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _headerTrailingControls(
+                      context,
+                      isTwoPane: isTwoPane,
+                      editingHeader: editingHeader,
+                      lines: headerLines,
+                      layoutControlsOpacity: _layoutControlsDisabledOpacity,
+                      onOptions: () => unawaited(
+                        _showOperationOptions(
+                          _draftOperation ?? operation,
+                          includeExport: !isTwoPane,
+                          includeImport: !isTwoPane,
                         ),
                       ),
+                      onExport: () => unawaited(_export(_draftOperation ?? operation)),
+                      onImport: () => unawaited(_import(_draftOperation ?? operation)),
                     ),
                   ),
-                if (isTwoPane && _customLayout) ...[
-                  // The sheet draws its own copy over this header while it
-                  // is up; two would be one too many, and the one down here
-                  // would be the unreachable one.
-                  if (!layoutSheetOpen) ...[
-                    // Separates it from Exports/Tools rather than the two
-                    // groups sitting flush — they act on different things
-                    // (the operation vs. the view's own arrangement), and
-                    // nothing about a labeled TextButton.icon's own padding
-                    // guarantees a gap here the way a plain IconButton's did.
-                    if (!editingHeader) const SizedBox(width: Space.md),
-                    IgnorePointer(
-                      ignoring: _headerIconsInert,
-                      child: Opacity(
-                        opacity: _headerIconsFadeOpacity,
-                        child: Row(mainAxisSize: MainAxisSize.min, children: layoutHeaderControls(context)),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
                 windowsCaptionSpacer(context),
               ],
               title: InkWell(
@@ -2646,7 +2890,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                         // end of a close and their own progress catching up
                         // to 0.
                         SizedBox(
-                          width: _leadingGapWidth,
+                          width: _leadingGapWidth(context, isTwoPane: isTwoPane),
                           height: 32,
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
@@ -2655,6 +2899,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                             ),
                           ),
                         ),
+                        // Separates the title from whichever control
+                        // precedes it — the dots, or the accept button that
+                        // grows out of them. Constant, not animated with the
+                        // gap above: what that gap corrects for is the
+                        // button's own left overhang, not the breathing room
+                        // after it, which both states want the same.
                         const SizedBox(width: Space.xs),
                       ],
                       // Flexible (loose), not Expanded (tight): Expanded
@@ -2687,7 +2937,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                               Text(
                                 editingHeader
                                     ? (viewOptions.title ?? context.t.operation.layout.viewName)
-                                    : '${headerCallsignFor(operation)} ${displayTitleFor(context, operation)}',
+                                    : headerLines.title,
                               ),
                             ),
                             if (!editingHeader && refsLine.isNotEmpty)

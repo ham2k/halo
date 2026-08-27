@@ -298,6 +298,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get searchUnavailableReason => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.';
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
 	@override String get exports => 'Exportar';
+	@override String get imports => 'Importar';
 	@override String get exportLogs => 'Exportar registros';
 	@override String get tools => 'Herramientas';
 	@override String get toolsTitle => 'Herramientas de la operación';
@@ -2796,6 +2797,7 @@ extension on TranslationsEs {
 			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
+			'activitiesView.imports' => 'Importar',
 			'activitiesView.exportLogs' => 'Exportar registros',
 			'activitiesView.tools' => 'Herramientas',
 			'activitiesView.toolsTitle' => 'Herramientas de la operación',
@@ -2891,9 +2893,9 @@ extension on TranslationsEs {
 			'formChrome.notConnected' => 'No conectado',
 			'formChrome.manage' => 'Administrar',
 			'formChrome.connect' => 'Conectar',
-			'formChrome.formTitle' => 'Formulario',
 			_ => null,
 		} ?? switch (path) {
+			'formChrome.formTitle' => 'Formulario',
 			'formChrome.addItem' => ({required Object label}) => 'Añadir ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'Editar ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'Mostrando ${shown} de ${total} (${selected} seleccionados)',
@@ -3405,9 +3407,9 @@ extension on TranslationsEs {
 			'commands.noOperationOpen' => 'Ese comando necesita una operación abierta',
 			'commands.reloadFailed' => ({required Object error}) => 'Error al recargar: ${error}',
 			'commands.reloadingAll' => 'Recargando todos los archivos de datos…',
-			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',
 			_ => null,
 		} ?? switch (path) {
+			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Experimento desconocido «${token}»',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} habilitado',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
