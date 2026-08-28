@@ -78,25 +78,83 @@ void main() {
     // half leaves the assertion above true.
     final source = _vendored('windows/src/ham2k_ble_mode.h');
     expect(source, contains('HAM2K_BLE_MODE'));
-    for (final arm in ['kOff', 'kNoInit', 'kNormal']) {
+    for (final arm in [
+      'kOff',
+      'kRegistrarOnly',
+      'kNoChannels',
+      'kNoDelegate',
+      'kNoInit',
+      'kNormal',
+    ]) {
       expect(
         source,
         contains(arm),
-        reason: 'each arm is one branch of the experiment; losing one silently '
-            'collapses HALO-290\'s three-way result into a two-way one',
+        reason: 'the arms form a ladder from the known-good arm (off) to the '
+            'known-bad one (noinit); losing a rung leaves a gap the bisect '
+            'cannot close, and the gap is invisible until someone runs it',
       );
     }
+  });
+
+  test('each rung of the ladder is actually wired to something', () {
+    // An arm that parses but gates nothing is worse than no arm: it launches,
+    // reads as exonerating the step it names, and sends the next round after
+    // the wrong code. Build 155 cost a release cycle per answer, so a dud rung
+    // is expensive.
+    expect(
+      _vendored('windows/universal_ble_plugin_c_api.cpp'),
+      contains('kRegistrarOnly'),
+      reason: 'the registrar arm has to stop BETWEEN GetRegistrar and '
+          'RegisterWithRegistrar, which only the C API can do',
+    );
+    expect(
+      _vendored('windows/src/universal_ble_plugin.cpp'),
+      contains('kNoChannels'),
+      reason: 'the nochannels arm gates the four SetUp calls in '
+          'RegisterWithRegistrar',
+    );
+    expect(
+      _vendored('windows/src/ui_thread_handler.hpp'),
+      contains('kNoDelegate'),
+      reason: 'the nodelegate arm gates RegisterTopLevelWindowProcDelegate, '
+          'the window proc hook mtx_do_lock is reached through',
+    );
+  });
+
+  test('the nodelegate arm does not unregister a delegate it never registered', () {
+    // Without the guard, ~UniversalBleUiThreadHandler hands the engine a
+    // window-proc id that was never issued. That is its own crash, in the one
+    // arm whose result we most need to trust — and it would read as "the
+    // delegate IS the problem", the exact conclusion the arm exists to test.
+    final source = _vendored('windows/src/ui_thread_handler.hpp');
+    expect(source, contains('registered_'));
+    final body = source.substring(source.indexOf('~UniversalBleUiThreadHandler'));
+    expect(
+      body.substring(0, body.indexOf('\n    }')),
+      contains('if (registered_)'),
+      reason: 'the destructor must skip UnregisterTopLevelWindowProcDelegate '
+          'when the nodelegate arm skipped the registration',
+    );
   });
 
   test('the off arm still skips registration', () {
     final source = _vendored('windows/universal_ble_plugin_c_api.cpp');
     expect(
       source,
-      contains('ham2k::Ham2kBleMode() == ham2k::BleMode::kOff'),
+      contains('ham2k::BleMode::kOff'),
       reason: 'returning before RegisterWithRegistrar IS the off arm; without '
           'it HAM2K_BLE_MODE=off registers the plugin anyway and the operator '
           'reads "the crash survives disabling BLE" from a build that never '
           'disabled it',
+    );
+    // Order is the whole content of the off arm: it must return BEFORE
+    // GetRegistrar, or the arm silently stops testing the first step of the
+    // ladder while still reading as "nothing ran".
+    expect(
+      source.indexOf('kOff'),
+      lessThan(source.indexOf('GetRegistrar')),
+      reason: 'the off arm must return before GetRegistrar<>(), otherwise the '
+          'registrar rung below it is comparing two arms that both ran it',
     );
   });
 

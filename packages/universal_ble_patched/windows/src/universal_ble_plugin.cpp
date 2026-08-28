@@ -70,12 +70,18 @@ IPropertyValue lookup_i_property_value(
 void UniversalBlePlugin::RegisterWithRegistrar(
     flutter::PluginRegistrarWindows *registrar) {
   auto plugin = std::make_unique<UniversalBlePlugin>(registrar);
-  UniversalBlePlatformChannel::SetUp(registrar->messenger(), plugin.get());
-  UniversalBlePeripheralChannel::SetUp(registrar->messenger(), plugin.get());
-  callback_channel =
-      std::make_unique<UniversalBleCallbackChannel>(registrar->messenger());
-  peripheral_callback_channel_ =
-      std::make_unique<UniversalBlePeripheralCallback>(registrar->messenger());
+  // HALO-290 `nochannels`: the plugin and its window proc delegate exist, but
+  // nothing is bound to the messenger. Dart calls then fail with
+  // MissingPluginException, which is harmless here only because the peer BLE
+  // sub-switch defaults off.
+  if (ham2k::Ham2kBleMode() != ham2k::BleMode::kNoChannels) {
+    UniversalBlePlatformChannel::SetUp(registrar->messenger(), plugin.get());
+    UniversalBlePeripheralChannel::SetUp(registrar->messenger(), plugin.get());
+    callback_channel =
+        std::make_unique<UniversalBleCallbackChannel>(registrar->messenger());
+    peripheral_callback_channel_ =
+        std::make_unique<UniversalBlePeripheralCallback>(registrar->messenger());
+  }
   registrar->AddPlugin(std::move(plugin));
 }
 

@@ -4,6 +4,8 @@
 
 #include <flutter/plugin_registrar_windows.h>
 
+#include "ham2k_ble_mode.h"
+
 #include <algorithm>
 #include <functional>
 #include <optional>
@@ -15,16 +17,30 @@ public:
     explicit UniversalBleUiThreadHandler(flutter::PluginRegistrarWindows *registrar)
         : registrar_(registrar)
     {
+        // HALO-290 `nodelegate`: the one arm that subtracts. Everything else
+        // about the plugin is built; only the top-level window proc hook is
+        // absent. `mtx_do_lock` is reached through a window message, so this
+        // is the direct test of whether that path is the crash.
+        if (ham2k::Ham2kBleMode() == ham2k::BleMode::kNoDelegate)
+        {
+            return;
+        }
         windowProcId_ = registrar_->RegisterTopLevelWindowProcDelegate(
             [this](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
             {
                 return HandleWindowMessage(hwnd, message, wparam, lparam);
             });
+        registered_ = true;
     }
 
     ~UniversalBleUiThreadHandler()
     {
-        registrar_->UnregisterTopLevelWindowProcDelegate(windowProcId_);
+        // Unregistering an id that was never handed out is not a no-op in the
+        // engine's delegate map -- the `nodelegate` arm must not do it.
+        if (registered_)
+        {
+            registrar_->UnregisterTopLevelWindowProcDelegate(windowProcId_);
+        }
     }
 
     UniversalBleUiThreadHandler(const UniversalBleUiThreadHandler &) = delete;
@@ -73,6 +89,7 @@ private:
 
     flutter::PluginRegistrarWindows *registrar_;
     int windowProcId_ = 0;
+    bool registered_ = false;
     HWND hwnd_ = 0;
     std::list<std::function<void()>> queuedFuncs_;
     std::mutex mutex_;

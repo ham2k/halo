@@ -14,12 +14,22 @@ void UniversalBlePluginCApiRegisterWithRegistrar(
     // MissingPluginException on first use -- acceptable only because the peer
     // BLE sub-switch defaults off and nothing touches the plugin until it is
     // turned on (peer_service.dart's `wantBle`). See PATCH.md.
-    if (ham2k::Ham2kBleMode() == ham2k::BleMode::kOff)
+    const auto mode = ham2k::Ham2kBleMode();
+    if (mode == ham2k::BleMode::kOff)
     {
         return;
     }
 
-    universal_ble::UniversalBlePlugin::RegisterWithRegistrar(
+    // Split out so `registrar` can stop between the two. GetRegistrar builds
+    // the Flutter wrapper's own registrar map, which is the first thing the
+    // `off` arm skips and therefore the first suspect the ladder must clear.
+    auto *windows_registrar =
         flutter::PluginRegistrarManager::GetInstance()
-            ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar));
+            ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar);
+    if (mode == ham2k::BleMode::kRegistrarOnly)
+    {
+        return;
+    }
+
+    universal_ble::UniversalBlePlugin::RegisterWithRegistrar(windows_registrar);
 }

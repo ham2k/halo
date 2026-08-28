@@ -8,11 +8,22 @@
 // machine we cannot build for, so a single signed release can carry every
 // arm of the A/B instead of needing one build per arm.
 //
-//   (unset)  register the plugin and initialize, exactly as upstream does.
-//   noinit   register the plugin -- channels and the top-level window proc
-//            delegate are hooked -- but skip `InitializeAsync()`, so no WinRT
-//            radio enumeration runs.
-//   off      never register at all: no delegate, no channels, no init.
+// Build 155 established that `off` launches and `noinit` crashes, so the
+// fault is in REGISTRATION, not in the Bluetooth work. These arms bisect what
+// is left, as a ladder from the known-good arm to the known-bad one -- each
+// step adds exactly one thing, so whichever arm first fails names the culprit:
+//
+//   off          nothing at all runs.                        (155: launches)
+//   registrar    + GetRegistrar<PluginRegistrarWindows>().
+//   nochannels   + construct the plugin (delegate hooked) and AddPlugin,
+//                  but none of the four channel SetUp calls.
+//   nodelegate   + everything, EXCEPT registering the window proc delegate.
+//   noinit       + everything except InitializeAsync().       (155: crashes)
+//   (unset)      + InitializeAsync() too, i.e. upstream.      (155: crashes)
+//
+// `nodelegate` is off the ladder's spine on purpose: it is the one arm that
+// subtracts rather than adds, and it is the direct test of the delegate
+// registration that `mtx_do_lock` points at.
 //
 // The unset arm MUST stay byte-for-byte upstream's behaviour: it is the
 // experiment's control, and a "harmless" fix folded into it would leave a
@@ -34,6 +45,9 @@ namespace ham2k {
 enum class BleMode {
   kNormal,
   kNoInit,
+  kNoDelegate,
+  kNoChannels,
+  kRegistrarOnly,
   kOff,
 };
 
@@ -88,9 +102,27 @@ inline BleMode Ham2kBleMode() {
           L"InitializeAsync skipped\n");
       return BleMode::kNoInit;
     }
+    if (::_wcsicmp(value, L"nodelegate") == 0) {
+      AnnounceBleMode(
+          L"[ham2k] BLE mode: nodelegate - registered, but NO window proc "
+          L"delegate\n");
+      return BleMode::kNoDelegate;
+    }
+    if (::_wcsicmp(value, L"nochannels") == 0) {
+      AnnounceBleMode(
+          L"[ham2k] BLE mode: nochannels - plugin + delegate only, no "
+          L"channels\n");
+      return BleMode::kNoChannels;
+    }
+    if (::_wcsicmp(value, L"registrar") == 0) {
+      AnnounceBleMode(
+          L"[ham2k] BLE mode: registrar - GetRegistrar only, plugin never "
+          L"constructed\n");
+      return BleMode::kRegistrarOnly;
+    }
     AnnounceBleMode(
         L"[ham2k] BLE mode: normal (HAM2K_BLE_MODE not recognised; "
-        L"expected 'off' or 'noinit')\n");
+        L"expected off/registrar/nochannels/nodelegate/noinit)\n");
     return BleMode::kNormal;
   }();
   return mode;
