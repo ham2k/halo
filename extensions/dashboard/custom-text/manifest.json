@@ -5,7 +5,6 @@
   "version": "0.0.1",
   "description": "A pane holding whatever you write in it — notes, a sked list, a band plan — in markdown",
   "category": "dashboard",
-  "experiments": ["panels"],
   "enabledByDefault": false,
   "icon": "note-text-outline",
   "keywords": [

@@ -44,8 +44,6 @@ import type { ExistingQsoStats } from "./seed.ts"
 
 import { describeTimeTravel, parseTimeTravelCommand } from "./timetravel.ts"
 
-import { PanelContextPanel } from "./panel.ts"
-
 import manifest from "../manifest.json" with { type: "json" }
 
 /// Builds a `catalog` for one dev command. These stay OUT of the command
@@ -541,6 +539,5 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-exp', hook: ExpCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devtimetravel', hook: DevTimeTravelCommand, priority: 100 })
-    registerHook('panel', { key: 'dev-commands', hook: PanelContextPanel })
   },
 })

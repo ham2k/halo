@@ -843,12 +843,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// Two-pane only, and off by default: a fixed arrangement is the one an
   /// operator can be talked through over the air, so rearranging is something
   /// they opt into.
-  /// Deliberately NOT inherited from the `panels` experiment, which gates
-  /// the dashboard PANEL extensions rather than the dock (see
-  /// app/experiments.yaml). Reading it here would mean that
-  /// switching those panels on quietly rearranged the operator's view as
-  /// well — two features behind one switch, which is what splitting them
-  /// was for.
+  /// Deliberately independent of which panels exist: enabling a dashboard
+  /// panel extension must never quietly rearrange the operator's view as
+  /// well — two features behind one switch.
   bool get layoutCustomization => (settingValue(generalGroup, _layoutCustomizationKey) as bool?) ?? false;
 
   Future<void> setLayoutCustomization(bool value) =>

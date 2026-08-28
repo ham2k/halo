@@ -190,11 +190,10 @@ class GeneralSettingsGroup extends SettingsGroup {
       ),
       _toggle(
         key: 'layoutCustomization',
-        // NOT 'panels': that is the dashboard-panel EXPERIMENT's key, and
-        // experiments are not in this catalog, so nothing here could flag the
-        // ambiguity. An operator told to "turn panels on" would get a
-        // rearrangeable view and still no Solar or Custom Text. (Clock,
-        // Weather and Web Site are native, and need only this setting.)
+        // NOT 'panels': this setting decides whether a view can be
+        // REARRANGED, not what there is to arrange. An operator told to
+        // "turn panels on" would get a rearrangeable view and still no
+        // Custom Text, which is an extension they enable separately.
         aliases: const ['layout', 'dock'],
         label: t.settings.layoutCustomization.title,
         icon: 'view-dashboard',

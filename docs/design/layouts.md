@@ -209,15 +209,12 @@ as a `layoutPolicy` const on the view class:
   air, so rearranging is opted into. The **LAYOUTS** command (LYT or LAYOUT
   too) toggles it from the command bar — `SET LAYOUT` reaches the same
   setting, but the word an operator is told over the air is this one. Currently only the **Operation** view.
-  The **`panels` experiment** is a separate switch and stays one: it gates
-  every dashboard PANEL extension — Custom Text is the only one today, and it
-  declares the key in its manifest — and nothing else. It answers to `PANELS` and `PANEL` and
-  nothing else: it is what the `layouts` experiment became once the dock
-  stopped being a tester's feature, and every dock word now belongs to the
-  setting's own command. State does not follow a key change either. Rearranging what already
-  ships needs only the setting; the experiment is what adds more to arrange.
-  The setting does not read the experiment either — two features behind one
-  switch is what splitting them was for.
+  This setting decides whether a view can be REARRANGED, never what there is
+  to arrange: the native panels ship with the app, and a dashboard PANEL
+  extension (Custom Text is the only one today) is enabled from the
+  Extensions panel like any other. The two are independent on purpose:
+  enabling a panel must not quietly rearrange somebody's view, and turning
+  customization on must not install anything.
   A dragged tab can land on another group's
   **tab strip** (joining that group at the position aimed at, which is also
   how tabs reorder), on one of the **four split bands** over a group's body,

@@ -160,6 +160,19 @@ const bundles = [
 // than a yaml dependency — the catalog is a flat hand-edited list.
 const experimentsCatalog = await readFile(resolve(root, '../app/experiments.yaml'), 'utf-8')
 const knownExperiments = new Set([...experimentsCatalog.matchAll(/^\s*-\s*key:\s*(\S+)/gm)].map((m) => m[1]))
+// The extraction has to prove itself: no shipped manifest declares
+// `experiments` today, so the validation below iterates zero times and a
+// regex that silently stopped matching the catalog would go unnoticed until
+// somebody added a gate — and then fail in whichever direction it broke.
+// An over-matching regex is the dangerous one, because it validates a typo'd
+// key, which hides the extension from every user with no runtime signal.
+// `experiments` is the meta-experiment gating the Experiments list, the one
+// key the catalog cannot lose.
+if (!knownExperiments.has('experiments')) {
+  throw new Error(
+    `app/experiments.yaml parsed to ${knownExperiments.size} key(s), none of them 'experiments' — ` +
+      'the extraction regex no longer matches the catalog')
+}
 
 // Load and sanity-check every extension's manifest up front, so a typo'd
 // key, a missing file, or a missing required field fails the build before

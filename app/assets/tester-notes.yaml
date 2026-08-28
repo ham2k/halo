@@ -10,6 +10,7 @@ upcoming:
     - Spanish now covers QSO import, test operations and the activity results map
     - Phones can now rearrange their layout too, kept separately from the wide one
     - Drop a tab onto a pane's centre to stack them both under one tab
+    - "Custom Text panel: turn LAYOUTS on, enable it in Extensions, then add it to a pane"
 
 "155":
   changes:

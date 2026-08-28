@@ -1487,9 +1487,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
               },
               // Filtered to the extensions that contribute panels — an
               // operator sent here for more panels should not be handed the
-              // whole catalog. Offered only when it leads somewhere: panel
-              // extensions are themselves behind the `panels` experiment, so
-              // with that off there are none at all, and a button whose whole
+              // whole catalog. Offered only when it leads somewhere: with no
+              // panel extension installed at all, a button whose whole
               // purpose is "find the panel you want" opening an empty list is
               // worse than no button.
               onManageExtensions: _hasPanelExtensions
