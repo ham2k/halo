@@ -9,10 +9,13 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ham2k_logger/services/android_file_save.dart';
 import 'package:ham2k_logger/services/export_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -640,6 +643,120 @@ void main() {
       expect((operationIn(payload)['local'] as Map).keys, ['operatorCall']);
     });
   });
+
+  group('saving on Android', () {
+    // `file_selector_android` implements neither `getSaveLocation` nor a
+    // writable directory picker, so anything reaching `file_selector` here is
+    // an "Export failed: UnimplementedError: getSavePath() has not been
+    // implemented." toast in the operator's face — which is exactly what
+    // these assert never happens again.
+    late _FakeAndroidFileSave saver;
+    late ExportService service;
+
+    setUp(() {
+      // `flutter test` already reports itself as Android, so this override is
+      // what makes the DESKTOP case below reachable — not this one.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      saver = _FakeAndroidFileSave();
+      service = ExportService(
+        extensions: ExtensionService(),
+        qsos: QsosRepository(db),
+        settings: settings,
+        androidFileSave: saver,
+      );
+    });
+
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('one file goes to the create-document dialog, not file_selector', () async {
+      final saved = await service.saveToDisk([
+        {'filename': 'N0CALL.adi', 'mimeType': 'text/plain', 'content': 'ADIF'},
+      ]);
+
+      expect(saver.asked, [
+        {'filename': 'N0CALL.adi', 'content': 'ADIF'}
+      ]);
+      // The platform renames around a collision, so the name it reports back is
+      // the one the status bar has to show — not the one we asked for.
+      expect(saved, 'saved-N0CALL.adi');
+    });
+
+    test('every OTHER platform still goes to file_selector', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+      // No plugin is registered under `flutter test`, so file_selector throwing
+      // is itself the proof the desktop branch was taken. Without this the
+      // platform guard is untestable: widening it to every platform — which
+      // hands every desktop operator a MissingPluginException where their save
+      // dialog was — passes every other test in this group.
+      await expectLater(
+        service.saveToDisk([
+          {'filename': 'N0CALL.adi', 'content': 'ADIF'},
+        ]),
+        throwsA(isA<MissingPluginException>()),
+      );
+      expect(saver.asked, isEmpty);
+    });
+
+    test('several files are offered one at a time, under distinct names', () async {
+      await service.saveToDisk([
+        {'filename': 'N0CALL.adi', 'content': 'one'},
+        {'filename': 'N0CALL.adi', 'content': 'two'},
+      ]);
+
+      // Deduplicated before the dialogs, not after: two files offered under one
+      // name walk the operator into overwriting the first export with the
+      // second, having been told nothing.
+      expect(saver.asked, [
+        {'filename': 'N0CALL.adi', 'content': 'one'},
+        {'filename': 'N0CALL-2.adi', 'content': 'two'},
+      ]);
+    });
+
+    test('a cancelled dialog abandons the rest and reports what was saved', () async {
+      // Three offered, the operator cancelled the third: the message names the
+      // two that landed, and the third was never written. Reporting all three
+      // would tell them a file exists that doesn't.
+      saver.cancelAt = 2;
+
+      final saved = await service.saveToDisk([
+        {'filename': 'A.adi', 'content': 'a'},
+        {'filename': 'B.adi', 'content': 'b'},
+        {'filename': 'C.adi', 'content': 'c'},
+      ]);
+
+      expect(saved, 'saved-A.adi, saved-B.adi');
+      expect(saver.asked.map((f) => f['filename']), ['A.adi', 'B.adi'],
+          reason: 'the abandoned file is not offered again after the cancel');
+    });
+
+    test('cancelling the first dialog is a null answer, not a failure', () async {
+      saver.cancelAt = 0;
+      expect(
+        await service.saveToDisk([
+          {'filename': 'N0CALL.adi', 'content': 'ADIF'},
+        ]),
+        isNull,
+      );
+    });
+
+    test('a write that fails partway still names the files already on disk', () async {
+      // The operator is left with A and B written and C not. An error that
+      // mentions only C sends them looking for files they already have.
+      saver.failAt = 2;
+
+      await expectLater(
+        service.saveToDisk([
+          {'filename': 'A.adi', 'content': 'a'},
+          {'filename': 'B.adi', 'content': 'b'},
+          {'filename': 'C.adi', 'content': 'c'},
+        ]),
+        throwsA(isA<ExportException>().having((e) => e.toString(), 'message',
+            allOf(contains('No space left'), contains('saved-A.adi, saved-B.adi')))),
+      );
+    });
+  });
+
 }
 
 /// Captures what each `generateExport` call was handed, and answers with a
@@ -686,4 +803,25 @@ class _ExtensionsWithHost extends ExtensionService {
   Future<void> start() async {}
 
 
+}
+
+/// Stands in for the platform channel, recording what the Android save flow
+/// was asked to write.
+class _FakeAndroidFileSave extends AndroidFileSave {
+  final List<Map<String, String>> asked = [];
+
+  /// The index of the dialog the operator cancels, and the one whose write
+  /// fails — the two ways a run ends short of every file.
+  int? cancelAt;
+  int? failAt;
+
+  @override
+  Future<String?> saveFile({required String filename, required String content}) async {
+    if (asked.length == cancelAt) return null;
+    if (asked.length == failAt) throw PlatformException(code: 'save_failed', message: 'No space left');
+    asked.add({'filename': filename, 'content': content});
+    // Deliberately NOT the name asked for: the platform renames around a
+    // collision, which is the whole reason the channel reports a name back.
+    return 'saved-$filename';
+  }
 }

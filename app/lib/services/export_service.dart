@@ -12,11 +12,13 @@ import 'dart:io';
 import 'dart:ui' show Rect;
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
 
+import 'android_file_save.dart';
 import 'extension_service.dart';
 import 'settings_service.dart';
 import 'web_download.dart';
@@ -34,7 +36,16 @@ class ExportService {
   final QsosRepository qsos;
   final SettingsService settings;
 
-  ExportService({required this.extensions, required this.qsos, required this.settings});
+  /// Android's save flow, injectable so tests can drive it without a platform
+  /// channel.
+  final AndroidFileSave androidFileSave;
+
+  ExportService({
+    required this.extensions,
+    required this.qsos,
+    required this.settings,
+    this.androidFileSave = const AndroidFileSave(),
+  });
 
   /// Raw QSON dump (the same payload every hook receives), offered only in
   /// developer mode — same as app-polo's devMode extension. Generated here in
@@ -372,12 +383,21 @@ class ExportService {
     ];
   }
 
-  /// Desktop save flow: a single file opens a save dialog for that file;
-  /// multiple files opens a directory picker and writes them all there.
-  /// Returns the saved path (single file) or directory path (multiple), or
-  /// null if the user cancelled.
+  /// Save flow: on desktop a single file opens a save dialog for that file and
+  /// multiple files open a directory picker; on Android every file gets its own
+  /// dialog (see below). Returns something naming where the files went — a
+  /// path, a directory, or the names Android reported — or null if the operator
+  /// saved nothing.
   Future<String?> saveToDisk(List<Map<String, dynamic>> files) async {
     if (files.isEmpty) return null;
+
+    // Android has no `file_selector` save at all — `getSaveLocation` throws
+    // `UnimplementedError` there, and the raw path its directory picker
+    // returns is not writable under scoped storage — so the flow goes through
+    // the Storage Access Framework instead ([AndroidFileSave]).
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return _saveOnAndroid(files);
+    }
 
     if (files.length == 1) {
       final file = files.first;
@@ -400,6 +420,39 @@ class ExportService {
       await File(p.join(directory, filenames[i])).writeAsString(files[i]['content'] as String);
     }
     return directory;
+  }
+
+  /// One "create document" dialog per file, in order — app-polo's Save loop
+  /// (`OperationDataScreen.jsx`), and the only shape the SAF offers that lets
+  /// the operator save straight into Downloads: `ACTION_OPEN_DOCUMENT_TREE`
+  /// refuses to grant that folder from Android 12 on, so a single folder
+  /// picker would make them create a subfolder to get there.
+  ///
+  /// Reports only what actually landed. Cancelling the third of four dialogs
+  /// saved three files, and a write that fails on the third leaves two on
+  /// disk — the operator has to be told which, in both cases, or they go
+  /// looking for files that aren't there and re-export ones that are.
+  Future<String?> _saveOnAndroid(List<Map<String, dynamic>> files) async {
+    final names = _uniqueFilenames(files);
+    final saved = <String>[];
+    for (var i = 0; i < files.length; i++) {
+      final String? name;
+      try {
+        name = await androidFileSave.saveFile(
+          filename: names[i],
+          content: files[i]['content'] as String,
+        );
+      } catch (e) {
+        throw ExportException(
+          saved.isEmpty ? '$e' : '$e — ${saved.join(', ')} had already been saved',
+        );
+      }
+      // Cancelling one dialog abandons the files still to come, rather than
+      // asking again for every one of them.
+      if (name == null) break;
+      saved.add(name);
+    }
+    return saved.isEmpty ? null : saved.join(', ');
   }
 
   /// Web download flow: hands each file to the browser as its own download.

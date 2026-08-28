@@ -1,6 +1,7 @@
 package com.ham2k.logger
 
 import android.content.Context
+import android.content.Intent
 import android.hardware.input.InputManager
 import android.view.InputDevice
 import io.flutter.embedding.android.FlutterActivity
@@ -14,6 +15,10 @@ class MainActivity : FlutterActivity() {
   private var hardwareKeyboardChannel: MethodChannel? = null
   private var inputDeviceListener: InputManager.InputDeviceListener? = null
 
+  // The Storage Access Framework save flow the export panel needs
+  // (FileSaveChannel): file_selector has no working save on Android.
+  private var fileSaveChannel: FileSaveChannel? = null
+
   override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine)
     hardwareKeyboardChannel =
@@ -24,6 +29,7 @@ class MainActivity : FlutterActivity() {
         else -> result.notImplemented()
       }
     }
+    fileSaveChannel = FileSaveChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
     inputDeviceListener = object : InputManager.InputDeviceListener {
       override fun onInputDeviceAdded(deviceId: Int) = push()
@@ -42,7 +48,17 @@ class MainActivity : FlutterActivity() {
     }
     inputDeviceListener = null
     hardwareKeyboardChannel = null
+    fileSaveChannel?.dispose()
+    fileSaveChannel = null
     super.cleanUpFlutterEngine(flutterEngine)
+  }
+
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    // Ours first: the picker results belong to no plugin, and forwarding them
+    // on would have every registered plugin inspect a request code it doesn't
+    // own.
+    if (fileSaveChannel?.onActivityResult(requestCode, resultCode, data) == true) return
+    super.onActivityResult(requestCode, resultCode, data)
   }
 
   // Alphabetic + non-virtual + keyboard-sourced: phones routinely carry
