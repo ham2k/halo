@@ -88,12 +88,28 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   String get dockView => PanelViews.operation;
 
   @override
-  DockLayoutKeys get dockKeys => const DockLayoutKeys(
-    spec: LayoutKeys.operationDock,
-    state: LayoutKeys.operationDockState,
-    paneOptions: LayoutKeys.operationPaneOptions,
-    viewOptions: LayoutKeys.operationViewOptions,
-  );
+  DockLayoutKeys dockKeysFor(DockLayoutClass layoutClass) => switch (layoutClass) {
+    DockLayoutClass.wide => const DockLayoutKeys(
+      spec: LayoutKeys.operationDock,
+      state: LayoutKeys.operationDockState,
+      paneOptions: LayoutKeys.operationPaneOptions,
+      viewOptions: LayoutKeys.operationViewOptions,
+    ),
+    DockLayoutClass.narrow => const DockLayoutKeys(
+      spec: LayoutKeys.operationNarrowDock,
+      state: LayoutKeys.operationNarrowDockState,
+      paneOptions: LayoutKeys.operationNarrowPaneOptions,
+      viewOptions: LayoutKeys.operationNarrowViewOptions,
+    ),
+  };
+
+  /// The logging pane is pinned NARROW and only narrow. A phone with no
+  /// logging pane cannot enter a QSO at all, and the arrangement that took it
+  /// away looks like any other — whereas wide always draws logging alongside
+  /// whatever else is arranged, so there is nothing there to protect.
+  @override
+  Set<String> get pinnedModuleIds =>
+      dockLayoutClass == DockLayoutClass.narrow ? const {'logging'} : const {};
 
   @override
   Set<String> get nativeModuleIds => {
@@ -304,11 +320,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// widget outside build would register a dependency there. Safe to call from
   /// build: `SpotsPanel` answers it without a setState of its own.
   ///
-  /// The dock arrangement has no tab strip of its own here, so this side is
-  /// unconditionally true there and `DockPaneVisibility` decides alone.
+  /// The tab controller is only ever the answer for the FIXED narrow
+  /// arrangement — with customization on there is a dock at every width, and
+  /// this side is unconditionally true so `DockPaneVisibility` decides alone.
   void _syncSpotsVisibility() {
-    _spotsVisible.value =
-        (_wasTwoPane == true && _customLayout) || _tabController?.index == _kSpotsTabIndex;
+    _spotsVisible.value = _customLayout || _tabController?.index == _kSpotsTabIndex;
   }
 
   void _updateTabControllerIfNeeded(int requiredLength) {
@@ -618,10 +634,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   /// Surface the logging panel wherever this layout keeps it.
   void _revealLoggingPanel() {
-    if (!ShirtSize.of(context).isTwoPane) {
-      _tabController?.animateTo(0);
-    } else if (_customLayout) {
+    // The dock answers for both classes; the tab controller only for the fixed
+    // narrow arrangement customization-off still draws.
+    if (_customLayout) {
       dockKey.currentState?.revealModule('logging');
+    } else if (!ShirtSize.of(context).isTwoPane) {
+      _tabController?.animateTo(0);
     }
   }
 
@@ -641,14 +659,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // its State adopted) in the narrow TabBarView's first frame; on any
     // other index, page 0 wouldn't be inflated and the in-progress QSO
     // entry would be disposed.
-    if (_wasTwoPane == true && !isTwoPane) _tabController?.index = 0;
-    // Narrowing takes the dock away, and with it the header's edit controls
-    // — as far as the operator can see, the edit is over. The DRAFT stays
-    // (widening returns to it), but the focus edit mode took has to come
-    // back, or they meet a normal-looking logging view that swallows every
-    // keystroke. Kept, not consumed: the eventual Save or discard hands it
-    // back again if the operator widens and finishes there.
-    if (_wasTwoPane == true && !isTwoPane && layoutEditing) restoreFocusAfterEditing(keep: true);
+    // Only for the FIXED narrow arrangement: with customization on, narrowing
+    // hands over to the narrow DOCK, which opens on its own stored selection
+    // and keeps every pane mounted, so there is no page to inflate and no
+    // State to rescue. An edit in progress crosses the boundary with the
+    // operator (docs/design/layouts.md) rather than being stranded there.
+    if (!_customLayout && _wasTwoPane == true && !isTwoPane) _tabController?.index = 0;
     _wasTwoPane = isTwoPane;
   }
 
@@ -1232,13 +1248,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// that stops here would spend its splash on nothing. Saying so lets the
   /// caller fall back to the modal, which always works.
   bool _revealInfoPane() {
-    if (!ShirtSize.of(context).isTwoPane) return false;
+    // Asked of the dock first, at either width: the narrow arrangement ships
+    // without an Info pane but the operator may have added one, and `modules`
+    // is what actually answers that — a width test would refuse a pane that
+    // is on screen.
     if (_customLayout) {
       final dock = dockKey.currentState;
       if (dock == null || !dock.modules.contains('info')) return false;
       dock.revealModule('info');
       return true;
     }
+    if (!ShirtSize.of(context).isTwoPane) return false;
     if (_tabController == null) return false;
     if (_tabController!.index != 0) _tabController!.animateTo(0);
     return true;
@@ -1510,7 +1530,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                                     await sheetKey.currentState?.saveAndClose();
                                     if (mounted) {
                                       unawaited(_showOperationOptions(op,
-                                          includeExport: !isTwoPane, includeImport: !isTwoPane));
+                                          includeExport: !isTwoPane,
+                                          includeImport: !isTwoPane,
+                                          includeEditLayout: !isTwoPane && _customLayout && !layoutEditing));
                                     }
                                   },
                                   onExport: () async {
@@ -1741,7 +1763,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             onExport: onExport,
             onImport: onImport,
           ),
-        if (isTwoPane && _customLayout) ...[
+        // Narrow gives the way IN to the Tools menu (see
+        // [_showOperationOptions]) — the header there has room for the title
+        // and one button, and the operation's own title has the better claim.
+        // Once editing, the controls come back here at every width: a menu is
+        // not somewhere to hide the only way out of a mode.
+        if (_customLayout && (isTwoPane || layoutEditing)) ...[
           // The LAYOUT sheet draws its own copy of these while IT is up; two
           // would be one too many, and the one down here would be the
           // unreachable one.
@@ -1886,7 +1913,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // would be measuring the placeholder font's glyph advance more than the
     // arithmetic, and would break on any padding change. It is here because
     // the budget must describe the row it is measuring.
-    final layoutControlsWidth = isTwoPane && _customLayout && !layoutSheetOpen
+    final layoutControlsWidth = _customLayout && !layoutSheetOpen && (isTwoPane || layoutEditing)
         ? Space.md + kMinInteractiveDimension
         : 0.0;
 
@@ -1974,10 +2001,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// icons from the header for lack of room beside the title, so this menu
   /// is their only way in there; wide layouts keep the icons and leave them
   /// out here rather than offer the same action twice.
+  ///
+  /// [includeEditLayout] adds Edit Layout after them, on the same terms and
+  /// for the same reason: a narrow header has room for the title and one
+  /// button, and the operation's own title has the better claim on it. The
+  /// controls the edit ITSELF needs — the plus, Discard, Save — stay in the
+  /// header at every width, because a menu is not somewhere an operator can
+  /// be expected to find the way out of a mode.
   Future<void> _showOperationOptions(
     Operation operation, {
     bool includeExport = false,
     bool includeImport = false,
+    bool includeEditLayout = false,
   }) async {
     final t = context.t.activitiesView;
     final theme = Theme.of(context);
@@ -2008,6 +2043,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 onTap: () {
                   Navigator.of(dialogContext).pop();
                   unawaited(_import(operation));
+                },
+              ),
+            if (includeEditLayout)
+              ListTile(
+                leading: const Icon(MdiIcons.viewDashboard),
+                title: Text(context.t.operation.layout.editLayout),
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  startLayoutEditing();
                 },
               ),
             ListTile(
@@ -2299,14 +2343,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// No 'operation' pane: its settings live in the operation sheet.
   static const _dockModuleIds = ['logging', 'info', 'spots', 'map'];
 
-  /// Mirrors the fixed wide layout — logging on the left, the rest tabbed on
-  /// the right — and is what Restore Defaults puts back.
+  /// Mirrors the fixed layout of its own class — and is what Restore Defaults
+  /// puts back.
+  ///
+  /// Wide: logging on the left, the rest tabbed on the right. Narrow: one tab
+  /// strip of QSOs, Spots and Map, exactly the set the hardcoded narrow
+  /// `TabBar` draws, so an operator who never edits sees nothing move. Info is
+  /// not in it there either — it is a tap away on the callsign area — but it
+  /// is offered by the sheet like any other panel.
   @override
-  DockNode buildDefaultDockSpec({bool migrate = true}) => DockSplit(Axis.horizontal, [
-    DockGroup(['logging']),
-    // Selected: Info, matching the fixed wide layout's initial tab.
-    DockGroup(['info', 'spots', 'map']),
-  ], [2, 1]);
+  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
+      switch (layoutClass) {
+        DockLayoutClass.narrow => DockGroup(['logging', 'spots', 'map']),
+        DockLayoutClass.wide => DockSplit(Axis.horizontal, [
+          DockGroup(['logging']),
+          // Selected: Info, matching the fixed wide layout's initial tab.
+          DockGroup(['info', 'spots', 'map']),
+        ], [2, 1]),
+      };
 
 
 
@@ -2389,7 +2443,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _republishPeerHeaderIfChanged(operation);
     return buildDock(
       children: {
-        'logging': loggingPanel,
+        // The mobile numbers row is drawn by the app's status-bar overlay,
+        // OUTSIDE this tree, so it has to be told when the logging pane is no
+        // longer the one showing — otherwise it hangs over whatever tab
+        // replaced it and types into the hidden call field. The dock keeps
+        // every pane in a group mounted, so the pane itself cannot tell.
+        //
+        // At both widths, not just narrow: a wide arrangement is free to put
+        // logging in a tab group too, and the row is no less wrong there.
+        'logging': Builder(
+          builder: (context) => KeyboardAccessoryVisibility(
+            visible: DockPaneVisibility.of(context),
+            child: loggingPanel,
+          ),
+        ),
         'info': infoPanel,
         'spots': spotsPanel,
         'map': mapPanel,
@@ -2530,15 +2597,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         }
 
         final isTwoPane = ShirtSize.of(context).isTwoPane;
+        // Which arrangement the dock draws — assigned before anything below
+        // reads the mixin's spec, options or state, all of which resolve
+        // through it.
+        dockLayoutClass = isTwoPane ? DockLayoutClass.wide : DockLayoutClass.narrow;
 
         // Edit mode as the HEADER sees it. `layoutEditing` alone is not
         // enough: Save and Discard are only emitted where there is an
         // arrangement to edit, so a header that dresses itself for editing on
-        // any wider condition strands the operator the moment the window
-        // narrows — the dock gone, the operation's own title and setup route
-        // replaced by a view name, and nothing on screen to end the edit
-        // with. The draft survives in state, so widening returns to it.
-        final editingHeader = layoutEditing && isTwoPane && _customLayout;
+        // any wider condition strands the operator the moment there is none —
+        // the dock gone, the operation's own title and setup route replaced by
+        // a view name, and nothing on screen to end the edit with. With
+        // customization off that is exactly what a narrow window is, since the
+        // fixed `TabBar` is what it draws instead.
+        final editingHeader = layoutEditing && _customLayout;
 
         // The pane subtrees, built once and placed by whichever arrangement
         // is active (their GlobalKeys carry the State across a flip).
@@ -2833,6 +2905,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                           _draftOperation ?? operation,
                           includeExport: !isTwoPane,
                           includeImport: !isTwoPane,
+                          includeEditLayout: !isTwoPane && _customLayout && !layoutEditing,
                         ),
                       ),
                       onExport: () => unawaited(_export(_draftOperation ?? operation)),
@@ -2975,7 +3048,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               ),
               // On two-pane layouts the tabs move into the right-side pane
               // below.
-              bottom: isTwoPane ? null : _narrowTabBar(realQsoCount, qsos),
+              // The dock draws its own tab strip in both classes, so this
+              // one is only for the fixed narrow arrangement — the one
+              // `layoutCustomization` off still gets.
+              bottom: isTwoPane || _customLayout ? null : _narrowTabBar(realQsoCount, qsos),
             ),
           // One tab set either way, always _kTabCount tabs on the one
           // controller — it is never recreated, so the selected index
@@ -2997,7 +3073,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // Real device safe-area insets (notch, home indicator) bubble
             // in from here; PaneSafeArea's own
             // divider-clearance role composes with it further down.
-            child: isTwoPane && _customLayout
+            child: _customLayout
                 ? withViewOverrides(_dockLayout(
                     loggingPanel: loggingPanel,
                     infoPanel: infoPanel,

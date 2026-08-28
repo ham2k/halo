@@ -213,6 +213,7 @@
       "showPreview": "Vista previa de ${panel}",
       "missingExtension": "Falta la extensión \"${name}\"",
       "previewUnavailable": "No se pudo mostrar la imagen de vista previa de este panel.",
+      "nestedPaneTitle": "Más",
       "editLayout": "Editar Disposición",
       "saveLayout": "Guardar Disposición",
       "revertLayout": "Descartar los cambios de disposición",

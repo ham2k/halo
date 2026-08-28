@@ -60,8 +60,8 @@ still tolerate them; users just can't *drag* a window below it.
 
 | View | XS / S | L / XL |
 |---|---|---|
-| **Home** | Navigation rail, then the operation list, with Quick Lookup under both | Navigation rail, then a **dock**: Operation List (~2/3 width) beside Current Version — the default arrangement, which the operator may rearrange — with Quick Lookup under both |
-| **Operation** | Four tabs: QSOs, Spots, Map, Operation | Logging pane on the left (~2/3 width, resizable); right side tabs: Info, Spots, Map, Operation |
+| **Home** | Navigation rail, then a **dock** holding the operation list, with Quick Lookup under both | Navigation rail, then a **dock**: Operation List (~2/3 width) beside Current Version — the default arrangement, which the operator may rearrange — with Quick Lookup under both |
+| **Operation** | A **dock**: one tab strip of QSOs, Spots and Map — or, with layout customization off, the fixed `TabBar` of the same three | Logging pane on the left (~2/3 width, resizable); right side tabs: Info, Spots, Map, Operation |
 | **Settings** | Settings list; each panel pushes a full screen | Settings list stays as a left column (resizable); selected panel on the right |
 
 ### The navigation rail
@@ -225,11 +225,18 @@ as a `layoutPolicy` const on the view class:
   of the body and so overlap at the corners: a corner entered from outside
   resolves to the horizontal band, and a band already highlighted keeps the
   pointer as it slides into an overlap, so the highlight doesn't flicker
-  while the operator is still moving. The middle square belongs to no band
-  and a drop there does nothing. A dropped pane takes **the band's own
+  while the operator is still moving. A dropped pane takes **the band's own
   third** — it arrives at the size the operator was looking at — and grows
   into it over `layoutAnimationDuration`, floored at a group's chrome height
   so a pane is never laid out shorter than its own tab strip.
+
+  The **middle square** is a fifth and sixth target, and means something the
+  four bands cannot: its upper and lower halves **nest** the newcomer inside
+  the tab that is showing rather than splitting the group in its parent. See
+  *A tab can hold a split* below. A strip along its centre line stays inert
+  — the one place inside a pane where a drag the operator thought better of
+  can be let go, and without it every pixel of every pane would act on
+  release.
 
   All of a customizable view's dividers — the fixed split's and the dock's —
   use the **solid** style below.
@@ -246,14 +253,30 @@ as a `layoutPolicy` const on the view class:
   Restore Defaults deliberately ignores the old key rather than handing back a
   width dragged before the dock existed.
 
-  **The dock is two-pane only, in every customizable view.** A dock tree
-  names splits, weights and module ids and no widths at all, so drawing one
-  at 360px hands a phone the same two-thirds/one-third split it was arranged
-  at. Below the two-pane boundary each view falls back to a fixed narrow
-  arrangement — Home to the operation list alone, Quick Lookup being chrome
-  under it either way,
-  Operation to its four tabs — and the header's layout controls are absent
-  there, because there is nothing on screen to edit.
+  **Every customizable view carries TWO arrangements**, wide and narrow,
+  split at the same two-pane boundary. A dock tree names splits, weights and
+  module ids and no widths at all, so ONE tree drawn at 360px would hand a
+  phone the same two-thirds/one-third split it was arranged at — which is why
+  this is two trees rather than one that reflows. Each is a
+  `DockLayoutClass`, with its own four `LayoutKeys` (the narrow set is
+  `<view>.narrowDock`, `.narrowDockState`, `.narrowPaneOptions`,
+  `.narrowViewOptions`), its own default, and its own dock: crossing the
+  boundary MOUNTS the other one, because `DockLayoutView` copies its
+  `initialSpec` once and ignores it afterward, so a single dock handed a new
+  spec would go on showing the tree it started with and take every later edit
+  into that one. The panes carry their own keys and are reparented across the
+  swap, so nothing being typed is lost.
+
+  Each narrow default reproduces what its view drew before it had a narrow
+  arrangement, so nothing moves for an operator who never edits: Home the
+  operation list alone (Quick Lookup being chrome under it either way), Logs
+  its QSO table alone, Operation one tab strip of QSOs, Spots and Map. Info
+  is not in Operation's — it stays one tap from the callsign area — but the
+  Add a Panel sheet offers it like any other.
+
+  The two arrangements are **independent**: a panel added wide does not
+  appear narrow, and each holds its own instance ids and its own pane and
+  view options. A phone's density is not the desktop's.
 - **`fixed`** — the arrangement never changes (Settings). Fixed
   views may opt their splits into the **surfaces** divider style.
 
@@ -785,11 +808,81 @@ side strokes on their own boundaries so each pair draws one line between them
 rather than two; the strip's two outer edges, having no neighbour to share
 with and a scroll viewport that would clip their outer half, inset instead.
 
-Narrowing past the two-pane breakpoint takes the dock away and with it every
-edit control, so as far as the operator can see the edit is over: the draft
-stays in state (widening returns to it), but the focus edit mode took is
-handed back there and then, or they meet a normal-looking logging view that
-swallows every keystroke.
+**An edit spans both arrangements.** Narrowing past the two-pane breakpoint
+hands the operator the OTHER draft with Save and Discard still on screen, and
+either of them commits or rolls back BOTH. A resize is not a decision about
+the layout: an edit that ended itself on one would commit or lose half of what
+was done, with nothing left that could take it back. So both classes are
+snapshotted when editing begins — including the one that is not on screen,
+which `ensureDockSpec` resolves there rather than snapshotting a null, since
+`build` only ever draws one of them.
+
+**Narrow gives the way IN to the operation's Tools menu**, after Export Logs
+and Imports, rather than to the header: a narrow header has room for the title
+and one control, and the operation's own title has the better claim on it.
+Once editing, the plus, Discard and Save come back to the header at every
+width — a menu is not somewhere to hide the only way out of a mode.
+
+**Operation pins its logging pane narrow.** No grab handle, no `Draggable` at
+all, and both routes to removal refuse it (`DockLayoutView.pinnedModuleIds`).
+A phone with no logging pane cannot enter a QSO, and unlike the last-pane rule
+there is nothing about the arrangement on screen that would say so — which is
+why the tab simply never becomes draggable, rather than a drop being refused
+after the operator has already carried it to the target. Wide pins nothing:
+the arrangement there always has room for logging alongside whatever else.
+
+### A tab can hold a split
+
+A tab's content is ordinarily a pane. Dropping on the **upper or lower half of
+a pane's centre square** makes it a **container** instead: a vertical split
+holding what was in that tab and the newcomer, above or below it, taking the
+tab's own slot. {Info, Spots, Map} with Info dropped below Map's centre is
+{Spots, More[Map over Info]} — the tab SET keeps its shape, which is the whole
+distinction from the four bands, which split the group in its PARENT.
+
+Each half is a real group, so dropping on its tab strip gives it tabs, and a
+container can hold containers. A container down to **one module** hands its
+slot back to that module; one holding a single GROUP of several tabs does not,
+because that is a tab set the operator built and folding it up would rearrange
+more than they did. A container holding a group whose one tab is ANOTHER
+container does fold — that is two tabs deep for one thing, and the operator
+would see "More" containing a single "More".
+
+**A drop normalizes once, at the end — never mid-move.** Every drop takes the
+module out of the tree before it puts it anywhere, and applying the collapse
+rule at that moment is what made a two-pane container impossible to rearrange
+from the inside: taking one of its panes out empties that pane's group, which
+collapses the split, which retires the container — detaching the very group the
+drop was aimed at, so the placement found nothing to place into and silently
+did nothing. The removal therefore leaves the tree in its intermediate shape
+(a split with one child, a container down to one module) and each handler puts
+it back into canonical shape once, after the placement. The tree is only odd
+between those two points, inside one `setState`, so nothing ever renders it.
+
+A container has a tab, a title (**"More"** by default) and the whole
+`PaneLayoutOptions` surface, because it carries a real id in the same
+namespace as module ids — `nested#1`. That is what lets titles, pane options
+and `DockState` reach it with no new machinery. The id is allocated per DOCK
+rather than per app, unlike a panel instance id: a container indexes nothing
+outside its own arrangement.
+
+`DockGroup.modules` stays a list of slot ids; a slot listed in
+`DockGroup.nested` renders that subtree instead of a pane. Two fields rather
+than one recursive list of nodes, so that every consumer keyed by a module id
+— titles, pane options, dock state, headerless modules, minimum sizes —
+reaches a container unchanged, and every arrangement saved before containers
+existed reads identically. The price is one invariant, and it is `DockGroup`'s
+to keep: **`nested`'s keys are always a subset of `modules`**.
+`collapseNested` is what holds it after a mutation.
+
+Three consequences. Dragging a container **carries its contents** — a move
+that arrived as an empty tab would be a move that silently deletes. Removing
+one **takes the panes inside it**, reported through `onModuleDeleted` one id
+at a time so a host forgetting their configs needs to know nothing about the
+shape of what it removed. And while a container is SHOWING, the outer group's
+own body bands, editing wash and outline all stand down: they belong to a
+pane, and what is on screen is layout. Splitting that outer group means
+selecting a plain tab first; the dock's own edge strips are always there.
 
 **The edit is a draft.** Nothing an edit does — a drag, a split, a divider,
 an add from the plus or a drag onto the delete target — reaches settings
@@ -843,18 +936,25 @@ putting exactly the dead copy of the controls in the header that the rule
 above exists to prevent.
 
 A sheet outlives the dock it was opened over — a resize past the two-pane
-breakpoint takes the dock down and leaves the route standing — so everything
-it does re-reads `_dockKey.currentState` rather than the one captured when it
-opened. The same goes for the discard: it must work with no dock mounted,
-because turning the setting off mid-edit is exactly when there is none.
+breakpoint unmounts one dock and mounts the other's, and turning the setting
+off leaves no dock at all, while the route stands through both — so everything
+it does re-reads `dockKey.currentState` rather than the one captured when it
+opened. That getter answers for the class ON SCREEN, which is the other half
+of the same rule: a captured key is stale about which dock as well as about
+whether there is one. The same goes for the discard, which must work with no
+dock mounted, because turning the setting off mid-edit is exactly when there
+is none.
 
 **Leaving edit mode from that header takes the sheet with it.** The sheet is
 a control panel for an edit in progress; left open past the exit, its add
 writes straight to settings on the next press, with the discard that was
 beside it gone. And the header dresses for editing only
-where the dock actually IS — the controls are two-pane-only, so a header that
-went on naming the view after the window narrowed would strand the operator
-with no way out. The draft is state, so widening comes back to it.
+where there is a dock at all — with layout customization off a narrow window
+draws the fixed `TabBar` instead, and a header that went on naming the view
+there would strand the operator with no way out. Turning the setting off
+mid-edit therefore discards first, so the draft goes back to what was saved
+rather than becoming the arrangement that reappears when they turn it on
+again.
 
 **The dock's definition and its state are stored apart.** The definition
 (`LayoutKeys.operationDock`) is the tree — splits, weights, which modules sit

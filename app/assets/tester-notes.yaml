@@ -8,6 +8,8 @@ upcoming:
   changes:
     - "New CWops CWT extension: it offers the session three hours before each one starts"
     - Spanish now covers QSO import, test operations and the activity results map
+    - Phones can now rearrange their layout too, kept separately from the wide one
+    - Drop a tab onto a pane's centre to stack them both under one tab
 
 "155":
   changes:

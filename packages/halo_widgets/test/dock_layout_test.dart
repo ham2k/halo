@@ -39,11 +39,13 @@ void main() {
     ValueChanged<DockState>? onStateChanged,
     DockState initialState = DockState.empty,
     Map<String, Widget>? children,
+    Map<String, String>? titles,
     Map<String, WidgetBuilder>? tabActions,
     Widget Function(BuildContext, String)? editingPaneControls,
     Set<String> headerlessModules = const {},
     Map<String, Size> moduleMinimumSizes = const {},
     ValueChanged<String>? onModuleDeleted,
+    Set<String> pinnedModuleIds = const {},
     // Defaults to the widget's own default — OFF — so a test that drags has
     // to say so. Dragging is not the dock's resting state: outside edit mode
     // there is no Draggable on a tab at all, and a test that got edit mode
@@ -63,7 +65,7 @@ void main() {
             initialSpec: spec,
             initialState: initialState,
             onStateChanged: onStateChanged,
-            titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
+            titles: titles ?? const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
             children: children ??
                 const {
                   'a': SizedBox.expand(key: Key('pane-a')),
@@ -75,6 +77,7 @@ void main() {
             headerlessModules: headerlessModules,
             moduleMinimumSizes: moduleMinimumSizes,
             onModuleDeleted: onModuleDeleted,
+            pinnedModuleIds: pinnedModuleIds,
             editing: editing,
             onSpecChanged: onChanged,
           ),
@@ -1042,9 +1045,10 @@ void main() {
     await tester.pumpWidget(harness(spec: twoGroups(), onChanged: (s) => reported = s, editing: true));
     final alphaPane = tester.getRect(find.byKey(const Key('pane-a')));
     await dragTab(tester, 'Bravo', alphaPane.center);
-    // The middle square belongs to no band: the old center-joins-as-a-tab
-    // target moved to the tab strip, and a drop here must be a no-op rather
-    // than the nearest guess.
+    // The centre LINE is the one place inside a pane that still does nothing.
+    // Its halves nest (see the 'nested containers' group), but a strip of it
+    // stays inert: it is the only way to abandon a drag without leaving the
+    // dock, and without it every pixel of every pane acts on release.
     expect(reported, isNull);
   });
 
@@ -1407,6 +1411,400 @@ void main() {
       expect(dockSplitRegionAt(const Offset(290, 10), size, active: DockRegion.right), DockRegion.right);
       // A band that isn't one of the two candidates doesn't get to stay.
       expect(dockSplitRegionAt(const Offset(10, 10), size, active: DockRegion.bottom), DockRegion.top);
+    });
+  });
+
+  group('nested containers', () {
+    const size = Size(300, 300);
+
+    test('the centre square nests, above or below, with an inert line between', () {
+      // The same two DIRECTIONS the outer bands report, meaning something
+      // else: nest inside the showing tab rather than split the group. Only
+      // how far in the pointer is tells them apart.
+      expect(dockNestRegionAt(const Offset(150, 110), size), DockRegion.top);
+      expect(dockNestRegionAt(const Offset(150, 190), size), DockRegion.bottom);
+      // Outside the square is the outer bands' business, not this one's.
+      expect(dockNestRegionAt(const Offset(150, 50), size), isNull);
+      expect(dockNestRegionAt(const Offset(50, 150), size), isNull);
+      // And the strip on the centre line stays dead, so a drag the operator
+      // thought better of still has somewhere to land.
+      expect(dockNestRegionAt(const Offset(150, 150), size), isNull);
+      expect(dockSplitRegionAt(const Offset(150, 110), size), isNull,
+          reason: 'the two answer over disjoint geometry, so no drop can be both');
+    });
+
+    testWidgets('a drop below a pane\'s centre turns its TAB into a container', (tester) async {
+      DockNode? reported;
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['a', 'b', 'c'], selected: 2),
+        onChanged: (s) => reported = s,
+        editing: true,
+        key: key,
+      ));
+      final pane = tester.getRect(find.byKey(const Key('pane-c')));
+
+      await dragTab(tester, 'Alpha', Offset(pane.center.dx, pane.center.dy + pane.height * 0.12));
+
+      final group = reported! as DockGroup;
+      // The tab SET keeps its shape — this is the whole distinction from the
+      // outer bands, which split the group in its parent. Alpha leaves its own
+      // tab and goes inside Charlie's.
+      expect(group.modules.length, 2);
+      expect(group.modules.first, 'b');
+      final containerId = group.modules[1];
+      expect(isDockContainerId(containerId), isTrue);
+      final container = group.nested[containerId]! as DockSplit;
+      expect(container.axis, Axis.vertical);
+      // Dropped BELOW, so the tab that was showing stays on top of it.
+      expect(container.children.map((c) => c.collectModules()).toList(), [['c'], ['a']]);
+      expect(group.selected, 1, reason: 'a drop that lands behind an unselected tab looks like nothing happened');
+      expect(key.currentState!.modules, ['b', 'c', 'a'],
+          reason: 'a container names no panel, so the panes inside it are what the host builds');
+    });
+
+    testWidgets('a container down to one module hands its slot back', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      final dropped = <String>[];
+      DockNode? reported;
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }, selected: 1),
+        editing: true,
+        onChanged: (s) => reported = s,
+        onModuleDeleted: dropped.add,
+        key: key,
+      ));
+
+      expect(key.currentState!.removeModule('a'), isTrue);
+      await tester.pumpAndSettle();
+
+      // One pane left inside is not a container, it is that pane — otherwise
+      // the operator is left with a tab called "More" holding one thing.
+      final spec = reported! as DockGroup;
+      expect(spec.modules, ['b', 'c']);
+      expect(spec.nested, isEmpty);
+      expect(dropped, ['a']);
+    });
+
+    testWidgets('removing a container takes the panes inside it, and says which', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      final dropped = <String>[];
+      DockNode? reported;
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }),
+        editing: true,
+        onChanged: (s) => reported = s,
+        onModuleDeleted: dropped.add,
+        key: key,
+      ));
+
+      expect(key.currentState!.removeModule('n1'), isTrue);
+      await tester.pumpAndSettle();
+
+      // What the tab says it holds is what it holds. Reported one id at a
+      // time so a host forgetting their contents needs to know nothing about
+      // the shape of what it removed.
+      expect((reported! as DockGroup).modules, ['b']);
+      expect(dropped, unorderedEquals(['c', 'a']));
+    });
+
+    test('containers round-trip, and a spec written before them reads unchanged', () {
+      final spec = DockGroup(['b', 'n1'], nested: {
+        'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a', 'd'])], [1, 1]),
+      });
+      final revived = DockNode.fromJson(spec.toJson())! as DockGroup;
+      expect(revived.toJson(), spec.toJson());
+      expect(revived.collectModules(), ['b', 'c', 'a', 'd']);
+      expect(revived.collectContainerIds(), ['n1']);
+
+      // The old shape carries no `nested` key at all, and must read as the
+      // plain tab set it has always been.
+      final old = DockGroup(['a', 'b']);
+      expect(old.toJson().containsKey('nested'), isFalse);
+      expect((DockNode.fromJson(old.toJson())! as DockGroup).nested, isEmpty);
+    });
+
+    testWidgets('a band drop inside a container keeps the pane it is moving', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockSplit(Axis.horizontal, [
+          DockGroup(['b']),
+          DockGroup(['n1'], nested: {
+            'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+          }),
+        ], [1, 1]),
+        editing: true,
+        key: key,
+      ));
+      final inner = tester.getRect(find.byKey(const Key('pane-c')));
+
+      // The groups inside a container draw their own bands, so this is an
+      // ordinary gesture. What makes it dangerous is that the module is taken
+      // out of the tree BEFORE the split holding it is put anywhere: a
+      // placement that quietly fails is a placement that deletes.
+      await dragTab(tester, 'Bravo', Offset(inner.center.dx, inner.bottom - 8));
+
+      expect(key.currentState!.modules, unorderedEquals(['b', 'c', 'a']),
+          reason: 'wherever it ended up, no pane may go missing');
+      // The set alone is the same whether the drop landed, was silently
+      // restored, or never arrived — so the SHAPE is what says which. Bravo
+      // was dropped on the bottom band of the container's top pane, so it
+      // belongs inside the container, under Charlie.
+      // Bravo's own group emptied and the split around it collapsed, so the
+      // container is now the whole tree — with Bravo between Charlie and
+      // Alpha, which is where the bottom band of Charlie's pane put it.
+      expect(key.currentState!.spec.collectModules(), ['c', 'b', 'a'],
+          reason: 'a restore-instead-of-place regression leaves Bravo back in its own group');
+      expect(key.currentState!.spec.collectContainerIds().length, 1);
+    });
+
+    testWidgets('a two-pane container can be reordered from the inside', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }, selected: 1),
+        editing: true,
+        key: key,
+      ));
+      final top = tester.getRect(find.byKey(const Key('pane-c')));
+
+      // Two panes is what a nest BUILDS, so this is the arrangement an
+      // operator is most likely to want to adjust. Taking Alpha out empties
+      // its group, and a tree normalised at that moment collapses the split
+      // and retires the container — taking the group being dropped on with it,
+      // so the drop found nothing to place into and silently did nothing.
+      await dragTab(tester, 'Alpha', Offset(top.center.dx, top.top + 8));
+
+      final container = (key.currentState!.spec as DockGroup).nested['n1']!;
+      expect(container.collectModules(), ['a', 'c'],
+          reason: 'dropped on the TOP band, so Alpha is now above Charlie');
+      expect(container, isA<DockSplit>(), reason: 'still stacked, not tabbed');
+      expect(key.currentState!.spec.collectContainerIds(), ['n1'],
+          reason: 'and it is the same container, not a rebuilt one');
+    });
+
+    testWidgets("a container's two panes can be tabbed together", (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }, selected: 1),
+        editing: true,
+        key: key,
+      ));
+
+      // The same collapse, reached through the tab strip instead of a band.
+      await dragTab(tester, 'Alpha', tester.getCenter(find.text('Charlie')));
+
+      final container = (key.currentState!.spec as DockGroup).nested['n1']!;
+      expect(container.collectModules(), ['a', 'c'],
+          reason: 'Alpha took the position it was dropped at, ahead of Charlie');
+      expect(container, isA<DockGroup>(), reason: 'one group of two tabs, not a split any more');
+      // A container holding ONE group of several tabs stays a container: that
+      // is a tab set the operator built, and folding it into the outer strip
+      // would rearrange more than they did.
+      expect(key.currentState!.spec.collectContainerIds(), ['n1']);
+    });
+
+    testWidgets('a drop onto something inside what is being dragged changes nothing', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      DockNode? reported;
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }, selected: 1),
+        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'n1': 'More'},
+        onChanged: (s) => reported = s,
+        editing: true,
+        key: key,
+      ));
+      final inner = tester.getRect(find.byKey(const Key('pane-c')));
+
+      // A container's contents are on screen while its tab shows, and that tab
+      // is draggable — so the pane being dropped ON can be one INSIDE the
+      // thing in flight, which the removal has just detached. There is nowhere
+      // for it to land, and the drop must therefore change nothing rather than
+      // take the container and both its panes with it.
+      await dragTab(tester, 'More', Offset(inner.center.dx, inner.center.dy + inner.height * 0.12));
+
+      expect(key.currentState!.modules, unorderedEquals(['b', 'c', 'a']));
+      // The HOST's view, which is the half that persists. `_spec` starts as
+      // the host's own object and the removal ran in place, so a restore that
+      // repaired only this widget's field would look right on screen and save
+      // a missing pane on the next Save Layout.
+      expect(reported, isNotNull, reason: 'a restore the host is never told about is not a restore');
+      expect(reported!.collectModules(), unorderedEquals(['b', 'c', 'a']));
+    });
+
+    testWidgets('an abandoned drop leaves the selected tabs where they were', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockSplit(Axis.horizontal, [
+          DockGroup(['b', 'c'], selected: 1),
+          DockGroup(['n1'], nested: {
+            'n1': DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['d'])], [1, 1]),
+          }),
+        ], [1, 1]),
+        children: const {
+          'a': SizedBox.expand(key: Key('pane-a')),
+          'b': SizedBox.expand(key: Key('pane-b')),
+          'c': SizedBox.expand(key: Key('pane-c')),
+          'd': SizedBox.expand(key: Key('pane-d')),
+        },
+        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta', 'n1': 'More'},
+        editing: true,
+        key: key,
+      ));
+      final inner = tester.getRect(find.byKey(const Key('pane-a')));
+
+      // The restore point is a DEFINITION, and a definition carries no
+      // selection by design — so a restore made from one alone snaps every
+      // strip in the dock back to its first tab, including strips nowhere
+      // near the drop.
+      await dragTab(tester, 'Delta', Offset(inner.center.dx, inner.center.dy + inner.height * 0.12));
+
+      expect(DockState.of(key.currentState!.spec).selected, contains('c'),
+          reason: 'Charlie was on top before the drop and nothing the operator did moved it');
+    });
+
+    testWidgets('a pin reaches inside a container', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }),
+        editing: true,
+        pinnedModuleIds: const {'a'},
+        key: key,
+      ));
+
+      // Nesting a pinned pane puts it behind a tab that is not itself pinned.
+      // A guard reading only the dragged id would let that tab carry it to the
+      // delete target — the one outcome pinning exists to make unreachable.
+      expect(key.currentState!.removeModule('n1'), isFalse);
+      expect(key.currentState!.modules, unorderedEquals(['b', 'c', 'a']));
+    });
+
+    testWidgets('no delete target for a drag the dock would refuse', (tester) async {
+      await tester.pumpWidget(harness(
+        spec: DockSplit(Axis.horizontal, [
+          DockGroup(['b']),
+          DockGroup(['nested#1'], nested: {
+            'nested#1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+          }),
+        ], [1, 1]),
+        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'nested#1': 'More'},
+        pinnedModuleIds: const {'a'},
+        editing: true,
+      ));
+
+      // A pinned tab is never draggable, but the container tab it ends up
+      // behind IS — so this is the drag that reaches a target the drop would
+      // refuse, and "a target that refuses on drop would read as a bug".
+      final gesture = await tester.startGesture(tester.getCenter(find.text('More')));
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsNothing);
+
+      // Its neighbour, which nothing protects, still gets one — so this is the
+      // guard and not a target that stopped appearing at all.
+      await gesture.up();
+      await tester.pumpAndSettle();
+      final second = await tester.startGesture(tester.getCenter(find.text('Bravo')));
+      await second.moveBy(const Offset(0, 20));
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.trashCanOutline), findsOneWidget);
+      await second.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a pane inside a hidden container is not visible', (tester) async {
+      // `DockPaneVisibility.of` reads the nearest ancestor only, so an inner
+      // group publishing its own selection unqualified tells the pane on top
+      // of a HIDDEN container that it is on screen — and the mobile numbers
+      // row, every polling panel and every webview pane act on that.
+      final visible = <String, bool>{};
+      Widget probe(String id) => Builder(
+        builder: (context) {
+          visible[id] = DockPaneVisibility.of(context);
+          return SizedBox.expand(key: Key('pane-$id'));
+        },
+      );
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'n1'], nested: {
+          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+        }, selected: 0),
+        children: {'a': probe('a'), 'b': probe('b'), 'c': probe('c')},
+      ));
+
+      expect(visible['b'], isTrue, reason: 'the showing tab');
+      expect(visible['c'], isFalse, reason: 'on top of a container whose own tab is not showing');
+      expect(visible['a'], isFalse);
+    });
+
+    testWidgets('nesting a container never mints its own id twice', (tester) async {
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(
+        spec: DockSplit(Axis.horizontal, [
+          DockGroup(['b', 'nested#1'], nested: {
+            'nested#1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
+          }),
+          DockGroup(['d']),
+        ], [1, 1]),
+        children: const {
+          'a': SizedBox.expand(key: Key('pane-a')),
+          'b': SizedBox.expand(key: Key('pane-b')),
+          'c': SizedBox.expand(key: Key('pane-c')),
+          'd': SizedBox.expand(key: Key('pane-d')),
+        },
+        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta', 'nested#1': 'More'},
+        editing: true,
+        key: key,
+      ));
+      final delta = tester.getRect(find.byKey(const Key('pane-d')));
+
+      // The container is DETACHED before the new one is named, so its own id
+      // reads as free and the lowest-free rule hands it straight back. The
+      // arrangement then holds one id twice: two tabs sharing one options
+      // entry, and a saved layout the next launch refuses outright.
+      await dragTab(tester, 'More', Offset(delta.center.dx, delta.center.dy + delta.height * 0.12));
+
+      final ids = key.currentState!.spec.collectContainerIds();
+      expect(ids.length, 2, reason: 'the dragged container, and the one the drop just built');
+      expect(ids.toSet().length, ids.length, reason: 'and they are not the same id');
+    });
+
+    test('a collapse never hands a group the same module twice', () {
+      // A saved arrangement can name one module both as a slot and inside a
+      // container. Collapsing the container onto its slot would then list it
+      // twice — and a group with a repeated id hands one widget to two tabs,
+      // where `indexOf` always finds the first, so selection and every drop
+      // path act on the wrong one.
+      final revived = DockNode.fromJson({
+        'type': 'group',
+        'modules': ['a', 'nested#1'],
+        'nested': {
+          'nested#1': {'type': 'group', 'modules': ['a']},
+        },
+      })! as DockGroup;
+      expect(revived.modules, ['a']);
+      expect(revived.nested, isEmpty);
+    });
+
+    test('a slot naming a container that is not there names nothing', () {
+      // A hand-edited or truncated spec. The slot would otherwise render as a
+      // missing panel nobody could explain — there is no panel by that name,
+      // and never was.
+      final revived = DockNode.fromJson({
+        'type': 'group',
+        'modules': ['a', 'nested#1'],
+      })! as DockGroup;
+      expect(revived.modules, ['a']);
     });
   });
 

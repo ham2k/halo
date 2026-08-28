@@ -66,6 +66,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Narrow has no Edit Layout button in the header — it lives in the Tools
+  /// menu there, since the header has room for the title and one control.
+  Future<void> startEditingNarrow(WidgetTester tester) async {
+    await tester.tap(find.byIcon(MdiIcons.tools));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.editLayout));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> openAddSheet(WidgetTester tester) async {
     await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.plus));
     await tester.pumpAndSettle();
@@ -335,7 +344,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('narrowing the window mid-edit gives the header back, and widening returns to the draft', (tester) async {
+  testWidgets('an edit crosses the two-pane boundary, and each class keeps its own draft', (tester) async {
     final services = await servicesWith(tester, layoutCustomization: true);
     await pumpWide(tester, services);
 
@@ -343,20 +352,139 @@ void main() {
     await dragToDelete(tester, tabs.info);
     expect(find.text(t.viewName), findsOneWidget);
 
-    // Save and Discard are only emitted where there is a dock to edit, so a
-    // header that stays dressed for editing past that point has no way out:
-    // no controls, the operation's title replaced, and its setup sheet
-    // unreachable behind a tap that does nothing.
+    // Narrowing hands the operator the OTHER arrangement, not the way out of
+    // the edit. A resize is not a decision about the layout, and an edit that
+    // ended itself on one would commit or lose half of what was done — the
+    // wide draft above is still uncommitted at this point.
     tester.view.physicalSize = const Size(600, 800);
     await tester.pumpAndSettle();
-    expect(find.text(t.viewName), findsNothing);
-    expect(find.textContaining('KI2D'), findsWidgets);
+    expect(find.text(t.viewName), findsOneWidget, reason: 'still editing, and still saying so');
+    expect(find.text(t.saveLayout), findsOneWidget);
+    expect(find.byType(DockLayoutView), findsOneWidget, reason: 'the narrow arrangement is a dock too');
+    expect(
+      find.text(tabs.spots),
+      findsOneWidget,
+      reason: 'and it is the NARROW tree — its own default, not the wide one this edit has been changing',
+    );
 
-    // The draft is state, not settings — it is still there to come back to.
+    // The wide draft is state, not settings, so it is still there to come
+    // back to.
     tester.view.physicalSize = const Size(1200, 800);
     await tester.pumpAndSettle();
     expect(find.text(t.saveLayout), findsOneWidget);
     expect(find.text(tabs.info), findsNothing, reason: 'the edit survived the trip');
+
+    await unmount(tester);
+  });
+
+  testWidgets('saving commits BOTH classes, from whichever one is on screen', (tester) async {
+    final services = await servicesWith(tester, layoutCustomization: true);
+    await pumpWide(tester, services);
+    final settings = services.settings;
+
+    // One edit in each class, then one Save, taken from the class that is not
+    // where the first edit was made. The mirror of the discard below: an exit
+    // that reached only the class in front of the operator would commit half
+    // an edit and drop the other half, with nothing left that could finish it.
+    await startEditing(tester);
+    await dragToDelete(tester, tabs.info);
+
+    tester.view.physicalSize = const Size(600, 800);
+    await tester.pumpAndSettle();
+    await dragToDelete(tester, tabs.spots);
+
+    await tester.tap(find.text(t.saveLayout));
+    await tester.pumpAndSettle();
+
+    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationNarrowDock))!.collectModules(),
+        ['logging', 'map'],
+        reason: 'the class the Save was pressed in');
+    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+        ['logging', 'spots', 'map'],
+        reason: 'and the one that was off screen when it was — its key, not the other class\'s');
+
+    await unmount(tester);
+  });
+
+  testWidgets('discarding from the other class rolls back both drafts', (tester) async {
+    final services = await servicesWith(tester, layoutCustomization: true);
+    await pumpWide(tester, services);
+
+    await startEditing(tester);
+    await dragToDelete(tester, tabs.info);
+
+    // Discarded from NARROW, where the wide arrangement this edit changed is
+    // not even on screen. One exit for one edit: a Discard that only rolled
+    // back the class in front of the operator would leave the other half of
+    // their edits standing, with nothing left that could take them back.
+    tester.view.physicalSize = const Size(600, 800);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.undoVariant));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(1200, 800);
+    await tester.pumpAndSettle();
+    expect(find.text(t.saveLayout), findsNothing, reason: 'the edit is over');
+    expect(find.text(tabs.info), findsOneWidget, reason: 'and the pane it dropped came back');
+
+    await unmount(tester);
+  });
+
+  testWidgets('a container holding every remaining pane offers no Remove', (tester) async {
+    final services = await servicesWith(tester, layoutCustomization: true);
+    // Seeded rather than built by dragging: what this is about is the GUARD,
+    // and the arrangement it has to refuse is one tab holding everything.
+    await services.settings.setLayoutData(
+      LayoutKeys.operationDock,
+      DockGroup(['nested#1'], nested: {
+        'nested#1': DockSplit(Axis.vertical, [
+          DockGroup(['logging']),
+          DockGroup(['info']),
+        ], [1, 1]),
+      }).toJson(),
+    );
+    await pumpWide(tester, services);
+
+    await startEditing(tester);
+    // .first is the PANE's copy of the glyph; the view's own is in the app
+    // bar, which Scaffold builds after the body.
+    await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.viewDashboardEdit).first);
+    await tester.pumpAndSettle();
+
+    // The dock refuses to remove the last pane, and a container counts as
+    // everything inside it. An offered Remove that silently did nothing is
+    // exactly what the pane options dialog's own comment rules out — so the
+    // offer has to read the subtree, as the refusal does.
+    expect(find.text(t.resetOptions), findsWidgets, reason: "the pane dialog IS open");
+    expect(find.text(t.removePane), findsNothing);
+
+    await unmount(tester);
+  });
+
+  testWidgets('the narrow arrangement pins its logging pane', (tester) async {
+    final services = await servicesWith(tester, layoutCustomization: true);
+    await pumpWide(tester, services);
+
+    tester.view.physicalSize = const Size(600, 800);
+    await tester.pumpAndSettle();
+    await startEditingNarrow(tester);
+
+    // A phone with no logging pane cannot enter a QSO at all, and nothing
+    // about the arrangement that took it away would say so. So the tab never
+    // becomes draggable — not a drop refused after the operator has already
+    // carried it to the target, which reads as a bug.
+    final loggingLabel = find.textContaining(tabs.qsosPlain);
+    expect(loggingLabel, findsWidgets, reason: 'the narrow default holds a logging tab to pin');
+    expect(
+      find.ancestor(of: loggingLabel, matching: find.byType(Draggable<String>)),
+      findsNothing,
+      reason: 'pinned: no drag on it at all',
+    );
+    expect(
+      find.ancestor(of: find.text(tabs.spots), matching: find.byType(Draggable<String>)),
+      findsOneWidget,
+      reason: 'its neighbours in the same strip still move, so this is the pin and not a dead strip',
+    );
 
     await unmount(tester);
   });
@@ -582,7 +710,7 @@ void main() {
       await pumpWide(tester, services);
 
       final notices = services.statusBar.activeNotices;
-      expect(notices.map((n) => n.key), contains('layout:operation:unreadable'));
+      expect(notices.map((n) => n.key), contains('layout:operation:wide:unreadable'));
 
       await unmount(tester);
     });
@@ -610,7 +738,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(services.statusBar.activeNotices.map((n) => n.key), contains('layout:operation:unreadable'));
+      expect(services.statusBar.activeNotices.map((n) => n.key), contains('layout:operation:wide:unreadable'));
 
       await unmount(tester);
     });
@@ -646,7 +774,7 @@ void main() {
 
       // The notice card's own close button calls dismissNotice directly —
       // there is no route through this file's "Use this layout" action.
-      services.statusBar.dismissNotice('layout:operation:unreadable');
+      services.statusBar.dismissNotice('layout:operation:wide:unreadable');
       await tester.pumpAndSettle();
 
       expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
@@ -692,14 +820,14 @@ void main() {
       final services = await servicesWithDuplicateSpec(tester);
       await pumpWide(tester, services);
 
-      final notice = services.statusBar.activeNotices.firstWhere((n) => n.key == 'layout:operation:unreadable');
+      final notice = services.statusBar.activeNotices.firstWhere((n) => n.key == 'layout:operation:wide:unreadable');
       notice.actions.single.onTap();
       await tester.pumpAndSettle();
 
       expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
           isNot(['logging', 'logging'].toSet()),
           reason: 'accepting writes the default over the unreadable original');
-      expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('layout:operation:unreadable')));
+      expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('layout:operation:wide:unreadable')));
 
       // Ordinary saving is back to normal — the guard only held while the
       // recovered default was unaccepted.
@@ -722,7 +850,7 @@ void main() {
       await startEditing(tester);
       await dragToDelete(tester, tabs.info);
 
-      final notice = services.statusBar.activeNotices.firstWhere((n) => n.key == 'layout:operation:unreadable');
+      final notice = services.statusBar.activeNotices.firstWhere((n) => n.key == 'layout:operation:wide:unreadable');
       notice.actions.single.onTap();
       await tester.pumpAndSettle();
 

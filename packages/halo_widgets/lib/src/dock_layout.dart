@@ -57,11 +57,46 @@ sealed class DockNode {
       case 'group':
         final modules = (json['modules'] as List?)?.whereType<String>().toList() ?? [];
         if (modules.isEmpty) return null;
+        // Nested containers, keyed by the SLOT they occupy in `modules`. Read
+        // before the slots are filtered, since a slot naming a container that
+        // does not parse is a slot with nothing behind it — dropped, rather
+        // than left to render as a missing panel nobody can explain.
+        final nested = <String, DockNode>{};
+        if (json['nested'] case final Map raw) {
+          for (final entry in raw.entries) {
+            final key = entry.key;
+            final node = DockNode.fromJson(entry.value);
+            if (key is String && node != null) {
+              nested[key] = node;
+            } else {
+              // Every drop below is LOGGED, unlike an unknown plain module id,
+              // which keeps its pane and says so on screen. A container has no
+              // such pane to say it with, so a tab holding three panes can go
+              // between launches — and without a line here a report of "my
+              // panes disappeared" has nothing behind it.
+              debugPrint('[layout] dropped container "$key" — its subtree does not parse');
+            }
+          }
+        }
+        nested.removeWhere((key, _) {
+          if (modules.contains(key)) return false;
+          debugPrint('[layout] dropped container "$key" — no tab holds it');
+          return true;
+        });
+        // A slot is a container's id only if the container is actually there.
+        // Anything left that looks like one and is not in [nested] names
+        // nothing, so it goes.
+        final slots = modules.where((m) {
+          if (nested.containsKey(m) || !isDockContainerId(m)) return true;
+          debugPrint('[layout] dropped slot "$m" — it names a container that is not there');
+          return false;
+        }).toList();
+        if (slots.isEmpty) return null;
         // `selected` is deliberately NOT read, though older saved
         // definitions still carry one: it is state, and state has its own
         // store now. A definition written before the split simply opens on
         // its first tab once, and stops carrying the field when next saved.
-        return DockGroup(modules);
+        return DockGroup(slots, nested: nested)..collapseNested();
       case 'split':
         final children = (json['children'] as List?)?.map(DockNode.fromJson).whereType<DockNode>().toList() ?? [];
         if (children.isEmpty) return null;
@@ -80,10 +115,26 @@ sealed class DockNode {
     return null;
   }
 
-  /// Every module id in this subtree, in visual order.
+  /// Every MODULE id in this subtree, in visual order — the panes a view has
+  /// to build. A nested container's own id is not one of them (it names no
+  /// panel); its contents are, in its place. See [collectContainerIds].
   List<String> collectModules() => switch (this) {
-    DockGroup(:final modules) => List.of(modules),
+    DockGroup(:final modules, :final nested) => [
+      for (final m in modules)
+        if (nested[m] case final node?) ...node.collectModules() else m,
+    ],
     DockSplit(:final children) => [for (final c in children) ...c.collectModules()],
+  };
+
+  /// Every nested container's id in this subtree, in visual order. Apart from
+  /// [collectModules] because the two answer different questions: a container
+  /// has a tab, a title and layout options, but nothing builds a pane for it.
+  List<String> collectContainerIds() => switch (this) {
+    DockGroup(:final modules, :final nested) => [
+      for (final m in modules)
+        if (nested[m] case final node?) ...[m, ...node.collectContainerIds()],
+    ],
+    DockSplit(:final children) => [for (final c in children) ...c.collectContainerIds()],
   };
 
   /// This arrangement without [id], for a module a view has RETIRED — one that
@@ -99,9 +150,29 @@ sealed class DockNode {
   /// meant to come back.
   DockNode? without(String id) {
     switch (this) {
-      case DockGroup(:final modules):
-        final kept = modules.where((m) => m != id).toList();
-        return kept.isEmpty ? null : DockGroup(kept);
+      case DockGroup(:final modules, :final nested):
+        final keptNested = <String, DockNode>{};
+        final kept = <String>[];
+        for (final slot in modules) {
+          if (slot == id) continue;
+          if (nested[slot] case final node?) {
+            // A container whose whole contents were the retired module goes
+            // with them; one left holding a single module hands that slot
+            // back to it, which is the same collapse [collapseNested] makes.
+            final inner = node.without(id);
+            if (inner == null) continue;
+            final single = inner.collectModules();
+            if (single.length == 1 && inner.collectContainerIds().isEmpty) {
+              kept.add(single.single);
+            } else {
+              kept.add(slot);
+              keptNested[slot] = inner;
+            }
+          } else {
+            kept.add(slot);
+          }
+        }
+        return kept.isEmpty ? null : DockGroup(kept, nested: keptNested);
       case DockSplit(:final axis, :final children, :final weights):
         final kept = <DockNode>[];
         final keptWeights = <double>[];
@@ -118,19 +189,89 @@ sealed class DockNode {
   }
 }
 
-/// A tabbed stack of modules. With a single module the header still shows
+/// The prefix every nested container's id carries — see [DockGroup.nested].
+/// Its own word rather than a panel key, because it names no panel: nothing
+/// in the catalog answers for it, and a view must not try to build a pane for
+/// one.
+const dockContainerIdBase = 'nested';
+
+/// Whether [id] names a nested container rather than a module.
+bool isDockContainerId(String id) => id == dockContainerIdBase || id.startsWith('$dockContainerIdBase#');
+
+/// A tabbed stack of TAB SLOTS. With a single slot the header still shows
 /// its one tab — that IS the grab handle for a standalone pane.
+///
+/// A slot is ordinarily a module id. A slot listed in [nested] is instead a
+/// **container**: the tab is still a tab, with its own title and layout
+/// options, but what it holds is a whole subtree — the arrangement a drop on
+/// this group's centre band builds (docs/design/layouts.md).
+///
+/// Two fields rather than one recursive list of nodes, because every consumer
+/// in the app keys off a module id — titles, pane options, dock state,
+/// headerless modules, minimum sizes — and all of them reach a container
+/// unchanged this way, as does every arrangement saved before containers
+/// existed. The price is one invariant, and it is this class's to keep:
+/// **`nested`'s keys are always a subset of `modules`**. `fromJson` enforces
+/// it on the way in; [collapseNested] is what holds it after a mutation.
 class DockGroup extends DockNode {
   final List<String> modules;
+
+  /// The subtree behind each container slot, keyed by that slot's id.
+  final Map<String, DockNode> nested;
+
   int selected;
 
-  DockGroup(this.modules, {this.selected = 0});
+  DockGroup(this.modules, {Map<String, DockNode>? nested, this.selected = 0})
+      : nested = nested ?? <String, DockNode>{};
+
+  /// The subtree behind [slot], or null when it holds a plain module.
+  DockNode? nestedIn(String slot) => nested[slot];
+
+  /// Restores the invariant after a mutation, and applies the collapse rule:
+  /// a container left holding ONE module hands its slot back to that module.
+  ///
+  /// A container holding one GROUP of several tabs is left alone — that is a
+  /// tab set the operator built, and folding its tabs up into this strip
+  /// would rearrange more than they did.
+  void collapseNested() {
+    nested.removeWhere((key, _) => !modules.contains(key));
+    for (var i = 0; i < modules.length; i++) {
+      final node = nested[modules[i]];
+      if (node == null) continue;
+      final inside = node.collectModules();
+      if (inside.length == 1 && node.collectContainerIds().isEmpty) {
+        nested.remove(modules[i]);
+        // Handing the slot back only when it is free. A saved arrangement can
+        // hold the same module both as a slot and inside a container here, and
+        // a group listing one module twice hands one widget to two tabs:
+        // `indexOf` always finds the first, so selection and every drop path
+        // then act on the wrong one.
+        if (modules.contains(inside.single)) {
+          modules.removeAt(i);
+          i--;
+        } else {
+          modules[i] = inside.single;
+        }
+      }
+    }
+    // A slot that named a container which is no longer there names nothing.
+    for (var i = modules.length - 1; i >= 0; i--) {
+      if (isDockContainerId(modules[i]) && !nested.containsKey(modules[i])) modules.removeAt(i);
+    }
+    if (modules.isNotEmpty) selected = selected.clamp(0, modules.length - 1);
+  }
 
   /// Copies rather than aliasing the live list: a caller holding a snapshot
   /// of the arrangement (the layout editor's revert target) would otherwise
   /// watch it change under them as panes move.
   @override
-  Map<String, dynamic> toJson() => {'type': 'group', 'modules': List<String>.of(modules)};
+  Map<String, dynamic> toJson() => {
+    'type': 'group',
+    'modules': List<String>.of(modules),
+    // Omitted entirely when empty, so an arrangement with no containers
+    // serializes to exactly what it always did.
+    if (nested.isNotEmpty) 'nested': {for (final e in nested.entries) e.key: e.value.toJson()},
+  };
 }
 
 /// A row (horizontal) or column (vertical) of children sized by [weights]
@@ -185,8 +326,15 @@ class DockState {
 
   static Iterable<String> _selectedIn(DockNode node) sync* {
     switch (node) {
-      case DockGroup(:final modules, :final selected):
+      case DockGroup(:final modules, :final nested, :final selected):
         if (modules.isNotEmpty) yield modules[selected.clamp(0, modules.length - 1)];
+        // Every container, not only the showing one: a container behind
+        // another tab still remembers which of ITS panes was on top, and a
+        // state that only reached the visible branch would forget that the
+        // moment the operator looked elsewhere.
+        for (final subtree in nested.values) {
+          yield* _selectedIn(subtree);
+        }
       case DockSplit(:final children):
         for (final child in children) {
           yield* _selectedIn(child);
@@ -201,9 +349,12 @@ class DockState {
   /// own.
   void applyTo(DockNode node) {
     switch (node) {
-      case DockGroup(:final modules):
+      case DockGroup(:final modules, :final nested):
         final index = modules.indexWhere(selected.contains);
         if (index >= 0) node.selected = index;
+        for (final subtree in nested.values) {
+          applyTo(subtree);
+        }
       case DockSplit(:final children):
         for (final child in children) {
           applyTo(child);
@@ -554,6 +705,17 @@ class DockLayoutView extends StatefulWidget {
   /// rewrite their saved layout.
   final ValueChanged<DockState>? onStateChanged;
 
+  /// Modules this arrangement will not let go of: no grab handle, no
+  /// `Draggable`, and [removeModule] refuses them — so they reach neither the
+  /// delete target nor the Remove in a pane's layout options.
+  ///
+  /// For a pane the view cannot function without. A phone whose logging pane
+  /// has been dragged away is a dead app, and unlike the last-pane rule there
+  /// is nothing about the arrangement on screen that says so — which is why
+  /// the tab simply never becomes draggable, rather than a drop being refused
+  /// after the operator has already carried it somewhere.
+  final Set<String> pinnedModuleIds;
+
   const DockLayoutView({
     super.key,
     required this.initialSpec,
@@ -568,6 +730,7 @@ class DockLayoutView extends StatefulWidget {
     this.editing = false,
     this.initialState = DockState.empty,
     this.onStateChanged,
+    this.pinnedModuleIds = const {},
   });
 
   /// True when [spec]'s modules are exactly [moduleIds] — the guard a view
@@ -725,10 +888,31 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// No-op when the module isn't in the layout. Not persisted — a reveal is
   /// programmatic, not a user arrangement choice.
   void revealModule(String id) {
-    bool select(DockNode node) => switch (node) {
-      DockGroup() => node.modules.contains(id) && (node.selected = node.modules.indexOf(id)) >= 0,
-      DockSplit() => node.children.any(select),
-    };
+    // Selects at EVERY level on the way down, not just where the module sits:
+    // a pane inside a container is only on screen once the container's own tab
+    // is showing too, so a reveal that stopped at the innermost group would
+    // leave it behind a tab nobody selected.
+    bool select(DockNode node) {
+      switch (node) {
+        case DockGroup():
+          final at = node.modules.indexOf(id);
+          if (at >= 0) {
+            node.selected = at;
+            return true;
+          }
+          for (var i = 0; i < node.modules.length; i++) {
+            final subtree = node.nested[node.modules[i]];
+            if (subtree != null && select(subtree)) {
+              node.selected = i;
+              return true;
+            }
+          }
+          return false;
+        case DockSplit():
+          return node.children.any(select);
+      }
+    }
+
     setState(() => select(_spec));
   }
 
@@ -736,6 +920,12 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// lists. Read from the LIVE tree, not the caller's `initialSpec`, which
   /// stopped being the arrangement the moment the user moved anything.
   List<String> get modules => _spec.collectModules();
+
+  /// The live arrangement, for a test that needs to see the tree rather than
+  /// the flattened module list [modules] gives. Not for production code: the
+  /// host owns its own copy and hears about changes through `onSpecChanged`.
+  @visibleForTesting
+  DockNode get spec => _spec;
 
   /// What the dock is showing on top of each group right now — the same
   /// value [DockLayoutView.onStateChanged] reports. Exposed so a test can
@@ -751,11 +941,64 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   ///
   /// Reported through `onSpecChanged` like any other arrangement change:
   /// removing a pane is a user choice that must survive a relaunch.
+  /// [id] may name a CONTAINER, in which case everything inside it goes —
+  /// what the tab says it holds is what it holds. Each module dropped is
+  /// reported through [DockLayoutView.onModuleDeleted] separately, so a host
+  /// forgetting their contents does not have to know the shape of what it
+  /// removed.
   bool removeModule(String id) {
-    if (!_spec.collectModules().contains(id) || _spec.collectModules().length <= 1) return false;
-    setState(() => _spec = _removed(_spec, id)!);
+    final losing = _modulesLostRemoving(id);
+    if (losing == null) return false;
+    final pruned = _removed(_spec, id);
+    if (pruned == null) return false;
+    setState(() => _spec = pruned);
     _emit();
+    for (final module in losing) {
+      widget.onModuleDeleted?.call(module);
+    }
     return true;
+  }
+
+  /// The modules removing [id] would take, or null when the dock refuses —
+  /// [id] is not in the arrangement, something pinned is inside it, or the
+  /// last pane would go with it.
+  ///
+  /// One place, because three callers have to agree: [removeModule] itself,
+  /// the delete target — which must not be OFFERED for a drop it will refuse,
+  /// since "a target that refuses on drop would read as a bug" — and the
+  /// host's own Remove in a pane's layout options.
+  List<String>? _modulesLostRemoving(String id) {
+    final container = _spec.collectContainerIds().contains(id);
+    if (!container && !_spec.collectModules().contains(id)) return null;
+    // The SUBTREE for a container, not just its id: nesting a pinned pane puts
+    // it behind a container tab that is not itself pinned, and a guard reading
+    // only the dragged id would let that tab carry it to the delete target —
+    // the one outcome pinning exists to make unreachable.
+    //
+    // Null from `_subtreeOf` is a lookup that FAILED, not a container holding
+    // nothing: read as the latter the count below passes, and the removal then
+    // throws — a bug surfacing as a crash rather than as a refusal.
+    //
+    // Counted in MODULES: a container's tab standing alone is still a dock
+    // with panes in it, and the rule is only that the last PANE cannot go.
+    final losing = container ? _subtreeOf(id)?.collectModules() : [id];
+    if (losing == null) return null;
+    if (losing.any(widget.pinnedModuleIds.contains)) return null;
+    if (_spec.collectModules().length - losing.length < 1) return null;
+    return losing;
+  }
+
+  /// Whether the dock would drop [id] — for a host deciding whether to OFFER
+  /// the removal at all. See [_modulesLostRemoving].
+  bool canRemoveModule(String id) => _modulesLostRemoving(id) != null;
+
+  /// What container [id] holds, or null when nothing by that id is one.
+  DockNode? _subtreeOf(String id) {
+    DockNode? find(DockNode node) => switch (node) {
+      DockGroup(:final nested) => nested[id] ?? nested.values.map(find).nonNulls.firstOrNull,
+      DockSplit(:final children) => children.map(find).nonNulls.firstOrNull,
+    };
+    return find(_spec);
   }
 
   /// Brings [id] into the layout as a tab of the LAST group in visual order,
@@ -796,19 +1039,49 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// Removes [id] wherever it lives, pruning empty groups and collapsing
   /// single-child splits. Returns the replacement subtree (null when the
   /// whole subtree vanished).
-  DockNode? _removed(DockNode node, String id) {
+  /// [onDetach] receives a nested container's subtree when [id] names one, so
+  /// a drop that picks a container up can put it back down still holding what
+  /// was in it. Without it the drag would arrive as an empty tab and the panes
+  /// inside would be gone — a move that silently deletes.
+  /// [collapse] false leaves the tree in its intermediate shape — a split with
+  /// one child, a container down to one module — for a caller that is about to
+  /// put something back and will [_normalized] once at the end.
+  ///
+  /// It exists because normalising here is what made a two-pane container
+  /// impossible to rearrange from the inside: taking one of its two panes out
+  /// empties that pane's group, which collapses the split, which retires the
+  /// container — detaching the very group the drop was aimed at, so the
+  /// placement found nothing to place into and gave up. The tree is only ever
+  /// odd between those two points, inside one `setState`, so nothing renders
+  /// it.
+  DockNode? _removed(DockNode node, String id, {void Function(DockNode)? onDetach, bool collapse = true}) {
     switch (node) {
       case DockGroup():
         final index = node.modules.indexOf(id);
         if (index >= 0) {
+          if (node.nested.remove(id) case final subtree?) onDetach?.call(subtree);
           node.modules.removeAt(index);
-          if (node.modules.isEmpty) return null;
-          node.selected = node.selected.clamp(0, node.modules.length - 1);
+        } else {
+          for (final slot in node.modules.toList()) {
+            final subtree = node.nested[slot];
+            if (subtree == null) continue;
+            final replacement = _removed(subtree, id, onDetach: onDetach, collapse: collapse);
+            if (replacement == null) {
+              node.nested.remove(slot);
+              node.modules.remove(slot);
+            } else {
+              node.nested[slot] = replacement;
+            }
+          }
         }
+        if (node.modules.isEmpty) return null;
+        // Holds the nested invariant and applies the collapse rule — a
+        // container down to one module hands its slot back to it.
+        if (collapse) node.collapseNested();
         return node;
       case DockSplit():
         for (var i = node.children.length - 1; i >= 0; i--) {
-          final replacement = _removed(node.children[i], id);
+          final replacement = _removed(node.children[i], id, onDetach: onDetach, collapse: collapse);
           if (replacement == null) {
             node.children.removeAt(i);
             node.weights.removeAt(i);
@@ -817,19 +1090,155 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
           }
         }
         if (node.children.isEmpty) return null;
+        if (collapse && node.children.length == 1) return node.children.first;
+        return node;
+    }
+  }
+
+  /// Puts the live tree into its canonical shape and reports whether anything
+  /// is left. False is a caller's failure path: it has just placed something,
+  /// so an empty result means the placement did not take.
+  bool _normalize() {
+    final next = _normalized(_spec);
+    if (next == null) return false;
+    _spec = next;
+    return true;
+  }
+
+  /// The canonical shape of [node]: every group's nested invariant and collapse
+  /// rule applied, and every split left holding one child folded into it.
+  ///
+  /// Run ONCE, after a placement — see [_removed]'s `collapse`. Null when
+  /// nothing is left, which a caller that has just placed something should
+  /// treat as a failure rather than as an empty dock.
+  DockNode? _normalized(DockNode node) {
+    switch (node) {
+      case DockGroup():
+        for (final slot in node.modules.toList()) {
+          final subtree = node.nested[slot];
+          if (subtree == null) continue;
+          var next = _normalized(subtree);
+          // A container holding a group whose ONE tab is another container is
+          // two tabs deep for one thing — the operator would see "More"
+          // containing a single "More". The outer is the tab they already had,
+          // with the name and options they set on it, so the inner folds away.
+          while (next is DockGroup && next.modules.length == 1 && next.nested[next.modules.first] != null) {
+            next = next.nested[next.modules.first]!;
+          }
+          if (next == null) {
+            node.nested.remove(slot);
+            node.modules.remove(slot);
+          } else {
+            node.nested[slot] = next;
+          }
+        }
+        if (node.modules.isEmpty) return null;
+        node.collapseNested();
+        return node;
+      case DockSplit():
+        for (var i = node.children.length - 1; i >= 0; i--) {
+          final next = _normalized(node.children[i]);
+          if (next == null) {
+            node.children.removeAt(i);
+            node.weights.removeAt(i);
+          } else {
+            node.children[i] = next;
+          }
+        }
+        if (node.children.isEmpty) return null;
         if (node.children.length == 1) return node.children.first;
         return node;
     }
   }
 
-  DockSplit? _parentOf(DockNode node, DockNode child) {
-    if (node is! DockSplit) return null;
-    for (final c in node.children) {
-      if (identical(c, child)) return node;
-      final found = _parentOf(c, child);
-      if (found != null) return found;
+  /// A fresh id for a container, unique within THIS dock.
+  ///
+  /// Local, unlike a panel instance id: a container indexes nothing outside
+  /// its own arrangement — its title and layout options live in the view's own
+  /// per-class `paneOptions` — so two docks each holding a `nested#1` collide
+  /// over nothing.
+  ///
+  /// [alsoTaken] is not optional politeness: the caller has already DETACHED
+  /// what it is placing, so the id of a container in flight — and of every
+  /// container inside it — reads as free from the tree, and the lowest-free
+  /// rule hands it straight back. The arrangement then holds one id twice,
+  /// which shares one `paneOptions` entry between two tabs and, on the next
+  /// launch, fails the host's duplicate check and costs the operator the whole
+  /// layout.
+  String _newContainerId({Iterable<String> alsoTaken = const []}) {
+    final taken = {..._spec.collectContainerIds(), ...alsoTaken};
+    var n = 1;
+    while (taken.contains('$dockContainerIdBase#$n')) {
+      n++;
     }
-    return null;
+    return '$dockContainerIdBase#$n';
+  }
+
+  /// The node a dragged [id] should arrive as: a plain group for a module, and
+  /// for a container the same tab it left as, still holding [carried].
+  DockGroup _arriving(String id, DockNode? carried) =>
+      carried == null ? DockGroup([id]) : DockGroup([id], nested: {id: carried});
+
+  /// The split [child] is a child OF, or null when it is the root or the whole
+  /// subtree behind a container slot — neither of which has one.
+  ///
+  /// Descends through `nested` as well as through splits. A group inside a
+  /// container is a group like any other, and a walk that stopped at the group
+  /// holding the container would report every one of them as parentless — which
+  /// callers read as "this is the root".
+  DockSplit? _parentOf(DockNode node, DockNode child) {
+    switch (node) {
+      case DockGroup(:final nested):
+        for (final subtree in nested.values) {
+          if (identical(subtree, child)) return null;
+          final found = _parentOf(subtree, child);
+          if (found != null) return found;
+        }
+        return null;
+      case DockSplit(:final children):
+        for (final c in children) {
+          if (identical(c, child)) return node;
+          final found = _parentOf(c, child);
+          if (found != null) return found;
+        }
+        return null;
+    }
+  }
+
+  /// Puts [replacement] where [target] sits — a split's child, a container's
+  /// subtree, or the root itself. False when [target] is not in the tree at
+  /// all, which is the one answer a caller must not ignore: it has already
+  /// taken the dragged module out by then, and dropping the replacement on the
+  /// floor loses it.
+  bool _replaceNode(DockNode target, DockNode replacement) {
+    if (identical(_spec, target)) {
+      _spec = replacement;
+      return true;
+    }
+    bool inside(DockNode node) {
+      switch (node) {
+        case DockGroup(:final nested):
+          for (final slot in nested.keys.toList()) {
+            if (identical(nested[slot], target)) {
+              nested[slot] = replacement;
+              return true;
+            }
+            if (inside(nested[slot]!)) return true;
+          }
+          return false;
+        case DockSplit(:final children):
+          for (var i = 0; i < children.length; i++) {
+            if (identical(children[i], target)) {
+              children[i] = replacement;
+              return true;
+            }
+            if (inside(children[i])) return true;
+          }
+          return false;
+      }
+    }
+
+    return inside(_spec);
   }
 
   /// A dropped pane takes the share of the band it was dropped on — the
@@ -839,13 +1248,35 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   static const _newPaneShare = 1 / 3;
 
   void _handleDrop(String id, DockGroup target, DockRegion region) {
+    // Every path below takes the module OUT of the tree before it knows where
+    // it is going. A restore point is what keeps an abandoned placement from
+    // being a deletion — the alternative is unpicking a mutation whose shape
+    // depends on which branch it failed in. Cheap: taken once per drop, used
+    // only on a path that should never run.
+    final restore = _spec.toJson();
+    final selection = DockState.of(_spec);
+    var failed = false;
     setState(() {
       // A side drop of a group's sole module beside itself is a no-op.
       if (target.modules.length == 1 && target.modules.single == id) return;
-      _spec = _removed(_spec, id) ?? DockGroup([id]);
-      final fresh = DockGroup([id]);
+      DockNode? carried;
+      // Deferred: normalising here would collapse a two-pane container out
+      // from under the group being dropped ON. `_normalize` below is what puts
+      // the tree back into shape, once, after the placement.
+      _spec = _removed(_spec, id, onDetach: (node) => carried = node, collapse: false) ?? _arriving(id, carried);
+      final fresh = _arriving(id, carried);
       final axis = (region == DockRegion.left || region == DockRegion.right) ? Axis.horizontal : Axis.vertical;
       final before = region == DockRegion.left || region == DockRegion.top;
+      // Checked the same way the other two handlers check it, and for the
+      // same reason: dragging a CONTAINER's tab onto a band of a pane inside
+      // that container detaches the group being dropped on. Not an
+      // impossibility to assert away — an assert here throws before the
+      // restore below can run, which turns a no-op into the deletion it was
+      // added to prevent.
+      if (!_isInTree(target)) {
+        failed = true;
+        return;
+      }
       final parent = _parentOf(_spec, target);
       if (parent != null && parent.axis == axis) {
         // The newcomer takes its share OUT OF THE TARGET rather than out of
@@ -863,16 +1294,119 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
             ? [_newPaneShare, 1 - _newPaneShare]
             : [1 - _newPaneShare, _newPaneShare];
         final split = DockSplit(axis, before ? [fresh, target] : [target, fresh], weights);
-        if (parent == null) {
-          _spec = identical(_spec, target) ? split : _spec;
-        } else {
-          final i = parent.children.indexWhere((c) => identical(c, target));
-          parent.children[i] = split;
+        // Through `_replaceNode` rather than "null parent means root": a group
+        // that is the whole subtree behind a container slot also has no split
+        // parent, and treating it as the root would discard `split` — the only
+        // thing holding `fresh` — with the module already taken out of the
+        // tree, so the drop would delete the pane it was moving.
+        if (!_replaceNode(target, split)) {
+          failed = true;
+          return;
         }
+        // Reached only if `target` is in the tree but sits nowhere a node can
+        // be replaced, which the checks above already rule out.
         _growPane(split, before ? 0 : 1);
       }
+      if (!_normalize()) failed = true;
     });
+    if (failed) {
+      _restoreTree(restore, selection, 'drop-lost-target: the dropped-on group left the tree mid-drop');
+      return;
+    }
     _emit();
+  }
+
+  /// A drop on the CENTRE of [target]'s body: the tab that is showing becomes
+  /// a **container** — a vertical split holding what was in that tab and the
+  /// newcomer, [above] or below it — and the container takes the tab's slot.
+  ///
+  /// The tab set itself does not change shape: {Info, Spots, Map} with Info
+  /// dropped below Map's centre is {Spots, More[Map over Info]}, not four
+  /// panes and not a split of the whole group. That is the distinction from
+  /// the four edge bands ([_handleDrop]), which split the group in its PARENT.
+  void _handleNestDrop(String id, DockGroup target, {required bool above}) {
+    // See [_handleDrop]'s own restore point, and for the same reason: the
+    // removal below runs before this knows the slot is still there to nest
+    // into. Removing `id` can take `target` out of the tree entirely —
+    // emptying its sibling collapses the split around it, and a container down
+    // to one module hands its slot back and drops the subtree holding `target`
+    // with it — and `target.modules` reads perfectly well on an orphan.
+    final restore = _spec.toJson();
+    final selection = DockState.of(_spec);
+    var failed = false;
+    setState(() {
+      if (target.modules.isEmpty) return;
+      final slot = target.modules[target.selected.clamp(0, target.modules.length - 1)];
+      // The showing tab IS the thing being dragged: there is nothing to put it
+      // beside except itself.
+      if (slot == id) return;
+      DockNode? carried;
+      _spec = _removed(_spec, id, onDetach: (node) => carried = node, collapse: false) ?? _arriving(id, carried);
+      // Re-found, never the index captured above: removing `id` from this very
+      // group shifts every slot after it. And reachability separately, which
+      // an index cannot answer for.
+      final at = target.modules.indexOf(slot);
+      if (at < 0 || !_isInTree(target)) {
+        failed = true;
+        return;
+      }
+      // A container already in this slot would only be reachable if the outer
+      // body took drops while a container tab was showing, which it does not
+      // (see [_buildGroup]) — handled anyway rather than assumed away.
+      final held = target.nested.remove(slot) ?? DockGroup([slot]);
+      final fresh = _arriving(id, carried);
+      final containerId = _newContainerId(alsoTaken: fresh.collectContainerIds());
+      target.nested[containerId] = DockSplit(
+        Axis.vertical,
+        above ? [fresh, held] : [held, fresh],
+        [1, 1],
+      );
+      target.modules[at] = containerId;
+      target.selected = at;
+      if (!_normalize()) failed = true;
+    });
+    if (failed) {
+      // A nest that cannot be completed is a no-op, not a deletion. Reachable
+      // for real: nest B under A, then drag one of the container's two panes
+      // onto the other's centre — the removal collapses the container out from
+      // under the group being dropped on.
+      _restoreTree(restore, selection, 'nest-lost-target: the dropped-on group left the tree mid-drop');
+      return;
+    }
+    _emit();
+  }
+
+  /// Puts the tree back as it was and TELLS THE HOST so.
+  ///
+  /// Both halves are load-bearing. `_spec` begins life as the host's own
+  /// object (`widget.initialSpec`) and every mutation above runs in place, so
+  /// by now the host is holding the damaged tree — a restore that only
+  /// repaired this widget's field would look right on screen and save a
+  /// missing pane. And the selection has to be laid back over it: which tab is
+  /// on top is STATE, and the restore point is a definition, which by design
+  /// carries none — so a restore without this snaps every strip in the dock
+  /// back to its first tab.
+  void _restoreTree(Map<String, dynamic> snapshot, DockState selection, String why) {
+    debugPrint('[layout] $why');
+    final spec = DockNode.fromJson(snapshot)!;
+    selection.applyTo(spec);
+    setState(() => _spec = spec);
+    _emit();
+  }
+
+  /// Whether [node] is still reachable from the live tree. Identity, not
+  /// equality: what a caller holding a node from before a mutation needs to
+  /// know is whether THAT object is still in it.
+  bool _isInTree(DockNode node) {
+    bool find(DockNode current) {
+      if (identical(current, node)) return true;
+      return switch (current) {
+        DockGroup(:final nested) => nested.values.any(find),
+        DockSplit(:final children) => children.any(find),
+      };
+    }
+
+    return find(_spec);
   }
 
   /// A drop on [target]'s tab strip: the module takes position [insertIndex]
@@ -883,6 +1417,10 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// and joining from elsewhere, because they differ only in where the
   /// module comes from.
   void _handleTabDrop(String id, DockGroup target, int insertIndex) {
+    // See [_handleDrop]'s restore point, for the same reason.
+    final restore = _spec.toJson();
+    final selection = DockState.of(_spec);
+    var failed = false;
     setState(() {
       final existing = target.modules.indexOf(id);
       if (existing >= 0) {
@@ -893,11 +1431,28 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         final adjusted = (insertIndex > existing ? insertIndex - 1 : insertIndex).clamp(0, target.modules.length);
         target.modules.insert(adjusted, id);
       } else {
-        _spec = _removed(_spec, id) ?? DockGroup([id]);
+        DockNode? carried;
+        _spec = _removed(_spec, id, onDetach: (node) => carried = node, collapse: false) ?? _arriving(id, carried);
+        // A container's contents are on screen while its tab shows, and that
+        // tab is draggable — so the strip being dropped on can be one INSIDE
+        // the container being dragged, which `_removed` has just detached.
+        // Inserting into an orphan loses the container and every pane in it.
+        if (!_isInTree(target)) {
+          failed = true;
+          return;
+        }
         target.modules.insert(insertIndex.clamp(0, target.modules.length), id);
+        // A container joins a strip as the same tab it left as, still holding
+        // what was in it.
+        if (carried case final subtree?) target.nested[id] = subtree;
       }
       target.selected = target.modules.indexOf(id);
+      if (!_normalize()) failed = true;
     });
+    if (failed) {
+      _restoreTree(restore, selection, 'tab-drop-lost-target: the dropped-on group left the tree mid-drop');
+      return;
+    }
     _emit();
   }
 
@@ -907,8 +1462,9 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     setState(() {
       final spec = _spec;
       if (spec is DockGroup && spec.modules.length == 1 && spec.modules.single == id) return;
-      final root = _removed(_spec, id) ?? DockGroup([id]);
-      final fresh = DockGroup([id]);
+      DockNode? carried;
+      final root = _removed(_spec, id, onDetach: (node) => carried = node) ?? _arriving(id, carried);
+      final fresh = _arriving(id, carried);
       final axis = (region == DockRegion.left || region == DockRegion.right) ? Axis.horizontal : Axis.vertical;
       final before = region == DockRegion.left || region == DockRegion.top;
       if (root is DockSplit && root.axis == axis) {
@@ -950,7 +1506,12 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// the layout would be unrecoverable from inside the view. A target that
   /// refuses on drop would read as a bug.
   Widget _buildDeleteTargetOverlay() {
-    if (!(_dragging != null && _spec.collectModules().length > 1)) {
+    // Asked about the id actually IN FLIGHT, not just "more than one pane
+    // exists": a container tab stands for everything inside it, and a pinned
+    // pane nested behind one would otherwise reach a target that silently
+    // refuses it.
+    final dragging = _dragging;
+    if (dragging == null || !canRemoveModule(dragging)) {
       return const SizedBox.shrink();
     }
     return Positioned(
@@ -969,9 +1530,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// refuses.
   void _syncDeleteTargetOverlay() => _deleteTargetOverlayEntry?.markNeedsBuild();
 
-  void _handleDeleteDrop(String id) {
-    if (removeModule(id)) widget.onModuleDeleted?.call(id);
-  }
+  void _handleDeleteDrop(String id) => removeModule(id);
 
   Widget _positionedEdge(DockRegion region, Widget child) {
     const extent = 20.0;
@@ -981,6 +1540,56 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
       DockRegion.top => Positioned(left: 0, right: 0, top: 0, height: extent, child: child),
       DockRegion.bottom => Positioned(left: 0, right: 0, bottom: 0, height: extent, child: child),
     };
+  }
+
+  /// What tab slot [index] of [group] shows: a container's whole subtree, or
+  /// a pane wrapped in the chrome editing gives a pane.
+  Widget _slotBody(DockGroup group, int index, {required bool showHeader}) {
+    final slot = group.modules[index];
+    if (group.nested[slot] case final subtree?) return _buildNode(subtree);
+    final pane = widget.children[slot] ?? _missingPane(slot);
+    // While editing, the pane's own contents take no pointer input. A pane is
+    // a block to be moved then, and its insides are a picture of what the
+    // block holds: a drag begun inside the log would otherwise be taken by the
+    // log's own scroll or selection gestures, and a tap would put the caret in
+    // a field the operator can't see the point of typing into.
+    //
+    // ExcludeFocus alongside it, which IgnorePointer does not imply: whatever
+    // held focus when editing began keeps it otherwise, and in this app that
+    // is a logging field — now under an opaque wash, still taking keystrokes,
+    // still submitting the QSO on Enter. ExcludeSemantics for the same reason:
+    // a screen reader must not land on a control that is only a picture of
+    // itself right now.
+    //
+    // Per SLOT rather than around the whole IndexedStack, because a container
+    // slot must not get any of it — see [_slotBody]'s caller.
+    return ExcludeSemantics(
+      excluding: widget.editing,
+      child: ExcludeFocus(
+        excluding: widget.editing,
+        child: IgnorePointer(
+          ignoring: widget.editing,
+          // The pane gives up the room the outline needs rather than being
+          // painted over: while editing it is a little smaller on its three
+          // free sides, and the line sits in what it gave up. Nothing on the
+          // top — the tab strip's own segments are the outline there, and the
+          // strip has not moved.
+          child: Padding(
+            padding: widget.editing
+                ? EdgeInsets.only(
+                    left: _editingFrameWidth,
+                    // A headerless pane has no strip drawing its top edge, so
+                    // it gives up room for that side too.
+                    top: showHeader ? 0 : _editingFrameWidth,
+                    right: _editingFrameWidth,
+                    bottom: _editingFrameWidth,
+                  )
+                : EdgeInsets.zero,
+            child: pane,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildNode(DockNode node) => switch (node) {
@@ -1013,7 +1622,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// overflow.
   double _nodeMinExtent(DockNode node, Axis axis, {double? crossExtent}) {
     switch (node) {
-      case DockGroup(:final modules):
+      case DockGroup(:final modules, :final nested):
         final unit = dockPaneUnit(context);
         // Only a headerless SOLO module reflows: it gets `_FloatingPaneChrome`,
         // which stacks vertically below three units. Every other group shows a
@@ -1026,7 +1635,18 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         final base = reflows
             ? (crossExtent != null ? dockMinPaneExtent(context, crossExtent: crossExtent) : unit)
             : (axis == Axis.horizontal ? unit * 3 : unit);
-        final declared = modules.fold(0.0, (max_, id) => math.max(max_, _moduleMinFor(id, axis)));
+        // A container slot asks for whatever its whole subtree asks for — an
+        // inner vertical split needs both its panes' heights, and a panel
+        // inside it can declare a minimum of its own. Counted, or a divider
+        // drag squeezes a group holding a two-pane container down to the
+        // single-pane floor and the inner split overflows.
+        final declared = modules.fold(0.0, (max_, id) {
+          final subtree = nested[id];
+          return math.max(
+            max_,
+            subtree == null ? _moduleMinFor(id, axis) : _nodeMinExtent(subtree, axis, crossExtent: crossExtent),
+          );
+        });
         return math.max(base, declared);
       case DockSplit(axis: final childAxis, :final children):
         if (childAxis == axis) {
@@ -1298,7 +1918,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         // Every tab while editing, not just the active one: the handle is
         // what says a tab can be moved, and a group whose three tabs show one
         // handle between them reads as one movable pane and two fixed ones.
-        showHandle: widget.editing,
+        showHandle: widget.editing && !widget.pinnedModuleIds.contains(id),
+        pinned: widget.pinnedModuleIds.contains(id),
         // Reserved only where it will be USED while editing. The reservation
         // exists to keep labels from shifting as the selection moves, and a
         // tab that can be squeezed to its handle has given that up already —
@@ -1350,6 +1971,14 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     // options button, no height taken from anything.
     final showHeader = group.modules.length > 1 ||
         !widget.headerlessModules.contains(group.modules.first);
+    // The showing slot holds a whole subtree rather than a pane. Everything
+    // this group draws AS a pane — the editing wash, its own drop bands, its
+    // own outline — belongs to the panes inside instead, each of which draws
+    // its own. So the outer group's body bands are unreachable while a
+    // container is showing: splitting THIS group means selecting a plain tab
+    // first, and the dock's own edge strips are always there.
+    final showingNested =
+        group.nested.containsKey(group.modules[group.selected.clamp(0, group.modules.length - 1)]);
     final floatingChrome = widget.editing && !showHeader;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1514,60 +2143,57 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               // submitting the QSO on Enter. ExcludeSemantics for the same
               // reason one level up: a screen reader must not land on a
               // control that is only a picture of itself right now.
-              ExcludeSemantics(
-                excluding: widget.editing,
-                child: ExcludeFocus(
-                  excluding: widget.editing,
-                  child: IgnorePointer(
-                    ignoring: widget.editing,
-                // The pane gives up the room the outline needs rather than
-                // being painted over: while editing it is a little smaller on
-                // its three free sides, and the line sits in what it gave up.
-                // Nothing on the top — the tab strip's own segments are the
-                // outline there, and the strip has not moved.
-                    child: Padding(
-                      padding: widget.editing
-                          ? EdgeInsets.only(
-                              left: _editingFrameWidth,
-                              // A headerless pane has no strip drawing its top
-                              // edge, so it gives up room for that side too.
-                              top: showHeader ? 0 : _editingFrameWidth,
-                              right: _editingFrameWidth,
-                              bottom: _editingFrameWidth,
-                            )
-                          : EdgeInsets.zero,
-                      child: IndexedStack(
-                        // Tight constraints, like a TabBarView page — panes
-                        // are designed to fill their pane, not shrink-wrap.
-                        sizing: StackFit.expand,
-                        index: group.selected,
-                        children: [
-                          for (var i = 0; i < group.modules.length; i++)
-                            DockPaneVisibility(
-                              visible: i == group.selected,
-                              child: widget.children[group.modules[i]] ?? _missingPane(group.modules[i]),
-                            ),
-                        ],
+              IndexedStack(
+                // Tight constraints, like a TabBarView page — panes are
+                // designed to fill their pane, not shrink-wrap.
+                sizing: StackFit.expand,
+                index: group.selected,
+                children: [
+                  for (var i = 0; i < group.modules.length; i++)
+                    // A Builder so the value below can be ANDed with the one
+                    // this group is itself inside. `DockPaneVisibility.of`
+                    // reads the NEAREST ancestor only, so an inner group that
+                    // published its own selection unqualified would tell the
+                    // selected pane of a hidden container that it is on screen
+                    // — and everything that acts on this (the mobile numbers
+                    // row, every polling panel, the webview panes) would go on
+                    // as if nobody had switched tabs.
+                    Builder(
+                      builder: (context) => DockPaneVisibility(
+                      visible: i == group.selected && DockPaneVisibility.of(context),
+                      // A CONTAINER slot renders its whole subtree, bare: the
+                      // groups inside it apply their own editing chrome and
+                      // own their own drop regions, so wrapping them in this
+                      // group's would leave a nested arrangement with no way
+                      // to be rearranged.
+                      child: _slotBody(group, i, showHeader: showHeader),
                       ),
                     ),
-                  ),
-                ),
+                ],
               ),
-              if (widget.editing) const IgnorePointer(child: _EditingPaneWash()),
+              // All three belong to a PANE. A container showing in this slot
+              // is not one — it is a piece of layout, and the panes inside it
+              // draw their own wash, bands and outline.
+              if (widget.editing && !showingNested) const IgnorePointer(child: _EditingPaneWash()),
               // Cross-faded rather than mounted outright: bands that appear
               // the instant a drag starts read as a flicker under the
               // pointer, and on drop they would vanish before the layout
               // they described has finished moving.
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 150),
-                child: _dragging == null
+                child: _dragging == null || showingNested
                     ? const SizedBox.shrink()
-                    : _GroupDropRegions(washAlpha: _hitWashAlpha, onDrop: (id, region) => _handleDrop(id, group, region)),
+                    : _GroupDropRegions(
+                        washAlpha: _hitWashAlpha,
+                        onDrop: (id, drop) => drop.nest
+                            ? _handleNestDrop(id, group, above: drop.region == DockRegion.top)
+                            : _handleDrop(id, group, drop.region),
+                      ),
               ),
               // Last, so the outline is over the drop bands too — otherwise
               // the pane being aimed at loses its own edges at the moment it
               // matters most.
-              if (widget.editing)
+              if (widget.editing && !showingNested)
                 Positioned.fill(
                   child: IgnorePointer(
                     child: CustomPaint(painter: _PaneFramePainter(topFromStrip: showHeader)),
@@ -1593,6 +2219,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                       child: _FloatingPaneChrome(
                         title: widget.titles[group.modules.first] ?? group.modules.first,
                         moduleId: group.modules.first,
+                        pinned: widget.pinnedModuleIds.contains(group.modules.first),
                         action: widget.editingPaneControls?.call(context, group.modules.first),
                         onDragStarted: (id) {
                           setState(() => _dragging = id);
@@ -1720,6 +2347,11 @@ class _DockTab extends StatelessWidget {
 
   final bool showHandle;
 
+  /// See [DockLayoutView.pinnedModuleIds]. The tab still frames and fills like
+  /// any other while editing — it is part of the same arrangement — it simply
+  /// has no drag on it.
+  final bool pinned;
+
   /// The module's own action (a settings button), shown at the tab's trailing
   /// edge while this tab is the active one.
   final Widget? action;
@@ -1737,6 +2369,7 @@ class _DockTab extends StatelessWidget {
     required this.isFirst,
     required this.isLast,
     required this.showHandle,
+    required this.pinned,
     required this.action,
     required this.onTap,
     required this.moduleId,
@@ -1948,6 +2581,10 @@ class _DockTab extends StatelessWidget {
       foregroundPainter: _TabFramePainter(selected: selected, isFirst: isFirst, isLast: isLast),
       child: filledTab,
     );
+    // Framed and filled like its neighbours, but with no drag and no grab
+    // cursor: it belongs to the arrangement being edited, it just isn't one of
+    // the pieces that moves. See [DockLayoutView.pinnedModuleIds].
+    if (pinned) return framedTab;
     return MouseRegion(
       cursor: SystemMouseCursors.grab,
       child: Draggable<String>(
@@ -2006,6 +2643,54 @@ DockRegion? dockSplitRegionAt(Offset local, Size size, {DockRegion? active}) {
   return horizontal ?? vertical;
 }
 
+/// How much of the centre square's height is left inert, split either side of
+/// its middle line.
+///
+/// The one place inside a pane where a drag the operator thought better of can
+/// be let go. Without it every pixel of every pane acts on release, and the
+/// only way to abandon a drag is to carry it out of the dock.
+const _nestInertFraction = 0.2;
+
+/// Where in the centre square [local] falls: [DockRegion.top] for the upper
+/// half, [DockRegion.bottom] for the lower, null outside the square or inside
+/// its inert middle strip.
+///
+/// The two answers are the same DIRECTIONS the outer bands report, and mean
+/// something different: nest INSIDE the showing tab rather than split the
+/// group. What tells them apart is how far in the pointer is, which is why
+/// they are two functions over one geometry rather than one enum with six
+/// values — a caller that confused them would rearrange the wrong thing.
+@visibleForTesting
+DockRegion? dockNestRegionAt(Offset local, Size size) {
+  if (size.isEmpty) return null;
+  final left = size.width / 3;
+  final top = size.height / 3;
+  if (local.dx < left || local.dx > size.width - left) return null;
+  if (local.dy < top || local.dy > size.height - top) return null;
+  final middle = size.height / 2;
+  final inert = size.height / 3 * _nestInertFraction / 2;
+  if ((local.dy - middle).abs() <= inert) return null;
+  return local.dy < middle ? DockRegion.top : DockRegion.bottom;
+}
+
+/// What a drop on a group's body means: a direction, and whether it splits the
+/// group in its parent or nests inside the tab that is showing.
+@immutable
+class DockBodyDrop {
+  final DockRegion region;
+
+  /// True for the centre square's halves — see [dockNestRegionAt].
+  final bool nest;
+
+  const DockBodyDrop(this.region, {required this.nest});
+
+  @override
+  bool operator ==(Object other) => other is DockBodyDrop && other.region == region && other.nest == nest;
+
+  @override
+  int get hashCode => Object.hash(region, nest);
+}
+
 /// The split targets over a group's BODY while a drag is live: a top and a
 /// bottom band, each a third of the height and running the full width, and a
 /// left and a right band, each a third of the width and running the full
@@ -2028,7 +2713,7 @@ DockRegion? dockSplitRegionAt(Offset local, Size size, {DockRegion? active}) {
 /// a guess.
 class _GroupDropRegions extends StatefulWidget {
   final double washAlpha;
-  final void Function(String id, DockRegion region) onDrop;
+  final void Function(String id, DockBodyDrop drop) onDrop;
 
   const _GroupDropRegions({required this.washAlpha, required this.onDrop});
 
@@ -2037,32 +2722,54 @@ class _GroupDropRegions extends StatefulWidget {
 }
 
 class _GroupDropRegionsState extends State<_GroupDropRegions> {
-  DockRegion? _active;
+  DockBodyDrop? _active;
 
   /// The band last highlighted, kept after [_active] clears so the highlight
   /// can fade out where it was rather than blinking off.
-  DockRegion? _fading;
+  DockBodyDrop? _fading;
 
   void _updateFrom(Offset globalOffset) {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
-    final region = dockSplitRegionAt(box.globalToLocal(globalOffset), box.size, active: _active);
-    if (region != _active) {
+    final local = box.globalToLocal(globalOffset);
+    // The outer bands first: they are disjoint from the centre square by
+    // construction, and only the outer ones carry the sticky-corner rule —
+    // which must not be handed a centre answer to stick to.
+    final split = dockSplitRegionAt(local, box.size, active: _active?.nest == false ? _active!.region : null);
+    final drop = split != null
+        ? DockBodyDrop(split, nest: false)
+        : switch (dockNestRegionAt(local, box.size)) {
+            final region? => DockBodyDrop(region, nest: true),
+            null => null,
+          };
+    if (drop != _active) {
       setState(() {
-        _active = region;
-        _fading = region ?? _fading;
+        _active = drop;
+        _fading = drop ?? _fading;
       });
     }
   }
 
-  /// Where [region]'s highlight is painted — the band itself, so what the
-  /// operator sees is exactly what they are aiming at.
-  Rect _bandOf(DockRegion region, Size size) => switch (region) {
-    DockRegion.top => Rect.fromLTWH(0, 0, size.width, size.height / 3),
-    DockRegion.bottom => Rect.fromLTWH(0, size.height * 2 / 3, size.width, size.height / 3),
-    DockRegion.left => Rect.fromLTWH(0, 0, size.width / 3, size.height),
-    DockRegion.right => Rect.fromLTWH(size.width * 2 / 3, 0, size.width / 3, size.height),
-  };
+  /// Where [drop]'s highlight is painted — the band itself, so what the
+  /// operator sees is exactly what they are aiming at. A nesting half is drawn
+  /// inside the centre square, at the size the pane it creates will have.
+  Rect _bandOf(DockBodyDrop drop, Size size) {
+    if (drop.nest) {
+      final left = size.width / 3;
+      final top = size.height / 3;
+      final inert = size.height / 3 * _nestInertFraction / 2;
+      final half = size.height / 2;
+      return drop.region == DockRegion.top
+          ? Rect.fromLTRB(left, top, size.width - left, half - inert)
+          : Rect.fromLTRB(left, half + inert, size.width - left, size.height - top);
+    }
+    return switch (drop.region) {
+      DockRegion.top => Rect.fromLTWH(0, 0, size.width, size.height / 3),
+      DockRegion.bottom => Rect.fromLTWH(0, size.height * 2 / 3, size.width, size.height / 3),
+      DockRegion.left => Rect.fromLTWH(0, 0, size.width / 3, size.height),
+      DockRegion.right => Rect.fromLTWH(size.width * 2 / 3, 0, size.width / 3, size.height),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2087,10 +2794,11 @@ class _GroupDropRegionsState extends State<_GroupDropRegions> {
       onMove: (details) => _updateFrom(details.offset),
       onLeave: (_) => setState(() => _active = null),
       onAcceptWithDetails: (details) {
-        final region = _active;
+        final drop = _active;
         setState(() => _active = null);
-        // The middle square: no band, no guess.
-        if (region != null) widget.onDrop(details.data, region);
+        // The inert strip on the centre line, and nothing else: no band, no
+        // guess, and somewhere for an abandoned drag to land.
+        if (drop != null) widget.onDrop(details.data, drop);
       },
       builder: (context, candidates, _) {
         return LayoutBuilder(
@@ -2309,6 +3017,11 @@ class _EdgeDropTarget extends StatelessWidget {
 class _FloatingPaneChrome extends StatelessWidget {
   final String title;
   final String moduleId;
+
+  /// See [DockLayoutView.pinnedModuleIds]. The chrome stays — it is where the
+  /// pane's layout options live — it simply cannot be picked up.
+  final bool pinned;
+
   final Widget? action;
   final ValueChanged<String> onDragStarted;
   final VoidCallback onDragEnded;
@@ -2316,6 +3029,7 @@ class _FloatingPaneChrome extends StatelessWidget {
   const _FloatingPaneChrome({
     required this.title,
     required this.moduleId,
+    required this.pinned,
     required this.action,
     required this.onDragStarted,
     required this.onDragEnded,
@@ -2410,30 +3124,34 @@ class _FloatingPaneChrome extends StatelessWidget {
                 child: SizedBox(
                   width: wide ? null : unit,
                   height: wide ? unit : null,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.grab,
-                    child: Draggable<String>(
-                      data: moduleId,
-                      dragAnchorStrategy: pointerDragAnchorStrategy,
-                      onDragStarted: () => onDragStarted(moduleId),
-                      onDragEnd: (_) => onDragEnded(),
-                      onDraggableCanceled: (_, _) => onDragEnded(),
-                      feedback: Material(
-                        elevation: 4,
-                        borderRadius: BorderRadius.circular(6),
-                        color: theme.colorScheme.primary,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
-                          child: Text(
-                            title,
-                            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary),
+                  // Pinned: the block still carries the pane's title and its
+                  // layout options, it just isn't a handle.
+                  child: pinned
+                      ? content
+                      : MouseRegion(
+                          cursor: SystemMouseCursors.grab,
+                          child: Draggable<String>(
+                            data: moduleId,
+                            dragAnchorStrategy: pointerDragAnchorStrategy,
+                            onDragStarted: () => onDragStarted(moduleId),
+                            onDragEnd: (_) => onDragEnded(),
+                            onDraggableCanceled: (_, _) => onDragEnded(),
+                            feedback: Material(
+                              elevation: 4,
+                              borderRadius: BorderRadius.circular(6),
+                              color: theme.colorScheme.primary,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
+                                child: Text(
+                                  title,
+                                  style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary),
+                                ),
+                              ),
+                            ),
+                            childWhenDragging: Opacity(opacity: 0.4, child: content),
+                            child: content,
                           ),
                         ),
-                      ),
-                      childWhenDragging: Opacity(opacity: 0.4, child: content),
-                      child: content,
-                    ),
-                  ),
                 ),
               ),
             ),

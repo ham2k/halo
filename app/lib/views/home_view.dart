@@ -233,12 +233,20 @@ class _HomeViewState extends State<HomeView>
   String get dockView => PanelViews.home;
 
   @override
-  DockLayoutKeys get dockKeys => const DockLayoutKeys(
-    spec: LayoutKeys.homeDock,
-    state: LayoutKeys.homeDockState,
-    paneOptions: LayoutKeys.homePaneOptions,
-    viewOptions: LayoutKeys.homeViewOptions,
-  );
+  DockLayoutKeys dockKeysFor(DockLayoutClass layoutClass) => switch (layoutClass) {
+    DockLayoutClass.wide => const DockLayoutKeys(
+      spec: LayoutKeys.homeDock,
+      state: LayoutKeys.homeDockState,
+      paneOptions: LayoutKeys.homePaneOptions,
+      viewOptions: LayoutKeys.homeViewOptions,
+    ),
+    DockLayoutClass.narrow => const DockLayoutKeys(
+      spec: LayoutKeys.homeNarrowDock,
+      state: LayoutKeys.homeNarrowDockState,
+      paneOptions: LayoutKeys.homeNarrowPaneOptions,
+      viewOptions: LayoutKeys.homeNarrowViewOptions,
+    ),
+  };
 
   @override
   Set<String> get nativeModuleIds => const {
@@ -314,13 +322,23 @@ class _HomeViewState extends State<HomeView>
   /// shipped with. Quick Lookup is in neither group: it is chrome under the
   /// whole dock, so a phone shows the list with the bar beneath it without the
   /// arrangement having to say so.
+  ///
+  /// Narrow ships as the list ALONE. The branding column is not in it: two
+  /// thirds of a 360-pixel window is not a list, and the mark is already on
+  /// the header. It stays addable from the sheet for an operator who wants
+  /// it.
   @override
-  DockNode buildDefaultDockSpec({bool migrate = true}) => DockSplit(Axis.horizontal, [
-    DockGroup([HomeView.operationsPanelId]),
-    DockGroup([HomeView.versionPanelId]),
-    // The operator's own width if they ever set one — but never for a RESTORE,
-    // which is the one control that has to reach the shipped arrangement.
-  ], (migrate ? _migratedColumnWeights() : null) ?? _shippedColumnWeights());
+  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
+      switch (layoutClass) {
+        DockLayoutClass.narrow => DockGroup([HomeView.operationsPanelId]),
+        DockLayoutClass.wide => DockSplit(Axis.horizontal, [
+          DockGroup([HomeView.operationsPanelId]),
+          DockGroup([HomeView.versionPanelId]),
+          // The operator's own width if they ever set one — but never for a
+          // RESTORE, which is the one control that has to reach the shipped
+          // arrangement.
+        ], (migrate ? _migratedColumnWeights() : null) ?? _shippedColumnWeights()),
+      };
 
   /// Quick Lookup is chrome, not a pane — always on screen, below
   /// whatever the layout holds — so an arrangement that still names it is
@@ -654,6 +672,9 @@ class _HomeViewState extends State<HomeView>
 
   Widget _buildScaffold(BuildContext context, ThemeData theme) {
     final isTwoPane = ShirtSize.of(context).isTwoPane;
+    // Which arrangement the dock below draws. Assigned before it is built:
+    // every accessor the mixin offers reads this field.
+    dockLayoutClass = isTwoPane ? DockLayoutClass.wide : DockLayoutClass.narrow;
     // Home and Settings both sit BESIDE the rail (drawn by the window — see
     // `HomeRailState`), so each holds its own column open by the rail's width.
     //
@@ -841,10 +862,10 @@ class _HomeViewState extends State<HomeView>
           // Defaults — without it an operator who rearranges Home into
           // something they dislike, or drops a pane, has no way back to the
           // arrangement it ships with. Null unless editing.
-          if (isTwoPane) ?viewOptionsButton(context, editing: layoutEditing),
+          ?viewOptionsButton(context, editing: layoutEditing),
           // Only where there is an arrangement to edit — the dock, which is
           // two-pane. Same rule as the Operation view's.
-          if (isTwoPane) ...layoutHeaderControls(context),
+          ...layoutHeaderControls(context),
           const SizedBox(width: Space.md),
           windowsCaptionSpacer(context),
         ],
@@ -876,17 +897,16 @@ class _HomeViewState extends State<HomeView>
         child: Column(
           children: [
             Expanded(
-              child: isTwoPane
-                  ? withViewOverrides(
-                      buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes),
-                    )
-                  // A phone shows the list with Quick Lookup beneath it, as it
-                  // always has. The dock's tree names no widths — it is the
-                  // same splits and weights wherever it is drawn — so applying
-                  // it here would give a 360px window a two-thirds list and a
-                  // 120px branding column. The Operation view draws the same
-                  // line at the same place.
-                  : KeyedSubtree(key: _operationsPaneKey, child: _operationsPane(context, theme)),
+              // A dock at every width. The tree names no widths — it is the
+              // same splits and weights wherever it is drawn, so ONE of them
+              // drawn at 360 logical pixels would give a two-thirds list and a
+              // 120px branding column. Hence two arrangements rather than one
+              // that reflows: narrow ships as the list alone, which is what a
+              // phone drew before this view had a narrow arrangement at all.
+              // Quick Lookup is below either of them, as chrome.
+              child: withViewOverrides(
+                buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes),
+              ),
             ),
             // Pointer-down rather than a gesture, exactly as the operations
             // pane does it: this only OBSERVES, so it neither competes with

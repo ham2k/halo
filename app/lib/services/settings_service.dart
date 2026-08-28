@@ -1323,6 +1323,20 @@ abstract final class LayoutKeys {
   /// app's own settings.
   static const operationViewOptions = 'operation.viewOptions';
 
+  /// The same four, for the NARROW arrangement — the one drawn below the
+  /// two-pane boundary. A separate set rather than a flag inside the wide
+  /// one: a phone's arrangement is a different tree, with its own defaults,
+  /// its own pane options and its own idea of which pane is on top, and an
+  /// operator who rearranges one has said nothing about the other.
+  ///
+  /// Instance ids are NOT shared across the two — see
+  /// [DockLayoutKeys.everySpec], which lists these so a panel placed narrow
+  /// cannot be handed an id the wide arrangement is already storing under.
+  static const operationNarrowDock = 'operation.narrowDock';
+  static const operationNarrowDockState = 'operation.narrowDockState';
+  static const operationNarrowPaneOptions = 'operation.narrowPaneOptions';
+  static const operationNarrowViewOptions = 'operation.narrowViewOptions';
+
   /// Home's OLD divider width, in pixels, from before its split became a dock.
   /// Read once, by the migration that turns it into the dock's initial split
   /// weights (`_migratedColumnWeights` in home_view.dart), and never written
@@ -1339,12 +1353,24 @@ abstract final class LayoutKeys {
   static const homePaneOptions = 'home.paneOptions';
   static const homeViewOptions = 'home.viewOptions';
 
+  /// Home's narrow arrangement, for the same reasons as Operation's.
+  static const homeNarrowDock = 'home.narrowDock';
+  static const homeNarrowDockState = 'home.narrowDockState';
+  static const homeNarrowPaneOptions = 'home.narrowPaneOptions';
+  static const homeNarrowViewOptions = 'home.narrowViewOptions';
+
   /// The Logs destination's dock, in the same four parts, for the same
   /// reasons as Home's.
   static const logsDock = 'logs.dock';
   static const logsDockState = 'logs.dockState';
   static const logsPaneOptions = 'logs.paneOptions';
   static const logsViewOptions = 'logs.viewOptions';
+
+  /// The Logs destination's narrow arrangement, likewise.
+  static const logsNarrowDock = 'logs.narrowDock';
+  static const logsNarrowDockState = 'logs.narrowDockState';
+  static const logsNarrowPaneOptions = 'logs.narrowPaneOptions';
+  static const logsNarrowViewOptions = 'logs.narrowViewOptions';
 
   /// The Logs QSO table's user-dragged column widths, keyed by column id
   /// (see `_LogsColumnWidths`) — its own key rather than a branch of the dock

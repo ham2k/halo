@@ -1067,6 +1067,7 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String showPreview({required Object panel}) => 'Vista previa de ${panel}';
 	@override String missingExtension({required Object name}) => 'Falta la extensión "${name}"';
 	@override String get previewUnavailable => 'No se pudo mostrar la imagen de vista previa de este panel.';
+	@override String get nestedPaneTitle => 'Más';
 	@override String get editLayout => 'Editar Disposición';
 	@override String get saveLayout => 'Guardar Disposición';
 	@override String get revertLayout => 'Descartar los cambios de disposición';
@@ -2731,6 +2732,7 @@ extension on TranslationsEs {
 			'operation.layout.showPreview' => ({required Object panel}) => 'Vista previa de ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Falta la extensión "${name}"',
 			'operation.layout.previewUnavailable' => 'No se pudo mostrar la imagen de vista previa de este panel.',
+			'operation.layout.nestedPaneTitle' => 'Más',
 			'operation.layout.editLayout' => 'Editar Disposición',
 			'operation.layout.saveLayout' => 'Guardar Disposición',
 			'operation.layout.revertLayout' => 'Descartar los cambios de disposición',
@@ -3068,9 +3070,9 @@ extension on TranslationsEs {
 			'loggingControls.expandControls' => 'Expandir',
 			'loggingControls.collapseControls' => 'Contraer',
 			'loggingControls.spottingControl' => 'Spotting',
-			'loggingControls.spottingSelfControl' => 'Auto-spot',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spottingSelfControl' => 'Auto-spot',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Auto-spot en ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot a ${call} en ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Demasiado tarde para spotear a ${call}',
@@ -3582,9 +3584,9 @@ extension on TranslationsEs {
 			'settings.station.trackFieldRig' => 'Transceptor',
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
-			'settings.station.trackFieldAntenna' => 'Antena',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador',
 			'settings.station.switchLayout' => 'Disposición',
 			'settings.station.switchLayoutDescription' => 'En qué lado del conmutador están conectadas tus radios.',

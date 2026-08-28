@@ -195,6 +195,12 @@ Future<void> showPaneLayoutOptions(
   bool showHeaderField = true,
   bool headerByDefault = true,
   bool titleEnabled = true,
+  /// False where the three size overrides would be stored and never read — a
+  /// nested container, whose subtree the dock renders itself rather than
+  /// through the host's per-pane wrapper. A select that writes a setting
+  /// nothing applies is worse than an absent one: the operator sets it, sees
+  /// nothing, and stops trusting the other two.
+  bool showSizeFields = true,
   /// The PANEL's own settings, embedded under a "Panel Settings" heading —
   /// a different thing from the rest of this dialog, which is about the
   /// pane's PLACE in the layout. Offered here because hiding a pane's header
@@ -235,6 +241,7 @@ Future<void> showPaneLayoutOptions(
       showHeaderField: showHeaderField,
       headerByDefault: headerByDefault,
       titleEnabled: titleEnabled,
+      showSizeFields: showSizeFields,
       panelSettingsBuilder: panelSettingsBuilder,
       onDelete: onDelete,
     ),
@@ -258,6 +265,7 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
   /// whose panes are headed, and ticking it would look like a no-op.
   final bool headerByDefault;
   final bool titleEnabled;
+  final bool showSizeFields;
   final WidgetBuilder? panelSettingsBuilder;
   final VoidCallback? onDelete;
 
@@ -273,6 +281,7 @@ class _PaneLayoutOptionsBody extends StatefulWidget {
     required this.showHeaderField,
     required this.headerByDefault,
     required this.titleEnabled,
+    required this.showSizeFields,
     this.panelSettingsBuilder,
     this.onDelete,
   });
@@ -421,10 +430,11 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
+              if (widget.showSizeFields) ...[
               const SizedBox(height: Space.xl),
-              // Font Scale, Layout Density and Theme, side by side and
-              // always visible — three per-pane overrides an operator
-              // reaches for together, not three separate decisions.
+              // Font Scale, Layout Density and Theme, side by side — three
+              // per-pane overrides an operator reaches for together, not three
+              // separate decisions.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -469,6 +479,7 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                   )),
                 ],
               ),
+              ],
               ],
             ),
           ),

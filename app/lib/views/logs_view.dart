@@ -209,12 +209,20 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   String get dockView => PanelViews.logs;
 
   @override
-  DockLayoutKeys get dockKeys => const DockLayoutKeys(
-    spec: LayoutKeys.logsDock,
-    state: LayoutKeys.logsDockState,
-    paneOptions: LayoutKeys.logsPaneOptions,
-    viewOptions: LayoutKeys.logsViewOptions,
-  );
+  DockLayoutKeys dockKeysFor(DockLayoutClass layoutClass) => switch (layoutClass) {
+    DockLayoutClass.wide => const DockLayoutKeys(
+      spec: LayoutKeys.logsDock,
+      state: LayoutKeys.logsDockState,
+      paneOptions: LayoutKeys.logsPaneOptions,
+      viewOptions: LayoutKeys.logsViewOptions,
+    ),
+    DockLayoutClass.narrow => const DockLayoutKeys(
+      spec: LayoutKeys.logsNarrowDock,
+      state: LayoutKeys.logsNarrowDockState,
+      paneOptions: LayoutKeys.logsNarrowPaneOptions,
+      viewOptions: LayoutKeys.logsNarrowViewOptions,
+    ),
+  };
 
   @override
   Set<String> get nativeModuleIds => const {
@@ -254,14 +262,22 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
 
   /// The table beside the info+map column, stacked — the shipped arrangement.
   /// No migration to fold in: this dock has no pre-dock history like Home's.
+  ///
+  /// Narrow ships as the table alone. Info and Map stay addable from the
+  /// sheet, and arrive as TABS: three groups sharing a phone's width is three
+  /// panes none of which can be read.
   @override
-  DockNode buildDefaultDockSpec({bool migrate = true}) => DockSplit(Axis.horizontal, [
-    DockGroup([LogsView.qsoTablePanelId]),
-    DockSplit(Axis.vertical, [
-      DockGroup([LogsView.infoPanelId]),
-      DockGroup([LogsView.mapPanelId]),
-    ], [1, 1]),
-  ], [2, 1]);
+  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
+      switch (layoutClass) {
+        DockLayoutClass.narrow => DockGroup([LogsView.qsoTablePanelId]),
+        DockLayoutClass.wide => DockSplit(Axis.horizontal, [
+          DockGroup([LogsView.qsoTablePanelId]),
+          DockSplit(Axis.vertical, [
+            DockGroup([LogsView.infoPanelId]),
+            DockGroup([LogsView.mapPanelId]),
+          ], [1, 1]),
+        ], [2, 1]),
+      };
 
   void _registerNativePanels() {
     final t = context.t.home.logs.panels;
@@ -621,12 +637,12 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         }
       }
     }
-    // Below the two-pane boundary this view falls back to the QSO list
-    // alone, no Info or Map — the same hard cut (never both mounted) Home
-    // and the operation view make at the same boundary, per
-    // docs/design/layouts.md. There is nothing to arrange at that width
-    // either, so the layout-edit header controls go with it.
+    // Both sides of the two-pane boundary are docks; what changes is WHICH
+    // arrangement, since a tree that names no widths cannot be drawn at both
+    // (docs/design/layouts.md). Assigned before anything below builds one:
+    // every accessor the mixin offers reads this field.
     final isTwoPane = ShirtSize.of(context).isTwoPane;
+    dockLayoutClass = isTwoPane ? DockLayoutClass.wide : DockLayoutClass.narrow;
     final qsoListPane = KeyedSubtree(
       key: _qsoListPaneKey,
       child: _QsoListPanel(
@@ -660,8 +676,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         titleSpacing: Space.xl,
         title: _buildTitle(context, filtered, includeSearch: isTwoPane),
         actions: [
-          if (isTwoPane) ?viewOptionsButton(context, editing: layoutEditing),
-          if (isTwoPane) ...layoutHeaderControls(context),
+          ?viewOptionsButton(context, editing: layoutEditing),
+          ...layoutHeaderControls(context),
           windowsCaptionSpacer(context),
         ],
         // Row two, narrow only: the search field the title row dropped.
@@ -671,18 +687,16 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       // imports, not just over the QSO table.
       body: AdifDropTarget(
         onFile: _handleAdifDrop,
-        child: isTwoPane
-            ? withViewOverrides(buildDock(
-                children: {
-                  LogsView.qsoTablePanelId: qsoListPane,
-                  LogsView.infoPanelId:
-                      _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
-                  LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
-                },
-                tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
-                extraChildren: sharedDashboardPanes,
-              ))
-            : qsoListPane,
+        child: withViewOverrides(buildDock(
+          children: {
+            LogsView.qsoTablePanelId: qsoListPane,
+            LogsView.infoPanelId:
+                _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
+            LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
+          },
+          tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
+          extraChildren: sharedDashboardPanes,
+        )),
       ),
     );
   }

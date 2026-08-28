@@ -214,6 +214,7 @@
       "showPreview": "Preview ${panel}",
       "missingExtension": "Extension \"${name}\" is missing",
       "previewUnavailable": "This panel's preview image could not be shown.",
+      "nestedPaneTitle": "More",
       "editLayout": "Edit Layout",
       "saveLayout": "Save Layout",
       "revertLayout": "Discard layout changes",

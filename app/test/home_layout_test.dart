@@ -117,21 +117,27 @@ void main() {
     await _endOfTest(tester);
   });
 
-  testWidgets('a phone gets the column, not the dock', (tester) async {
+  testWidgets('a phone gets its OWN arrangement, not the wide one', (tester) async {
     final services = await _services();
     await _pumpHome(tester, services, size: const Size(400, 800));
 
     expect(
       find.byType(DockLayoutView),
-      findsNothing,
-      reason: 'the dock tree names no widths, so on a phone it would draw the two-pane split at 400px',
+      findsOneWidget,
+      reason: 'a phone is arrangeable too — it just arranges a different tree',
     );
     expect(find.byType(OperationListPanel), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(OperationListPanel)).right,
+      greaterThan(tester.getSize(find.byType(HomeView)).width * 0.9),
+      reason: 'the narrow default is the list ALONE. The wide tree names no widths, so drawn here it '
+          'would spend a third of a 400px window on the branding column beside it',
+    );
     expect(find.byType(HomeQuickLookup), findsOneWidget);
     expect(
       find.byIcon(MdiIcons.viewDashboard),
-      findsNothing,
-      reason: 'and no Edit Layout button, since there is no arrangement on screen to edit',
+      findsOneWidget,
+      reason: 'with the way into editing it, which a phone had no route to at all',
     );
     await _endOfTest(tester);
   });

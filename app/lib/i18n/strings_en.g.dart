@@ -2158,6 +2158,9 @@ class Translations$operation$layout$en {
 	/// en: 'This panel's preview image could not be shown.'
 	String get previewUnavailable => 'This panel\'s preview image could not be shown.';
 
+	/// en: 'More'
+	String get nestedPaneTitle => 'More';
+
 	/// en: 'Edit Layout'
 	String get editLayout => 'Edit Layout';
 
@@ -5452,6 +5455,7 @@ extension on Translations {
 			'operation.layout.showPreview' => ({required Object panel}) => 'Preview ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Extension "${name}" is missing',
 			'operation.layout.previewUnavailable' => 'This panel\'s preview image could not be shown.',
+			'operation.layout.nestedPaneTitle' => 'More',
 			'operation.layout.editLayout' => 'Edit Layout',
 			'operation.layout.saveLayout' => 'Save Layout',
 			'operation.layout.revertLayout' => 'Discard layout changes',
@@ -5788,9 +5792,9 @@ extension on Translations {
 			'loggingControls.expandControls' => 'Expand',
 			'loggingControls.collapseControls' => 'Collapse',
 			'loggingControls.spottingControl' => 'Spotting',
-			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} at ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
@@ -6302,9 +6306,9 @@ extension on Translations {
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
 			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
-			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
 			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.fakeFailConnect' => 'Always fail to connect',
