@@ -12,12 +12,16 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/peer/peer_remote_radios.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
+import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -51,6 +55,76 @@ Position fixAt(double lat, double lon) => Position(
       speed: 0,
       speedAccuracy: 0,
     );
+
+/// This device's station, as the bridge sees it — a stub, deliberately, so
+/// these tests keep running two REAL `RadioService`s over real sockets and
+/// prove the origin/echo discipline rather than restate `CatService`.
+///
+/// `vfoA` stands in for the offered radio, which is what `CatService` does
+/// for `radio1` too: reports come from it and a peer's tune goes back
+/// through it, so a request honored here takes the same `user`-origin funnel
+/// a local keystroke does.
+class _FakeStation extends ChangeNotifier implements PeerStationRadios {
+  _FakeStation(this.radio) {
+    radio.addListener(notifyListeners);
+  }
+
+  final RadioService radio;
+
+  /// The radio this device offers, or null when it offers none. Set to null
+  /// to say the rig disconnected — that is the only thing withdrawing an
+  /// offer means.
+  String? offeredId;
+  String offeredName = 'Rig';
+
+  /// Connects or drops this device's rig. Null is the disconnect: an offer
+  /// only ever names radios whose link is up.
+  void setOffered(String? id) {
+    offeredId = id;
+    notifyListeners();
+  }
+
+  /// What `CatService.setRemoteRadio1` does after storing the pick.
+  void notifyPick() => notifyListeners();
+
+  /// Every offer this station was told about, so a test can watch the names
+  /// a stored pick shows being kept current.
+  final List<({String deviceId, String deviceName, List<PeerRadioOffer> radios})> notedOffers = [];
+
+  @override
+  void noteOffer(String deviceId, String deviceName, List<PeerRadioOffer> radios) =>
+      notedOffers.add((deviceId: deviceId, deviceName: deviceName, radios: radios));
+
+  @override
+  PeerRadioSelection? remoteRadio1;
+
+  /// Every tune request this station was asked to honor, refused ones
+  /// included — the refusals are what several of these tests assert on.
+  final List<String> tuneRequests = [];
+
+  @override
+  List<PeerRadioOffer> get offeredRadios =>
+      [if (offeredId case final id?) PeerRadioOffer(id: id, name: offeredName)];
+
+  @override
+  VfoReading? vfoForOfferedRadio(String radioId) {
+    if (offeredId != radioId) return null;
+    return VfoReading(freqKHz: radio.vfoA.freq, mode: radio.vfoA.mode);
+  }
+
+  @override
+  void tuneOfferedRadio(String radioId, {double? freqKHz, String? mode}) {
+    tuneRequests.add(radioId);
+    if (offeredId != radioId) return;
+    radio.setVfo('vfoA', freq: freqKHz, mode: mode);
+  }
+
+  @override
+  void dispose() {
+    radio.removeListener(notifyListeners);
+    super.dispose();
+  }
+}
 
 /// A device whose GPS the test controls. `startIfPermitted` succeeds without
 /// an OS, and the fix is whatever the test set — the OUTBOUND half of the
@@ -102,7 +176,9 @@ class _Device {
     // The REAL RadioService, no-delay writes: the bridge's whole claim is
     // that it rides the origin/echo discipline this class already carries.
     radio = RadioService(prefs, writeDelay: Duration.zero);
-    hasRadio = ownsRadio;
+    station = _FakeStation(radio);
+    if (ownsRadio) station.offeredId = radioId;
+    remoteRadios = PeerRemoteRadios();
     service = PeerService(
       db: db,
       outbox: outbox,
@@ -119,16 +195,27 @@ class _Device {
       location: location,
       radio: radio,
       drafts: drafts,
-      hasLocalRadio: () => hasRadio,
-      radioIsLive: () => hasRadio && radioLive,
+      station: station,
+      remoteRadios: remoteRadios,
     );
   }
 
   late final RadioService radio;
-  bool hasRadio = false;
+  late final _FakeStation station;
+  late final PeerRemoteRadios remoteRadios;
 
-  /// The designated rig's link state, as `CatService` would answer it.
-  bool radioLive = true;
+  /// What this device calls its own rig on the wire. Distinct per device so
+  /// a test can prove a report is matched against the DEVICE as well as the
+  /// radio — two stations may well number their nodes the same way.
+  String get radioId => 'rig-$deviceId';
+
+  /// Points this device's `vfoA` at [owner]'s rig, the way the operator
+  /// picking it out of the main-VFO list does. Call
+  /// `station.notifyPick()` after it to stand in for the panel's write,
+  /// which notifies; setting the field alone is the pre-pairing setup every
+  /// other test wants.
+  void control(_Device owner) => station.remoteRadio1 =
+      PeerRadioSelection(deviceId: owner.deviceId, radioId: owner.radioId);
 
   final String deviceId;
   final String name;
@@ -143,6 +230,7 @@ class _Device {
 
   Future<void> dispose() async {
     channels.dispose();
+    station.dispose();
     await service.setEnabled(false);
     service.dispose();
     await db.close();
@@ -154,12 +242,13 @@ void main() {
   late _FakeGpsLocation phoneGps;
   late _Device phone;
   late _Device laptop;
+  late SharedPreferences prefs;
 
   setUp(() async {
     lan = FakeLan();
     phoneGps = _FakeGpsLocation();
     SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    prefs = await SharedPreferences.getInstance();
     // 'device-a' sorts lower, so the laptop dials the phone. The laptop is
     // the radio owner throughout — the park setup.
     laptop = _Device('device-a', 'Laptop', lan.host(), prefs: prefs, ownsRadio: true);
@@ -266,7 +355,22 @@ void main() {
   });
 
   group('the CAT bridge', () {
-    test('the owner\'s VFO reaches the controller — snapshot first, then live', () async {
+    test('a peer\'s offer reaches the picker — snapshot first, then live', () async {
+      await paired();
+
+      await waitFor('the establish-time snapshot',
+          () => phone.remoteRadios.find('device-a', laptop.radioId) != null);
+      expect(phone.remoteRadios.all.single.deviceName, 'Laptop');
+
+      // The rig drops. An EMPTY offer is the message that says so, and a
+      // picker that treated it as "nothing to update" would keep listing a
+      // radio nobody can reach.
+      laptop.station.setOffered(null);
+      await waitFor('the withdrawal', () => phone.remoteRadios.all.isEmpty);
+    });
+
+    test('the picked radio\'s VFO reaches the controller — snapshot first, then live', () async {
+      phone.control(laptop);
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
 
@@ -277,7 +381,38 @@ void main() {
       await waitFor('the live change to follow', () => phone.radio.vfoA.freq == 7074.0);
     });
 
-    test('the controller\'s tune reaches the owner as a USER move', () async {
+    test('a report nobody picked moves nothing', () async {
+      // THE POINT OF THE EXPLICIT PICK. The phone has no radio of its own
+      // and is trusted by the laptop — under the derived roles this bridge
+      // started with, that alone made it follow. Now the pick is what
+      // decides, and there is none.
+      laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
+      await paired();
+      await waitFor('the offer, so the report has certainly been sent too',
+          () => phone.remoteRadios.all.isNotEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      expect(phone.radio.vfoA.freq, isNull,
+          reason: 'a radio-less device follows the radio its operator picked, not any it hears');
+    });
+
+    test('a report for the RIGHT device but the wrong radio moves nothing', () async {
+      // A shack with two rigs offers both, and the operator picked one. Node
+      // uuids are unique within a station but the pair is not one station,
+      // so matching on the device alone would follow the wrong rig here and
+      // any peer's rig in the test above.
+      phone.station.remoteRadio1 =
+          const PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-the-other-one');
+      laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
+      await paired();
+      await waitFor('the offer', () => phone.remoteRadios.all.isNotEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      expect(phone.radio.vfoA.freq, isNull);
+    });
+
+    test('the controller\'s tune reaches the picked radio as a USER move', () async {
+      phone.control(laptop);
       await paired();
 
       VfoOrigin? seenOrigin;
@@ -289,10 +424,57 @@ void main() {
           reason: 'user origin is what makes CatService forward it to the real rig');
     });
 
+    test('a tune goes only to the peer whose radio was picked', () async {
+      // Addressed, not broadcast — and the shape that makes the difference
+      // is a station RESTORED onto a second machine, which brings the first
+      // one's node uuids with it. A broadcast tune names only the radio, so
+      // the clone answers it too: one operator's dial moves a rig in someone
+      // else's shack, and nothing anywhere says it happened.
+      final clone = _Device('device-c', 'Spare Laptop', lan.host(), prefs: prefs, ownsRadio: true);
+      addTearDown(clone.dispose);
+      clone.station.setOffered(laptop.radioId);
+      await clone.service.trust.trust('device-b', name: 'Phone');
+      await phone.service.trust.trust('device-c', name: 'Spare Laptop');
+
+      phone.control(laptop);
+      await paired();
+      await clone.service.setEnabled(true);
+      await waitFor('the clone to join too',
+          () => phone.service.peers['device-c']?.session?.established ?? false);
+
+      phone.radio.setVfo('vfoA', freq: 21074.0, mode: 'USB');
+      await waitFor('the tune to land on the picked radio',
+          () => laptop.radio.vfoA.freq == 21074.0);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      expect(clone.station.tuneRequests, isEmpty,
+          reason: 'a device nobody picked was asked to move its rig');
+      expect(clone.radio.vfoA.freq, isNull);
+    });
+
+    test('a tune for a radio this device does not offer is refused', () async {
+      // The station is asked — the router does not pre-filter — and refuses.
+      // Reaching the rig would mean any trusted device could move a radio by
+      // naming a uuid, which is the whole gate.
+      phone.control(laptop);
+      await paired();
+      await waitFor('the offer', () => phone.remoteRadios.all.isNotEmpty);
+      laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
+      await waitFor('the report', () => phone.radio.vfoA.freq == 14285.0);
+
+      phone.service.broadcastEphemeral(
+          PeerMessage.catSet(radioId: 'rig-nobody-has', freqKHz: 1234.0, mode: 'CW'));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      expect(laptop.station.tuneRequests, contains('rig-nobody-has'));
+      expect(laptop.radio.vfoA.freq, 14285.0);
+    });
+
     test('the three-hop loop settles instead of ping-ponging', () async {
       // Phone tunes -> owner applies as user -> owner reports back -> phone
       // applies as radio. The origin tag plus value dedupe must let that
       // settle in one round trip — a regression here tunes forever.
+      phone.control(laptop);
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
       await waitFor('the snapshot', () => phone.radio.vfoA.freq == 14285.0);
@@ -311,10 +493,11 @@ void main() {
           reason: 'the phone: its own tune, at most one confirming report — never a loop');
     });
 
-    test('a device with its OWN radio ignores a peer\'s report', () async {
-      // Both sides own radios: neither is a controller, and neither display
-      // may follow the other — the operator\'s own rig always wins.
-      phone.hasRadio = true;
+    test('offering a radio does not make this device follow anyone', () async {
+      // Both devices offer a rig and neither picked the other's. Following
+      // would mean two sources writing one `vfoA`, and the operator's own
+      // rig must win.
+      phone.station.offeredId = phone.radioId;
       phone.radio.setVfo('vfoA', freq: 3573.0, mode: 'LSB');
       await paired();
 
@@ -325,54 +508,100 @@ void main() {
           reason: 'a report from elsewhere must never move a rig-owning device\'s VFO');
     });
 
-    test('a controller ignores a tune request — those are for radio owners only', () async {
-      // With a second controller in the pair, one phone's tune broadcast
-      // reaches the other phone too. Applying it there would mark it a USER
-      // move on a device with no radio, which re-forwards it — two
-      // controllers ping-ponging one request forever.
-      laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
-      await paired();
-      await waitFor('the snapshot', () => phone.radio.vfoA.freq != null);
-      final before = phone.radio.vfoA.freq;
-
-      laptop.service.broadcastEphemeral(PeerMessage.catSet(freqKHz: 1234.0, mode: 'CW'));
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-
-      expect(phone.radio.vfoA.freq, before,
-          reason: 'only a device that OWNS a radio may honor a tune request');
-    });
-
-    test('a tune to a DISCONNECTED rig is neither applied nor confirmed', () async {
-      // The rig's link is down. Honoring the request would move only the
-      // owner's app state — and the report that fires from that write reaches
-      // the controller exactly like a rig confirmation, so both screens show
-      // a frequency the physical radio is not on and contacts logged on the
-      // phone carry it into the log.
+    test('a DISCONNECTED rig is neither offered nor tunable', () async {
+      // Withdrawing the offer is how a dead link is said on the wire.
+      // Honoring a request anyway would move only the owner's app state, and
+      // the report that fires from that write reaches the controller exactly
+      // like a rig confirmation — both screens showing a frequency the
+      // physical radio is not on, and contacts logged on the phone carrying
+      // it into the log.
+      phone.control(laptop);
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
       await waitFor('the snapshot', () => phone.radio.vfoA.freq == 14285.0);
 
-      laptop.radioLive = false;
+      laptop.station.setOffered(null);
+      await waitFor('the withdrawal to reach the phone', () => phone.remoteRadios.all.isEmpty);
+
       phone.radio.setVfo('vfoA', freq: 7074.0, mode: 'LSB');
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
-      expect(laptop.radio.vfoA.freq, 14285.0,
-          reason: 'nothing may pretend a dead rig tuned');
+      expect(laptop.radio.vfoA.freq, 14285.0, reason: 'nothing may pretend a dead rig tuned');
     });
 
-    test('an owner ignores a rogue report, so two owners cannot capture each other', () async {
-      // catStatus arriving AT an owner is either a misconfigured pair or a
-      // spoof: honoring it would let any trusted device rewrite what the
-      // logging panel says the operator\'s own rig is doing.
+    test('picking a radio on a pair that is ALREADY up shows where it is', () async {
+      // A `catStatus` is sent when the far rig MOVES, and picking a radio is
+      // not the rig moving. Every other test here picks before pairing, so
+      // the establish snapshot covers them — this is the ordinary one: the
+      // sessions are up, the operator opens the panel and chooses. Without
+      // the remembered report, `vfoA` sits on whatever the last local radio
+      // left there until somebody physically turns a knob, and QSOs logged
+      // in that window carry a frequency nothing is on.
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
-      await waitFor('the snapshot', () => phone.radio.vfoA.freq == 14285.0);
+      await waitFor('the offer', () => phone.remoteRadios.all.isNotEmpty);
+      expect(phone.radio.vfoA.freq, isNull, reason: 'nothing picked yet');
 
-      // The phone (no radio) sends a raw catStatus — not a catSet.
-      phone.service.broadcastEphemeral(PeerMessage.catStatus(freqKHz: 1234.0, mode: 'CW'));
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+      phone.control(laptop);
+      phone.station.notifyPick();
 
-      expect(laptop.radio.vfoA.freq, 14285.0);
+      await waitFor('the picked radio to show where it is',
+          () => phone.radio.vfoA.freq == 14285.0 && phone.radio.vfoA.mode == 'USB');
+    });
+
+    test('a peer walking away leaves the pick alone', () async {
+      // The offer goes, the SELECTION stays: it is the operator's, and a
+      // pick that erased itself on a dropped link would be gone before they
+      // looked up — with the panel silently back on a local radio.
+      phone.control(laptop);
+      await paired();
+      await waitFor('the offer', () => phone.remoteRadios.all.isNotEmpty);
+
+      await laptop.service.setEnabled(false);
+      await waitFor('the offer to be forgotten', () => phone.remoteRadios.all.isEmpty);
+
+      expect(phone.station.remoteRadio1?.radioId, laptop.radioId);
+    });
+  });
+
+  group('the picker\'s values and offers', () {
+    test('a pick survives the round trip through one dropdown value', () async {
+      // The value has to carry enough to rebuild the pick, because a menu's
+      // items are captured when it OPENS: the offer a tapped item was built
+      // from may be gone by the time it is tapped, and a picker that looked
+      // the pick up again would then drop it on the floor while the dropdown
+      // had already adopted a value naming no item.
+      const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1');
+      expect(peerRadioSelectionFromValue(peerRadioValue(pick)), pick);
+    });
+
+    test('a local node\'s uuid is not a pick', () async {
+      // Both halves are uuids and they share one list, so telling them apart
+      // is the whole job of the prefix.
+      expect(peerRadioSelectionFromValue('9f0c-a-plain-node-uuid'), isNull);
+      expect(peerRadioSelectionFromValue(null), isNull);
+    });
+
+    test('a value with a half missing names nothing', () async {
+      expect(peerRadioSelectionFromValue('peer:device-a'), isNull);
+      expect(peerRadioSelectionFromValue('peer:device-a:'), isNull);
+      expect(peerRadioSelectionFromValue('peer::rig-1'), isNull);
+    });
+
+    test('duplicate radio ids in one offer collapse to one entry', () async {
+      // Where a peer's data becomes widget identity: two menu entries sharing
+      // a value trip the picker's "exactly one matching item" assertion the
+      // moment one of them is the selected one. A sender iterating its own
+      // uuid-keyed map cannot produce this, which is exactly why nothing else
+      // would catch a sender that is not.
+      final radios = PeerRemoteRadios();
+      radios.setOffers('device-a', 'Laptop', const [
+        PeerRadioOffer(id: 'rig-1', name: 'IC-705'),
+        PeerRadioOffer(id: 'rig-1', name: 'IC-705 again'),
+      ]);
+
+      expect(radios.all, hasLength(1));
+      expect(radios.all.single.radio.name, 'IC-705', reason: 'the first one wins');
     });
   });
 

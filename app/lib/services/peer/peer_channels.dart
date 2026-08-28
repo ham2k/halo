@@ -14,13 +14,17 @@
 // peer-backed equipment node in the registry: everything above the
 // `EquipmentSession` boundary — the `VfoOrigin` echo discipline, VFO snap,
 // the logging panel — is transport-blind, so feeding `vfoA` directly
-// inherits the whole tune path in both directions for the price of two
-// message handlers. The roles are self-organizing: a device whose operator
-// designated a radio (`radio1`) is the OWNER — it reports its VFO and
-// honors tune requests — and a device without one is a CONTROLLER, whose
-// display follows the owner and whose operator's own tunes are forwarded.
-// The cost accepted: the remote radio has no Station-panel entry, and
-// control engages automatically rather than by an explicit pick.
+// inherits the whole tune path in both directions for the price of a few
+// message handlers. The cost accepted: a remote radio has no Station-panel
+// inventory row and no settings of its own.
+//
+// The two directions are NOT roles a device falls into. Offering and
+// controlling are independent (HALO-416): this device offers every radio it
+// has connected, whoever is using them, and separately follows one radio a
+// peer offers if — and only if — its operator picked that one out of the
+// main-VFO list. A device can do both at once, and neither happens by
+// accident, which is what stands between a paired phone and a transmitter
+// nobody pointed it at.
 
 import 'dart:async';
 
@@ -28,12 +32,15 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:halo_core/halo_core.dart';
 
+import '../cat/equipment.dart';
 import '../location_service.dart';
 import '../radio_service.dart';
 import 'peer_drafts.dart';
+import 'peer_remote_radios.dart';
 import 'peer_screen_views.dart';
 import 'peer_screens.dart';
 import 'peer_service.dart';
+import 'peer_station_radios.dart';
 
 class PeerChannels {
   PeerChannels({
@@ -43,14 +50,15 @@ class PeerChannels {
     this.screens,
     this.views,
     this.drafts,
-    this.hasLocalRadio,
-    this.radioIsLive,
+    this.station,
+    this.remoteRadios,
   }) {
     peers.onEphemeral = _onEphemeral;
     peers.onSessionEstablished = _onSessionEstablished;
     peers.addListener(_onPeersChanged);
     location.addListener(_onLocationChanged);
     radio?.addListener(_onRadioChanged);
+    station?.addListener(_onStationChanged);
   }
 
   final PeerService peers;
@@ -75,27 +83,23 @@ class PeerChannels {
   /// already holds, so a second consumer reconciles rather than subscribes.
   final Set<String> _establishedPeers = {};
 
-  /// Whether THIS device has a designated radio (`CatService.radio1`) — the
-  /// role switch for the whole bridge. A callback, read fresh on every
-  /// message, because the operator can designate or remove a radio while
-  /// sessions are up.
-  final bool Function()? hasLocalRadio;
-
-  /// Whether the designated radio's link is actually up. Null means "same as
-  /// [hasLocalRadio]" — for a caller with no connection state to offer.
+  /// This device's own radios, as the bridge sees them — what it offers,
+  /// where those radios are sitting, how to tune one, and which peer radio
+  /// its operator picked. Null for a build with no station at all, which
+  /// then neither offers nor follows anything.
   ///
-  /// This gates the owner's TRAFFIC, never its role: with the rig
-  /// disconnected, honoring a tune request moves only this device's app
-  /// state, and the resulting report reaches the controller exactly like a
-  /// rig confirmation — both screens then display a frequency the physical
-  /// radio is not on, and contacts logged on the controller carry it into
-  /// the log. Nothing on the wire says staleness yet, so silence is the
-  /// honest signal available.
-  final bool Function()? radioIsLive;
+  /// Only CONNECTED radios are ever offered ([PeerStationRadios.offeredRadios]),
+  /// and that is what keeps a tune request from moving app state on a rig
+  /// that is not there and reaching the asker exactly like a confirmation
+  /// from the rig — both screens then showing a frequency the radio is not
+  /// on, and contacts logged against it. Nothing on the wire says staleness
+  /// yet, so withdrawing the offer is the honest signal available.
+  final PeerStationRadios? station;
 
-  bool get _ownsRadio => hasLocalRadio?.call() ?? false;
-
-  bool get _radioLive => radioIsLive?.call() ?? _ownsRadio;
+  /// What the peers are offering, for the picker. Optional like the rest of
+  /// the consumer halves: without it this router still routes offers
+  /// nowhere and nothing can be picked.
+  final PeerRemoteRadios? remoteRadios;
 
   /// Whether THIS router should be holding the GPS stream open for the
   /// peers' benefit — the intent, set synchronously. Whether the listener
@@ -133,6 +137,7 @@ class PeerChannels {
     peers.removeListener(_onPeersChanged);
     location.removeListener(_onLocationChanged);
     radio?.removeListener(_onRadioChanged);
+    station?.removeListener(_onStationChanged);
     _sharingGps = false;
     // The bump makes an in-flight start's completion release what it takes;
     // the stop below balances a take that already landed.
@@ -238,41 +243,68 @@ class PeerChannels {
     }
   }
 
-  double? _lastSentFreqKHz;
-  String? _lastSentMode;
+  /// The last offer and the last VFO reported for each radio, so an
+  /// unchanged station is silent. Latest-value-wins does not mean chatty:
+  /// `_onStationChanged` fires on every reading from every rig.
+  ///
+  /// A snapshot to one arriving session records here too, even though it went
+  /// to that session alone. What these hold is what every ESTABLISHED peer
+  /// has, and a snapshot is precisely what brings the new arrival up to it —
+  /// leaving them behind instead would let the next real change match the
+  /// stale entry and be deduped into silence, which is a withdrawal nobody
+  /// ever hears.
+  List<PeerRadioOffer> _lastOffered = const [];
+  final Map<String, VfoReading> _lastSentVfo = {};
 
-  void _onRadioChanged() {
-    final radio = this.radio;
-    if (radio == null) return;
-    if (_ownsRadio) {
-      if (_radioLive) _broadcastOwnVfo();
-      return;
-    }
-    // A controller forwards only what its OPERATOR did. `lastVfoOrigin` is
-    // meaningful exactly here, inside the notification — `radio` origin means
-    // this change IS the owner's report being applied below.
-    //
-    // Deleting this looks safe under the tests, because `setVfo`'s value
-    // dedupe breaks the simple echo loop on its own. The case it actually
-    // guards cannot be ordered deterministically over real sockets: the
-    // owner's rig moves BETWEEN its report and this echo of it, and the
-    // stale echo — arriving as a `user` move — tunes the rig backwards
-    // against the operator's own knob.
-    if (radio.lastVfoOrigin != VfoOrigin.user) return;
-    final vfo = radio.vfoA;
-    if (vfo.freq == null && vfo.mode == null) return;
-    peers.broadcastEphemeral(PeerMessage.catSet(freqKHz: vfo.freq, mode: vfo.mode));
+  /// Where every peer's radios were last heard to be, keyed
+  /// `deviceId/radioId` — including the ones nobody picked.
+  ///
+  /// Kept because a `catStatus` is sent when the far rig MOVES, and picking
+  /// a radio is not the rig moving. Without this, choosing one on a pair
+  /// that is already up leaves `vfoA` on whatever the last local rig put
+  /// there until somebody physically turns a knob — and QSOs logged in that
+  /// window carry a frequency nothing is on. The local path has no such gap:
+  /// every reading from `radio1` is written through, so switching between
+  /// two local rigs corrects itself on the next poll.
+  final Map<String, VfoReading> _peerVfos = {};
+
+  /// The pick as of the last station notification, so a CHANGE of pick can be
+  /// told from the notifications the station sends on every reading. Applying
+  /// the cached VFO on all of them would overwrite what the operator is
+  /// typing.
+  PeerRadioSelection? _appliedSelection;
+
+  /// This device's own equipment moved — a radio connected or dropped, one of
+  /// them reported where it is sitting, or its operator picked a different
+  /// Main VFO.
+  void _onStationChanged() {
+    _announceOffers();
+    _reportOfferedVfos();
+    _followNewSelection();
   }
 
-  void _broadcastOwnVfo({PeerSession? to}) {
-    final vfo = radio?.vfoA;
-    if (vfo == null || (vfo.freq == null && vfo.mode == null)) return;
-    if (to == null) {
-      if (vfo.freq == _lastSentFreqKHz && vfo.mode == _lastSentMode) return;
-      _lastSentFreqKHz = vfo.freq;
-      _lastSentMode = vfo.mode;
-    }
-    final message = PeerMessage.catStatus(freqKHz: vfo.freq, mode: vfo.mode);
+  void _followNewSelection() {
+    final selection = station?.remoteRadio1;
+    if (selection == _appliedSelection) return;
+    _appliedSelection = selection;
+    if (selection == null) return;
+    final vfo = _peerVfos['${selection.deviceId}/${selection.radioId}'];
+    if (vfo == null) return;
+    radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.radio);
+  }
+
+  void _announceOffers({PeerSession? to}) {
+    final station = this.station;
+    if (station == null) return;
+    final offers = station.offeredRadios;
+    if (to == null && listEquals(offers, _lastOffered)) return;
+    _lastOffered = offers;
+    // A radio that stopped being offered forgets what it last reported, so
+    // re-offering it re-states where it is instead of being deduped into
+    // silence against a value the controller never heard.
+    final ids = {for (final offer in offers) offer.id};
+    _lastSentVfo.removeWhere((id, _) => !ids.contains(id));
+    final message = PeerMessage.catOffer(offers);
     if (to != null) {
       to.sendEphemeral(message);
     } else {
@@ -280,11 +312,54 @@ class PeerChannels {
     }
   }
 
+  void _reportOfferedVfos({PeerSession? to}) {
+    final station = this.station;
+    if (station == null) return;
+    for (final offer in station.offeredRadios) {
+      final vfo = station.vfoForOfferedRadio(offer.id);
+      if (vfo == null || vfo.isEmpty) continue;
+      if (to == null && _lastSentVfo[offer.id] == vfo) continue;
+      _lastSentVfo[offer.id] = vfo;
+      final message = PeerMessage.catStatus(radioId: offer.id, freqKHz: vfo.freqKHz, mode: vfo.mode);
+      if (to != null) {
+        to.sendEphemeral(message);
+      } else {
+        peers.broadcastEphemeral(message);
+      }
+    }
+  }
+
+  /// This device's `vfoA` moved. Forwarded only when its operator picked a
+  /// peer's radio to drive, and only to that peer.
+  void _onRadioChanged() {
+    final radio = this.radio;
+    final selection = station?.remoteRadio1;
+    if (radio == null || selection == null) return;
+    // Only what this OPERATOR did. `lastVfoOrigin` is meaningful exactly
+    // here, inside the notification — `radio` origin means this change IS
+    // the far side's report being applied below.
+    //
+    // Deleting this looks safe under the tests, because `setVfo`'s value
+    // dedupe breaks the simple echo loop on its own. The case it actually
+    // guards cannot be ordered deterministically over real sockets: the far
+    // rig moves BETWEEN its report and this echo of it, and the stale echo —
+    // arriving as a `user` move — tunes the rig backwards against the
+    // operator's own knob.
+    if (radio.lastVfoOrigin != VfoOrigin.user) return;
+    final vfo = radio.vfoA;
+    if (vfo.freq == null && vfo.mode == null) return;
+    final session = peers.peers[selection.deviceId]?.session;
+    if (session == null) return;
+    session.sendEphemeral(
+        PeerMessage.catSet(radioId: selection.radioId, freqKHz: vfo.freq, mode: vfo.mode));
+  }
+
   void _onSessionEstablished(PeerSession session) {
     // The snapshots: latest-value state the new arrival missed. Sent to just
     // this session — the others already have it.
     _broadcastOwnFix(to: session);
-    if (_ownsRadio && _radioLive) _broadcastOwnVfo(to: session);
+    _announceOffers(to: session);
+    _reportOfferedVfos(to: session);
     final peerDeviceId = session.peer?.deviceId;
     if (peerDeviceId != null) {
       _establishedPeers.add(peerDeviceId);
@@ -303,7 +378,7 @@ class PeerChannels {
   }
 
   void _reconcileDepartedPeers() {
-    if (screens == null && views == null && drafts == null) return;
+    if (screens == null && views == null && drafts == null && remoteRadios == null) return;
     final live = <String>{
       for (final entry in peers.peers.entries)
         if (entry.value.session?.established ?? false) entry.key,
@@ -312,6 +387,12 @@ class PeerChannels {
       unawaited(screens?.forgetPeer(gone) ?? Future<void>.value());
       views?.forgetPeer(gone);
       drafts?.forgetPeer(gone);
+      // The selection itself is NOT cleared — a peer walking away must not
+      // undo the operator's pick (`CatService.remoteRadio1`). What goes is
+      // only what it is offering, so the picker says unavailable rather
+      // than listing a radio nobody can reach.
+      remoteRadios?.forgetPeer(gone);
+      _peerVfos.removeWhere((key, _) => key.startsWith('$gone/'));
     }
     _establishedPeers
       ..clear()
@@ -361,25 +442,44 @@ class PeerChannels {
   }
 
   void _onEphemeral(String peerDeviceId, PeerMessage message) {
+    if (message.type == PeerMessageType.catOffer) {
+      final radios = message.catOffersOrNull;
+      if (radios != null) {
+        final deviceName = peers.peers[peerDeviceId]?.beacon.deviceName ?? peerDeviceId;
+        remoteRadios?.setOffers(peerDeviceId, deviceName, radios);
+        // The station hears it too, so a pick can keep the names it shows
+        // while the peer is away up to date. This is the only place a fresh
+        // one arrives without the operator picking again.
+        station?.noteOffer(peerDeviceId, deviceName, radios);
+      }
+      return;
+    }
     if (message.type == PeerMessageType.catStatus) {
-      // The owner's report — only a device with no radio of its own follows
-      // it. One WITH a radio ignores it outright: two sources writing vfoA
-      // would fight, and the operator's own rig must win (the same
-      // first-to-respond rule the design settled for capability conflicts).
+      // Where one of that peer's radios is sitting — followed only when it
+      // is the radio this device's operator picked. Every other report is
+      // dropped, sender included: a device offering radios hears its own
+      // pair's reports, and two sources writing `vfoA` fight.
       final vfo = message.vfoOrNull;
-      if (vfo != null && !_ownsRadio) {
+      if (vfo == null) return;
+      // Remembered whether or not it is the picked one: the establish-time
+      // snapshot is the only time most of these are heard, and a radio
+      // picked afterwards has to have something to show. See [_peerVfos].
+      _peerVfos['$peerDeviceId/${vfo.radioId}'] =
+          VfoReading(freqKHz: vfo.freqKHz, mode: vfo.mode);
+      if (station?.remoteRadio1?.matches(peerDeviceId, vfo.radioId) ?? false) {
+        _appliedSelection = station?.remoteRadio1;
         radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.radio);
       }
       return;
     }
     if (message.type == PeerMessageType.catSet) {
-      // A tune request — honored only by a radio owner, and applied as a
-      // USER move so `CatService._onVfoChanged` forwards it to the rig
-      // through the same funnel a local keystroke takes, echo guards
-      // included. The session already refused anything untrusted.
+      // A tune request for one of THIS device's radios. The station honors
+      // it only for a radio it is currently offering, and puts it through
+      // the same funnel and echo guards a local operator's tune takes. The
+      // session already refused anything untrusted.
       final vfo = message.vfoOrNull;
-      if (vfo != null && _ownsRadio && _radioLive) {
-        radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.user);
+      if (vfo != null) {
+        station?.tuneOfferedRadio(vfo.radioId, freqKHz: vfo.freqKHz, mode: vfo.mode);
       }
       return;
     }

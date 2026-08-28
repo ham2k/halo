@@ -1183,6 +1183,8 @@
       "transceiverForMainVfo": "Transceptor para el VFO principal",
       "equipmentInventory": "Inventario de equipos",
       "noTransceiver": "Ninguno",
+      "peerTransceiver": "${radio} en ${device}",
+      "peerTransceiverUnavailable": "${radio} en ${device} (no disponible)",
       "icomCivTroubleshootingTitle": "Si aparecen dos puertos serie para la misma radio",
       "icomCivTroubleshooting": "Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.",
       "civAddressTroubleshootingTitle": "Si la radio nunca responde",

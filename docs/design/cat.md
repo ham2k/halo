@@ -440,21 +440,40 @@ inherits the whole two-direction machinery — the origin tag, the per-node
 exchange record, the store's no-op dropping, Smart VFO Snap — where a
 registry node would need a live session injected into a const-constructed
 transport map and the radio1 reconnect loops taught about session lifetimes.
-The accepted cost: the remote radio has no Station-panel entry, and control
-engages automatically.
+The accepted cost: a remote radio has no Station-panel inventory row and no
+settings of its own.
 
-Roles come from `radio1` itself, read fresh per message. A device with a
-designated radio is the **owner**: it broadcasts `vfoA` as `catStatus` on
-change, honors an inbound `catSet` by applying it as a `user` move — the
-same funnel a local keystroke takes, echo guards included — and ignores
-reports from elsewhere, because two sources writing `vfoA` fight and the
-operator's own rig must win. A device without one is a **controller**: its
-display follows the owner's reports (applied as `radio` origin), its
-operator's tunes are forwarded, and it ignores tune requests — with two
-controllers in a pair, honoring one would re-forward it as a `user` move,
-forever. Only trusted, established sessions carry any of this
-(`peer_session.dart`'s gates), which is what stands between the network and
-a transmitter.
+**A remote radio is picked, never inferred.** A device offers every
+transceiver it has *connected* as a `catOffer`, and the peers list those
+beside their own rigs in the Station panel's one Main VFO dropdown —
+`CatService.remoteRadio1` is the pick, plain stored state beside `radio1`
+and mutually exclusive with it, because `vfoA` is one VFO. It persists like
+`radio1` does: a peer that is away shows as unavailable rather than handing
+the panel silently back to a local rig, and re-engages by itself when it
+returns. For the same reason, `addNode`'s "newest transceiver wins" rule
+stops at a remote pick — configuring a rig is not reaching for it.
+
+Offering and controlling are independent, and a device does both at once
+without either being a mode it falls into. As an **offerer** it reports each
+offered radio's VFO as `catStatus` and honors a `catSet` naming one of them,
+through `PeerStationRadios` — `radio1` via `RadioService.setVfo` (the funnel
+a local keystroke takes, so the logging panel follows and the snapper
+measures), any other node via `CatService.tuneNode`, which is
+`_onVfoChanged`'s echo discipline extracted so a rig that is not `radio1`
+can be driven at all. As a **controller** it applies `catStatus` from the
+picked device *and* radio, and forwards its operator's own tunes to that
+peer alone, addressed rather than broadcast. Everything else on the wire is
+dropped: a report nobody picked, a tune for a radio this device does not
+offer, and — because only connected radios are offered — a tune to a rig
+whose link is down, which would otherwise move app state and reach the
+asker looking exactly like the rig confirming.
+
+Only trusted, established sessions carry any of this (`peer_session.dart`'s
+gates); the pick is what stands between a paired device and a transmitter
+nobody pointed it at. `catStatus`/`catSet` naming a radio is what took
+`peerProtocolVersion` to 3: a v2 controller broadcasts `catSet` on every
+tune with no pick behind it, so a v3 offerer reading one without a radio id
+would hand out a transmitter on an older build's say-so.
 
 ### The persist was the hot spot
 

@@ -41,7 +41,17 @@ import 'peer_screen.dart';
 /// a malformed hello and an `events` batch without knowing which cursor it
 /// belongs to — both are misreads of existing fields, which is exactly what
 /// this constant exists to be bumped for.
-const int peerProtocolVersion = 2;
+///
+/// v3: a remote radio is CHOSEN. [catOffer] lists what a device is willing
+/// to have driven and [catStatus]/[catSet] name which radio they are about,
+/// where before the pair worked it out from who happened to have a radio
+/// designated. The added field is what forces the bump, against the rule
+/// stated above: a v2 controller is any radio-less older build, and it
+/// broadcasts `catSet` on its operator's every tune with no selection
+/// behind it at all. A v3 owner reading that as a request for its `radio1`
+/// would hand a transmitter to a device nobody pointed at it — the fallback
+/// is wider than the new behaviour, not narrower.
+const int peerProtocolVersion = 3;
 
 /// Message types. `t` on every envelope.
 abstract final class PeerMessageType {
@@ -78,17 +88,31 @@ abstract final class PeerMessageType {
   /// snapshot.
   static const position = 'position';
 
-  /// Ephemeral: the sender's designated radio as it stands — frequency and
+  /// Ephemeral, latest-value-wins: every radio this device is willing to
+  /// have driven from elsewhere, as [PeerRadioOffer]s. Broadcast when the
+  /// set changes and snapshotted to a session as it establishes, the same
+  /// shape as [position] and [screenSources].
+  ///
+  /// An empty list is a real state and the one that MUST arrive: it is how
+  /// a device says its last radio went away, and a controller that treats
+  /// it as "nothing to update" keeps a departed rig in its picker.
+  ///
+  /// This is what an operator picks from. The `cat` capability in [hello]
+  /// crosses once per session and names no radio, so it stays a hint for
+  /// the Peers panel and is not what the picker reads.
+  static const catOffer = 'catOffer';
+
+  /// Ephemeral: where one of the sender's radios is sitting — frequency and
   /// mode only. Power and rig staleness do NOT cross yet, so a controller
   /// holds the last value it heard when the far rig goes away, exactly as
   /// the owner's own panel does.
   static const catStatus = 'catStatus';
 
-  /// A request to tune the SENDER OF catStatus's radio. Honored only from a
-  /// trusted, established peer — this is the message that makes the
-  /// no-authentication posture (header above) load-bearing, and why it must
-  /// never ride a transport that admits anyone but the operator's own
-  /// paired devices.
+  /// A request to tune one of the addressee's radios. Honored only from a
+  /// trusted, established peer, and only for a radio that peer is currently
+  /// offering — this is the message that makes the no-authentication
+  /// posture (header above) load-bearing, and why it must never ride a
+  /// transport that admits anyone but the operator's own paired devices.
   static const catSet = 'catSet';
 
   /// Ephemeral, latest-value-wins: every screen, application and window this
@@ -315,22 +339,45 @@ class PeerMessage {
     );
   }
 
-  static PeerMessage catStatus({double? freqKHz, String? mode}) =>
-      PeerMessage(PeerMessageType.catStatus, {'freqKHz': ?freqKHz, 'mode': ?mode});
+  static PeerMessage catOffer(List<PeerRadioOffer> radios) =>
+      PeerMessage(PeerMessageType.catOffer, {'radios': [for (final r in radios) r.toJson()]});
 
-  static PeerMessage catSet({double? freqKHz, String? mode}) =>
-      PeerMessage(PeerMessageType.catSet, {'freqKHz': ?freqKHz, 'mode': ?mode});
+  /// Null unless this is a [PeerMessageType.catOffer]. An EMPTY list is a
+  /// valid answer and must be distinguishable from "not that message" —
+  /// see [PeerMessageType.catOffer].
+  List<PeerRadioOffer>? get catOffersOrNull {
+    if (type != PeerMessageType.catOffer) return null;
+    final raw = fields['radios'];
+    if (raw is! List) return const [];
+    return [for (final entry in raw) ?PeerRadioOffer.from(entry)];
+  }
+
+  static PeerMessage catStatus({required String radioId, double? freqKHz, String? mode}) =>
+      PeerMessage(PeerMessageType.catStatus, {'radioId': radioId, 'freqKHz': ?freqKHz, 'mode': ?mode});
+
+  static PeerMessage catSet({required String radioId, double? freqKHz, String? mode}) =>
+      PeerMessage(PeerMessageType.catSet, {'radioId': radioId, 'freqKHz': ?freqKHz, 'mode': ?mode});
 
   /// Null unless this is a well-formed [PeerMessageType.catStatus] or
   /// [PeerMessageType.catSet] — one reader for both, since they carry the
   /// same VFO shape and differ only in direction.
+  ///
+  /// A message naming no radio is malformed, not a message about "the"
+  /// radio. Both sides of a v3 pair always name one, so the only sender
+  /// that omits it is one this build must not act for at all.
   PeerVfoPayload? get vfoOrNull {
     if (type != PeerMessageType.catStatus && type != PeerMessageType.catSet) return null;
+    final radioId = fields['radioId'];
+    if (radioId is! String || radioId.isEmpty) return null;
     final freqKHz = (fields['freqKHz'] as num?)?.toDouble();
     final mode = fields['mode'];
     if (freqKHz == null && mode is! String) return null;
     if (freqKHz != null && (freqKHz <= 0 || !freqKHz.isFinite)) return null;
-    return PeerVfoPayload(freqKHz: freqKHz, mode: mode is String && mode.isNotEmpty ? mode : null);
+    return PeerVfoPayload(
+      radioId: radioId,
+      freqKHz: freqKHz,
+      mode: mode is String && mode.isNotEmpty ? mode : null,
+    );
   }
 
   static PeerMessage screenSources(List<PeerScreenSource> sources) => PeerMessage(
@@ -595,10 +642,45 @@ class PeerDraftFieldPayload {
 /// [mode] is already concrete: SSB is resolved to USB/LSB before anything
 /// reaches a radio, so nothing here re-litigates it.
 class PeerVfoPayload {
+  /// Which of the sender's (for a report) or the addressee's (for a request)
+  /// radios this is about — a [PeerRadioOffer.id].
+  final String radioId;
   final double? freqKHz;
   final String? mode;
 
-  const PeerVfoPayload({this.freqKHz, this.mode});
+  const PeerVfoPayload({required this.radioId, this.freqKHz, this.mode});
+}
+
+/// One radio a peer is willing to have driven.
+///
+/// [id] is the offering device's own node uuid, and a controller stores it
+/// alongside that device's id. Its stability across the owner restarting is
+/// what makes a remembered selection re-engage by itself; an id that no
+/// longer appears in the current offer is "that radio went away", never an
+/// error.
+class PeerRadioOffer {
+  final String id;
+  final String name;
+
+  const PeerRadioOffer({required this.id, required this.name});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+
+  /// Null for anything malformed, so one bad entry costs that entry rather
+  /// than the peer's whole offer.
+  static PeerRadioOffer? from(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    if (id is! String || id.isEmpty) return null;
+    final name = raw['name'];
+    return PeerRadioOffer(id: id, name: name is String && name.isNotEmpty ? name : id);
+  }
+
+  @override
+  bool operator ==(Object other) => other is PeerRadioOffer && other.id == id && other.name == name;
+
+  @override
+  int get hashCode => Object.hash(id, name);
 }
 
 /// One outbox row in flight.

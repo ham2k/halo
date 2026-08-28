@@ -67,13 +67,14 @@ import 'services/error_policy.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/unclean_quit.dart';
+import 'services/cat/equipment.dart' show kCategoryTransceiver;
 import 'services/cat/cat_service.dart';
-import 'services/cat/equipment.dart' show EquipmentStatus;
 import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
 import 'services/peer/peer_drafts.dart';
 import 'services/peer/peer_account_tag.dart';
 import 'services/peer/peer_screen_views.dart';
+import 'services/peer/peer_remote_radios.dart';
 import 'services/peer/peer_screens.dart';
 import 'services/peer/ble/peer_ble_transport.dart';
 import 'services/peer/peer_service.dart';
@@ -1305,12 +1306,15 @@ class HaLoServices {
     // Gated on p2p rather than on `remote`: this is peer sync's own live
     // logging view, not screen sharing.
     drafts: settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ? peerDrafts : null,
-    hasLocalRadio: () => cat.radio1 != null,
-    radioIsLive: () {
-      final uuid = cat.radio1;
-      return uuid != null && cat.stateFor(uuid).status == EquipmentStatus.connected;
-    },
+    station: cat,
+    remoteRadios: peerRemoteRadios,
   );
+
+  /// The radios the PEERS are offering (HALO-416), for the Station panel's
+  /// main-VFO picker. Not experiment-gated the way the screen halves are:
+  /// the CAT bridge rides peer sync itself, and an empty holder is exactly
+  /// what a build with no peers has.
+  late final PeerRemoteRadios peerRemoteRadios = PeerRemoteRadios();
   /// The producer half of screen sharing (HALO-369). Lazy like the rest, and
   /// for a stronger reason than most: constructing it registers the native
   /// capture channel's handlers, and an install that never turns the
@@ -1686,7 +1690,15 @@ class HaLoServices {
     // value captured once at construction goes stale on a rename or on the
     // first callsign the operator sets.
     peerService.localDeviceName = settings.peerDeviceName;
-    peerService.localCapabilities = () => [if (cat.radio1 != null) 'cat'];
+    // A hint for the Peers panel, and deliberately not what the picker
+    // reads: it crosses once per session and names no radio, while
+    // `catOffer` is live and does. Configuration rather than link state for
+    // exactly that reason — read once at hello, "a rig is connected right
+    // now" would say whatever happened to be true the moment the pair formed
+    // and never correct itself.
+    peerService.localCapabilities = () => [
+          if (cat.nodes.any((node) => cat.typeFor(node)?.category == kCategoryTransceiver)) 'cat',
+        ];
     peerService.localAccountTag = () => peerAccountTag(settings);
     // A peer link is expected to come and go — a device carried out of
     // range, a park with no WiFi — so both edges are news the operator can

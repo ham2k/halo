@@ -27,6 +27,8 @@ import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/transports/none_transport.dart';
 import '../services/cat/cat_service.dart';
+import '../services/peer/peer_remote_radios.dart';
+import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
 import 'equipment_report.dart';
@@ -769,6 +771,45 @@ class StationPanel extends StatelessWidget {
     return Column(children: [Expanded(child: content), _compactFooter(context)]);
   }
 
+  /// The dropdown's value for a peer radio. Namespaced because the list is
+  /// shared with local nodes and both are keyed by a uuid — one that means
+  /// "a node in THIS station" and one that does not.
+  static String? _peerValue(PeerRadioSelection? selection) =>
+      selection == null ? null : peerRadioValue(selection);
+
+  static PeerRadioSelection _selectionFor(PeerRemoteRadio peer) => PeerRadioSelection(
+        deviceId: peer.deviceId,
+        radioId: peer.radio.id,
+        deviceName: peer.deviceName,
+        radioName: peer.radio.name,
+      );
+
+  /// One list, two pointers — see `CatService.remoteRadio1` for why they are
+  /// exclusive.
+  ///
+  /// The pick is rebuilt from the VALUE rather than looked up in the current
+  /// offers, and that is the whole point: a menu's items are captured when it
+  /// opens, so the peer can be gone by the time the operator taps one. A
+  /// lookup would then match nothing and this would return having done
+  /// nothing — while the dropdown has already adopted the tapped value, which
+  /// now names no item at all.
+  Future<void> _onMainVfoPicked(String? value) async {
+    final picked = peerRadioSelectionFromValue(value);
+    if (picked == null) return _cat.setRadio1(value);
+    // Names from the live offer when there is one, and otherwise from the
+    // pick being replaced — which is the same radio when the operator has
+    // simply re-tapped an entry that went unavailable under them.
+    final offered = services.peerRemoteRadios.find(picked.deviceId, picked.radioId);
+    final current = _cat.remoteRadio1;
+    final kept = current != null && current.matches(picked.deviceId, picked.radioId) ? current : null;
+    return _cat.setRemoteRadio1(PeerRadioSelection(
+      deviceId: picked.deviceId,
+      radioId: picked.radioId,
+      deviceName: offered?.deviceName ?? kept?.deviceName ?? '',
+      radioName: offered?.radio.name ?? kept?.radioName ?? '',
+    ));
+  }
+
   Widget _buildContent(BuildContext context) {
     final st = context.t.settings.station;
 
@@ -777,7 +818,7 @@ class StationPanel extends StatelessWidget {
       // what a driver worked out, and toggling it has to reach them. Both are
       // ChangeNotifiers, and listening to one left the other's changes
       // invisible until something else happened to rebuild this.
-      listenable: Listenable.merge([_cat, services.settings]),
+      listenable: Listenable.merge([_cat, services.settings, services.peerRemoteRadios]),
       builder: (context, _) {
         final rowInset = _rowInset(context);
         final nodes = _cat.nodes;
@@ -795,6 +836,19 @@ class StationPanel extends StatelessWidget {
           for (final node in nodes)
             if (_cat.typeFor(node)?.category == kCategoryKey) node,
         ];
+        // A peer's radio is picked from the same list as this device's own:
+        // it drives the same one `vfoA`, so offering a second control for it
+        // would be offering two answers to one question (HALO-416).
+        final selection = _cat.remoteRadio1;
+        final peerRadios = services.peerRemoteRadios.all;
+        // A selection whose peer is not here stays SHOWN and selected, said
+        // to be unavailable — dropping it would silently hand the VFO back
+        // to a local radio the operator had deliberately stepped off, and
+        // the pick is what re-engages by itself when the peer returns.
+        final absentSelection = selection != null &&
+                !peerRadios.any((r) => selection.matches(r.deviceId, r.radio.id))
+            ? selection
+            : null;
 
         return ListView(
           padding: const EdgeInsets.only(bottom: Space.md),
@@ -817,13 +871,15 @@ class StationPanel extends StatelessWidget {
                 // reassigns it behind this panel's back — auto-designating
                 // the first transceiver added, and re-designating when the
                 // current one is removed — and neither would have appeared.
-                      key: ValueKey(_cat.radio1),
+                      key: ValueKey(_cat.radio1 ?? _peerValue(selection)),
                       // Without this the button lays its SELECTED item out
                       // unbounded, so ellipsizing the menu entries is not
                       // enough — a name wider than the field overflows the
                       // row rather than truncating.
                       isExpanded: true,
-                      initialValue: transceivers.any((n) => n.uuid == _cat.radio1) ? _cat.radio1 : null,
+                      initialValue: transceivers.any((n) => n.uuid == _cat.radio1)
+                          ? _cat.radio1
+                          : _peerValue(selection),
                       icon: dropdownTrailingIcon,
                       decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
                       menuMaxHeight: dropdownMenuMaxHeight(context),
@@ -839,8 +895,31 @@ class StationPanel extends StatelessWidget {
                             // than truncating.
                             child: Text(_displayName(radio), overflow: TextOverflow.ellipsis),
                           ),
+                        for (final peer in peerRadios)
+                          DropdownMenuItem<String?>(
+                            value: _peerValue(_selectionFor(peer)),
+                            child: Text(
+                              st.peerTransceiver(radio: peer.radio.name, device: peer.deviceName),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (absentSelection != null)
+                          DropdownMenuItem<String?>(
+                            value: _peerValue(absentSelection),
+                            child: Text(
+                              st.peerTransceiverUnavailable(
+                                radio: absentSelection.radioName.isEmpty
+                                    ? absentSelection.radioId
+                                    : absentSelection.radioName,
+                                device: absentSelection.deviceName.isEmpty
+                                    ? absentSelection.deviceId
+                                    : absentSelection.deviceName,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                       ],
-                      onChanged: (uuid) => unawaited(_cat.setRadio1(uuid)),
+                      onChanged: (value) => unawaited(_onMainVfoPicked(value)),
                     ),
                   ),
                   // How the app behaves towards whichever radio is selected

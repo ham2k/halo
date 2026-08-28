@@ -17,6 +17,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
@@ -26,6 +27,7 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/discovery.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
+import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -960,6 +962,180 @@ void main() {
       await addRadio();
       await cat.shutdown();
       expect(log, isEmpty);
+    });
+  });
+
+  group('a peer\'s radio in the Main VFO list (HALO-416)', () {
+    const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', radioName: 'IC-705');
+
+
+    test('the two pointers are exclusive, both ways round', () async {
+      final local = await addRadio();
+      expect(cat.radio1, local.uuid);
+
+      await cat.setRemoteRadio1(pick);
+      expect(cat.radio1, isNull, reason: 'two things writing one vfoA fight');
+      expect(cat.remoteRadio1, pick);
+
+      await cat.setRadio1(local.uuid);
+      expect(cat.remoteRadio1, isNull);
+    });
+
+    test('picking None while a peer radio is selected clears it', () async {
+      // `radio1` is already null here, so the setter's own unchanged-value
+      // early return is exactly what would swallow this — and the operator
+      // would be left on a remote rig having just asked for nothing.
+      await cat.setRemoteRadio1(pick);
+
+      await cat.setRadio1(null);
+
+      expect(cat.remoteRadio1, isNull);
+    });
+
+    test('the pick survives a relaunch, peer present or not', () async {
+      // Nothing here can check whether that device exists — it is a fact
+      // about another machine. An absent peer is unavailable, not corrupt.
+      await cat.setRemoteRadio1(pick);
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.remoteRadio1, pick);
+      expect(reloaded.remoteRadio1?.radioName, 'IC-705',
+          reason: 'the name is all a picker has to show while the peer is away');
+    });
+
+    test('a stored blob naming BOTH keeps only the local radio', () async {
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 1,
+          'radio1': 'b-uuid',
+          'remoteRadio1': {'deviceId': 'device-a', 'radioId': 'rig-1'},
+          'nodes': {
+            'b-uuid': {'typeKey': 'fake-type', 'name': 'Right Radio', 'config': {'host': 'b.local'}},
+          },
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+
+      expect(loaded.radio1, 'b-uuid');
+      expect(loaded.remoteRadio1, isNull, reason: 'exclusivity is enforced on the way in too');
+    });
+
+    test('adding a transceiver does not steal the VFO from a peer\'s radio', () async {
+      // "Newest wins" is about a shack with no answer yet. Configuring a rig
+      // is not the same as reaching for it, and the operator working through
+      // a peer's radio must not silently lose it.
+      await cat.setRemoteRadio1(pick);
+
+      final added = await addRadio();
+
+      expect(cat.radio1, isNull, reason: 'node ${added.uuid} was silently promoted');
+      expect(cat.remoteRadio1, pick);
+    });
+
+    test('a renamed peer or radio keeps the pick, and updates what it shows', () async {
+      // The names exist to be shown once the peer is GONE, so the rename has
+      // to be caught while it is still here — and the operator never picks
+      // again, so nothing else would catch it. The pick itself must survive:
+      // a renamed device is the same device, which is why the selection
+      // compares only ids.
+      await cat.setRemoteRadio1(pick);
+
+      cat.noteOffer('device-a', 'Shack PC', const [PeerRadioOffer(id: 'rig-1', name: 'IC-7300')]);
+
+      expect(cat.remoteRadio1, pick, reason: 'a rename is not a different radio');
+      expect(cat.remoteRadio1?.deviceName, 'Shack PC');
+      expect(cat.remoteRadio1?.radioName, 'IC-7300');
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.remoteRadio1?.deviceName, 'Shack PC', reason: 'written through, not held');
+    });
+
+    test('another peer\'s offer leaves the pick\'s names alone', () async {
+      await cat.setRemoteRadio1(pick);
+
+      cat.noteOffer('device-z', 'Someone Else', const [PeerRadioOffer(id: 'rig-1', name: 'FT-891')]);
+
+      expect(cat.remoteRadio1?.deviceName, '');
+      expect(cat.remoteRadio1?.radioName, 'IC-705');
+    });
+
+    test('only CONNECTED transceivers are offered', () async {
+      // Withdrawing the offer is the only thing that says a rig is not there
+      // — nothing on the wire carries staleness — so an offer that ignored
+      // the link would have a peer tune a radio nobody can reach and get a
+      // confirmation back for it.
+      final node = await addRadio();
+      expect(cat.offeredRadios, isEmpty);
+
+      await connectAndLand(node);
+
+      expect(cat.offeredRadios.single.id, node.uuid);
+      expect(cat.offeredRadios.single.name, 'Left Radio');
+    });
+
+    test('an offered radio that is not radio1 is still tunable, echo guard included', () async {
+      // The newly reachable path: `_onVfoChanged` only ever drives radio1,
+      // and it reads `vfoA` — a VFO this rig is not attached to. A peer
+      // driving the shack's OTHER rig goes through tuneOfferedRadio instead.
+      final other = await addRadio(host: 'a.local');
+      final designated = await cat.addNode(
+          typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      expect(cat.radio1, designated.uuid, reason: 'newest wins, so `other` is not radio1');
+      await connectAndLand(other);
+      log.clear();
+
+      cat.tuneOfferedRadio(other.uuid, freqKHz: 14074.0, mode: 'USB');
+      expect(log, containsAll(['setFrequency:14074.0', 'setMode:USB']));
+
+      // Its confirmation restates what it was told, and re-sending that
+      // would answer every status push with a command.
+      log.clear();
+      driver.sessions.single.reportFromItsOwnTimer(const VfoReading(freqKHz: 14074.0, mode: 'USB'));
+      cat.tuneOfferedRadio(other.uuid, freqKHz: 14074.0, mode: 'USB');
+      expect(log, isEmpty);
+
+      // Then somebody turns THAT rig's knob. The dedupe is against what the
+      // radio was last told, so a reading has to move it — otherwise asking
+      // for 14074 again matches a record the rig has since left behind, the
+      // command is skipped, and the peer is shown a frequency its radio is
+      // not on until someone turns the knob back.
+      driver.sessions.single.reportFromItsOwnTimer(const VfoReading(freqKHz: 14100.0, mode: 'USB'));
+      log.clear();
+
+      cat.tuneOfferedRadio(other.uuid, freqKHz: 14074.0, mode: 'USB');
+
+      expect(log, contains('setFrequency:14074.0'));
+    });
+
+    test('a tune for a radio that is not offered reaches no rig', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+      log.clear();
+
+      cat.tuneOfferedRadio('not-a-node-here', freqKHz: 14074.0, mode: 'USB');
+
+      expect(log, isEmpty, reason: 'naming a uuid must not be enough to move a radio');
+    });
+
+    test('a disconnected radio is not tunable even by its own uuid', () async {
+      // radio1's tune deliberately goes through `RadioService` rather than
+      // the session, so the offer check is the ONLY thing standing in front
+      // of it: without it this moves app state on a rig that is not there,
+      // and the report that write produces reaches the asker looking exactly
+      // like the radio confirming.
+      final node = await addRadio();
+      expect(cat.isRadio1(node.uuid), isTrue, reason: 'the sole transceiver is radio1');
+      await connectAndLand(node);
+      await cat.disconnect(node.uuid);
+      log.clear();
+
+      cat.tuneOfferedRadio(node.uuid, freqKHz: 14074.0, mode: 'USB');
+
+      expect(log, isEmpty);
+      expect(radio.vfoA.freq, isNull, reason: 'nothing may pretend a dead rig tuned');
     });
   });
 

@@ -111,7 +111,7 @@ void main() {
   });
 
   test('another message type never reads as a draft', () {
-    expect(PeerMessage.catStatus(freqKHz: 14025).qsoDraftOrNull, isNull);
+    expect(PeerMessage.catStatus(radioId: 'rig-1', freqKHz: 14025).qsoDraftOrNull, isNull);
   });
 
   // A peer on a newer build may put controls in its row this one has never

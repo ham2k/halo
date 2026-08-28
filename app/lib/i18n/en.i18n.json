@@ -1183,6 +1183,8 @@
       "transceiverForMainVfo": "Transceiver for Main VFO",
       "equipmentInventory": "Equipment Inventory",
       "noTransceiver": "None",
+      "peerTransceiver": "${radio} on ${device}",
+      "peerTransceiverUnavailable": "${radio} on ${device} (not available)",
       "antennaInUse": "Antenna in Use",
       "keyInUse": "Key in Use",
       "noneSelected": "None",

@@ -1714,6 +1714,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
 	@override String get equipmentInventory => 'Inventario de equipos';
 	@override String get noTransceiver => 'Ninguno';
+	@override String peerTransceiver({required Object radio, required Object device}) => '${radio} en ${device}';
+	@override String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)';
 	@override String get icomCivTroubleshootingTitle => 'Si aparecen dos puertos serie para la misma radio';
 	@override String get icomCivTroubleshooting => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.';
 	@override String get civAddressTroubleshootingTitle => 'Si la radio nunca responde';
@@ -3529,6 +3531,8 @@ extension on TranslationsEs {
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',
+			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} en ${device}',
+			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)',
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
@@ -3579,10 +3583,10 @@ extension on TranslationsEs {
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
 			'settings.station.trackFieldAntenna' => 'Antena',
-			'settings.station.trackFieldKey' => 'Manipulador',
-			'settings.station.switchLayout' => 'Disposición',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.trackFieldKey' => 'Manipulador',
+			'settings.station.switchLayout' => 'Disposición',
 			'settings.station.switchLayoutDescription' => 'En qué lado del conmutador están conectadas tus radios.',
 			'settings.station.switchLayoutRequired' => 'Elige cómo está cableado el conmutador',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'El conmutador rechazó «${command}» (error ${code})',

@@ -20,6 +20,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../i18n/strings.g.dart';
 import '../error_reporting_service.dart';
+import '../peer/peer_station_radios.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
 import 'discovery.dart';
@@ -126,7 +127,7 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
   return '$base $n';
 }
 
-class CatService extends ChangeNotifier {
+class CatService extends ChangeNotifier implements PeerStationRadios {
   final SettingsService _settings;
   final EquipmentRegistry registry;
 
@@ -325,8 +326,48 @@ class CatService extends ChangeNotifier {
 
   bool isRadio1(String uuid) => _radio1 == uuid;
 
+  /// The peer radio driving `vfoA`, when it is not a local one (HALO-416).
+  ///
+  /// Plain stored state beside [radio1], and MUTUALLY EXCLUSIVE with it:
+  /// `vfoA` is one VFO, so two things writing it fight, and the dropdown
+  /// that sets these is one list for exactly that reason.
+  ///
+  /// Kept across launches and across the peer walking away, like [radio1] is
+  /// — the picker shows it as unavailable and it re-engages by itself when
+  /// that device comes back. Nothing here checks whether the peer is
+  /// present: this service cannot see the sessions, and a selection that
+  /// erased itself on a dropped link would be gone before the operator
+  /// looked up.
+  PeerRadioSelection? _remoteRadio1;
+
+  @override
+  PeerRadioSelection? get remoteRadio1 => _remoteRadio1;
+
+  /// Points `vfoA` at a peer's radio, clearing [radio1] — see
+  /// [remoteRadio1] for why the two cannot both be set.
+  Future<void> setRemoteRadio1(PeerRadioSelection? selection) async {
+    if (_remoteRadio1 == selection && (selection == null || _radio1 == null)) return;
+    _remoteRadio1 = selection;
+    if (selection != null && _radio1 != null) {
+      // The same two clears [setRadio1] does, and for the same reasons: the
+      // outgoing radio stops being told anything, and a movement measured on
+      // it says nothing about where the peer's rig is sitting.
+      _runtimes[_radio1!]?.lastSent = null;
+      _cancelSnap(null);
+      _radio1 = null;
+    }
+    await _save();
+    notifyListeners();
+  }
+
   Future<void> setRadio1(String? uuid) async {
-    if (_radio1 == uuid) return;
+    // Picking a local radio — None included — is a statement about `vfoA`,
+    // which a remote pick also claims. Picking None while a remote radio is
+    // selected is therefore a real change even though `_radio1` is already
+    // null, which is what this has to be checked ahead of the early return.
+    final clearingRemote = _remoteRadio1 != null;
+    if (_radio1 == uuid && !clearingRemote) return;
+    _remoteRadio1 = null;
     // The echo guard is per-node but only meaningful for whichever node is
     // radio1 — the same reason [_closeSession] clears it. The incoming
     // radio was told nothing while it wasn't driving the panel, and the
@@ -341,6 +382,62 @@ class CatService extends ChangeNotifier {
     _radio1 = uuid;
     await _save();
     notifyListeners();
+  }
+
+  // ------------------------------------------------- offered to peers
+
+  @override
+  List<PeerRadioOffer> get offeredRadios => [
+        for (final node in _nodes.values)
+          if (registry.typeFor(node.typeKey)?.category == kCategoryTransceiver &&
+              stateFor(node.uuid).status == EquipmentStatus.connected)
+            PeerRadioOffer(id: node.uuid, name: node.name),
+      ];
+
+  @override
+  void noteOffer(String deviceId, String deviceName, List<PeerRadioOffer> radios) {
+    final selection = _remoteRadio1;
+    if (selection == null || selection.deviceId != deviceId) return;
+    for (final radio in radios) {
+      if (radio.id != selection.radioId) continue;
+      if (selection.deviceName == deviceName && selection.radioName == radio.name) return;
+      // The ids are unchanged, so this is the same pick under new names —
+      // which is why [PeerRadioSelection] compares only the ids. Written
+      // through rather than held in memory: the name is wanted precisely
+      // when the peer is not here to state it, relaunches included.
+      _remoteRadio1 = PeerRadioSelection(
+        deviceId: deviceId,
+        radioId: radio.id,
+        deviceName: deviceName,
+        radioName: radio.name,
+      );
+      unawaited(_save());
+      notifyListeners();
+      return;
+    }
+  }
+
+  @override
+  VfoReading? vfoForOfferedRadio(String radioId) {
+    // Through the offer, not straight to the runtime: a radio that is not
+    // offered must not report either, or a controller would keep hearing
+    // from a rig it can no longer be given.
+    if (!offeredRadios.any((radio) => radio.id == radioId)) return null;
+    return stateFor(radioId).vfo;
+  }
+
+  @override
+  void tuneOfferedRadio(String radioId, {double? freqKHz, String? mode}) {
+    if (!offeredRadios.any((radio) => radio.id == radioId)) return;
+    // The designated radio keeps going through `RadioService`, which is the
+    // funnel a local keystroke takes: the logging panel follows it and Smart
+    // VFO Snap measures it. Tuning it directly would move the rig with the
+    // operator's own app still showing where it was.
+    if (radioId == _radio1) {
+      _radio?.setVfo('vfoA', freq: freqKHz, mode: mode);
+      return;
+    }
+    tuneNode(radioId, VfoReading(freqKHz: freqKHz, mode: resolveSideband(mode, freqKHz)));
   }
 
   // ------------------------------------------------------ antenna1 / key1
@@ -449,6 +546,13 @@ class CatService extends ChangeNotifier {
     // silently designating some other radio.
     final radio1 = stored['radio1'];
     if (radio1 is String && _nodes.containsKey(radio1)) _radio1 = radio1;
+    // No equivalent of the node check above, and there cannot be one: a peer
+    // radio's existence is a fact about another device, which this one
+    // cannot ask about at load. An absent peer reads as an unavailable
+    // selection, not as a corrupt one. Exclusivity is enforced on the way in
+    // — refusing to load both keeps a hand-edited or newer-build blob from
+    // pointing `vfoA` at two things at once.
+    if (_radio1 == null) _remoteRadio1 = PeerRadioSelection.from(stored['remoteRadio1']);
     final designated = stored['designated'];
     if (designated is Map) {
       for (final entry in designated.entries) {
@@ -468,6 +572,7 @@ class CatService extends ChangeNotifier {
         // `if (_radio1 != null)` would behave identically and fail no test,
         // and that is correct rather than a hole in the tests.
         'radio1': _radio1,
+        'remoteRadio1': _remoteRadio1?.toJson(),
         'designated': _designated,
         'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
       });
@@ -511,7 +616,11 @@ class CatService extends ChangeNotifier {
     // rig whose VFO is vfoA, and the category system exists so a rotator or a
     // relay board added later cannot take it.
     final category = registry.typeFor(stored.typeKey)?.category;
-    if (category == kCategoryTransceiver) _radio1 = stored.uuid;
+    // Never over a peer's radio, though: that pick was the operator saying
+    // where `vfoA` comes from, and configuring a rig — which is not the same
+    // as reaching for it — must not silently take the panel back off the
+    // radio they are working through.
+    if (category == kCategoryTransceiver && _remoteRadio1 == null) _radio1 = stored.uuid;
     // Same rule as radio1, for antenna/key: the newest one designated, so
     // adding the shack's only antenna or key needs no separate picker visit.
     if (category == kCategoryAntenna) _designated[kCategoryAntenna] = stored.uuid;
@@ -1245,12 +1354,18 @@ class CatService extends ChangeNotifier {
     // does its own no-op check, so forwarding unconditionally is free.
     if (merged != runtime.state.vfo) _setState(uuid, runtime.state.copyWith(vfo: merged));
 
+    // What the radio just said is now what it has been told — [tuneNode]'s
+    // echo guard, and what keeps a knob turn from coming back to the rig as
+    // a command. EVERY node, not just radio1: a radio a peer is driving
+    // (HALO-416) needs the same guard and never passes through
+    // [_onVfoChanged].
+    runtime.lastSent = merged;
+
     // Only the designated radio drives the app's VFO. Tagging the write
     // `radio` is what lets _onVfoChanged recognise the notification it's
     // about to receive as its own, instead of re-tuning the radio to the
     // value the radio just gave it.
     if (uuid != _radio1) return;
-    runtime.lastSent = merged;
     _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: merged.mode, origin: VfoOrigin.radio);
     _noteSnapReading(merged);
   }
@@ -1347,9 +1462,7 @@ class CatService extends ChangeNotifier {
 
     final uuid = _radio1;
     if (uuid == null) return;
-    final runtime = _runtimes[uuid];
-    final session = runtime?.session;
-    if (session == null) {
+    if (_runtimes[uuid]?.session == null) {
       // The operator is working the controls of a radio that is not there.
       // That is the clearest signal we get that they want it back, so pull the
       // idle retry down off its ceiling — otherwise someone actively using the
@@ -1382,7 +1495,19 @@ class CatService extends ChangeNotifier {
     }
 
     final vfo = radio.vfoA;
-    final wanted = VfoReading(freqKHz: vfo.freq, mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band));
+    tuneNode(uuid, VfoReading(freqKHz: vfo.freq, mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band)));
+  }
+
+  /// Puts one node's radio on [wanted], echo discipline included.
+  ///
+  /// Public because `radio1` is no longer the only radio that gets tuned:
+  /// one this device OFFERS to a peer (HALO-416) is driven from the far
+  /// side's operator and never passes through [_onVfoChanged], which reads
+  /// `vfoA` — a VFO that rig is not attached to.
+  void tuneNode(String uuid, VfoReading wanted) {
+    final runtime = _runtimes[uuid];
+    final session = runtime?.session;
+    if (session == null) return;
     // Nothing the radio doesn't already have. A band pick with no
     // frequency, or a mode restatement, must not re-send a tune command.
     final previous = runtime!.lastSent;

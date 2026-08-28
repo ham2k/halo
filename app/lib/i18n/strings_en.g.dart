@@ -3600,6 +3600,12 @@ class Translations$settings$station$en {
 	/// en: 'None'
 	String get noTransceiver => 'None';
 
+	/// en: '${radio} on ${device}'
+	String peerTransceiver({required Object radio, required Object device}) => '${radio} on ${device}';
+
+	/// en: '${radio} on ${device} (not available)'
+	String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} on ${device} (not available)';
+
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
 
@@ -6245,6 +6251,8 @@ extension on Translations {
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.noTransceiver' => 'None',
+			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} on ${device}',
+			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} on ${device} (not available)',
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
 			'settings.station.noneSelected' => 'None',
@@ -6295,10 +6303,10 @@ extension on Translations {
 			'settings.station.trackFieldKey' => 'CW Key',
 			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
 			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
-			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
-			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
+			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.fakeFailConnect' => 'Always fail to connect',
 			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
 			'settings.station.fakeFreq' => 'Frequency (kHz)',

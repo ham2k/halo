@@ -236,7 +236,12 @@ void main() {
       // (PeerSession._dispatch's default arm), so a build that has never
       // heard of screen sharing keeps syncing with one that has. Bumping the
       // version would instead have every older peer REFUSE the handshake.
-      expect(peerProtocolVersion, 2);
+      //
+      // The pin is on the constant rather than on these types, so it also
+      // catches a bump made for some other reason without one being weighed:
+      // 3 is remote CAT's `radioId`, which had to bump it, and screen
+      // sharing still contributes nothing.
+      expect(peerProtocolVersion, 3);
     });
   });
 
