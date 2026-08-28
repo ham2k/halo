@@ -601,6 +601,12 @@ export interface SuggestArgs {
   /// station default.
   callsign?: string
   searchTerm?: string
+  /// True when THIS extension alone was asked — the operator tapped its row in
+  /// "Activity Types", or typed its key as a scope (`cwt:`). The nearby list
+  /// and a bare scope both arrive with no `searchTerm`, and they are different
+  /// questions: an extension that keeps itself out of the nearby list (a
+  /// date-gated contest) still has to answer when it is the one being asked.
+  scoped?: boolean
 }
 
 export interface ActivityHook {

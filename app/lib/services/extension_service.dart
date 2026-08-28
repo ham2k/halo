@@ -3101,11 +3101,17 @@ class ExtensionService implements PanelExtensionSource {
         ? operationData['stationCall'] as String
         : settings?.activeProfile.operatorCall;
 
-    Map<String, dynamic> argsSearchingFor(String? term) => {
+    // `scoped` tells a hook it is the only one being asked — the operator
+    // picked its "Activity Types" row, or typed its key as a scope. A bare
+    // scope and the nearby list both arrive with no search term, and an
+    // extension that keeps itself out of the nearby list still has to answer
+    // when it is the one being asked.
+    Map<String, dynamic> argsSearchingFor(String? term, {bool scoped = false}) => {
           'operation': operationData,
           if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
           if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
           if (term != null && term.isNotEmpty) 'searchTerm': term,
+          if (scoped) 'scoped': true,
         };
 
     try {
@@ -3116,7 +3122,7 @@ class ExtensionService implements PanelExtensionSource {
           'activity',
           key: activityKey,
           method: 'suggest',
-          args: argsSearchingFor(searchTerm),
+          args: argsSearchingFor(searchTerm, scoped: true),
           timeout: const Duration(seconds: 5),
         );
         final entries = [

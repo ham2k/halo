@@ -25,7 +25,7 @@ void main() {
   // Every contest ships the same delegation, so every contest can recurse. The
   // list had drifted — iaru-hf and naqp shipped without being added, and this is
   // the only place the delegation is exercised at all.
-  const contests = ['simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'stateparks'];
+  const contests = ['simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'stateparks', 'cwt'];
 
   /// `ref` names WHICH event for a contest that has several (stateparks
   /// contributes nothing without one); the rest ignore the extra keys.

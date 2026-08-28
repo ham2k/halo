@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New CWops CWT extension: it offers the session three hours before each one starts"
+
 "155":
   changes:
     - FlexRadio equipment now picks which slice to follow, and shows what each one is doing

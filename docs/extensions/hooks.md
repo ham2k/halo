@@ -340,7 +340,7 @@ interface ActivityHook {
 }
 // LoggingControlDescriptor: {key, label, icon?, color?, order?, optionType?,
 //   allowsMultiple?, editable?, input}
-// SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?}
+// SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?, scoped?}
 // ActivitySuggestion: Ref & {distance?, relevance?, allowsMultiple?}
 
 // The input catalog. A new kind is earned by a different WIDGET, never by
@@ -420,7 +420,12 @@ proposing a new `input.kind` is a core PR, deliberately (DESIGN.md §5's
 `location`/`callsign` the core resolves from the operation if set, else the
 station defaults (extensions never need to know which). Called with no
 `searchTerm` for nearby suggestions, or with one for name/code search — an
-extension may honor either, both, or neither (returning `[]`). The core fans
+extension may honor either, both, or neither (returning `[]`). `scoped` is
+true when THIS extension alone was asked — the operator tapped its "Activity
+Types" row or typed its key as a scope — which a bare scope otherwise cannot be
+told from the nearby list, since neither carries a `searchTerm`. An extension
+that keeps itself out of the nearby list (`cwt`, offered only around a session)
+answers a scoped call anyway: it is the one being asked. The core fans
 out to every `activity` hook via `invokeHookAll`, merges results, and ranks them
 in TWO BANDS (`app/lib/tools/activity_suggestions.dart`): everything carrying a
 `distance` first, by `distance / relevance` ascending — a more relevant hit
@@ -428,7 +433,7 @@ counts as nearer — then everything without one, by DESCENDING `relevance`, wit
 ties broken on the order the extension emitted them. So `relevance` alone orders
 a set of placeless suggestions (dated contest events, say) among themselves, but
 never lifts one above a located park. Implemented by: `pota`, `sota`,
-`stateparks`.
+`stateparks`, `cwt`.
 
 The activity search box also treats a leading `key:` as a scope — typing
 `pota:` (or tapping a row under "Activity Types") asks that extension alone,
