@@ -198,6 +198,7 @@ void main() {
         'flrig-tcp',
         'fake-radio',
         'antenna-genius-tcp',
+        'sierra-coax-serial',
         'antenna-none',
         'key-none',
       },

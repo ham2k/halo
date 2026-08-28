@@ -35,6 +35,7 @@ import 'drivers/icom_civ_driver.dart';
 import 'drivers/kenwood_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/rigctld_driver.dart';
+import 'drivers/sierra_coax_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
 import 'transports/fake_transport.dart';
@@ -385,6 +386,7 @@ const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
 const _fakeRadioKey = 'fake-radio';
 const _antennaGeniusTcpKey = 'antenna-genius-tcp';
+const _sierraCoaxSerialKey = 'sierra-coax-serial';
 
 /// FlexRadio radios reachable over the SmartSDR TCP API.
 ///
@@ -908,6 +910,40 @@ const antennaGeniusModel = EquipmentModel(
 
 String _antennaGeniusName() => t.settings.station.models.antennaGenius;
 
+/// The Sierra Radio Systems CX-1 coax relay module, on the Device Control
+/// Network.
+///
+/// No discoverer, and there cannot be one: the DCN is a serial bus with no
+/// announcement of any kind. A module is found by picking its serial port
+/// and telling the app which address its DIP switches are set to.
+///
+/// The serial port is either a USB-to-RS-485 dongle on the shared bus or the
+/// module's own USB-C console jack; the addressed envelope this driver sends
+/// works on both, so there is nothing to choose between them here.
+const sierraCoaxModel = EquipmentModel(
+  key: 'sierra-coax',
+  category: kCategoryAntennaSwitch,
+  name: _sierraCoaxName,
+  manufacturer: 'Sierra Radio Systems',
+  variants: [
+    EquipmentVariant(
+      key: _sierraCoaxSerialKey,
+      driver: SierraCoaxDriver(),
+      transport: SerialTransport(),
+      // Fixed by the DCN specification, not a preference — so an override,
+      // which also takes the baud picker out of the editor. Every module on
+      // the bus runs at this rate and one that did not could not be on it.
+      overrides: {'baudRate': sierraDcnBaudRate},
+      defaultConfig: {
+        sierraAddressConfigKey: sierraCoaxDefaultAddress,
+        switchLayoutConfigKey: switchLayoutDevicePorts,
+      },
+    ),
+  ],
+);
+
+String _sierraCoaxName() => t.settings.station.models.sierraCoax;
+
 const _antennaKey = 'antenna-none';
 const _keyKey = 'key-none';
 
@@ -962,6 +998,7 @@ const _defaultModels = [
   flrigModel,
   fakeRadioModel,
   antennaGeniusModel,
+  sierraCoaxModel,
   antennaModel,
   keyModel,
 ];

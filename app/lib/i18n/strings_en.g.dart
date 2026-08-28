@@ -3793,6 +3793,24 @@ class Translations$settings$station$en {
 	/// en: '$antennas Antennas, $radios Radios'
 	String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} Antennas, ${radios} Radios';
 
+	/// en: '$antennas Antennas, 1 Radio'
+	String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} Antennas, 1 Radio';
+
+	/// en: '1 Antenna, $radios Radios'
+	String switchLayoutSidesOneAntenna({required Object radios}) => '1 Antenna, ${radios} Radios';
+
+	/// en: 'Common'
+	String get switchCommonPort => 'Common';
+
+	/// en: 'Device address'
+	String get dcnAddress => 'Device address';
+
+	/// en: 'The address set on the module's DIP switches. A coax relay module leaves the factory at 2.'
+	String get dcnAddressDescription => 'The address set on the module\'s DIP switches. A coax relay module leaves the factory at 2.';
+
+	/// en: 'Must be a device address from 1 to 99'
+	String get dcnAddressRequired => 'Must be a device address from 1 to 99';
+
 	/// en: 'Port $port'
 	String switchPortLabel({required Object port}) => 'Port ${port}';
 
@@ -5087,6 +5105,9 @@ class Translations$settings$station$models$en {
 
 	/// en: '4O3A Antenna Genius'
 	String get antennaGenius => '4O3A Antenna Genius';
+
+	/// en: 'Sierra Radio CX-1 Coax Switch'
+	String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 }
 
 // Path: settings.station.transports
@@ -6240,6 +6261,7 @@ extension on Translations {
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.fakeRadio' => 'Fake Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
+			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.transports.network' => 'Network',
 			'settings.station.transports.usbSerial' => 'USB serial',
 			'settings.station.transports.wifi' => 'WiFi',
@@ -6305,9 +6327,9 @@ extension on Translations {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
-			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
 			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
 			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
@@ -6333,6 +6355,12 @@ extension on Translations {
 			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antenna on port ${port}',
 			'settings.station.switchAntennaForDescription' => 'Which of your antennas is connected to this port on the switch.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} Antennas, ${radios} Radios',
+			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} Antennas, 1 Radio',
+			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 Antenna, ${radios} Radios',
+			'settings.station.switchCommonPort' => 'Common',
+			'settings.station.dcnAddress' => 'Device address',
+			'settings.station.dcnAddressDescription' => 'The address set on the module\'s DIP switches. A coax relay module leaves the factory at 2.',
+			'settings.station.dcnAddressRequired' => 'Must be a device address from 1 to 99',
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',

@@ -24,6 +24,23 @@ const _lineFeed = 0x0a;
 const _carriageReturn = 0x0d;
 
 class LineFramer {
+  /// Whether a carriage return ends a line as well as a line feed.
+  ///
+  /// False — the default, and what the SmartSDR-family peers need — drops CR
+  /// wherever it falls, which is what makes a CRLF peer and a bare-LF one
+  /// produce the same lines.
+  ///
+  /// True for a peer whose terminator IS the carriage return, as the Sierra
+  /// Radio DCN's end of packet is. Empty lines are then suppressed, so a
+  /// peer that sends CRLF still yields one line per packet rather than a
+  /// blank after each — which is also why this cannot simply be the
+  /// behaviour in both modes: a protocol whose blank line means something
+  /// (an Antenna Genius terminates a multi-line answer with one) would lose
+  /// it.
+  final bool crTerminates;
+
+  LineFramer({this.crTerminates = false});
+
   /// Bytes received since the last complete line.
   final _residual = <int>[];
 
@@ -31,14 +48,14 @@ class LineFramer {
   ///
   /// Decoded with `allowMalformed`, so one corrupt byte costs a replacement
   /// character rather than throwing away a line that is otherwise readable.
-  /// Carriage returns are dropped wherever they fall, which is what makes a
-  /// CRLF peer and a bare-LF one produce the same lines.
   List<String> add(Uint8List chunk) {
     final lines = <String>[];
     for (final byte in chunk) {
-      if (byte == _lineFeed) {
-        lines.add(utf8.decode(_residual, allowMalformed: true));
+      if (byte == _lineFeed || (crTerminates && byte == _carriageReturn)) {
+        final line = utf8.decode(_residual, allowMalformed: true);
         _residual.clear();
+        if (crTerminates && line.isEmpty) continue;
+        lines.add(line);
       } else if (byte != _carriageReturn) {
         _residual.add(byte);
       }

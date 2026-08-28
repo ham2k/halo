@@ -1165,7 +1165,8 @@
         "antenna": "Antenna",
         "key": "CW Key",
         "fakeRadio": "Fake Radio",
-        "antennaGenius": "4O3A Antenna Genius"
+        "antennaGenius": "4O3A Antenna Genius",
+        "sierraCoax": "Sierra Radio CX-1 Coax Switch"
       },
       "transports": {
         "network": "Network",
@@ -1264,6 +1265,12 @@
       "switchAntennaFor": "Antenna on port $port",
       "switchAntennaForDescription": "Which of your antennas is connected to this port on the switch.",
       "switchLayoutSides": "$antennas Antennas, $radios Radios",
+      "switchLayoutSidesOneRadio": "$antennas Antennas, 1 Radio",
+      "switchLayoutSidesOneAntenna": "1 Antenna, $radios Radios",
+      "switchCommonPort": "Common",
+      "dcnAddress": "Device address",
+      "dcnAddressDescription": "The address set on the module's DIP switches. A coax relay module leaves the factory at 2.",
+      "dcnAddressRequired": "Must be a device address from 1 to 99",
       "switchPortLabel": "Port $port",
       "switchPortAutoHint": "follows band data",
       "switchPortTransmittingHint": "transmitting — cannot change now",
