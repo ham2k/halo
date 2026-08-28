@@ -7,10 +7,12 @@
 // stored record (never clobbering later edits, resurrecting deletions, or
 // attaching data for a corrected callsign), a degraded/offline result never
 // wipes richer stored data, unchanged results don't dirty sync, failures
-// don't stall the rest of the queue, and the status bar reflects batch
-// progress. The lookup function is injected, so no JS runtime here; the
+// don't stall the rest of the queue, and the status bar reports a batch
+// big enough to be worth reporting while staying silent for small ones. The lookup function is injected, so no JS runtime here; the
 // real pipeline behind it is covered by seed_command_test and the
 // extension-host integration tests.
+
+import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,13 +44,21 @@ void main() {
     await db.close();
   });
 
-  LookupQueueService service(CallLookup lookup, {bool Function()? lookupReady, Duration? waitBudget}) =>
+  LookupQueueService service(
+    CallLookup lookup, {
+    bool Function()? lookupReady,
+    Duration? waitBudget,
+    bool Function()? isOffline,
+    Stream<bool>? offlineChanges,
+  }) =>
       LookupQueueService(
         lookup: lookup,
         qsos: qsos,
         operations: operations,
         statusBar: statusBar,
         lookupReady: lookupReady,
+        isOffline: isOffline,
+        offlineChanges: offlineChanges,
         runtimeWaitBudget: waitBudget ?? const Duration(seconds: 20),
       );
 
@@ -247,7 +257,7 @@ void main() {
     });
 
     // force (the "Lookup all QSOs" path) so the already-enriched records
-    // are processed at all.
+    // are processed at all. Two QSOs, so no status bar is involved.
     queue.enqueueAll([degraded, unchanged]);
     await queue.idle;
 
@@ -409,7 +419,7 @@ void main() {
     expect((await qsos.get(qso.uuid))!.theirName, 'Refreshed');
   });
 
-  test('enqueueAll(force: false) — the SEED path — still skips already-enriched QSOs', () async {
+  test('enqueueAll(force: false) still skips already-enriched QSOs', () async {
     final qso = await qsos.add(operation.uuid, {
       'their': {
         'call': 'W1AW',
@@ -426,10 +436,10 @@ void main() {
       return {'guess': {'name': 'Refreshed'}};
     });
 
-    // Unlike the explicit "Lookup all QSOs" refresh (which forces), a SEED
-    // batch has no reason to re-fetch a QSO that already carries real
-    // lookup data — force: false keeps that skip in place while still
-    // reporting batch progress.
+    // Unlike the explicit "Lookup all QSOs" refresh (which forces), a
+    // command-added or inbound batch has no reason to re-fetch a QSO that
+    // already carries real lookup data — force: false keeps that skip in
+    // place.
     queue.enqueueAll([qso], force: false);
     await queue.idle;
     expect(calls, 0, reason: 'force: false must still honor the already-enriched skip');
@@ -511,20 +521,23 @@ void main() {
     expect((await qsos.get(qso.uuid))!.theirName, 'ARRL HQ');
   });
 
-  test('reports batch progress in the status bar and completes it when the queue drains', () async {
-    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+  test('a batch over the threshold reports progress and completes it when the queue drains', () async {
+    final batch = [
+      for (final call in ['W1AW', 'K1ABC', 'N0CALL', 'VE3XYZ'])
+        await qsos.add(operation.uuid, {'their': {'call': call}}),
+    ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
     });
 
-    queue.enqueueAll([a, b]);
+    // Four — one over the threshold, so the smallest batch that reports.
+    queue.enqueueAll(batch);
     await queue.idle;
 
     final item = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
-    expect(item.text, '2 of 2');
+    expect(item.text, '4 of 4');
     expect(item.progressValue, 1.0);
   });
 
@@ -550,34 +563,69 @@ void main() {
     expect(
       statusBar.items.where((i) => i.key == LookupQueueService.statusKey),
       isEmpty,
-      reason: 'regular lookups are silent — only "Lookup all QSOs" and SEED batches (via enqueueAll) show progress',
+      reason: 'one QSO at a time is one QSO however many arrive: only a batch handed to enqueueAll can report',
     );
   });
 
-  test('enqueueAll reports progress for the whole batch — the SEED path', () async {
-    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+  test('a batch at the threshold stays silent, whoever asked for it', () async {
+    final batch = [
+      for (final call in ['W1AW', 'K1ABC', 'N0CALL'])
+        await qsos.add(operation.uuid, {'their': {'call': call}}),
+    ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return {'guess': {'name': 'ARRL HQ'}};
     });
 
-    // Mirrors how a SEED batch reaches the queue (logging_controls.dart's
-    // addQso command handling collects the whole batch and hands it to
-    // enqueueAllLookups, wired to enqueueAll) — a bulk insert, not a single
-    // typed callsign, so it's opted into progress.
-    queue.enqueueAll([a, b]);
+    // Three is the boundary, and this is the same call the "Lookup all QSOs"
+    // action makes: size decides, not the caller, so a three-QSO log gets no
+    // bar even from the operator's own explicit action. An off-by-one to `>=`
+    // shows a bar here that is over before it has said anything.
+    queue.enqueueAll(batch);
     await queue.idle;
 
-    final item = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
-    expect(item.text, '2 of 2');
-    expect(item.progressValue, 1.0);
+    expect(statusBar.items.where((i) => i.key == LookupQueueService.statusKey), isEmpty);
   });
 
-  test('a silent lookup in flight alongside a progress-worthy one does not inflate its count', () async {
+  test('skipped QSOs count toward neither the threshold nor the total', () async {
+    final enriched = [
+      for (final call in ['W1AW', 'K1ABC', 'N0CALL'])
+        await qsos.add(operation.uuid, {
+          'their': {
+            'call': call,
+            'lookups': [
+              {'source': 'qrz.com', 'name': 'ARRL HQ', 'online': true},
+            ],
+          },
+        }),
+    ];
+    final fresh = [
+      for (final call in ['VE3XYZ', 'G0ABC'])
+        await qsos.add(operation.uuid, {'their': {'call': call}}),
+    ];
+
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      return {'guess': {'name': 'ARRL HQ'}};
+    });
+
+    // Five QSOs in, but force: false skips the three already enriched, so
+    // only two are real work — under the threshold, and the bar must not
+    // appear. Counting the QSOs handed in rather than the ones accepted
+    // would announce a batch that is almost entirely skips.
+    queue.enqueueAll([...enriched, ...fresh], force: false);
+    await queue.idle;
+
+    expect(statusBar.items.where((i) => i.key == LookupQueueService.statusKey), isEmpty);
+  });
+
+  test('a silent lookup in flight alongside a progress-worthy batch does not inflate its count', () async {
     final silent = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final tracked = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+    final tracked = [
+      for (final call in ['K1ABC', 'N0CALL', 'VE3XYZ', 'G0ABC'])
+        await qsos.add(operation.uuid, {'their': {'call': call}}),
+    ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -585,10 +633,57 @@ void main() {
     });
 
     queue.enqueue(silent);
-    queue.enqueueAll([tracked]);
+    queue.enqueueAll(tracked);
     await queue.idle;
 
     final item = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
-    expect(item.text, '1 of 1', reason: 'the silent lookup must not count toward the displayed total');
+    expect(item.text, '4 of 4', reason: 'the silent lookup must not count toward the displayed total');
+  });
+
+  test('a batch held by an outage keeps its counters and completes on reconnect', () async {
+    final batch = [
+      for (final call in ['W1AW', 'K1ABC', 'N0CALL', 'VE3XYZ'])
+        await qsos.add(operation.uuid, {'their': {'call': call}}),
+    ];
+
+    var offline = false;
+    final offlineController = StreamController<bool>.broadcast();
+    addTearDown(offlineController.close);
+
+    var lookups = 0;
+    final queue = service(
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+        lookups += 1;
+        // Go offline partway through, so the drain's `break` leaves tracked
+        // entries queued and the status item sitting below 1.0.
+        if (lookups == 2) offline = true;
+        return {'guess': {'name': 'ARRL HQ'}};
+      },
+      isOffline: () => offline,
+      offlineChanges: offlineController.stream,
+    );
+
+    queue.enqueueAll(batch);
+    await queue.idle;
+
+    // The drain has ended with work still held. The item must still be here,
+    // still incomplete — `setProgress` self-dismisses only at 1.0, so an
+    // item abandoned below it stays on screen for the rest of the session.
+    final held = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
+    expect(held.text, '2 of 4');
+
+    offline = false;
+    offlineController.add(false);
+    await queue.idle;
+    await queue.idle; // the recovery edge starts a second drain
+
+    // The trap: zeroing the counters when the outage ended the drain leaves
+    // the resumed lookups counting against a total of zero, where
+    // _showProgress's guard swallows every update — the bar would read
+    // '2 of 4' forever while all four lookups quietly finished.
+    final done = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
+    expect(done.text, '4 of 4');
+    expect(done.progressValue, 1.0);
+    expect(lookups, 4);
   });
 }

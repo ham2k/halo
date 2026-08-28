@@ -2106,10 +2106,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           icon: 'refresh',
           label: effectiveContext.t.operation.menu.lookupAllQsos,
           // Refreshes lookup data (QRZ, HamDB…) for the whole log via the
-          // background queue — progress shows in the status bar, and rows
-          // repaint as results land. The queue itself filters out event
-          // markers etc. Not itself a persisted setting, so it's an
-          // Actions-section item rather than a target element.
+          // background queue — rows repaint as results land, and anything
+          // but a handful of QSOs also shows progress in the status bar.
+          // The queue itself filters out event markers etc. Not itself a
+          // persisted setting, so it's an Actions-section item rather than
+          // a target element.
           onTap: () {
             Navigator.of(effectiveContext).pop();
             widget.services.lookupQueue.enqueueAll(qsos);

@@ -91,19 +91,17 @@ class LookupQueueService {
   final Set<String> _queuedUuids = {};
   bool _processing = false;
 
+  /// Above this many QSOs accepted in one [enqueueAll], the batch shows
+  /// progress. At or below it, nothing is shown at all.
+  static const _progressThreshold = 3;
+
   // Progress counters for the status bar: `_batchTotal` accumulates while
-  // work keeps arriving and both reset once the queue drains, so a later
-  // enqueue starts a fresh "0 of N" batch instead of continuing an old one.
+  // work keeps arriving and both reset once no tracked work is left, so a
+  // later enqueue starts a fresh "0 of N" batch instead of continuing an old
+  // one. They count only the entries marked progress-worthy, since a silent
+  // and a tracked lookup can be in flight in the same queue at once.
   int _batchTotal = 0;
   int _batchDone = 0;
-  bool _suppressProgress = false;
-
-  // Set only while `enqueueAll` is looping — not a caller-facing parameter,
-  // so nothing outside this class can mark an item progress-worthy. Read at
-  // enqueue time and stamped onto the `_PendingLookup` itself, since a
-  // silent and a progress-worthy lookup can be in flight in the same queue
-  // at once and the counters below must only reflect the latter.
-  bool _trackingBatch = false;
 
   // One-entry cache for the lookup context: batches overwhelmingly come
   // from a single operation, so this avoids one operations-table read (and
@@ -121,47 +119,64 @@ class LookupQueueService {
   /// already carries online lookup data is skipped too — pass [force] (the
   /// explicit "Lookup all QSOs" refresh) to re-run those as well.
   ///
-  /// Ordinary callers (a callsign typed into the logging field, a QSO just
-  /// saved) never show progress here — an operator logging a run of contacts
-  /// shouldn't see a "Callsign lookups" bar chattering away for what's
-  /// ordinary background enrichment, even when several of those land close
-  /// enough together to look like one batch. Only [enqueueAll] marks its own
-  /// items progress-worthy (see `_trackingBatch`); there's no way for an
-  /// external caller to opt into that directly.
+  /// Never shows progress: one QSO is one QSO however it got here, and an
+  /// operator logging a run of contacts shouldn't see a "Callsign lookups"
+  /// bar chattering away for what's ordinary background enrichment, even
+  /// when several land close enough together to look like one batch. Only
+  /// [enqueueAll] can cross [_progressThreshold], because only it knows how
+  /// many QSOs arrived together.
   void enqueue(Qso qso, {bool force = false}) {
-    if (!qso.isRealContact || qso.theirCall.length < 3) return;
-    if (!force && _hasOnlineLookup(qso)) return;
-    if (!_queuedUuids.add(qso.uuid)) return;
-    _queue.add(_PendingLookup(qso.uuid, qso.operationUuid, _trackingBatch));
-    if (_trackingBatch) {
-      _batchTotal += 1;
-      _showProgress();
-    }
+    _enqueueOne(qso, force: force);
     _ensureProcessing();
   }
 
-  /// Batch lookup with status-bar progress: the explicit "Lookup all QSOs"
-  /// action (default [force]: true, refreshes even already-enriched QSOs)
-  /// and other command-added QSO batches (`logging_controls.dart`'s
-  /// `addQso` handling, [force]: false — those never carry real online data
-  /// yet, so there's nothing to preserve by skipping, but it shouldn't
-  /// silently start forcing refreshes if that ever changes). SEED skips this
-  /// path entirely (`skipOnlineLookup` on its interpretation) since its QSOs
-  /// are fabricated test data. One progress update for the whole batch — an
-  /// enqueue-time update per QSO would rebuild the status bar N times in a
-  /// single synchronous burst.
+  /// The shared body of [enqueue] and [enqueueAll]. Returns the queued entry,
+  /// or null if the QSO was skipped — [enqueueAll] counts what it returns to
+  /// decide whether the batch is big enough to be worth a status bar, which
+  /// is why the skips have to be visible to the caller rather than swallowed
+  /// here.
+  _PendingLookup? _enqueueOne(Qso qso, {required bool force}) {
+    if (!qso.isRealContact || qso.theirCall.length < 3) return null;
+    if (!force && _hasOnlineLookup(qso)) return null;
+    if (!_queuedUuids.add(qso.uuid)) return null;
+    final entry = _PendingLookup(qso.uuid, qso.operationUuid);
+    _queue.add(entry);
+    return entry;
+  }
+
+  /// Batch lookup: the explicit "Lookup all QSOs" action (default [force]:
+  /// true, refreshes even already-enriched QSOs), command-added QSOs
+  /// (`logging_controls.dart`'s `addQso` handling) and rows adopted from an
+  /// inbound capture — the last two [force]: false, since those never carry
+  /// real online data yet, so there's nothing to preserve by skipping, but
+  /// it shouldn't silently start forcing refreshes if that ever changes.
+  /// SEED skips this path entirely (`skipOnlineLookup` on its
+  /// interpretation) since its QSOs are fabricated test data.
+  ///
+  /// **Size decides the status bar, not the caller.** A handful of QSOs is
+  /// over before a progress bar has said anything useful, whoever asked for
+  /// it; a few hundred is worth reporting even when nobody asked, because
+  /// the alternative is minutes of serialized network round-trips with no
+  /// sign the app is doing anything. So progress is marked here, after the
+  /// loop, once the accepted count is known — the entries are stamped only
+  /// then, and skipped QSOs never count toward the threshold or the total.
+  ///
+  /// One progress update for the whole batch — an enqueue-time update per
+  /// QSO would rebuild the status bar N times in a single synchronous burst.
   void enqueueAll(Iterable<Qso> qsos, {bool force = true}) {
-    _suppressProgress = true;
-    _trackingBatch = true;
-    try {
-      for (final qso in qsos) {
-        enqueue(qso, force: force);
-      }
-    } finally {
-      _suppressProgress = false;
-      _trackingBatch = false;
+    final accepted = <_PendingLookup>[];
+    for (final qso in qsos) {
+      final entry = _enqueueOne(qso, force: force);
+      if (entry != null) accepted.add(entry);
     }
-    _showProgress();
+    if (accepted.length > _progressThreshold) {
+      for (final entry in accepted) {
+        entry.showProgress = true;
+      }
+      _batchTotal += accepted.length;
+      _showProgress();
+    }
+    _ensureProcessing();
   }
 
   /// `source` values that always meant "a real network fetch answered"
@@ -252,8 +267,20 @@ class LookupQueueService {
         }
       }
       _processing = false;
-      _batchTotal = 0;
-      _batchDone = 0;
+      // Only once nothing tracked is left waiting. A drain can end with a
+      // reported batch still outstanding — the offline `break` above holds
+      // its entries, and a fresh `enqueueAll` can land during the `await`
+      // just above, where [_ensureProcessing] sees `_processing` still true
+      // and leaves the entries for the re-arm below. Zeroing either one
+      // strands the item the operator is looking at: the resumed drain
+      // counts `_batchDone` against a zero `_batchTotal`, hits the guard in
+      // [_showProgress], and the bar never moves again — while the lookups
+      // it describes quietly finish. `setProgress` self-dismisses only at
+      // 1.0, so a stranded item is there for the rest of the session.
+      if (!_queue.any((entry) => entry.showProgress)) {
+        _batchTotal = 0;
+        _batchDone = 0;
+      }
       _cachedOperation = null;
       _idleCompleter?.complete();
       _idleCompleter = null;
@@ -395,9 +422,10 @@ class LookupQueueService {
   }
 
   void _showProgress() {
-    // The zero check is reachable: enqueueAll's trailing update fires even
-    // when every QSO was skipped (nothing enqueued, no batch to report).
-    if (_suppressProgress || _batchTotal == 0) return;
+    // Guards the silent majority: every lookup below the threshold drains
+    // with `_batchTotal` still 0, and each one still reaches here through
+    // the drain's per-entry update.
+    if (_batchTotal == 0) return;
     statusBar.setProgress(
       key: statusKey,
       icon: 'account-search',
@@ -411,8 +439,13 @@ class LookupQueueService {
 class _PendingLookup {
   final String qsoUuid;
   final String operationUuid;
-  final bool showProgress;
-  const _PendingLookup(this.qsoUuid, this.operationUuid, this.showProgress);
+
+  /// Set by [LookupQueueService.enqueueAll] after its loop, once the batch
+  /// is known to be large enough to report — never at construction, because
+  /// the count that decides it isn't known until the last QSO is in.
+  bool showProgress = false;
+
+  _PendingLookup(this.qsoUuid, this.operationUuid);
 }
 
 class _CompletedLookup {
