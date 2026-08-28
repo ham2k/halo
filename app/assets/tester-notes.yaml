@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"156":
   changes:
     - "New CWops CWT extension: it offers the session three hours before each one starts"
     - Spanish now covers QSO import, test operations and the activity results map
