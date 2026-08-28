@@ -24,6 +24,10 @@ import 'map_zoom_controller.dart';
 class OsmMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
+
+  /// Reference footprints — a SOTA activation zone and the like — filled
+  /// under everything else. See map_marker_data.dart's MapShapeData.
+  final List<MapShapeData> shapes;
   final bool isDark;
   final MapZoomController? zoomController;
 
@@ -36,6 +40,7 @@ class OsmMapView extends StatefulWidget {
       {super.key,
       required this.markers,
       this.lines = const [],
+      this.shapes = const [],
       required this.isDark,
       this.zoomController,
       this.onMarkerTap});
@@ -53,8 +58,12 @@ class _OsmMapViewState extends State<OsmMapView> {
     super.initState();
     widget.zoomController
       ?..onZoomIn = _zoomIn
-      ..onZoomOut = _zoomOut;
+      ..onZoomOut = _zoomOut
+      ..onMoveTo = _moveTo;
   }
+
+  void _moveTo(double latitude, double longitude, double zoom) =>
+      _mapController.move(LatLng(latitude, longitude), zoom);
 
   void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
   void _zoomOut() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
@@ -86,9 +95,16 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   @override
   void dispose() {
-    widget.zoomController
-      ?..onZoomIn = null
-      ..onZoomOut = null;
+      // Identity-guarded, never a blind null: when the facade swaps backends
+      // (a webview probe answering, so OsmMapView gives way to the GL view),
+      // Flutter runs the incoming State's initState during the build and this
+      // dispose afterwards — so clearing unconditionally would wipe the
+      // handlers the live backend has just installed and leave the camera
+      // inert for the rest of the session.
+    final controller = widget.zoomController;
+    if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
+    if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
+    if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
     _mapController.dispose();
     super.dispose();
   }
@@ -134,6 +150,7 @@ class _OsmMapViewState extends State<OsmMapView> {
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in
         // order, so the highlight paints over every base line AND marker.
+        _shapeLayer(),
         _lineLayer([for (final l in widget.lines) if (!l.highlight) l]),
         _markerLayer([for (final m in widget.markers) if (!m.highlight) m]),
         _lineLayer([for (final l in widget.lines) if (l.highlight) l]),
@@ -160,6 +177,28 @@ class _OsmMapViewState extends State<OsmMapView> {
       ],
     );
   }
+
+  /// The footprints, under the lines and dots so an area never covers what
+  /// sits inside it. Holes are the rings after the first, GeoJSON's own
+  /// convention (see mapShapesFromGeojson).
+  PolygonLayer _shapeLayer() => PolygonLayer(
+        // Off for the same reason as the polylines below: a boundary is a
+        // survey's own outline, and simplifying it moves the edge the
+        // activator is judging their position against.
+        simplificationTolerance: 0,
+        polygons: [
+          for (final shape in widget.shapes)
+            Polygon(
+              points: [for (final p in shape.rings.first) LatLng(p.latitude, p.longitude)],
+              holePointsList: [
+                for (final ring in shape.rings.skip(1)) [for (final p in ring) LatLng(p.latitude, p.longitude)],
+              ],
+              color: shape.color.withValues(alpha: 0.18),
+              borderColor: shape.color.withValues(alpha: 0.9),
+              borderStrokeWidth: 2,
+            ),
+        ],
+      );
 
   PolylineLayer _lineLayer(List<MapLineData> lines) => PolylineLayer(
         // Off (default is ~0.4): the great-circle arcs are already densified

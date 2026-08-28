@@ -274,3 +274,119 @@ Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
           },
       ],
     };
+
+/// One filled outline on the map — a SOTA activation zone, and whatever other
+/// footprints a program publishes (see the `geojsonUrlForRef` hook).
+///
+/// The rings are already in drawing order: the first is the outer boundary and
+/// the rest are holes, which is GeoJSON's own convention and what both
+/// backends want. A GeoJSON polygon repeats its first point as its last; that
+/// closing duplicate is kept, since MapLibre requires it and flutter_map is
+/// indifferent.
+@immutable
+class MapShapeData {
+  /// `<ref type>/<reference>/<polygon index>` — one source document can carry
+  /// several polygons, and each becomes its own shape.
+  final String id;
+  final List<List<GridLocation>> rings;
+  final Color color;
+
+  const MapShapeData({required this.id, required this.rings, required this.color});
+
+  /// Compared by id and color alone. Shapes are content-addressed — a given id
+  /// is always the same fetched document, parsed the same way — so a deep
+  /// compare of thousands of points on every `didUpdateWidget` would only ever
+  /// confirm what the id already says.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is MapShapeData && id == other.id && color == other.color);
+
+  @override
+  int get hashCode => Object.hash(id, color);
+}
+
+/// The polygons of a GeoJSON document, or an empty list for anything that
+/// isn't one.
+///
+/// Deliberately total: this parses a file fetched from a program's own server,
+/// which nothing in the app controls, so every malformed shape is skipped and
+/// the map draws what it could read. A throw here would take out the map for a
+/// pane the operator opened to look at something else.
+///
+/// Only `Polygon` and `MultiPolygon` are read — a boundary is an area, and a
+/// stray point or line in the same document is not part of one.
+List<MapShapeData> mapShapesFromGeojson(Object? document, {required String idPrefix, required Color color}) {
+  final shapes = <MapShapeData>[];
+
+  void addPolygon(Object? coordinates) {
+    if (coordinates is! List) return;
+    final rings = <List<GridLocation>>[];
+    for (final ring in coordinates) {
+      if (ring is! List) continue;
+      final points = <GridLocation>[];
+      for (final point in ring) {
+        // GeoJSON is [longitude, latitude], and may carry a third elevation
+        // element this ignores.
+        if (point is! List || point.length < 2) continue;
+        final lon = point[0], lat = point[1];
+        if (lon is! num || lat is! num) continue;
+        points.add(GridLocation(lat.toDouble(), lon.toDouble()));
+      }
+      // Two points describe no area — a degenerate ring would paint nothing
+      // and, as an outer ring, would take a real shape's holes with it.
+      if (points.length >= 3) rings.add(points);
+    }
+    if (rings.isEmpty) return;
+    shapes.add(MapShapeData(id: '$idPrefix/${shapes.length}', rings: rings, color: color));
+  }
+
+  void addGeometry(Object? geometry) {
+    if (geometry is! Map) return;
+    switch (geometry['type']) {
+      case 'Polygon':
+        addPolygon(geometry['coordinates']);
+      case 'MultiPolygon':
+        final polygons = geometry['coordinates'];
+        if (polygons is List) polygons.forEach(addPolygon);
+      case 'GeometryCollection':
+        final geometries = geometry['geometries'];
+        if (geometries is List) geometries.forEach(addGeometry);
+    }
+  }
+
+  if (document is Map && document['type'] == 'FeatureCollection') {
+    final features = document['features'];
+    if (features is List) {
+      for (final feature in features) {
+        if (feature is Map) addGeometry(feature['geometry']);
+      }
+    }
+  } else if (document is Map && document['type'] == 'Feature') {
+    addGeometry(document['geometry']);
+  } else {
+    addGeometry(document);
+  }
+  return shapes;
+}
+
+/// Fill and outline share one hex color and one alpha pair, the same way
+/// [mapLinesPayload] splits color from opacity — the GL layers take a flat
+/// paint color with opacity applied separately.
+Map<String, dynamic> mapShapesPayload(List<MapShapeData> shapes) => {
+      'features': [
+        for (final shape in shapes)
+          {
+            'type': 'Feature',
+            'properties': {'color': mapColorToHex(shape.color)},
+            'geometry': {
+              'type': 'Polygon',
+              'coordinates': [
+                for (final ring in shape.rings)
+                  [
+                    for (final p in ring) [p.longitude, p.latitude],
+                  ],
+              ],
+            },
+          },
+      ],
+    };

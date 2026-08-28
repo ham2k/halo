@@ -346,6 +346,26 @@ export interface RefHandlerHook {
   /// code alone — never a network call: the core asks for one link per ref on
   /// the operation every time the list changes, and the answer is not stored.
   linkForRef?(args: { ref: Ref }, ctx: HookContext): Promise<RefLink | null>
+  /// Where the outline of this reference's own footprint — a summit's SOTA
+  /// activation zone, a park's boundary — can be fetched as GeoJSON. Built
+  /// from the reference code alone and never a network call, exactly like
+  /// [linkForRef]: the core does the fetching, and caches what comes back.
+  /// Return `null` for a reference the program publishes no shape for.
+  geojsonUrlForRef?(args: { ref: Ref }, ctx: HookContext): Promise<RefGeojson | null>
+}
+
+/// Where a reference's outline can be fetched as GeoJSON, and how long the
+/// core may keep what it fetches.
+export interface RefGeojson {
+  url: string
+  /// How many days a fetched shape stays usable offline before the core
+  /// re-fetches it. Boundaries move on the scale of surveys, not days.
+  /// Default 30.
+  maxAgeInDays?: number
+  /// How many days the core remembers that this reference has NO shape (the
+  /// server answered 403/404). Shorter than [maxAgeInDays], so a newly
+  /// surveyed zone appears within a day rather than a month. Default 1.
+  missMaxAgeInDays?: number
 }
 
 /// Declarative UI contribution: the core renders these with native widgets

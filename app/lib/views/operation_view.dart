@@ -2745,6 +2745,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 qsos: qsos,
                 settings: widget.services.settings,
                 callInfo: _callInfo,
+                geoshapes: widget.services.geoshapes,
+                // The same list the Information panel is given, so a
+                // reference's outline here wears the color its own row wears
+                // everywhere else.
+                activityControls: _loggingControls,
               ),
             ),
           ),

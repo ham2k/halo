@@ -10,7 +10,7 @@
 //
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks)` returning a handle with `setMarkersJson`,
-// `setLinesJson`, `setProjection`, and `remove`. Data crosses as JSON
+// `setLinesJson`, `setShapesJson`, `setProjection`, `moveTo`, and `remove`. Data crosses as JSON
 // strings — both callers already have the payload serialized, and strings
 // keep the interop layer trivial on each side.
 //
@@ -142,6 +142,7 @@ window.poloMapGl = window.poloMapGl || {
     // when setMarkers sees the same base signature.
     let lastMarkersData = null;
     let lastLinesData = null;
+    let lastShapesData = null;
     let lastProjection = null;
 
     // Mutable so updateStyles (a pinned-style change, not a dark-mode
@@ -166,6 +167,7 @@ window.poloMapGl = window.poloMapGl || {
     // it was queued with would put stale markers back over newer ones.
     let pendingMarkers = null;
     let pendingLines = null;
+    let pendingShapes = null;
     let pendingProjection = null;
     let flushQueued = false;
 
@@ -214,6 +216,7 @@ window.poloMapGl = window.poloMapGl || {
         ensureLayers();
         if (lastMarkersData) setMarkers(lastMarkersData);
         if (lastLinesData) setLines(lastLinesData);
+        if (lastShapesData) setShapes(lastShapesData);
         if (lastProjection) applyProjection(lastProjection);
       });
       map.setStyle(dark ? activeStyleDark : activeStyle);
@@ -268,6 +271,33 @@ window.poloMapGl = window.poloMapGl || {
           'line-opacity': 1,
         },
       };
+    }
+
+    // A reference's own footprint (map_marker_data.dart's MapShapeData) — a
+    // translucent wash with a solid edge, so an activation zone reads as an
+    // area without hiding the terrain the activator is standing on.
+    function shapeLayers() {
+      return [
+        {
+          id: 'polo-shapes-fill',
+          type: 'fill',
+          source: 'polo-shapes',
+          paint: {
+            'fill-color': ['coalesce', ['get', 'color'], '#000000'],
+            'fill-opacity': 0.18,
+          },
+        },
+        {
+          id: 'polo-shapes-outline',
+          type: 'line',
+          source: 'polo-shapes',
+          paint: {
+            'line-color': ['coalesce', ['get', 'color'], '#000000'],
+            'line-width': 2,
+            'line-opacity': 0.9,
+          },
+        },
+      ];
     }
 
     function circleLayer(id, highlight) {
@@ -363,12 +393,15 @@ window.poloMapGl = window.poloMapGl || {
       // including the basemap's own), means markers can go back up as soon as
       // the style is usable rather than only once the last tile has downloaded.
       try {
+        if (!map.getSource('polo-shapes')) map.addSource('polo-shapes', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-marker-icons')) map.addSource('polo-marker-icons', { type: 'geojson', data: EMPTY });
       } catch (err) {
         return false;
       }
+      // First, so an area never paints over the lines and dots inside it.
+      shapeLayers().forEach(ensureLayer);
       ensureLayer(lineLayer('polo-lines', false, 1.5));
       ensureLayer(circleLayer('polo-markers', false));
       ensureLayer(lineLayer('polo-lines-highlight', true, 6));
@@ -389,9 +422,11 @@ window.poloMapGl = window.poloMapGl || {
         flushQueued = false;
         const markers = pendingMarkers;
         const lines = pendingLines;
+        const shapes = pendingShapes;
         const projection = pendingProjection;
         pendingMarkers = null;
         pendingLines = null;
+        pendingShapes = null;
         pendingProjection = null;
         // These run outside any caller's stack, so an escape reaches neither
         // backend's Dart side — and the GL library invokes its listeners
@@ -408,6 +443,7 @@ window.poloMapGl = window.poloMapGl || {
         try {
           if (markers) setMarkers(markers);
           if (lines) setLines(lines);
+          if (shapes) setShapes(shapes);
         } catch (err) {
           report('deferred-update', 'deferred map update failed: ' + ((err && err.message) || err));
         }
@@ -422,7 +458,7 @@ window.poloMapGl = window.poloMapGl || {
         // finished. Nothing else would say so — the map just stays empty
         // (or, when only a projection waits, the toggle silently does
         // nothing while the button shows the new state).
-        if (pendingMarkers || pendingLines || pendingProjection) {
+        if (pendingMarkers || pendingLines || pendingShapes || pendingProjection) {
           styleTimedOut = true;
           report('style-timeout', 'the style never finished loading; markers and lines are still waiting');
         }
@@ -513,6 +549,14 @@ window.poloMapGl = window.poloMapGl || {
       map.setPaintProperty('polo-lines', 'line-opacity', data.opacity);
     }
 
+    function setShapes(data) {
+      lastShapesData = data;
+      if (styleSwapInFlight) return;
+      if (!ensureLayers()) { pendingShapes = data; flushWhenReady(); return; }
+      clearTimeoutState();
+      map.getSource('polo-shapes').setData({ type: 'FeatureCollection', features: data.features });
+    }
+
     map.on('click', function (e) {
       // Topmost first, so where the current QSO overlaps another station the
       // popup describes the dot the operator can actually see.
@@ -565,11 +609,13 @@ window.poloMapGl = window.poloMapGl || {
       map: map,
       setMarkers: setMarkers,
       setLines: setLines,
+      setShapes: setShapes,
       // JSON-string variants for callers on the far side of an interop
       // boundary (Flutter web's js_interop), where a string is the cheapest
       // thing to pass.
       setMarkersJson: function (json) { setMarkers(JSON.parse(json)); },
       setLinesJson: function (json) { setLines(JSON.parse(json)); },
+      setShapesJson: function (json) { setShapes(JSON.parse(json)); },
       setProjection: function (name) {
         if (map.isStyleLoaded()) { applyProjection(name); return; }
         pendingProjection = name;
@@ -578,6 +624,9 @@ window.poloMapGl = window.poloMapGl || {
       onLoad: function (callback) { map.on('load', callback); },
       resize: function () { map.resize(); },
       zoomIn: function () { map.zoomIn(); },
+      // A camera move only — it changes nothing about the data, so it never
+      // races the fit-to-markers in setMarkers.
+      moveTo: function (lat, lon, zoom) { map.easeTo({ center: [lon, lat], zoom: zoom, duration: 500 }); },
       zoomOut: function () { map.zoomOut(); },
       setDark: setDark,
       updateStyles: updateStyles,
@@ -587,6 +636,7 @@ window.poloMapGl = window.poloMapGl || {
         // about a map that was simply taken down while it was still loading.
         pendingMarkers = null;
         pendingLines = null;
+        pendingShapes = null;
         pendingProjection = null;
         if (popup) popup.remove();
         map.remove();

@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
+import { activationZoneUrl, REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 import { oauthErrorCode } from "./oauthErrors.ts"
 
@@ -96,4 +96,21 @@ test("oauthErrorCode refuses anything that did not come from the provider", () =
   ]) {
     assert.equal(oauthErrorCode(body), null, `should not read as a rejection: ${body}`)
   }
+})
+
+test("activationZoneUrl turns a reference into SOTLAS's path for it", () => {
+  // The hyphen becomes a path separator: "W2/GC-116" is three segments on
+  // that server, not two.
+  assert.equal(activationZoneUrl("W2/GC-116"), "https://az.sotl.as/W2/GC/116.geojson")
+  assert.equal(activationZoneUrl("w2/gc-116"), "https://az.sotl.as/W2/GC/116.geojson")
+  assert.equal(activationZoneUrl(" W6/SD-026 "), "https://az.sotl.as/W6/SD/026.geojson")
+})
+
+test("activationZoneUrl answers nothing for what is not a reference", () => {
+  // A half-typed reference reaches here on every keystroke of the ref field.
+  // A URL built from one would be fetched, 403, and cache a miss against a
+  // summit code that was never asked about.
+  assert.equal(activationZoneUrl("W2/GC"), null)
+  assert.equal(activationZoneUrl(""), null)
+  assert.equal(activationZoneUrl("../../etc/passwd"), null)
 })

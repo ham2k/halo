@@ -13,6 +13,7 @@ import 'map_zoom_controller.dart';
 class MapboxWebMapView extends StatelessWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
+  final List<MapShapeData> shapes;
   final MapProjection projection;
   final bool isDark;
   final String styleUrl;
@@ -24,6 +25,7 @@ class MapboxWebMapView extends StatelessWidget {
       {super.key,
       required this.markers,
       this.lines = const [],
+      this.shapes = const [],
       required this.projection,
       required this.isDark,
       required this.styleUrl,

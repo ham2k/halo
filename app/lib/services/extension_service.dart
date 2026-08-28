@@ -3465,6 +3465,72 @@ class ExtensionService implements PanelExtensionSource {
       return null;
     }
   }
+
+  /// Where a ref's own outline can be fetched as GeoJSON, via its `ref:<type>`
+  /// handler — a summit's SOTA activation zone, a park's boundary.
+  ///
+  /// The hook only builds a URL; fetching and caching are the app's
+  /// (GeoshapeService). Same disposable resolution as [linkForRef]: nothing is
+  /// written back onto the ref, so a program that moves its files takes effect
+  /// with the extension.
+  Future<RefGeojson?> geojsonUrlForRef(Map<String, dynamic> ref) async {
+    final host = _host;
+    final type = ref['type'] as String?;
+    if (host == null || type == null) return null;
+    try {
+      final result = await host.invokeHook('ref:$type', method: 'geojsonUrlForRef', args: {'ref': ref});
+      return refGeojsonFromHookResult(result, type: type);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] geojsonUrlForRef failed: $e');
+      return null;
+    }
+  }
+}
+
+/// Reads a `geojsonUrlForRef` answer, or `null` for anything the app would not
+/// fetch. Separate from the call so the shapes a hook can return are testable
+/// without a runtime, same as [refLinkFromHookResult].
+///
+/// Unlike a link, this URL is fetched rather than handed to the platform, so
+/// the check is on the SCHEME the fetch stack will accept — `https` only. A
+/// plaintext shape URL would silently downgrade every activator's connection
+/// on a program's say-so.
+RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type}) {
+  if (result == null) return null;
+  if (result is! Map) {
+    debugPrint('[extensions] geojsonUrlForRef(ref:$type) answered ${result.runtimeType}, not a map');
+    return null;
+  }
+  final url = result['url'];
+  if (url is! String || !url.startsWith('https://') || url.length <= 'https://'.length) {
+    debugPrint('[extensions] geojsonUrlForRef(ref:$type) answered no usable https url');
+    return null;
+  }
+  return RefGeojson(
+    url: url,
+    maxAge: _positiveDays(result['maxAgeInDays']) ?? const Duration(days: 30),
+    missMaxAge: _positiveDays(result['missMaxAgeInDays']) ?? const Duration(days: 1),
+  );
+}
+
+/// A hook's day count as a duration, or null for anything that isn't a
+/// positive number — a zero or negative TTL would re-fetch on every rebuild
+/// of the map, so it falls back to the default rather than being honored.
+Duration? _positiveDays(dynamic value) {
+  final days = value is num ? value.toDouble() : null;
+  if (days == null || days <= 0) return null;
+  return Duration(milliseconds: (days * Duration.millisecondsPerDay).round());
+}
+
+/// One `geojsonUrlForRef` answer: where a reference's outline lives, and how
+/// long the app may keep it — [missMaxAge] being how long it remembers that
+/// there is no outline at all.
+class RefGeojson {
+  const RefGeojson({required this.url, required this.maxAge, required this.missMaxAge});
+
+  final String url;
+  final Duration maxAge;
+  final Duration missMaxAge;
 }
 
 /// Reads a `linkForRef` answer, or `null` for anything the app would not put a

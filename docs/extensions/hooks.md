@@ -277,6 +277,7 @@ interface RefHandlerHook {
   decorateRef?(args: { ref: Ref }, ctx): Promise<Ref>   // may hit the network
   suggestOperationTitle?(args: { ref: Ref; operation }, ctx): Promise<TitleSuggestion | null>
   linkForRef?(args: { ref: Ref }, ctx): Promise<RefLink | null>   // {url, label?}
+  geojsonUrlForRef?(args: { ref: Ref }, ctx): Promise<RefGeojson | null>
 }
 // Ref: {type, ref?, name?, label?, shortLabel?, grid?, location?, program?, ...}
 // TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
@@ -309,6 +310,36 @@ the app names the row instead. A handler registered for another program's ref
 type (WCA answers for `ecaActivation`) must leave it off: a label built from
 its own program name reads the wrong program aloud. Programs built on the SDK's `referenceActivity` factory get this
 from one `linkUrl` config line.
+
+`geojsonUrlForRef` says where the reference's own footprint can be fetched as
+GeoJSON — a SOTA summit's activation zone, and whatever equivalent another
+program publishes. Same contract as `linkForRef`: build the URL from the
+reference, **never hit the network**, return `null` for a reference the program
+has no shape for. The core does the fetching and the caching (`GeoshapeService`),
+so an extension never decides how long a device keeps a file or how large one may
+be; it only names the two ages the core should use:
+
+```ts
+// RefGeojson: {url, maxAgeInDays?, missMaxAgeInDays?}
+```
+
+`maxAgeInDays` (default 30) is how long a fetched shape stays usable offline —
+boundaries move on the scale of surveys. `missMaxAgeInDays` (default 1) is how
+long the core remembers that a reference has NO shape, deliberately shorter so a
+newly surveyed zone appears within a day rather than a month. Both are ignored
+unless positive: a zero would re-fetch on every rebuild of the map.
+
+The URL must be `https`, and the core does not follow redirects to reach it.
+Unlike a link, this one is fetched rather than handed to the platform, and a
+plaintext one — named outright, or arrived at through a `Location:` header —
+would downgrade every activator's connection on a program's say-so.
+
+Shapes are asked for sparingly: the Map tab asks about the operation's own
+references, and the Activities pane's results map about those plus the one
+suggestion whose card is open. Neither fetches a shape per search hit — a search
+answers with dozens of references, and at the zoom that shows dozens of them a
+footprint is a few pixels across. Implemented by: `sota` (both types, via
+SOTLAS's `az.sotl.as`, used with the operators' permission).
 
 `suggestOperationTitle` lets an activity build a natural-language operation
 title/subtitle from its refs — "at Yosemite NP" (POTA), "for Field Day"

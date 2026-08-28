@@ -27,6 +27,7 @@ import type {
   PostOtherSpotRequest,
   ResultMessage,
   Ref,
+  RefGeojson,
   RefLink,
   Spot,
   SpotEligibility,
@@ -36,7 +37,7 @@ import type {
   LookupRow,
   TitleSuggestion,
 } from "@ham2k/halo-extension-sdk"
-import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
+import { activationZoneUrl, REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
@@ -262,6 +263,11 @@ const RefHandler = {
     const reference = (ref.ref ?? '').toUpperCase().trim()
     if (!REFERENCE_REGEX.test(reference)) return null
     return { url: `https://www.sotadata.org.uk/en/summit/${reference}` }
+  },
+
+  async geojsonUrlForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefGeojson | null> {
+    const url = activationZoneUrl(ref.ref ?? '')
+    return url ? { url } : null
   },
 }
 

@@ -26,11 +26,14 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../services/geoshape_service.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_marker_icon.dart';
+import '../map/ref_shapes.dart';
+import '../map/map_zoom_controller.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
@@ -143,6 +146,20 @@ class ActivitiesResultsMap extends StatefulWidget {
   final List<Map<String, dynamic>> controls;
   final List<Map<String, dynamic>> refs;
   final SettingsService settings;
+
+  /// Where a reference's own outline comes from. Null in a harness that has
+  /// no database to cache one in — the map then draws its markers and no
+  /// outlines, which is also what an operator sees for every program that
+  /// publishes none.
+  final GeoshapeService? geoshapes;
+
+  /// The camera, shared with the Current Activities rows above the map so a
+  /// row and its own dot point the map at the same place. Owned by the pane
+  /// that builds both (activities_view.dart) rather than by this widget: the
+  /// rows are not this widget's children, and a controller created here would
+  /// be out of their reach.
+  final MapZoomController? camera;
+
   final ValueChanged<Map<String, dynamic>> onAdd;
 
   /// The search band's own location pill, mirrored onto the map as a dot —
@@ -164,6 +181,8 @@ class ActivitiesResultsMap extends StatefulWidget {
     required this.controls,
     required this.refs,
     required this.settings,
+    this.geoshapes,
+    this.camera,
     required this.onAdd,
     this.currentLocation,
     this.currentLocationColor,
@@ -191,6 +210,16 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   /// unswept — the whole State goes with the pane.
   final Map<String, MapMarkerGlyph> _glyphs = {};
   final Set<String> _glyphsInFlight = {};
+
+  /// The outlines drawn for this pane's references — the caching and backoff
+  /// rules live in ref_shapes.dart, shared with the Map tab so a summit whose
+  /// zone shows in one pane can't quietly fail to show in the other.
+  late final RefShapeLoader _shapeLoader = RefShapeLoader(
+    geoshapes: widget.geoshapes,
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+  );
 
   /// The glyph for these inputs if it has been drawn, otherwise null with a
   /// rasterization started — call it from `build`, and the `setState` that
@@ -261,7 +290,17 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     }
   }
 
-  void _onMarkerTap(String id) => setState(() => _selectedMarkerId = id);
+  void _onMarkerTap(String id) {
+    setState(() => _selectedMarkerId = id);
+    // Only a reference already on the operation, not a suggestion: a
+    // suggestion's card offers Add, and flying the map away from the search
+    // results the operator is comparing would answer a question they did not
+    // ask. Tapping the same reference's row does the same thing — see
+    // activities_view.dart.
+    if (!id.startsWith('ref-')) return;
+    final location = locationForSuggestion(_markerEntry(id) ?? const {});
+    if (location != null) widget.camera?.moveTo(location.latitude, location.longitude);
+  }
 
   /// The entry a marker id stands for, or null when it stands for none — the
   /// current-location dot, or an index left over from a list that has since
@@ -367,6 +406,23 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         ),
     ];
 
+    // The operation's own references, plus the one whose reveal card is open
+    // — the summit an operator is looking at is as worth an outline as one
+    // they have already added.
+    final shapeRefs = [
+      ...widget.refs,
+      if (_markerEntry(_selectedMarkerId) case final revealed?
+          when !widget.refs.any((r) => selectedRefMarkerId(r) == selectedRefMarkerId(revealed)))
+        revealed,
+    ];
+    final shapes = refShapes(
+      shapeRefs,
+      loader: _shapeLoader,
+      controls: widget.controls,
+      fallbackColor: theme.colorScheme.primary,
+      markerIdFor: selectedRefMarkerId,
+    );
+
     final pinnedStyle = widget.settings.mapStyle;
     final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
     final glStyleUrlDark =
@@ -376,6 +432,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     if (kIsWeb) {
       map = MapboxWebMapView(
         markers: allMarkers,
+        shapes: shapes,
+        zoomController: widget.camera,
         projection: MapProjection.mercator,
         isDark: isDark,
         styleUrl: glStyleUrl,
@@ -385,6 +443,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
       map = MapboxWebviewMapView(
         markers: allMarkers,
+        shapes: shapes,
+        zoomController: widget.camera,
         projection: MapProjection.mercator,
         isDark: isDark,
         styleUrl: glStyleUrl,
@@ -395,6 +455,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         webviewSupported) {
       map = MapboxWebviewMapView(
         markers: allMarkers,
+        shapes: shapes,
+        zoomController: widget.camera,
         projection: MapProjection.mercator,
         isDark: isDark,
         styleUrl: glStyleUrl,
@@ -404,7 +466,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     } else {
       // Linux, or Windows without a usable WebView2 environment — see
       // map_panel.dart's own fallback for the same reasoning.
-      map = OsmMapView(markers: allMarkers, isDark: isDark, onMarkerTap: _onMarkerTap);
+      map = OsmMapView(
+          markers: allMarkers, shapes: shapes, isDark: isDark, zoomController: widget.camera, onMarkerTap: _onMarkerTap);
     }
 
     final selected = _markerEntry(_selectedMarkerId);

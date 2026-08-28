@@ -57,6 +57,7 @@ keep these tables complete, because they are what an audit greps against:
 | `switch_accounts_dialog.dart` — the challenge clock | Compared against the server's `challenge_expires_at` |
 | `peer_trust.dart` — `pairedAtMillis`, `lastSeenAtMillis` | Per-peer, and outlives the session that paired |
 | `extension_service.dart` — `extensionDisabledSince` | Persists; it gates a 7-day purge grace window |
+| `geoshape_service.dart` — the cached shape's stamp | Persists, and outlives the travel that wrote it |
 
 This is the case that bites hardest, and no bar on *running* sync ever covered
 it: **the stamp persists**. It sits in the database

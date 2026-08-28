@@ -43,6 +43,7 @@ import '../../i18n/strings.g.dart';
 import '../../tools/distance_format.dart';
 import '../../tools/operation_operator.dart';
 import '../../tools/operation_title.dart';
+import '../map/map_zoom_controller.dart';
 import 'activities_results_map.dart';
 
 
@@ -223,6 +224,23 @@ bool allowsMultipleRefsOfType(
 /// ("FD 2027"); see the display-key table in docs/design/contests.md §5.4,
 /// which extension authors are held to.
 bool refTypeIsForm(Map<String, dynamic>? control) => (control?['input'] as Map?)?['kind'] == 'form';
+
+/// Where tapping a Current Activities row should point the results map, or
+/// null for a row that must stay inert.
+///
+/// Null with the list showing: there is no camera to move, and a row that
+/// silently did nothing in one mode and something in the other would read as
+/// broken in whichever the operator met first. Null too for a reference with
+/// no resolvable location — a program whose codes carry no coordinate has
+/// nowhere to point at, and no marker on the map either.
+///
+/// The editor takes precedence over this at the call site (see
+/// `_moveMapToRef`'s caller): a form-configured reference has nothing else
+/// that opens its form.
+GridLocation? refRowMapTarget(Map<String, dynamic> ref, {required bool mapShowing}) {
+  if (!mapShowing) return null;
+  return locationForSuggestion(ref);
+}
 
 /// Whether a ref of [type] has anything to edit once it's on the operation.
 /// Defaults to FALSE — a plain reference activity (POTA, SOTA) carries only
@@ -496,6 +514,13 @@ class OperationSheetState extends State<OperationSheet> {
   /// of the ordinary list — ephemeral per sheet open, not a persisted
   /// preference like [_allOptionsExpanded].
   bool _showResultsMap = false;
+
+  /// The results map's camera, so a Current Activities row can point it at
+  /// its own reference. Lives here rather than inside the map because the
+  /// rows are this widget's, not the map's; whichever backend the platform
+  /// picks wires itself into it when it mounts, and nothing is wired at all
+  /// while the list is showing — which is why [_moveMapToRef] is null then.
+  final MapZoomController _resultsCamera = MapZoomController();
 
   late bool _allOptionsExpanded;
   late bool _allOptionsFullyOpened;
@@ -2018,6 +2043,16 @@ class OperationSheetState extends State<OperationSheet> {
     );
   }
 
+  /// What tapping a reference's row does while the map is showing: point the
+  /// camera at that reference, the same as tapping its own dot. Null leaves
+  /// the row inert, exactly as it was before — see [refRowMapTarget] for
+  /// when.
+  VoidCallback? _moveMapToRef(Map<String, dynamic> ref) {
+    final target = refRowMapTarget(ref, mapShowing: _showResultsMap);
+    if (target == null) return null;
+    return () => _resultsCamera.moveTo(target.latitude, target.longitude);
+  }
+
   /// The "Current Activities" rows (plus the controls-failed notice, when
   /// relevant) — shared between the list presentation's `SliverList` and the
   /// map presentation's plain `Column`, so an operator toggling to the map
@@ -2067,7 +2102,11 @@ class OperationSheetState extends State<OperationSheet> {
                 // edit — a plain ref activity doesn't, so the row stays inert
                 // rather than offering to retype a code its own search
                 // already resolved.
-                onTap: refTypeIsEditable(control) ? () => _editRef(ref) : null,
+                // The editor wins where a type has one: the tune button
+                // beside it opens the same thing, but a form-configured
+                // reference has nothing else that does, and a row that
+                // panned the map instead would strand it.
+                onTap: refTypeIsEditable(control) ? () => _editRef(ref) : _moveMapToRef(ref),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2537,6 +2576,8 @@ class OperationSheetState extends State<OperationSheet> {
                           controls: _controls,
                           refs: refs,
                           settings: widget.services.settings,
+                          geoshapes: widget.services.geoshapes,
+                          camera: _resultsCamera,
                           onAdd: _addSuggestion,
                           currentLocation: currentLocation,
                           currentLocationColor: locationColor,

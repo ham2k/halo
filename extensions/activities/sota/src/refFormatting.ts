@@ -31,3 +31,19 @@ export const TRANSFORMS: { pattern: string; replacement: string; flags?: string 
   // strip anything that can't appear in a reference list
   { pattern: '[^A-Z0-9\\/\\-, ]', replacement: '', flags: 'gi' },
 ]
+
+// SOTLAS publishes each summit's activation-zone outline as GeoJSON under a
+// path built from the reference with its hyphen turned into a separator:
+// "W2/GC-116" -> "W2/GC/116.geojson". Ham2K has the operators' permission to
+// read these directly from that server.
+//
+// A summit with no surveyed zone answers 403, not 404 — object storage
+// declining to confirm a key exists. So an error status can't be read as
+// "the request was wrong"; both mean the same thing here, no zone.
+export const ACTIVATION_ZONE_HOST = 'https://az.sotl.as'
+
+export function activationZoneUrl(reference: string): string | null {
+  const normalized = reference.toUpperCase().trim()
+  if (!REFERENCE_REGEX.test(normalized)) return null
+  return `${ACTIVATION_ZONE_HOST}/${normalized.replace('-', '/')}.geojson`
+}

@@ -37,6 +37,10 @@ import 'map_zoom_controller.dart';
 class MapboxWebviewMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
+
+  /// Reference footprints — a SOTA activation zone and the like — filled
+  /// under everything else. See map_marker_data.dart's MapShapeData.
+  final List<MapShapeData> shapes;
   final MapProjection projection;
   final bool isDark;
 
@@ -59,6 +63,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     super.key,
     required this.markers,
     this.lines = const [],
+    this.shapes = const [],
     required this.projection,
     required this.isDark,
     required this.styleUrl,
@@ -106,7 +111,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     super.initState();
     widget.zoomController
       ?..onZoomIn = _zoomIn
-      ..onZoomOut = _zoomOut;
+      ..onZoomOut = _zoomOut
+      ..onMoveTo = _moveTo;
     _readyWatchdog = Timer(const Duration(seconds: 15), () {
       if (!mounted || _mapReady) return;
       setState(() => _loadFailed = true);
@@ -117,9 +123,16 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
 
   @override
   void dispose() {
-    widget.zoomController
-      ?..onZoomIn = null
-      ..onZoomOut = null;
+      // Identity-guarded, never a blind null: when the facade swaps backends
+      // (a webview probe answering, so OsmMapView gives way to the GL view),
+      // Flutter runs the incoming State's initState during the build and this
+      // dispose afterwards — so clearing unconditionally would wipe the
+      // handlers the live backend has just installed and leave the camera
+      // inert for the rest of the session.
+    final controller = widget.zoomController;
+    if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
+    if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
+    if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
     _readyWatchdog?.cancel();
     // The last thing this app's own code knows before the native platform
     // view underneath actually tears down (HALO-290) — a subsequent native
@@ -127,6 +140,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     ErrorReportingService.breadcrumb('map webview disposing', category: 'webview');
     super.dispose();
   }
+
+  void _moveTo(double latitude, double longitude, double zoom) =>
+      _controller?.evaluateJavascript(source: 'window.poloMoveTo($latitude, $longitude, $zoom);');
 
   void _zoomIn() => _controller?.evaluateJavascript(source: 'window.poloZoomIn();');
   void _zoomOut() => _controller?.evaluateJavascript(source: 'window.poloZoomOut();');
@@ -145,6 +161,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     }
     if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
     if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
+    if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
   }
 
   Future<void> _applyProjection() async {
@@ -171,6 +188,11 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   Future<void> _applyLines() async {
     final data = jsonEncode(mapLinesPayload(widget.lines));
     await _controller?.evaluateJavascript(source: 'window.poloSetLines($data);');
+  }
+
+  Future<void> _applyShapes() async {
+    final data = jsonEncode(mapShapesPayload(widget.shapes));
+    await _controller?.evaluateJavascript(source: 'window.poloSetShapes($data);');
   }
 
   @override
@@ -206,6 +228,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
             // application right below it.
             _applyMarkers();
             _applyLines();
+            _applyShapes();
             return null;
           },
         );
@@ -287,7 +310,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       }, $notifyClicks);
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
+    window.poloSetShapes = handle.setShapes;
     window.poloSetProjection = handle.setProjection;
+    window.poloMoveTo = handle.moveTo;
     window.poloZoomIn = handle.zoomIn;
     window.poloZoomOut = handle.zoomOut;
     window.poloSetDark = handle.setDark;

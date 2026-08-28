@@ -11,6 +11,7 @@ upcoming:
     - Phones can now rearrange their layout too, kept separately from the wide one
     - Drop a tab onto a pane's centre to stack them both under one tab
     - "Custom Text panel: turn LAYOUTS on, enable it in Extensions, then add it to a pane"
+    - SOTA activation zones are outlined on the Map tab and in Operation Setup, kept offline
 
 "155":
   changes:

@@ -64,6 +64,10 @@ Future<void> _loadGl() async {
 class MapboxWebMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
   final List<MapLineData> lines;
+
+  /// Reference footprints — a SOTA activation zone and the like — filled
+  /// under everything else. See map_marker_data.dart's MapShapeData.
+  final List<MapShapeData> shapes;
   final MapProjection projection;
   final bool isDark;
 
@@ -83,6 +87,7 @@ class MapboxWebMapView extends StatefulWidget {
       {super.key,
       required this.markers,
       this.lines = const [],
+      this.shapes = const [],
       required this.projection,
       required this.isDark,
       required this.styleUrl,
@@ -129,7 +134,8 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     super.initState();
     widget.zoomController
       ?..onZoomIn = _zoomIn
-      ..onZoomOut = _zoomOut;
+      ..onZoomOut = _zoomOut
+      ..onMoveTo = _moveTo;
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final div = web.HTMLDivElement();
       div.style
@@ -180,6 +186,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       if (!mounted) return;
       _applyMarkers();
       _applyLines();
+      _applyShapes();
     });
   }
 
@@ -197,6 +204,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     }
     if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
     if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
+    if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
   }
 
   void _applyProjection() {
@@ -219,14 +227,28 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     _handle?.callMethod('setLinesJson'.toJS, jsonEncode(mapLinesPayload(widget.lines)).toJS);
   }
 
+  void _applyShapes() {
+    _handle?.callMethod('setShapesJson'.toJS, jsonEncode(mapShapesPayload(widget.shapes)).toJS);
+  }
+
+  void _moveTo(double latitude, double longitude, double zoom) =>
+      _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);
+
   void _zoomIn() => _handle?.callMethod('zoomIn'.toJS);
   void _zoomOut() => _handle?.callMethod('zoomOut'.toJS);
 
   @override
   void dispose() {
-    widget.zoomController
-      ?..onZoomIn = null
-      ..onZoomOut = null;
+      // Identity-guarded, never a blind null: when the facade swaps backends
+      // (a webview probe answering, so OsmMapView gives way to the GL view),
+      // Flutter runs the incoming State's initState during the build and this
+      // dispose afterwards — so clearing unconditionally would wipe the
+      // handlers the live backend has just installed and leave the camera
+      // inert for the rest of the session.
+    final controller = widget.zoomController;
+    if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
+    if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
+    if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
     _handle?.callMethod('remove'.toJS);
     _handle = null;
     super.dispose();

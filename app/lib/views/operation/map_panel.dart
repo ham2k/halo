@@ -26,11 +26,13 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../services/geoshape_service.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
+import '../map/ref_shapes.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
@@ -48,7 +50,28 @@ class MapPanel extends StatefulWidget {
   /// colour choice.
   final CallInfoData? callInfo;
 
-  const MapPanel({super.key, required this.operation, required this.qsos, required this.settings, this.callInfo});
+  /// Where the operation's own references get their outlines — a summit's
+  /// SOTA activation zone and the like. Null leaves the map exactly as it
+  /// was, which is also what an operator sees for an operation whose programs
+  /// publish no shapes.
+  final GeoshapeService? geoshapes;
+
+  /// The activity descriptors, only for the color each reference type wears —
+  /// the same list the Information panel is given, so a zone here and the
+  /// same zone on the Activities map are the same color rather than two
+  /// unrelated washes. Empty is fine: the outline falls back to the theme's
+  /// primary.
+  final List<Map<String, dynamic>> activityControls;
+
+  const MapPanel({
+    super.key,
+    required this.operation,
+    required this.qsos,
+    required this.settings,
+    this.callInfo,
+    this.geoshapes,
+    this.activityControls = const [],
+  });
 
   @override
   State<MapPanel> createState() => _MapPanelState();
@@ -56,6 +79,15 @@ class MapPanel extends StatefulWidget {
 
 class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> {
   MapProjection _projection = MapProjection.mercator;
+
+  /// The operation's reference outlines — see ref_shapes.dart, shared with the
+  /// Activities pane's map so the same summit draws the same way in both.
+  late final RefShapeLoader _shapeLoader = RefShapeLoader(
+    geoshapes: widget.geoshapes,
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+  );
 
   /// Backs the bottom-left zoom buttons (non-mobile only, alongside pinch/scroll
   /// zoom) — the live backend wires its own zoomIn/zoomOut into it each time it's
@@ -148,6 +180,21 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       );
     }
 
+    // Below the empty state deliberately: with no markers this pane draws no
+    // map at all, and fetching an outline for it would spend an activator's
+    // data on something nothing will render.
+    //
+    // Named after the reference rather than a marker, because this map draws
+    // no dot for the operation's references — its markers are QSOs and QTHs —
+    // so a shape id here has nothing to trace back to but the reference.
+    final shapes = refShapes(
+      widget.operation.refs,
+      loader: _shapeLoader,
+      controls: widget.activityControls,
+      fallbackColor: theme.colorScheme.primary,
+      markerIdFor: (ref) => 'ref-${ref['type']}/${ref['ref']}',
+    );
+
     final Widget map;
     final isDark = theme.brightness == Brightness.dark;
     var hasGlobe = true;
@@ -164,6 +211,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       map = MapboxWebMapView(
           markers: markers,
           lines: lines,
+          shapes: shapes,
           projection: _projection,
           isDark: isDark,
           styleUrl: glStyleUrl,
@@ -175,6 +223,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       map = MapboxWebviewMapView(
           markers: markers,
           lines: lines,
+          shapes: shapes,
           projection: _projection,
           isDark: isDark,
           styleUrl: glStyleUrl,
@@ -189,6 +238,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       map = MapboxWebviewMapView(
           markers: markers,
           lines: lines,
+          shapes: shapes,
           projection: _projection,
           isDark: isDark,
           styleUrl: glStyleUrl,
@@ -201,7 +251,8 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       // projection. Windows without a usable WebView2 environment lands
       // here too.
       hasGlobe = false;
-      map = OsmMapView(markers: markers, lines: lines, isDark: isDark, zoomController: _zoomController);
+      map = OsmMapView(
+          markers: markers, lines: lines, shapes: shapes, isDark: isDark, zoomController: _zoomController);
     }
 
     // Mobile already zooms by pinch with no room to spare in the pane; the

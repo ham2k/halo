@@ -66,6 +66,7 @@ import 'services/error_policy.dart';
 
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
+import 'services/geoshape_service.dart';
 import 'services/unclean_quit.dart';
 import 'services/cat/equipment.dart' show kCategoryTransceiver;
 import 'services/cat/cat_service.dart';
@@ -1337,6 +1338,11 @@ class HaLoServices {
   );
 
   late final LookupRepository lookups = LookupRepository(db);
+
+  /// Reference outlines (a SOTA activation zone and the like), fetched on
+  /// demand and cached on the device. Lazy like the rest: an operator who
+  /// never opens the Activities map never builds one.
+  late final GeoshapeService geoshapes = GeoshapeService(extensions: extensions, lookups: lookups);
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
   late final ExportService exports =
