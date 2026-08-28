@@ -27,6 +27,7 @@ import type {
   PostOtherSpotRequest,
   ResultMessage,
   Ref,
+  RefLink,
   Spot,
   SpotEligibility,
   DataFileDefinition,
@@ -253,6 +254,14 @@ const RefHandler = {
 
   async suggestOperationTitle({ ref }: { ref: Ref }, _ctx: HookContext): Promise<TitleSuggestion | null> {
     return suggestOperationTitleForSota(ref, ACTIVATION_TYPE)
+  },
+
+  /// The summit page's own path already carries the association and region as
+  /// path segments, so the reference's slash goes through unescaped.
+  async linkForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+    const reference = (ref.ref ?? '').toUpperCase().trim()
+    if (!REFERENCE_REGEX.test(reference)) return null
+    return { url: `https://www.sotadata.org.uk/en/summit/${reference}` }
   },
 }
 

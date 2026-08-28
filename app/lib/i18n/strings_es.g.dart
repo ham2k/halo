@@ -270,6 +270,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String activitiesCountOther({required Object count}) => '${count} actividades';
 	@override String get empty => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una';
 	@override String get removeActivity => 'Quitar';
+	@override String openReferenceLink({required Object name}) => 'Abrir ${name}';
 	@override String get editActivity => 'Editar actividad';
 	@override String get manageExtensions => 'Administrar extensiones';
 	@override String get manage => 'Administrar';
@@ -2777,6 +2778,7 @@ extension on TranslationsEs {
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
 			'activitiesView.empty' => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una',
 			'activitiesView.removeActivity' => 'Quitar',
+			'activitiesView.openReferenceLink' => ({required Object name}) => 'Abrir ${name}',
 			'activitiesView.editActivity' => 'Editar actividad',
 			'activitiesView.manageExtensions' => 'Administrar extensiones',
 			'activitiesView.manage' => 'Administrar',
@@ -2900,9 +2902,9 @@ extension on TranslationsEs {
 			'formChrome.connected' => 'Conectado',
 			'formChrome.notConnected' => 'No conectado',
 			'formChrome.manage' => 'Administrar',
-			'formChrome.connect' => 'Conectar',
 			_ => null,
 		} ?? switch (path) {
+			'formChrome.connect' => 'Conectar',
 			'formChrome.formTitle' => 'Formulario',
 			'formChrome.addItem' => ({required Object label}) => 'Añadir ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'Editar ${label}',
@@ -3414,9 +3416,9 @@ extension on TranslationsEs {
 			'settings.panels.peersDescription' => 'Comparte una operación con tus otros dispositivos en la misma red',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
-			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
 			_ => null,
 		} ?? switch (path) {
+			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',

@@ -21,6 +21,7 @@ import type {
   JSONValue,
   LoggingControlDescriptor,
   Ref,
+  RefLink,
 } from "@ham2k/halo-extension-sdk"
 
 import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
@@ -175,6 +176,12 @@ const RefHandler = {
       for: ['CQWPX', mode].filter((x) => x).join(' '),
       subtitle: tFor(ctx)('serialSubtitle'),
     }
+  },
+
+  /// The contest's published rules — a reference here names an event, not a
+  /// place, so what there is to read about it is the rules it is run under.
+  async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+    return { url: 'https://www.cqwpx.com/rules.htm', label: 'CQ WPX' }
   },
 }
 

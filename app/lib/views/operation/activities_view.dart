@@ -33,6 +33,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/location_service.dart';
 import '../../services/extension_service.dart';
+import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import 'operation_location_screen.dart';
 import '../accordion_section.dart';
@@ -420,6 +421,18 @@ class OperationSheetState extends State<OperationSheet> {
   List<Map<String, dynamic>> _controls = const [];
   ControlsLoadState _controlsState = ControlsLoadState.loading;
 
+  /// Where each of the operation's refs can be read about on the web, keyed by
+  /// [_refLinkKey]. Resolved for display only — a link is never written onto
+  /// the ref, so it follows the extension rather than the saved operation.
+  Map<String, RefLink> _refLinks = const {};
+  int _refLinksRequest = 0;
+
+  /// The same for the current search results and nearby suggestions, kept
+  /// apart from [_refLinks] because the two lists change on their own
+  /// schedules and a shared map would have each clobber the other's answers.
+  Map<String, RefLink> _suggestionLinks = const {};
+  int _suggestionLinksRequest = 0;
+
   /// Whether the descriptors are good enough to judge a ref type by. Both
   /// non-loaded states say no: an absent control means "not loaded yet" or
   /// "the hook could not answer", and rendering either as the unknown-type
@@ -571,7 +584,140 @@ class OperationSheetState extends State<OperationSheet> {
         _controls = result.controls;
         _controlsState = result.loadFailed ? ControlsLoadState.failed : ControlsLoadState.loaded;
       });
+      // Links come from the same runtime the descriptors do, so they are
+      // reloaded together rather than on triggers of their own. Enabling an
+      // extension from Manage Extensions, retrying failed controls and a
+      // restart after a failed boot all reload the descriptors — and each
+      // one can change what `linkForRef` answers, for refs that never
+      // changed.
+      _loadRefLinks();
     }
+  }
+
+  /// A reference row's title line, in both lists.
+  ///
+  /// A reference is an identifier — half of one is not a shorter version of
+  /// it, it is the wrong reference — so this shrinks rather than truncates,
+  /// trying Roboto's condensed width before giving up any point size.
+  /// [shrinkToFitText] reserves condensing for secondary lines; the trade is
+  /// deliberately different here, where the line is a code rather than prose.
+  /// Its 75% floor still stands: below that a code stops being readable, and
+  /// an ellipsis is the better failure.
+  Widget _activityRowTitleText(String title) => shrinkToFitText(
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        condensed: true,
+      );
+
+  /// A search result's distance and its web button, or `null` when it has
+  /// neither — an empty `Row` would still claim the tile's trailing slot and
+  /// pull the title in from the edge.
+  Widget? _suggestionTrailing(
+    ThemeData theme,
+    Map<String, dynamic> suggestion, {
+    required RefLink? link,
+    required Map<String, dynamic>? control,
+  }) {
+    final distance = suggestion['distance'];
+    if (distance is! num && link == null) return null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (distance is num)
+          Text(
+            fmtDistance(
+              distance.toDouble(),
+              miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
+            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        if (link != null) ...[
+          const SizedBox(width: Space.md),
+          _refLinkButton(link, fallbackName: activityRowTitle(control, suggestion)),
+        ],
+      ],
+    );
+  }
+
+  /// The web button both lists end with. [fallbackName] names the row for
+  /// assistive technology when the extension offered no name of its own.
+  Widget _refLinkButton(RefLink link, {required String fallbackName}) {
+    return IconButton(
+      icon: Icon(
+        MdiIcons.web,
+        semanticLabel: context.t.activitiesView.openReferenceLink(name: link.label ?? fallbackName),
+      ),
+      onPressed: () => openExternalUrl(link.url),
+    );
+  }
+
+  /// The key a ref's link is cached under. Null for a ref with nothing to ask
+  /// about — an activity the operator has added but not yet filled in.
+  String? _refLinkKey(Map<String, dynamic> ref) {
+    final type = ref['type'] as String?;
+    final reference = ref['ref'] as String?;
+    if (type == null || reference == null || reference.isEmpty) return null;
+    return '$type:$reference';
+  }
+
+  /// Resolves one link per ref, in parallel — a list shouldn't pay the SUM of
+  /// each hook's latency when the MAX is all that's needed, the same trade-off
+  /// [OperationTitleService] makes.
+  ///
+  /// The hooks build a URL from the reference and nothing else (no network —
+  /// `docs/extensions/hooks.md`), which is what makes it affordable to ask
+  /// again for a whole list of search results on every keystroke's search.
+  Future<Map<String, RefLink>> _resolveRefLinks(List<Map<String, dynamic>> refs) async {
+    // The sheet can open while the runtime is still booting — without this the
+    // cold-boot case resolves every link against a null host. Idempotent, so
+    // every call after the first costs nothing.
+    await widget.services.extensions.start();
+    final keyed = <String, Map<String, dynamic>>{};
+    for (final ref in refs) {
+      final key = _refLinkKey(ref);
+      if (key != null) keyed.putIfAbsent(key, () => ref);
+    }
+    final resolved = await Future.wait(keyed.entries.map((entry) async {
+      try {
+        return MapEntry(entry.key, await widget.services.extensions.linkForRef(entry.value));
+      } catch (e, stack) {
+        // Caught PER ENTRY, because `Future.wait` completes with the first
+        // error and discards every value the others already resolved — one
+        // malformed ref would otherwise cost the whole list its links, and
+        // (nothing else catching it) spend the session's one "something went
+        // wrong" notice on a missing icon.
+        //
+        // An extension's own failure never reaches here — `linkForRef`
+        // swallows those — so what does is OUR bug, and is reported the way
+        // `_loadControls` reports its own: uploaded, with no notice, because
+        // the row showing no button is all the operator can act on.
+        ErrorReportingService.report(e, stack, context: 'activities:linkForRef');
+        return MapEntry(entry.key, null);
+      }
+    }));
+    return {
+      for (final entry in resolved)
+        if (entry.value != null) entry.key: entry.value!,
+    };
+  }
+
+  /// Rebuilt from scratch on every reload rather than accumulated: a ref the
+  /// operator removed must take its link with it, and so must one whose
+  /// extension has just been switched off.
+  Future<void> _loadRefLinks() async {
+    final request = ++_refLinksRequest;
+    final links = await _resolveRefLinks(_operation.refs);
+    if (!mounted || request != _refLinksRequest) return;
+    setState(() => _refLinks = links);
+  }
+
+  /// The suggestions list is replaced wholesale by each search, so its links
+  /// are too — and the request counter is what keeps a slow search from
+  /// installing links for results the operator has already typed past.
+  Future<void> _loadSuggestionLinks() async {
+    final request = ++_suggestionLinksRequest;
+    final links = await _resolveRefLinks(_suggestions);
+    if (!mounted || request != _suggestionLinksRequest) return;
+    setState(() => _suggestionLinks = links);
   }
 
   /// Rebuilds the descriptors when the operation's REFS change, from wherever
@@ -792,6 +938,7 @@ class OperationSheetState extends State<OperationSheet> {
     final alreadySuggested = _suggestions.any((s) => s['type'] == ref['type'] && s['ref'] == ref['ref']);
     if (!alreadySuggested) {
       setState(() => _suggestions = [ref, ..._suggestions]);
+      _loadSuggestionLinks();
     }
   }
 
@@ -865,6 +1012,8 @@ class OperationSheetState extends State<OperationSheet> {
         if (_disabledMatches.isNotEmpty) _allOptionsExpanded = true;
         _loadingSuggestions = false;
       });
+      // After the assignment, not before: it reads `_suggestions`.
+      _loadSuggestionLinks();
     }
   }
 
@@ -1882,6 +2031,8 @@ class OperationSheetState extends State<OperationSheet> {
         Builder(builder: (context) {
           final control = controlForRefType(_controls, ref['type'] as String?);
           final detail = activityRowDetail(ref);
+          final linkKey = _refLinkKey(ref);
+          final link = linkKey == null ? null : _refLinks[linkKey];
           return Material(
             type: MaterialType.transparency,
             child: _flashableRow(
@@ -1894,20 +2045,16 @@ class OperationSheetState extends State<OperationSheet> {
                 // inset, so the RIGHTMOST trailing button lines up under the
                 // search row's location button — same IconButton defaults
                 // (no custom size/padding) too. Any button added left of it
-                // hangs off that alignment rather than moving it.
+                // hangs off that alignment rather than moving it, which is
+                // why the web button — the one every list here ends with —
+                // is the rightmost, and Remove sits inside it.
                 contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
                 leading: _controlsUnreliable && control == null
                     ? const Icon(MdiIcons.toyBrick)
                     : activityRefIcon(_controls, ref['type'] as String?),
                 title: Row(
                   children: [
-                    Flexible(
-                      child: Text(
-                        activityRowTitle(control, ref),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                    Flexible(child: _activityRowTitleText(activityRowTitle(control, ref))),
                     if (activityRowIsRetired(ref))
                       Padding(
                         padding: const EdgeInsets.only(left: Space.md),
@@ -1938,6 +2085,17 @@ class OperationSheetState extends State<OperationSheet> {
                       icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
                       onPressed: () => _deleteRef(ref),
                     ),
+                    // Absent, not disabled, when the program has no page for
+                    // this reference (and while the hook is still answering):
+                    // a placeholder would be a dead control rather than free
+                    // space. Its gap is wider than the one between the other
+                    // buttons — leaving a reference and destroying one are
+                    // different enough that they should not sit a thumb's
+                    // width apart.
+                    if (link != null) ...[
+                      const SizedBox(width: Space.md),
+                      _refLinkButton(link, fallbackName: activityRowTitle(control, ref)),
+                    ],
                   ],
                 ),
               ),
@@ -2279,6 +2437,9 @@ class OperationSheetState extends State<OperationSheet> {
                         return const SizedBox.shrink();
                       }
                       final suggestionControl = controlForRefType(_controls, suggestion['type'] as String?);
+                      final suggestionLinkKey = _refLinkKey(suggestion);
+                      final suggestionLink =
+                          suggestionLinkKey == null ? null : _suggestionLinks[suggestionLinkKey];
                       return ListTile(
                         tileColor: _controlsUnreliable
                             ? rowColor
@@ -2293,15 +2454,15 @@ class OperationSheetState extends State<OperationSheet> {
                             ? const Icon(MdiIcons.toyBrick)
                             : activityRefIcon(_controls, suggestion['type'] as String?),
                         title: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Flexible(
-                              child: Text(
-                                activityRowTitle(suggestionControl, suggestion),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                            // Not `spaceBetween` with a trailing `Spacer`: a
+                            // Spacer is a flex child, so it would split the
+                            // row's free space with the title's own `Flexible`
+                            // and cap the reference at half the width before
+                            // it had shrunk a single point. Laid out from the
+                            // start, the chips take what they need and the
+                            // reference takes the rest.
+                            Flexible(child: _activityRowTitleText(activityRowTitle(suggestionControl, suggestion))),
                             if (activityRowIsRetired(suggestion))
                               Padding(
                                 padding: const EdgeInsets.only(left: Space.md),
@@ -2316,20 +2477,27 @@ class OperationSheetState extends State<OperationSheet> {
                                 padding: const EdgeInsets.only(left: Space.md),
                                 child: ActivityRowChip(label: t.alreadySelected),
                               ),
-                            const Spacer(),
-                            if (suggestion['distance'] is num)
-                              Text(
-                                fmtDistance(
-                                  (suggestion['distance'] as num).toDouble(),
-                                  miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
-                                ),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
                           ],
                         ),
                         subtitle: Text(activityRowDetail(suggestion) ?? ''),
+                        // Same inset as the Current Activities rows, so the
+                        // web button sits at the same distance from the edge
+                        // in both lists — clear of the scrollbar, and lined up
+                        // with the search row's location button above.
+                        contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
+                        // The distance rides in the trailing group rather than
+                        // in the title row: `trailing` is centred against the
+                        // whole two-line tile, where the title row would pin it
+                        // to the first line. It stays LEFT of the button — the
+                        // edge belongs to the same web button the Current
+                        // Activities rows end with, whichever list a reference
+                        // is being read about from.
+                        trailing: _suggestionTrailing(
+                          theme,
+                          suggestion,
+                          link: suggestionLink,
+                          control: suggestionControl,
+                        ),
                         onTap: () => _addSuggestion(suggestion),
                       );
                     }),

@@ -322,6 +322,15 @@ export interface TitleSuggestion {
   priority?: number
 }
 
+/// Where a reference can be read about on the web — the awarding program's own
+/// page for it, or, for a contest, its rules.
+export interface RefLink {
+  url: string
+  /// Names the destination for assistive technology. The core supplies a
+  /// generic label when this is absent.
+  label?: string
+}
+
 /// Handles one ref type (registered under category `ref:<type>`).
 export interface RefHandlerHook {
   /// Cheap synchronous-ish validation/normalization of user input.
@@ -333,6 +342,10 @@ export interface RefHandlerHook {
     args: { ref: Ref; operation: Record<string, JSONValue> },
     ctx: HookContext,
   ): Promise<TitleSuggestion | null>
+  /// Where to read about this reference on the web. Built from the reference
+  /// code alone — never a network call: the core asks for one link per ref on
+  /// the operation every time the list changes, and the answer is not stored.
+  linkForRef?(args: { ref: Ref }, ctx: HookContext): Promise<RefLink | null>
 }
 
 /// Declarative UI contribution: the core renders these with native widgets

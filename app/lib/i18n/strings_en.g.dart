@@ -483,6 +483,9 @@ class Translations$activitiesView$en {
 	/// en: 'Remove'
 	String get removeActivity => 'Remove';
 
+	/// en: 'Open ${name}'
+	String openReferenceLink({required Object name}) => 'Open ${name}';
+
 	/// en: 'Edit activity'
 	String get editActivity => 'Edit activity';
 
@@ -5651,6 +5654,7 @@ extension on Translations {
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
 			'activitiesView.empty' => 'No activities yet — use Suggestions & Search below to add one',
 			'activitiesView.removeActivity' => 'Remove',
+			'activitiesView.openReferenceLink' => ({required Object name}) => 'Open ${name}',
 			'activitiesView.editActivity' => 'Edit activity',
 			'activitiesView.manageExtensions' => 'Manage Extensions',
 			'activitiesView.manage' => 'Manage',
@@ -5728,9 +5732,9 @@ extension on Translations {
 			'loggingControls.collapseControls' => 'Collapse',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Self-spotting',
-			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} at ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
@@ -6242,9 +6246,9 @@ extension on Translations {
 			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
 			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.fakeFailConnect' => 'Always fail to connect',
-			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
 			'settings.station.fakeFreq' => 'Frequency (kHz)',
 			'settings.station.fakeFreqDescription' => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.',
 			'settings.station.fakeMode' => 'Mode',

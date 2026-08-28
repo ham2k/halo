@@ -22,6 +22,7 @@ import type {
   LoggingControlDescriptor,
   LookupResult,
   Ref,
+  RefLink,
   Spot,
   SpotEligibility,
   PostResult,
@@ -166,6 +167,12 @@ const RefHandler = {
 
   async suggestOperationTitle({ ref }: { ref: Ref }, _ctx: HookContext): Promise<TitleSuggestion | null> {
     return suggestOperationTitleForPota(ref, ACTIVATION_TYPE)
+  },
+
+  async linkForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+    const reference = (ref.ref ?? '').toUpperCase().trim()
+    if (!REFERENCE_REGEX.test(reference)) return null
+    return { url: `https://pota.app/#/park/${encodeURIComponent(reference)}` }
   },
 }
 

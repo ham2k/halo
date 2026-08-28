@@ -537,6 +537,7 @@
     "activitiesCountOther": "${count} Activities",
     "empty": "No activities yet — use Suggestions & Search below to add one",
     "removeActivity": "Remove",
+    "openReferenceLink(name)": "Open ${name}",
     "editActivity": "Edit activity",
     "manageExtensions": "Manage Extensions",
     "manage": "Manage",

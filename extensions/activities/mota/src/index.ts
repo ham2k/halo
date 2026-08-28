@@ -70,6 +70,10 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'X00001',
   tFor,
+  // The GMA site carries the reference lists for the castle, lighthouse and
+  // mill programs as well as its own summits — one page per reference,
+  // whatever program issued it.
+  linkUrl: (reference: string) => `https://www.gma.rocks/zinfo.php?ref=${encodeURIComponent(reference)}`,
   // app-polo writes one record per hunted mill.
   splitRecordsPerHuntedRef: true,
   // Derived from the scorer's own rule, not a separate flag — the UI control

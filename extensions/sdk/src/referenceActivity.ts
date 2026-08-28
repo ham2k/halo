@@ -31,6 +31,7 @@ import type {
   JSONValue,
   LookupRow,
   Ref,
+  RefLink,
   SuggestArgs,
   TitleSuggestion,
 } from "./types.ts"
@@ -97,6 +98,11 @@ export interface ReferenceActivityConfig {
   /// Whether the program recognises several references activated at once.
   /// Defaults to false; none of the simple awards allow it.
   allowsMultiple?: boolean
+  /// The program's own web page for one reference, built from the normalized
+  /// code. Omit it for a program whose list is a download with no page per
+  /// reference — several of these have none, and a link into a search form
+  /// would be worse than no link at all.
+  linkUrl?: (reference: string) => string
 }
 
 function normalize(ref: string | undefined): string {
@@ -192,6 +198,22 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     async suggestOperationTitle({ ref }: { ref: Ref }, _ctx: HookContext): Promise<TitleSuggestion | null> {
       if (!ref.ref) return null
       return { at: ref.ref, subtitle: ref.name }
+    },
+
+    /// Only for a reference this program would accept: a code the operator is
+    /// still typing, or one another program's handler would answer for, would
+    /// otherwise send them to a page that cannot exist.
+    ///
+    /// No `label`: the core names the row instead, and the row's name is the
+    /// honest one here. This handler answers for ref types belonging to OTHER
+    /// programs (WCA takes `ecaActivation` and `bcaActivation` — see
+    /// `suggestOperationTitle` above), so a label built from `config.label`
+    /// would read "WCA G-00001" aloud on an ECA reference.
+    async linkForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+      if (!config.linkUrl) return null
+      const reference = normalize(ref.ref)
+      if (!config.referenceRegex.test(reference)) return null
+      return { url: config.linkUrl(reference) }
     },
   }
 

@@ -33,6 +33,7 @@ import type {
   JSONValue,
   LoggingControlDescriptor,
   Ref,
+  RefLink,
   SuggestArgs,
   TitleSuggestion,
 } from "@ham2k/halo-extension-sdk"
@@ -310,6 +311,13 @@ const RefHandler = {
       for: event.short,
       subtitle: event.parkByAbbreviation[ourPark]?.name ?? (ourPark || undefined),
     }
+  },
+
+  /// The contest's published rules — a reference here names an event, not a
+  /// place, so what there is to read about it is the rules it is run under.
+  async linkForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+    const event = eventFor(ref.ref)
+    return event?.url ? { url: event.url, label: event.name } : null
   },
 }
 

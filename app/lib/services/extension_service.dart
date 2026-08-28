@@ -3440,6 +3440,65 @@ class ExtensionService implements PanelExtensionSource {
     }
     return ref;
   }
+
+  /// Where a ref can be read about on the web, via its `ref:<type>` handler —
+  /// the program's own page for it, or a contest's rules.
+  ///
+  /// Resolved for display and thrown away: nothing here is ever written back
+  /// onto the operation's ref, so a program that changes its URLs takes effect
+  /// with the extension rather than needing every saved operation rewritten.
+  Future<RefLink?> linkForRef(Map<String, dynamic> ref) async {
+    final host = _host;
+    final type = ref['type'] as String?;
+    if (host == null || type == null) return null;
+    try {
+      final result = await host.invokeHook('ref:$type', method: 'linkForRef', args: {'ref': ref});
+      return refLinkFromHookResult(result, type: type);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] linkForRef failed: $e');
+      return null;
+    }
+  }
+}
+
+/// Reads a `linkForRef` answer, or `null` for anything the app would not put a
+/// button on. Separate from the call so the shapes a hook can actually return
+/// are testable without a runtime.
+///
+/// [type] appears only in the log lines: a hook answering wrongly and a ref
+/// type with no link at all look identical from the row (neither draws a
+/// button), so the console is the only place the difference can show.
+RefLink? refLinkFromHookResult(dynamic result, {required String type}) {
+  // `null` is the ordinary answer — most ref types implement no link at all.
+  if (result == null) return null;
+  if (result is! Map) {
+    debugPrint('[extensions] linkForRef(ref:$type) answered ${result.runtimeType}, not a map');
+    return null;
+  }
+  final url = result['url'];
+  if (url is! String || url.isEmpty) {
+    debugPrint('[extensions] linkForRef(ref:$type) answered no usable url');
+    return null;
+  }
+  // Checked where the link is RESOLVED, not where it is tapped: the row draws
+  // its button because a link came back, so a URL the app would refuse to open
+  // has to be no link at all rather than a button that does nothing every time
+  // it is pressed.
+  if (!canOpenExternalUrl(url)) {
+    debugPrint('[extensions] linkForRef(ref:$type) offered an unopenable url: "$url"');
+    return null;
+  }
+  final label = result['label'];
+  return RefLink(url: url, label: label is String && label.isNotEmpty ? label : null);
+}
+
+/// One `linkForRef` answer: somewhere to read about a reference, and a name
+/// for the destination that the UI wraps in its own localized phrasing.
+class RefLink {
+  const RefLink({required this.url, this.label});
+
+  final String url;
+  final String? label;
 }
 
 /// One entry of the build index (assets/extensions/index.json) — the static,

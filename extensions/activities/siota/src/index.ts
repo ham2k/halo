@@ -56,6 +56,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'VK-ABC123',
   tFor,
+  linkUrl: (reference: string) => `https://www.silosontheair.com/silo/${encodeURIComponent(reference)}`,
   // app-polo names every hunted silo in a single record's SIG_INFO.
   splitRecordsPerHuntedRef: false,
   // The ADIF program name is upper-case even though the award styles itself

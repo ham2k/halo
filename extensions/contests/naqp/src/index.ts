@@ -21,6 +21,7 @@ import type {
   JSONValue,
   LoggingControlDescriptor,
   Ref,
+  RefLink,
 } from "@ham2k/halo-extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
@@ -235,6 +236,12 @@ const RefHandler = {
       for: ['NAQP', mode].filter((x) => x).join(' '),
       subtitle: name && location ? tFor(ctx)('ourExchangeSubtitle', { name, location }) : undefined,
     }
+  },
+
+  /// The contest's published rules — a reference here names an event, not a
+  /// place, so what there is to read about it is the rules it is run under.
+  async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+    return { url: 'https://ncjweb.com/naqp/', label: 'NAQP' }
   },
 }
 

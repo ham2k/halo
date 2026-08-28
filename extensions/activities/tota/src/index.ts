@@ -70,6 +70,9 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'OKR-0001',
   tFor,
+  // The tower card, in English: the site also speaks Czech, German, Spanish,
+  // French and Polish, and defaults to Czech without the parameter.
+  linkUrl: (reference: string) => `https://wwtota.com/seznam/karta_rozhledny.php?ref=${encodeURIComponent(reference)}&lang=en`,
   // One record per hunted tower.
   splitRecordsPerHuntedRef: true,
   // Derived from the scorer's own rule, not a separate flag — the UI control

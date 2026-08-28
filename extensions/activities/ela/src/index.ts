@@ -33,6 +33,10 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'ENG 001',
   tFor,
+  // The GMA site carries the reference lists for the castle, lighthouse and
+  // mill programs as well as its own summits — one page per reference,
+  // whatever program issued it.
+  linkUrl: (reference: string) => `https://www.gma.rocks/zinfo.php?ref=${encodeURIComponent(reference)}`,
   // One operation can activate several lighthouses at once.
   allowsMultiple: true,
 })

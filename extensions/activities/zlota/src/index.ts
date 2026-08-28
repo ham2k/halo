@@ -90,6 +90,9 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'ZLH/AA-001',
   tFor,
+  // ontheair.nz names an asset page after its code with the slash written as
+  // an underscore — `/assets/ZLB_001`, not `ZLB/001`, which is a different route.
+  linkUrl: (reference: string) => `https://ontheair.nz/assets/${encodeURIComponent(reference.replace('/', '_'))}`,
   // app-polo names every hunted reference in a single record's SIG_INFO.
   splitRecordsPerHuntedRef: false,
   // Derived from the scorer's own rule, not a separate flag — the UI control

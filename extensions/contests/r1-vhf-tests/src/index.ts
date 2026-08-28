@@ -25,6 +25,7 @@ import type {
   JSONValue,
   LoggingControlDescriptor,
   Ref,
+  RefLink,
   SuggestArgs,
   TitleSuggestion,
 } from "@ham2k/halo-extension-sdk"
@@ -202,6 +203,12 @@ const RefHandler = {
     if (!event) return { for: manifest.shortName }
     const grid = trimmedGrid(str(operation.grid))
     return { for: event.short, subtitle: grid ? tFor(ctx)('ourExchangeSubtitle', { grid }) : undefined }
+  },
+
+  /// The contest's published rules — a reference here names an event, not a
+  /// place, so what there is to read about it is the rules it is run under.
+  async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
+    return { url: 'https://www.iaru-r1.org/on-the-air/contests/', label: 'IARU Region 1 contests' }
   },
 }
 

@@ -68,6 +68,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'LLUS-0001',
   tFor,
+  linkUrl: (reference: string) => `https://llota.app/list/ref/${encodeURIComponent(reference)}`,
   // One record per hunted lake, like POTA.
   splitRecordsPerHuntedRef: true,
   adifRefField: 'LLOTA',

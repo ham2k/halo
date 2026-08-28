@@ -276,6 +276,7 @@ interface RefHandlerHook {
   validateRef?(args: { ref: Ref }, ctx): Promise<{valid: boolean; normalized?: string}>
   decorateRef?(args: { ref: Ref }, ctx): Promise<Ref>   // may hit the network
   suggestOperationTitle?(args: { ref: Ref; operation }, ctx): Promise<TitleSuggestion | null>
+  linkForRef?(args: { ref: Ref }, ctx): Promise<RefLink | null>   // {url, label?}
 }
 // Ref: {type, ref?, name?, label?, shortLabel?, grid?, location?, program?, ...}
 // TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
@@ -289,6 +290,25 @@ interface RefHandlerHook {
 `decorateRef` fills names/locations/labels (park names via the POTA API,
 etc.); results update ref chips asynchronously in the UI. Implemented by:
 `pota` (both types).
+
+`linkForRef` says where a reference can be read about on the web — the
+program's own page for it (POTA's park page, SOTA's summit page), or, for a
+contest, the rules the event is run under. The Operation Setup sheet asks for
+one link per ref every time the operation's refs change and renders a web
+button on the row; **nothing is stored on the ref**, so a program that moves
+its URLs takes effect with the extension rather than needing saved operations
+rewritten. Build the URL from the reference and return: this hook must not hit
+the network. Return `null` for a reference the program would not accept (a
+half-typed code links to a page that cannot exist) and implement nothing at all
+for a program whose list is a download with no page per reference — a link into
+a search form is worse than no link, and the row simply shows no button.
+`label` names the destination for assistive technology, wrapped in the app's
+own localized phrasing — set it only where the destination is NOT the row's own
+subject, as a contest's rules are; leave it off for a reference's own page and
+the app names the row instead. A handler registered for another program's ref
+type (WCA answers for `ecaActivation`) must leave it off: a label built from
+its own program name reads the wrong program aloud. Programs built on the SDK's `referenceActivity` factory get this
+from one `linkUrl` config line.
 
 `suggestOperationTitle` lets an activity build a natural-language operation
 title/subtitle from its refs — "at Yosemite NP" (POTA), "for Field Day"

@@ -487,6 +487,7 @@
     "activitiesCountOther": "${count} actividades",
     "empty": "Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una",
     "removeActivity": "Quitar",
+    "openReferenceLink(name)": "Abrir ${name}",
     "editActivity": "Editar actividad",
     "manageExtensions": "Administrar extensiones",
     "manage": "Administrar",

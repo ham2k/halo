@@ -52,6 +52,10 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'DL/AL-001',
   tFor,
+  // The GMA site carries the reference lists for the castle, lighthouse and
+  // mill programs as well as its own summits — one page per reference,
+  // whatever program issued it.
+  linkUrl: (reference: string) => `https://www.gma.rocks/zinfo.php?ref=${encodeURIComponent(reference)}`,
   // app-polo writes a single SIG_INFO for GMA rather than one record per
   // summit — it registers no `adifFieldCombinationsForOneQSO` at all.
   splitRecordsPerHuntedRef: false,

@@ -54,6 +54,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   color: manifest.accentColor,
   placeholder: 'KFF-0001',
   tFor,
+  linkUrl: (reference: string) => `https://wwff.co/directory/?showRef=${encodeURIComponent(reference)}`,
   // app-polo registers no combinations for WWFF: one record, references joined.
   splitRecordsPerHuntedRef: false,
   adifRefField: 'WWFF',
