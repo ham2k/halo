@@ -214,6 +214,12 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 		other: '${n} QSOs aún no se han sincronizado — el servidor nunca los recibió y NO van a volver.',
 	);
 	@override String get syncAllAction => 'Borrar y Resincronizar';
+	@override String get purgeTestsTitle => 'Purgar operaciones de prueba';
+	@override String get purgeTestsBody => 'Esto borra permanentemente estas operaciones de prueba y sus QSOs. No se puede deshacer.';
+	@override String get purgeTestsAction => 'Purgar';
+	@override String get receivedPurgesTitle => 'Operaciones de prueba eliminadas en otro dispositivo';
+	@override String get receivedPurgesBody => 'Estas se borraron como operaciones de prueba en otro dispositivo. ¿Eliminarlas aquí también? Esto las borra permanentemente junto con sus QSOs, y no se puede deshacer.';
+	@override String get receivedPurgesAction => 'Eliminar';
 }
 
 // Path: operation
@@ -237,6 +243,8 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override late final _Translations$operation$layout$es layout = _Translations$operation$layout$es._(_root);
 	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
 	@override late final _Translations$operation$spots$es spots = _Translations$operation$spots$es._(_root);
+	@override String get testOperationSuffix => 'Prueba';
+	@override late final _Translations$operation$import$es import = _Translations$operation$import$es._(_root);
 }
 
 // Path: map
@@ -316,6 +324,11 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get controlsUnavailableReason => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.';
 	@override String get controlsUnavailableRetry => 'Reintentar';
 	@override String get onlyDisabledMatches => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.';
+	@override String get showResultsMap => 'Ver resultados en un mapa';
+	@override String get showResultsList => 'Ver resultados como lista';
+	@override String get addToOperation => 'Agregar a la operación';
+	@override String get mapEmptyState => 'No hay resultados que mostrar en el mapa';
+	@override String get mapEmptyStateHint => 'Vuelve a la lista o busca otra cosa';
 }
 
 // Path: loggingControls
@@ -541,6 +554,26 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String settingVanished({required Object label}) => '«${label}» ya no está disponible';
 	@override String settingNotStored({required Object label}) => '«${label}» no aceptó ese valor';
 	@override String get syncAllUnavailable => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí';
+	@override String get noTestOperations => 'No hay operaciones de prueba que purgar';
+	@override String get purgeTestsUnavailable => 'PURGETESTS necesita mostrar un diálogo de confirmación, que no está disponible aquí';
+	@override String purgeTestsSomeFailed({required Object purged, required Object total}) => 'Se purgaron ${purged} de ${total} operaciones de prueba — el resto falló; prueba PURGETESTS de nuevo';
+	@override String get purgeTestsContactsFailed => 'Se purgaron las operaciones de prueba, pero los contactos de prueba sin operación fallaron; prueba PURGETESTS de nuevo';
+	@override String get purgeTestsNothingToDo => 'No se purgó nada';
+	@override String receivedPurgesSomeFailed({required Object removed, required Object total}) => 'Se eliminaron ${removed} de ${total} operaciones de prueba — el resto falló; prueba Revisar de nuevo';
+	@override String get receivedPurgesFailed => 'No se pudieron eliminar esas operaciones de prueba — prueba Revisar de nuevo';
+	@override String get receivedPurgesReview => 'Revisar';
+	@override String testOperationsPurged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se purgó ${count} operación de prueba',
+		other: 'Se purgaron ${count} operaciones de prueba',
+	);
+	@override String testContactsPurged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se purgó ${count} contacto de prueba sin operación',
+		other: 'Se purgaron ${count} contactos de prueba sin operación',
+	);
+	@override String receivedPurgesPending({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} operación de prueba se eliminó en otro dispositivo',
+		other: '${count} operaciones de prueba se eliminaron en otro dispositivo',
+	);
 }
 
 // Path: commandDialog
@@ -944,6 +977,7 @@ class _Translations$home$logs$es extends Translations$home$logs$en {
 	@override String get noSearchMatches => 'Ningún QSO coincide con tu búsqueda';
 	@override late final _Translations$home$logs$panels$es panels = _Translations$home$logs$panels$es._(_root);
 	@override late final _Translations$home$logs$import$es import = _Translations$home$logs$import$es._(_root);
+	@override late final _Translations$home$logs$columns$es columns = _Translations$home$logs$columns$es._(_root);
 }
 
 // Path: operation.tabs
@@ -1151,6 +1185,48 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String get slideIgnore => 'Ignorar';
 	@override String get slideRestore => 'Restaurar';
 	@override late final _Translations$operation$spots$logConflict$es logConflict = _Translations$operation$spots$logConflict$es._(_root);
+}
+
+// Path: operation.import
+class _Translations$operation$import$es extends Translations$operation$import$en {
+	_Translations$operation$import$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Importar datos a la operación';
+	@override String get importAdifAction => 'Importar QSOs desde ADIF';
+	@override String get settingsButton => 'Ajustes de escucha';
+	@override String get settingsTitle => 'Escuchar otras aplicaciones';
+	@override String get protocolAddressLabel => 'Dirección';
+	@override String get protocolPortLabel => 'Puerto';
+	@override String get protocolPortInvalid => 'Introduce un puerto entre 1 y 65535';
+	@override String get protocolAddressInvalid => 'Introduce una dirección IP válida (p. ej. 127.0.0.1 o 239.239.0.2)';
+	@override String get protocolStatusReceiving => 'Recibiendo datos';
+	@override String get protocolStatusNoData => 'No se han recibido datos recientemente';
+	@override String protocolBindError({required Object error}) => 'No se pudo empezar a escuchar: ${error}';
+	@override String captureFailed({required Object error}) => 'Los QSOs entrantes no se pudieron guardar y se están reintentando: ${error}';
+	@override String get n1mmProtocolName => 'Difusión de contactos de N1MM+';
+	@override String get n1mmAddressValue => 'Cualquiera (difusión)';
+	@override String get wsjtxProtocolName => 'Servidor UDP de WSJT-X';
+	@override String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → pestaña Broadcast Data → marca «Enable Broadcasts» para la información de contactos. Pon la dirección IP en 127.0.0.1 si se ejecuta en esta misma computadora, o 255.255.255.255 para difundir en la red local actual.';
+	@override String get helpWsjtxSetup => 'File → Settings → pestaña Reporting → sección UDP Server → marca «Accept UDP requests». Pon UDP Server en 127.0.0.1 si se ejecuta en esta misma computadora, o una dirección multicast como 239.239.0.2, y usa esa misma dirección en la configuración de arriba en esta aplicación.';
+	@override String get listenTitle => 'Escuchar QSOs de otras aplicaciones';
+	@override String get listenDescriptionOnN1mm => 'Escuchando a N1MM+';
+	@override String get listenDescriptionOnWsjtx => 'Escuchando a WSJT-X';
+	@override String get listenDescriptionOnBoth => 'Escuchando a N1MM+ y WSJT-X';
+	@override String get listenDescriptionOff => 'Desactivado';
+	@override String get addToOperationTitle => 'Agregar a esta operación';
+	@override String get addToOperationDescriptionOn => 'Los QSOs capturados se agregan a esta operación según llegan';
+	@override String get addToOperationDescriptionOff => 'Los QSOs capturados se retienen hasta que actives esto';
+	@override String get pendingSectionTitle => 'QSOs capturados';
+	@override String get pendingEmpty => 'Nada capturado todavía';
+	@override String stationMismatch({required Object call}) => 'Registrado como ${call}, no la estación de esta operación';
+	@override String get discardAction => 'Descartar';
+	@override String get gapDialogTitle => '¿Incluir capturas anteriores?';
+	@override String gapDialogBody({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?';
+	@override String get gapDialogRecentOnly => 'Solo los recientes';
+	@override String gapDialogIncludeAll({required Object count}) => 'Incluir los ${count}';
 }
 
 // Path: loggingControls.info
@@ -1668,6 +1744,45 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get fakeWholeNumberInvalid => 'Debe ser un número entero, 0 o más';
 	@override String get fakeFreqInvalid => 'Debe ser una frecuencia en kHz, mayor que cero';
 	@override String get fakeModeInvalid => 'Debe ser un nombre de modo, por ejemplo USB, CW, FT8';
+	@override String get antennaInUse => 'Antena en uso';
+	@override String get keyInUse => 'Manipulador en uso';
+	@override String get noneSelected => 'Ninguno';
+	@override String get moreSettings => 'Más ajustes';
+	@override String get antennaBands => 'Bandas';
+	@override String get antennaType => 'Tipo de antena';
+	@override String get antennaTypeRequired => 'Elige un tipo de antena';
+	@override String get keyType => 'Tipo de manipulador';
+	@override String get keyTypeRequired => 'Elige un tipo de manipulador';
+	@override String get otherEquipment => 'Otros equipos (antenas, manipuladores, etc.)';
+	@override String get otherOptions => 'Otras opciones';
+	@override String get newAntenna => 'Nueva antena';
+	@override String get newKey => 'Nuevo manipulador';
+	@override String get trackStationInfo => 'Registrar datos de la estación en cada QSO';
+	@override String get includeStationInfoInAdif => 'Incluir en las exportaciones ADIF';
+	@override String get whatToTrack => '¿Qué registrar?';
+	@override String get trackFieldRig => 'Transceptor';
+	@override String get trackFieldPower => 'Potencia';
+	@override String get watts => 'Vatios';
+	@override String get trackFieldAntenna => 'Antena';
+	@override String get trackFieldKey => 'Manipulador';
+	@override String get switchLayout => 'Disposición';
+	@override String get switchLayoutDescription => 'En qué lado del conmutador están conectadas tus radios.';
+	@override String get switchLayoutRequired => 'Elige cómo está cableado el conmutador';
+	@override String switchCommandRefused({required Object command, required Object code}) => 'El conmutador rechazó «${command}» (error ${code})';
+	@override String get switchBusyTransmitting => 'Ese puerto está transmitiendo — la antena no se cambió';
+	@override String get switchNoAntenna => 'Ninguna';
+	@override String switchAntennaFor({required Object port}) => 'Antena en el puerto ${port}';
+	@override String get switchAntennaForDescription => 'Cuál de tus antenas está conectada a este puerto del conmutador.';
+	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antenas, ${radios} radios';
+	@override String switchPortLabel({required Object port}) => 'Puerto ${port}';
+	@override String get switchPortAutoHint => 'sigue los datos de banda';
+	@override String get switchPortTransmittingHint => 'transmitiendo — no se puede cambiar ahora';
+	@override String get switchCurrentStateHeader => 'Estado actual';
+	@override String get switchCurrentStateDescription => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.';
+	@override String get switchWiringHeader => 'Cableado';
+	@override String get switchPortInhibitedHint => 'transmisión inhibida';
+	@override late final _Translations$settings$station$antennaTypes$es antennaTypes = _Translations$settings$station$antennaTypes$es._(_root);
+	@override late final _Translations$settings$station$keyTypes$es keyTypes = _Translations$settings$station$keyTypes$es._(_root);
 }
 
 // Path: settings.offlineData
@@ -1844,6 +1959,21 @@ class _Translations$home$logs$import$es extends Translations$home$logs$import$en
 	@override String readingDetail({required Object kb}) => '${kb} Kb';
 	@override String checkingDetail({required Object done, required Object total}) => '${done} de ${total} verificados';
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} importados, de ${total}';
+}
+
+// Path: home.logs.columns
+class _Translations$home$logs$columns$es extends Translations$home$logs$columns$en {
+	_Translations$home$logs$columns$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get date => 'Fecha';
+	@override String get time => 'Hora';
+	@override String get freq => 'Frecuencia';
+	@override String get mode => 'Modo';
+	@override String get call => 'Indicativo';
+	@override String get name => 'Nombre';
 }
 
 // Path: operation.layout.panels
@@ -2327,6 +2457,9 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get rigctld => 'Radio genérica vía rigctld';
 	@override String get flrig => 'Radio genérica vía flrig';
 	@override String get fakeRadio => 'Radio Simulada';
+	@override String get antenna => 'Antena';
+	@override String get key => 'Manipulador';
+	@override String get antennaGenius => '4O3A Antenna Genius';
 }
 
 // Path: settings.station.transports
@@ -2340,6 +2473,38 @@ class _Translations$settings$station$transports$es extends Translations$settings
 	@override String get usbSerial => 'USB serie';
 	@override String get wifi => 'WiFi';
 	@override String get simulated => 'Simulada';
+}
+
+// Path: settings.station.antennaTypes
+class _Translations$settings$station$antennaTypes$es extends Translations$settings$station$antennaTypes$en {
+	_Translations$settings$station$antennaTypes$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get dipole => 'Dipolo';
+	@override String get vertical => 'Vertical';
+	@override String get yagiBeam => 'Yagi / Directiva';
+	@override String get loop => 'Loop (cuadro)';
+	@override String get longWire => 'Hilo largo / EFHW';
+	@override String get other => 'Otra';
+}
+
+// Path: settings.station.keyTypes
+class _Translations$settings$station$keyTypes$es extends Translations$settings$station$keyTypes$en {
+	_Translations$settings$station$keyTypes$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get straight => 'Manipulador recto';
+	@override String get sideswiper => 'Manipulador lateral (sideswiper)';
+	@override String get bug => 'Bug (semiautomático mecánico)';
+	@override String get fullyAutomatic => 'Manipulador electrónico automático';
+	@override String get singlePaddle => 'Paleta simple';
+	@override String get dualPaddle => 'Paleta doble';
+	@override String get computerDriven => 'Controlado por computadora';
+	@override String get other => 'Otro';
 }
 
 // Path: operation.layout.panels.weatherConditions
@@ -2480,6 +2645,12 @@ extension on TranslationsEs {
 			'home.logs.import.readingDetail' => ({required Object kb}) => '${kb} Kb',
 			'home.logs.import.checkingDetail' => ({required Object done, required Object total}) => '${done} de ${total} verificados',
 			'home.logs.import.importingDetail' => ({required Object imported, required Object total}) => '${imported} importados, de ${total}',
+			'home.logs.columns.date' => 'Fecha',
+			'home.logs.columns.time' => 'Hora',
+			'home.logs.columns.freq' => 'Frecuencia',
+			'home.logs.columns.mode' => 'Modo',
+			'home.logs.columns.call' => 'Indicativo',
+			'home.logs.columns.name' => 'Nombre',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -2491,6 +2662,12 @@ extension on TranslationsEs {
 			'dialogs.syncAllBody' => ({required Object qsos}) => 'SYNCALL respalda y borra ${qsos} de este dispositivo, y luego vuelve a descargar el log de la cuenta desde el servidor. El respaldo queda en la base de datos de este dispositivo.',
 			'dialogs.syncAllUnsynced' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO aún no se ha sincronizado — el servidor nunca lo recibió y NO va a volver.', other: '${n} QSOs aún no se han sincronizado — el servidor nunca los recibió y NO van a volver.', ), 
 			'dialogs.syncAllAction' => 'Borrar y Resincronizar',
+			'dialogs.purgeTestsTitle' => 'Purgar operaciones de prueba',
+			'dialogs.purgeTestsBody' => 'Esto borra permanentemente estas operaciones de prueba y sus QSOs. No se puede deshacer.',
+			'dialogs.purgeTestsAction' => 'Purgar',
+			'dialogs.receivedPurgesTitle' => 'Operaciones de prueba eliminadas en otro dispositivo',
+			'dialogs.receivedPurgesBody' => 'Estas se borraron como operaciones de prueba en otro dispositivo. ¿Eliminarlas aquí también? Esto las borra permanentemente junto con sus QSOs, y no se puede deshacer.',
+			'dialogs.receivedPurgesAction' => 'Eliminar',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -2763,6 +2940,40 @@ extension on TranslationsEs {
 			'operation.spots.logConflict.composingBody' => 'Empezaste a ingresar un contacto. ¿Registrar este spot, o volver y terminar lo que escribías?',
 			'operation.spots.logConflict.goBack' => 'Volver',
 			'operation.spots.logConflict.clearAndLog' => 'Borrar y registrar spot',
+			'operation.testOperationSuffix' => 'Prueba',
+			'operation.import.title' => 'Importar datos a la operación',
+			'operation.import.importAdifAction' => 'Importar QSOs desde ADIF',
+			'operation.import.settingsButton' => 'Ajustes de escucha',
+			'operation.import.settingsTitle' => 'Escuchar otras aplicaciones',
+			'operation.import.protocolAddressLabel' => 'Dirección',
+			'operation.import.protocolPortLabel' => 'Puerto',
+			'operation.import.protocolPortInvalid' => 'Introduce un puerto entre 1 y 65535',
+			'operation.import.protocolAddressInvalid' => 'Introduce una dirección IP válida (p. ej. 127.0.0.1 o 239.239.0.2)',
+			'operation.import.protocolStatusReceiving' => 'Recibiendo datos',
+			'operation.import.protocolStatusNoData' => 'No se han recibido datos recientemente',
+			'operation.import.protocolBindError' => ({required Object error}) => 'No se pudo empezar a escuchar: ${error}',
+			'operation.import.captureFailed' => ({required Object error}) => 'Los QSOs entrantes no se pudieron guardar y se están reintentando: ${error}',
+			'operation.import.n1mmProtocolName' => 'Difusión de contactos de N1MM+',
+			'operation.import.n1mmAddressValue' => 'Cualquiera (difusión)',
+			'operation.import.wsjtxProtocolName' => 'Servidor UDP de WSJT-X',
+			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → pestaña Broadcast Data → marca «Enable Broadcasts» para la información de contactos. Pon la dirección IP en 127.0.0.1 si se ejecuta en esta misma computadora, o 255.255.255.255 para difundir en la red local actual.',
+			'operation.import.helpWsjtxSetup' => 'File → Settings → pestaña Reporting → sección UDP Server → marca «Accept UDP requests». Pon UDP Server en 127.0.0.1 si se ejecuta en esta misma computadora, o una dirección multicast como 239.239.0.2, y usa esa misma dirección en la configuración de arriba en esta aplicación.',
+			'operation.import.listenTitle' => 'Escuchar QSOs de otras aplicaciones',
+			'operation.import.listenDescriptionOnN1mm' => 'Escuchando a N1MM+',
+			'operation.import.listenDescriptionOnWsjtx' => 'Escuchando a WSJT-X',
+			'operation.import.listenDescriptionOnBoth' => 'Escuchando a N1MM+ y WSJT-X',
+			'operation.import.listenDescriptionOff' => 'Desactivado',
+			'operation.import.addToOperationTitle' => 'Agregar a esta operación',
+			'operation.import.addToOperationDescriptionOn' => 'Los QSOs capturados se agregan a esta operación según llegan',
+			'operation.import.addToOperationDescriptionOff' => 'Los QSOs capturados se retienen hasta que actives esto',
+			'operation.import.pendingSectionTitle' => 'QSOs capturados',
+			'operation.import.pendingEmpty' => 'Nada capturado todavía',
+			'operation.import.stationMismatch' => ({required Object call}) => 'Registrado como ${call}, no la estación de esta operación',
+			'operation.import.discardAction' => 'Descartar',
+			'operation.import.gapDialogTitle' => '¿Incluir capturas anteriores?',
+			'operation.import.gapDialogBody' => ({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?',
+			'operation.import.gapDialogRecentOnly' => 'Solo los recientes',
+			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir los ${count}',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.loadFailed' => 'No se pudo cargar el mapa. Verifica tu conexión.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -2824,6 +3035,11 @@ extension on TranslationsEs {
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
+			'activitiesView.showResultsMap' => 'Ver resultados en un mapa',
+			'activitiesView.showResultsList' => 'Ver resultados como lista',
+			'activitiesView.addToOperation' => 'Agregar a la operación',
+			'activitiesView.mapEmptyState' => 'No hay resultados que mostrar en el mapa',
+			'activitiesView.mapEmptyStateHint' => 'Vuelve a la lista o busca otra cosa',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
@@ -2851,6 +3067,8 @@ extension on TranslationsEs {
 			'loggingControls.collapseControls' => 'Contraer',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Auto-spot',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Auto-spot en ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot a ${call} en ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Demasiado tarde para spotear a ${call}',
@@ -2902,8 +3120,6 @@ extension on TranslationsEs {
 			'formChrome.connected' => 'Conectado',
 			'formChrome.notConnected' => 'No conectado',
 			'formChrome.manage' => 'Administrar',
-			_ => null,
-		} ?? switch (path) {
 			'formChrome.connect' => 'Conectar',
 			'formChrome.formTitle' => 'Formulario',
 			'formChrome.addItem' => ({required Object label}) => 'Añadir ${label}',
@@ -3295,6 +3511,9 @@ extension on TranslationsEs {
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
 			'settings.station.models.fakeRadio' => 'Radio Simulada',
+			'settings.station.models.antenna' => 'Antena',
+			'settings.station.models.key' => 'Manipulador',
+			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.transports.network' => 'Red',
 			'settings.station.transports.usbSerial' => 'USB serie',
 			'settings.station.transports.wifi' => 'WiFi',
@@ -3340,6 +3559,59 @@ extension on TranslationsEs {
 			'settings.station.fakeWholeNumberInvalid' => 'Debe ser un número entero, 0 o más',
 			'settings.station.fakeFreqInvalid' => 'Debe ser una frecuencia en kHz, mayor que cero',
 			'settings.station.fakeModeInvalid' => 'Debe ser un nombre de modo, por ejemplo USB, CW, FT8',
+			'settings.station.antennaInUse' => 'Antena en uso',
+			'settings.station.keyInUse' => 'Manipulador en uso',
+			'settings.station.noneSelected' => 'Ninguno',
+			'settings.station.moreSettings' => 'Más ajustes',
+			'settings.station.antennaBands' => 'Bandas',
+			'settings.station.antennaType' => 'Tipo de antena',
+			'settings.station.antennaTypeRequired' => 'Elige un tipo de antena',
+			'settings.station.keyType' => 'Tipo de manipulador',
+			'settings.station.keyTypeRequired' => 'Elige un tipo de manipulador',
+			'settings.station.otherEquipment' => 'Otros equipos (antenas, manipuladores, etc.)',
+			'settings.station.otherOptions' => 'Otras opciones',
+			'settings.station.newAntenna' => 'Nueva antena',
+			'settings.station.newKey' => 'Nuevo manipulador',
+			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
+			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
+			'settings.station.whatToTrack' => '¿Qué registrar?',
+			'settings.station.trackFieldRig' => 'Transceptor',
+			'settings.station.trackFieldPower' => 'Potencia',
+			'settings.station.watts' => 'Vatios',
+			'settings.station.trackFieldAntenna' => 'Antena',
+			'settings.station.trackFieldKey' => 'Manipulador',
+			'settings.station.switchLayout' => 'Disposición',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.switchLayoutDescription' => 'En qué lado del conmutador están conectadas tus radios.',
+			'settings.station.switchLayoutRequired' => 'Elige cómo está cableado el conmutador',
+			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'El conmutador rechazó «${command}» (error ${code})',
+			'settings.station.switchBusyTransmitting' => 'Ese puerto está transmitiendo — la antena no se cambió',
+			'settings.station.switchNoAntenna' => 'Ninguna',
+			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antena en el puerto ${port}',
+			'settings.station.switchAntennaForDescription' => 'Cuál de tus antenas está conectada a este puerto del conmutador.',
+			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antenas, ${radios} radios',
+			'settings.station.switchPortLabel' => ({required Object port}) => 'Puerto ${port}',
+			'settings.station.switchPortAutoHint' => 'sigue los datos de banda',
+			'settings.station.switchPortTransmittingHint' => 'transmitiendo — no se puede cambiar ahora',
+			'settings.station.switchCurrentStateHeader' => 'Estado actual',
+			'settings.station.switchCurrentStateDescription' => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.',
+			'settings.station.switchWiringHeader' => 'Cableado',
+			'settings.station.switchPortInhibitedHint' => 'transmisión inhibida',
+			'settings.station.antennaTypes.dipole' => 'Dipolo',
+			'settings.station.antennaTypes.vertical' => 'Vertical',
+			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Directiva',
+			'settings.station.antennaTypes.loop' => 'Loop (cuadro)',
+			'settings.station.antennaTypes.longWire' => 'Hilo largo / EFHW',
+			'settings.station.antennaTypes.other' => 'Otra',
+			'settings.station.keyTypes.straight' => 'Manipulador recto',
+			'settings.station.keyTypes.sideswiper' => 'Manipulador lateral (sideswiper)',
+			'settings.station.keyTypes.bug' => 'Bug (semiautomático mecánico)',
+			'settings.station.keyTypes.fullyAutomatic' => 'Manipulador electrónico automático',
+			'settings.station.keyTypes.singlePaddle' => 'Paleta simple',
+			'settings.station.keyTypes.dualPaddle' => 'Paleta doble',
+			'settings.station.keyTypes.computerDriven' => 'Controlado por computadora',
+			'settings.station.keyTypes.other' => 'Otro',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -3416,8 +3688,6 @@ extension on TranslationsEs {
 			'settings.panels.peersDescription' => 'Comparte una operación con tus otros dispositivos en la misma red',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
-			_ => null,
-		} ?? switch (path) {
 			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
@@ -3445,6 +3715,17 @@ extension on TranslationsEs {
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.settingNotStored' => ({required Object label}) => '«${label}» no aceptó ese valor',
 			'commands.syncAllUnavailable' => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí',
+			'commands.noTestOperations' => 'No hay operaciones de prueba que purgar',
+			'commands.purgeTestsUnavailable' => 'PURGETESTS necesita mostrar un diálogo de confirmación, que no está disponible aquí',
+			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Se purgaron ${purged} de ${total} operaciones de prueba — el resto falló; prueba PURGETESTS de nuevo',
+			'commands.purgeTestsContactsFailed' => 'Se purgaron las operaciones de prueba, pero los contactos de prueba sin operación fallaron; prueba PURGETESTS de nuevo',
+			'commands.purgeTestsNothingToDo' => 'No se purgó nada',
+			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Se eliminaron ${removed} de ${total} operaciones de prueba — el resto falló; prueba Revisar de nuevo',
+			'commands.receivedPurgesFailed' => 'No se pudieron eliminar esas operaciones de prueba — prueba Revisar de nuevo',
+			'commands.receivedPurgesReview' => 'Revisar',
+			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se purgó ${count} operación de prueba', other: 'Se purgaron ${count} operaciones de prueba', ), 
+			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se purgó ${count} contacto de prueba sin operación', other: 'Se purgaron ${count} contactos de prueba sin operación', ), 
+			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación de prueba se eliminó en otro dispositivo', other: '${count} operaciones de prueba se eliminaron en otro dispositivo', ), 
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',

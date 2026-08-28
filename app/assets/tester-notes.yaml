@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "New CWops CWT extension: it offers the session three hours before each one starts"
+    - Spanish now covers QSO import, test operations and the activity results map
 
 "155":
   changes:

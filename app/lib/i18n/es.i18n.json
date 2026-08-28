@@ -108,6 +108,14 @@
         "readingDetail": "${kb} Kb",
         "checkingDetail": "${done} de ${total} verificados",
         "importingDetail": "${imported} importados, de ${total}"
+      },
+      "columns": {
+        "date": "Fecha",
+        "time": "Hora",
+        "freq": "Frecuencia",
+        "mode": "Modo",
+        "call": "Indicativo",
+        "name": "Nombre"
       }
     }
   },
@@ -128,7 +136,13 @@
       "one": "${n} QSO aún no se ha sincronizado — el servidor nunca lo recibió y NO va a volver.",
       "other": "${n} QSOs aún no se han sincronizado — el servidor nunca los recibió y NO van a volver."
     },
-    "syncAllAction": "Borrar y Resincronizar"
+    "syncAllAction": "Borrar y Resincronizar",
+    "purgeTestsTitle": "Purgar operaciones de prueba",
+    "purgeTestsBody": "Esto borra permanentemente estas operaciones de prueba y sus QSOs. No se puede deshacer.",
+    "purgeTestsAction": "Purgar",
+    "receivedPurgesTitle": "Operaciones de prueba eliminadas en otro dispositivo",
+    "receivedPurgesBody": "Estas se borraron como operaciones de prueba en otro dispositivo. ¿Eliminarlas aquí también? Esto las borra permanentemente junto con sus QSOs, y no se puede deshacer.",
+    "receivedPurgesAction": "Eliminar"
   },
   "operation": {
     "tabs": {
@@ -467,6 +481,42 @@
         "goBack": "Volver",
         "clearAndLog": "Borrar y registrar spot"
       }
+    },
+    "testOperationSuffix": "Prueba",
+    "import": {
+      "title": "Importar datos a la operación",
+      "importAdifAction": "Importar QSOs desde ADIF",
+      "settingsButton": "Ajustes de escucha",
+      "settingsTitle": "Escuchar otras aplicaciones",
+      "protocolAddressLabel": "Dirección",
+      "protocolPortLabel": "Puerto",
+      "protocolPortInvalid": "Introduce un puerto entre 1 y 65535",
+      "protocolAddressInvalid": "Introduce una dirección IP válida (p. ej. 127.0.0.1 o 239.239.0.2)",
+      "protocolStatusReceiving": "Recibiendo datos",
+      "protocolStatusNoData": "No se han recibido datos recientemente",
+      "protocolBindError": "No se pudo empezar a escuchar: ${error}",
+      "captureFailed": "Los QSOs entrantes no se pudieron guardar y se están reintentando: ${error}",
+      "n1mmProtocolName": "Difusión de contactos de N1MM+",
+      "n1mmAddressValue": "Cualquiera (difusión)",
+      "wsjtxProtocolName": "Servidor UDP de WSJT-X",
+      "helpN1mmSetup": "Config → Configure Ports, Mode Control… → pestaña Broadcast Data → marca «Enable Broadcasts» para la información de contactos. Pon la dirección IP en 127.0.0.1 si se ejecuta en esta misma computadora, o 255.255.255.255 para difundir en la red local actual.",
+      "helpWsjtxSetup": "File → Settings → pestaña Reporting → sección UDP Server → marca «Accept UDP requests». Pon UDP Server en 127.0.0.1 si se ejecuta en esta misma computadora, o una dirección multicast como 239.239.0.2, y usa esa misma dirección en la configuración de arriba en esta aplicación.",
+      "listenTitle": "Escuchar QSOs de otras aplicaciones",
+      "listenDescriptionOnN1mm": "Escuchando a N1MM+",
+      "listenDescriptionOnWsjtx": "Escuchando a WSJT-X",
+      "listenDescriptionOnBoth": "Escuchando a N1MM+ y WSJT-X",
+      "listenDescriptionOff": "Desactivado",
+      "addToOperationTitle": "Agregar a esta operación",
+      "addToOperationDescriptionOn": "Los QSOs capturados se agregan a esta operación según llegan",
+      "addToOperationDescriptionOff": "Los QSOs capturados se retienen hasta que actives esto",
+      "pendingSectionTitle": "QSOs capturados",
+      "pendingEmpty": "Nada capturado todavía",
+      "stationMismatch": "Registrado como ${call}, no la estación de esta operación",
+      "discardAction": "Descartar",
+      "gapDialogTitle": "¿Incluir capturas anteriores?",
+      "gapDialogBody": "Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?",
+      "gapDialogRecentOnly": "Solo los recientes",
+      "gapDialogIncludeAll": "Incluir los ${count}"
     }
   },
   "map": {
@@ -532,7 +582,12 @@
     "controlsUnavailableTitle": "Controles de actividad no disponibles",
     "controlsUnavailableReason": "Tus referencias están a salvo, pero ahora mismo no se pueden editar.",
     "controlsUnavailableRetry": "Reintentar",
-    "onlyDisabledMatches": "Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo."
+    "onlyDisabledMatches": "Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.",
+    "showResultsMap": "Ver resultados en un mapa",
+    "showResultsList": "Ver resultados como lista",
+    "addToOperation": "Agregar a la operación",
+    "mapEmptyState": "No hay resultados que mostrar en el mapa",
+    "mapEmptyStateHint": "Vuelve a la lista o busca otra cosa"
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",
@@ -1106,7 +1161,10 @@
         "ic706mkiig": "Icom IC-706MKIIG",
         "rigctld": "Radio genérica vía rigctld",
         "flrig": "Radio genérica vía flrig",
-        "fakeRadio": "Radio Simulada"
+        "fakeRadio": "Radio Simulada",
+        "antenna": "Antena",
+        "key": "Manipulador",
+        "antennaGenius": "4O3A Antenna Genius"
       },
       "transports": {
         "network": "Red",
@@ -1154,7 +1212,62 @@
       "fakeDiagnostic": "Simulada",
       "fakeWholeNumberInvalid": "Debe ser un número entero, 0 o más",
       "fakeFreqInvalid": "Debe ser una frecuencia en kHz, mayor que cero",
-      "fakeModeInvalid": "Debe ser un nombre de modo, por ejemplo USB, CW, FT8"
+      "fakeModeInvalid": "Debe ser un nombre de modo, por ejemplo USB, CW, FT8",
+      "antennaInUse": "Antena en uso",
+      "keyInUse": "Manipulador en uso",
+      "noneSelected": "Ninguno",
+      "moreSettings": "Más ajustes",
+      "antennaBands": "Bandas",
+      "antennaType": "Tipo de antena",
+      "antennaTypeRequired": "Elige un tipo de antena",
+      "keyType": "Tipo de manipulador",
+      "keyTypeRequired": "Elige un tipo de manipulador",
+      "otherEquipment": "Otros equipos (antenas, manipuladores, etc.)",
+      "otherOptions": "Otras opciones",
+      "newAntenna": "Nueva antena",
+      "newKey": "Nuevo manipulador",
+      "trackStationInfo": "Registrar datos de la estación en cada QSO",
+      "includeStationInfoInAdif": "Incluir en las exportaciones ADIF",
+      "whatToTrack": "¿Qué registrar?",
+      "trackFieldRig": "Transceptor",
+      "trackFieldPower": "Potencia",
+      "watts": "Vatios",
+      "trackFieldAntenna": "Antena",
+      "trackFieldKey": "Manipulador",
+      "switchLayout": "Disposición",
+      "switchLayoutDescription": "En qué lado del conmutador están conectadas tus radios.",
+      "switchLayoutRequired": "Elige cómo está cableado el conmutador",
+      "switchCommandRefused": "El conmutador rechazó «$command» (error $code)",
+      "switchBusyTransmitting": "Ese puerto está transmitiendo — la antena no se cambió",
+      "switchNoAntenna": "Ninguna",
+      "switchAntennaFor": "Antena en el puerto $port",
+      "switchAntennaForDescription": "Cuál de tus antenas está conectada a este puerto del conmutador.",
+      "switchLayoutSides": "$antennas antenas, $radios radios",
+      "switchPortLabel": "Puerto $port",
+      "switchPortAutoHint": "sigue los datos de banda",
+      "switchPortTransmittingHint": "transmitiendo — no se puede cambiar ahora",
+      "switchCurrentStateHeader": "Estado actual",
+      "switchCurrentStateDescription": "En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.",
+      "switchWiringHeader": "Cableado",
+      "switchPortInhibitedHint": "transmisión inhibida",
+      "antennaTypes": {
+        "dipole": "Dipolo",
+        "vertical": "Vertical",
+        "yagiBeam": "Yagi / Directiva",
+        "loop": "Loop (cuadro)",
+        "longWire": "Hilo largo / EFHW",
+        "other": "Otra"
+      },
+      "keyTypes": {
+        "straight": "Manipulador recto",
+        "sideswiper": "Manipulador lateral (sideswiper)",
+        "bug": "Bug (semiautomático mecánico)",
+        "fullyAutomatic": "Manipulador electrónico automático",
+        "singlePaddle": "Paleta simple",
+        "dualPaddle": "Paleta doble",
+        "computerDriven": "Controlado por computadora",
+        "other": "Otro"
+      }
     },
     "offlineData": {
       "title": "Datos sin conexión",
@@ -1277,7 +1390,27 @@
     "settingExpectsNumber": "un número",
     "settingVanished": "«${label}» ya no está disponible",
     "settingNotStored": "«${label}» no aceptó ese valor",
-    "syncAllUnavailable": "SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí"
+    "syncAllUnavailable": "SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí",
+    "noTestOperations": "No hay operaciones de prueba que purgar",
+    "purgeTestsUnavailable": "PURGETESTS necesita mostrar un diálogo de confirmación, que no está disponible aquí",
+    "purgeTestsSomeFailed": "Se purgaron ${purged} de ${total} operaciones de prueba — el resto falló; prueba PURGETESTS de nuevo",
+    "purgeTestsContactsFailed": "Se purgaron las operaciones de prueba, pero los contactos de prueba sin operación fallaron; prueba PURGETESTS de nuevo",
+    "purgeTestsNothingToDo": "No se purgó nada",
+    "receivedPurgesSomeFailed": "Se eliminaron ${removed} de ${total} operaciones de prueba — el resto falló; prueba Revisar de nuevo",
+    "receivedPurgesFailed": "No se pudieron eliminar esas operaciones de prueba — prueba Revisar de nuevo",
+    "receivedPurgesReview": "Revisar",
+    "testOperationsPurged": {
+      "one": "Se purgó ${count} operación de prueba",
+      "other": "Se purgaron ${count} operaciones de prueba"
+    },
+    "testContactsPurged": {
+      "one": "Se purgó ${count} contacto de prueba sin operación",
+      "other": "Se purgaron ${count} contactos de prueba sin operación"
+    },
+    "receivedPurgesPending": {
+      "one": "${count} operación de prueba se eliminó en otro dispositivo",
+      "other": "${count} operaciones de prueba se eliminaron en otro dispositivo"
+    }
   },
   "commandDialog": {
     "hint": "Busca indicativos o escribe un comando",
