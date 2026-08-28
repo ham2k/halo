@@ -288,10 +288,137 @@ void main() {
     a.conduit.feed(Uint8List.fromList(
         [bleFrameMagic, bleFrameTypeAck, 8, 0, 0, 0, ...stale.buffer.asUint8List()]));
 
-    // With the accounting intact the whole next frame fits the reopened
-    // window and every byte leaves; wound back, the sender stalls partway.
+    // With the accounting intact the whole next message fits the reopened
+    // window and all 100 payload bytes leave, as three fragments each
+    // carrying its own header; wound back, the sender stalls partway.
     a.conduit.enqueueMessage(Uint8List(100));
     final sent = a.drain().fold<int>(0, (sum, p) => sum + p.length);
-    expect(sent, 100 + 6, reason: 'the frame (payload + header) must leave in full');
+    expect(sent, 100 + 3 * 6, reason: 'the message must leave in full');
+  });
+
+  test('a ping queued mid-message does not split it', () {
+    // The field failure this pins: ACK and PING bypass the window, so one
+    // can be queued while a message is half out. Without one frame per
+    // packet those bytes land inside the MSG — the receiver eats them as
+    // payload and parses the remainder as a header, and a working link
+    // dies on the first QSO that crosses while a keepalive is due.
+    final a = _Harness();
+    final b = _Harness();
+    a.conduit.sendHello(40);
+    b.conduit.sendHello(40);
+    pump(a, b);
+
+    a.conduit.enqueueMessage(Uint8List(300));
+    // Two packets out, so the message is mid-flight, then the keepalive.
+    b.conduit.feed(a.conduit.nextPacket()!);
+    b.conduit.feed(a.conduit.nextPacket()!);
+    a.conduit.sendPing();
+    pump(a, b);
+
+    expect(b.errors, isEmpty);
+    expect(b.messages.single.length, 300);
+  });
+
+  test('a fragmented message never puts two frames in one packet', () {
+    final a = _Harness();
+    final b = _Harness();
+    a.conduit.sendHello(40);
+    b.conduit.sendHello(40);
+    pump(a, b);
+
+    final payload = Uint8List.fromList(List.generate(300, (i) => i & 0xFF));
+    a.conduit.enqueueMessage(payload);
+    final packets = a.drain();
+
+    // Each packet must stand alone as one whole frame: that is what lets
+    // an ACK sit between any two of them without cutting one in half.
+    for (final packet in packets) {
+      expect(packet.length, lessThanOrEqualTo(40));
+      expect(packet[0], bleFrameMagic);
+      final length = packet[2] | (packet[3] << 8) | (packet[4] << 16) | (packet[5] << 24);
+      expect(packet.length, 6 + length);
+    }
+    expect(packets.map((p) => p[1]).toList(),
+        [...List.filled(packets.length - 1, bleFrameTypeMsgPart), bleFrameTypeMsg]);
+
+    for (final packet in packets) {
+      b.conduit.feed(packet);
+    }
+    expect(b.messages.single, payload);
+  });
+
+  test('a version 1 peer is sent the unfragmented stream', () {
+    // Shipped builds skip MSGPART as an unknown type and would deliver a
+    // TRUNCATED message — worse than the desync fragmenting cures. So the
+    // fragmentation is gated on the peer announcing version 2.
+    final hello = utf8.encode(jsonEncode({'v': 1, 'chunk': 40}));
+    final helloFrame = <int>[bleFrameMagic, bleFrameTypeHello, hello.length, 0, 0, 0, ...hello];
+    final ackFrame = <int>[bleFrameMagic, bleFrameTypeAck, 8, 0, 0, 0, ...Uint8List(8)];
+
+    final a = _Harness();
+    a.conduit.sendHello(40);
+    a.drain();
+    a.conduit.feed(Uint8List.fromList([...helloFrame, ...ackFrame]));
+    a.drain(); // our answering ack
+    expect(a.conduit.ready, isTrue);
+
+    a.conduit.enqueueMessage(Uint8List(300));
+    final packets = a.drain();
+    // One frame sliced across packets: only the first carries a header.
+    expect(packets.first[0], bleFrameMagic);
+    expect(packets.first[1], bleFrameTypeMsg);
+    expect(packets.map((p) => p.length).reduce((a, b) => a + b), 300 + 6);
+    expect(a.conduit.pendingOutboundBytes, 0);
+
+    // And a version 2 receiver still reads it — the reassembler tolerates
+    // a frame that arrives across packets.
+    final b = _Harness();
+    b.conduit.sendHello(40);
+    b.conduit.feed(Uint8List.fromList([...helloFrame, ...ackFrame]));
+    for (final packet in packets) {
+      b.conduit.feed(packet);
+    }
+    expect(b.messages.single.length, 300);
+    expect(b.errors, isEmpty);
+  });
+
+  test('the peer version is latched at the first hello', () {
+    // A peer retransmits its hello until ITS ready, which can outlast ours
+    // — so a duplicate can arrive mid-message. Honouring a changed version
+    // there swaps the meaning of the send offset between payload-relative
+    // and frame-relative: the peer gets a fragment cut mid-header, or the
+    // slice runs off the end of the message and throws out of nextPacket,
+    // where the send worker is not looking.
+    final a = _Harness();
+    final b = _Harness();
+    a.conduit.sendHello(40);
+    b.conduit.sendHello(40);
+    pump(a, b);
+
+    a.conduit.enqueueMessage(Uint8List(300));
+    final started = [a.conduit.nextPacket()!, a.conduit.nextPacket()!];
+    final hello = utf8.encode(jsonEncode({'v': 1, 'chunk': 40}));
+    a.conduit.feed(Uint8List.fromList(
+        [bleFrameMagic, bleFrameTypeHello, hello.length, 0, 0, 0, ...hello]));
+
+    for (final packet in [...started, ...a.drain()]) {
+      b.conduit.feed(packet);
+    }
+    expect(b.messages.single.length, 300);
+    expect(b.errors, isEmpty);
+    expect(a.conduit.peerProtocolVersion, 2);
+  });
+
+  test('fragments that never close hit the message cap instead of growing', () {
+    // A peer that streams MSGPARTs forever: each frame is legal on its own,
+    // so only a cap on the REASSEMBLED size stops the buffer.
+    final a = _Harness(maxMessageBytes: 100);
+    a.conduit.sendHello(100);
+    for (var i = 0; i < 5 && a.errors.isEmpty; i++) {
+      a.conduit.feed(Uint8List.fromList(
+          [bleFrameMagic, bleFrameTypeMsgPart, 40, 0, 0, 0, ...Uint8List(40)]));
+    }
+    expect(a.errors, hasLength(1));
+    expect(a.messages, isEmpty);
   });
 }

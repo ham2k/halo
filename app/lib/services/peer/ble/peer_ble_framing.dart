@@ -14,9 +14,18 @@
 // prevents the first, and the session's own cursors already absorb the
 // second.
 //
-// Wire format, per frame: `magic(1) type(1) length(4 LE) payload`, the
-// stream sliced into packets of at most the negotiated chunk size. Frames
-// need not align to packets.
+// Wire format, per frame: `magic(1) type(1) length(4 LE) payload`. Against
+// a version 2 peer, a MSG larger than the negotiated packet size is split
+// into MSGPART frames followed by a final MSG, each one whole inside a
+// single packet, so that **no frame the peer can interleave ever splits
+// another**. That is the invariant, not an optimization: ACK and PING
+// bypass the window and can be queued at any moment, and a frame spliced
+// into a half-emitted MSG is read as its payload — the receiver then
+// parses the remainder as a header and desyncs, killing a link that was
+// working. The reassembler still tolerates a frame arriving across
+// packets, which is what the HELLO does (nothing else may be sent until it
+// is out) and what a version 1 peer needs (it skips MSGPART as an unknown
+// type, so it gets the old spliceable stream — the fault it already has).
 //
 // The HELLO frame carries each side's view of the usable packet size, and
 // both sides send at the MIN of the two views. This is not politeness:
@@ -46,7 +55,16 @@ import 'dart:typed_data';
 const int bleFrameMagic = 0xB7;
 
 const int bleFrameTypeHello = 0x01;
+
+/// This build's protocol version, announced in the HELLO. Version 2 reads
+/// and writes MSGPART; version 1 (shipped builds) does not, and is sent the
+/// unfragmented stream instead.
+const int bleProtocolVersion = 2;
+
+/// A whole message, or the LAST fragment of one — either way, what
+/// completes it and hands it up.
 const int bleFrameTypeMsg = 0x02;
+
 const int bleFrameTypeAck = 0x03;
 
 /// Keepalive. BLE has no TCP-style death signal — a peer whose app-level
@@ -54,6 +72,10 @@ const int bleFrameTypeAck = 0x03;
 /// pings and times out on silence. Receivers skip the frame like any
 /// unknown type; arrival alone resets their idle clock.
 const int bleFrameTypePing = 0x04;
+
+/// A non-final fragment of a message: its payload is appended to the
+/// reassembly buffer and nothing is delivered until the closing MSG.
+const int bleFrameTypeMsgPart = 0x05;
 
 /// ATT's floor: MTU 23 minus the 3-byte header. Every link accepts this,
 /// which is what makes it safe for the HELLO sent before sizes are known.
@@ -97,6 +119,19 @@ class BleFrameConduit {
 
   int? _localChunk;
   int? _peerChunk;
+
+  /// The peer's protocol version, latched from its FIRST hello — absent
+  /// means version 1, a build that predates the field and MSGPART with it.
+  /// Latched, not re-read: a peer keeps retransmitting its hello until its
+  /// own ready, which can outlast ours, and a version that changed under a
+  /// half-emitted message would reinterpret the offset (payload-relative
+  /// on one branch, frame-relative on the other) and cut the stream mid
+  /// header.
+  int _peerVersion = 1;
+
+  /// The current message pre-encoded as one spanning frame, for a version 1
+  /// peer. Held across packets because that stream is sliced, not framed.
+  Uint8List? _legacyFrame;
   Uint8List? _helloFrame;
   int _helloOffset = 0;
 
@@ -107,7 +142,9 @@ class BleFrameConduit {
   /// dequeue into a walk or a shift of everything behind it.
   final Queue<Uint8List> _ackQueue = ListQueue();
 
-  /// The MSG frame stream: encoded frames not yet fully emitted.
+  /// Messages accepted but not yet fully framed out, held RAW: the frames
+  /// are cut at send time, because the packet size they must fit is not
+  /// known until the peer's hello lands.
   final Queue<Uint8List> _msgQueue = ListQueue();
   int _msgQueueOffset = 0;
   int _pendingOutboundBytes = 0;
@@ -145,6 +182,12 @@ class BleFrameConduit {
   int? get localChunkLimit => _localChunk;
   int? get peerChunkLimit => _peerChunk;
 
+  /// The framing the peer announced, for the same log line. A link that
+  /// fell back to version 1 carries the spliceable stream, and during a
+  /// rollout that is the difference between "the fix did not work" and
+  /// "this peer has not shipped it yet".
+  int get peerProtocolVersion => _peerVersion;
+
   /// MSG-stream bytes accepted but not yet emitted as packets — the link's
   /// stuck-peer cap reads this before every send.
   int get pendingOutboundBytes => _pendingOutboundBytes;
@@ -155,7 +198,7 @@ class BleFrameConduit {
   void sendHello(int chunkLimit) {
     if (_helloFrame != null || _failed) return;
     _localChunk = chunkLimit.clamp(bleSafeChunk, bleMaxChunk);
-    final payload = utf8.encode(jsonEncode({'v': 1, 'chunk': _localChunk}));
+    final payload = utf8.encode(jsonEncode({'v': bleProtocolVersion, 'chunk': _localChunk}));
     _helloFrame = _encodeFrame(bleFrameTypeHello, payload);
     onSendable();
   }
@@ -169,9 +212,9 @@ class BleFrameConduit {
       _fail('outbound message of ${message.length} bytes exceeds the $maxMessageBytes cap');
       return;
     }
-    final frame = _encodeFrame(bleFrameTypeMsg, message);
-    _msgQueue.add(frame);
-    _pendingOutboundBytes += frame.length;
+    final copy = Uint8List.fromList(message);
+    _msgQueue.add(copy);
+    _pendingOutboundBytes += copy.length;
     onSendable();
   }
 
@@ -214,16 +257,39 @@ class BleFrameConduit {
     if (!ready) return null;
     if (_msgQueue.isEmpty) return null;
     if (_sentMsgBytes - _peerAckedBytes >= windowBytes) return null;
-    final frame = _msgQueue.first;
-    final end = (_msgQueueOffset + chunk).clamp(0, frame.length);
-    final packet = Uint8List.sublistView(frame, _msgQueueOffset, end);
-    _msgQueueOffset = end;
-    if (_msgQueueOffset >= frame.length) {
+    final message = _msgQueue.first;
+    final Uint8List packet;
+    final bool isLast;
+    if (_peerVersion >= 2) {
+      // One frame per packet, header and all: a fragment that spilled into
+      // the next packet would let the ACK above split it. The floor chunk
+      // of 20 still leaves 14 payload bytes, so this always advances.
+      final end = (_msgQueueOffset + chunk - _headerBytes).clamp(0, message.length);
+      isLast = end >= message.length;
+      packet = _encodeFrame(
+          isLast ? bleFrameTypeMsg : bleFrameTypeMsgPart, Uint8List.sublistView(message, _msgQueueOffset, end));
+      _pendingOutboundBytes -= end - _msgQueueOffset;
+      _msgQueueOffset = end;
+    } else {
+      // Version 1: one frame sliced across packets, which an ACK can split.
+      // The peer cannot parse fragments, so this is the only stream it
+      // takes — and it is no worse than what it does with its own builds.
+      final frame = _legacyFrame ??= _encodeFrame(bleFrameTypeMsg, message);
+      final end = (_msgQueueOffset + chunk).clamp(0, frame.length);
+      isLast = end >= frame.length;
+      packet = Uint8List.sublistView(frame, _msgQueueOffset, end);
+      // Payload bytes only: the counter tracks messages accepted but not
+      // yet on the air, and the header is not part of the message.
+      _pendingOutboundBytes -= (end - _headerBytes).clamp(0, message.length) -
+          (_msgQueueOffset - _headerBytes).clamp(0, message.length);
+      _msgQueueOffset = end;
+    }
+    if (isLast) {
       _msgQueue.removeFirst();
       _msgQueueOffset = 0;
+      _legacyFrame = null;
     }
     _sentMsgBytes += packet.length;
-    _pendingOutboundBytes -= packet.length;
     return packet;
   }
 
@@ -235,8 +301,14 @@ class BleFrameConduit {
   int _pendingLength = 0;
   final BytesBuilder _pendingPayload = BytesBuilder(copy: true);
 
+  /// Fragments of the message being reassembled — MSGPART payloads waiting
+  /// for the MSG that closes them.
+  final BytesBuilder _messageBuffer = BytesBuilder(copy: true);
+
   int _recvMsgBytes = 0;
   int _lastAckedBytes = 0;
+
+  static bool _isMsgFrame(int type) => type == bleFrameTypeMsg || type == bleFrameTypeMsgPart;
 
   /// Feeds one received packet (a notification or a write) into the
   /// reassembler.
@@ -264,10 +336,17 @@ class BleFrameConduit {
           _fail('frame length $length exceeds the $maxMessageBytes cap');
           return;
         }
+        // The cap covers the REASSEMBLED message, not just this fragment:
+        // a peer sending MSGPARTs and never closing them would otherwise
+        // grow the buffer without bound, each frame legal on its own.
+        if (_isMsgFrame(type) && _messageBuffer.length + length > maxMessageBytes) {
+          _fail('reassembled message exceeds the $maxMessageBytes cap');
+          return;
+        }
         _inOffset += _headerBytes;
         _pendingType = type;
         _pendingLength = length;
-        if (type == bleFrameTypeMsg) _recvMsgBytes += _headerBytes;
+        if (_isMsgFrame(type)) _recvMsgBytes += _headerBytes;
       } else {
         final want = _pendingLength - _pendingPayload.length;
         final available = bytes.length - _inOffset;
@@ -275,7 +354,7 @@ class BleFrameConduit {
         if (take > 0) {
           _pendingPayload.add(Uint8List.sublistView(bytes, _inOffset, _inOffset + take));
           _inOffset += take;
-          if (_pendingType == bleFrameTypeMsg) _recvMsgBytes += take;
+          if (_isMsgFrame(_pendingType!)) _recvMsgBytes += take;
         }
         if (_pendingPayload.length < _pendingLength) break;
         final payload = _pendingPayload.takeBytes();
@@ -299,9 +378,12 @@ class BleFrameConduit {
     switch (type) {
       case bleFrameTypeHello:
         final int? chunk;
+        final int version;
         try {
           final decoded = jsonDecode(utf8.decode(payload));
-          chunk = decoded is Map<String, dynamic> ? (decoded['chunk'] as num?)?.toInt() : null;
+          final hello = decoded is Map<String, dynamic> ? decoded : null;
+          chunk = (hello?['chunk'] as num?)?.toInt();
+          version = (hello?['v'] as num?)?.toInt() ?? 1;
         } catch (_) {
           _fail('malformed hello');
           return;
@@ -310,6 +392,7 @@ class BleFrameConduit {
           _fail('hello carries no chunk size');
           return;
         }
+        if (_peerChunk == null) _peerVersion = version;
         _peerChunk = chunk.clamp(bleSafeChunk, bleMaxChunk);
         // Every hello — including a retransmitted duplicate — is answered
         // with an ACK carrying the current count: the ACK is the sender's
@@ -340,8 +423,15 @@ class BleFrameConduit {
           _peerAckedBytes = acked;
           onSendable();
         }
+      case bleFrameTypeMsgPart:
+        _messageBuffer.add(payload);
       case bleFrameTypeMsg:
-        onMessage(payload);
+        if (_messageBuffer.isEmpty) {
+          onMessage(payload);
+        } else {
+          _messageBuffer.add(payload);
+          onMessage(_messageBuffer.takeBytes());
+        }
       default:
         // Unknown type from a newer build: skipping the frame whole is the
         // forward-compatible move; failing would make any addition a

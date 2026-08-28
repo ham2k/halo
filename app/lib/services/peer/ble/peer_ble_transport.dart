@@ -589,7 +589,8 @@ class PeerBleLink implements PeerLink {
     // the ATT floor drags both directions to 20-byte packets, and this line
     // is what separates "BLE is just slow" from "negotiation failed".
     log?.call('BLE link $label ready '
-        '(packet size: local ${_conduit.localChunkLimit}, peer ${_conduit.peerChunkLimit})');
+        '(packet size: local ${_conduit.localChunkLimit}, peer ${_conduit.peerChunkLimit}; '
+        'peer protocol v${_conduit.peerProtocolVersion})');
     _keepaliveTimer = Timer.periodic(keepaliveInterval, (_) {
       if (now() - _lastHeardMillis > idleCutoff.inMilliseconds) {
         log?.call('BLE link $label silent past ${idleCutoff.inSeconds}s; dropping');
