@@ -133,6 +133,69 @@ void main() {
       expect(find.text('Agree Field'), findsOneWidget);
     });
 
+    // `disabled` renders a control greyed rather than hidden, so a choice
+    // that cannot be made right now says so where it is. A select that
+    // accepted the tap anyway would put the form's value out of step with
+    // whatever refused it — the Antenna Genius' routing picker on a
+    // transmitting port is the case this exists for, and its refusal lands
+    // somewhere the operator cannot see while the pane is open.
+    testWidgets('a disabled select refuses to open', (tester) async {
+      var changed = false;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'key': 'port',
+                  'label': 'Port A',
+                  'disabled': true,
+                  'options': [
+                    {'value': '1', 'label': 'Hex'},
+                    {'value': '2', 'label': 'EFHW'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {'port': '1'},
+            onChange: (key, value, state) async {
+              changed = true;
+              return null;
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Hex'), findsOneWidget, reason: 'greyed, not hidden');
+      await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
+      await tester.pumpAndSettle();
+
+      // The menu never opened, so the other option is nowhere on screen.
+      expect(find.text('EFHW'), findsNothing);
+      expect(changed, isFalse);
+
+      // The arrow keys are the OTHER way into a select — `_handleSelectKeyEvent`
+      // bypasses the button's own onChanged entirely. What keeps them from
+      // reaching a disabled field is that it will not take focus at all, so
+      // that is what is asserted here: the guard inside the handler is
+      // belt-and-braces against this changing, and a test that sent a key
+      // event to an unfocused field would pass whether or not the guard
+      // existed.
+      final node = find
+          .descendant(of: find.byType(DropdownButtonFormField<dynamic>), matching: find.byType(Focus))
+          .evaluate()
+          .map((e) => (e.widget as Focus).focusNode)
+          .firstWhere((n) => n != null)!;
+      node.requestFocus();
+      await tester.pump();
+      expect(node.hasFocus, isFalse, reason: 'a disabled select must not be reachable by keyboard either');
+      expect(changed, isFalse);
+    });
+
     testWidgets('arrow keys cycle a focused select field through its options', (tester) async {
       Map<String, dynamic>? changedTo;
       await tester.pumpWidget(MaterialApp(

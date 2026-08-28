@@ -25,6 +25,16 @@ const kCategoryAntenna = 'antenna';
 /// against a QSO.
 const kCategoryKey = 'key';
 
+/// A switch routing a set of antennas to a set of devices — a 4O3A Antenna
+/// Genius today.
+///
+/// Not an antenna. The distinction is what the whole category is for: an
+/// [kCategoryAntenna] node is a piece of wire in the air that a QSO can
+/// credit, and a switch is the thing that decides WHICH of them is connected
+/// right now. Filing a switch under antennas would put a relay box in the
+/// list the operator picks their antenna from.
+const kCategoryAntennaSwitch = 'antennaSwitch';
+
 /// Old [EquipmentNode.typeKey] values, mapped to what the catalogue calls
 /// them now.
 ///
@@ -203,6 +213,133 @@ class EquipmentChannel {
       'mode: $mode, usedBy: ${usedBy ?? (heldByUnknown ? 'unnamed' : 'nobody')})';
 }
 
+/// One antenna port on a switch, as the switch itself describes it.
+///
+/// Live-only, like [EquipmentChannel]: this is the switch's own inventory,
+/// never the operator's. Which of the operator's antenna nodes is on this
+/// port is configuration, and lives in the node's config against [key].
+@immutable
+class SwitchAntenna {
+  /// The switch's own identifier for the port — `'1'`..`'8'` on an Antenna
+  /// Genius. What a [SwitchPort.selectedAntennaKey] refers to, and what the
+  /// operator's config keys its antenna-node link by, so it must be the
+  /// equipment's own numbering and never a position in this list.
+  final String key;
+
+  /// What the switch calls it — an Antenna Genius' configured `name=`.
+  final String name;
+
+  /// False for a port the switch knows about but has nothing wired to.
+  ///
+  /// An Antenna Genius reports all eight ports whether or not they are set
+  /// up, distinguishing them only by an all-zero band mask. Without this the
+  /// operator picks their antenna out of a list padded with four entries
+  /// called `Antenna_4` through `Antenna_7`.
+  final bool configured;
+
+  const SwitchAntenna({required this.key, required this.name, this.configured = true});
+
+  @override
+  bool operator ==(Object other) =>
+      other is SwitchAntenna && other.key == key && other.name == name && other.configured == configured;
+
+  @override
+  int get hashCode => Object.hash(key, name, configured);
+
+  @override
+  String toString() => 'SwitchAntenna($key/$name${configured ? '' : ', unconfigured'})';
+}
+
+/// One device port on a switch — where a radio plugs in — and what it is
+/// currently routed to.
+@immutable
+class SwitchPort {
+  /// The switch's own identifier, `'1'`/`'2'` on an Antenna Genius. See
+  /// [SwitchAntenna.key] for why this is never an index.
+  final String key;
+
+  /// What the switch calls it. An Antenna Genius numbers its ports and the
+  /// panel on the front letters them, so this is `'A'`/`'B'` where [key] is
+  /// `'1'`/`'2'` — the operator reads the letters off the box.
+  final String label;
+
+  /// Which [SwitchAntenna.key] this port is routed to, or null when the
+  /// switch says it is on nothing.
+  final String? selectedAntennaKey;
+
+  /// The switch is choosing this port's antenna itself, from band data.
+  ///
+  /// Worth showing rather than hiding: a selection the operator makes here
+  /// is honoured immediately but stands only until the next band change,
+  /// and a port that silently reverted would read as the app failing to
+  /// send the command.
+  final bool auto;
+
+  /// What the switch believes this port's band is, in its own words — an
+  /// Antenna Genius' `160m`, `20m`. Null when it reports none.
+  final String? band;
+
+  /// The radio feeding this port its band data, by the name that radio gave
+  /// itself — a FlexRadio's nickname.
+  ///
+  /// "Which radio feeds this port", not "which radio is using it": a switch
+  /// names the radio a port is CONFIGURED to follow whether or not that
+  /// radio is on a band right now.
+  ///
+  /// This is the switch answering, for free, most of the question a
+  /// transceiver's own antenna ports exist to answer. Nothing joins it to an
+  /// [EquipmentNode] yet — the operator's name for a radio and the name the
+  /// radio gave itself are not the same string, and guessing that they are
+  /// would silently mis-attribute a QSO.
+  final String? radioName;
+
+  /// What that radio is tuned to, kHz with decimals — the unit every
+  /// frequency crosses this boundary in (docs/design/cat.md § Units).
+  final double? freqKHz;
+
+  /// The port is keyed. Nothing may switch a relay under RF.
+  final bool transmitting;
+
+  /// The switch is refusing to transmit on this port — an interlock with the
+  /// other port holding the antenna it wants.
+  final bool inhibited;
+
+  const SwitchPort({
+    required this.key,
+    required this.label,
+    this.selectedAntennaKey,
+    this.auto = false,
+    this.band,
+    this.radioName,
+    this.freqKHz,
+    this.transmitting = false,
+    this.inhibited = false,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is SwitchPort &&
+      other.key == key &&
+      other.label == label &&
+      other.selectedAntennaKey == selectedAntennaKey &&
+      other.auto == auto &&
+      other.band == band &&
+      other.radioName == radioName &&
+      other.freqKHz == freqKHz &&
+      other.transmitting == transmitting &&
+      other.inhibited == inhibited;
+
+  @override
+  int get hashCode =>
+      Object.hash(key, label, selectedAntennaKey, auto, band, radioName, freqKHz, transmitting, inhibited);
+
+  @override
+  String toString() => 'SwitchPort($key/$label -> ${selectedAntennaKey ?? 'none'}'
+      '${auto ? ', auto' : ''}${band != null ? ', $band' : ''}'
+      '${radioName != null ? ', $radioName' : ''}${freqKHz != null ? ', $freqKHz kHz' : ''}'
+      '${transmitting ? ', TX' : ''}${inhibited ? ', inhibited' : ''})';
+}
+
 /// Everything the UI needs to know about one node's connection.
 @immutable
 class EquipmentState {
@@ -261,6 +398,16 @@ class EquipmentState {
   /// and for one that has not said yet.
   final List<EquipmentChannel> channels;
 
+  /// The antenna ports an antenna switch offers — see [SwitchAntenna]. Empty
+  /// for everything that is not a switch, and for a switch that has not said
+  /// yet.
+  final List<SwitchAntenna> switchAntennas;
+
+  /// The device ports an antenna switch offers, and what each is routed to —
+  /// see [SwitchPort]. Always reported together with [switchAntennas], since
+  /// a port names its antenna by key.
+  final List<SwitchPort> switchPorts;
+
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
@@ -271,6 +418,8 @@ class EquipmentState {
     this.diagnostic,
     this.problem,
     this.channels = const [],
+    this.switchAntennas = const [],
+    this.switchPorts = const [],
   });
 
   EquipmentState copyWith({
@@ -285,6 +434,8 @@ class EquipmentState {
     String? problem,
     bool clearProblem = false,
     List<EquipmentChannel>? channels,
+    List<SwitchAntenna>? switchAntennas,
+    List<SwitchPort>? switchPorts,
   }) =>
       EquipmentState(
         status: status ?? this.status,
@@ -303,5 +454,7 @@ class EquipmentState {
         // has to be sayable.
         problem: clearProblem ? null : (problem ?? this.problem),
         channels: channels ?? this.channels,
+        switchAntennas: switchAntennas ?? this.switchAntennas,
+        switchPorts: switchPorts ?? this.switchPorts,
       );
 }

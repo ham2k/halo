@@ -755,6 +755,229 @@ for as long as the poller stayed fast — seconds, on a 300 ms setting.
 The settings live under `target: 'current-radio'` (settings_registry.dart), reached from the tune
 icon beside the Station panel's transceiver picker.
 
+## Antenna switches
+
+The first equipment in this layer that is not a radio, and what it cost is
+one interface split.
+
+`EquipmentSession` used to require `setFrequency`/`setMode`/`setPower`. The
+type-only categories (antenna, CW key) dodged that by throwing out of
+`createSession`, which works only for equipment that never connects. A switch
+connects, so it would have had to no-op three tuning methods — leaving "this
+radio ignores setFrequency" and "this is not a radio" the same shape. The
+base now carries only what is about a *connection*, `TransceiverSession` adds
+the three tuning methods, and `AntennaSwitchSession` adds `selectAntenna`.
+`CatService` narrows with `is` at the three sites that tune, all of which
+already acted on the designated radio alone.
+
+The same rewrite fixed a guard that had quietly become wrong:
+`_EquipmentTile` asked `category != kCategoryTransceiver` to decide whether to
+draw a plug. That was the same question as "has nothing to connect to" only
+while every other category was inert. It asks the **transport** now
+(`NoneTransport`), or the first non-radio driver that connects would have had
+no way to connect.
+
+**A switch's state is live, and reported as one picture.** `reportSwitchState`
+takes the antenna ports and the device ports **together** rather than as two
+calls, because a port names its antenna by key and means nothing without the
+list to resolve it against — reported separately, every reconnect would put a
+frame on screen where each port pointed at an antenna that had not arrived,
+and the panel would draw an empty selection over a switch that was answering
+perfectly well. Neither list is ever persisted, for the reason § Persistence
+gives: a remembered routing is a claim about relays nobody has asked in a
+while.
+
+**Which side the radios are on is the operator's to say.** An Antenna Genius
+reports `ports=2 antennas=8` because that is how the box is *built*; the same
+hardware run backwards is a 2x8, and nothing on the wire can tell. So the
+counts come from the device and the wiring is a config field
+(`switchLayout`) — the one thing the switch cannot know about itself.
+
+The two options are named by what is on each side — "8 Antennas, 2 Radios" —
+rather than as a default and a deviation from it. The operator is looking at
+their own coax, and only one of the two counts matches what they plugged in
+where; "as sold" asks them to know how the product is marketed instead. The
+counts come from the driver's catalogue defaults, which are the 8x2's, and the
+Station panel relabels them from what a connected switch actually reported —
+an 8x1 has one device port and would otherwise be offered a count it can see
+is wrong, on the one field whose whole job is matching the box in front of
+it.
+
+**The silence watchdog was fed by `VfoReading`s alone.** So a switch — which
+has no VFO and never reports one — was marked `stale` ("Not Responding") 30
+seconds after every connect, over a perfectly healthy socket. That was
+invisible while this layer held only radios, and it is the shape of bug the
+whole category was always going to find: anything the manager derives from a
+*reading* silently excludes equipment that does not make readings. Any report
+from the equipment now re-arms it (`_noteAlive`), and `staleAfter` joined
+`reconnectDelay`/`idleRetryFirst` as injectable, for the reason those give.
+
+That fixed the false positive but not the real silence: a switch that pushes
+only on change says nothing at all while nobody touches it. So
+`AntennaGeniusSession` re-issues `sub port all` every 10 s — a backstop, not a
+cadence, deliberately under the 30 s window with room for one to go missing.
+It is the same command bring-up uses, verified idempotent on hardware
+(re-subscribing answers with the full port list and accumulates nothing), so
+the exchange that proves the link is alive also repairs a push that was never
+delivered. `expectedUpdateInterval` stays null regardless: it describes how a
+change reaches us, and a change still arrives the moment it happens — the same
+distinction FlexRadio's 60 s resync draws.
+
+**The routing lives in the equipment's editor, not on its row.** The equipment
+list is what the station is made OF; a control surface there would make the
+switch the one row in it that does something. So the editor grows a **Current
+State** section for a connected switch — one picker per device port — and the
+row stays the same shape as every other node's. It sits ABOVE the **Wiring**
+section that holds the layout and the antenna links: an operator opening this
+dialog mid-operation wants to know what the switch is doing, where how it is
+wired is answered once and rarely revisited. The layout field is the driver's
+own, lifted out of the connection block and re-emitted under Wiring so it sits
+with the links it belongs with.
+
+Those pickers are the only fields in that form that act as they are touched
+rather than on save: routing a port is a command, and an operator who then
+cancels the pane has still moved the relay. Their keys are stripped before the
+values are stored (`switchPortRoutingFormKey`), because persisting where a
+port is pointing is exactly the stale claim § Persistence forbids. Two known
+limits: the pickers do not follow the switch while the pane is open —
+FormRenderer reads an initial value once — and a port that is transmitting is
+rendered disabled, which required teaching `select` to honour `disabled` at
+all. It did not: the renderer's own note said a select carrying the attribute
+renders fully editable, "worse than the attribute not existing". Offering the
+control, taking the tap and having the driver refuse it would put the form out
+of step with the hardware, with the refusal landing on a panel the operator
+cannot see behind the pane.
+
+**The switch names the radio on each port, and the app does not act on it.**
+A port line carries the driving radio's own nickname, its band and its
+frequency (`nickname=RadioRoom band=5 freq=14.074000`), so Current State says
+what each port is *doing* rather than only what it is connected to.
+
+That is most of the question a transceiver's own antenna ports exist to
+answer, arriving for free — and it is deliberately not joined to an
+`EquipmentNode`. The operator's name for a radio and the name the radio gave
+itself are different strings, and matching them would silently mis-attribute a
+QSO the first time they disagreed. `SwitchPort.radioName` is what the switch
+said, nothing more.
+
+Two things the wire does not spell out and the code depends on: a port names
+the radio it is CONFIGURED to follow whether or not that radio is on a band
+(the bench 8x2 named the same Flex on both ports while reporting `band=0` for
+one), so this is "which radio feeds this port", not "which radio is using it";
+and `freq=0.000000` is "nothing to say" rather than a frequency, the same
+one-field-two-meanings convention as `rxant=0` and `band=0`. The frequency is
+MHz on the wire and kHz past the driver's boundary, per § Units — the
+conversion app-polo shipped wrong.
+
+The line also carries `source=` naming what drives the port (`AUTO` and `FLEX`
+observed). It is not parsed: `auto` already carries the behaviour and
+`radioName` the identity, so a third field would be surface with no reader.
+
+**A problem stands until the thing that caused it goes away.** Reporting null
+on every successful reply looks equivalent to that and is not, once a resync
+exists: the 10 s `sub port all`'s own acknowledgement is a successful reply, so
+a "that port is transmitting" warning — or a refusal for a verb the firmware
+does not have — was wiped within ten seconds while the condition still held.
+The session therefore tracks what its standing problem is ABOUT, and only the
+matching event clears it: a command succeeding retires a refusal and says
+nothing about a keyed port, which only that port unkeying can clear. No unit
+test could see the original bug, because none of them let the resync timer
+fire.
+
+**Antenna ports are named by number AND name** — "Antenna on port 1 - Hex".
+The number is what is printed beside the socket on the back of the box; the
+name is what an operator with three antennas actually knows them by. Neither
+alone matches a row to a piece of coax.
+
+**The operator's antennas are linked to the switch's ports, not renamed by
+it.** A switch calls its port whatever somebody typed into the switch's own
+web page, possibly years ago; the app already has antenna nodes with the
+operator's own names and band coverage. The link field is emitted by
+`station_panel.dart`, not by the driver, for exactly the reason the antenna
+`bands` field beside it is: a driver is pure catalogue data with no access to
+the station's inventory. When the switch is disconnected the editor falls back
+to `EquipmentDriver.antennaPortCount` — the case that matters, since setting a
+switch up is something an operator does before ever connecting it.
+
+### 4O3A Antenna Genius
+
+Verified against an 8x2 on firmware 4.1.16. 4O3A does not publish the
+protocol, so `antenna_genius_codec.dart` and its test fixtures ARE the
+specification — every constant in either is something the switch actually
+said, and the verb set was enumerated by probing.
+
+It is the SmartSDR API's envelope, which is no coincidence: `C<seq>|verb sub`
+out, `R<seq>|code|payload` back, `S0|payload` unsolicited, `\n`-terminated.
+So the framing is shared — `line_framer.dart`, extracted from the FlexRadio
+driver, per this document's own rule that duplicated frame parsing duplicates
+parsing bugs.
+
+Three findings that a reading of the wire would not have given, and that the
+code depends on:
+
+- **`port set N rxant=X` succeeds while the port is in AUTO, and does not
+  clear it.** `auto` is not settable over this API at all (`port set 1 auto=1`
+  is refused). So the app cannot take a switch out of band-following, and a
+  selection the operator makes stands only until the next band change — which
+  is why the port rows say `following band data` rather than hiding it. A port
+  that silently reverted would read as the app having failed to send.
+- **`txant` follows `rxant` on the switch's own side.** One write moves both,
+  except on a port its owner configured receive-only — where moving tx is not
+  ours to do anyway.
+- **A non-zero response code is not a connection error.** The switch is
+  answering, and reconnecting cannot make it accept a verb it does not have,
+  so it goes through `reportProblem` — the line § Drivers never touch app
+  state draws.
+
+Two traps in the payloads, both of which read as working code:
+
+- **`rxant=0` is "no antenna", not antenna zero**, and `band=0` is the band
+  table's own `None` entry. The switch uses one field for both meanings, so a
+  literal read routes the panel at a port that does not exist.
+- **An all-zero band mask marks an unwired port.** An 8x2 with three antennas
+  set up still reports all eight, distinguishable only this way; without the
+  check the operator picks their antenna from a list padded with five entries
+  called `Antenna_4` upwards.
+
+`selectAntenna` **refuses a port that is transmitting** rather than queueing
+it. Switching a relay under RF is what destroys one, the switch does not
+refuse it for us — it accepted every `port set` it was given on the bench —
+and a selection made during someone else's transmission is stale by the time
+the port unkeys.
+
+**Nothing is published until bring-up finishes.** The switch answers `antenna
+list` with one line per antenna port and sends each in its own TCP segment, so
+publishing per line — or per chunk, which is barely better — rebuilds the
+Station panel seven to ten times on every connect, each rebuild showing one
+more antenna than the last. That was measured against the hardware, not
+inferred; the unit tests fed whole chunks and saw none of it. The `sub port
+all` reply is answered last and is an exact boundary, which is why it is used
+rather than a settle timer. It releases the picture whether the subscription
+was accepted or REFUSED — a switch that will not subscribe still answered the
+inventory, and a blank panel on an otherwise fine connection is worse than a
+partial one.
+
+**It announces itself**, on UDP broadcast 9007 — the same port number its TCP
+API listens on, and the same non-relationship a Flex's 4992 has: a different
+protocol on a different socket. Unlike the Flex there is no VITA-49 wrapper,
+just a CRLF-terminated ASCII line:
+
+    AG ip=10.0.0.67 port=9007 v=4.1.16 serial=00-00-00 name=Antenna_Genius
+       ports=2 antennas=8 mode=master uptime=6143110
+
+Keyed by serial, per § Discovery's rule about a re-announcing device. The
+announcement carries `ip=` and the address is taken from it rather than from
+the datagram's sender: the switch is stating where to connect, which is
+something the packet's envelope does not know. A datagram that does not open
+with `AG ` is ignored — 9007 is a port number, not a protocol.
+
+**Not wired to anything yet.** The switch knows which antenna is live and the
+app knows which of its antenna nodes that is, but nothing reads it —
+`designatedFor(kCategoryAntenna)` is still the operator's own pick. That
+join, and a transceiver's own antenna ports (a Flex has two, most rigs one),
+are the next step and are what § Where this is going means by "ports,
+port-to-port connections".
+
 ## Where this is going
 
 Shipped: the type registry, the TCP transport, the FlexRadio driver, UDP discovery, a Station

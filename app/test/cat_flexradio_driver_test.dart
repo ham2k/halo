@@ -60,6 +60,9 @@ class _FakeSink implements EquipmentSink {
   @override
   void reportChannels(List<EquipmentChannel> list) => channels = list;
 
+  @override
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
+
   EquipmentChannel channel(String key) => channels.firstWhere((c) => c.key == key);
 }
 

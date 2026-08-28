@@ -22,6 +22,7 @@ import '../discovery.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../transports/udp_broadcast.dart';
+import 'line_framer.dart';
 
 /// Belt-and-suspenders against a subscription silently going stale — a
 /// dropped WiFi/NAT mapping or a radio-side hiccup produces no error to
@@ -41,8 +42,6 @@ const _resyncInterval = Duration(seconds: 60);
 /// at a blank row wondering.
 const _sliceRefreshSettle = Duration(seconds: 3);
 
-const _lineFeed = 0x0a;
-const _carriageReturn = 0x0d;
 
 class FlexRadioDriver extends EquipmentDriver {
   const FlexRadioDriver();
@@ -226,7 +225,7 @@ FlexDiscovery? parseFlexDiscovery(List<int> datagram) {
 
 String? _nonEmpty(String? value) => (value == null || value.isEmpty) ? null : value;
 
-class FlexRadioSession implements EquipmentSession {
+class FlexRadioSession implements TransceiverSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -256,8 +255,7 @@ class FlexRadioSession implements EquipmentSession {
   bool _wantUpdates = false;
   Timer? _resyncTimer;
 
-  /// Bytes received since the last complete line.
-  final _residual = <int>[];
+  final _framer = LineFramer();
 
   void _sendCommand(String command) => _sink.send(utf8.encode('C${_seq++}|$command\n'));
 
@@ -300,13 +298,8 @@ class FlexRadioSession implements EquipmentSession {
 
   @override
   void handleData(Uint8List chunk) {
-    for (final byte in chunk) {
-      if (byte == _lineFeed) {
-        _handleLine(utf8.decode(_residual, allowMalformed: true));
-        _residual.clear();
-      } else if (byte != _carriageReturn) {
-        _residual.add(byte);
-      }
+    for (final line in _framer.add(chunk)) {
+      _handleLine(line);
     }
   }
 

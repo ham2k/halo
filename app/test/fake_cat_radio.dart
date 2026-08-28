@@ -47,7 +47,7 @@ class _AlwaysConnectingTransport extends EquipmentTransport {
       _AlwaysOpenConnection();
 }
 
-class _SilentSession implements EquipmentSession {
+class _SilentSession implements TransceiverSession {
   @override
   void handleData(Uint8List chunk) {}
   @override

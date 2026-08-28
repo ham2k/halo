@@ -87,7 +87,7 @@ class FlrigDriver extends EquipmentDriver {
 /// unanswered question".
 enum _Ask { frequency, mode, power, ignored }
 
-class FlrigSession implements EquipmentSession {
+class FlrigSession implements TransceiverSession {
   final EquipmentSink _sink;
 
   FlrigSession(this._sink);

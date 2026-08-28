@@ -552,6 +552,12 @@ class FormRendererState extends State<FormRenderer> {
     }
     if (_isSubmitting) return KeyEventResult.ignored;
     final field = _fields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+    // Belt-and-braces: this path bypasses the button's own onChanged, so an
+    // arrow key would otherwise set a value the tap handler refuses. Today a
+    // disabled DropdownButtonFormField will not take focus at all, so the
+    // event cannot arrive — that is asserted in form_renderer_test.dart, and
+    // it is exactly the kind of thing a Flutter upgrade changes quietly.
+    if (field['disabled'] == true) return KeyEventResult.ignored;
     final options = (field['options'] as List?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[];
     if (options.isEmpty) return KeyEventResult.ignored;
 
@@ -924,12 +930,13 @@ class FormRendererState extends State<FormRenderer> {
           // hidden, so a field that does not apply here says so instead of
           // sending an operator hunting for it.
           //
-          // `disabled` is honoured HERE and on the checkbox, and nowhere
-          // else — those are the two the app's own forms lock. It is not
-          // documented for extension authors for that reason: a select or a
-          // number field carrying it would render fully editable, which is
-          // worse than the attribute not existing. Implement the type before
-          // documenting it.
+          // `disabled` is honoured HERE, on the checkbox and on `select`,
+          // and nowhere else. It is still not documented for extension
+          // authors: a type that does not implement it renders fully
+          // editable, which is worse than the attribute not existing.
+          // Implement the type before documenting it — and every way INTO
+          // that type, which for `select` is three: the inline dropdown, the
+          // settings-row picker dialog, and the arrow keys on a focused one.
           enabled: el['disabled'] != true,
           controller: _controllers[key],
           focusNode: _focusNodes[key],
@@ -984,7 +991,15 @@ class FormRendererState extends State<FormRenderer> {
                 child: Text(opt['label'] as String),
               )
           ],
-          onChanged: _isSubmitting
+          // Greyed rather than hidden, same as the text field's and the
+          // checkbox's — a choice that cannot be made right now should say
+          // so where it is, not vanish and send the operator hunting. The
+          // Antenna Genius' routing picker on a port that is transmitting is
+          // the case this exists for: offering it, taking the tap and having
+          // the driver refuse it puts the form's value out of step with the
+          // hardware, and the refusal lands on a panel behind the pane where
+          // the operator cannot see it.
+          onChanged: _isSubmitting || el['disabled'] == true
               ? null
               : (val) {
                   // An `isAction` option (the web serial transport's
@@ -1180,7 +1195,10 @@ class FormRendererState extends State<FormRenderer> {
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
       trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
-      onTap: _isSubmitting ? null : () => _openSelectDialog(el),
+      // Same rule as the inline control and the arrow keys: all three ways
+      // into a select have to agree, or `disabled` means "disabled unless you
+      // reach it the other way".
+      onTap: _isSubmitting || el['disabled'] == true ? null : () => _openSelectDialog(el),
       mouseCursor: SystemMouseCursors.click,
     );
   }

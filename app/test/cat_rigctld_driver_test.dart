@@ -42,6 +42,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
+
+  @override
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
 }
 
 extension on RigctldSession {

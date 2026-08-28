@@ -1163,7 +1163,8 @@
         "flrig": "Generic Radio via flrig",
         "antenna": "Antenna",
         "key": "CW Key",
-        "fakeRadio": "Fake Radio"
+        "fakeRadio": "Fake Radio",
+        "antennaGenius": "4O3A Antenna Genius"
       },
       "transports": {
         "network": "Network",
@@ -1250,7 +1251,23 @@
       "fakeDiagnostic": "Simulated",
       "fakeWholeNumberInvalid": "Must be a whole number, 0 or more",
       "fakeFreqInvalid": "Must be a frequency in kHz, greater than zero",
-      "fakeModeInvalid": "Must be a mode name, e.g. USB, CW, FT8"
+      "fakeModeInvalid": "Must be a mode name, e.g. USB, CW, FT8",
+      "switchLayout": "Layout",
+      "switchLayoutDescription": "Which side of the switch your radios are plugged into.",
+      "switchLayoutRequired": "Choose how the switch is wired",
+      "switchCommandRefused": "The switch refused \"$command\" (error $code)",
+      "switchBusyTransmitting": "That port is transmitting — antenna not changed",
+      "switchNoAntenna": "None",
+      "switchAntennaFor": "Antenna on port $port",
+      "switchAntennaForDescription": "Which of your antennas is connected to this port on the switch.",
+      "switchLayoutSides": "$antennas Antennas, $radios Radios",
+      "switchPortLabel": "Port $port",
+      "switchPortAutoHint": "follows band data",
+      "switchPortTransmittingHint": "transmitting — cannot change now",
+      "switchCurrentStateHeader": "Current State",
+      "switchCurrentStateDescription": "Which antenna each radio port is on right now. Changes take effect immediately.",
+      "switchWiringHeader": "Wiring",
+      "switchPortInhibitedHint": "transmit inhibited"
     },
     "offlineData": {
       "title": "Offline Data",

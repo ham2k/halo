@@ -143,7 +143,7 @@ class FakeRadioDriver extends EquipmentDriver {
   }
 }
 
-class FakeRadioSession implements EquipmentSession {
+class FakeRadioSession implements TransceiverSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports

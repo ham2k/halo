@@ -197,6 +197,7 @@ void main() {
         'rigctld-tcp',
         'flrig-tcp',
         'fake-radio',
+        'antenna-genius-tcp',
         'antenna-none',
         'key-none',
       },
@@ -364,13 +365,16 @@ void main() {
     // CI-V belongs on the polling side HERE and only here: transceive can't
     // be read back, so a fresh session assumes the poll and drops the claim
     // once the radio announces on its own (cat_icom_civ_test.dart).
-    const pushes = {'flexradio', 'fake-radio'};
+    const pushes = {'flexradio', 'fake-radio', 'antenna-genius'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.
+    // Everything else in the catalogue connects, whether or not it is a
+    // radio: scoping this to transceivers let the first non-radio driver
+    // that connects skip the check entirely.
     final connectable = [
       for (final type in registry.types)
-        if (type.category == kCategoryTransceiver) type,
+        if (type.transportKey != NoneTransport.transportKey) type,
     ];
 
     for (final type in connectable) {
@@ -410,4 +414,7 @@ class _SilentSink implements EquipmentSink {
 
   @override
   void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
+
+  @override
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
 }

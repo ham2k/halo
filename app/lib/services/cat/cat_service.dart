@@ -161,6 +161,13 @@ class CatService extends ChangeNotifier {
   /// minute to watch one. It must never be zero: the backoff doubles it, and
   /// zero doubled is still zero, which is a tight loop rather than a retry.
   final Duration idleRetryFirst;
+
+  /// How long a connected node may say nothing before it is marked
+  /// [EquipmentState.stale]. Injectable for the same reason [reconnectDelay]
+  /// is: a test asserting what feeds the watchdog should not sit through
+  /// half a minute to watch it.
+  final Duration staleAfter;
+
   Timer? _idleRetryTimer;
   late Duration _idleRetryDelay = idleRetryFirst;
 
@@ -194,7 +201,8 @@ class CatService extends ChangeNotifier {
       void Function(String event, [Map<String, Object?> properties])? onTrack,
       this.reconnectDelay = _defaultReconnectDelay,
       this.now = realNowUtc,
-      this.idleRetryFirst = _idleRetryFirst})
+      this.idleRetryFirst = _idleRetryFirst,
+      this.staleAfter = _staleAfter})
       : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
         registry = registry ?? EquipmentRegistry(),
         _onTrack = onTrack,
@@ -380,11 +388,35 @@ class CatService extends ChangeNotifier {
     final uuid = _radio1;
     if (uuid == null) return;
     final session = _runtimes[uuid]?.session;
-    if (session == null) return;
+    // Only a transceiver has RF output to set. radio1 is always one today,
+    // so this is a type narrowing rather than a reachable branch — but the
+    // designation is a stored uuid, and nothing stops a record naming a
+    // switch from being read back into it.
+    if (session is! TransceiverSession) return;
     try {
       session.setPower(watts);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:set-power');
+    }
+  }
+
+  /// Routes an antenna switch's device port to one of its antenna ports.
+  ///
+  /// Addressed by node uuid rather than through a designation, unlike
+  /// [setPower]: a station can run several switches and the operator is
+  /// acting on the row in front of them, not on a designated one.
+  ///
+  /// A no-op on a node that is not connected, or whose driver does not route
+  /// anything. The panel only offers this on a connected switch, so both are
+  /// races rather than states — the operator tapping a selection as the
+  /// connection drops.
+  void selectAntenna(String uuid, String portKey, String antennaKey) {
+    final session = _runtimes[uuid]?.session;
+    if (session is! AntennaSwitchSession) return;
+    try {
+      session.selectAntenna(portKey, antennaKey);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:select-antenna');
     }
   }
 
@@ -873,6 +905,23 @@ class CatService extends ChangeNotifier {
         if (listEquals(stateFor(uuid).channels, channels)) return;
         _setState(uuid, stateFor(uuid).copyWith(channels: channels));
       },
+      onSwitchState: (antennas, ports) {
+        if (runtime.connection != connection) return;
+        // The switch said something, so it is not silent — whatever it said,
+        // and whether or not any of it differs from last time.
+        //
+        // Without this the watchdog is fed by VfoReadings alone, and
+        // equipment that has no VFO to report goes stale 30 s after every
+        // connect however healthy it is. That was invisible while the only
+        // thing in this layer was radios.
+        _noteAlive(uuid, runtime);
+        final state = stateFor(uuid);
+        // Both compared before either is written: a switch reports the whole
+        // picture on every port change, so the antenna list is identical
+        // almost every time and only the ports actually moved.
+        if (listEquals(state.switchAntennas, antennas) && listEquals(state.switchPorts, ports)) return;
+        _setState(uuid, state.copyWith(switchAntennas: antennas, switchPorts: ports));
+      },
       onDiagnostic: (note) {
         // Same guard, same reason: a superseded session's account of itself
         // is about a connection nobody is looking at any more.
@@ -1148,12 +1197,23 @@ class CatService extends ChangeNotifier {
     }
   }
 
+  /// The equipment just spoke: restart the silence watch, and drop the stale
+  /// mark if it was set.
+  ///
+  /// Anything at all counts, including a report identical to the last one —
+  /// a radio answering "still 14074" is a radio that is answering, and a
+  /// switch restating its routing is a switch with a live socket.
+  void _noteAlive(String uuid, _NodeRuntime runtime) {
+    _armStaleWatch(uuid, runtime);
+    if (runtime.state.stale) _setState(uuid, runtime.state.copyWith(stale: false));
+  }
+
   /// Restarts the silence watch. Any reading at all counts, including one
   /// that repeats the last: a radio answering "still 14074" is a radio that
   /// is answering.
   void _armStaleWatch(String uuid, _NodeRuntime runtime) {
     runtime.staleTimer?.cancel();
-    runtime.staleTimer = Timer(_staleAfter, () {
+    runtime.staleTimer = Timer(staleAfter, () {
       if (_disposed) return;
       final current = _runtimes[uuid];
       if (current == null || current.state.status != EquipmentStatus.connected) return;
@@ -1165,8 +1225,7 @@ class CatService extends ChangeNotifier {
   void _applyReading(String uuid, VfoReading reading) {
     final runtime = _runtimeFor(uuid);
     // The radio said something, so it is not silent — whatever it said.
-    _armStaleWatch(uuid, runtime);
-    if (runtime.state.stale) _setState(uuid, runtime.state.copyWith(stale: false));
+    _noteAlive(uuid, runtime);
     final merged = VfoReading(
       freqKHz: reading.freqKHz ?? runtime.state.vfo.freqKHz,
       // CW-R is reverse-sideband CW, not a mode of its own to the rest of the
@@ -1329,6 +1388,9 @@ class CatService extends ChangeNotifier {
     final previous = runtime!.lastSent;
     if (wanted == previous) return;
 
+    // Same narrowing as setPower: nothing without a VFO is tunable.
+    if (session is! TransceiverSession) return;
+
     try {
       // Per field, and against what was last SENT rather than what the
       // radio last reported: a radio that hasn't confirmed yet would
@@ -1474,6 +1536,7 @@ class _NodeSink implements EquipmentSink {
   final void Function(String?) onDiagnostic;
   final void Function(String?) onProblem;
   final void Function(List<EquipmentChannel>) onChannels;
+  final void Function(List<SwitchAntenna>, List<SwitchPort>) onSwitchState;
 
   _NodeSink({
     required this.connection,
@@ -1482,6 +1545,7 @@ class _NodeSink implements EquipmentSink {
     required this.onDiagnostic,
     required this.onProblem,
     required this.onChannels,
+    required this.onSwitchState,
   });
 
   @override
@@ -1501,4 +1565,8 @@ class _NodeSink implements EquipmentSink {
 
   @override
   void reportChannels(List<EquipmentChannel> channels) => onChannels(channels);
+
+  @override
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) =>
+      onSwitchState(antennas, ports);
 }

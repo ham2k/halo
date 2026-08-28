@@ -26,6 +26,7 @@ import '../../i18n/strings.g.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/antenna_driver.dart';
+import 'drivers/antenna_genius_driver.dart';
 import 'drivers/fake_radio_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
@@ -383,6 +384,7 @@ const _ic706mkiigSerialKey = 'ic706mkiig-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
 const _fakeRadioKey = 'fake-radio';
+const _antennaGeniusTcpKey = 'antenna-genius-tcp';
 
 /// FlexRadio radios reachable over the SmartSDR TCP API.
 ///
@@ -873,6 +875,39 @@ const fakeRadioModel = EquipmentModel(
 
 String _fakeRadioName() => t.settings.station.models.fakeRadio;
 
+/// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
+///
+/// In the searchable catalogue rather than [EquipmentModel.hiddenFromCatalog]
+/// like the generic antenna and key nodes: it is a real product with a name
+/// on the front, which is the distinction that flag draws. Its own note says
+/// as much — "a real antenna switch added later belongs in the searchable
+/// list like any other radio".
+///
+/// Found automatically: it announces itself over UDP broadcast on 9007, the
+/// same port number its TCP API listens on. Address and port can always be
+/// typed in as well — a switch on another subnet, or behind a router that
+/// does not forward broadcasts, never announces.
+const antennaGeniusModel = EquipmentModel(
+  key: 'antenna-genius',
+  category: kCategoryAntennaSwitch,
+  name: _antennaGeniusName,
+  manufacturer: '4O3A',
+  variants: [
+    EquipmentVariant(
+      key: _antennaGeniusTcpKey,
+      driver: AntennaGeniusDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {
+        'port': antennaGeniusDefaultPort,
+        switchLayoutConfigKey: switchLayoutDevicePorts,
+      },
+      discoverer: AntennaGeniusDiscoverer(typeKey: _antennaGeniusTcpKey),
+    ),
+  ],
+);
+
+String _antennaGeniusName() => t.settings.station.models.antennaGenius;
+
 const _antennaKey = 'antenna-none';
 const _keyKey = 'key-none';
 
@@ -926,6 +961,7 @@ const _defaultModels = [
   rigctldModel,
   flrigModel,
   fakeRadioModel,
+  antennaGeniusModel,
   antennaModel,
   keyModel,
 ];

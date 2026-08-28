@@ -57,6 +57,17 @@ abstract class EquipmentSink {
   /// full list each time any of it changes; a driver with a single channel
   /// never calls it.
   void reportChannels(List<EquipmentChannel> channels);
+
+  /// What an antenna switch is routing where — the full picture each time
+  /// any of it changes, like [reportChannels].
+  ///
+  /// Both lists together rather than one call each, because a port names its
+  /// antenna by key and means nothing without the list to resolve it
+  /// against. Reported separately, every reconnect would put a frame on
+  /// screen where each port points at an antenna that has not arrived yet,
+  /// and the panel would draw an empty selection over a switch that is
+  /// perfectly well connected.
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports);
 }
 
 /// One driver's state for one open connection.
@@ -78,20 +89,6 @@ abstract class EquipmentSession {
   void startUpdates();
 
   void stopUpdates();
-
-  /// Retunes the equipment. Frequency is kHz with decimals.
-  void setFrequency(double freqKHz);
-
-  /// Sets the mode. Always a concrete mode — `SSB` is resolved to `USB` or
-  /// `LSB` by the manager before it reaches a driver, because no CAT
-  /// protocol has an "SSB" mode.
-  void setMode(String mode);
-
-  /// Sets the transceiver's RF output power, in watts. A driver whose
-  /// protocol represents power as a relative scale (Kenwood's `PC`, CI-V's
-  /// 0-255 level) converts against the radio's own rated maximum — see each
-  /// driver's own notes on how confident that conversion is.
-  void setPower(num watts);
 
   /// Say goodbye over a still-open connection: unsubscribe, cancel timers.
   /// The manager calls this *before* closing, in its own guard. polo found
@@ -115,6 +112,50 @@ abstract class EquipmentSession {
   /// No default: `implements` would ignore one anyway, and a driver that
   /// forgets to answer would silently claim to push.
   Duration? get expectedUpdateInterval;
+}
+
+/// A session for equipment the app tunes: everything with a VFO.
+///
+/// Split out of [EquipmentSession] rather than left on it because the layer
+/// now carries equipment that has no frequency at all — an antenna switch,
+/// and the rotators and relay boards docs/design/cat.md expects after it.
+/// Left on the base, a switch's session would have to no-op three tuning
+/// methods, and "this radio ignores setFrequency" and "this is not a radio"
+/// would be the same shape. [CatService] asks with `is` at the three call
+/// sites that tune, all of which already act on the designated radio alone.
+abstract class TransceiverSession implements EquipmentSession {
+  /// Retunes the equipment. Frequency is kHz with decimals.
+  void setFrequency(double freqKHz);
+
+  /// Sets the mode. Always a concrete mode — `SSB` is resolved to `USB` or
+  /// `LSB` by the manager before it reaches a driver, because no CAT
+  /// protocol has an "SSB" mode.
+  void setMode(String mode);
+
+  /// Sets the transceiver's RF output power, in watts. A driver whose
+  /// protocol represents power as a relative scale (Kenwood's `PC`, CI-V's
+  /// 0-255 level) converts against the radio's own rated maximum — see each
+  /// driver's own notes on how confident that conversion is.
+  void setPower(num watts);
+}
+
+/// A session for equipment that routes antennas to devices.
+///
+/// Reading is not here: state arrives through [EquipmentSink.reportSwitchState]
+/// like every other reading, so a panel that only displays a switch never
+/// needs this type. Only changing the routing does.
+abstract class AntennaSwitchSession implements EquipmentSession {
+  /// Points [portKey]'s device port at [antennaKey].
+  ///
+  /// Both keys are the equipment's own, as reported in [SwitchPort.key] and
+  /// [SwitchAntenna.key] — never an index into either list, which would
+  /// silently address the wrong relay on equipment that numbers its ports
+  /// from one or leaves a gap.
+  ///
+  /// A driver REFUSES this while the port is transmitting rather than
+  /// queueing it: switching a relay under RF is what destroys one, and a
+  /// selection the operator made a moment ago is not worth honouring late.
+  void selectAntenna(String portKey, String antennaKey);
 }
 
 abstract class EquipmentDriver {
@@ -187,6 +228,26 @@ abstract class EquipmentDriver {
   /// Declared rather than read back out of [configElements] so the service
   /// can reason about free channels without parsing form definitions.
   List<String> get channelValues => const [];
+
+  /// How many antenna ports this equipment has when nobody has asked it yet.
+  ///
+  /// Zero for everything that is not an antenna switch. A switch reports its
+  /// real inventory over the wire, and that always wins — this is only what
+  /// the editor offers to map antennas onto while the switch is
+  /// disconnected, which is exactly when an operator sets one up for the
+  /// first time.
+  ///
+  /// A catalogue fact rather than a config field: an 8x2 has eight antenna
+  /// ports whatever the operator does with them, and asking would be asking
+  /// them to read a number off the box that the box already told us.
+  int get antennaPortCount => 0;
+
+  /// How many device ports this equipment has when nobody has asked it yet —
+  /// where the radios plug in. Zero for everything that is not a switch.
+  ///
+  /// Same standing as [antennaPortCount]: what the switch reports always
+  /// wins, and this is only what a first-time setup is offered.
+  int get devicePortCount => 0;
 
   /// An optional trailing fragment for the equipment list's one-line
   /// summary — e.g. ` · CI-V A4`. Null for a driver with nothing to add.

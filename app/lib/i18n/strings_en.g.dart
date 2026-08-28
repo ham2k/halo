@@ -3756,6 +3756,54 @@ class Translations$settings$station$en {
 
 	/// en: 'Must be a mode name, e.g. USB, CW, FT8'
 	String get fakeModeInvalid => 'Must be a mode name, e.g. USB, CW, FT8';
+
+	/// en: 'Layout'
+	String get switchLayout => 'Layout';
+
+	/// en: 'Which side of the switch your radios are plugged into.'
+	String get switchLayoutDescription => 'Which side of the switch your radios are plugged into.';
+
+	/// en: 'Choose how the switch is wired'
+	String get switchLayoutRequired => 'Choose how the switch is wired';
+
+	/// en: 'The switch refused "$command" (error $code)'
+	String switchCommandRefused({required Object command, required Object code}) => 'The switch refused "${command}" (error ${code})';
+
+	/// en: 'That port is transmitting — antenna not changed'
+	String get switchBusyTransmitting => 'That port is transmitting — antenna not changed';
+
+	/// en: 'None'
+	String get switchNoAntenna => 'None';
+
+	/// en: 'Antenna on port $port'
+	String switchAntennaFor({required Object port}) => 'Antenna on port ${port}';
+
+	/// en: 'Which of your antennas is connected to this port on the switch.'
+	String get switchAntennaForDescription => 'Which of your antennas is connected to this port on the switch.';
+
+	/// en: '$antennas Antennas, $radios Radios'
+	String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} Antennas, ${radios} Radios';
+
+	/// en: 'Port $port'
+	String switchPortLabel({required Object port}) => 'Port ${port}';
+
+	/// en: 'follows band data'
+	String get switchPortAutoHint => 'follows band data';
+
+	/// en: 'transmitting — cannot change now'
+	String get switchPortTransmittingHint => 'transmitting — cannot change now';
+
+	/// en: 'Current State'
+	String get switchCurrentStateHeader => 'Current State';
+
+	/// en: 'Which antenna each radio port is on right now. Changes take effect immediately.'
+	String get switchCurrentStateDescription => 'Which antenna each radio port is on right now. Changes take effect immediately.';
+
+	/// en: 'Wiring'
+	String get switchWiringHeader => 'Wiring';
+
+	/// en: 'transmit inhibited'
+	String get switchPortInhibitedHint => 'transmit inhibited';
 }
 
 // Path: settings.offlineData
@@ -5027,6 +5075,9 @@ class Translations$settings$station$models$en {
 
 	/// en: 'Fake Radio'
 	String get fakeRadio => 'Fake Radio';
+
+	/// en: '4O3A Antenna Genius'
+	String get antennaGenius => '4O3A Antenna Genius';
 }
 
 // Path: settings.station.transports
@@ -6178,6 +6229,7 @@ extension on Translations {
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.fakeRadio' => 'Fake Radio',
+			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.transports.network' => 'Network',
 			'settings.station.transports.usbSerial' => 'USB serial',
 			'settings.station.transports.wifi' => 'WiFi',
@@ -6245,9 +6297,9 @@ extension on Translations {
 			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
 			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
-			'settings.station.fakeFailConnect' => 'Always fail to connect',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.fakeFailConnect' => 'Always fail to connect',
 			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
 			'settings.station.fakeFreq' => 'Frequency (kHz)',
 			'settings.station.fakeFreqDescription' => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.',
@@ -6260,6 +6312,22 @@ extension on Translations {
 			'settings.station.fakeWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.fakeFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.fakeModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
+			'settings.station.switchLayout' => 'Layout',
+			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
+			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',
+			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'The switch refused "${command}" (error ${code})',
+			'settings.station.switchBusyTransmitting' => 'That port is transmitting — antenna not changed',
+			'settings.station.switchNoAntenna' => 'None',
+			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antenna on port ${port}',
+			'settings.station.switchAntennaForDescription' => 'Which of your antennas is connected to this port on the switch.',
+			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} Antennas, ${radios} Radios',
+			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
+			'settings.station.switchPortAutoHint' => 'follows band data',
+			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
+			'settings.station.switchCurrentStateHeader' => 'Current State',
+			'settings.station.switchCurrentStateDescription' => 'Which antenna each radio port is on right now. Changes take effect immediately.',
+			'settings.station.switchWiringHeader' => 'Wiring',
+			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',

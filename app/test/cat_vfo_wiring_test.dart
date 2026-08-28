@@ -96,7 +96,7 @@ class _FakeTransport extends EquipmentTransport {
 
 /// Records what the manager asked the radio to do, and can push readings
 /// back the way a real radio's status stream would.
-class _FakeSession implements EquipmentSession {
+class _FakeSession implements TransceiverSession {
   final EquipmentSink sink;
   final List<String> commands = [];
   var throwOnSet = false;

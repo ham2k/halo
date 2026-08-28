@@ -68,7 +68,7 @@ class KenwoodDriver extends EquipmentDriver {
       );
 }
 
-class KenwoodSession implements EquipmentSession {
+class KenwoodSession implements TransceiverSession {
   final EquipmentSink _sink;
   final _framer = KenwoodFramer();
 

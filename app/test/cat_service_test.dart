@@ -132,7 +132,7 @@ class _FakeTransport extends EquipmentTransport {
   }
 }
 
-class _FakeSession implements EquipmentSession {
+class _FakeSession implements TransceiverSession {
   final EquipmentSink sink;
   final List<String> log;
   var updatesStarted = false;
@@ -167,6 +167,13 @@ class _FakeSession implements EquipmentSession {
   /// Drivers report from their own timers, so a session can try to publish
   /// long after the connection it belongs to has been superseded.
   void reportFromItsOwnTimer(VfoReading reading) => sink.report(reading);
+
+  /// Stands in for a piece of equipment with no VFO at all — an antenna
+  /// switch — reporting the only thing it has.
+  void reportSwitchState() => sink.reportSwitchState(
+        const [SwitchAntenna(key: '1', name: 'Hex')],
+        const [SwitchPort(key: '1', label: 'A', selectedAntennaKey: '1')],
+      );
 
   @override
   void setFrequency(double freqKHz) => log.add('setFrequency:$freqKHz');
@@ -270,6 +277,10 @@ void main() {
       // loop. Long enough that a test which does NOT want a retry can pump the
       // queue without tripping one.
       idleRetryFirst: idleRetryFloor,
+      // The real window is 30 s. Long enough that no test trips it by
+      // accident while pumping the queue, short enough to wait out on
+      // purpose.
+      staleAfter: const Duration(milliseconds: 40),
     );
   }
 
@@ -1417,6 +1428,24 @@ void main() {
       expect(orphan.closeCalled, isTrue, reason: 'the superseded connection must not leak');
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
       expect(winner.closeCalled, isFalse);
+    });
+
+    // The silence watchdog used to be fed by VfoReadings alone. Equipment
+    // with no VFO to report — an antenna switch — therefore went stale 30 s
+    // after every connect however healthy it was, and the row read "Not
+    // Responding" over a working socket. Invisible while this layer held
+    // only radios.
+    test('equipment with no VFO stays alive on the reports it does make', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+      final session = driver.sessions.single;
+
+      // Wait out this service's (deliberately tiny) silence window.
+      await Future.delayed(const Duration(milliseconds: 60));
+      expect(cat.stateFor(node.uuid).stale, isTrue, reason: 'nothing has been reported since connect');
+
+      session.reportSwitchState();
+      expect(cat.stateFor(node.uuid).stale, isFalse, reason: 'the switch just spoke');
     });
 
     test('a stale connection closing does not clobber the live one', () async {

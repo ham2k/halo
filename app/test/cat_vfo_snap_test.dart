@@ -83,7 +83,7 @@ class _FakeTransport extends EquipmentTransport {
       _FakeConnection();
 }
 
-class _FakeSession implements EquipmentSession {
+class _FakeSession implements TransceiverSession {
   final EquipmentSink sink;
   final List<String> commands = [];
 

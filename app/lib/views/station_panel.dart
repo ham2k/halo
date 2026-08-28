@@ -23,7 +23,9 @@ import 'accordion_section.dart';
 import '../settings/settings_target_dialog.dart';
 import '../services/cat/discovery.dart';
 import '../services/cat/equipment.dart';
+import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/equipment_registry.dart';
+import '../services/cat/transports/none_transport.dart';
 import '../services/cat/cat_service.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
@@ -215,6 +217,233 @@ class StationPanel extends StatelessWidget {
     return parts.isEmpty ? '' : ' — ${parts.join(' · ')}';
   }
 
+  /// How one of a switch's antenna ports is named in the editor: its number,
+  /// and the switch's own name for it where there is one — "1 - Hex".
+  ///
+  /// The number always, because it is what is printed beside the socket on
+  /// the back of the box. The name because "port 1" means nothing to an
+  /// operator who has three antennas and knows them by name. Neither alone
+  /// is enough to match a row to a piece of coax.
+  String _switchPortName(SwitchAntenna antenna) =>
+      antenna.name.isEmpty || antenna.name == antenna.key ? antenna.key : '${antenna.key} - ${antenna.name}';
+
+  /// The Current State section: one picker per device port, saying what that
+  /// port is on and changing it on the spot.
+  ///
+  /// Only for a connected switch, since this is its state rather than its
+  /// configuration — and only in the editor, because the equipment list is a
+  /// list of what the station is made of, not a control surface.
+  ///
+  /// These fields never reach the stored record; see
+  /// [switchPortRoutingFormKey]. They also do not follow the switch while
+  /// the editor is open: FormRenderer reads an initial value once, and a
+  /// port that band-follows underneath the pane will show what it was on
+  /// when the pane opened.
+  List<Map<String, dynamic>> _switchCurrentState(BuildContext context, EquipmentNode? node) {
+    if (node == null) return const [];
+    final state = _cat.stateFor(node.uuid);
+    if (state.status != EquipmentStatus.connected || state.switchPorts.isEmpty) return const [];
+    final st = context.t.settings.station;
+
+    final choices = _routableAntennas(state.switchAntennas);
+    if (choices.isEmpty) return const [];
+
+    return [
+      {
+        'type': 'header',
+        'style': 'section',
+        'title': st.switchCurrentStateHeader,
+        'subtitle': st.switchCurrentStateDescription,
+      },
+      for (final port in state.switchPorts)
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': switchPortRoutingFormKey(port.key),
+          'label': st.switchPortLabel(port: port.label),
+          if (_switchPortDetail(port, st) case final detail?) 'description': detail,
+          // A keyed port is refused by the driver as well — this only keeps
+          // the operator from being offered a control whose answer is going
+          // to be "not while you are transmitting".
+          if (port.transmitting) 'disabled': true,
+          'options': [
+            for (final antenna in choices)
+              {'value': antenna.key, 'label': _switchAntennaLabel(node, antenna)},
+          ],
+        },
+    ];
+  }
+
+  /// The Wiring section: how the switch is arranged, and which of the
+  /// operator's antennas is on each of its ports.
+  ///
+  /// The layout field is the driver's own — pulled out of the connection
+  /// block above and re-emitted here, so it sits with the antenna links it
+  /// belongs with rather than beside the host and port. [buildElements]
+  /// filters it out of the variant loop by the same key; the two have to
+  /// agree, which is why both go through [switchLayoutConfigKey] rather than
+  /// either spelling it.
+  List<Map<String, dynamic>> _switchWiring(
+    BuildContext context,
+    EquipmentType type,
+    EquipmentNode? node,
+  ) {
+    final st = context.t.settings.station;
+    final layout = [
+      for (final element in _annotateSwitchLayout(
+        type.driver.configElements(overrides: type.overrides, restrictions: type.restrictions),
+        node,
+        context,
+      ))
+        if (element['key'] == switchLayoutConfigKey) element,
+    ];
+    return [
+      {'type': 'header', 'style': 'section', 'title': st.switchWiringHeader},
+      ...layout,
+      ..._switchAntennaLinks(context, type, node),
+    ];
+  }
+
+  /// What to say under a device port's picker: which radio feeds it, where
+  /// that radio is, and whether the switch will overrule the choice above.
+  ///
+  /// The switch volunteers all of this — it names the radio a port follows,
+  /// and that radio's band and frequency — so the section answers "what is
+  /// this port doing" rather than only "what is it connected to".
+  ///
+  /// The auto fragment earns its place: a band-following port overrules the
+  /// operator's choice at the next band change, and one that reverted with
+  /// no explanation reads as the app having failed to send the command.
+  ///
+  /// Null when there is nothing to add, so an idle port grows no empty line.
+  String? _switchPortDetail(SwitchPort port, Translations$settings$station$en st) {
+    if (port.transmitting) return st.switchPortTransmittingHint;
+    final parts = [
+      // An interlock: the other port is holding the antenna this one wants,
+      // so it cannot transmit. First, because it is the one thing here that
+      // says something is wrong rather than merely what is going on.
+      if (port.inhibited) st.switchPortInhibitedHint,
+      ?port.radioName,
+      ?port.band,
+      if (port.freqKHz != null) fmtFreq(port.freqKHz!),
+      if (port.auto) st.switchPortAutoHint,
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  /// Which of a switch's antenna ports are worth offering.
+  ///
+  /// Unconfigured ports are dropped rather than shown: an 8x2 with three
+  /// antennas set up still reports all eight, and the five placeholders named
+  /// `Antenna_4` upwards are not somewhere to route to.
+  ///
+  /// Unless NONE of them is configured, which is what a factory-fresh switch
+  /// looks like — every port carrying an all-zero band mask. Filtering there
+  /// makes connecting the hardware REMOVE the setup fields the operator had
+  /// while it was disconnected, which is backwards. With nothing configured
+  /// there is also nothing to distinguish, so the filter has no information
+  /// to act on and should not act.
+  List<SwitchAntenna> _routableAntennas(List<SwitchAntenna> reported) {
+    final configured = [
+      for (final antenna in reported)
+        if (antenna.configured) antenna,
+    ];
+    return configured.isEmpty ? reported : configured;
+  }
+
+  /// A link field per antenna port on a switch, over the operator's own
+  /// antenna nodes.
+  ///
+  /// Ports come from what the switch has actually reported when it is
+  /// connected, and from [EquipmentDriver.antennaPortCount] when it is not.
+  /// The fallback is the case that matters: an operator sets a switch up
+  /// before they have ever connected it, and a form offering nothing to map
+  /// would look like the feature was missing.
+  ///
+  /// Named by the switch's own port name where it has said one, so the
+  /// operator matches the row to the label on the box rather than counting.
+  List<Map<String, dynamic>> _switchAntennaLinks(
+    BuildContext context,
+    EquipmentType type,
+    EquipmentNode? node,
+  ) {
+    final st = context.t.settings.station;
+    final reported = node == null ? const <SwitchAntenna>[] : _cat.stateFor(node.uuid).switchAntennas;
+    final ports = reported.isNotEmpty
+        ? reported
+        : [
+            // No name to show: nothing has told us one yet, and inventing
+            // "Antenna 1" would look like something the switch reported.
+            for (var i = 1; i <= type.driver.antennaPortCount; i++) SwitchAntenna(key: '$i', name: ''),
+          ];
+
+    final antennas = [
+      for (final candidate in _cat.nodes)
+        if (_cat.typeFor(candidate)?.category == kCategoryAntenna) candidate,
+    ];
+
+    return [
+      for (final port in _routableAntennas(ports))
+          {
+            'type': 'field',
+            'fieldType': 'select',
+            'key': switchAntennaNodeConfigKey(port.key),
+            'label': st.switchAntennaFor(port: _switchPortName(port)),
+            'description': st.switchAntennaForDescription,
+            'options': [
+              {'value': '', 'label': st.switchNoAntenna},
+              for (final antenna in antennas)
+                {'value': antenna.uuid, 'label': _displayName(antenna)},
+            ],
+          },
+    ];
+  }
+
+  /// [elements] with the wiring picker's two options counted from what the
+  /// switch actually reported, rather than from the catalogue's defaults.
+  ///
+  /// The driver labels them for an 8x2 because that is all it can know
+  /// before anything is connected. An 8x1 reports one device port and would
+  /// otherwise be offered "8 Antennas, 2 Radios" — a count of something the
+  /// operator can see is wrong, on the one field whose whole job is matching
+  /// the box in front of them.
+  ///
+  /// Labels only, like [_annotateChannels]: the values stay the driver's, so
+  /// a form saved while connected stores exactly what one saved without a
+  /// connection does.
+  List<Map<String, dynamic>> _annotateSwitchLayout(
+    List<Map<String, dynamic>> elements,
+    EquipmentNode? node,
+    BuildContext context,
+  ) {
+    if (node == null) return elements;
+    final state = _cat.stateFor(node.uuid);
+    final antennas = state.switchAntennas.length;
+    final radios = state.switchPorts.length;
+    if (antennas == 0 || radios == 0) return elements;
+    final st = context.t.settings.station;
+
+    return [
+      for (final element in elements)
+        if (element['key'] != switchLayoutConfigKey || element['options'] is! List)
+          element
+        else
+          {
+            ...element,
+            'options': [
+              for (final option in (element['options'] as List).cast<Map<String, dynamic>>())
+                switch (option['value']) {
+                  switchLayoutDevicePorts =>
+                    {...option, 'label': st.switchLayoutSides(antennas: antennas, radios: radios)},
+                  switchLayoutAntennaPorts =>
+                    {...option, 'label': st.switchLayoutSides(antennas: radios, radios: antennas)},
+                  _ => option,
+                },
+            ],
+          },
+    ];
+  }
+
   /// The name field, how the radio is connected, and whatever that choice
   /// asks for, in one form. [node] is null when adding: the actions below act
   /// on equipment that already exists, so they only appear once it does.
@@ -310,6 +539,11 @@ class StationPanel extends StatelessWidget {
             },
           for (final candidate in variants)
             for (final element in _annotateChannels(candidate, node, context))
+              // The switch's layout field is re-emitted under Wiring below,
+              // where it belongs with the antenna links. Left here too it
+              // would render twice, and FormRenderer would bind both boxes
+              // to the one value.
+              if (element['key'] != switchLayoutConfigKey)
               {
                 ...element,
                 if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
@@ -333,6 +567,19 @@ class StationPanel extends StatelessWidget {
                 for (final band in services.settings.enabledBands) {'value': band, 'label': band},
               ],
             },
+          // Which of the operator's own antennas is on each of the switch's
+          // antenna ports. Here rather than in the driver's own
+          // configElements() for exactly the reason the antenna bands above
+          // are: a driver is pure catalogue data with no access to the
+          // station's inventory, and this list is the operator's equipment,
+          // not the switch's.
+          // What the switch is doing now, before how it is set up: an
+          // operator opening this dialog mid-operation is looking for the
+          // former, and the latter is answered once and rarely revisited.
+          if (model.category == kCategoryAntennaSwitch) ...[
+            ..._switchCurrentState(context, node),
+            ..._switchWiring(context, type, node),
+          ],
         ];
 
     final result = await showFormPane(
@@ -356,12 +603,34 @@ class StationPanel extends StatelessWidget {
         ...type.defaultConfig,
         ...config,
         if (choosable) 'transport': type.transportKey,
+        // Where each device port is pointing right now — live state, seeded
+        // so the pickers open on the truth rather than blank. Last, so a key
+        // collision could never let a stored value stand in for what the
+        // switch just said.
+        if (node != null)
+          for (final port in _cat.stateFor(node.uuid).switchPorts)
+            if (port.selectedAntennaKey case final selected?)
+              switchPortRoutingFormKey(port.key): selected,
       },
       // Runs per field on submit, so a bad address blocks the save and says
       // so on the address field rather than failing later at connect time.
       // Asks the pairing the form is currently on: a field belonging to a
       // transport the operator switched away from is not theirs to get right.
-      validator: (key, value, values) async => typeForState(values).validateField(key, value, values),
+      validator: (key, value, values) async =>
+          isSwitchPortRoutingFormKey(key) ? null : typeForState(values).validateField(key, value, values),
+      // The one field kind that acts as it is touched rather than on save:
+      // routing a port is a command to the switch, and an operator who
+      // cancels the pane has still moved the relay. Returning no updates
+      // leaves the form's own value where the operator put it; the switch's
+      // confirmation lands in the panel behind.
+      onChange: (key, value, values) async {
+        if (node == null || !isSwitchPortRoutingFormKey(key)) return null;
+        if (value is! String || value.isEmpty) return null;
+        for (final port in _cat.stateFor(node.uuid).switchPorts) {
+          if (switchPortRoutingFormKey(port.key) == key) _cat.selectAntenna(node.uuid, port.key, value);
+        }
+        return null;
+      },
       // A transport's own action — the web serial transport's "add a USB
       // device" option, so far, living inside the port field's own list —
       // CatService's layer speaks its own EquipmentActionResult rather
@@ -427,9 +696,26 @@ class StationPanel extends StatelessWidget {
       // Everything else stays, including fields belonging to a transport not
       // currently selected: switching back has to find them still there, and
       // `targetFor` narrows to what the connection actually needs anyway.
+      // Merged over what was stored, not rebuilt from the form alone.
+      // FormRenderer seeds its values from DECLARED FIELDS only, so a stored
+      // key the form did not render is absent from `result` — and a wholesale
+      // replace deletes it. That is reachable: an operator maps antennas to
+      // all eight ports while the switch is disconnected, connects, and the
+      // switch reports five of them as unwired, so those five link fields
+      // stop rendering and Save silently drops the mapping.
+      //
+      // This is NOT the same as a field belonging to an unselected transport,
+      // which the editor deliberately keeps: those DO render, hidden by
+      // `visibleWhen`, so they are in `result` already.
       config: {
+        ...config,
         for (final entry in result.entries)
-          if (entry.key != 'name' && entry.key != 'transport') entry.key: entry.value,
+          // The routing pickers are the switch's live state, not settings.
+          // Storing one would put a stale claim about a relay into the
+          // record, and the panel would then have two answers to which
+          // antenna is live.
+          if (entry.key != 'name' && entry.key != 'transport' && !isSwitchPortRoutingFormKey(entry.key))
+            entry.key: entry.value,
       },
     );
   }
@@ -458,6 +744,21 @@ class StationPanel extends StatelessWidget {
   }
 
   String _displayName(EquipmentNode node) => _cat.displayNameFor(node);
+
+  /// What to call one of a switch's antenna ports.
+  ///
+  /// The operator's own antenna node wins where they linked one: the switch
+  /// calls it what somebody typed into the switch's own web page, possibly
+  /// years ago and on a different antenna. Falls back to the switch's name
+  /// when there is no link, or when the link points at a node that has since
+  /// been removed — a stale uuid must not render as a blank row.
+  String _switchAntennaLabel(EquipmentNode node, SwitchAntenna antenna) {
+    final uuid = node.config[switchAntennaNodeConfigKey(antenna.key)];
+    if (uuid is String && uuid.isNotEmpty) {
+      if (_cat.nodeFor(uuid) case final linked?) return _displayName(linked);
+    }
+    return _switchPortName(antenna);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1175,6 +1476,7 @@ IconData _iconForCategory(String? category) => switch (category) {
       kCategoryTransceiver => MdiIcons.radio,
       kCategoryAntenna => MdiIcons.antenna,
       kCategoryKey => MdiIcons.key,
+      kCategoryAntennaSwitch => MdiIcons.swapHorizontal,
       _ => MdiIcons.developerBoard,
     };
 
@@ -1442,8 +1744,13 @@ class _EquipmentTile extends StatelessWidget {
 
     // Equipment with nothing to connect to — an antenna, a CW key. No plug
     // toggle, no VFO reading, no status pill: every one of those describes a
-    // live session, and this category never has one.
-    if (resolvedType.category != kCategoryTransceiver) {
+    // live session, and this equipment never has one.
+    //
+    // Asked of the transport rather than the category. "Not a transceiver"
+    // was the same question only while every other category was inert; an
+    // antenna switch is not a transceiver and does connect, and reading the
+    // category here would have left it with no plug to pull.
+    if (resolvedType.transportKey == NoneTransport.transportKey) {
       return ListTile(
         leading: Icon(_iconForCategory(resolvedType.category)),
         title: Text(displayName),

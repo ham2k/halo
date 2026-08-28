@@ -119,7 +119,7 @@ class RigctldDriver extends EquipmentDriver {
 /// conversions do; wrong for a QRP or a high-power station.
 const _assumedMaxWatts = 100;
 
-class RigctldSession implements EquipmentSession {
+class RigctldSession implements TransceiverSession {
   final EquipmentSink _sink;
 
   RigctldSession(this._sink);

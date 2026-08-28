@@ -80,7 +80,7 @@ class Ft891Driver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(sink);
 }
 
-class Ft891Session implements EquipmentSession {
+class Ft891Session implements TransceiverSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 

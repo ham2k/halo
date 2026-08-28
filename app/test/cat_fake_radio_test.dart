@@ -130,7 +130,11 @@ void main() {
 
     test('reports back every set, or it looks like a rig that has stopped answering', () {
       final sink = sinkFor();
-      final session = const FakeRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig));
+      // A transceiver's session, so the tuning half of the interface is
+      // reachable — createSession answers with the connection half alone.
+      final session =
+          const FakeRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig))
+              as TransceiverSession;
       session.startUpdates();
       expect(sink.readings.last, const VfoReading(freqKHz: 7200.0, mode: 'LSB'));
       expect(sink.watts.last, 75);
@@ -185,7 +189,8 @@ void main() {
     test('a reply delay defers the reading rather than dropping it', () {
       fakeAsync((async) {
         final sink = sinkFor();
-        final session = const FakeRadioDriver().createSession(sink, {'fakeReplyDelay': 500});
+        final session =
+            const FakeRadioDriver().createSession(sink, {'fakeReplyDelay': 500}) as TransceiverSession;
         session.setFrequency(10136.0);
         expect(sink.readings, isEmpty, reason: 'the whole point of the knob is the round trip taking time');
         async.elapse(const Duration(milliseconds: 500));
@@ -295,4 +300,7 @@ class _RecordingSink implements EquipmentSink {
 
   @override
   void reportChannels(List<EquipmentChannel> channels) => this.channels = channels;
+
+  @override
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
 }
