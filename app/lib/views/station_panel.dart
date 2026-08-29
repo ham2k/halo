@@ -1555,7 +1555,7 @@ IconData _iconForCategory(String? category) => switch (category) {
       kCategoryTransceiver => MdiIcons.radio,
       kCategoryAntenna => MdiIcons.antenna,
       kCategoryKey => MdiIcons.key,
-      kCategoryAntennaSwitch => MdiIcons.swapHorizontal,
+      kCategoryAntennaSwitch => MdiIcons.directionsFork,
       _ => MdiIcons.developerBoard,
     };
 
