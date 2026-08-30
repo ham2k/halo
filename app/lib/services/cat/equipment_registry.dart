@@ -381,7 +381,11 @@ const _yaesuSerialKey = 'yaesu-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
 const _qmxSerialKey = 'qmx-serial';
 const _ic7300SerialKey = 'ic7300-serial';
+const _ic7300mk2SerialKey = 'ic7300mk2-serial';
 const _ic706mkiigSerialKey = 'ic706mkiig-serial';
+const _ic7610SerialKey = 'ic7610-serial';
+const _ic7760SerialKey = 'ic7760-serial';
+const _x6100SerialKey = 'x6100-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
 const _fakeRadioKey = 'fake-radio';
@@ -714,9 +718,9 @@ List<Map<String, dynamic>> _icomGenericSerialNotes() => [
 /// Icom IC-7300 over its built-in USB CI-V port.
 ///
 /// The address is a default rather than an override even though the model is
-/// named: CI-V ADDRESS is in the radio's own menu, the MK2 ships on a
-/// different one, and a rig sharing a bus is exactly where either gets
-/// changed.
+/// named: CI-V ADDRESS is in the radio's own menu, and a rig sharing a bus is
+/// exactly where it gets changed. The MK2 ships on a different address and is
+/// its own entry — see [ic7300mk2Model].
 const ic7300Model = EquipmentModel(
   key: 'ic7300',
   manufacturer: 'Icom',
@@ -736,7 +740,7 @@ const ic7300Model = EquipmentModel(
 String _ic7300Name() => t.settings.station.models.ic7300;
 
 /// The shared CI-V "it connected and says nothing" note, plus whatever this
-/// radio adds to it — the MK2's different factory address, for the IC-7300.
+/// radio adds to it — where to find the MK2, for the IC-7300.
 List<Map<String, dynamic>> _civSerialNotes({String extra = ''}) => [
       {
         'type': 'markdown',
@@ -749,6 +753,32 @@ List<Map<String, dynamic>> _civSerialNotes({String extra = ''}) => [
 
 List<Map<String, dynamic>> _ic7300SerialNotes() =>
     _civSerialNotes(extra: t.settings.station.ic7300Mk2Note);
+
+List<Map<String, dynamic>> _ic7300mk2SerialNotes() => _civSerialNotes();
+
+/// Icom IC-7300 MK2 over its built-in USB CI-V port.
+///
+/// Its own model rather than a note on [ic7300Model]: an operator picks the
+/// name on the front of their radio, and the whole point of a named entry is
+/// that the address is already right. The two radios share a driver and
+/// differ only in the address they ship on.
+const ic7300mk2Model = EquipmentModel(
+  key: 'ic7300mk2',
+  manufacturer: 'Icom',
+  category: kCategoryTransceiver,
+  name: _ic7300mk2Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7300mk2SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': 'B6', 'baudRate': 19200},
+      notes: _ic7300mk2SerialNotes,
+    ),
+  ],
+);
+
+String _ic7300mk2Name() => t.settings.station.models.ic7300mk2;
 
 List<Map<String, dynamic>> _ic706mkiigSerialNotes() => _civSerialNotes();
 
@@ -772,6 +802,85 @@ const ic706mkiigModel = EquipmentModel(
 );
 
 String _ic706mkiigName() => t.settings.station.models.ic706mkiig;
+
+List<Map<String, dynamic>> _ic7610SerialNotes() => _civSerialNotes();
+
+/// Icom IC-7610 over its built-in USB CI-V port.
+///
+/// 9600 is the radio's own default rather than the CI-V family's 19200, and a
+/// speed mismatch is answered with silence — so the prefill here is the whole
+/// reason the model exists. The radio will run far faster once both ends
+/// agree, which is a change made in two places, not one.
+const ic7610Model = EquipmentModel(
+  key: 'ic7610',
+  manufacturer: 'Icom',
+  category: kCategoryTransceiver,
+  name: _ic7610Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7610SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '98', 'baudRate': 9600},
+      notes: _ic7610SerialNotes,
+    ),
+  ],
+);
+
+String _ic7610Name() => t.settings.station.models.ic7610;
+
+List<Map<String, dynamic>> _ic7760SerialNotes() =>
+    _civSerialNotes(extra: t.settings.station.ic7760PortNote);
+
+/// Icom IC-7760 over CI-V.
+///
+/// Two serial ports appear for the one radio and only Port A carries CI-V,
+/// which the OS gives no way to tell apart — so the note says which, since
+/// the wrong one connects and then says nothing.
+const ic7760Model = EquipmentModel(
+  key: 'ic7760',
+  manufacturer: 'Icom',
+  category: kCategoryTransceiver,
+  name: _ic7760Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7760SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
+      notes: _ic7760SerialNotes,
+    ),
+  ],
+);
+
+String _ic7760Name() => t.settings.station.models.ic7760;
+
+List<Map<String, dynamic>> _x6100SerialNotes() =>
+    _civSerialNotes(extra: t.settings.station.x6100PortNote);
+
+/// Xiegu X6100 — a Xiegu radio that happens to speak Icom's CI-V, not the
+/// Kenwood protocol its documentation and much of the community suggest.
+///
+/// Named here because the protocol is not guessable from the brand: an
+/// operator hunting for "Xiegu" would otherwise reach for Kenwood - Generic,
+/// which connects to the radio and never gets an answer.
+const x6100Model = EquipmentModel(
+  key: 'x6100',
+  manufacturer: 'Xiegu',
+  category: kCategoryTransceiver,
+  name: _x6100Name,
+  variants: [
+    EquipmentVariant(
+      key: _x6100SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': 'A4', 'baudRate': 19200},
+      notes: _x6100SerialNotes,
+    ),
+  ],
+);
+
+String _x6100Name() => t.settings.station.models.x6100;
 
 /// An IC-705 over WiFi, using Icom's RS-BA1 network protocol.
 ///
@@ -990,7 +1099,11 @@ const _defaultModels = [
   yaesuGenericModel,
   ic705Model,
   ic7300Model,
+  ic7300mk2Model,
   ic706mkiigModel,
+  ic7610Model,
+  ic7760Model,
+  x6100Model,
   icomGenericModel,
   qmxModel,
   kenwoodGenericModel,

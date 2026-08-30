@@ -1250,13 +1250,16 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
     setState(() => _discoveryExpanded = expanded);
   }
 
-  /// Matches the radio's name and the ways it can be reached, so "usb" finds
-  /// every rig with a cable and "705" finds the one radio — an operator
-  /// searching this list is as likely to know how a radio plugs in as what
-  /// its family is called.
+  /// Matches the radio's name, its brand and the ways it can be reached, so
+  /// "usb" finds every rig with a cable and "705" finds the one radio — an
+  /// operator searching this list is as likely to know how a radio plugs in
+  /// as what its family is called. The brand is its own clause because a
+  /// model's name need not carry it: an X6100 is named for what is written
+  /// on the radio, and "Xiegu" has to reach it.
   bool _matches(({EquipmentModel model, List<EquipmentType> variants, String name}) row, String query) {
     if (query.isEmpty) return true;
     if (row.name.toLowerCase().contains(query)) return true;
+    if (row.model.manufacturer?.toLowerCase().contains(query) ?? false) return true;
     return row.variants.any((type) => type.transportLabel.toLowerCase().contains(query));
   }
 

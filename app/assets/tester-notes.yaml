@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "State Parks exports: Ohio's Cabrillo, and Texas/Georgia per-park ADIFs named as their rules require"
     - Each QSO now records the operator and position that logged it; ADIF exports say so
+    - "Add a radio by name: IC-7300 MK2, IC-7610, IC-7760 and the Xiegu X6100, prefilled to match"
 
 "156":
   changes:

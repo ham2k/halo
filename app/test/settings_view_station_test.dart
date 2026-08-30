@@ -171,9 +171,12 @@ void main() {
     expect(find.text('Add by address'), findsNothing);
     // The RADIO is what the operator picks, named as it is on its own front
     // panel — how it is connected is the next question, not part of this one.
+    // Sampled from the top of the sorted list, because the list is lazy: a
+    // name further down is absent because it was never built, not because
+    // the catalogue lost it.
     expect(find.text('FlexRadio (SmartSDR)'), findsOneWidget);
-    expect(find.text('Yaesu FT-891'), findsOneWidget);
     expect(find.text('Icom IC-705'), findsOneWidget);
+    expect(find.text('Icom IC-7300'), findsOneWidget);
 
     // Permanent, not a state readout: discovery runs for as long as this
     // dialog is open, so a heading that flipped between "searching" and
@@ -232,8 +235,11 @@ void main() {
     // them. An order fixed where the catalogue is declared would be
     // alphabetical only in whichever language happened to be active first.
     //
-    // Mutation check: drop the sort and this fails on the very first pair,
-    // since the catalogue declares FlexRadio, then the two Yaesus.
+    // Mutation check: drop the sort and this fails on the Icom pair, since
+    // the catalogue declares the IC-705 before Icom - Generic.
+    //
+    // The sample stops where the lazy list does — a name below the fold is
+    // never built, so its position says nothing either way.
     await pumpSettings(tester, catEnabled: true);
     await openAddDialog(tester);
 
@@ -243,9 +249,9 @@ void main() {
       'Generic Radio via rigctld',
       'Icom - Generic',
       'Icom IC-705',
-      'Kenwood - Generic',
-      'Yaesu - Generic',
-      'Yaesu FT-891',
+      'Icom IC-706MKIIG',
+      'Icom IC-7300',
+      'Icom IC-7300 MK2',
     ];
     final tops = [
       for (final name in expected)
@@ -276,6 +282,15 @@ void main() {
     expect(find.text('Yaesu - Generic'), findsOneWidget);
     expect(find.text('Icom IC-705'), findsOneWidget, reason: 'it has a USB serial pairing');
     expect(find.text('Generic Radio via rigctld'), findsNothing, reason: 'network only');
+
+    // The brand is searchable even when the model's name doesn't carry it:
+    // the X6100 is named for what is written on the radio, and an operator
+    // hunting for "Xiegu" has to reach it. Drop the manufacturer from the
+    // match and this finds nothing.
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'xiegu');
+    await tester.pump();
+    expect(find.text('X6100'), findsOneWidget);
+    expect(find.text('Icom - Generic'), findsNothing);
 
     await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'zzzz');
     await tester.pump();

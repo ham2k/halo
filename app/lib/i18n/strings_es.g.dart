@@ -1746,7 +1746,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get icomCivTroubleshooting => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.';
 	@override String get civAddressTroubleshootingTitle => 'Si la radio nunca responde';
 	@override String get civAddressTroubleshooting => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
-	@override String get ic7300Mk2Note => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí.';
+	@override String get ic7300Mk2Note => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.';
+	@override String get ic7760PortNote => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.';
+	@override String get x6100PortNote => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta.';
 	@override String get rigctldTroubleshootingTitle => 'Si la app no puede conectar';
 	@override String get rigctldTroubleshooting => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.';
 	@override String get flrigTroubleshootingTitle => 'Si la app no puede conectar';
@@ -2504,7 +2506,11 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get ic705 => 'Icom IC-705';
 	@override String get ic7300 => 'Icom IC-7300';
+	@override String get ic7300mk2 => 'Icom IC-7300 MK2';
 	@override String get ic706mkiig => 'Icom IC-706MKIIG';
+	@override String get ic7610 => 'Icom IC-7610';
+	@override String get ic7760 => 'Icom IC-7760';
+	@override String get x6100 => 'X6100';
 	@override String get rigctld => 'Radio genérica vía rigctld';
 	@override String get flrig => 'Radio genérica vía flrig';
 	@override String get fakeRadio => 'Radio Simulada';
@@ -3588,7 +3594,11 @@ extension on TranslationsEs {
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.ic7300' => 'Icom IC-7300',
+			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
+			'settings.station.models.ic7610' => 'Icom IC-7610',
+			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.x6100' => 'X6100',
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
 			'settings.station.models.fakeRadio' => 'Radio Simulada',
@@ -3616,7 +3626,9 @@ extension on TranslationsEs {
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
-			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí.',
+			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
+			'settings.station.ic7760PortNote' => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.',
+			'settings.station.x6100PortNote' => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
 			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
@@ -3626,14 +3638,14 @@ extension on TranslationsEs {
 			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.fakeConnectDelay' => 'Retraso de conexión (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.fakeConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
 			'settings.station.fakeDropAfter' => 'Desconectar tras (segundos)',
 			'settings.station.fakeDropAfterDescription' => 'Cierra la conexión por su cuenta, para probar la reconexión. Vacío o 0 nunca desconecta.',
 			'settings.station.fakeFailConnect' => 'Fallar siempre al conectar',
 			'settings.station.fakeConnectFailure' => 'Se le indicó a la radio simulada que rechazara esta conexión',
 			'settings.station.fakeFreq' => 'Frecuencia (kHz)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.fakeFreqDescription' => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.',
 			'settings.station.fakeMode' => 'Modo',
 			'settings.station.fakeModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',

@@ -191,7 +191,11 @@ void main() {
         'kenwood-serial',
         'qmx-serial',
         'ic7300-serial',
+        'ic7300mk2-serial',
         'ic706mkiig-serial',
+        'ic7610-serial',
+        'ic7760-serial',
+        'x6100-serial',
         'ic705-network',
         'ic705-serial',
         'rigctld-tcp',
@@ -215,7 +219,16 @@ void main() {
       'ft710-serial': ('ft891', {'baudRate': 38400}),
       'ftdx10-serial': ('ft891', {'baudRate': 38400}),
       'ic7300-serial': ('icom-civ', {'civAddress': '94', 'baudRate': 19200}),
+      // The MK2 exists as its own entry only because this address differs:
+      // prefill it with the 7300's '94' and the model has no reason to be.
+      'ic7300mk2-serial': ('icom-civ', {'civAddress': 'B6', 'baudRate': 19200}),
       'ic706mkiig-serial': ('icom-civ', {'civAddress': '58', 'baudRate': 19200}),
+      // 9600, not the CI-V family's 19200: the 7610 ships slow, and a speed
+      // mismatch is answered with silence rather than an error.
+      'ic7610-serial': ('icom-civ', {'civAddress': '98', 'baudRate': 9600}),
+      'ic7760-serial': ('icom-civ', {'civAddress': 'B2', 'baudRate': 19200}),
+      // CI-V, not the Kenwood protocol the radio's own documentation implies.
+      'x6100-serial': ('icom-civ', {'civAddress': 'A4', 'baudRate': 19200}),
       'qmx-serial': ('kenwood', {'baudRate': 9600}),
     };
 

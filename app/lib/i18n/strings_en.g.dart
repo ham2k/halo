@@ -3708,8 +3708,14 @@ class Translations$settings$station$en {
 	/// en: '- **The CI-V address must match** the radio's own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable. - **Speed must match** the radio's CI-V BAUD RATE — or set the radio to Auto, which simply follows this app. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
 	String get civAddressTroubleshooting => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
 
-	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here.'
-	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here.';
+	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.'
+	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.';
+
+	/// en: ' - The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.'
+	String get ic7760PortNote => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.';
+
+	/// en: ' - The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents.'
+	String get x6100PortNote => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents.';
 
 	/// en: 'If the app cannot connect'
 	String get rigctldTroubleshootingTitle => 'If the app cannot connect';
@@ -5217,8 +5223,20 @@ class Translations$settings$station$models$en {
 	/// en: 'Icom IC-7300'
 	String get ic7300 => 'Icom IC-7300';
 
+	/// en: 'Icom IC-7300 MK2'
+	String get ic7300mk2 => 'Icom IC-7300 MK2';
+
 	/// en: 'Icom IC-706MKIIG'
 	String get ic706mkiig => 'Icom IC-706MKIIG';
+
+	/// en: 'Icom IC-7610'
+	String get ic7610 => 'Icom IC-7610';
+
+	/// en: 'Icom IC-7760'
+	String get ic7760 => 'Icom IC-7760';
+
+	/// en: 'X6100'
+	String get x6100 => 'X6100';
 
 	/// en: 'Generic Radio via rigctld'
 	String get rigctld => 'Generic Radio via rigctld';
@@ -6415,7 +6433,11 @@ extension on Translations {
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.ic7300' => 'Icom IC-7300',
+			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
+			'settings.station.models.ic7610' => 'Icom IC-7610',
+			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.x6100' => 'X6100',
 			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
 			'settings.station.models.antenna' => 'Antenna',
@@ -6448,19 +6470,21 @@ extension on Translations {
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
-			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here.',
+			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
+			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
+			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
 			'settings.station.antennaTypes.dipole' => 'Dipole',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
