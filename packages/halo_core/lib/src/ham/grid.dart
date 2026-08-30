@@ -177,6 +177,29 @@ GridLocation? locationFromLatLon(Object? lat, Object? lon) {
   return GridLocation(latitude, longitude);
 }
 
+/// The coordinate a record carries, or null when the pair it holds is really
+/// a DXCC entity centroid taken straight from the country file. Reads a
+/// lookup `guess` or a QSO's `their`, both of which can carry one.
+///
+/// `locSource: 'prefix'` marks that pair, and today only lib-country-files'
+/// `annotateFromCountryFile` sets it — no lookup source of ours writes
+/// `locSource` at all, though `mergeLookup` plumbs it so one can later say
+/// where its location came from. Two reasons never to read a 'prefix' pair as
+/// a coordinate: its `lon` follows cty.dat's WEST-POSITIVE convention, which
+/// every other coordinate in the app contradicts, so taking it at face value
+/// mirrors the station about the prime meridian; and it is an entity
+/// centroid, which [locationForQsoInfoWithSource] resolves for itself further
+/// down, from a table signed the way the rest of the world is.
+///
+/// app-polo spreads the whole annotation onto BOTH `their` and `their.guess`
+/// (useCallLookup's `annotateQSO`), so a synced QSO carries the pair, and the
+/// tag, in both places. Our own pipeline blanks all three fields — see
+/// extensions/core/lookups/src/annotate.ts.
+GridLocation? locationFromGuess(Map<String, dynamic>? info) {
+  if (info == null || info['locSource'] == 'prefix') return null;
+  return locationFromLatLon(info['lat'], info['lon']);
+}
+
 /// The locator to SHOW for a record — eight characters derived from its
 /// coordinate when it has one, otherwise its stored [grid] as written.
 ///

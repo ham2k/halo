@@ -114,6 +114,34 @@ void main() {
       expect(q.theirExactLocation, const GridLocation(41.7135, -72.7278));
     });
 
+    test('a country-file centroid on `their` itself is refused too, not trusted for being top-level', () {
+      // app-polo's `annotateQSO` spreads the country-file annotation onto
+      // `their` AND `their.guess`, so a synced QSO carries the mirrored pair
+      // in the entered slot — which is read FIRST. Guarding only the guess
+      // leaves every synced marker exactly as wrong as before.
+      final q = _qso({
+        'call': 'W1AW',
+        'lat': 41.7135,
+        'lon': 72.7278,
+        'locSource': 'prefix',
+        'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': 72.7278, 'locSource': 'prefix'},
+      });
+      expect(q.theirExactLocation, isNull);
+    });
+
+    test("a country-file centroid on the guess is not a coordinate, and the guess's own grid answers instead", () {
+      // What app-polo puts on every guess it syncs to us: the country file's
+      // DXCC centroid, tagged `locSource: 'prefix'` and carrying cty.dat's
+      // WEST-POSITIVE longitude. Read as a coordinate it outranks the grid and
+      // lands W1AW at 72.7°E, mirrored into China.
+      final q = _qso({
+        'call': 'W1AW',
+        'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': 72.7278, 'locSource': 'prefix'},
+      });
+      expect(q.theirExactLocation, isNull);
+      expect(locationForQsoInfo(exact: q.theirExactLocation, grid: q.theirGrid), gridToLocation('FN31pr'));
+    });
+
     test('half a coordinate is no coordinate', () {
       expect(_qso({'call': 'W1AW', 'lat': 41.7135}).theirExactLocation, isNull);
     });

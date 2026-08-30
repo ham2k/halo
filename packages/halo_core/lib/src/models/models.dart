@@ -250,10 +250,15 @@ class Qso {
   /// with the lookup's coordinate would put the station back at the address
   /// they just overrode. An entered coordinate still wins over an entered
   /// grid — same precedence as everywhere else.
+  ///
+  /// A country-file centroid is not a coordinate at either level — see
+  /// [locationFromGuess]. A synced QSO carries one on `their` itself, not only
+  /// on `their.guess`, so the top-level pair goes through the same rule rather
+  /// than being trusted for being top-level.
   GridLocation? get theirExactLocation {
-    if (locationFromLatLon(_their['lat'], _their['lon']) case final entered?) return entered;
+    if (locationFromGuess(_their) case final entered?) return entered;
     if (asQsonString(_their['grid']) != null) return null;
-    return locationFromLatLon(_theirGuess['lat'], _theirGuess['lon']);
+    return locationFromGuess(_theirGuess);
   }
   String? get theirState => asQsonString(_their['state']) ?? asQsonString(_theirGuess['state']);
   // Both set by the callsign-annotation lookup step

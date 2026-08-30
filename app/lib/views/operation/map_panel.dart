@@ -537,7 +537,7 @@ Color mapHighlightColor(Color base) {
   if (callInfo == null || guess == null) return empty;
 
   final location = locationForQsoInfo(
-    exact: locationFromLatLon(guess['lat'], guess['lon']),
+    exact: locationFromGuess(guess),
     grid: asQsonString(guess['grid']),
     entityPrefix: asQsonString(guess['entityPrefix']),
     state: asQsonString(guess['state']),

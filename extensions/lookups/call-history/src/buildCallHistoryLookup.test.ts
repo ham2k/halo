@@ -86,6 +86,30 @@ test("a home QTH location comes through", () => {
   assert.equal(guessed[0].locationScope, "qth")
 })
 
+test("a country-file centroid is not carried forward as a coordinate, though the rest of the location is", () => {
+  // A polo-synced QSO's guess: the DXCC centroid with cty.dat's WEST-POSITIVE
+  // longitude, tagged `locSource: 'prefix'` — and polo writes no
+  // `locationScope`, so the portable/prefixed guard above does not fire.
+  // `locSource` is excluded from LOCATION_FIELDS, so carrying the pair would
+  // hand the merge a mirrored coordinate with nothing left to identify it,
+  // and put the NEW contact's marker in the wrong hemisphere.
+  const { guessed } = buildCallHistoryTiers("KI2D", [
+    qso({ guess: { state: "CT", grid: "FN31pr", lat: 37.6, lon: 91.87, locSource: "prefix" } }),
+  ])
+  assert.equal(guessed[0].lat, undefined)
+  assert.equal(guessed[0].lon, undefined)
+  assert.equal(guessed[0].grid, "FN31pr")
+  assert.equal(guessed[0].state, "CT")
+})
+
+test("a real lookup coordinate is still carried forward", () => {
+  const { guessed } = buildCallHistoryTiers("KI2D", [
+    qso({ guess: { grid: "FN31pr", lat: 41.7135, lon: -72.7278, locationScope: "qth" } }),
+  ])
+  assert.equal(guessed[0].lat, 41.7135)
+  assert.equal(guessed[0].lon, -72.7278)
+})
+
 test("a portable (POTA/SOTA) location is dropped, but the name survives", () => {
   const { manual } = buildCallHistoryTiers("KI2D", [
     qso({ name: "Park Activator", guess: { state: "CA", grid: "CM87", locationScope: "portable" } }),

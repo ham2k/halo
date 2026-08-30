@@ -127,10 +127,20 @@ export function buildCallHistoryTiers(
   // is operating from.
   const isPortableGuess = guess.locationScope === 'portable' || guess.locationScope === 'prefixed'
   const isExactCallMatch = typeof mostRecent.call === 'string' && mostRecent.call.toUpperCase() === call
+  // A `locSource: 'prefix'` pair is lib-country-files' DXCC centroid, carrying
+  // cty.dat's west-positive longitude — never the station. Carrying it forward
+  // would re-issue a mirrored coordinate on a NEW contact, and issue it
+  // untagged, past the rule that refuses it on the QSO it came from
+  // (halo_core's `locationFromGuess`; `locSource` itself is excluded above).
+  // `entityPrefix` still rides along, and the centroid is resolved from it at
+  // read time, correctly signed.
+  const isCentroid = (info: Record<string, JSONValue>) => info.locSource === 'prefix'
   if (!isPortableGuess && isExactCallMatch) {
     for (const field of LOCATION_FIELDS) {
       const picked = pick(mostRecent, guess, field)
-      if (picked) fields[picked.tier][field] = picked.value
+      if (!picked) continue
+      if ((field === 'lat' || field === 'lon') && isCentroid(picked.tier === 'manual' ? mostRecent : guess)) continue
+      fields[picked.tier][field] = picked.value
     }
     if (typeof guess.locationScope === 'string') locationScope = guess.locationScope
   }

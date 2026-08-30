@@ -153,7 +153,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     final t = context.t.callInfo;
     final ourLoc = widget.operation.location;
     final resolved = locationForQsoInfoWithSource(
-      exact: locationFromLatLon(widget.guess?['lat'], widget.guess?['lon']),
+      exact: locationFromGuess(widget.guess),
       grid: _s('grid'),
       entityPrefix: _s('entityPrefix'),
       state: _s('state'),

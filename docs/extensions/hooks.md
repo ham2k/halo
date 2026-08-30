@@ -176,6 +176,12 @@ interface LookupServiceHook {
 - `notes`/`history` are per-`CallInfoLookup` fields, not part of the merged
   `guess` — they simply accumulate, unconditionally, in the returned
   `lookups[]` array.
+- **`locSource: 'prefix'` is reserved**, and a `lat`/`lon` merged under it is
+  never read as a coordinate (`locationFromGuess`, halo_core). It marks
+  lib-country-files' DXCC entity centroid, whose longitude follows cty.dat's
+  west-positive convention — the opposite of every other coordinate here. A
+  source reporting a real position must leave `locSource` unset or name
+  itself; tagging one `'prefix'` gets its coordinate discarded.
 
 Implemented by: `lookups` (key `core`). The merge algorithm itself
 (`mergeLookupIntoGuess`/`runLookupPipeline` in

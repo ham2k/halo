@@ -41,6 +41,30 @@ and the QSO editor's grid field (`logging_controls.dart`).
 A hand-typed grid therefore stores no coordinate at all. That is the correct
 answer, not a gap: a square is all the operator stated.
 
+### One pair is not a coordinate
+
+A pair tagged `locSource: 'prefix'` is lib-country-files' DXCC entity centroid,
+and its `lon` follows cty.dat's **west-positive** convention — the opposite of
+every other coordinate here. `locationFromGuess` refuses that pair wherever one
+is read, so the resolver falls through to the grid and then to
+`entity_locations.dart`, which holds the same centroids signed the way the rest
+of the world signs them. Read as a coordinate it would outrank both and mirror
+the station about the prime meridian.
+
+No lookup source of ours sets `locSource` today (`annotate.ts` blanks it, and
+the merge plumbs it so a source can later say where its location came from).
+The tag arrives with a synced QSO: app-polo spreads the country-file
+annotation onto **both** `their` and `their.guess`, so the mirrored pair sits
+in the entered slot as well as the guessed one, and both are filtered. The
+Call History lookup drops the pair rather than carrying it onto a new contact,
+where it would arrive untagged — `locSource` is deliberately not among the
+fields it copies forward.
+
+What this cannot catch: a pair that lost the tag on its way through another
+program — notably a HaLo ADIF export written before this rule existed, read
+back in as `LAT`/`LON`. There is nothing in such a record to tell it from a
+real fix.
+
 ## Display
 
 `gridForDisplay(lat:, lon:, grid:)` — and the `displayGrid` getters over it —

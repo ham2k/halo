@@ -34,7 +34,7 @@ String? callLocationLine(
   final entityPrefix = asQsonString(guess['entityPrefix']);
 
   final resolved = locationForQsoInfoWithSource(
-    exact: locationFromLatLon(guess['lat'], guess['lon']),
+    exact: locationFromGuess(guess),
     grid: asQsonString(guess['grid']),
     entityPrefix: entityPrefix,
     state: asQsonString(guess['state']),

@@ -110,6 +110,26 @@ void main() {
     });
   });
 
+  group('locationFromGuess', () {
+    test('a coordinate tagged as a country-file centroid is refused, whatever its sign', () {
+      // `locSource: 'prefix'` is lib-country-files' tag, and the `lon` under
+      // it is cty.dat's WEST-POSITIVE one: K's centroid arrives as +91.87, in
+      // Kazakhstan. Reading it would beat the guess's own grid AND the
+      // correctly-signed entityLocations table, so both signs are refused —
+      // one that happens to look plausible is still the wrong convention.
+      expect(locationFromGuess({'lat': 37.6, 'lon': 91.87, 'locSource': 'prefix'}), isNull);
+      expect(locationFromGuess({'lat': 51.3, 'lon': -9.7, 'locSource': 'prefix'}), isNull);
+    });
+
+    test('a real lookup coordinate answers', () {
+      // QRZ and the Ham2K lookup report a station's actual position and write
+      // no `locSource` at all — refusing those would cost the map every fix
+      // it has.
+      expect(locationFromGuess({'lat': 41.7135, 'lon': -72.7278}), const GridLocation(41.7135, -72.7278));
+      expect(locationFromGuess(null), isNull);
+    });
+  });
+
   group('greatCirclePoints', () {
     test('follows the great circle, not the rhumb line', () {
       // NYC→London: the great circle arcs well north of both endpoints'

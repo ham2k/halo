@@ -471,4 +471,42 @@ void main() {
     // `-74.45` as ADIF's `XDDD MM.MMM` gets a different place entirely.
     expect(released, isNot(contains('-74.45')));
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // What app-polo puts on every guess it syncs to us: lib-country-files' DXCC
+  // centroid, tagged `locSource: 'prefix'` and carrying cty.dat's
+  // WEST-POSITIVE longitude. The pair is neither the station's position nor
+  // even the right side of the planet, so it must never leave as one — and
+  // the guess's own grid still can.
+  test('a country-file centroid on the guess is not exported as the station coordinate', () async {
+    final host = await startHost();
+
+    final result = await host.invokeHook(
+      'export',
+      key: 'adif',
+      method: 'generateExport',
+      args: {
+        'operation': operation(['US-0001']),
+        'qsos': [
+          {
+            ...qsos.first,
+            'their': {
+              'call': 'W0ABC',
+              'sent': '59',
+              'guess': {'grid': 'FN31pr', 'lat': 37.6, 'lon': 91.87, 'locSource': 'prefix'},
+            },
+          },
+        ],
+        'exportType': 'adif',
+        'includePrivateData': true,
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final adif = result['content'] as String;
+
+    expect(adif, contains('<CALL:5>W0ABC'));
+    for (final tag in ['<LAT:', '<LON:']) {
+      expect(adif, isNot(contains(tag)));
+    }
+    expect(adif, contains('FN31pr'), reason: 'the locator the lookup reported is still a fact about the station');
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }

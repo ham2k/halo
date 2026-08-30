@@ -43,12 +43,22 @@ function sanitizeAdifText(text: string): string {
 /// suppresses a guessed pair, because an operator who typed a locator was
 /// correcting the lookup and pairing the two would export the address they
 /// overrode; only then does the guess answer.
+///
+/// A pair tagged `locSource: 'prefix'` is no coordinate for this purpose, at
+/// either level: it is lib-country-files' DXCC entity centroid, whose `lon`
+/// follows cty.dat's west-positive convention, and exporting it would state
+/// the mirror image of a country's middle as the station's position. A synced
+/// QSO carries that pair on `their` as well as on the guess (see halo_core's
+/// `locationFromGuess`).
 function theirCoordinate(
   their: Record<string, unknown>,
   theirGuess: Record<string, unknown>,
 ): { lat: unknown; lon: unknown } | undefined {
-  if (their.lat != null && their.lon != null) return { lat: their.lat, lon: their.lon }
+  if (their.locSource !== 'prefix' && their.lat != null && their.lon != null) {
+    return { lat: their.lat, lon: their.lon }
+  }
   if (their.grid != null) return undefined
+  if (theirGuess.locSource === 'prefix') return undefined
   return { lat: theirGuess.lat, lon: theirGuess.lon }
 }
 
