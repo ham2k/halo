@@ -630,6 +630,28 @@ void main() {
       }
     });
 
+    test('a leading "." reaches this chain too, and stops at the first word', () {
+      // The command bar is where a leading dot has the most free text around
+      // it, so the rule is pinned HERE and not only on the formatter: a
+      // suffix-first call converts, and the head bound still ends at the
+      // space, so a parameter's full stop is untouched by the new branch.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        String run(String text) {
+          var value = TextEditingValue(text: text);
+          for (final formatter in commandFieldFormatters) {
+            value = formatter.formatEditUpdate(const TextEditingValue(text: ''), value);
+          }
+          return value.text;
+        }
+
+        expect(run('.p'), '/P');
+        expect(run('. it crashes. every time'), '. it crashes. every time');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     test('collapsing a space moves the caret with the text', () {
       // Dropping a character shifts every offset after it. Typing alone would
       // never catch this — the caret is at the end there, and the arithmetic

@@ -8866,6 +8866,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 /// digit then a letter) rather than digits alone, so typing a plain
 /// frequency ("14.285") keeps its decimal point. See isMobilePlatform.
 ///
+/// A LEADING "." counts too, but only when a letter or a second "." follows
+/// it: an operator entering a suffix-first call types "/P" the same wrong
+/// way, and ".." is the "//" of a call with no prefix yet. Alone or before a
+/// digit it stays a full stop, so "." and ".285" — a frequency mid-typing —
+/// are left as they are. Note what this rescues is the LEADING period only:
+/// what still holds "14.2P" together is its digit-only prefix, exactly as
+/// before, and not where in the text the period sits.
+///
 /// The FIRST word only. A callsign holds no whitespace, so past the first
 /// one there is nothing left this could be correcting — what is there is a
 /// command's free-text parameter, where a full stop is a full stop: without
@@ -8876,7 +8884,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 /// HomeQuickLookup in app/lib/views/home_view.dart — can reuse it instead
 /// of leaving the same mobile keyboard quirk unhandled there.
 class MobileDotToSlashFormatter extends TextInputFormatter {
-  static final _callsignPrefix = RegExp(r'^([A-Z]|[0-9][A-Z])', caseSensitive: false);
+  static final _callsignPrefix = RegExp(r'^([A-Z]|[0-9][A-Z]|\.[.A-Z])', caseSensitive: false);
   static final _whitespace = RegExp(r'\s');
 
   @override

@@ -665,6 +665,29 @@ void main() {
         debugDefaultTargetPlatformOverride = null;
       }
     });
+
+    test('a leading "." converts only when a letter or a second "." follows', () {
+      // The mistyped "/" can open a call too — a suffix typed on its own, or
+      // the "//" of a prefix not yet known. What must NOT move is a lone "."
+      // or one before a digit: that is a frequency being typed, and rewriting
+      // it to "/285" as the operator reaches for 14.285 is worse than the
+      // suffix it would have fixed. The pairs below straddle exactly that line
+      // — flipping the rule to "any leading dot" breaks the last two.
+      String run(String text) => MobileDotToSlashFormatter()
+          .formatEditUpdate(const TextEditingValue(text: ''), TextEditingValue(text: text))
+          .text;
+
+      expect(run('.P'), '/P');
+      expect(run('..P'), '//P');
+      expect(run('..'), '//');
+      expect(run('.'), '.');
+      expect(run('.285'), '.285');
+      // The discriminator is the PREFIX, not where the period sits — a period
+      // further in converts happily when a call opens the text ("K1ABC.P",
+      // above). Read it as "a period is safe after a digit" and the guard
+      // simplifies into a regression.
+      expect(run('14.2P'), '14.2P');
+    });
   });
 
   testWidgets('off mobile, "." in the call field is left alone', (tester) async {
