@@ -21,6 +21,7 @@ import '../../../services/cat/cat_service.dart';
 import '../../../services/cat/equipment.dart';
 import '../../../main.dart';
 import '../../../settings/settings_target_dialog.dart';
+import '../clock/clock_faces.dart' show lcdPalette;
 import 'radio_faces.dart';
 
 /// The panel id the views register this pane under, and the descriptor half
@@ -657,22 +658,28 @@ class RadioPowerButton extends StatelessWidget {
 
 /// The colours a face wears.
 ///
-/// The LCD owns its palette, because it is a replica of a physical object and
-/// a themed one stops being the thing it copies — the same reasoning the
-/// clock's LCD face carries. The Modern face has no such identity to protect,
-/// so it adopts the scheme and sits in the dock like every other pane.
+/// The LCD wears the shared [lcdPalette], because it is a replica of a
+/// physical object and a themed one stops being the thing it copies. The
+/// Modern face has no such identity to protect, so it adopts the scheme and
+/// sits in the dock like every other pane.
 RadioPalette radioPaletteFor(BuildContext context, String style) {
   final theme = Theme.of(context);
   if (style == radioStyleLcd) {
-    // One palette in both brightnesses, unlike the clock's: a rig's display
-    // is backlit, and a light-mode "LCD" with dark ink is a calculator, not
-    // a transceiver.
-    const ink = Color(0xFFFFB74D);
+    // Glass and ink come from [lcdPalette] — the one palette every
+    // seven-segment replica in the app wears — rather than from values of
+    // this pane's own.
+    //
+    // Always the dark variant, unlike the clock's LCD: this pane fades the
+    // whole palette to show a radio that is not connected, and against the
+    // light face's pale glass the faded ghosts land within a few counts of
+    // the glass itself — the digits survive but the segment matrix behind
+    // them does not, which is the one thing the ghosts exist for.
+    final glass = lcdPalette(Brightness.dark);
     return RadioPalette(
-      face: const Color(0xFF11161A),
-      ink: ink,
-      ghost: ink.withValues(alpha: 0.10),
-      label: ink.withValues(alpha: 0.75),
+      face: glass.face,
+      ink: glass.ink,
+      ghost: glass.ghost,
+      label: glass.ink.withValues(alpha: 0.75),
     );
   }
   final scheme = theme.colorScheme;

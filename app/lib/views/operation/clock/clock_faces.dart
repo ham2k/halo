@@ -16,6 +16,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart' show fabAccentColor;
 
 import 'clock_math.dart';
 
@@ -43,6 +44,30 @@ class ClockPalette {
     required this.accent,
   });
 }
+
+/// The palette every seven-segment replica in the app wears — the clock's LCD
+/// face and the radio pane's, which sit side by side in the same dock: two
+/// displays that are nearly but not quite the same colour read as one of them
+/// being broken.
+///
+/// [ghost] is deliberately a translucent [ink], not a colour of its own. The
+/// panes fade a whole palette to show a reading that is no longer live, and
+/// only a translucent ghost keeps its distance from the lit segments through
+/// that fade — an opaque one lands at the dimmed ink's own strength and turns
+/// every digit into a solid 8.
+ClockPalette lcdPalette(Brightness brightness) => brightness == Brightness.dark
+    ? ClockPalette(
+        face: const Color(0xFF0D1418),
+        ink: fabAccentColor,
+        ghost: fabAccentColor.withValues(alpha: 0.13),
+        accent: fabAccentColor,
+      )
+    : ClockPalette(
+        face: const Color(0xFFA9B79F),
+        ink: const Color(0xFF161A12),
+        ghost: const Color(0xFF161A12).withValues(alpha: 0.09),
+        accent: const Color(0xFF161A12),
+      );
 
 /// A seven-segment readout.
 ///

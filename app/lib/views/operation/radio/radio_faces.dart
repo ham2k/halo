@@ -23,8 +23,9 @@ import '../clock/clock_math.dart';
 
 /// What the Radio panel's faces need to know about colour.
 ///
-/// The LCD owns its palette, for the reason the clock's does: it is a replica
-/// of a physical object, and a themed one stops being the thing it copies.
+/// The LCD wears the app's shared LCD palette (`lcdPalette`), in its dark
+/// variant whatever the app's brightness: it copies a physical object, a
+/// themed one stops being the thing it copies, and a rig's display is backlit.
 /// The Modern face adopts the app's scheme instead and sits in the dock like
 /// every other pane.
 @immutable

@@ -224,22 +224,9 @@ class _ClockPanelState extends State<ClockPanel> {
 /// every other pane.
 ClockPalette clockPaletteFor(BuildContext context, String face) {
   final theme = Theme.of(context);
-  final dark = theme.brightness == Brightness.dark;
   switch (face) {
     case clockFaceLcd:
-      return dark
-          ? ClockPalette(
-              face: const Color(0xFF0D1418),
-              ink: fabAccentColor,
-              ghost: fabAccentColor.withValues(alpha: 0.13),
-              accent: fabAccentColor,
-            )
-          : ClockPalette(
-              face: const Color(0xFFA9B79F),
-              ink: const Color(0xFF161A12),
-              ghost: const Color(0xFF161A12).withValues(alpha: 0.09),
-              accent: const Color(0xFF161A12),
-            );
+      return lcdPalette(theme.brightness);
     default:
       final scheme = theme.colorScheme;
       return ClockPalette(
