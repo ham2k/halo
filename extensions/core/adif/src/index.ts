@@ -148,9 +148,16 @@ function baseRowFor(
   row += field('STATION_CALLSIGN', stationCall)
   // Only when it says something STATION_CALLSIGN doesn't: a single operator
   // running their own call would otherwise write their call twice into every
-  // record. app-polo draws the line in the same place.
-  const operatorCall = String(our.operatorCall ?? '')
-  if (operatorCall && operatorCall !== stationCall) row += field('OPERATOR', operatorCall)
+  // record. A deliberate divergence from app-polo, which writes OPERATOR on
+  // every record (`qsonToADIF.js`, falling back to the station call).
+  //
+  // Case-insensitive and trimmed: the dialog and the OPER command uppercase
+  // what they store, but a WSJT-X or N1MM capture keeps whatever the datagram
+  // spelled, and `ki2d` against a station running `KI2D` is the same operator.
+  const operatorCall = String(our.operatorCall ?? '').trim()
+  if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
+    row += field('OPERATOR', operatorCall)
+  }
   if (includePrivateData) {
     row += field('NAME', their.name ?? theirGuess.name)
     row += field('QTH', their.city ?? theirGuess.city)

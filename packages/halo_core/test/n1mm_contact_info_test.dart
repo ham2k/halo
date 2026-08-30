@@ -46,6 +46,25 @@ void main() {
     expect(info.qso['notes'], contains('Exch: 2'));
   });
 
+  // N1MM sends <operator> on every contact, normally the station call itself.
+  // Stored unconditionally it becomes a fact the logging side must not
+  // overwrite (`qsoWithOperator`), and every capture then blocks the stamp
+  // that names who was actually at the key — so a multi-op's N1MM contacts
+  // name nobody. Worse, `qsoForStation` rewrites `our.call` to the
+  // operation's own call and leaves this alone, so an operation running
+  // KI2D/P would export <OPERATOR>KI2D: a guest operator who never existed.
+  test('an operator equal to the station call is not a fact about the contact', () {
+    final same = parseN1mmContactInfo(_contactInfo)!;
+    expect(same.qso['our'], isNot(contains('operatorCall')));
+
+    // Neither value is normalized on its way off the wire.
+    final cased = parseN1mmContactInfo(_contactInfo.replaceFirst('<operator>N0DEV</operator>', '<operator>n0dev</operator>'))!;
+    expect(cased.qso['our'], isNot(contains('operatorCall')));
+
+    final guest = parseN1mmContactInfo(_contactInfo.replaceFirst('<operator>N0DEV</operator>', '<operator>W1ABC</operator>'))!;
+    expect(guest.qso['our'], containsPair('operatorCall', 'W1ABC'));
+  });
+
   test('tolerates the XML declaration N1MM prefixes every real datagram with', () {
     final info = parseN1mmContactInfo('<?xml version="1.0" encoding="utf-8"?>\r\n$_contactInfo');
     expect(info, isNotNull);

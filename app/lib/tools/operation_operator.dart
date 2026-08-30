@@ -29,9 +29,21 @@ const operatorCallKey = 'operatorCall';
 /// operator blanked the field, and nothing they could type would remove it.
 String operatorCallFor(Operation operation) {
   final local = operation.localData;
-  if (local.containsKey(operatorCallKey)) return (asQsonString(local[operatorCallKey]) ?? '').trim();
+  if (local.containsKey(operatorCallKey)) return deviceOperatorCallFor(operation);
   return (asQsonString(operation.data[operatorCallKey]) ?? '').trim();
 }
+
+/// Who THIS DEVICE says is at the key — no fallback to the synced value.
+///
+/// The fallback in [operatorCallFor] is a display convenience: a header
+/// naming the operator a legacy operation carries is better than one naming
+/// nobody, and it costs nothing if it is out of date. A WRITE cannot afford
+/// the same guess. The synced field converges across every device logging the
+/// operation, so a device whose own operator was never set would stamp every
+/// contact it logs with another device's operator — permanently, and into the
+/// exported log.
+String deviceOperatorCallFor(Operation operation) =>
+    (asQsonString(operation.localData[operatorCallKey]) ?? '').trim();
 
 /// The `localData` key holding this device's position in a multi-station
 /// operation. Device-local for the same reason [operatorCallKey] is.
@@ -68,12 +80,19 @@ String multiIdentifierFor(Operation operation) =>
 /// A value ALREADY on the QSO wins, and absence is what's tested, not
 /// emptiness: re-saving an edited contact runs through here again, and the
 /// operator who fixes a typo in someone else's QSO is not the one who made
-/// it. That also leaves an import's own `OPERATOR` untouched.
+/// it. That also leaves an import's own `OPERATOR` untouched. The protection
+/// only reaches contacts that carry the field at all, so editing one logged
+/// before this existed — or imported from a file naming no operator — does
+/// stamp whoever is editing.
+///
+/// Read through [deviceOperatorCallFor], not [operatorCallFor]: a device that
+/// has never named an operator stamps nothing, rather than borrowing the
+/// value another device synced.
 ///
 /// Event rows are left alone — a break marker has no operator.
 Map<String, dynamic> qsoWithOperator(Map<String, dynamic> qso, Operation operation) {
   if (qso['band'] == 'event') return qso;
-  final operatorCall = operatorCallFor(operation);
+  final operatorCall = deviceOperatorCallFor(operation);
   final multiIdentifier = multiIdentifierFor(operation);
   if (operatorCall.isEmpty && multiIdentifier.isEmpty) return qso;
 

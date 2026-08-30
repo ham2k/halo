@@ -355,8 +355,10 @@ class InboundQsoListenerService extends ChangeNotifier {
     try {
       for (final row in pending) {
         var data = (stationCall == null || stationCall.isEmpty) ? row.qso : qsoForStation(row.qso, stationCall);
-        // WSJT-X and N1MM both name an operator of their own when it differs
-        // from the station call; `qsoWithOperator` leaves that one alone.
+        // Both parsers report an operator only where the datagram named one
+        // DIFFERENT from its own station call — an unconditional one would
+        // block this stamp on every capture, since `qsoWithOperator` reads a
+        // value already present as a fact it must not overwrite.
         if (operation != null) data = qsoWithOperator(data, operation);
         // A travelled clock may not log into a real operation. The capture
         // stays in `inbound_captures` unmarked — dropping it would lose a

@@ -126,6 +126,13 @@ void main() {
   test('an operator call matching MyCall is not duplicated', () {
     final info = parseWsjtxQsoLogged(_qsoLoggedDatagram(operatorCall: 'KI2D', myCall: 'KI2D'));
     expect(info!.qso['our'], isNot(contains('operatorCall')));
+
+    // Nothing normalizes either value on its way off the wire, and a stored
+    // operator blocks the stamp that would otherwise name who was at the key
+    // (`qsoWithOperator`) — so a difference in case must not read as a
+    // different operator.
+    final cased = parseWsjtxQsoLogged(_qsoLoggedDatagram(operatorCall: 'ki2d', myCall: 'KI2D'));
+    expect(cased!.qso['our'], isNot(contains('operatorCall')));
   });
 
   test('a null-string field (0xffffffff length) reads as absent, not a crash', () {

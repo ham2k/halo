@@ -547,6 +547,12 @@ void main() {
     final self = await adifFor({'operatorCall': 'N0DEV'});
     expect(self, isNot(contains('<OPERATOR:')));
 
+    // The dialog and the OPER command uppercase what they store, but a
+    // WSJT-X or N1MM capture keeps whatever the datagram spelled — and
+    // `n0dev` at a station running `N0DEV` is the same operator, not a guest.
+    final cased = await adifFor({'operatorCall': ' n0dev '});
+    expect(cased, isNot(contains('<OPERATOR:')));
+
     // Nothing stamped at all — the field must not appear empty or as the
     // station call by default.
     final unstamped = await adifFor({});

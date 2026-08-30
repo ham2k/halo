@@ -55,7 +55,15 @@ N1mmContactInfo? parseN1mmContactInfo(String datagram) {
   final myCall = _present(f['mycall']) ?? '';
 
   final our = <String, dynamic>{if (myCall.isNotEmpty) 'call': myCall};
-  _put(our, 'operatorCall', _present(f['operator']));
+  // N1MM sends `<operator>` on EVERY contact, normally the station call
+  // itself — so an unconditional write would state an operator on every
+  // record, and the logging side reads a stamped operator as a fact it must
+  // not overwrite (`qsoWithOperator`), which would leave a multi-op's
+  // captures naming nobody. Only a DIFFERENT call says something the station
+  // call did not. Case-insensitively: this is the callsign as the datagram
+  // spelled it, and no part of the wire is normalized.
+  final operatorCall = _present(f['operator']);
+  _put(our, 'operatorCall', operatorCall?.toUpperCase() == myCall.toUpperCase() ? null : operatorCall);
   _put(our, 'sent', _present(f['snt']));
   _put(our, 'grid', _present(f['gridsquare']));
 

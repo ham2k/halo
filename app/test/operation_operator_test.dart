@@ -99,6 +99,19 @@ void main() {
       expect(qsoWithOperator({}, operation(position: '0')), isNot(contains('our')));
     });
 
+    // operatorCallFor falls back to the SYNCED operator for display, which is
+    // a guess: that field converges across every device logging the
+    // operation. Stamping through it would mark every contact this device
+    // logs with another device's operator — permanently, and in the exported
+    // log — for an operator who never named themselves here at all.
+    test('a synced operator this device never set is not stamped', () {
+      final stamped = qsoWithOperator({'their': {'call': 'W1AW'}}, operation(synced: 'W1ABC'));
+
+      expect(stamped, isNot(contains('our')));
+      // Still the right answer for the header that reads it.
+      expect(operatorCallFor(operation(synced: 'W1ABC')), 'W1ABC');
+    });
+
     test('nothing is written when the operation names neither', () {
       expect(qsoWithOperator({'their': {'call': 'W1AW'}}, operation()), {'their': {'call': 'W1AW'}});
     });

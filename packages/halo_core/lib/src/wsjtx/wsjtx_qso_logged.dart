@@ -69,7 +69,10 @@ WsjtxQsoLogged? parseWsjtxQsoLogged(Uint8List bytes) {
     if (dxCall.isEmpty || dateTimeOn == null) return null;
 
     final our = <String, dynamic>{if (myCall.isNotEmpty) 'call': myCall};
-    _put(our, 'operatorCall', operatorCall != myCall ? operatorCall : null);
+    // Only a call DIFFERENT from the station's says something the station
+    // call did not — and case-insensitively, since neither value is
+    // normalized on its way off the wire.
+    _put(our, 'operatorCall', operatorCall.toUpperCase() != myCall.toUpperCase() ? operatorCall : null);
     _put(our, 'grid', myGrid);
     _put(our, 'sent', reportSent);
 
