@@ -3,6 +3,7 @@
   "syncAllConfirm": "Starting full resync...",
   "reportDescribe": "Might send account, app and operation info",
   "reportNeedsSync": "A report needs your LoFi account — enable sync in Settings first",
+  "reportNeedsAccount": "A report needs your LoFi account — this device isn’t linked to one yet (Settings, LoFi Cloud Sync)",
   "reportConfirm": "Report submitted",
   "reportConfirmWithRef": "Report submitted — {{ref}}",
   "catalogCategory": "Sync",

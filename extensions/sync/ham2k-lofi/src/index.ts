@@ -31,7 +31,14 @@ import type {
 
 import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
 import { clientIdentityFrom, requireWebhookIdentity } from './clientIdentity.ts'
-import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normalizedEmail } from "./errors.ts"
+import {
+  isRecognizableSyncResponse,
+  isUnparseableBody,
+  loFiErrorMessage,
+  normalizedEmail,
+  REPORTS_PATH,
+  reportFailureMessage,
+} from "./errors.ts"
 import { tFor } from "./i18n.ts"
 import { attachReportContext, buildReportPayload } from "./report.ts"
 import type { ReportContext, ReportPayload } from "./report.ts"
@@ -121,7 +128,7 @@ async function reportCommand(
 
   const filed = await fileReport(
     (context) => buildReportPayload(text, context),
-    { operation, needsSyncMessage: t('reportNeedsSync') },
+    { operation, needsSyncMessage: t('reportNeedsSync'), needsAccountMessage: t('reportNeedsAccount') },
   )
   if (filed.error != null) return { mixedCase: true, error: filed.error }
   const ref = filed.ref
@@ -138,7 +145,11 @@ async function reportCommand(
 /// particular must not throw (see [reportCommand]'s catch).
 async function fileReport(
   compose: (context: ReportContext) => ReportPayload,
-  { operation, needsSyncMessage }: { operation?: Record<string, JSONValue>; needsSyncMessage: string },
+  { operation, needsSyncMessage, needsAccountMessage }: {
+    operation?: Record<string, JSONValue>
+    needsSyncMessage: string
+    needsAccountMessage: string
+  },
 ): Promise<{ ref?: string | null; error?: string }> {
   try {
     // Only the version is required; the callsign merely decorates the card. A
@@ -163,7 +174,7 @@ async function fileReport(
     if (settings?.syncEnabled !== true) return { error: needsSyncMessage }
     const operatorCall = (typeof settings.operatorCall === 'string' && settings.operatorCall) || null
     const payload = compose({ version, operatorCall, operation })
-    const response = await request('POST', 'v1/reports', payload)
+    const response = await request('POST', REPORTS_PATH, payload)
     const card = response.card as { ref?: JSONValue } | undefined
     return { ref: typeof card?.ref === 'string' ? card.ref : null }
   } catch (e) {
@@ -172,7 +183,7 @@ async function fileReport(
     // fan-out keeps only the ok ones — so throwing here would leave the
     // operator staring at an unchanged field with no message at all, which is
     // the worst outcome for the one command whose job is reporting failure.
-    return { error: e instanceof Error ? e.message : String(e) }
+    return { error: reportFailureMessage(e, needsAccountMessage) }
   }
 }
 
@@ -198,6 +209,7 @@ async function submitReport(
   if (!VALID_REPORT_KINDS.includes(kind)) return { error: `unsupported report kind: ${kind}` }
   return fileReport((context) => attachReportContext({ title, body, kind }, context), {
     needsSyncMessage: t('reportNeedsSync'),
+    needsAccountMessage: t('reportNeedsAccount'),
   })
 }
 
@@ -267,6 +279,7 @@ async function doRegisterClient(): Promise<string> {
     throw new LoFiRequestError(
       `LoFi registration failed: ${(json.error as string) ?? `HTTP ${response.status}`}`,
       response.status,
+      'v1/client',
     )
   }
   cachedToken = json.token
@@ -338,6 +351,7 @@ async function request(
       throw new LoFiRequestError(
         `LoFi request failed: ${loFiErrorMessage(json) ?? `HTTP ${response.status}`}`,
         response.status,
+        path,
       )
     }
     // A 2xx whose body isn't JSON is a proxy or error page, not the server

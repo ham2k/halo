@@ -12,9 +12,16 @@
 /// genuine transport failures keep propagating.
 export class LoFiRequestError extends Error {
   status: number
-  constructor(message: string, status: number) {
+  /// The endpoint that answered, when one did — `v1/reports`, `v1/client`.
+  /// A status alone does not say what was refused, and the same code means
+  /// different things per endpoint: a 404 from `v1/reports` is an
+  /// accountless client, a 404 from `v1/client` is a server that isn't LoFi.
+  /// Undefined for a rejection this client synthesized rather than received.
+  path?: string
+  constructor(message: string, status: number, path?: string) {
     super(message)
     this.status = status
+    this.path = path
   }
 }
 

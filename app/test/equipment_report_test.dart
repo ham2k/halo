@@ -11,6 +11,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_transport_config.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/views/equipment_report.dart';
 
@@ -24,6 +26,22 @@ void main() {
   // Its sibling over a cable: same radio, same editor form, no credential of
   // its own. The pairing a narrow secret check would wave a password through.
   final ic705Serial = registry.typeFor('ic705-serial')!;
+  // The one shipped pairing whose picker labels are translated sentences
+  // rather than the stored key — the case a label-for-value substitution
+  // silently loses the machine truth on.
+  final coax = registry.typeFor('sierra-coax-serial')!;
+  // The same serial pairing with a KNOWN port list behind it. Real
+  // enumeration answers whatever hardware is plugged into the machine
+  // running the tests — on CI, nothing at all — so the port lines could
+  // never be asserted against it.
+  final portsType = EquipmentType(
+    ic705Serial.model,
+    EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _FakePortsTransport()),
+  );
+  final throwingPortsType = EquipmentType(
+    ic705Serial.model,
+    EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _ThrowingPortsTransport()),
+  );
 
   EquipmentReport reportFor({
     Map<String, dynamic> values = const {},
@@ -202,6 +220,70 @@ void main() {
       expect(() => reportFor(values: {'outcome': 'mostly'}), throwsArgumentError);
     });
 
+    test('a port is reported the way the picker showed it, not as the bare device name', () {
+      // "COM8" identifies nothing — the same name is a different adapter on
+      // the next machine, and on the machine next door. What makes a report
+      // about a dual-port bridge actionable is which of its two ports the
+      // operator picked, and that lives only in the option's label.
+      final report = reportFor(type: portsType, config: {'port': 'COM8', 'baudRate': 38400});
+      expect(report.body, contains('COM8 — Silicon Labs CP2105 Dual USB to UART Bridge'));
+      // The baud rate's own option label is the value itself: a picker field
+      // must not lose its value to a label lookup that finds nothing useful.
+      expect(report.body, contains('38400'));
+    });
+
+    test('the USB identity the label had no room for rides along', () {
+      // The label carries `description` alone, and two adapters can share
+      // one — the serial number and VID:PID are what say which silicon
+      // answered. Hex because that is how every USB id is written down;
+      // "4292:60016" matches nothing anyone can look up.
+      final report = reportFor(type: portsType, config: {'port': 'COM8'});
+      expect(report.body, contains('serial 01AF7D0E'));
+      expect(report.body, contains('USB 10c4:ea70'));
+    });
+
+    test('a port the app cannot see says so, rather than going quiet', () {
+      // Reporting a radio the app never found is a large share of what this
+      // feature collects, and silence about the port reads exactly like a
+      // port that was found and had nothing to say. The stored name still
+      // stands in the config line above — it is the setting the report is
+      // most often about.
+      final report = reportFor(type: portsType, config: {'port': 'COM9'});
+      expect(report.body, contains('COM9'));
+      expect(report.body, contains('not among the 1 port(s) the app can see'));
+    });
+
+    test('a label that does not contain the stored value keeps it', () {
+      // A picker whose labels are translated sentences — the coax switch's
+      // layout, a Flex slice — would otherwise put "8 antennas, 1 radio", in
+      // the operator's own language, where the machine value belongs. A fix
+      // gets written against the value, not against the sentence.
+      final report = reportFor(type: portsType, config: {'baudRate': 38400});
+      expect(report.body, contains('38400'));
+      final layout = buildEquipmentReport(
+        values: const {'manufacturer': 'Sierra', 'model': 'Coax', 'outcome': 'works', 'comments': '', 'hints': ''},
+        node: EquipmentNode(uuid: 'u1', typeKey: coax.key, name: 'Switch', config: const {'switchLayout': 'devicePorts'}),
+        type: coax,
+        state: const EquipmentState(),
+        registry: registry,
+      );
+      expect(layout.body, contains('`devicePorts`'));
+    });
+
+    test('a scan that throws costs a detail line, never the report', () {
+      // The form pane closed when the operator pressed Send, so everything
+      // they wrote is gone with it — and building this card asks a serial
+      // pairing to enumerate, which opens every port to read its descriptors.
+      // A rig misbehaving at exactly the moment it is being reported is the
+      // normal case here, not the exotic one.
+      final report = reportFor(type: throwingPortsType, config: {'port': 'COM8'});
+      expect(report.body, contains('enumeration failed'));
+      expect(report.body, contains('Reported as:'));
+      // The label lookup is gone with the elements, so the config line falls
+      // back to the raw key — but it is still there, and still not a secret.
+      expect(report.body, contains('port: COM8'));
+    });
+
     test('carries the failure and the driver diagnostic when there is one', () {
       // The diagnostic is developer-mode-only on screen — meaningless to an
       // operator, and exactly what a report about a rig that defeated a
@@ -259,4 +341,46 @@ void main() {
       expect(result.error, isNot(contains("can't be sent right now")));
     });
   });
+}
+
+/// A serial transport whose enumeration fails the way libserialport can: the
+/// constructor and `dispose` in `availableSerialPorts` sit outside its try,
+/// so a throw reaches whoever asked.
+class _ThrowingPortsTransport extends EquipmentTransport with SerialTransportConfig {
+  const _ThrowingPortsTransport();
+
+  @override
+  String get key => 'serial';
+
+  @override
+  List<SerialPortOption> get availablePorts => throw StateError('libserialport: no such device');
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
+      throw UnimplementedError();
+}
+
+/// A serial transport whose ports are fixtures rather than hardware.
+class _FakePortsTransport extends EquipmentTransport with SerialTransportConfig {
+  const _FakePortsTransport();
+
+  @override
+  String get key => 'serial';
+
+  @override
+  List<SerialPortOption> get availablePorts => const [
+        SerialPortOption(
+          name: 'COM8',
+          description: 'Silicon Labs CP2105 Dual USB to UART Bridge',
+          manufacturer: 'Silicon Labs',
+          productName: 'CP2105 Dual USB to UART Bridge',
+          serialNumber: '01AF7D0E',
+          vendorId: 0x10c4,
+          productId: 0xea70,
+        ),
+      ];
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
+      throw UnimplementedError();
 }

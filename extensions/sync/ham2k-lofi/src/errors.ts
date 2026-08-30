@@ -7,6 +7,13 @@
 
 import type { JSONValue } from "@ham2k/halo-extension-sdk"
 
+import { LoFiRequestError } from "./backupCapture.ts"
+
+/// The reports endpoint, shared so the request and the reading of its
+/// rejection cannot name it differently.
+export const REPORTS_PATH = 'v1/reports'
+
+
 /// The human-readable complaint in a rejected response, or undefined when
 /// there isn't one.
 ///
@@ -85,4 +92,31 @@ export function isUnparseableBody(body: string): boolean {
   } catch {
     return true
   }
+}
+
+/// What to show an operator whose report did not reach the board.
+///
+/// `POST v1/reports` answers 404 for a client the server has no ACCOUNT
+/// behind — the device registered fine, so the request is authenticated as a
+/// client and refused as a stranger. That is the shape of every report filed
+/// with sync switched on but this device never linked, which `syncEnabled`
+/// alone cannot tell apart from a linked one; without this the operator is
+/// handed "LoFi request failed: HTTP 404" for a problem they could have
+/// fixed in Settings in a minute.
+///
+/// Matched on the ENDPOINT as well as the status, because `request()` will
+/// register this client on the way through: a 404 from `v1/client` means the
+/// configured server (`server` in kv, operator-settable) is not a LoFi
+/// server at all, and sending that operator to the linking screen is worse
+/// than the raw message they had.
+///
+/// Anything else keeps its own words: a 422's complaint, a network failure,
+/// a proxy's garbage. They name real and different problems, and folding
+/// them into the account message would send an operator to Settings to fix
+/// an outage.
+export function reportFailureMessage(error: unknown, needsAccountMessage: string): string {
+  if (error instanceof LoFiRequestError && error.status === 404 && error.path === REPORTS_PATH) {
+    return needsAccountMessage
+  }
+  return error instanceof Error ? error.message : String(error)
 }

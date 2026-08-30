@@ -3,6 +3,7 @@
   "syncAllConfirm": "Iniciando resincronización completa...",
   "reportDescribe": "Puede enviar info de cuenta, app y operación",
   "reportNeedsSync": "Un informe necesita tu cuenta LoFi — primero habilita la sincronización en la Configuración",
+  "reportNeedsAccount": "Un informe necesita tu cuenta LoFi — este dispositivo aún no está vinculado a una (Configuración, LoFi Cloud Sync)",
   "reportConfirm": "Informe enviado",
   "reportConfirmWithRef": "Informe enviado — {{ref}}",
   "catalogCategory": "Sincronización",

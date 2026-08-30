@@ -10,7 +10,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normalizedEmail } from './errors.ts'
+import { LoFiRequestError } from './backupCapture.ts'
+import {
+  isRecognizableSyncResponse,
+  isUnparseableBody,
+  loFiErrorMessage,
+  normalizedEmail,
+  REPORTS_PATH,
+  reportFailureMessage,
+} from './errors.ts'
 
 describe('loFiErrorMessage', () => {
   it('reads the top-level error the permission endpoints render', () => {
@@ -115,5 +123,50 @@ describe('isUnparseableBody', () => {
     assert.equal(isUnparseableBody('{}'), false)
     assert.equal(isUnparseableBody(''), false)
     assert.equal(isUnparseableBody('  '), false)
+  })
+})
+
+describe('reportFailureMessage', () => {
+  const needsAccount = 'A report needs your LoFi account'
+
+  // The trap: a device with sync switched on but never linked registers as a
+  // client just fine, so every gate before the POST passes and the server
+  // answers 404. Without the mapping the operator is told "HTTP 404" about
+  // an account they could link in a minute.
+  it('answers the account refusal for the 404 an accountless client gets', () => {
+    assert.equal(
+      reportFailureMessage(new LoFiRequestError('LoFi request failed: HTTP 404', 404, REPORTS_PATH), needsAccount),
+      needsAccount,
+    )
+  })
+
+  // The trap: `request()` registers this client on the way through, so a
+  // wrong `server` — or anything that isn't a LoFi server — answers 404 from
+  // `v1/client` INSIDE the same try. Read by status alone that becomes "link
+  // this device", sending the operator to a screen that cannot help and
+  // discarding the only words that named the real problem.
+  it('leaves a registration 404 saying what it said, so a wrong server is not read as an unlinked device', () => {
+    assert.equal(
+      reportFailureMessage(new LoFiRequestError('LoFi registration failed: HTTP 404', 404, 'v1/client'), needsAccount),
+      'LoFi registration failed: HTTP 404',
+    )
+    // Synthesized here rather than received, so it names no endpoint — and
+    // it already says the thing this mapping exists to say.
+    assert.equal(
+      reportFailureMessage(new LoFiRequestError('This device is not linked to an account', 404), needsAccount),
+      'This device is not linked to an account',
+    )
+  })
+
+  it('keeps a rejection\'s own words, so an outage is not blamed on the account', () => {
+    assert.equal(
+      reportFailureMessage(
+        new LoFiRequestError('LoFi request failed: in use by another account', 422, REPORTS_PATH),
+        needsAccount,
+      ),
+      'LoFi request failed: in use by another account',
+    )
+    assert.equal(reportFailureMessage(new Error('Connection refused'), needsAccount), 'Connection refused')
+    assert.equal(reportFailureMessage('bare string', needsAccount), 'bare string')
   })
 })
