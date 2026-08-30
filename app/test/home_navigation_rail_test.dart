@@ -33,7 +33,7 @@ Future<HaLoServices> _services(WidgetTester tester) async {
   return HaLoServices(db, settings);
 }
 
-Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Size size}) async {
+Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Size size, ThemeData? theme}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -41,10 +41,13 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
   // of the window's chrome now, so a test that pumped the view alone would be
   // exercising a composition that does not ship.
   await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: HomeRailShell(
-      services: services,
-      routes: HomeView(services: services),
-    )),
+    child: MaterialApp(
+      theme: theme,
+      home: HomeRailShell(
+        services: services,
+        routes: HomeView(services: services),
+      ),
+    ),
   ));
 
   // Home is `MaterialApp.home` and arms two timers on mount — the FAB's
@@ -289,6 +292,31 @@ void main() {
       lessThanOrEqualTo(800 - 34),
       reason: 'the glyph must clear the home indicator, not sit under it',
     );
+
+    await _endOfTest(tester);
+  });
+
+  testWidgets('the selected destination is not marked with the teal that vanishes on the rail', (tester) async {
+    final theme = buildHaLoTheme(Brightness.dark);
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(1200, 800), theme: theme);
+
+    // Operations is where Home opens, so it is the selected one. It has no MDI
+    // outline variant, which is why this matters: with no solid/outline
+    // contrast to fall back on, colour is the ONLY thing separating the
+    // selected destination from the rest.
+    final icon = tester.widget<Icon>(find.descendant(
+      of: find.byType(HomeNavigationRail),
+      matching: find.byIcon(MdiIcons.notebookMultiple),
+    ));
+
+    // The rail paints on `surfaceContainerHighest`, a band off `surface`, and
+    // `colorScheme.primary` is the SAME teal in both brightnesses — 1.45:1
+    // there, dimmer than the unselected destinations it has to stand out
+    // from. Reaching for the scheme role is the natural mistake, and it looks
+    // right in light mode, so this pins the value rather than the branch.
+    expect(icon.color, isNot(theme.colorScheme.primary));
+    expect(icon.color, const Color(0xFF6FC7E0));
 
     await _endOfTest(tester);
   });

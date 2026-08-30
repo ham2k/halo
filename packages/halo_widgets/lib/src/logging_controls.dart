@@ -5256,9 +5256,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return connected ? const Color(0xFF81C784) : const Color(0xFFFF8A80);
     }
     if (dark) {
-      // dark+selected: colorScheme.tertiary there is only moderately
-      // light — the scheme's own error and a mid green already read fine.
-      return connected ? positiveGreen : theme.colorScheme.error;
+      // dark+selected: sitting on dark mode's `colorScheme.tertiary`
+      // (#D9904C), a LIGHT amber — so this branch needs a dark pair, like
+      // light+unselected below, not the light pastels above. Notably neither
+      // `colorScheme.error` (dark mode's is a pale #F79797: 1.23:1 on that
+      // amber, and it simply vanishes) nor the shared [positiveGreen], which
+      // is tuned for its own dark fills and lands at 1.97:1 here.
+      //
+      // The amber is not the only fill this cell paints on: editing a logged
+      // QSO swaps the panel's accent to `secondary` (#5B9EDE), where the same
+      // pair reads 2.96:1 and 3.00:1 — at the threshold rather than above it.
+      // Retuning `secondary` is what would push it under.
+      //
+      // Both are FULLY SATURATED at the darkness the amber forces, rather
+      // than the muddier tones a burgundy/forest pair would use: 3:1 caps
+      // luminance at 0.083 on this fill, and spending all of that on one
+      // channel is what keeps them reading as red and green rather than as
+      // two dark browns. 3.2:1 both.
+      return connected ? const Color(0xFF005A00) : const Color(0xFFA00000);
     }
     // light+unselected: tertiaryLight is a fairly bright tan — needs a
     // properly dark pair to clear 3:1.

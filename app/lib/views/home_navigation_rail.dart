@@ -395,6 +395,16 @@ class _TwoToneIcon extends StatelessWidget {
   /// What an outline-less icon is dimmed to instead. Deliberately heavier than
   /// [_fillOpacity]: a bare 30% glyph with no outline over it reads as
   /// disabled rather than as unselected.
+  ///
+  /// The GLYPH's alone — the label beside it takes the same colour at full
+  /// strength, and must not inherit this. Raising it to carry text as well
+  /// pulls the two ways at once: dimming moves the unselected state toward the
+  /// rail's ground, so a heavier value reads better as text and worse as a
+  /// selection, and at 0.75 the selected/unselected distance collapses from
+  /// 1.93:1 to 1.25:1 in light mode — where it also inverts, the selected
+  /// teal being darker than the dimmed neutral rather than lighter.
+  /// Selection is colour alone here (no pill, `w700` in both states), so that
+  /// distance is the whole mechanism and this stays tuned for the glyph.
   static const _soloOpacity = 0.55;
 
   const _TwoToneIcon({
@@ -439,6 +449,19 @@ class _RailDestination extends StatelessWidget {
   /// it is not a control.
   final VoidCallback? onTap;
 
+  /// This rail's own selected pair, local rather than the shared
+  /// `HaLoColors.onSurfaceAccent` every other accent takes: a destination here
+  /// is a large solid glyph with a bold label beside it, and at that weight the
+  /// shared accent reads heavier than in the quieter places it was tuned for.
+  ///
+  /// BOTH brightnesses are pinned, though light's value is `onSurfaceAccent`'s
+  /// own today. Naming only the dark one and letting light read the role would
+  /// leave the pair half-coupled — retuning that shared accent (its dark-mode
+  /// value is an open question) would then move this rail in one brightness
+  /// and not the other, with nothing at either site to say so.
+  static const _selectedLight = Color(0xFF006783);
+  static const _selectedDark = Color(0xFF6FC7E0);
+
   const _RailDestination({
     required this.solid,
     required this.outline,
@@ -449,19 +472,29 @@ class _RailDestination extends StatelessWidget {
     this.onChrome = false,
   });
 
+  Color _selectedColor(ThemeData theme) =>
+      theme.brightness == Brightness.dark ? _selectedDark : _selectedLight;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Selection is a COLOUR here, not a background: the app's primary against
-    // the muted `onSurfaceVariant` the other destinations take. Log Kitchen
-    // marks its current section the same way, and a pill would fight the
-    // shadow that already divides this column from the panes.
+    // Selection is a COLOUR here, not a background: the app's teal accent
+    // against the muted `onSurfaceVariant` the other destinations take. Log
+    // Kitchen marks its current section the same way, and a pill would fight
+    // the shadow that already divides this column from the panes.
+    //
+    // Never `colorScheme.primary`, which is byte-for-byte the same teal in
+    // both brightnesses. The rail's ground is `surfaceContainerHighest`, a
+    // band off `surface` — so on it that teal reads 1.45:1 in dark,
+    // dimmer than the unselected destinations it has to stand out from, and
+    // worse than the 2.67:1 an accent measured against `surface` would report.
+    // See [_selectedColor] for what each brightness takes instead.
     final onChromeColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
     final color = onChrome
         // Selected reads as FULL STRENGTH against a dimmed rest, the same
         // distinction the surface destinations draw with hue.
         ? onChromeColor.withValues(alpha: selected ? 1.0 : 0.7)
-        : (selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant);
+        : (selected ? _selectedColor(theme) : theme.colorScheme.onSurfaceVariant);
     final icon = _TwoToneIcon(
       solid: solid,
       outline: outline,
@@ -500,6 +533,11 @@ class _RailDestination extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      // The icon's colour, NOT what the icon paints: an
+                      // outline-less glyph dims itself (see
+                      // `_TwoToneIcon._soloOpacity`) and the label deliberately
+                      // does not follow it there, because the same alpha
+                      // cannot serve both jobs at once.
                       style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w700),
                     ),
                   ),

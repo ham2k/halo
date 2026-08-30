@@ -491,7 +491,25 @@ void main() {
     await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
     expect(pillIconColor(tester), const Color(0xFFFF8A80)); // unselected: on the near-black fill
     await openControl(tester, MdiIcons.cat);
-    expect(pillIconColor(tester), theme.colorScheme.error); // selected: on the moderate tertiary fill
+    // A LITERAL, deliberately, where the sibling states could each name a
+    // scheme role: dark mode's own `colorScheme.error` is a pale #F79797 that
+    // reads at 1.23:1 on the amber this branch actually paints on in the app,
+    // so an assertion phrased as `theme.colorScheme.error` would follow the
+    // scheme straight back to the invisible value this pins away from.
+    expect(pillIconColor(tester), const Color(0xFFA00000)); // selected: on the light amber fill
+  });
+
+  testWidgets('a connected radio is its own color in dark mode, not the shared positiveGreen', (tester) async {
+    final theme = ThemeData(useMaterial3: true, brightness: Brightness.dark);
+    await tester.pumpWidget(
+        host(appTheme: theme, hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}));
+    await openControl(tester, MdiIcons.cat);
+    // The cell an operator actually sits in — rig connected, Radio control
+    // open — and the one that reaches for a SHARED constant most naturally.
+    // [positiveGreen] is tuned for its own dark fills and reads 1.97:1 on the
+    // amber this cell paints on, so taking it here would be invisible and
+    // would look like reuse rather than a mistake.
+    expect(pillIconColor(tester), const Color(0xFF005A00));
   });
 
   testWidgets('the Station Configuration button is disabled while editing an existing QSO', (tester) async {
