@@ -13,6 +13,7 @@
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -747,6 +748,123 @@ void main() {
       }
 
       expect(logged, hasLength(1), reason: 'the next release on the same row still logs');
+    });
+
+    // A thumb scrolling the board arcs, so its early samples can cross the
+    // horizontal slop in the very frame they cross the vertical one — and the
+    // row's recognizer, being the inner one on the hit-test path, is asked
+    // first and takes the pointer. The whole list then refuses to scroll while
+    // a row slides under a finger that meant to move the board.
+    //
+    // Mutation check: drop the dominance test from
+    // _AxisLockedHorizontalDragGestureRecognizer and this drag opens the row
+    // and fills the logging fields with a station nobody chose.
+    testWidgets('a drag that is mostly vertical scrolls rather than sliding', (tester) async {
+      final services = await servicesWith(_board(40));
+      final suggested = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
+        onLogQso: (_) {},
+      );
+
+      final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
+      // Ten across for every thirteen up: both axes pass the 18px slop within
+      // the same move, which is the tie this recognizer has to lose.
+      for (var i = 0; i < 6; i++) {
+        await gesture.moveBy(const Offset(10, -13));
+        await tester.pump();
+      }
+      // Held still before lifting, so the release carries no velocity: a fling
+      // would leave a ballistic timer running past the end of the test.
+      await tester.pump(const Duration(milliseconds: 500));
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(suggested, isEmpty, reason: 'a scroll must not pick up a station');
+      expect(find.byIcon(MdiIcons.upload), findsNothing, reason: 'no row opened');
+      expect(position.pixels, greaterThan(0), reason: 'the board scrolled instead');
+    });
+
+    // A palm or a second thumb can land on the row while the first finger is
+    // still scrolling, and it lands wherever it lands — often far across the
+    // row. Mutation check: measure the travel from one recognizer-wide origin
+    // instead of per pointer and the second touch becomes the first finger's
+    // starting point, which reads as a long sideways move and opens the row.
+    testWidgets('a second finger landing mid-scroll does not open the row', (tester) async {
+      final services = await servicesWith(_board(40));
+      final suggested = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) => suggested.add(qso),
+        onLogQso: (_) {},
+      );
+
+      final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      final row = tester.getCenter(find.text('K0001'));
+      final scrolling = await tester.startGesture(row);
+      final resting = await tester.startGesture(row + const Offset(200, 0));
+      // Long enough that a row which DID take the pointer would end up resting
+      // open, and steep enough throughout that a row judging the scrolling
+      // finger by its own landing point never can.
+      for (var i = 0; i < 12; i++) {
+        await scrolling.moveBy(const Offset(10, -13));
+        await tester.pump();
+      }
+      // The palm lifts and the thumb carries on scrolling — the point at which
+      // a row that took the pointer under the wrong origin starts moving under
+      // the finger, because the drag it began is now the only one tracking it.
+      await resting.up();
+      for (var i = 0; i < 8; i++) {
+        await scrolling.moveBy(const Offset(10, -13));
+        await tester.pump();
+      }
+
+      // Judged with the thumb still down: a row that DID take the pointer
+      // slides under them, and only the release guard (which refuses to act
+      // while another finger is down) would tidy it away afterwards — long
+      // after the operator has watched their scroll turn into a slide.
+      expect(suggested, isEmpty, reason: 'the scrolling finger is judged by where IT landed');
+      expect(openDx(tester, 'K0001', closed: 'K0002'), 0, reason: 'the row never moved');
+      expect(position.pixels, greaterThan(0), reason: 'the board scrolled once the palm lifted');
+
+      await scrolling.up();
+      await tester.pumpAndSettle();
+    });
+
+    // The gesture is the only route to these actions, and the buttons it
+    // reveals are on screen only while the row is displaced — so a row that
+    // declares no drag to the semantics tree offers a screen-reader user
+    // nothing at all. Mutation check: drop the `semantics:` delegate and the
+    // default one looks the drag up by the exact recognizer type, finds this
+    // row's subclass under its own key, and declares no action.
+    testWidgets('an assistive horizontal scroll runs the whole slide', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final services = await servicesWith(_board(6));
+      final logged = <Map<String, dynamic>>[];
+      await pumpPanel(
+        tester,
+        services: services,
+        visible: ValueNotifier(true),
+        onSuggestQso: (qso, {bool reveal = true}) {},
+        onLogQso: logged.add,
+      );
+
+      final node = tester.getSemantics(
+        find.ancestor(of: find.text('K0001'), matching: find.byType(RawGestureDetector)).first,
+      );
+      expect(node.getSemanticsData().hasAction(SemanticsAction.scrollRight), isTrue);
+
+      node.owner!.performAction(node.id, SemanticsAction.scrollRight);
+      await tester.pumpAndSettle();
+
+      expect(logged.single['their'], {'call': 'K0001'}, reason: 'one synthesised drag, start to end');
+      semantics.dispose();
     });
 
     testWidgets('dragging back takes the suggestion away again', (tester) async {

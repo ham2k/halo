@@ -12,6 +12,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show HorizontalDragGestureRecognizer, PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -2459,6 +2460,108 @@ const _slidePeekThreshold = _slideActionWidth / 2;
 /// open is never a near-miss of firing.
 const _slideCommitFraction = 0.4;
 
+/// How much more horizontal than vertical a touch must be before it is taken
+/// as a slide rather than a scroll — see
+/// [_AxisLockedHorizontalDragGestureRecognizer].
+const _slideAxisDominance = 1.0;
+
+/// Wins the arena only for a drag that is going SIDEWAYS, not merely one that
+/// has drifted the touch slop sideways on its way down the list.
+///
+/// A plain horizontal recognizer accumulates the horizontal component alone
+/// and claims the pointer the moment it passes the slop, no matter how much
+/// further the finger travelled vertically in the same span: a thumb scroll
+/// arcs, so the arc opens a row. It bites hardest where the slop is widest —
+/// iOS reports no device slop and so uses the 18px default, roughly twice
+/// what Android's devices report, which leaves the arena unresolved over more
+/// of the arc.
+class _AxisLockedHorizontalDragGestureRecognizer extends HorizontalDragGestureRecognizer {
+  _AxisLockedHorizontalDragGestureRecognizer({super.debugOwner});
+
+  /// Where each tracked finger landed. Per pointer, because a drag can be
+  /// tracking several: a palm or a second thumb landing across the row would
+  /// otherwise become the origin the FIRST finger's travel is measured from,
+  /// which reads as a long sideways move and lets through exactly the scroll
+  /// this class exists to refuse.
+  final Map<int, Offset> _origins = <int, Offset>{};
+
+  /// How far the finger being judged has travelled since it landed, or null
+  /// when there is nothing to judge by — a trackpad pan, which arrives with no
+  /// down event and so no origin, leaves the base recognizer's own test to
+  /// decide rather than being measured against a touch that has since lifted.
+  Offset? _travel;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    _origins[event.pointer] = event.position;
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    // BEFORE super, which is what asks the question below — and about THIS
+    // event's pointer, not whichever one moved last.
+    final origin = event is PointerMoveEvent ? _origins[event.pointer] : null;
+    _travel = origin == null ? null : event.position - origin;
+    super.handleEvent(event);
+    if (event is PointerUpEvent || event is PointerCancelEvent) _origins.remove(event.pointer);
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {
+    _origins.clear();
+    _travel = null;
+    super.didStopTrackingLastPointer(pointer);
+  }
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(PointerDeviceKind pointerDeviceKind, double? deviceTouchSlop) {
+    if (!super.hasSufficientGlobalDistanceToAccept(pointerDeviceKind, deviceTouchSlop)) return false;
+    final travel = _travel;
+    if (travel == null) return true;
+    // Measured from where the finger landed rather than from the recognizer's
+    // own signed accumulation, so a there-and-back wobble counts as the small
+    // horizontal travel it is. Losing here is not final: the finger can turn
+    // and win later, for as long as the list has not claimed the pointer.
+    return travel.dx.abs() > travel.dy.abs() * _slideAxisDominance;
+  }
+}
+
+/// Declares the row's slide to assistive technology, which a `RawGestureDetector`
+/// otherwise cannot here: the default delegate finds the drag by looking the
+/// EXACT [HorizontalDragGestureRecognizer] type up in the gesture map, and this
+/// row registers a subclass under its own type — a map that cannot be keyed by
+/// the base type either, since `RawGestureDetector` asserts the two match. With
+/// no delegate the scroll-left/right actions disappear, and with them the only
+/// route a screen-reader user has to the actions: the buttons exist on screen
+/// only while the row is displaced.
+///
+/// One synthesised drag, start to end, exactly as the default delegate makes
+/// one — a whole gesture rather than a fragment, because the row acts on
+/// release and would otherwise be left sitting open.
+class _SlideSemanticsDelegate extends SemanticsGestureDelegate {
+  const _SlideSemanticsDelegate({required this.onStart, required this.onUpdate, required this.onEnd});
+
+  final GestureDragStartCallback onStart;
+  final GestureDragUpdateCallback onUpdate;
+  final GestureDragEndCallback onEnd;
+
+  @override
+  void assignSemantics(RenderSemanticsGestureHandler renderObject) {
+    renderObject.onHorizontalDragUpdate = (details) {
+      onStart(DragStartDetails(
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      ));
+      onUpdate(details);
+      onEnd(DragEndDetails(
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      ));
+    };
+  }
+}
+
 /// Which rows are open, so only ever one is. A row registers itself as it
 /// opens and the previous one closes; a tap on any row, and any edit to the
 /// call being logged, clear the group outright. Scrolling deliberately does
@@ -2796,13 +2899,32 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
             _downPointers.remove(event.pointer);
             if (_downPointers.isEmpty) _cancelled = true;
           },
-          child: GestureDetector(
+          child: RawGestureDetector(
             // Horizontal only — the enclosing ListView keeps the vertical axis,
             // and the narrow layout's TabBarView has page-swiping disabled, so
-            // nothing else is competing for this drag.
-            onHorizontalDragStart: _onDragStart,
-            onHorizontalDragUpdate: (d) => _onDragUpdate(d, width),
-            onHorizontalDragEnd: (d) => _onDragEnd(d, width),
+            // nothing else is competing for this drag. Raw rather than a
+            // `GestureDetector` for the sake of the recognizer, which is the
+            // one thing keeping a scroll from opening a row.
+            gestures: <Type, GestureRecognizerFactory>{
+              _AxisLockedHorizontalDragGestureRecognizer:
+                  GestureRecognizerFactoryWithHandlers<_AxisLockedHorizontalDragGestureRecognizer>(
+                () => _AxisLockedHorizontalDragGestureRecognizer(debugOwner: this),
+                (instance) {
+                  instance
+                    ..onStart = _onDragStart
+                    ..onUpdate = ((d) => _onDragUpdate(d, width))
+                    ..onEnd = ((d) => _onDragEnd(d, width))
+                    // The device's own slop, as a `GestureDetector` would have
+                    // set it — the enclosing list reads the same one.
+                    ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
+                },
+              ),
+            },
+            semantics: _SlideSemanticsDelegate(
+              onStart: _onDragStart,
+              onUpdate: (d) => _onDragUpdate(d, width),
+              onEnd: (d) => _onDragEnd(d, width),
+            ),
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(end: _dx),
               // Zero while the finger is down, so the row tracks it exactly
