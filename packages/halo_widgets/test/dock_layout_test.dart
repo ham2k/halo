@@ -10,19 +10,23 @@
 // whole point of user-arrangeable panes — a half-typed field must not reset
 // because its pane was docked elsewhere).
 
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 /// What three letters and an ellipsis measure, in the same style the strip's
-/// floor is measured against.
-double _threeLetterWidth(WidgetTester tester) {
+/// floor is measured against — bold for the editing floor, since a tab being
+/// rearranged carries its name in bold, plain for the one the used strip
+/// scrolls at.
+double _threeLetterWidth(WidgetTester tester, {bool bold = true}) {
   final context = tester.element(find.byType(DockLayoutView));
+  final style = Theme.of(context).textTheme.titleSmall;
   final painter = TextPainter(
     text: TextSpan(
       text: 'Abc…',
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+      style: bold ? style?.copyWith(fontWeight: FontWeight.bold) : style,
     ),
     textDirection: TextDirection.ltr,
     maxLines: 1,
@@ -30,6 +34,26 @@ double _threeLetterWidth(WidgetTester tester) {
   final width = painter.width;
   painter.dispose();
   return width;
+}
+
+/// The slot the action shrinks to in a tight tab — its glyph and a little
+/// around it. Desktop only: on a touch platform it does not shrink at all,
+/// which [_onDesktop] is why the tests about shrinking say so out loud.
+const double _glyphSlot = 32;
+
+/// Runs [body] as [platform]. The dock's action slot shrinks only off a
+/// touch platform, and a widget test runs as Android unless told otherwise,
+/// so a test about the shrink has to say which platform it is about or it
+/// measures the other rule. Reset in a `finally` rather than an
+/// `addTearDown`: the framework checks for a leaked debug override BEFORE
+/// tear-downs run, so a tear-down reset fails the test it cleaned up after.
+Future<void> _as(TargetPlatform platform, Future<void> Function() body) async {
+  debugDefaultTargetPlatformOverride = platform;
+  try {
+    await body();
+  } finally {
+    debugDefaultTargetPlatformOverride = null;
+  }
 }
 
 void main() {
@@ -548,6 +572,31 @@ void main() {
     expect(find.ancestor(of: find.text('Alpha'), matching: find.byType(TabChrome)), findsNothing);
   });
 
+  testWidgets('a long name ellipsizes rather than pushing the tabs past the pane', (tester) async {
+    // Sizing the strip to its widest tab (its natural width × the tab count)
+    // is what this catches: one long module name would then push every tab
+    // in the group off the pane's edge, leaving the operator to discover
+    // that a strip they cannot see the end of scrolls.
+    await tester.pumpWidget(harness(
+      spec: twoGroups(),
+      titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie and a great deal more name than fits'},
+    ));
+    final strip = stripAround(tester, 'Bravo');
+    final bravo = tabRect(tester, 'Bravo');
+    final charlie = tabRect(tester, 'Charlie and a great deal more name than fits');
+
+    expect(bravo.width, moreOrLessEquals(charlie.width), reason: 'a long name takes no more of the strip than a short one');
+    expect(bravo.width + charlie.width, moreOrLessEquals(strip.width));
+    expect(charlie.right, lessThanOrEqualTo(strip.right));
+    // Ellipsized, not squeezed out of existence: a name that renders at zero
+    // width satisfies every geometry assertion above and still shows the
+    // operator nothing.
+    final label = tester.getRect(find.text('Charlie and a great deal more name than fits'));
+    expect(label.width, greaterThan(0));
+    expect(charlie.contains(label.topLeft) && charlie.contains(label.bottomRight), isTrue,
+        reason: 'and inside its own tab, not painted over the neighbour');
+  });
+
   testWidgets('a group of one renders as a pane title, not a tab', (tester) async {
     await tester.pumpWidget(harness(spec: twoGroups()));
 
@@ -588,9 +637,8 @@ void main() {
   });
 
   testWidgets('tab widths hold still while the selection moves', (tester) async {
-    // Narrow enough that the tabs' own content sets their width — with room
-    // to spare they all take an equal share of the strip instead, which
-    // would hide the reservation this test is about.
+    // Narrow, where the strip has the least width to give and a tab that
+    // sized itself to what it holds would be most obvious.
     tester.view.physicalSize = const Size(200, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -599,14 +647,14 @@ void main() {
     final withBravoSelected = tabRect(tester, 'Bravo');
 
     await tester.pumpWidget(harness(spec: DockGroup(['b', 'c'], selected: 1), key: const ValueKey(1)));
-    // The grab handle only SHOWS on the selected tab, but it always takes
-    // its space: the tabs' shared width is set by the widest tab's content,
-    // so a handle that came and went would resize every tab in the group
-    // each time the selection moved.
+    // A tab's geometry is the strip's to decide, never its contents': the
+    // slots a selected tab fills are held open on every tab, so nothing in
+    // the strip moves sideways when the selection does. A tab sized to what
+    // it holds would shuffle every name in the group on each tap.
     expect(tabRect(tester, 'Bravo'), withBravoSelected);
   });
 
-  testWidgets('tabs too wide for the strip keep their width and scroll', (tester) async {
+  testWidgets('a strip too narrow to share scrolls at the floor, not below it', (tester) async {
     tester.view.physicalSize = const Size(200, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -614,11 +662,169 @@ void main() {
     await tester.pumpWidget(harness(spec: twoGroups()));
     final strip = stripAround(tester, 'Bravo');
     final bravo = tabRect(tester, 'Bravo');
+    final charlie = tabRect(tester, 'Charlie');
 
-    // The fallback is a scroll, never a squeeze: a tab narrower than its own
-    // label would clip the label instead of the strip clipping the tab.
-    expect(bravo.width, greaterThan(strip.width / 2));
-    expect(bravo.width + tabRect(tester, 'Charlie').width, greaterThan(strip.width));
+    // Sharing stops at a floor and the strip scrolls from there — a tab
+    // squeezed on past it shows punctuation where a name should be. The
+    // floor is every box between the tab's two edges, the label's own insets
+    // and the tab's own padding included; one left out of that sum and the
+    // tab ellipsizes below the three letters the floor exists to keep.
+    final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2;
+    expect(bravo.width, moreOrLessEquals(floor));
+    expect(charlie.width, moreOrLessEquals(floor));
+    expect(bravo.width + charlie.width, greaterThan(strip.width), reason: 'and past the strip, so it scrolls');
+    expect(tester.getSize(find.text('Bravo')).width, greaterThan(0), reason: 'a tab at the floor still names its pane');
+  });
+
+  testWidgets('selecting the tab that carries an action does not resize the strip', (tester) async {
+    await _as(TargetPlatform.macOS, () async {
+      // The action shows on the selected tab ALONE and is a full chrome height
+      // wide. Reserve THAT in the floor the strip shares on and a group of
+      // four flips to scrolling the moment its action-carrying tab is picked:
+      // the tabs stop filling the pane, every width jumps, and the strip ends
+      // in dead header. The slot is what gives way in a tight tab, not the
+      // width the strip shares.
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      Widget withSelection(int selected, Key key) => harness(
+        key: key,
+        spec: DockGroup(['a', 'b', 'c', 'd'], selected: selected),
+        titles: const {'a': 'INFO', 'b': 'SPOTS', 'c': 'More', 'd': 'Weather'},
+        children: const {
+          'a': SizedBox.expand(),
+          'b': SizedBox.expand(),
+          'c': SizedBox.expand(),
+          'd': SizedBox.expand(),
+        },
+        tabActions: {'d': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
+      );
+
+      // Wide enough to share comfortably, in floors rather than pixels: the
+      // test font advances every glyph a full em, so a window sized in points
+      // is a different number of floors here than in the app.
+      await tester.pumpWidget(withSelection(0, const ValueKey(0)));
+      final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
+      tester.view.physicalSize = Size(floor * 5, 1200);
+
+      await tester.pumpWidget(withSelection(0, const ValueKey(1)));
+      final strip = stripAround(tester, 'INFO');
+      final unselected = tabRect(tester, 'Weather');
+
+      await tester.pumpWidget(withSelection(3, const ValueKey(2)));
+      expect(tabRect(tester, 'Weather'), unselected, reason: 'the tab that gained an action keeps its share');
+      for (final name in ['INFO', 'SPOTS', 'More', 'Weather']) {
+        expect(tabRect(tester, name).width, moreOrLessEquals(strip.width / 4), reason: '$name keeps an equal share');
+      }
+      // And the name still gets its three letters beside the action — the slot
+      // shrank toward its glyph rather than taking the whole share. `> 0`
+      // would not say that: a full-width slot still leaves the label a few
+      // points to render "…" in.
+      expect(tester.getSize(find.text('Weather')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)));
+      // And with room to spare the action keeps its full tap target: the slot
+      // yields only where the name would otherwise go short, so a slot pinned
+      // at its glyph everywhere is as wrong as one that never shrinks.
+      expect(tester.getSize(find.byType(IconButton)).width,
+          moreOrLessEquals(LayoutDensity.chromeHeightOf(tester.element(find.byType(DockLayoutView)))));
+    });
+  });
+
+  testWidgets('the narrowest shared strip still names the pane holding the action', (tester) async {
+    await _as(TargetPlatform.macOS, () async {
+      // Exactly at the floor, where the strip shares for the last time before
+      // it scrolls. The action's slot is what gives way approaching it, but it
+      // only yields down to its glyph — so a floor that reserves less than
+      // that glyph hands the label a share it cannot fit three letters in, and
+      // the tab reads as a settings button with no name. That band is invisible
+      // at any wider width, which is why this test sits ON the floor.
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      Widget group(Key key) => harness(
+        key: key,
+        spec: DockGroup(['b', 'c'], selected: 0),
+        tabActions: {'b': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
+      );
+
+      // Measured off a first pump, then the view is set to exactly two floors
+      // wide — the last width that shares.
+      await tester.pumpWidget(group(const ValueKey(0)));
+      final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
+      tester.view.physicalSize = Size(floor * 2, 600);
+      await tester.pumpWidget(group(const ValueKey(1)));
+
+      expect(tabRect(tester, 'Bravo').width, moreOrLessEquals(floor), reason: 'sharing, not scrolling');
+      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)));
+      // The slot is down to its glyph here, and the glyph gets ALL of it: an
+      // IconButton's own 8pt-a-side padding would leave a 24pt icon 16pt to
+      // paint in, outside its box and into whatever clips the strip.
+      expect(tester.getSize(find.byType(IconButton)).width, moreOrLessEquals(_glyphSlot));
+      expect(tester.getSize(find.byType(Icon)).width, lessThanOrEqualTo(_glyphSlot));
+    });
+  });
+
+  testWidgets("a scrolling strip's tabs are all one width, action or not", (tester) async {
+    await _as(TargetPlatform.macOS, () async {
+      // Below the floor the strip scrolls, and there the action's smallest
+      // slot IS reserved — but on every tab in the group, not just the one
+      // showing it. A width that moved with the selection would shuffle the
+      // whole strip on each tap, which is worse than a few points wasted.
+      tester.view.physicalSize = const Size(120, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(harness(
+        spec: DockGroup(['b', 'c']),
+        tabActions: {'b': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
+      ));
+
+      final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
+      expect(tabRect(tester, 'Bravo').width, moreOrLessEquals(floor),
+          reason: "the scrolling floor holds the action's smallest slot");
+      expect(tabRect(tester, 'Charlie').width, moreOrLessEquals(floor), reason: 'and every tab gets the same one');
+      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)),
+          reason: 'so the selected tab still names its pane');
+      // The glyph gets the whole slot. Measured on the ICON, not the button:
+      // the button is the SizedBox's width whatever theme it carries, while
+      // an IconButton's own 8pt-a-side padding leaves a 24pt icon 16pt to
+      // paint in — outside its own box, off-centre, and into whatever clips
+      // the strip.
+      expect(tester.getSize(find.byType(Icon)).width, moreOrLessEquals(24));
+    });
+  });
+
+  testWidgets('on a touch platform the action keeps its tap target and the strip scrolls sooner', (tester) async {
+    await _as(TargetPlatform.android, () async {
+      // chromeHeightOf holds the strip's HEIGHT at the tap-target minimum on
+      // touch for this button's sake; taking the same points off its width
+      // instead would undo that on the one platform with no pointer to aim
+      // with. So there the slot does not shrink, the floor reserves the whole
+      // target, and a strip that cannot pay for it scrolls.
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      Widget group(Key key) => harness(
+        key: key,
+        spec: DockGroup(['b', 'c'], selected: 0),
+        tabActions: {'b': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
+      );
+
+      await tester.pumpWidget(group(const ValueKey(0)));
+      final tapTarget = LayoutDensity.chromeHeightOf(tester.element(find.byType(DockLayoutView)));
+      final name = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2;
+      // Exactly two DESKTOP floors wide — the width where the two rules part
+      // company. Off touch this shares; on touch the same width cannot pay
+      // for the tap target, so it scrolls instead of shrinking the button.
+      tester.view.physicalSize = Size((name + _glyphSlot) * 2, 600);
+      await tester.pumpWidget(group(const ValueKey(1)));
+
+      final strip = stripAround(tester, 'Bravo');
+      final bravo = tabRect(tester, 'Bravo');
+      expect(bravo.width, moreOrLessEquals(name + tapTarget), reason: 'the floor reserves the whole target');
+      expect(bravo.width + tabRect(tester, 'Charlie').width, greaterThan(strip.width), reason: 'so the strip scrolls');
+      expect(tester.getSize(find.byType(IconButton)).width, moreOrLessEquals(tapTarget), reason: 'and it keeps it');
+      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)));
+    });
   });
 
   testWidgets('an ambient device inset reaches only the group whose edge is at that physical edge (issue #205)',
@@ -707,14 +913,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The tab strip's own Padding wraps a SingleChildScrollView directly —
-    // a structurally unique ancestor, unlike Padding (which _DockTab's own
-    // label also uses internally).
+    // The tab strip's own Padding is the OUTERMOST one inside the group
+    // header's Material — the strip is what that header holds. Found from
+    // above rather than from the label, which has Paddings and LayoutBuilders
+    // of its own between it and the strip, and rather than from the scroll
+    // view, which only a strip too narrow to share evenly builds at all.
     Padding tabStripPaddingFor(String label) => tester.widget<Padding>(
-      find.ancestor(
-        of: find.ancestor(of: find.text(label), matching: find.byType(SingleChildScrollView)),
-        matching: find.byType(Padding),
-      ).first,
+      find
+          .descendant(
+            of: find.ancestor(of: find.text(label), matching: find.byType(Material)).first,
+            matching: find.byType(Padding),
+          )
+          .first,
     );
 
     final alphaPadding = tabStripPaddingFor('Alpha').padding.resolve(TextDirection.ltr);

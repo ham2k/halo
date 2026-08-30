@@ -34,6 +34,7 @@ import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'pane_divider.dart';
+import 'platform_chrome.dart' show isMobilePlatform;
 import 'spacing.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'tab_chrome.dart';
@@ -2008,16 +2009,18 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               builder: (context) {
                 return Padding(
                   padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
-                  // Tabs share the strip evenly and only scroll once they
-                  // genuinely don't fit, so a dock group reads as the same
-                  // kind of tab bar as the stock one beside it. The layering
-                  // that gets both: IntrinsicWidth sizes the Row of
-                  // equal-flex tabs to (widest tab × count), ConstrainedBox
-                  // stretches that to the viewport when it is narrower, and
-                  // the scroll view takes over beyond it (scroll-wheel
-                  // reachable; tab drags win the gesture arena over the
-                  // scroll view, which is fine — the strip is primarily
-                  // tapped, and it usually fits).
+                  // Tabs share the strip evenly and ellipsize their names,
+                  // and only scroll once even a few letters each no longer
+                  // fit — so a dock group reads as the same kind of tab bar
+                  // as the stock one beside it. Sizing the strip to its
+                  // WIDEST tab instead (IntrinsicWidth over equal-flex tabs)
+                  // pushes it past the pane the moment one module has a long
+                  // name, and a tab scrolled out of sight is a pane the
+                  // operator cannot reach without first discovering that the
+                  // strip scrolls at all. Beyond the floor it does scroll
+                  // (scroll-wheel reachable; tab drags win the gesture arena
+                  // over the scroll view, which is fine — the strip is
+                  // primarily tapped, and it usually fits).
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       // Stretch, not the default center, in both strips:
@@ -2098,19 +2101,35 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                           ),
                         );
                       }
+                      final count = group.modules.length;
+                      // ONE floor for the whole group, action included where
+                      // any tab in it has one — not the selected tab's own.
+                      // The action moves with the selection, and a floor that
+                      // moved with it would resize every tab in the strip on
+                      // each tap. Under it the tabs share; at it they stop and
+                      // the strip scrolls, so the floor is also the width the
+                      // scrolling strip gives them.
+                      final floor = _DockTab.readableMinWidth(
+                        context,
+                        solo: count == 1,
+                        hasAction: group.modules.any((id) => widget.tabActions?[id] != null),
+                      );
+                      if (count * floor <= constraints.maxWidth) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < count; i++) Expanded(child: _buildTab(context, group, i)),
+                          ],
+                        );
+                      }
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                          child: IntrinsicWidth(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (var i = 0; i < group.modules.length; i++)
-                                  Expanded(child: _buildTab(context, group, i)),
-                              ],
-                            ),
-                          ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < count; i++)
+                              SizedBox(width: floor, child: _buildTab(context, group, i)),
+                          ],
                         ),
                       );
                     },
@@ -2407,6 +2426,32 @@ class _DockTab extends StatelessWidget {
     return editingHandleSize + _editingActionSize + width + Space.sm * 2 + Space.xxs * 2;
   }
 
+  /// The least a tab is given while the dock is being USED: enough for three
+  /// letters and an ellipsis beside whatever else that tab holds. Below it
+  /// the strip scrolls rather than shrinking further, because a tab showing
+  /// nothing but punctuation names no pane.
+  ///
+  /// Measured, not guessed at, and summed over EVERY box between the tab's
+  /// two edges — the label's own insets, the tab's own padding, and the
+  /// action slot when this tab carries one — for the same reasons as
+  /// [activeMinWidth]: one term left out is a tab that ellipsizes below the
+  /// three letters this floor exists to keep, and a constant is a number for
+  /// one font scale.
+  ///
+  /// [hasAction] is a tab that carries its module's action, and it counts as
+  /// the SMALLEST that slot shrinks to ([minActionSizeOf]) rather than the
+  /// tap target it gets with room to spare — the slot gives way first (see [_actionSlot]), so
+  /// reserving the tap target here would scroll strips that read perfectly
+  /// well. Left out altogether, that tab's name is squeezed away to nothing
+  /// while every neighbour still reads fine, which looks like a missing
+  /// title rather than a strip out of room.
+  static double readableMinWidth(BuildContext context, {bool hasAction = false, bool solo = false}) {
+    final width = textWidth(context, 'Abc…', Theme.of(context).textTheme.titleSmall ?? const TextStyle());
+    // A pane heading keeps the fixed split's wider trailing inset; a tab's
+    // trailing side is the gap to its action, not an edge — see [_tabContent].
+    return width + Space.lg + (solo ? Space.lg : Space.sm) + Space.xxs * 2 + (hasAction ? minActionSizeOf(context) : 0);
+  }
+
   /// The least a tab being squeezed can be given: its grab handle and the
   /// tab's own padding, both fixed boxes. Below this the Row overflows
   /// instead of shrinking, and the handle paints over the neighbouring tab.
@@ -2423,6 +2468,22 @@ class _DockTab extends StatelessWidget {
   /// 96pt on a 20pt handle and a 24pt glyph shows "SP…" where it could show
   /// the word.
   static const double _editingActionSize = 32;
+
+  /// The least the action slot shrinks to while the dock is being USED — its
+  /// glyph and a little around it, the box editing gives it, and the tab is
+  /// themed to match so the glyph actually gets that width (see
+  /// [_actionSlot]). The slot is what gives way in a tight tab, not the name:
+  /// a strip whose tabs are all ellipsis is a strip that says nothing, and
+  /// the pane a settings button belongs to is the one already open below it.
+  ///
+  /// On a touch PLATFORM it does not shrink at all. `chromeHeightOf` holds
+  /// the strip's height at the tap-target minimum there for this control's
+  /// sake; taking the same points off its width instead would undo that
+  /// silently, on the one platform with no pointer to aim with. Such a strip
+  /// scrolls sooner, which is the honest answer: the button has to stay
+  /// pressable.
+  static double minActionSizeOf(BuildContext context) =>
+      isMobilePlatform ? LayoutDensity.chromeHeightOf(context) : _editingActionSize;
 
   /// A tab's contents: the grab handle pinned to its leading edge, the
   /// module's action to its trailing edge, and the label centered between
@@ -2458,65 +2519,113 @@ class _DockTab extends StatelessWidget {
             child: Icon(MdiIcons.dragVertical, size: editingHandleSize, color: labelColor),
           ),
         Expanded(
-          child: Row(
-            children: [
-              // Flexible, so a squeezed tab's name gives up its width down to
-              // nothing rather than forcing the tab to stay as wide as one
-              // line of text.
-              Flexible(
-                child: Padding(
-                  // A pane heading takes the fixed split's own title-bar
-                  // inset, so a solo dock pane and the split's logging pane
-                  // read as the same kind of thing. A tab with no handle
-                  // starts its name at that same inset — nothing else stands
-                  // between the name and the tab's edge — while a tab being
-                  // rearranged gives it back to the handle already sitting
-                  // there. The trailing side stays tight either way: it is
-                  // the gap to the options button, not an edge.
-                  padding: EdgeInsetsDirectional.only(
-                    start: showHandle ? Space.sm : Space.lg,
-                    end: solo ? Space.lg : Space.sm,
-                  ),
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    // A pane's name is what the operator is arranging BY while
-                    // editing — the tab is otherwise a handle and a border
-                    // with some text between them.
-                    style: (editing ? style?.copyWith(fontWeight: FontWeight.bold) : style)
-                        ?.copyWith(color: labelColor),
-                  ),
+          // The action's slot is sized against what this tab actually has,
+          // which only a LayoutBuilder here can say: the slot is inflexible,
+          // so a Row would hand it its full tap target and leave the name
+          // whatever is left — nothing at all, in a tab narrow enough. Only
+          // where that width is READ, though: a LayoutBuilder has no
+          // intrinsic dimensions to give, and a tab with nothing to size this
+          // way should stay measurable.
+          child: action == null || editing
+              ? _tabRow(context, labelColor, style: style, available: double.infinity)
+              : LayoutBuilder(
+                  builder: (context, constraints) =>
+                      _tabRow(context, labelColor, style: style, available: constraints.maxWidth),
                 ),
-              ),
-              if (action != null) _actionSlot(context),
-            ],
-          ),
         ),
       ],
     );
   }
 
-  /// The module's action, sized to what is in it: its glyph while editing
-  /// (see [_editingActionSize]), a full tap target otherwise.
-  Widget _actionSlot(BuildContext context) => SizedBox(
-    width: editing ? _editingActionSize : LayoutDensity.chromeHeightOf(context),
-    child: editing
-        ? IconButtonTheme(
-            // Tightened to its glyph. The tap target shrinks with it, which
-            // is the trade: a control pressed once per rearrange, against
-            // letters in the name of the pane being rearranged.
-            data: IconButtonThemeData(
-              style: IconButton.styleFrom(
-                minimumSize: const Size.square(_editingActionSize),
-                padding: EdgeInsets.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
+  /// The name and, where there is one, the action beside it — [available] is
+  /// the width the two share, which decides how much of it the action's slot
+  /// may take.
+  Widget _tabRow(BuildContext context, Color labelColor, {required TextStyle? style, required double available}) {
+    return Row(
+      children: [
+        // Flexible, so a squeezed tab's name gives up its width down to
+        // nothing rather than forcing the tab to stay as wide as one
+        // line of text.
+        Flexible(
+          child: Padding(
+            // A pane heading takes the fixed split's own title-bar
+            // inset, so a solo dock pane and the split's logging pane
+            // read as the same kind of thing. A tab with no handle
+            // starts its name at that same inset — nothing else stands
+            // between the name and the tab's edge — while a tab being
+            // rearranged gives it back to the handle already sitting
+            // there. The trailing side stays tight either way: it is
+            // the gap to the options button, not an edge.
+            padding: EdgeInsetsDirectional.only(
+              start: showHandle ? Space.sm : Space.lg,
+              end: solo ? Space.lg : Space.sm,
             ),
-            child: action!,
-          )
-        : _QuietTabAction(child: action!),
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              // A pane's name is what the operator is arranging BY while
+              // editing — the tab is otherwise a handle and a border
+              // with some text between them.
+              style: (editing ? style?.copyWith(fontWeight: FontWeight.bold) : style)
+                  ?.copyWith(color: labelColor),
+            ),
+          ),
+        ),
+        if (action != null) _actionSlot(context, available: available),
+      ],
+    );
+  }
+
+  /// The action's own width while the dock is being USED, given [available]
+  /// for the name and the action together: its full tap target where the
+  /// name still gets three letters beside it, and down to [minActionSizeOf]
+  /// where it does not. Shrinking the tap target is the trade — a control
+  /// pressed now and then, against the name of the pane it belongs to.
+  ///
+  /// Between those two ends the slot gives up exactly what the name needs,
+  /// so a tab at [readableMinWidth] shows three letters and the smallest
+  /// slot — which is why that floor reserves that slot and no more. The two
+  /// read the SAME sum, minus the tab's own padding, which is outside
+  /// [available]: derived rather than copied, because a label inset that
+  /// moved in one and not the other would leave a tab at the floor showing
+  /// fewer letters than both doc comments promise.
+  double _usedActionSize(BuildContext context, double available) {
+    assert(available.isFinite, 'a tab is laid out in a bounded strip — see _buildGroup');
+    final tapTarget = LayoutDensity.chromeHeightOf(context);
+    final forTheName = readableMinWidth(context, solo: solo) - Space.xxs * 2;
+    return math.min(tapTarget, math.max(minActionSizeOf(context), available - forTheName));
+  }
+
+  /// A slot tightened to its glyph: an IconButton's default padding is 8pt a
+  /// side, so a 32pt slot would otherwise lay the button out at 32 and give
+  /// the 24pt glyph 16 — painting outside its own box, off-centre, and into
+  /// whatever clips the strip.
+  static Widget _tightIconButton(Widget child, double size) => IconButtonTheme(
+    data: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        minimumSize: Size.square(size),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    ),
+    child: child,
   );
+
+  /// The module's action, sized to what is in it: its glyph while editing
+  /// (see [_editingActionSize]), and [_usedActionSize] otherwise. A slot
+  /// below the full tap target is tightened either way — the width is the
+  /// same trade, and a glyph that does not fit its slot is not a smaller
+  /// control, it is a clipped one.
+  Widget _actionSlot(BuildContext context, {required double available}) {
+    final size = editing ? _editingActionSize : _usedActionSize(context, available);
+    final squeezed = size < LayoutDensity.chromeHeightOf(context);
+    // Tightened to its glyph. The tap target shrinks with it, which is the
+    // trade: a control pressed now and then, against letters in the name of
+    // the pane it belongs to.
+    final child = editing ? action! : _QuietTabAction(child: action!);
+    return SizedBox(width: size, child: squeezed ? _tightIconButton(child, size) : child);
+  }
 
   @override
   Widget build(BuildContext context) {

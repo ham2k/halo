@@ -689,6 +689,51 @@ A header already too dark to recede into gets the control at full strength:
 a louder header than intended beats a control nobody can find, and there is
 no hover to fall back on when the screen is a touchscreen.
 
+**Tabs share the strip, whatever they are called.** While the dock is being
+used, every tab in a group takes an equal share of the pane's width and
+ellipsizes its name to fit. Sizing the strip to its WIDEST tab instead — every
+tab as wide as the longest name in the group — pushes the strip past the pane
+the moment one module has a long name, and a tab pushed off the edge is a pane
+the operator cannot reach without first discovering that the strip scrolls at
+all. It scrolls only below a floor of three letters and an ellipsis per tab —
+measured like the editing floor, over every box between a tab's two edges, so
+it holds at every font scale.
+
+**In a tight tab the ACTION slot gives way, not the name.** The action sits
+inside the selected tab's own share, and it is a full chrome height with room
+to spare; approaching the floor it gives up exactly what the name needs, down
+to its own glyph — the same box editing gives it — and no further. So the
+floor reserves that glyph, and a tab AT the floor shows three letters beside
+the smallest slot. Reserving the whole tap target there instead is the
+tempting alternative and is wrong twice over: the reservation is multiplied by
+the tab count, so a group of four flips to scrolling — tabs no longer filling
+the pane, every width jumping, dead header at the end — the moment the tab
+carrying the action is picked. Reserving nothing is wrong the other way: the
+slot bottoms out at its glyph while the share keeps shrinking, and the tab
+reads as a settings button with no name.
+
+**A tab's width never moves with the selection.** It is ONE floor per group,
+the action counted where any tab in the group carries one rather than where
+the selected one does — the selection moves, and a floor that moved with it
+would resize the whole strip on every tap. That floor is what the strip
+SHARES on too, so a group of four with an action reserves four glyph slots to
+guarantee one: the price of a strip that never rearranges itself under the
+operator's finger.
+
+**On a touch platform the slot does not shrink at all.** `chromeHeightOf`
+holds the strip's height at the tap-target minimum there for this control's
+sake, and taking the same points off its width instead would undo that
+silently, on the one platform with no pointer to aim with. So the floor
+reserves the whole target and such a strip scrolls sooner. Wherever the slot
+IS below that target — either mode — the button is themed tight to its glyph:
+an IconButton's own padding is 8pt a side, so a 32pt slot otherwise lays a
+24pt glyph out in 16 and paints it outside its own box.
+
+Scrolling stays undiscoverable — no scrollbar, and a horizontal wheel the
+mouse may not have. That is accepted, not solved: below the floor there is
+nothing left to share, and the strip has to give somewhere. Sharing the width
+is what makes it rare enough to accept.
+
 **The squeeze has a floor of its own.** Below the grab handle a tab does not
 shrink, it overflows — the handle is a fixed box, and it lands on the
 neighbouring tab. A strip too narrow even for handles scrolls: the wrong
@@ -721,8 +766,8 @@ While editing it becomes **Save Layout**, with a **discard** and a **plus**
 to its left. While editing:
 
 - every tab is a grab handle, at full strength, on every tab in a group. The
-  strip stops SCROLLING and starts squeezing: a strip too narrow to divide
-  evenly shrinks the tabs that are not showing, and the showing one stops at
+  strip stops sharing evenly and starts squeezing: a strip too narrow to
+  divide evenly shrinks the tabs that are not showing, and the showing one stops at
   a floor of its two slots plus three letters and an ellipsis. Those slots
   are UNEQUAL while editing — each only as wide as what is in it, rather than
   the matching chrome-height pair that keeps a label centred and still while
@@ -733,9 +778,10 @@ to its left. While editing:
   so a strip a few points too narrow costs a few points of label rather than
   every label at once. The floor is MEASURED, not a constant: a fixed number
   is a number for one font scale, and the strip would collapse early at
-  Larger and late at Smallest. Scrolling is right while the dock is being
-  used, where the operator is reading tab names; mid-rearrange the tab
-  scrolled out of sight is as likely as not the one being worked on;
+  Larger and late at Smallest. Scrolling — the last resort in either mode —
+  at least leaves every name readable while the dock is being read;
+  mid-rearrange the tab scrolled out of sight is as likely as not the one
+  being worked on;
 - the view's header goes inert: it names the view, drops the dots, and no
   longer opens the operation's setup sheet. The operation is not what is being
   arranged;
