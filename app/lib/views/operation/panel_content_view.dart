@@ -11,7 +11,7 @@
 // web view. SVG is a vector image, drawn with the app's own painter. HTML is
 // the escape hatch, and it runs under the sandbox below.
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -135,6 +135,26 @@ class PanelContentView extends StatelessWidget {
           ),
         );
       case 'html':
+        // The web has a web view — an iframe — and that is precisely why it
+        // is refused here rather than routed to [_HtmlPanelView].
+        //
+        // NOT for the missing network block on its own: Windows lacks that
+        // too (`blockNetworkLoads`/`blockNetworkImage`/`contentBlockers` have
+        // no Windows implementation either) and still renders panels, which
+        // is the case the sandbox comment below calls a rule your panel must
+        // follow rather than one it is held to.
+        //
+        // What is web-only is the NAVIGATION half, and it is the half
+        // [_SandboxedHtmlView] relies on most. `flutter_inappwebview_web`
+        // honours `javaScriptEnabled: false` by dropping `allow-scripts`, but
+        // the sandbox it then applies is every OTHER token — including
+        // `allow-top-navigation`, `allow-popups` and `allow-same-origin`. So
+        // an extension's document could navigate the whole app away or open
+        // windows, and `shouldOverrideUrlLoading` is not a reliable veto over
+        // an iframe's own top-level navigation the way it is over a native
+        // web view's. That is strictly worse than any platform we do render
+        // on, and it is a hijack rather than a leak.
+        if (kIsWeb) return _message(context, context.t.operation.layout.htmlPanelUnsupportedOnWeb);
         // Behind a platform gate, and a stateful one because the Windows half
         // of the answer arrives late — see [_HtmlPanelView].
         return _HtmlPanelView(html: content.content);
@@ -195,6 +215,12 @@ Widget _message(BuildContext context, String text, {bool isError = false, VoidCa
 /// `defaultTargetPlatform`, not `dart:io`'s Platform: this file is compiled
 /// into the web build too, and the platform check that works on every target
 /// is the one that doesn't ask the host OS.
+///
+/// The web never arrives here — it is refused at the `case 'html'` above, for
+/// a reason that is about the sandbox rather than about whether a web view
+/// exists. Do not fold that check into [probeWebviewSupport]: the Web Site
+/// pane shares that probe and legitimately runs on the web, because it loads
+/// the OPERATOR's own URL under no sandbox at all.
 class _HtmlPanelView extends StatefulWidget {
   final String html;
 

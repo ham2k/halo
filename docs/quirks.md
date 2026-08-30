@@ -113,6 +113,82 @@ line passes everything and breaks `flutter build macos`.
 "When 6.2 goes stable" is retired as a trigger — we took the beta, and it did
 not help.
 
+## On the web a web view is an iframe, and its sandbox grants top-level navigation
+
+**Breaks:** nothing visibly — which is the problem. `flutter_inappwebview_web`
+renders an `<iframe>`, and what an extension's `html` panel is actually held to
+there is not what the policy in `panel_content_view.dart` says.
+
+Which platform enforces what (checked against the pinned 6.2.0-beta.3 family):
+
+| | JS off | network blocked | navigation cancelled |
+| --- | --- | --- | --- |
+| iOS / macOS | yes | yes — `contentBlockers` | yes |
+| Android | yes | yes — `blockNetworkLoads` | yes |
+| Windows | yes | **no** | yes |
+| Web | yes | **no** | **no** |
+
+Two things follow, and it is worth keeping them apart.
+
+**The network gap is not web-specific.** Windows has no implementation of
+`blockNetworkLoads`, `blockNetworkImage` or `contentBlockers` either, and still
+renders panels. That is the case `docs/extensions/hooks.md` already describes:
+no-network is a rule a panel author must follow, not one they are held to
+everywhere. Do not cite it as the reason the web is refused — it would argue
+just as well for refusing Windows.
+
+**The navigation gap is.** The web package honours `javaScriptEnabled: false`
+by removing `allow-scripts`, but the sandbox attribute it then writes is every
+OTHER token — `allow-top-navigation`, `allow-popups`, `allow-same-origin`
+included. An extension's document can therefore navigate the whole app away or
+open windows, and `shouldOverrideUrlLoading` is not a reliable veto over an
+iframe's own top-level navigation the way it is over a native web view's. That
+is a hijack rather than a leak, it is strictly worse than any platform we do
+render on, and `_SandboxedHtmlView`'s comments lean on the navigation block
+harder than on anything else.
+
+**What we do:** `panel_content_view.dart` refuses `kIsWeb` at the `case 'html'`
+branch, before `_HtmlPanelView`, with its own message
+(`htmlPanelUnsupportedOnWeb`) — the platform HAS a web view, so the
+`htmlPanelUnsupported` wording would be untrue.
+
+Deliberately NOT folded into `probeWebviewSupport`: the Web Site pane shares
+that probe and legitimately runs on the web, because it loads the operator's
+own URL under no sandbox at all. The trust source is what differs, not the
+platform.
+
+**Testing it.** `kIsWeb` is a compile-time constant, so the branch is compiled
+away on the host VM: no override reaches it, and a case added to
+`panel_html_platform_gate_test.dart` would assert the native branch while
+reading as coverage of both. A browser is the only place the condition is true
+at RUNTIME — but the risk here is a future edit silently dropping the guard,
+and that is caught by reading the source instead.
+`panel_html_web_gate_test.dart` scans `panel_content_view.dart` for the check,
+the way `no_hover_tooltips_test` and `links_leave_the_app_test` enforce their
+own invisible conventions. It runs on the host VM like any other test.
+
+A true runtime test in a browser is still not possible:
+
+But a `--platform chrome` test that imports `panel_content_view.dart` HANGS —
+reproducibly, at `loading`, at 0% CPU, indefinitely. Bisected:
+
+- `settings_fuzzy_test.dart` (the existing browser test) passes in seconds
+- `flutter_inappwebview` alone in a browser test passes
+- each of `panel_content_view.dart`'s other imports passes alone
+  (flutter_markdown, flutter_svg, halo_widgets, strings.g, error_reporting_service,
+  link_opener, windows_webview)
+- **all eight of those imports together pass**
+- importing `panel_content_view.dart` itself hangs
+
+So it is that library's own DDC module, not its dependency closure, and the
+cause is not yet known. Do not wire such a test into `scripts/test.sh
+--browser` before this is understood: the step is part of the full gate, and a
+hanging test there blocks every merge rather than failing one.
+
+The gate itself is one `kIsWeb` check and is verified by reading; the risk it
+carries is that a future edit removes it silently. That is what this entry is
+for.
+
 ## `flutter_secure_storage` on Linux needs libsecret AND a Secret Service
 
 **Breaks:** two different ways, and they are worth keeping apart.

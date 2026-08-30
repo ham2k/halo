@@ -2267,6 +2267,9 @@ class Translations$operation$layout$en {
 
 	/// en: 'This panel needs a web view, which this platform does not provide'
 	String get htmlPanelUnsupported => 'This panel needs a web view, which this platform does not provide';
+
+	/// en: 'This panel needs a sandbox the web version cannot provide'
+	String get htmlPanelUnsupportedOnWeb => 'This panel needs a sandbox the web version cannot provide';
 }
 
 // Path: operation.export
@@ -5784,6 +5787,7 @@ extension on Translations {
 			'operation.layout.panels.radioDisconnect' => 'Disconnect this radio',
 			'operation.layout.panels.radioStale' => 'NO DATA',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
+			'operation.layout.htmlPanelUnsupportedOnWeb' => 'This panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
@@ -5962,9 +5966,9 @@ extension on Translations {
 			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
 			'activitiesView.showResultsMap' => 'Show results on a map',
 			'activitiesView.showResultsList' => 'Show results as a list',
-			'activitiesView.addToOperation' => 'Add to Operation',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.addToOperation' => 'Add to Operation',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'activitiesView.imports' => 'Imports',
@@ -6476,9 +6480,9 @@ extension on Translations {
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
-			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',

@@ -380,7 +380,8 @@
         "radioDisconnect": "Desconectar esta radio",
         "radioStale": "SIN DATOS"
       },
-      "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece"
+      "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece",
+      "htmlPanelUnsupportedOnWeb": "Este panel necesita un entorno aislado que la versión web no puede ofrecer"
     },
     "export": {
       "title": "Exportaciones de la operación",

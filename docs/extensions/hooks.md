@@ -1058,8 +1058,11 @@ no-network half is enforced by content blockers on Apple platforms and
 still gets no scripts and no navigation, so treat "no network" as a rule
 your panel must follow rather than one it is held to everywhere. HTML
 panels do not render at all where there is no web view (Linux, and Windows
-without the WebView2 runtime) — the pane says so. `markdown` has none of
-these caveats, which is the other reason to prefer it.
+without the WebView2 runtime) — the pane says so. Nor on the web build, where
+one exists but is an iframe whose sandbox grants top-level navigation and
+popups: the no-navigation rule above is the one part a panel cannot be trusted
+to keep on its own, so the pane refuses rather than render under it.
+`markdown` has none of these caveats, which is the other reason to prefer it.
 
 **`on`** is a refresh budget, not a subscription: `'operation'`,
 `'qsoLogged'`, `'spots'`, `'lookup'`, `'qso'`, or `` `tick:<seconds>` ``

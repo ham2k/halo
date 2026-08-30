@@ -25,6 +25,15 @@
 // `Platform.isLinux` is not overridable, and `flutter test` reports a host
 // platform of its own choosing regardless of what it runs on.
 //
+// The web is the one platform NOT held here. `kIsWeb` is a compile-time
+// constant, so its branch is compiled away on the host VM and no override
+// reaches it — a web case added here would assert the NATIVE branch while
+// reading as coverage of both. A browser test is the only thing that could
+// cover it, and one cannot currently be written: a `--platform chrome` test
+// that imports panel_content_view.dart hangs at load — bisected, but not
+// yet explained; see docs/quirks.md. The gate is real (the `kIsWeb` check at
+// `case 'html'`); its coverage is not.
+//
 // There is no platform implementation under `flutter test` either, so the
 // permitted case necessarily throws. That is not an obstacle to testing it:
 // the throw IS the observable difference between a gate that diverted and one

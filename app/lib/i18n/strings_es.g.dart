@@ -1104,6 +1104,7 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String get panelRenderRetry => 'Reintentar';
 	@override late final _Translations$operation$layout$panels$es panels = _Translations$operation$layout$panels$es._(_root);
 	@override String get htmlPanelUnsupported => 'Este panel necesita un visor web, que esta plataforma no ofrece';
+	@override String get htmlPanelUnsupportedOnWeb => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer';
 }
 
 // Path: operation.export
@@ -2944,6 +2945,7 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioDisconnect' => 'Desconectar esta radio',
 			'operation.layout.panels.radioStale' => 'SIN DATOS',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
+			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer',
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
@@ -3123,9 +3125,9 @@ extension on TranslationsEs {
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
 			'activitiesView.showResultsMap' => 'Ver resultados en un mapa',
-			'activitiesView.showResultsList' => 'Ver resultados como lista',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.showResultsList' => 'Ver resultados como lista',
 			'activitiesView.addToOperation' => 'Agregar a la operación',
 			'activitiesView.mapEmptyState' => 'No hay resultados que mostrar en el mapa',
 			'activitiesView.mapEmptyStateHint' => 'Vuelve a la lista o busca otra cosa',
@@ -3637,9 +3639,9 @@ extension on TranslationsEs {
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
-			'settings.station.fakeConnectDelay' => 'Retraso de conexión (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.fakeConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.fakeConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
 			'settings.station.fakeDropAfter' => 'Desconectar tras (segundos)',
 			'settings.station.fakeDropAfterDescription' => 'Cierra la conexión por su cuenta, para probar la reconexión. Vacío o 0 nunca desconecta.',

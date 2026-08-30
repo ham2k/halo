@@ -2252,7 +2252,10 @@ export interface PanelRenderArgs {
 /// A panel's content, rendered natively by the core: markdown through the
 /// app's own typography, SVG as a vector image, HTML in a sandboxed web
 /// view. Prefer markdown — it inherits the app's theme, font scale and
-/// density for free, and costs no web view.
+/// density for free, costs no web view, and is the only kind that renders
+/// everywhere: `html` needs a web view that can actually hold it to the
+/// sandbox, which rules out Linux, Windows without the WebView2 runtime, and
+/// the web build (see `panel` in docs/extensions/hooks.md).
 /// `title` overrides the tab label for this rendering. Optional, and only
 /// worth setting on a `multiple` panel — otherwise the descriptor's title
 /// already names it, and three panes reading the same thing is exactly what

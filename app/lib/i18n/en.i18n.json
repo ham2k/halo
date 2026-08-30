@@ -381,7 +381,8 @@
         "radioDisconnect": "Disconnect this radio",
         "radioStale": "NO DATA"
       },
-      "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide"
+      "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide",
+      "htmlPanelUnsupportedOnWeb": "This panel needs a sandbox the web version cannot provide"
     },
     "export": {
       "title": "Operation Exports",
