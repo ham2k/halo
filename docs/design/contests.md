@@ -1885,9 +1885,14 @@ no exchange, no export; needs scoring fan-out + a POTA-ref annotation). Effort i
 Rows describe **app-polo's** structure, except `stateparks`, corrected at M5 when
 it was ported: only Ohio has a typed exchange (a park abbreviation, not a state)
 and only Ohio exports a Cabrillo — the other three events read their parks off
-the POTA references already being logged, and the ADIF their sponsors want is
-POTA's own per-park export, as it is in polo. This extension writes Ohio's
-Cabrillo and nothing else: a file carries one handler's fields, so a contest
-ADIF from here would name `CONTEST_ID` and no park at all. Per #149 and §5.6, `qp` and
+the POTA references already being logged. Each sponsor is offered the one file
+it asks for and nothing else: Ohio's Cabrillo; a per-park ADIF for Texas and
+Georgia, whose uploaders dictate the filename (`CALL@US-PARK-DATE`) and read
+the park out of it, so those files carry POTA's `SIG_INFO`/`MY_SIG_INFO`
+alongside the contest's own fields; and nothing at all for Florida, whose rules
+name no filename and whose §7.4 asks only for "the recommended POTA log
+format" — which is POTA's own per-park export, as it is in polo. ADIF's
+`Contest_ID` enumeration lists none of the four events, and no sponsor reads
+the value. Per #149 and §5.6, `qp` and
 `stateparks` ship in HaLo as ONE extension each whose events are offered through
 the activity `suggest` search, and their data files stay one bundled catalog.

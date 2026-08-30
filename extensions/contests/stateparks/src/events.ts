@@ -47,6 +47,22 @@ export const WARC_BANDS = ['60m', '30m', '17m', '12m']
 /// How an event counts multipliers, from `options.multipliers`.
 export type MultiplierRule = 'none' | 'stateParksActivated' | 'stateParksActivatedAndHunted'
 
+/// The sponsors that dictate the log's filename, by event key.
+///
+/// Texas's uploader takes "ADI/ADIF files… no other file types", wants
+/// `my_sig_info` on every activator QSO and `sig_info` on every hunter and
+/// park-to-park one, and names the file `[callsign]@[park-id].adi`
+/// (`KE5CW@US-3051.adif`), with extra text allowed after the park number.
+/// Georgia §7.2.1 asks for the same shape with the date kept —
+/// "formatted as for POTA: CALL@US-PARK_ID-DATE (ex. W1RCP@US-2195-20260418)"
+/// — plus `<SIG_INFO>` for in-Georgia park-to-park contacts.
+///
+/// Florida is NOT here: §7.4 asks that the "ADIF format must conform to the
+/// recommended POTA log format" and §7.5.3 that there be one file per park,
+/// which POTA's own per-park export already is, under whatever name the
+/// operator's setting gives it. Ohio takes no ADIF at all.
+const NAMED_PARK_ADIF = ['TXSP', 'GASP']
+
 /// A power class an event publishes: the value stored on our ref, and the
 /// sponsor's own ceiling for it.
 ///
@@ -185,9 +201,12 @@ export interface StateParkEvent {
   /// (`options.exchange === 'parkAbbreviation'`) — Ohio alone, today.
   usesParkAbbreviations: boolean
   /// This event's own Cabrillo (`options.exportCabrillo`) — Ohio alone asks
-  /// for one, and the other three sponsors read POTA's own ADIF instead of
-  /// anything this extension writes (see `ExportHook` in index.ts).
+  /// for one, and the other three sponsors read an ADIF instead (see
+  /// `ExportHook` in index.ts).
   exportsCabrillo: boolean
+  /// Whether this sponsor's uploader dictates the log's FILENAME, which makes
+  /// the file ours to write rather than POTA's (`NAMED_PARK_ADIF`).
+  requiresNamedParkAdif: boolean
   /// CONTEST line for that Cabrillo.
   cabrilloName: string
 
@@ -298,6 +317,7 @@ function normalize(raw: RawEvent): StateParkEvent {
 
     usesParkAbbreviations,
     exportsCabrillo: raw.options?.exportCabrillo === true,
+    requiresNamedParkAdif: NAMED_PARK_ADIF.includes(raw.key),
     // Sponsors name their own Cabrillo contest; `<KEY>OTA` is what the three
     // whose sponsors don't take a Cabrillo would use if they started to.
     cabrilloName: raw.cabrilloName ?? `${raw.key}OTA`,

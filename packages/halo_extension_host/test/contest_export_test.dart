@@ -257,30 +257,148 @@ void main() {
     expect(await fieldsFor('GASP'), ['ref']);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('a state park event offers only the formats its own sponsor will read', () async {
-    // Ohio refuses an ADIF in as many words — "No ADIF, no CSV, no Text files -
-    // send in a standard Cabrillo file only" — and is the only sponsor asking
-    // for a Cabrillo. The other three upload an ADIF (Texas §8.2, Florida §7.1,
-    // Georgia §7.2.2), and what they read is the PARK, which is POTA's own
-    // per-park export — a file from here would carry CONTEST_ID and no park at
-    // all, since a file carries one handler's fields. polo leaves those three
-    // to "regular POTA exports" the same way.
+  test('a state park event offers only the file its own sponsor will read', () async {
+    // Each sponsor is offered the ONE thing it asks for. Ohio refuses an ADIF
+    // in as many words — "No ADIF, no CSV, no Text files - send in a standard
+    // Cabrillo file only". Texas and Georgia read the park off a filename they
+    // dictate, which is why those files are written here at all. Florida takes
+    // an ADIF but names no filename (§7.4 asks only that it "conform to the
+    // recommended POTA log format"), so POTA's own per-park export is the
+    // submission and this extension offers nothing.
     final host = await sharedHost(['stateparks']);
-    Future<List<String>> typesFor(String event) async {
+    Future<List<String>> typesFor(String event, {List<Map<String, dynamic>> parks = const []}) async {
+      final base = operationFor('stateparks', event: event);
       final options = await host.invokeHook(
         'export',
         key: 'stateparks',
         method: 'suggestExportOptions',
-        args: {'operation': operationFor('stateparks', event: event), 'qsos': qsosFor('stateparks')},
+        args: {
+          'operation': {...base, 'refs': [...(base['refs'] as List), ...parks]},
+          'qsos': qsosFor('stateparks'),
+        },
         timeout: const Duration(seconds: 10),
       ) as List?;
       return (options ?? []).map((o) => (o as Map)['exportType'] as String).toList();
     }
 
-    expect(await typesFor('OHSP'), ['cabrillo']);
+    const twoParks = [
+      {'type': 'potaActivation', 'ref': 'US-2195'},
+      {'type': 'potaActivation', 'ref': 'US-3051'},
+    ];
+
+    expect(await typesFor('OHSP', parks: twoParks), ['cabrillo'],
+        reason: 'a Cabrillo covers the whole entry, however many parks it was from');
+    expect(await typesFor('FLSP', parks: twoParks), isEmpty);
+    // One file per park, because the sponsor's filename names exactly one.
+    expect(await typesFor('TXSP', parks: twoParks),
+        ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
+    expect(await typesFor('GASP', parks: twoParks),
+        ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
+    // No park activated, nothing to name and nothing to submit.
     expect(await typesFor('TXSP'), isEmpty);
-    expect(await typesFor('FLSP'), isEmpty);
-    expect(await typesFor('GASP'), isEmpty);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // Texas's uploader takes the park from the FILENAME, and Georgia §7.2.1
+  // prints the shape it wants: `W1RCP@US-2195-20260418`. HaLo renders that
+  // shape from `exportFilename` only when the operator has compact names
+  // turned on — a preference, and one heading for a user-editable template —
+  // so this file builds its own and must not follow that setting.
+  test('the sponsor-named ADIF is named exactly as the rules print it', () async {
+    final host = await sharedHost(['stateparks']);
+    Future<List<Map>> optionsFor({required bool compact}) async {
+      final base = operationFor('stateparks', event: 'GASP');
+      return ((await host.invokeHook(
+        'export',
+        key: 'stateparks',
+        method: 'suggestExportOptions',
+        args: {
+          'operation': {
+            ...base,
+            'stationCall': 'W1RCP',
+            'refs': [...(base['refs'] as List), {'type': 'potaActivation', 'ref': 'US-2195'}],
+          },
+          'qsos': [
+            {
+              ...qsosFor('stateparks').first,
+              'startAtMillis': DateTime.utc(2026, 4, 18, 13, 30).millisecondsSinceEpoch,
+            },
+          ],
+          'compactFilenames': compact,
+        },
+        timeout: const Duration(seconds: 10),
+      ) as List).cast<Map>());
+    }
+
+    expect((await optionsFor(compact: false)).single['filename'], 'W1RCP@US-2195-20260418.adi');
+    expect((await optionsFor(compact: true)).single['filename'], 'W1RCP@US-2195-20260418.adi');
+    // Sorted above POTA's own per-park export, whose compact name is this same
+    // string: the core renames the second of a colliding pair, and the file
+    // that must keep its name has to be the first.
+    expect((await optionsFor(compact: true)).single['priority'], greaterThan(0));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // What the two uploaders actually read: Texas requires `my_sig_info` on
+  // every activator QSO and `sig_info` on every park-to-park one, Georgia
+  // §7.2.1 requires `SIG_INFO` for in-Georgia park-to-park. Those are POTA's
+  // fields, and a file carries one handler's — so this one names POTA in
+  // `includeFieldsFrom` or it is unreadable to the people it is for.
+  test('the sponsor-named ADIF carries POTA\'s park fields as well as the contest\'s', () async {
+    final host = await sharedHost(['adif', 'stateparks', 'pota']);
+    final base = operationFor('stateparks', event: 'TXSP');
+    final result = await host.invokeHook(
+      'export',
+      key: 'stateparks',
+      method: 'generateExport',
+      args: {
+        'operation': {
+          ...base,
+          'stationCall': 'KE5CW',
+          'refs': [
+            ...(base['refs'] as List),
+            {'type': 'potaActivation', 'ref': 'US-3051'},
+            {'type': 'potaActivation', 'ref': 'US-3052'},
+          ],
+        },
+        'qsos': [
+          {
+            ...qsosFor('stateparks').first,
+            'refs': [
+              ...(qsosFor('stateparks').first['refs'] as List),
+              {'type': 'pota', 'ref': 'US-9001'},
+            ],
+          },
+        ],
+        'exportType': 'stateparks-adif:US-3051',
+      },
+      timeout: const Duration(seconds: 10),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_SIG_INFO:7>US-3051'), reason: 'the park Texas reads off the file');
+    expect(content, contains('<SIG_INFO:7>US-9001'), reason: 'the park-to-park park');
+    expect(content, contains('<CONTEST_ID:'), reason: 'the contest is still the main handler');
+    // The file names ONE park, so the other activation must not appear in it —
+    // it has a file of its own.
+    expect(content, isNot(contains('US-3052')));
+    expect(result['filename'], startsWith('KE5CW@US-3051-'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a park dropped since the panel listed it is refused, not exported parkless', () async {
+    final host = await sharedHost(['adif', 'stateparks', 'pota']);
+    await expectLater(
+      host.invokeHook(
+        'export',
+        key: 'stateparks',
+        method: 'generateExport',
+        args: {
+          'operation': operationFor('stateparks', event: 'TXSP'),
+          'qsos': qsosFor('stateparks'),
+          'exportType': 'stateparks-adif:US-3051',
+        },
+        timeout: const Duration(seconds: 10),
+      ),
+      throwsA(anything),
+    );
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the Ohio State Parks Cabrillo is written the way the sponsor reads it', () async {

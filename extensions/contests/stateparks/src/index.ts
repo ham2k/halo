@@ -21,7 +21,7 @@
 //   * Ohio exchanges a three-letter park abbreviation, which is this milestone's
 //     `kind: 'options'` field — 76 codes, searched, Space to accept.
 
-import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf, utcDateCompact } from "@ham2k/halo-extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -373,48 +373,106 @@ function filenameFor(
   })
 }
 
+/// The ref type POTA puts on an operation while activating a park — the parks
+/// these two sponsors name in the filename and score the activation of.
+const POTA_ACTIVATION = 'potaActivation'
+
+/// Namespaces this hook's per-park exportType, and separates it from the ref.
+/// Split by prefix LENGTH, never by searching for the colon: a reference can
+/// contain one.
+const SPONSOR_ADIF = 'stateparks-adif'
+const SEPARATOR = ':'
+
+/// The parks this operation is activating, in the order they were added — one
+/// file each.
+function parksActivated(operation: Record<string, JSONValue>): string[] {
+  return (((operation.refs as Record<string, JSONValue>[] | undefined) ?? [])
+    .filter((r) => r?.type === POTA_ACTIVATION && typeof r.ref === 'string' && r.ref)
+    .map((r) => r.ref as string))
+}
+
+/// `W1RCP@US-2195-20260418.adi` — Georgia §7.2.1's example verbatim, and
+/// within what Texas accepts ("extra text after the park number").
+///
+/// Built here rather than through `exportFilename`'s compact form, which
+/// happens to render the same shape today: that form is the operator's
+/// preference and is on its way to being a template they can edit, while this
+/// one is a sponsor's requirement and has to survive them changing it. The
+/// slash of a portable callsign becomes a dash, as it must in any filename.
+function sponsorFilename(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  ref: string,
+): string {
+  const call = str(operation.stationCall).toUpperCase().replace(/\//g, '-') || 'UNKNOWN'
+  // An operation with no contacts has no date of its own, and the name still
+  // has to have one — `exportFilename` falls back the same way.
+  const millis = startMillisOf(operation, qsos) ?? Date.now()
+  return `${call}@${ref}-${utcDateCompact(millis)}.adi`
+}
+
 const ExportHook = {
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const event = eventOn(args.operation)
     if (!event) return []
     const t = tFor(ctx)
 
-    // Cabrillo only, which is Ohio alone: they say so three times over — "No
-    // ADIF, no CSV, no Text files - send in a standard Cabrillo file only"
-    // (OSPOTA-Rules-2026-Rev-1.pdf).
+    // Each sponsor gets the one file it asked for, and nothing else.
     //
-    // The other three upload an ADIF to their own site — Texas §8.2 ("Your log
-    // must be uploaded in ADIF format to the TSPOA website"), Florida §7.1
-    // ("ONLY ADIF formatted logs will be accepted"), Georgia §7.2.2 — and that
-    // file is POTA's own per-park export, as it is in polo. What those
-    // sponsors read is the PARK: Georgia's upload wants the worked one in
-    // `SIG_INFO`, and Florida wants one file per park ("Combined log files for
-    // multiple parks will not be accepted", §7.5.3), which is the very axis
-    // `activityExportHook` splits POTA's exports on. This extension's own
-    // fields are the exchange, and a file carries one handler's fields
-    // (`ExportRequest.mainHandler`) — so a contest ADIF from here would name
-    // `CONTEST_ID` and no park at all. (Hunters submit nothing to Florida or
-    // Georgia; their activators do.)
-    if (!event.exportsCabrillo) return []
-    return [{
-      exportType: 'cabrillo',
-      format: 'cabrillo',
-      label: t('cabrilloExport', { contest: contestTag(args.operation) }),
-      filename: filenameFor(args.operation, args.qsos ?? [], 'log', args.compactFilenames),
+    // Ohio takes a Cabrillo and says so three times over — "No ADIF, no CSV,
+    // no Text files - send in a standard Cabrillo file only"
+    // (OSPOTA-Rules-2026-Rev-1.pdf) — under the CONTEST name they publish,
+    // which is `cabrilloName`, not the event key.
+    if (event.exportsCabrillo) {
+      return [{
+        exportType: 'cabrillo',
+        format: 'cabrillo',
+        label: t('cabrilloExport', { contest: contestTag(args.operation) }),
+        filename: filenameFor(args.operation, args.qsos ?? [], 'log', args.compactFilenames),
+        selectedByDefault: true,
+        refType: TYPE,
+      }]
+    }
+
+    // Texas and Georgia dictate the filename their uploaders read the park
+    // from, which is what makes this file ours to write rather than POTA's
+    // (events.ts, `NAMED_PARK_ADIF`) — one per park, since the name carries
+    // exactly one. Florida's ADIF is POTA's own export under any name, so it
+    // is not offered here.
+    if (!event.requiresNamedParkAdif) return []
+
+    return parksActivated(args.operation).map((ref) => ({
+      exportType: `${SPONSOR_ADIF}${SEPARATOR}${ref}`,
+      format: 'adif',
+      label: t('sponsorAdifExport', { contest: contestTag(args.operation), ref }),
+      filename: sponsorFilename(args.operation, args.qsos ?? [], ref),
       selectedByDefault: true,
-      refType: TYPE,
-    }]
+      // The PARK's segments, not the event's: this file claims one park, and
+      // the sponsor scores the activation, so it covers the stretch that park
+      // was being activated — the same slice POTA's own export takes.
+      refType: POTA_ACTIVATION,
+      // Above POTA's own per-park export, which under compact file names
+      // produces this very filename. The panel generates in list order and the
+      // core renames the SECOND file of a colliding pair, so being first is
+      // what keeps the name the sponsor demands on the file that has to have
+      // it.
+      priority: 1,
+    }))
   },
 
   async generateExport(args: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
-    if (args.exportType !== 'cabrillo') {
+    const exportType = str(args.exportType)
+    const event = eventOn(args.operation)
+    if (!event) return { filename: '', mimeType: '', content: '' }
+
+    if (exportType.startsWith(`${SPONSOR_ADIF}${SEPARATOR}`)) {
+      return await sponsorAdif(args, exportType.slice(SPONSOR_ADIF.length + SEPARATOR.length))
+    }
+    if (exportType !== 'cabrillo') {
       return { filename: '', mimeType: '', content: '' }
     }
 
     const operation = args.operation
-    const event = eventOn(operation)
-    if (!event) return { filename: '', mimeType: '', content: '' }
-
     const ourCall = str(operation.stationCall)
 
     // Ohio's own layout: no signal reports, and a park column each side. The
@@ -457,6 +515,40 @@ const ExportHook = {
       content,
     }
   },
+}
+
+/// One park's file for a sponsor that named it. The contest is the main
+/// handler — `CONTEST_ID` and the exchange are ours — and POTA rides along,
+/// because `SIG_INFO`/`MY_SIG_INFO` are exactly what these uploaders read the
+/// parks from (Texas requires both; Georgia §7.2.1 requires `SIG_INFO` for
+/// in-state park-to-park).
+async function sponsorAdif(args: ExportRequest, wanted: string): Promise<ExportResult> {
+  // Listed off the operation's refs and generated from them again a moment
+  // later: remove the park in between and filtering to nothing would produce a
+  // valid ADIF claiming no park at all, which is worse than failing because it
+  // looks submittable. Same staleness `activityExportHook` guards.
+  if (!parksActivated(args.operation).includes(wanted)) {
+    throw new Error(`stateparks: operation has no ${POTA_ACTIVATION} reference '${wanted}'`)
+  }
+
+  // The file names ONE park, so that is the only one the record fields may
+  // name: the operation POTA's hook sees carries just this activation.
+  const refs = ((args.operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
+    (r) => r?.type !== POTA_ACTIVATION || r?.ref === wanted,
+  )
+
+  const content = await adifForExport({
+    operation: { ...args.operation, refs: refs as unknown as JSONValue },
+    qsos: args.qsos,
+    includePrivateData: args.includePrivateData,
+    mainHandler: TYPE,
+    includeFieldsFrom: ['pota'],
+  })
+  return {
+    filename: sponsorFilename(args.operation, args.qsos, wanted),
+    mimeType: 'text/plain',
+    content,
+  }
 }
 
 /// The power class and entry category fields, for the events that publish them.

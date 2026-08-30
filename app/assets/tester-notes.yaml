@@ -6,7 +6,7 @@
 
 upcoming:
   changes:
-    - State Parks now exports only Ohio's Cabrillo; the other events use POTA's park ADIF
+    - "State Parks exports: Ohio's Cabrillo, and Texas/Georgia per-park ADIFs named as their rules require"
 
 "156":
   changes:

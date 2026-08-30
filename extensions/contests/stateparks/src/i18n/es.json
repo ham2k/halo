@@ -11,6 +11,7 @@
   "theirParkLabel": "Parque",
   "unconfigured": "Parques Estatales (sin evento)",
   "cabrilloExport": "Cabrillo para {{contest}}",
+  "sponsorAdifExport": "ADIF para {{contest}} en {{ref}}",
   "whenLastWeekend": "el fin de semana pasado",
   "whenThisWeekend": "este fin de semana",
   "whenInDays": "en {{days}} días",
