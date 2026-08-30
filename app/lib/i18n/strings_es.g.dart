@@ -169,6 +169,31 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get searchHint => 'Buscar extensiones';
 	@override String get applying => 'Activando cambios de extensiones, esto puede tardar un momento…';
 	@override String get noMatches => 'Ninguna extensión coincide con tu búsqueda';
+	@override String get installFromFile => 'Instalar desde archivo…';
+	@override String installTitle({required Object name}) => '¿Instalar ${name}?';
+	@override String updateTitle({required Object name}) => '¿Actualizar ${name}?';
+	@override String installVersion({required Object version}) => 'Versión ${version}';
+	@override String get canReach => 'Esta extensión podrá acceder a';
+	@override String get canUseLocation => 'Tu ubicación';
+	@override String get canSetUserAgent => 'Identificarse ante servidores con su propio nombre';
+	@override String get noCapabilities => 'No pide nada fuera de la app.';
+	@override String get sandboxNote => 'Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.';
+	@override String get installAction => 'Instalar';
+	@override String get updateAction => 'Actualizar';
+	@override String get installFailed => 'No se pudo instalar esa extensión';
+	@override String get installedBadge => 'Instalada';
+	@override String get uninstallAction => 'Quitar';
+	@override String uninstallTitle({required Object name}) => '¿Quitar ${name}?';
+	@override String get uninstallBody => 'Se eliminan la extensión y lo que haya guardado. Tu registro no se toca.';
+	@override String installedMessage({required Object name}) => 'Se instaló ${name}';
+	@override String installIncomplete({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.';
+	@override String uninstallFailed({required Object name}) => 'No se pudo quitar ${name}';
+	@override String installedFrom({required Object source}) => 'Descargada desde ${source}';
+	@override String get dropHint => 'Suelta una extensión .h2kext para instalarla';
+	@override String get dropOneOnly => 'Suelta una extensión a la vez.';
+	@override String downloadFailed({required Object source, required Object status}) => '${source} respondió ${status} para esa extensión.';
+	@override String get downloadTooLarge => 'Esa descarga es demasiado grande para ser una extensión.';
+	@override String get downloadNotSecure => 'Esa descarga redirigió a un sitio no seguro.';
 }
 
 // Path: home
@@ -2633,6 +2658,31 @@ extension on TranslationsEs {
 			'extensionsPanel.searchHint' => 'Buscar extensiones',
 			'extensionsPanel.applying' => 'Activando cambios de extensiones, esto puede tardar un momento…',
 			'extensionsPanel.noMatches' => 'Ninguna extensión coincide con tu búsqueda',
+			'extensionsPanel.installFromFile' => 'Instalar desde archivo…',
+			'extensionsPanel.installTitle' => ({required Object name}) => '¿Instalar ${name}?',
+			'extensionsPanel.updateTitle' => ({required Object name}) => '¿Actualizar ${name}?',
+			'extensionsPanel.installVersion' => ({required Object version}) => 'Versión ${version}',
+			'extensionsPanel.canReach' => 'Esta extensión podrá acceder a',
+			'extensionsPanel.canUseLocation' => 'Tu ubicación',
+			'extensionsPanel.canSetUserAgent' => 'Identificarse ante servidores con su propio nombre',
+			'extensionsPanel.noCapabilities' => 'No pide nada fuera de la app.',
+			'extensionsPanel.sandboxNote' => 'Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.',
+			'extensionsPanel.installAction' => 'Instalar',
+			'extensionsPanel.updateAction' => 'Actualizar',
+			'extensionsPanel.installFailed' => 'No se pudo instalar esa extensión',
+			'extensionsPanel.installedBadge' => 'Instalada',
+			'extensionsPanel.uninstallAction' => 'Quitar',
+			'extensionsPanel.uninstallTitle' => ({required Object name}) => '¿Quitar ${name}?',
+			'extensionsPanel.uninstallBody' => 'Se eliminan la extensión y lo que haya guardado. Tu registro no se toca.',
+			'extensionsPanel.installedMessage' => ({required Object name}) => 'Se instaló ${name}',
+			'extensionsPanel.installIncomplete' => ({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.',
+			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'No se pudo quitar ${name}',
+			'extensionsPanel.installedFrom' => ({required Object source}) => 'Descargada desde ${source}',
+			'extensionsPanel.dropHint' => 'Suelta una extensión .h2kext para instalarla',
+			'extensionsPanel.dropOneOnly' => 'Suelta una extensión a la vez.',
+			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} respondió ${status} para esa extensión.',
+			'extensionsPanel.downloadTooLarge' => 'Esa descarga es demasiado grande para ser una extensión.',
+			'extensionsPanel.downloadNotSecure' => 'Esa descarga redirigió a un sitio no seguro.',
 			'home.title' => 'Registrador Portátil',
 			'home.newOperation' => 'Nueva operación',
 			'home.stationCallsign' => 'Indicativo de la estación',
@@ -3068,6 +3118,8 @@ extension on TranslationsEs {
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
 			'activitiesView.showResultsMap' => 'Ver resultados en un mapa',
 			'activitiesView.showResultsList' => 'Ver resultados como lista',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.addToOperation' => 'Agregar a la operación',
 			'activitiesView.mapEmptyState' => 'No hay resultados que mostrar en el mapa',
 			'activitiesView.mapEmptyStateHint' => 'Vuelve a la lista o busca otra cosa',
@@ -3093,8 +3145,6 @@ extension on TranslationsEs {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => '${kind} eliminado',
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.controlSettings' => 'Controles de registro',
 			'loggingControls.expandControls' => 'Expandir',
 			'loggingControls.collapseControls' => 'Contraer',
@@ -3582,6 +3632,8 @@ extension on TranslationsEs {
 			'settings.station.fakeFailConnect' => 'Fallar siempre al conectar',
 			'settings.station.fakeConnectFailure' => 'Se le indicó a la radio simulada que rechazara esta conexión',
 			'settings.station.fakeFreq' => 'Frecuencia (kHz)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.fakeFreqDescription' => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.',
 			'settings.station.fakeMode' => 'Modo',
 			'settings.station.fakeModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',
@@ -3607,8 +3659,6 @@ extension on TranslationsEs {
 			'settings.station.newKey' => 'Nuevo manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.whatToTrack' => '¿Qué registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
 			'settings.station.trackFieldPower' => 'Potencia',

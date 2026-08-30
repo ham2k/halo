@@ -28,8 +28,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
 
 SPEC CHECKSUMS:
-  auto_updater_macos: 3a42f1a06be6981f1a18be37e6e7bf86aa732118
-  flutter_libserialport: 2c523cb8d8203fc6d1b0da88190da31ac970eb93
+  auto_updater_macos: 3e3462c418fe4e731917eacd8d28eef7af84086d
+  flutter_libserialport: d1a505fd4b05785f7b50cc7c93b361937ea1c5bd
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   libserialport: 1cb25e66ef3c92a8e59c2ea3820302c3fa2268cd
   Sparkle: 39dbdf28637f6056fbf5ee6494bdbfae54f49f41

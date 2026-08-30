@@ -50,4 +50,26 @@ class DeepLinkService {
     if (challengeToken == null || challengeToken.isEmpty) return null;
     return (clientUuid: clientUuid, challengeToken: challengeToken);
   }
+
+  /// The extension a `com.ham2k:///install_extension?url=<https url>` link
+  /// asks to install, or null when [uri] isn't one (HALO-422).
+  ///
+  /// Both authority forms are accepted, for the same reason `link_client`
+  /// accepts both: a link that silently does nothing is indistinguishable
+  /// from a broken one to whoever clicked it.
+  ///
+  /// **https only.** A bundle is code the app will run; fetching it over a
+  /// connection anyone on the path can rewrite would make the consent screen
+  /// a description of whatever they substituted. Nothing is downloaded until
+  /// this returns non-null, and nothing is installed until the operator has
+  /// seen the source and agreed.
+  static Uri? installExtensionRequest(Uri uri) {
+    if (!uri.scheme.startsWith('com.ham2k')) return null;
+    if (uri.path != '/install_extension' && uri.host != 'install_extension') return null;
+    final raw = uri.queryParameters['url'];
+    if (raw == null || raw.isEmpty) return null;
+    final target = Uri.tryParse(raw);
+    if (target == null || target.scheme != 'https' || target.host.isEmpty) return null;
+    return target;
+  }
 }

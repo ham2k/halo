@@ -12,6 +12,8 @@ core knows nothing about any of them — it invokes **hooks** and renders
 - **[cli.md](cli.md)** — `halo-ext`, which runs these hooks outside the app.
 - **[development.md](development.md)** — the dev loop: rebuild on save, and
   reload one extension in a running app without restarting it.
+- **[distribution.md](distribution.md)** — the `.h2kext` bundle format,
+  packaging an extension, and installing one someone else made.
 
 ## Anatomy of an extension
 

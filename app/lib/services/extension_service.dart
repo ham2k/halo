@@ -19,6 +19,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'connectivity_service.dart';
 import 'error_reporting_service.dart';
+import 'installed_extensions.dart';
 import 'location_service.dart';
 import 'panel_service.dart';
 import 'settings_service.dart';
@@ -1501,10 +1502,7 @@ class ExtensionService implements PanelExtensionSource {
         // until a re-enable restarts the runtime with them included.
         if (!isExtensionActive(info)) continue;
         loaded.add(info.key);
-        bundles.add(ExtensionBundle(
-          key: info.key,
-          source: _devBundles[info.key]?.source ?? await rootBundle.loadString('assets/extensions/${info.file}'),
-        ));
+        bundles.add(ExtensionBundle(key: info.key, source: await _sourceFor(info)));
         // The manifest's declared network capabilities (`domains` and
         // `allowUserAgentOverride`; see extensions/build-config.mjs).
         fetchAllowlists[info.key] = info.domains;
@@ -1618,6 +1616,80 @@ class ExtensionService implements PanelExtensionSource {
     }
   }
 
+  /// One extension's JS, from wherever that extension came from.
+  Future<String> _sourceFor(ExtensionInfo info) async {
+    final dev = _devBundles[info.key];
+    if (dev != null) return dev.source;
+    if (info.isInstalled) return _requireInstalledStore().sourceFor(info.key);
+    return rootBundle.loadString('assets/extensions/${info.file}');
+  }
+
+  /// Installs an inspected `.h2kext` and reboots the runtime so it loads.
+  ///
+  /// The consent the operator gave belongs to the caller — this is the commit,
+  /// and by here the asking has happened.
+  Future<void> installBundle(InspectedBundle bundle) async {
+    await _requireInstalledStore().install(bundle);
+    _availableExtensions = null;
+    await restartRuntime();
+  }
+
+  /// Removes an installed extension and reboots without it.
+  ///
+  /// Everything it stored goes with it — its settings group and the operator's
+  /// enable/disable override — which is what makes this an uninstall rather
+  /// than an update. Left behind, they come back silently on a reinstall: old
+  /// credentials, and an extension that lands disabled with nothing to say
+  /// why.
+  Future<void> uninstallExtension(String key) async {
+    await _requireInstalledStore().uninstall(key);
+    await settings?.forgetExtension(key);
+    await _forgetExtensionSecrets(key);
+    _availableExtensions = null;
+    statusBar?.clearNamespace(key);
+    await restartRuntime();
+  }
+
+  /// Removes every keychain item an extension owned — its settings-panel
+  /// secrets and its account credentials.
+  ///
+  /// Enumerated rather than asked for: by the time an extension is being
+  /// uninstalled its hooks are gone, so nothing can say which panels or
+  /// accounts it had. The key prefix is the handle, and it is the same one
+  /// `registerHook` enforces for every key an extension may claim.
+  ///
+  /// A reinstall inheriting these is the resurrection `forgetPanelConfig`
+  /// exists to prevent — and the uninstall dialog says they are removed.
+  Future<void> _forgetExtensionSecrets(String key) async {
+    try {
+      final stored = await _secureStorage.readAll();
+      for (final storedKey in stored.keys) {
+        final mine = storedKey.startsWith('settingsPanel_secret_${key}_') ||
+            storedKey == 'account_creds_$key' ||
+            storedKey.startsWith('account_creds_${key}_') ||
+            storedKey == 'account_session_$key' ||
+            storedKey.startsWith('account_session_${key}_');
+        if (mine) await _secureStorage.delete(key: storedKey);
+      }
+    } catch (e, stack) {
+      // Reported, not swallowed: credentials outliving the extension that
+      // owned them is the thing this method exists to prevent, so failing at
+      // it silently is the one outcome worth knowing about.
+      ErrorReportingService.report(e, stack, context: 'extension-uninstall:secrets');
+    }
+  }
+
+  /// The installed store, or a failure that names what was missing. A bare `!`
+  /// here reports "Null check operator used on a null value", which says
+  /// nothing about extensions to whoever reads it.
+  InstalledExtensions _requireInstalledStore() {
+    final store = _installed;
+    if (store == null) {
+      throw StateError('no installed-extension store yet — loadAvailableExtensions has not run');
+    }
+    return store;
+  }
+
   /// The extensions the build index declares, with their user-facing
   /// metadata — readable without booting (or evaluating) any JS, so the
   /// Extensions panel can list DISABLED extensions and still render when
@@ -1629,8 +1701,31 @@ class ExtensionService implements PanelExtensionSource {
     final fromAssets = [
       for (final entry in (parsed['extensions'] as List).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson(entry),
     ];
+    _hostSharedModules = ((parsed['sharedModules'] as Map?) ?? const {}).cast<String, String>();
+    // Built from the asset index, because what an installed bundle may NOT
+    // call itself is exactly what the app already ships.
+    // Not on web: there is no store there, and a non-null one whose every
+    // method refuses is a thing every caller has to remember about.
+    final store = InstalledExtensions.isSupported
+        ? (_installed ??= InstalledExtensions(
+            builtInKeys: {for (final info in fromAssets) info.key},
+            hostSharedModules: _hostSharedModules,
+          ))
+        : null;
+    // A damaged store must not cost the operator the app's own extensions.
+    var fromDisk = const <ExtensionInfo>[];
+    try {
+      fromDisk = await store?.list() ?? const [];
+    } catch (e, stack) {
+      // Reported, not merely logged. `list` already skips a single unreadable
+      // extension, so anything reaching here is the STORE failing — every
+      // installed extension gone at once, with the app otherwise behaving
+      // normally. Deciding here that it doesn't matter is the ad-hoc policy
+      // ErrorPolicy exists to prevent (docs/design/error-reporting.md).
+      ErrorReportingService.report(e, stack, context: 'installed-extensions:list');
+    }
     return _availableExtensions = mergeDevExtensions(
-      fromAssets,
+      [...fromAssets, ...fromDisk],
       [for (final entry in _devBundles.values) entry.info],
     );
   }
@@ -1646,6 +1741,25 @@ class ExtensionService implements PanelExtensionSource {
   /// Which extension keys the CURRENT runtime was started with — compared
   /// against the desired set to decide whether a toggle needs a restart.
   Set<String> _loadedExtensionKeys = const {};
+
+  /// Installed `.h2kext` extensions (HALO-422). Null until the index has been
+  /// read, since it needs the built-in keys and the host's shared-module
+  /// versions to validate anything.
+  InstalledExtensions? _installed;
+
+  /// The store, once the extension index has been read. Null on web, and
+  /// before the first [loadAvailableExtensions].
+  InstalledExtensions? get installed => _installed;
+
+  /// Supplies the store up front, so a test can point it at a directory of its
+  /// own — the real one resolves through `appDataDirectory()`, which reaches a
+  /// platform channel.
+  @visibleForTesting
+  set debugInstalledStore(InstalledExtensions store) => _installed = store;
+
+  /// What this build's kernel carries, from index.json — the versions an
+  /// installed bundle's `sharedDependencies` are checked against.
+  Map<String, String> _hostSharedModules = const {};
 
   /// Extensions currently served by a dev server, by key: the built source and
   /// the manifest metadata that came with it. An entry here OVERRIDES the
@@ -3615,6 +3729,35 @@ class RefLink {
   final String? label;
 }
 
+/// Where an extension's code came from. Not cosmetic: [maySeeBuildSecrets]
+/// hangs off it, and so does whether the loader reads the source from the
+/// app's assets, the installed store, or a dev server.
+enum ExtensionSource {
+  /// Shipped inside the app.
+  asset,
+
+  /// Installed by the operator from a `.h2kext` (HALO-422).
+  installed,
+
+  /// Served by a dev server (HALO-118, docs/extensions/development.md).
+  dev;
+
+  /// Only what the app shipped. An extension that arrived any other way gets
+  /// nothing, whatever key it claims — see [visibleSecretsFor].
+  bool get maySeeBuildSecrets => this == ExtensionSource.asset;
+
+  /// Reads the provenance an index entry carries. Absent means [asset]: the
+  /// app's own `index.json` says nothing, because everything in it shipped
+  /// with the app.
+  static ExtensionSource fromJson(Map<String, dynamic> json) {
+    return switch (json['source'] as String?) {
+      'installed' => ExtensionSource.installed,
+      'dev' => ExtensionSource.dev,
+      _ => ExtensionSource.asset,
+    };
+  }
+}
+
 /// Whether a dev-loop reload of one extension can be swapped into the running
 /// runtime, or whether the runtime has to be restarted around it.
 ///
@@ -3643,19 +3786,19 @@ bool canHotSwapDevBundle({
 
 /// Which build secrets [info] may read, out of everything the build has.
 ///
-/// Two rules, and the first one overrules the second. A DEV-SERVED extension
-/// sees nothing, whatever key it claims: visibility follows where the code came
-/// from, not what it calls itself, so a bundle off a dev server calling itself
-/// `sota` cannot inherit `SOTA_*` and pointing the app at a server can never
-/// hand a credential over (HALO-425, docs/extensions/development.md). The same
-/// will hold for sideloaded extensions (HALO-422). Otherwise the name-prefix
+/// Two rules, and the first one overrules the second. An extension the app did
+/// NOT ship — dev-served, or installed from a `.h2kext` — sees nothing,
+/// whatever key it claims: visibility follows where the code came from, not
+/// what it calls itself, so a bundle calling itself `sota` cannot inherit
+/// `SOTA_*`, and neither pointing the app at a dev server nor installing a file
+/// can hand a credential over (HALO-425, HALO-422). Otherwise the name-prefix
 /// policy in secret_policy.dart decides.
 ///
 /// Empty values are dropped rather than passed through: a build without the
 /// value configured must look identical to a build that never had it, so an
 /// extension's "expect null and degrade" path is the one that runs.
 Map<String, String> visibleSecretsFor(ExtensionInfo info, Map<String, String> secrets) {
-  if (info.fromDevServer) return const {};
+  if (!info.source.maySeeBuildSecrets) return const {};
   return {
     for (final entry in secrets.entries)
       if (entry.value.isNotEmpty && extensionMaySeeSecret(info.key, entry.key)) entry.key: entry.value,
@@ -3736,17 +3879,21 @@ class ExtensionInfo {
   /// back to the English base value.
   final Map<String, Map<String, Object?>> translations;
 
-  /// Served by a dev server rather than baked into the app's assets
-  /// (docs/extensions/development.md). Two things turn on it: the source is
-  /// fetched over HTTP instead of read from `rootBundle`, and NO build secret
-  /// is ever visible to it — secrets belong to extensions that ship in the
-  /// app, and a key claimed by a dev bundle must not inherit them (HALO-425).
-  final bool fromDevServer;
+  /// Where this extension's code came from.
+  ///
+  /// It decides two things: where the source is read from, and — the part that
+  /// matters — whether any build secret is visible to it. Only extensions that
+  /// ship inside the app get those, whatever key a bundle claims (HALO-425).
+  final ExtensionSource source;
+
+  /// Installed from a `.h2kext` the operator chose (HALO-422). Like a
+  /// dev-served one, it is code the app did not ship.
+  bool get isInstalled => source == ExtensionSource.installed;
 
   const ExtensionInfo({
     required this.key,
     required this.file,
-    this.fromDevServer = false,
+    this.source = ExtensionSource.asset,
     this.domains = const [],
     this.allowUserAgentOverride = false,
     this.requiresLocation = false,
@@ -3795,7 +3942,7 @@ class ExtensionInfo {
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
         key: json['key'] as String,
         file: json['file'] as String? ?? '${json['key']}.js',
-        fromDevServer: json['fromDevServer'] as bool? ?? false,
+        source: ExtensionSource.fromJson(json),
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
         allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
         requiresLocation: json['requiresLocation'] as bool? ?? false,

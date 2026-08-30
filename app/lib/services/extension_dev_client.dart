@@ -116,7 +116,7 @@ class ExtensionDevClient extends ChangeNotifier {
       final index = await _getJson(base.resolve('index.json'));
       final infos = [
         for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>())
-          ExtensionInfo.fromJson({...entry, 'fromDevServer': true}),
+          ExtensionInfo.fromJson({...entry, 'source': 'dev'}),
       ];
       if (infos.isEmpty) throw const FormatException('the dev server is serving no extensions');
 
@@ -257,7 +257,7 @@ class ExtensionDevClient extends ChangeNotifier {
     try {
       // The event carries the extension's whole manifest entry, so a `domains`
       // edited between two saves applies with the code that expects it.
-      final info = ExtensionInfo.fromJson({...event, 'fromDevServer': true});
+      final info = ExtensionInfo.fromJson({...event, 'source': 'dev'});
       final source = await _getText(base.resolve(info.file));
       await extensions.applyDevBundle(key, source: source, info: info);
       _buildErrors.remove(key);

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The shared-mime-info definition for a Ham2K extension bundle (HALO-422).
+
+  Installed to /usr/share/mime/packages (or ~/.local/share/mime/packages) and
+  followed by `update-mime-database`, this is what teaches the desktop that the
+  type exists. Without it the MimeType line in the .desktop file names a type
+  nothing has ever heard of, and a .h2kext is just an unrecognised zip.
+
+  The magic match is deliberately narrow: every .h2kext IS a zip, so matching
+  on PK alone would claim every archive on the system. The filename glob is
+  what distinguishes it, and the app checks the bytes itself regardless.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.ham2k.extension">
+    <comment>Ham2K Extension</comment>
+    <sub-class-of type="application/zip"/>
+    <glob pattern="*.h2kext"/>
+  </mime-type>
+</mime-info>

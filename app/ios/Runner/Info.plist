@@ -12,6 +12,53 @@
 	     HALO_EDITION build setting yet (editions PR #140 covers core + macOS
 	     only). Once editions reach iOS, replace the .dev/.next entries with a
 	     single com.ham2k.logger.$(HALO_EDITION), as macOS already does. -->
+	<!-- Ham2K extension bundles (HALO-422). The exported type declaration is
+	     what teaches the OS the extension exists at all; the document type is
+	     what makes Finder offer this app for one. Both are needed, and a
+	     double-clicked file still only reaches Flutter because AppDelegate
+	     implements application(_:open:) — app_links handles URL schemes only. -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ham2k.extension-bundle</string>
+			<key>UTTypeDescription</key>
+			<string>Ham2K Extension</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<!-- It IS a zip, so anything that reads one can still open it. -->
+				<string>public.zip-archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>h2kext</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ham2k.extension</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Ham2K Extension</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.ham2k.extension-bundle</string>
+			</array>
+			<!-- Viewer, not Editor: the app installs a bundle, it does not
+			     write one back. -->
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+		</dict>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

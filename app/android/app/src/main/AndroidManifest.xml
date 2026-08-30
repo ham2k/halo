@@ -60,6 +60,31 @@
                 <data android:scheme="com.ham2k.polo"/>
                 <data android:scheme="com.ham2k.polo.auth"/>
             </intent-filter>
+            <!-- Ham2K extension bundles (HALO-422), so a .h2kext opened from
+                 Files or a browser download offers this app.
+
+                 Two filters because Android matches either the MIME type OR
+                 the path, never reliably both: a provider that knows the type
+                 sends application/zip and says nothing useful about the name,
+                 while a file:// URI carries the name and usually no type at
+                 all. What was actually opened is decided by the bundle's magic
+                 bytes, exactly as for a picked file. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:mimeType="application/vnd.ham2k.extension"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:host="*"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.h2kext"/>
+            </intent-filter>
             <!-- Puts HaLo in Android's "open with" chooser when a matching
                  USB-serial adapter is plugged in — see res/xml/device_filter.xml
                  for which chips. -->

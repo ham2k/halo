@@ -24,6 +24,13 @@ dependencies:
   collection: any
   drift: ^2.28.0
   drift_flutter: ^0.2.4
+  # Reading and unpacking .h2kext extension bundles (HALO-422). Already
+  # present transitively; named here because a transitive dependency cannot
+  # be imported.
+  archive: ^4.0.0
+  # Checking a .h2kext's declared sharedDependencies against what this build
+  # carries (HALO-422). Transitive already; named here to be importable.
+  pub_semver: ^2.2.0
   file_selector: ^1.1.0
   # Drag a log file onto the operation window. Desktop + web only; mobile has
   # no file-drag concept and reaches the same import through the Options menu.

@@ -274,6 +274,81 @@ class Translations$extensionsPanel$en {
 
 	/// en: 'No extensions match your search'
 	String get noMatches => 'No extensions match your search';
+
+	/// en: 'Install from file…'
+	String get installFromFile => 'Install from file…';
+
+	/// en: 'Install ${name}?'
+	String installTitle({required Object name}) => 'Install ${name}?';
+
+	/// en: 'Update ${name}?'
+	String updateTitle({required Object name}) => 'Update ${name}?';
+
+	/// en: 'Version ${version}'
+	String installVersion({required Object version}) => 'Version ${version}';
+
+	/// en: 'This extension will be able to reach'
+	String get canReach => 'This extension will be able to reach';
+
+	/// en: 'Your location'
+	String get canUseLocation => 'Your location';
+
+	/// en: 'Identify itself to servers under its own name'
+	String get canSetUserAgent => 'Identify itself to servers under its own name';
+
+	/// en: 'It asks for nothing outside the app.'
+	String get noCapabilities => 'It asks for nothing outside the app.';
+
+	/// en: 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.'
+	String get sandboxNote => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.';
+
+	/// en: 'Install'
+	String get installAction => 'Install';
+
+	/// en: 'Update'
+	String get updateAction => 'Update';
+
+	/// en: 'That extension could not be installed'
+	String get installFailed => 'That extension could not be installed';
+
+	/// en: 'Installed'
+	String get installedBadge => 'Installed';
+
+	/// en: 'Remove'
+	String get uninstallAction => 'Remove';
+
+	/// en: 'Remove ${name}?'
+	String uninstallTitle({required Object name}) => 'Remove ${name}?';
+
+	/// en: 'The extension and anything it stored are removed. Your log is untouched.'
+	String get uninstallBody => 'The extension and anything it stored are removed. Your log is untouched.';
+
+	/// en: 'Installed ${name}'
+	String installedMessage({required Object name}) => 'Installed ${name}';
+
+	/// en: 'Installing ${name} did not finish. It may need installing again.'
+	String installIncomplete({required Object name}) => 'Installing ${name} did not finish. It may need installing again.';
+
+	/// en: 'Could not remove ${name}'
+	String uninstallFailed({required Object name}) => 'Could not remove ${name}';
+
+	/// en: 'Downloaded from ${source}'
+	String installedFrom({required Object source}) => 'Downloaded from ${source}';
+
+	/// en: 'Drop a .h2kext extension to install it'
+	String get dropHint => 'Drop a .h2kext extension to install it';
+
+	/// en: 'Drop one extension at a time.'
+	String get dropOneOnly => 'Drop one extension at a time.';
+
+	/// en: '${source} answered ${status} for that extension.'
+	String downloadFailed({required Object source, required Object status}) => '${source} answered ${status} for that extension.';
+
+	/// en: 'That download is far too large to be an extension.'
+	String get downloadTooLarge => 'That download is far too large to be an extension.';
+
+	/// en: 'That download redirected somewhere insecure.'
+	String get downloadNotSecure => 'That download redirected somewhere insecure.';
 }
 
 // Path: home
@@ -5410,6 +5485,31 @@ extension on Translations {
 			'extensionsPanel.searchHint' => 'Search extensions',
 			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
 			'extensionsPanel.noMatches' => 'No extensions match your search',
+			'extensionsPanel.installFromFile' => 'Install from file…',
+			'extensionsPanel.installTitle' => ({required Object name}) => 'Install ${name}?',
+			'extensionsPanel.updateTitle' => ({required Object name}) => 'Update ${name}?',
+			'extensionsPanel.installVersion' => ({required Object version}) => 'Version ${version}',
+			'extensionsPanel.canReach' => 'This extension will be able to reach',
+			'extensionsPanel.canUseLocation' => 'Your location',
+			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
+			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
+			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
+			'extensionsPanel.installAction' => 'Install',
+			'extensionsPanel.updateAction' => 'Update',
+			'extensionsPanel.installFailed' => 'That extension could not be installed',
+			'extensionsPanel.installedBadge' => 'Installed',
+			'extensionsPanel.uninstallAction' => 'Remove',
+			'extensionsPanel.uninstallTitle' => ({required Object name}) => 'Remove ${name}?',
+			'extensionsPanel.uninstallBody' => 'The extension and anything it stored are removed. Your log is untouched.',
+			'extensionsPanel.installedMessage' => ({required Object name}) => 'Installed ${name}',
+			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Installing ${name} did not finish. It may need installing again.',
+			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Could not remove ${name}',
+			'extensionsPanel.installedFrom' => ({required Object source}) => 'Downloaded from ${source}',
+			'extensionsPanel.dropHint' => 'Drop a .h2kext extension to install it',
+			'extensionsPanel.dropOneOnly' => 'Drop one extension at a time.',
+			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} answered ${status} for that extension.',
+			'extensionsPanel.downloadTooLarge' => 'That download is far too large to be an extension.',
+			'extensionsPanel.downloadNotSecure' => 'That download redirected somewhere insecure.',
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'New operation',
 			'home.stationCallsign' => 'Station callsign',
@@ -5845,6 +5945,8 @@ extension on Translations {
 			'activitiesView.showResultsMap' => 'Show results on a map',
 			'activitiesView.showResultsList' => 'Show results as a list',
 			'activitiesView.addToOperation' => 'Add to Operation',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'activitiesView.imports' => 'Imports',
@@ -5870,8 +5972,6 @@ extension on Translations {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.controlSettings' => 'Logging Controls',
 			'loggingControls.expandControls' => 'Expand',
 			'loggingControls.collapseControls' => 'Collapse',
@@ -6359,6 +6459,8 @@ extension on Translations {
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
 			'settings.station.antennaTypes.dipole' => 'Dipole',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
@@ -6384,8 +6486,6 @@ extension on Translations {
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
 			'settings.station.whatToTrack' => 'What to track?',
 			'settings.station.trackFieldRig' => 'Transceiver',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldPower' => 'Power',
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',

@@ -15,6 +15,12 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
+import 'package:file_selector/file_selector.dart' show XFile;
+
+import '../services/error_reporting_service.dart';
+import '../services/extension_service.dart';
+import '../services/installed_extensions.dart';
+import 'extension_install_flow.dart';
 import '../main.dart';
 
 /// Category display order; anything unrecognized lands in "other". Public
@@ -98,6 +104,62 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     }
   }
 
+  /// Picks a `.h2kext`, asks, installs, and reboots the runtime around it.
+  Future<void> _install() async {
+    final services = widget.services;
+    final store = services.extensions.installed;
+    // The button is disabled without a store, so this is belt-and-braces —
+    // but a press that did nothing at all, with no message and no log, is the
+    // one outcome nobody could report.
+    if (store == null) {
+      debugPrint('[extensions] install pressed before the installed store was ready');
+      return;
+    }
+    // NOT set around the picker and the consent screen: `_applying` shows
+    // "applying changes…" and blocks the list, and the operator is going to
+    // spend that time browsing their filesystem and reading a dialog.
+    final name = await installExtensionFromFile(
+      context,
+      store: store,
+      commit: (bundle) async {
+        if (mounted) setState(() => _applying = true);
+        try {
+          await services.extensions.installBundle(bundle);
+        } finally {
+          if (mounted) setState(() => _applying = false);
+        }
+      },
+    );
+    if (name == null) return; // cancelled, or refused with its own dialog
+    services.track('extension_installed', {});
+    if (mounted) {
+      services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+    }
+  }
+
+  Future<void> _uninstall(ExtensionInfo info) async {
+    final locale = LocaleSettings.currentLocale.languageCode;
+    final name = info.nameFor(locale);
+    if (!await confirmUninstall(context, name: name)) return;
+    if (!mounted) return;
+    setState(() => _applying = true);
+    try {
+      await widget.services.extensions.uninstallExtension(info.key);
+      widget.services.track('extension_uninstalled', {});
+    } catch (e, stack) {
+      // Otherwise the spinner clears, the row is still there, and nothing says
+      // the removal failed — the operator is left to conclude the button does
+      // not work.
+      ErrorReportingService.report(e, stack, context: 'extension-uninstall');
+      if (mounted) {
+        widget.services.statusBar
+            .setMessage(key: 'extensions:uninstall', text: t.extensionsPanel.uninstallFailed(name: name));
+      }
+    } finally {
+      if (mounted) setState(() => _applying = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = widget.services.settings;
@@ -138,30 +200,61 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           if (inCategory.isEmpty) continue;
           rows.add(SectionHeader(extensionCategoryTitle(category)));
           for (final info in inCategory) {
-            rows.add(SwitchListTile(
-              // Stable identity: without keys, list churn during the
-              // applying rebuilds re-creates row elements and their icons
-              // visibly flicker.
-              key: ValueKey('extension-${info.key}'),
-              // The extension's own icon (build-index `icon`, mirroring its
-              // hooks) when it has one; the category icon otherwise.
-              secondary: Icon(info.icon != null ? resolveIconName(info.icon) : extensionCategoryIcon(info.category)),
-              title: Text(info.nameFor(locale)),
-              subtitle: info.descriptionFor(locale) == null ? null : Text(info.descriptionFor(locale)!),
-              value: overrides[info.key] ?? info.enabledByDefault,
-              // NOT disabled while applying (onChanged: null would repaint
-              // every tile in disabled grey — the "icons fade to white"
-              // flicker); the IgnorePointer below blocks input instead, so
-              // the rows keep their exact appearance.
-              onChanged: (enabled) => unawaited(_toggle(info.key, enabled)),
-              mouseCursor: SystemMouseCursors.click,
+            final enabled = overrides[info.key] ?? info.enabledByDefault;
+            // The extension's own icon (build-index `icon`, mirroring its
+            // hooks) when it has one; the category icon otherwise.
+            final icon = Icon(info.icon != null ? resolveIconName(info.icon) : extensionCategoryIcon(info.category));
+            final title = Text(info.nameFor(locale));
+            final description = info.descriptionFor(locale);
+            // Stable identity: without keys, list churn during the applying
+            // rebuilds re-creates row elements and their icons visibly flicker.
+            final rowKey = ValueKey('extension-${info.key}');
+            // NOT disabled while applying (onChanged: null would repaint every
+            // tile in disabled grey — the "icons fade to white" flicker); the
+            // IgnorePointer below blocks input instead, so the rows keep their
+            // exact appearance.
+            void toggle(bool value) => unawaited(_toggle(info.key, value));
+
+            if (!info.isInstalled) {
+              rows.add(SwitchListTile(
+                key: rowKey,
+                secondary: icon,
+                title: title,
+                subtitle: description == null ? null : Text(description),
+                value: enabled,
+                onChanged: toggle,
+                mouseCursor: SystemMouseCursors.click,
+              ));
+              continue;
+            }
+
+            // An installed extension sits in its own category alongside the
+            // app's own — it is the same kind of thing, and splitting them
+            // would make "where is my extension" a question about where it
+            // came from. What it gets extra is a way to remove it, which a
+            // SwitchListTile has nowhere to put.
+            rows.add(ListTile(
+              key: rowKey,
+              leading: icon,
+              title: title,
+              subtitle: Text([t.extensionsPanel.installedBadge, ?description].join(' · ')),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(MdiIcons.trashCanOutline, semanticLabel: t.extensionsPanel.uninstallAction),
+                    onPressed: () => unawaited(_uninstall(info)),
+                  ),
+                  Switch(value: enabled, onChanged: toggle),
+                ],
+              ),
             ));
           }
         }
 
         final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
 
-        return Column(
+        final body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -194,6 +287,25 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                     : ListView(padding: const EdgeInsets.only(bottom: Space.md), children: rows),
               ),
             ),
+            // Below the list, not above it: installing is rare next to
+            // finding and toggling, which is what the search field at the top
+            // is for. Hidden in a hook-filtered panel, which is asking a
+            // narrower question than "what do I have".
+            if (widget.onlyHook == null && InstalledExtensions.isSupported)
+              Padding(
+                padding: rowInset.add(const EdgeInsets.only(top: Space.md, bottom: Space.md)),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(MdiIcons.plus, size: 18),
+                    label: Text(t.extensionsPanel.installFromFile),
+                    // Disabled until the store exists — it is built on the
+                    // first loadAvailableExtensions, and a press before that
+                    // has nothing to install into.
+                    onPressed: _applying || extensionService.installed == null ? null : () => unawaited(_install()),
+                  ),
+                ),
+              ),
             if (_applying)
               Padding(
                 padding: rowInset.add(const EdgeInsets.only(top: Space.md, bottom: Space.lg)),
@@ -207,7 +319,40 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               ),
           ],
         );
+
+        // Dropping a bundle on the panel is the same install as the button —
+        // same inspection, same consent screen — reached the way someone who
+        // has just downloaded a file expects to reach it. Only where there is
+        // a store to install into, and only in the full panel: the hook-
+        // filtered one is asking a narrower question.
+        if (widget.onlyHook != null || extensionService.installed == null) return body;
+        return ExtensionDropTarget(onFile: _installDropped, child: body);
       },
     );
+  }
+
+  /// A dropped file takes exactly the path a picked one does.
+  Future<void> _installDropped(XFile file) async {
+    final services = widget.services;
+    final store = services.extensions.installed;
+    if (store == null) return;
+    final name = await installExtensionFromBytes(
+      context,
+      store: store,
+      read: file.readAsBytes,
+      commit: (bundle) async {
+        if (mounted) setState(() => _applying = true);
+        try {
+          await services.extensions.installBundle(bundle);
+        } finally {
+          if (mounted) setState(() => _applying = false);
+        }
+      },
+    );
+    if (name == null) return;
+    services.track('extension_installed', {});
+    if (mounted) {
+      services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+    }
   }
 }

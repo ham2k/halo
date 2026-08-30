@@ -71,6 +71,15 @@ class MainFlutterWindow: NSWindow {
     screenCaptureChannel = ScreenCaptureChannel(
       messenger: flutterViewController.engine.binaryMessenger)
 
+    // Documents opened through Finder reach the app delegate; this is how they
+    // reach Flutter. Assigning the channel also flushes anything the OS handed
+    // us before the engine existed, which is every cold launch by double-click.
+    if let appDelegate = NSApp.delegate as? AppDelegate {
+      appDelegate.openFileChannel = FlutterMethodChannel(
+        name: "ham2k/open_file",
+        binaryMessenger: flutterViewController.engine.binaryMessenger)
+    }
+
     // Flutter tells us the real AppBar height; we recenter whenever it does.
     let channel = FlutterMethodChannel(
       name: "ham2k/window_chrome",

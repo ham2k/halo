@@ -1,0 +1,13 @@
+{
+  "key": "ki2d-hello-world",
+  "name": "Hello World",
+  "shortName": "Hello",
+  "version": "1.0.0",
+  "description": "The smallest possible Ham2K extension — a panel that says hello",
+  "category": "dashboard",
+  "enabledByDefault": true,
+  "icon": "hand-wave-outline",
+  "api": 1,
+  "keywords": ["sample", "example", "hello"],
+  "hooks": ["panel"]
+}

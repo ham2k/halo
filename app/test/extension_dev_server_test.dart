@@ -110,7 +110,7 @@ void main() {
     // dev server must not inherit SOTA_*, and ExtensionService reads exactly
     // this to decide. A dev bundle arriving unflagged would silently hand a
     // credential to whatever the operator pointed the app at.
-    expect(service.devBundleSets.single['pota']!.info.fromDevServer, isTrue);
+    expect(service.devBundleSets.single['pota']!.info.source, ExtensionSource.dev);
   });
 
   test('the request sequence is ping, index, then each bundle', () async {
@@ -261,13 +261,32 @@ void main() {
     });
 
     test('a dev-served extension claiming that same key reads NOTHING', () {
-      const impostor = ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'SOTA', fromDevServer: true);
+      const impostor = ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'SOTA', source: ExtensionSource.dev);
 
       // The whole point of the rule. Without it, pointing the app at any dev
       // server on the network — yours, or one you mistyped your way onto —
       // hands over every credential whose name its extensions' keys prefix,
       // and nothing about the app's behaviour would show that it happened.
       expect(visibleSecretsFor(impostor, secrets), isEmpty);
+    });
+
+    test('an INSTALLED extension claiming that key reads nothing either', () {
+      const sideloaded = ExtensionInfo(
+          key: 'sota', file: 'sota.js', core: false, name: 'SOTA', source: ExtensionSource.installed);
+
+      // The same rule, and it has to reach the second non-shipped source or
+      // HALO-425 holds only for the dev loop: a .h2kext is a file from anyone,
+      // and a key is a claim, not a credential (HALO-422).
+      expect(visibleSecretsFor(sideloaded, secrets), isEmpty);
+    });
+
+    test('only what the app shipped may see a secret', () {
+      // Stated as the rule rather than case by case, so a fourth source added
+      // later has to opt IN rather than inherit access by forgetting to opt
+      // out.
+      expect(ExtensionSource.asset.maySeeBuildSecrets, isTrue);
+      expect(ExtensionSource.dev.maySeeBuildSecrets, isFalse);
+      expect(ExtensionSource.installed.maySeeBuildSecrets, isFalse);
     });
 
     test('an empty value is withheld like an absent one', () {
@@ -338,7 +357,7 @@ void main() {
     const other = ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'Summits on the Air');
 
     test('a dev extension replaces the shipped one of the same key', () {
-      const dev = ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA (dev)', fromDevServer: true);
+      const dev = ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA (dev)', source: ExtensionSource.dev);
 
       final merged = mergeDevExtensions([asset, other], [dev]);
 
@@ -350,13 +369,13 @@ void main() {
     });
 
     test('a dev extension with a new key is appended', () {
-      const fresh = ExtensionInfo(key: 'newthing', file: 'newthing.js', core: false, name: 'New Thing', fromDevServer: true);
+      const fresh = ExtensionInfo(key: 'newthing', file: 'newthing.js', core: false, name: 'New Thing', source: ExtensionSource.dev);
 
       expect(mergeDevExtensions([asset], [fresh]).map((i) => i.key), ['pota', 'newthing']);
     });
 
     test('asset order survives, so the panel does not reshuffle', () {
-      const dev = ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'SOTA (dev)', fromDevServer: true);
+      const dev = ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'SOTA (dev)', source: ExtensionSource.dev);
 
       expect(mergeDevExtensions([asset, other], [dev]).map((i) => i.key), ['pota', 'sota']);
     });

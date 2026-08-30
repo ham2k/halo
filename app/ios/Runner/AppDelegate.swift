@@ -18,6 +18,18 @@ import UIKit
   // public signal (iOS 14+, within the deployment floor).
   private var hardwareKeyboardChannel: FlutterMethodChannel?
 
+  // Documents opened from Files, a share sheet, or a browser download
+  // (HALO-422). `app_links` handles custom URL schemes; an opened document
+  // arrives through this delegate method instead, so a registered type
+  // without it is an app the OS offers and that then ignores the file.
+  private var openFileChannel: FlutterMethodChannel? {
+    didSet { flushPendingOpenFiles() }
+  }
+
+  // Files handed over before the engine existed — every cold launch by
+  // opening a document.
+  private var pendingOpenFiles: [String] = []
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -25,8 +37,65 @@ import UIKit
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
+  override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    guard url.isFileURL else {
+      // Not ours to claim — a custom-scheme link belongs to app_links, and
+      // swallowing it here would break every deep link the app has.
+      return super.application(app, open: url, options: options)
+    }
+    // A document from another app's container is security-scoped: readable
+    // only between these two calls, and the copy has to happen inside them.
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+    // Copied into our own tmp because the original may be gone — or
+    // unreadable — by the time Dart asks for it.
+    // Previous copies first: one bundle per open, kept forever, is a tmp
+    // directory that only grows.
+    sweepOpenedCopies()
+    let destination = FileManager.default.temporaryDirectory
+      .appendingPathComponent("opened-" + UUID().uuidString + "-" + url.lastPathComponent)
+    do {
+      try? FileManager.default.removeItem(at: destination)
+      try FileManager.default.copyItem(at: url, to: destination)
+    } catch {
+      NSLog("[open-file] could not copy \(url.lastPathComponent): \(error)")
+      return false
+    }
+    pendingOpenFiles.append(destination.path)
+    flushPendingOpenFiles()
+    return true
+  }
+
+  private func sweepOpenedCopies() {
+    let tmp = FileManager.default.temporaryDirectory
+    guard let entries = try? FileManager.default.contentsOfDirectory(
+      at: tmp, includingPropertiesForKeys: nil) else { return }
+    for entry in entries where entry.lastPathComponent.hasPrefix("opened-") {
+      try? FileManager.default.removeItem(at: entry)
+    }
+  }
+
+  private func flushPendingOpenFiles() {
+    guard let channel = openFileChannel, !pendingOpenFiles.isEmpty else { return }
+    let paths = pendingOpenFiles
+    pendingOpenFiles = []
+    // ONE message carrying every path, not one per file. Flutter's default
+    // channel buffer holds a single message until Dart installs a handler, so
+    // a cold launch opening several documents would keep the last and discard
+    // the rest with only a console warning.
+    channel.invokeMethod("openFiles", arguments: ["paths": paths])
+  }
+
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    openFileChannel = FlutterMethodChannel(
+      name: "ham2k/open_file",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
     keyCommandChannel = FlutterMethodChannel(
       name: "ham2k/key_commands",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()

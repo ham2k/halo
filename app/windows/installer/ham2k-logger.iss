@@ -63,6 +63,8 @@
 #endif
 
 #define ExeName "ham2k_logger.exe"
+; Per-edition, so side-by-side installs never fight over the file type.
+#define ProgId "Ham2K.Logger." + HaloEdition + ".h2kext"
 #define AppPublisher "Ham2K"
 #define AppUrl "https://ham2k.com"
 #define IconFile IconDir + "\app_icon-" + HaloEdition + ".ico"
@@ -135,6 +137,24 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdi
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#ExeName}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopicon
+
+[Registry]
+; Ham2K extension bundles (HALO-422), so a downloaded .h2kext opens this app.
+;
+; Per-user (HKA resolves to HKCU for this per-user installer), and keyed per
+; EDITION: three editions install side by side, and one shared ProgID would
+; leave whichever installed last owning the extension for all of them, still
+; owning it after being uninstalled.
+;
+; uninsdeletevalue/uninsdeletekey throughout: an association pointing at a
+; removed install is a double-click that fails with nothing to explain it.
+Root: HKA; Subkey: "Software\Classes\.h2kext"; ValueType: string; ValueName: ""; ValueData: "{#ProgId}"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kext"; ValueType: string; ValueName: "Content Type"; ValueData: "application/vnd.ham2k.extension"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: ""; ValueData: "Ham2K Extension"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\{#ProgId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+; %1 quoted: a bundle sitting in a path with a space would otherwise reach the
+; app as two arguments, neither of them a file.
+Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
 
 [Run]
 ; Offered at the end of the wizard — including the updater's run, which is an

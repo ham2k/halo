@@ -21,6 +21,43 @@ class AppDelegate: FlutterAppDelegate {
     windowChromeChannel?.invokeMethod("menuCheckForUpdates", arguments: nil)
   }
 
+  /// Set by MainFlutterWindow once the engine's `ham2k/open_file` channel
+  /// exists, same arrangement as windowChromeChannel above.
+  var openFileChannel: FlutterMethodChannel? {
+    didSet { flushPendingOpenFiles() }
+  }
+
+  /// Files the OS handed us before Flutter was ready to hear about them.
+  ///
+  /// A double-clicked document on a COLD launch arrives here well before the
+  /// engine exists — dropping it then is invisible to whoever double-clicked,
+  /// since the app opens and simply does nothing.
+  private var pendingOpenFiles: [String] = []
+
+  /// Documents opened through Finder, `open(1)`, or a drop on the Dock icon.
+  ///
+  /// `app_links` does NOT deliver these: on macOS it listens for `kAEGetURL`
+  /// only, which is custom URL schemes. Opening a document is a different
+  /// Apple Event entirely, so registering the type in Info.plist without this
+  /// gets an app that Finder offers and that then ignores the file.
+  override func application(_ application: NSApplication, open urls: [URL]) {
+    let paths = urls.filter { $0.isFileURL }.map { $0.path }
+    guard !paths.isEmpty else { return }
+    pendingOpenFiles.append(contentsOf: paths)
+    flushPendingOpenFiles()
+  }
+
+  private func flushPendingOpenFiles() {
+    guard let channel = openFileChannel, !pendingOpenFiles.isEmpty else { return }
+    let paths = pendingOpenFiles
+    pendingOpenFiles = []
+    // ONE message carrying every path, not one per file. Flutter's default
+    // channel buffer holds a single message until Dart installs a handler, so
+    // a cold launch opening several documents would keep the last and discard
+    // the rest with only a console warning.
+    channel.invokeMethod("openFiles", arguments: ["paths": paths])
+  }
+
   override func applicationDidFinishLaunching(_ notification: Notification) {
     // Only one instance of the app runs at a time: if another instance (by
     // bundle identifier) is already up, bring it to the front and quit this

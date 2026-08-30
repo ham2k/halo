@@ -7,7 +7,7 @@
 // machinery — the database is the source of truth (DESIGN.md §6).
 
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
@@ -37,6 +37,7 @@ import 'views/operation_dialogs.dart';
 import 'views/operation_view.dart';
 import 'views/home_navigation_rail.dart';
 import 'views/home_view.dart';
+import 'views/extension_install_flow.dart';
 import 'views/settings_view.dart';
 import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
@@ -55,6 +56,8 @@ import 'config/version.dart';
 import 'services/app_storage.dart';
 import 'services/auto_update_service.dart';
 import 'services/database_snapshot_service.dart';
+import 'package:http/http.dart' as http;
+
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
@@ -67,6 +70,8 @@ import 'services/error_policy.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_dev_client.dart';
 import 'services/extension_service.dart';
+import 'services/installed_extensions.dart';
+import 'services/opened_files_service.dart';
 import 'services/geoshape_service.dart';
 import 'services/unclean_quit.dart';
 import 'services/cat/equipment.dart' show kCategoryTransceiver;
@@ -118,7 +123,12 @@ import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
-void main() => runHaLoApp();
+/// [args] is the command line. Windows and Linux hand a document opened
+/// through the file manager to the app as an argument — their runners already
+/// forward argv to this entrypoint — which is how a double-clicked `.h2kext`
+/// arrives on those two platforms (macOS and iOS use a delegate callback
+/// instead, and Android an intent).
+void main(List<String> args) => runHaLoApp(launchArguments: args);
 
 /// The whole app launch sequence, with the distribution-only services
 /// injectable — the OSS `main()` above runs it with the no-op defaults,
@@ -129,6 +139,7 @@ void main() => runHaLoApp();
 /// generic [MetricsService]/[ErrorReportingBackend]/[UpdateCheckService]
 /// interfaces and the consent-gated [HaLoServices.track].
 void runHaLoApp({
+  List<String> launchArguments = const [],
   MetricsService? metrics,
   PurchaseService? purchases,
   UpdateService? updates,
@@ -143,7 +154,12 @@ void runHaLoApp({
   // Flutter's zone-mismatch warning, and on web uncaught async errors are
   // only catchable by the zone, not PlatformDispatcher.onError.
   unawaited(ErrorReportingService.run(
-    () => _mainBody(metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck),
+    () => _mainBody(
+        launchArguments: launchArguments,
+        metrics: metrics,
+        purchases: purchases,
+        updates: updates,
+        updateCheck: updateCheck),
     backend: errorReporting,
   ));
 }
@@ -159,6 +175,7 @@ bool isDevFlagSet(String value) {
 }
 
 void _mainBody({
+  List<String> launchArguments = const [],
   MetricsService? metrics,
   PurchaseService? purchases,
   UpdateService? updates,
@@ -326,6 +343,16 @@ void _mainBody({
     ));
 
     _listenForLinkClientDeepLinks(services);
+    _listenForOpenedExtensionFiles(services);
+    // Windows and Linux deliver an opened document as an argument to a FRESH
+    // process, so there is no callback to wait for — it is simply already
+    // here. An instance that is already running gets nothing, which is the
+    // same limitation their deep links have.
+    // The first only. Several would stack consent dialogs on top of each
+    // other, which is exactly what the drop target refuses for the same
+    // reason.
+    final bundleArg = launchArguments.where((a) => a.toLowerCase().endsWith('.h2kext')).firstOrNull;
+    if (bundleArg != null) _openInstallExtension(services, Uri.file(bundleArg));
 
     // Wire window.__halo.resetFixture() to a real reset now that services
     // exist — only in dev/web where the bridge is installed.
@@ -375,8 +402,28 @@ void _mainBody({
 /// happens to be showing, which is rarely Settings. A link arriving before
 /// the first frame has no navigator to open onto and is dropped; the code
 /// entry in the same pane is the way back from that.
+/// A `.h2kext` opened from Finder installs the same way a picked one does.
+///
+/// Anything else the OS hands us is ignored rather than refused: this app is
+/// registered for exactly one document type, so a file arriving here that is
+/// not one is a platform oddity, not something to interrupt the operator about.
+void _listenForOpenedExtensionFiles(HaLoServices services) {
+  services.openedFiles.openedFiles.listen((path) {
+    if (!path.toLowerCase().endsWith('.h2kext')) {
+      debugPrint('[open-file] ignoring $path');
+      return;
+    }
+    _openInstallExtension(services, Uri.file(path));
+  }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'open-file'));
+}
+
 void _listenForLinkClientDeepLinks(HaLoServices services) {
   services.deepLinks.links.listen((uri) {
+    final install = DeepLinkService.installExtensionRequest(uri);
+    if (install != null) {
+      _openInstallExtension(services, install);
+      return;
+    }
     final request = DeepLinkService.linkClientRequest(uri);
     if (request == null) return;
     // A device with no account of its own has nothing to admit anybody to,
@@ -402,6 +449,89 @@ void _listenForLinkClientDeepLinks(HaLoServices services) {
     }
     _openConfirmDevicePane(services, request);
   }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:link-client'));
+}
+
+/// Downloads the bundle a link named and offers to install it, once there is
+/// a navigator to ask on.
+///
+/// The download happens INSIDE the install flow's read step, so a fetch that
+/// fails is reported the same way an unreadable file is, and nothing is
+/// written before the operator has seen where it came from and agreed. The
+/// retry mirrors the link_client one: a deep link that cold-launches the app
+/// arrives before the first frame, and dropping it silently leaves whoever
+/// clicked it with nothing at all.
+void _openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft = 20}) {
+  final context = navigatorKey.currentContext;
+  final store = services.extensions.installed;
+  if (context == null || store == null) {
+    if (attemptsLeft <= 0) {
+      debugPrint('[deep-link] install_extension dropped: no navigator or store after 5s');
+      return;
+    }
+    Timer(const Duration(milliseconds: 250),
+        () => _openInstallExtension(services, source, attemptsLeft: attemptsLeft - 1));
+    return;
+  }
+  // A file the operator double-clicked is one they chose, exactly like one
+  // picked through the button — so it names no source, and an update that
+  // asks for nothing new goes through without a second dialog. Only a bundle
+  // fetched from a link is attributed.
+  final local = source.isScheme('file');
+  unawaited(installExtensionFromBytes(
+    context,
+    store: store,
+    read: local ? () => File(source.toFilePath()).readAsBytes() : () => _downloadBundle(source),
+    from: local ? null : source.host,
+    commit: services.extensions.installBundle,
+  ).then((name) {
+    if (name == null) return;
+    services.track('extension_installed', {});
+    services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+  }));
+}
+
+/// Fetches a bundle, refusing anything implausibly large before it is held in
+/// memory — the link naming it is not one this app chose to trust.
+Future<List<int>> _downloadBundle(Uri source) async {
+  final client = http.Client();
+  try {
+    var target = source;
+    // Redirects followed by hand, because the point of demanding https is
+    // that nobody on the path can rewrite what the consent screen describes —
+    // and a client following redirects for us will happily walk https into
+    // http and hand back the result as though it were the URL we asked for.
+    for (var hop = 0; hop < 5; hop++) {
+      final request = http.Request('GET', target)..followRedirects = false;
+      final response = await client.send(request).timeout(const Duration(seconds: 30));
+      final location = response.headers['location'];
+      if (response.statusCode >= 300 && response.statusCode < 400 && location != null) {
+        final next = target.resolve(location);
+        if (next.scheme != 'https') {
+          throw BundleException(BundleRejection.notAnArchive, t.extensionsPanel.downloadNotSecure);
+        }
+        target = next;
+        continue;
+      }
+      if (response.statusCode != 200) {
+        throw BundleException(BundleRejection.notAnArchive,
+            t.extensionsPanel.downloadFailed(source: target.host, status: response.statusCode));
+      }
+      // Counted as it arrives. Reading the whole body first and measuring it
+      // afterwards is a cap that has already let the thing it refuses into
+      // memory.
+      final bytes = <int>[];
+      await for (final chunk in response.stream) {
+        bytes.addAll(chunk);
+        if (bytes.length > kMaxDownloadBytes) {
+          throw BundleException(BundleRejection.tooLarge, t.extensionsPanel.downloadTooLarge);
+        }
+      }
+      return bytes;
+    }
+    throw BundleException(BundleRejection.notAnArchive, t.extensionsPanel.downloadFailed(source: source.host, status: 310));
+  } finally {
+    client.close();
+  }
 }
 
 /// Opens the pane once there is a navigator to open it onto.
@@ -1283,6 +1413,10 @@ class HaLoServices {
   late final OperationsRepository operations = OperationsRepository(db, onChange: _onLocalWrite);
   late final SequencesRepository sequences = SequencesRepository(db);
   late final QsosRepository qsos = QsosRepository(db, onChange: _onLocalWrite, sequences: sequences);
+
+  /// Files the OS asked this app to open — a double-clicked `.h2kext`
+  /// (HALO-422). Lazy: nothing listens until something wires it up.
+  late final OpenedFilesService openedFiles = OpenedFilesService();
 
   /// The app end of the extension dev loop
   /// (docs/extensions/development.md). Lazy, and inert until someone turns it

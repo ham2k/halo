@@ -44,6 +44,12 @@ await writeFile(
   JSON.stringify(
     {
       kernel: 'kernel.js',
+      // What this build's kernel carries, for extensions that declare
+      // `sharedDependencies` rather than inlining their own copies. The host
+      // checks a declared range against these before loading an installed
+      // bundle (HALO-422) — which is only possible if the versions travel
+      // where Dart can read them without booting the runtime.
+      sharedModules: hostSharedVersions,
       extensions: bundles.filter((b) => b.kind === 'extension').map(indexEntryFor),
     },
     null,

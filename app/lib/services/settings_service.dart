@@ -225,6 +225,37 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     };
   }
 
+  /// Removes everything an extension stored: its settings group, and the
+  /// enable/disable override the operator set for it.
+  ///
+  /// For uninstalling one (HALO-422). Deliberately NOT called when an
+  /// extension is merely disabled, or updated — a disabled extension keeps its
+  /// configuration for when it comes back, and an update is not a reinstall.
+  Future<void> forgetExtension(String key) async {
+    await _prefs.remove('settings.extension_$key');
+    // Settings-panel values. A panel's key is the extension's own or prefixed
+    // with it (the namespacing registerHook enforces), which is the only
+    // handle left once the extension is gone and cannot be asked what panels
+    // it had. Secrets live in the keychain and are ExtensionService's to
+    // remove — this half is the plain values.
+    for (final prefsKey in _prefs.getKeys().toList()) {
+      if (prefsKey.startsWith('settingsPanel.$key.') || prefsKey.startsWith('settingsPanel.${key}_')) {
+        await _prefs.remove(prefsKey);
+      }
+    }
+    final overrides = extensionOverrides;
+    if (overrides.remove(key) != null) {
+      await _prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
+    }
+    // Otherwise a reinstall inherits a disabled-since stamp from an extension
+    // that no longer exists, and the data purge counts from the wrong day.
+    final disabledSince = extensionDisabledSince;
+    if (disabledSince.remove(key) != null) {
+      await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
+    }
+    notifyListeners();
+  }
+
   ThemeMode get themeMode {
     switch (settingValue(generalGroup, _themeModeKey)) {
       case 'light':

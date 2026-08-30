@@ -20,7 +20,7 @@ import semver from 'semver'
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, '../app/assets/extensions')
 
-const sharedPackages = [
+export const sharedPackages = [
   "@ham2k/lib-callsigns",
   "@ham2k/lib-country-files",
   "@ham2k/lib-cqmag-data",
