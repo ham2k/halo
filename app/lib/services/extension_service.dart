@@ -289,23 +289,6 @@ HookPartition partitionHookEntries(List<Map<String, dynamic>> entries) {
   return (items: items, succeeded: succeeded, unreachable: unreachable, failed: failed);
 }
 
-/// The canonical form of a multi-station position: the digits with no
-/// leading zeros, or `''` for no position at all.
-///
-/// `0` means none. A station numbers its operators from 1, so zero is free
-/// to mean off — it is what `POSITION 0` types, and what an operator who read
-/// that types into the details dialog. Anything unparseable is none too:
-/// `/OP` followed by nonsense is a callsign no hunter can use.
-///
-/// Every writer goes through this — the Operation Details dialog and the
-/// POSITION command alike — so the two cannot disagree about what `0` or
-/// `02` mean, and [spotCallForSelfSpot] applies it again on the way out, so
-/// whatever is in the row, the air gets the canonical form.
-String normalizedMultiIdentifier(String raw) {
-  final parsed = int.tryParse(raw.trim());
-  return parsed == null || parsed <= 0 ? '' : parsed.toString();
-}
-
 /// The station call a SELF-spot is posted under: the operation's own
 /// `stationCall` carrying the two suffixes the app applies centrally, rather
 /// than in each activity extension — every one of them builds its spotted

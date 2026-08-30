@@ -207,13 +207,18 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, their, 'contacted_op', 'operator', call);
   _set(f, their, 'eq_call', 'owner', call);
 
-  _set(f, our, 'operator', 'operator', call);
+  _set(f, our, 'operator', 'operatorCall', call);
   _set(f, our, 'owner_callsign', 'owner', call);
   // `STATION_CALLSIGN` is the call actually transmitted and `OPERATOR` the
   // person at the key; when both are present the station call is ours. Written
   // in that order so the later assignment wins.
   _set(f, our, 'operator', 'call', call);
   _set(f, our, 'station_callsign', 'call', call);
+  // ADIF names no field for a multi-station operating position, so our own
+  // export writes one and this reads it back. Only ours: another logger's
+  // position rides its own `APP_<PROGRAM>_` field, which means something
+  // different at every station that wrote it.
+  _set(f, our, 'app_ham2k_position', 'multiIdentifier');
 
   final freq = _parseFreqKHz(_present(f['freq']));
   if (freq != null) qso['freq'] = freq;

@@ -130,6 +130,11 @@ const _qsoFields = <String, QsonFieldType>{
 
 const _qsoOurFields = <String, QsonFieldType>{
   'call': QsonFieldType.string,
+  // Who was at the key, and which position of a multi-station operation
+  // logged it — stamped from the operation at log time so a contact keeps
+  // naming them after the device moves on to another operator.
+  'operatorCall': QsonFieldType.string,
+  'multiIdentifier': QsonFieldType.string,
   'grid': QsonFieldType.string,
   'rig': QsonFieldType.string,
   'antenna': QsonFieldType.string,

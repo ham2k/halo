@@ -55,7 +55,7 @@ N1mmContactInfo? parseN1mmContactInfo(String datagram) {
   final myCall = _present(f['mycall']) ?? '';
 
   final our = <String, dynamic>{if (myCall.isNotEmpty) 'call': myCall};
-  _put(our, 'operator', _present(f['operator']));
+  _put(our, 'operatorCall', _present(f['operator']));
   _put(our, 'sent', _present(f['snt']));
   _put(our, 'grid', _present(f['gridsquare']));
 

@@ -146,6 +146,11 @@ function baseRowFor(
   row += field('RST_SENT', our.sent)
   row += field('RST_RCVD', their.sent)
   row += field('STATION_CALLSIGN', stationCall)
+  // Only when it says something STATION_CALLSIGN doesn't: a single operator
+  // running their own call would otherwise write their call twice into every
+  // record. app-polo draws the line in the same place.
+  const operatorCall = String(our.operatorCall ?? '')
+  if (operatorCall && operatorCall !== stationCall) row += field('OPERATOR', operatorCall)
   if (includePrivateData) {
     row += field('NAME', their.name ?? theirGuess.name)
     row += field('QTH', their.city ?? theirGuess.city)
@@ -170,6 +175,11 @@ function baseRowFor(
   row += field('MY_GRIDSQUARE', includePrivateData ? ourGrid : coarseGrid(ourGrid))
 
   if (includePrivateData) {
+    // ADIF names no field for a multi-station operating position, so this is
+    // ours (`adif_to_qson.dart` reads it back). Private: which of a station's
+    // positions made the contact is its internal layout, not something the
+    // contact itself says, and no program asks for it.
+    row += field('APP_HAM2K_POSITION', our.multiIdentifier)
     row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
     // Coordinates ride with the gridsquare, and for the same reason: where the
     // other operator is, to a few hundred metres, is not something the contact

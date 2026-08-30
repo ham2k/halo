@@ -32,3 +32,53 @@ String operatorCallFor(Operation operation) {
   if (local.containsKey(operatorCallKey)) return (asQsonString(local[operatorCallKey]) ?? '').trim();
   return (asQsonString(operation.data[operatorCallKey]) ?? '').trim();
 }
+
+/// The `localData` key holding this device's position in a multi-station
+/// operation. Device-local for the same reason [operatorCallKey] is.
+const multiIdentifierKey = 'multiIdentifier';
+
+/// The canonical form of a multi-station position: the digits with no
+/// leading zeros, or `''` for no position at all.
+///
+/// `0` means none. A station numbers its operators from 1, so zero is free
+/// to mean off — it is what `POSITION 0` types, and what an operator who read
+/// that types into the details dialog. Anything unparseable is none too:
+/// `/OP` followed by nonsense is a callsign no hunter can use.
+///
+/// Every writer goes through this — the Operation Details dialog and the
+/// POSITION command alike — so the two cannot disagree about what `0` or
+/// `02` mean, and `spotCallForSelfSpot` applies it again on the way out, so
+/// whatever is in the row, the air gets the canonical form.
+String normalizedMultiIdentifier(String raw) {
+  final parsed = int.tryParse(raw.trim());
+  return parsed == null || parsed <= 0 ? '' : parsed.toString();
+}
+
+/// This device's position in [operation], canonical — `''` for none.
+String multiIdentifierFor(Operation operation) =>
+    normalizedMultiIdentifier(asQsonString(operation.localData[multiIdentifierKey]) ?? '');
+
+/// [qso] stamped with who was at the key and which position logged it.
+///
+/// Both are device-local facts about the operation, and both stop being true
+/// the moment the next operator takes over — so a contact records them as it
+/// is logged rather than deriving them at export, which would attribute the
+/// whole log to whoever happens to be sitting there when the file is written.
+///
+/// A value ALREADY on the QSO wins, and absence is what's tested, not
+/// emptiness: re-saving an edited contact runs through here again, and the
+/// operator who fixes a typo in someone else's QSO is not the one who made
+/// it. That also leaves an import's own `OPERATOR` untouched.
+///
+/// Event rows are left alone — a break marker has no operator.
+Map<String, dynamic> qsoWithOperator(Map<String, dynamic> qso, Operation operation) {
+  if (qso['band'] == 'event') return qso;
+  final operatorCall = operatorCallFor(operation);
+  final multiIdentifier = multiIdentifierFor(operation);
+  if (operatorCall.isEmpty && multiIdentifier.isEmpty) return qso;
+
+  final our = {...?asQsonMap(qso['our'])};
+  if (operatorCall.isNotEmpty) our[operatorCallKey] ??= operatorCall;
+  if (multiIdentifier.isNotEmpty) our[multiIdentifierKey] ??= multiIdentifier;
+  return {...qso, 'our': our};
+}

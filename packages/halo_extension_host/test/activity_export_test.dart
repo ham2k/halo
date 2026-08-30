@@ -509,4 +509,52 @@ void main() {
     }
     expect(adif, contains('FN31pr'), reason: 'the locator the lookup reported is still a fact about the station');
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // Who was at the key and which position logged it are stamped on the QSO at
+  // log time; the export's job is to say them without repeating what
+  // STATION_CALLSIGN already said. The position has no ADIF field of its own,
+  // so it goes out as ours and only with private data released — which
+  // position of a multi-op made a contact is the station's internal layout,
+  // and no program asks for it.
+  test('OPERATOR names the operator only when it differs from the station call', () async {
+    final host = await startHost();
+
+    Future<String> adifFor(Map<String, dynamic> our, {bool includePrivateData = true}) async {
+      final result = await host.invokeHook(
+        'export',
+        key: 'adif',
+        method: 'generateExport',
+        args: {
+          'operation': operation(['US-0001']),
+          'qsos': [
+            {...qsos.first, 'our': {...qsos.first['our'] as Map<String, dynamic>, ...our}},
+          ],
+          'exportType': 'adif',
+          'includePrivateData': includePrivateData,
+        },
+        timeout: const Duration(seconds: 20),
+      ) as Map;
+      return result['content'] as String;
+    }
+
+    final guest = await adifFor({'operatorCall': 'W1ABC', 'multiIdentifier': '2'});
+    expect(guest, contains('<OPERATOR:5>W1ABC'));
+    expect(guest, contains('<STATION_CALLSIGN:5>N0DEV'));
+    expect(guest, contains('<APP_HAM2K_POSITION:1>2'));
+
+    // A single operator running their own call: OPERATOR would be a second
+    // copy of STATION_CALLSIGN in every record of every file.
+    final self = await adifFor({'operatorCall': 'N0DEV'});
+    expect(self, isNot(contains('<OPERATOR:')));
+
+    // Nothing stamped at all — the field must not appear empty or as the
+    // station call by default.
+    final unstamped = await adifFor({});
+    expect(unstamped, isNot(contains('<OPERATOR:')));
+    expect(unstamped, isNot(contains('<APP_HAM2K_POSITION:')));
+
+    final uploaded = await adifFor({'operatorCall': 'W1ABC', 'multiIdentifier': '2'}, includePrivateData: false);
+    expect(uploaded, contains('<OPERATOR:5>W1ABC'), reason: 'who transmitted is part of the contact');
+    expect(uploaded, isNot(contains('<APP_HAM2K_POSITION:')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }

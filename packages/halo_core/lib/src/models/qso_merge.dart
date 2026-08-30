@@ -129,8 +129,8 @@ Map<String, dynamic> mergeQsos(
 /// worked-before detection must keep whatever each contact really carried.
 ///
 /// The operator's own record of the other station (`their`) is untouched, and
-/// so is `our.operator` — who was at the key is a different fact from which
-/// callsign went out.
+/// so is `our.operatorCall` — who was at the key is a different fact from
+/// which callsign went out.
 Map<String, dynamic> qsoForStation(Map<String, dynamic> qso, String stationCall) {
   final result = _deepCopyMap(qso);
   final our = result['our'];

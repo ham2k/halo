@@ -5,7 +5,8 @@
 // program never retransmits it, and the operator never typed it. The traps
 // these tests exist to catch: a capture insert failure being swallowed (the
 // QSO vanishes with nothing on screen), and the retry queue failing to drain
-// once the database recovers.
+// once the database recovers. Also what a capture picks up from the operation
+// it lands in — the parsers know nothing about who is at the key here.
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,5 +171,48 @@ void main() {
 
     final rows = await db.select(db.inboundCaptures).get();
     expect(rows.map((r) => r.dedupeKey).toSet(), {'a', 'b'});
+  });
+
+  test('a routed capture is stamped with the operator and position of the operation it lands in', () async {
+    // The parsers stay pure — a datagram says nothing about which of this
+    // station's positions is receiving it — so the stamp has to happen here,
+    // or a WSJT-X contact is the one row in a multi-op log that names nobody.
+    final captures = InboundCaptureRepository(db);
+    final listener = service(captures);
+    addTearDown(listener.dispose);
+    final op = await operations.create(stationCall: 'KI2D');
+    await operations.updateLocalData(op.uuid, {'operatorCall': 'W1ABC', 'multiIdentifier': '02'});
+    listener.setReceivingOperation(op.uuid);
+
+    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'a', qso: {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'FT8',
+    });
+
+    final logged = await qsos.watchForOperation(op.uuid).first;
+    expect((logged.single.data['our'] as Map)['operatorCall'], 'W1ABC');
+    // Canonical, the same form the spot and the details dialog agree on.
+    expect((logged.single.data['our'] as Map)['multiIdentifier'], '2');
+  });
+
+  test('an operator the source itself named survives the stamp', () async {
+    // WSJT-X names an operator of its own when it differs from the station
+    // call. That is a fact of the contact; ours is a default for when the
+    // datagram is silent.
+    final captures = InboundCaptureRepository(db);
+    final listener = service(captures);
+    addTearDown(listener.dispose);
+    final op = await operations.create(stationCall: 'KI2D');
+    await operations.updateLocalData(op.uuid, {'operatorCall': 'W1ABC'});
+    listener.setReceivingOperation(op.uuid);
+
+    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'a', qso: {
+      'our': {'operatorCall': 'K2SUL'},
+      'their': {'call': 'W1AW'},
+    });
+
+    final logged = await qsos.watchForOperation(op.uuid).first;
+    expect((logged.single.data['our'] as Map)['operatorCall'], 'K2SUL');
   });
 }

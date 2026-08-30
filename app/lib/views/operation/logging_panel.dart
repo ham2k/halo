@@ -19,6 +19,7 @@ import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/form_chrome_labels.dart';
+import '../../tools/operation_operator.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
@@ -761,8 +762,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             refreshActivityControls: (qso) => widget.services.extensions
                 .loggingControls(widget.operation.data, qso: qso)
                 .then((result) => result.loadFailed ? null : result.controls),
-            decorateQsoBeforeSave: (qso) =>
-                widget.services.extensions.decorateQsoBeforeSave(_withStationInfo(qso), widget.operation.data),
+            decorateQsoBeforeSave: (qso) => widget.services.extensions
+                .decorateQsoBeforeSave(qsoWithOperator(_withStationInfo(qso), widget.operation), widget.operation.data),
             decorateRef: widget.services.extensions.decorateRef,
             interpretCommand: widget.services.extensions.interpretCommand,
             interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,

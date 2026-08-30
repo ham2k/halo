@@ -39,7 +39,6 @@ import '../tools/operation_operator.dart';
 import 'operation/positions_panel.dart';
 import 'peers_panel.dart';
 import '../tools/operation_title.dart';
-import '../services/extension_service.dart';
 import '../i18n/strings.g.dart';
 
 /// How far into the sheet's open/close slide (0 closed, 1 open) the header's
@@ -833,7 +832,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// the view mounted would name the wrong position for the rest of the
   /// session.
   (String, String) _peerHeaderFor(Operation operation) => (
-        normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? ''),
+        multiIdentifierFor(operation),
         operatorCallFor(operation),
       );
 

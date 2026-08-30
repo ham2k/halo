@@ -12,7 +12,6 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
-import '../services/extension_service.dart';
 import '../tools/operation_operator.dart';
 import '../tools/operation_title.dart';
 
@@ -251,7 +250,7 @@ Future<Operation?> editOperationDetails(
   bool save = true,
   bool developerMode = false,
 }) async {
-  final multiIdentifier = normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? '');
+  final multiIdentifier = multiIdentifierFor(operation);
   final operatorCall = operatorCallFor(operation);
   final result = await showHaloDialog<(String, String, String, String, String)>(
     context: context,

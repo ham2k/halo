@@ -125,7 +125,7 @@ void main() {
 
   test('an operator call matching MyCall is not duplicated', () {
     final info = parseWsjtxQsoLogged(_qsoLoggedDatagram(operatorCall: 'KI2D', myCall: 'KI2D'));
-    expect(info!.qso['our'], isNot(contains('operator')));
+    expect(info!.qso['our'], isNot(contains('operatorCall')));
   });
 
   test('a null-string field (0xffffffff length) reads as absent, not a crash', () {

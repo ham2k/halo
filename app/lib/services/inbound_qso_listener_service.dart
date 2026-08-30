@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
 import '../i18n/strings.g.dart';
+import '../tools/operation_operator.dart';
 import 'cat/transports/udp_broadcast.dart';
 import 'error_reporting_service.dart';
 import 'lookup_queue_service.dart';
@@ -329,7 +330,10 @@ class InboundQsoListenerService extends ChangeNotifier {
 
   /// Adds [rows] to [operationUuid]'s log, applying the operation's own
   /// station call regardless of what each capture recorded (the same policy
-  /// ADIF import uses — `qsoForStation` in `qso_merge.dart`), running the
+  /// ADIF import uses — `qsoForStation` in `qso_merge.dart`), stamping the
+  /// operator and position the way the logging panel does for a hand-logged
+  /// contact — the parsers stay pure, and who was at the key is a fact of the
+  /// operation the capture lands in, not of the datagram — running the
   /// normal online lookup on whatever succeeded, and marking those rows
   /// added — even if a later row in the batch throws, via `finally`, so a
   /// QSO that fails partway through a large "add the whole backlog" batch
@@ -350,7 +354,10 @@ class InboundQsoListenerService extends ChangeNotifier {
     final addedUuids = <String>[];
     try {
       for (final row in pending) {
-        final data = (stationCall == null || stationCall.isEmpty) ? row.qso : qsoForStation(row.qso, stationCall);
+        var data = (stationCall == null || stationCall.isEmpty) ? row.qso : qsoForStation(row.qso, stationCall);
+        // WSJT-X and N1MM both name an operator of their own when it differs
+        // from the station call; `qsoWithOperator` leaves that one alone.
+        if (operation != null) data = qsoWithOperator(data, operation);
         // A travelled clock may not log into a real operation. The capture
         // stays in `inbound_captures` unmarked — dropping it would lose a
         // contact another program already believes it logged — and shows in

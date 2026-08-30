@@ -134,12 +134,12 @@ void main() {
       // Who was at the key is a different fact from which callsign went out.
       final rewritten = qsoForStation(
         _qso(extra: {
-          'our': {'call': 'W1AW/P', 'operator': 'W1AW', 'grid': 'FN31'},
+          'our': {'call': 'W1AW/P', 'operatorCall': 'W1AW', 'grid': 'FN31'},
         }),
         'KI2D',
       );
 
-      expect(rewritten['our'], {'call': 'KI2D', 'operator': 'W1AW', 'grid': 'FN31'});
+      expect(rewritten['our'], {'call': 'KI2D', 'operatorCall': 'W1AW', 'grid': 'FN31'});
     });
 
     test('qsoForStation does not touch the record it was given', () {

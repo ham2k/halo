@@ -2642,9 +2642,7 @@ class HaLoServices {
     final multiIdentifier = raw == null ? null : normalizedMultiIdentifier(raw);
     final localPatch = {
       if (operatorCall != null && operatorCall != operatorCallFor(operation)) operatorCallKey: operatorCall,
-      if (multiIdentifier != null &&
-          multiIdentifier != normalizedMultiIdentifier(asQsonString(operation.localData['multiIdentifier']) ?? ''))
-        'multiIdentifier': multiIdentifier,
+      if (multiIdentifier != null && multiIdentifier != multiIdentifierFor(operation)) multiIdentifierKey: multiIdentifier,
     };
     if (localPatch.isNotEmpty) await operations.updateLocalData(operation.uuid, localPatch);
     return null;

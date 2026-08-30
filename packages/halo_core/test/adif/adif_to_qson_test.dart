@@ -754,4 +754,38 @@ Header text <PROGRAMID>Ham2K LoKi
       expect(parseAdifCoordinate('E120 30.000', latitude: false), closeTo(120.5, 1e-9));
     });
   });
+
+  group('the operator and the position', () {
+    test('OPERATOR is who was at the key, and never overwrites the station call', () {
+      // Two different facts sharing one field in most files: a logger that
+      // writes only OPERATOR means it as the station call too, but where
+      // STATION_CALLSIGN is also present it wins — importing K0XM's guest
+      // operator as the transmitted call would misattribute the whole log.
+      final log = parseAdifLog('<EOH>\n'
+          '<CALL:4>W1AW<QSO_DATE:8>20240723<STATION_CALLSIGN:6>KI2D/P<OPERATOR:4>K0XM<EOR>\n'
+          '<CALL:5>K1ABC<QSO_DATE:8>20240723<OPERATOR:4>K0XM<EOR>');
+
+      expect(_our(log.qsos[0]), containsPair('call', 'KI2D/P'));
+      expect(_our(log.qsos[0]), containsPair('operatorCall', 'K0XM'));
+      // Nothing else said which call went out, so OPERATOR is both.
+      expect(_our(log.qsos[1]), containsPair('call', 'K0XM'));
+      expect(_our(log.qsos[1]), containsPair('operatorCall', 'K0XM'));
+    });
+
+    test('our own position field round-trips, and another program\'s does not', () {
+      // ADIF names no field for a multi-station operating position, so ours
+      // is app-defined. `APP_N1MM_RADIO_NR` counts radios at N1MM's station
+      // and means nothing here — reading it would invent a position.
+      final log = parseAdifLog('<EOH>\n'
+          '<CALL:4>W1AW<QSO_DATE:8>20240723<APP_HAM2K_POSITION:1>2<EOR>\n'
+          '<CALL:5>K1ABC<QSO_DATE:8>20240723<APP_N1MM_RADIO_NR:1>2<EOR>');
+
+      expect(_our(log.qsos[0]), containsPair('multiIdentifier', '2'));
+      expect(_our(log.qsos[1]), isNot(contains('multiIdentifier')));
+    });
+
+    test('a real file names its operator', () {
+      expect(_our(_load('k0xm-logger32.adi').qsos.first), containsPair('operatorCall', 'K0XM'));
+    });
+  });
 }

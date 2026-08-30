@@ -69,7 +69,7 @@ WsjtxQsoLogged? parseWsjtxQsoLogged(Uint8List bytes) {
     if (dxCall.isEmpty || dateTimeOn == null) return null;
 
     final our = <String, dynamic>{if (myCall.isNotEmpty) 'call': myCall};
-    _put(our, 'operator', operatorCall != myCall ? operatorCall : null);
+    _put(our, 'operatorCall', operatorCall != myCall ? operatorCall : null);
     _put(our, 'grid', myGrid);
     _put(our, 'sent', reportSent);
 
