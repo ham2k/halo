@@ -60,6 +60,17 @@ String mapLibreStyleUrl(MapStyle style) => switch (style) {
       MapStyle.darkMatter => mapDefaultStyleUrlDark,
     };
 
+/// Whether the basemap actually on screen is dark-toned. Marker fills,
+/// strokes and great-circle lines contrast against the TILES, not against
+/// the app's chrome, so a pinned style carries its own tone whatever the
+/// app's theme is doing; only [MapStyle.automatic] follows [appIsDark],
+/// because that's the one pick whose tiles do.
+bool mapStyleIsDark(MapStyle style, {required bool appIsDark}) => switch (style) {
+      MapStyle.automatic => appIsDark,
+      MapStyle.darkMatter => true,
+      MapStyle.liberty || MapStyle.bright || MapStyle.positron || MapStyle.voyager => false,
+    };
+
 /// A dark, starry backdrop for the MapLibre container div — CSS rather than
 /// a GL style property, since MapLibre's globe has no style-level fog
 /// property to paint what's beyond the sphere (see applySky in mapGlScript).
@@ -152,6 +163,19 @@ window.poloMapGl = window.poloMapGl || {
     let activeStyleDark = styleDark;
     let lastDark = initialDark;
 
+    // The style URL actually on screen, so setDark can tell a real swap from
+    // one that would land on the style already showing — see its guard.
+    let appliedStyleUrl = initialDark ? styleDark : style;
+    // Identifies the swap a watchdog belongs to, so a later swap's arrival
+    // doesn't get torn down by an earlier one's timer.
+    let styleSwapId = 0;
+    let styleSwapTimer = null;
+
+    // How long either watchdog waits before deciding a style is not coming.
+    // One value, because the swap watchdog's own reasoning is that it gives
+    // the same grace as the pending-payload one.
+    const STYLE_GRACE_MS = 10000;
+
     // True between setDark's setStyle call and its 'style.load' handler —
     // while true, setMarkers/setLines only update lastMarkersData/lastLinesData
     // and leave applying them to that handler, rather than also queuing
@@ -203,6 +227,14 @@ window.poloMapGl = window.poloMapGl || {
     // lands.
     function setDark(dark) {
       lastDark = dark;
+      const url = dark ? activeStyleDark : activeStyle;
+      // The style on screen is already the one wanted — a pinned basemap
+      // holds both slots, so an app light/dark flip asks for no swap at all.
+      // Swapping anyway would be worse than wasteful: see the diff note
+      // below.
+      if (url === appliedStyleUrl) return;
+      appliedStyleUrl = url;
+      const swapId = ++styleSwapId;
       // 'style.load' (not 'idle', which the pending/flush machinery above
       // uses for the initial, possibly offline, load) fires as soon as the
       // new style itself is usable — addSource/addLayer don't need its
@@ -211,25 +243,78 @@ window.poloMapGl = window.poloMapGl || {
       // forever if it never settles.
       styleSwapInFlight = true;
       map.once('style.load', function () {
+        // A newer swap (or the map's removal) owns the map now; this one's
+        // data is stale, and applying it would paint over theirs. A swap the
+        // watchdog gave up on still lands here, which is what puts the
+        // layers back if its style loads late.
+        if (swapId !== styleSwapId) return;
+        clearTimeout(styleSwapTimer);
         styleSwapInFlight = false;
+        restoreAfterStyle('the style swap');
+        try {
+          if (lastProjection) applyProjection(lastProjection);
+        } catch (err) {
+          report('deferred-update', 'the style swap could not put the projection back: ' + ((err && err.message) || err));
+        }
+      });
+      // `diff: false` is what makes that handler arrive at all. MapLibre's
+      // default is to diff the new stylesheet against the live one and mutate
+      // it in place — which drops our own sources and layers (they are in no
+      // stylesheet) and builds no new Style, so NO 'style.load' is ever
+      // fired: the markers go, the swap never completes, and every payload
+      // after it is dropped by the styleSwapInFlight guard until the map is
+      // rebuilt from scratch.
+      map.setStyle(url, { diff: false });
+      // A style that never loads (offline, a dead tile server) would strand
+      // that guard just as permanently, and nothing else would say so: the
+      // payloads are waiting here, not in the pending slots the other
+      // watchdog reads.
+      styleSwapTimer = setTimeout(function () {
+        if (!styleSwapInFlight || swapId !== styleSwapId) return;
+        styleSwapInFlight = false;
+        // So the operator's obvious recovery — picking that basemap again —
+        // isn't swallowed by the guard above as "already showing".
+        appliedStyleUrl = null;
+        styleTimedOut = true;
+        report('style-timeout', 'a style swap never completed; putting the map data back on the style still up');
+        restoreAfterStyle('the stuck style swap');
+      }, STYLE_GRACE_MS);
+    }
+
+    /// Everything setStyle throws away, put back. Runs from a map listener
+    /// and from a timer — outside any caller's stack, where an escape reaches
+    /// no backend's Dart side and takes the event's remaining listeners with
+    /// it (same reasoning as the deferred flush below).
+    //
+    // No projection here: applyProjection THROWS until the style has parsed,
+    // and the caller that most needs this — the watchdog, firing on a style
+    // that never finished — is exactly when it would. A style that lands
+    // late still restores it through the 'style.load' handler above.
+    function restoreAfterStyle(what) {
+      try {
         applySky();
         ensureLayers();
         if (lastMarkersData) setMarkers(lastMarkersData);
         if (lastLinesData) setLines(lastLinesData);
         if (lastShapesData) setShapes(lastShapesData);
-        if (lastProjection) applyProjection(lastProjection);
-      });
-      map.setStyle(dark ? activeStyleDark : activeStyle);
+      } catch (err) {
+        report('deferred-update', what + ' could not put the map data back: ' + ((err && err.message) || err));
+      }
     }
 
     // A pinned-style change (the operator picked a different named basemap,
-    // not a light/dark toggle) — repoints both slots and reapplies through
-    // the same style.load path as setDark, using whichever slot the map is
-    // currently showing.
-    function updateStyles(newStyle, newStyleDark) {
+    // not a light/dark toggle) — repoints both slots and swaps through the
+    // same style.load path as setDark.
+    //
+    // `dark` is passed rather than read from lastDark: the tone and the style
+    // change in the same rebuild, and the backends deliberately send only
+    // this call for it, so lastDark still holds the tone of the style being
+    // replaced. Picking the slot with it strands the map on the wrong
+    // basemap, and the guard in setDark then makes that permanent.
+    function updateStyles(newStyle, newStyleDark, dark) {
       activeStyle = newStyle;
       activeStyleDark = newStyleDark;
-      setDark(lastDark);
+      setDark(dark);
     }
 
     function showPopup(m) {
@@ -462,7 +547,7 @@ window.poloMapGl = window.poloMapGl || {
           styleTimedOut = true;
           report('style-timeout', 'the style never finished loading; markers and lines are still waiting');
         }
-      }, 10000);
+      }, STYLE_GRACE_MS);
     }
 
     // A successful apply after the watchdog fired means the style did load
@@ -632,8 +717,12 @@ window.poloMapGl = window.poloMapGl || {
       updateStyles: updateStyles,
       remove: function () {
         resizeObserver.disconnect();
-        // Or the pending-payload watchdog reports a style that never loaded,
-        // about a map that was simply taken down while it was still loading.
+        // Or a watchdog reports a style that never loaded, about a map that
+        // was simply taken down while it was still loading — and the swap
+        // one would go further and put markers back on a removed map.
+        styleSwapId++;
+        styleSwapInFlight = false;
+        clearTimeout(styleSwapTimer);
         pendingMarkers = null;
         pendingLines = null;
         pendingShapes = null;

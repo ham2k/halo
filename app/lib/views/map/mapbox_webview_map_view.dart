@@ -176,7 +176,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
 
   Future<void> _applyStyleUrls() async {
     await _controller?.evaluateJavascript(
-      source: "window.poloUpdateStyles('${widget.styleUrl}', '${widget.styleUrlDark}');",
+      // The tone travels with the URLs — see the web backend's own note.
+      source: "window.poloUpdateStyles('${widget.styleUrl}', '${widget.styleUrlDark}', ${widget.isDark});",
     );
   }
 

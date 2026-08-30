@@ -157,13 +157,19 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   }
 
   Widget _buildMap(BuildContext context, ThemeData theme) {
-    _ensureData(context);
+    // The BASEMAP's tone, not the app's: everything drawn over the tiles has
+    // to contrast against them, and a pinned style keeps its own whatever the
+    // app's theme is doing. Derived once — the markers, the highlight and the
+    // backend all have to agree on it. Also what the OSM backend picks its
+    // tile source by, so its map and its markers agree too.
+    final isDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: theme.brightness == Brightness.dark);
+    _ensureData(context, isDark: isDark);
 
     // The current QSO's highlight is derived every build (it changes on every
     // keystroke, so it can't share `_ensureData`'s heavy memo) and appended
     // last, so backends draw it on top. Cheap: one location resolve plus one
     // great-circle.
-    final highlight = _buildHighlight(theme);
+    final highlight = _buildHighlight(theme, isDark: isDark);
     final markers = highlight.markers.isEmpty ? _markers : [..._markers, ...highlight.markers];
     final lines = highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
 
@@ -196,7 +202,6 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     );
 
     final Widget map;
-    final isDark = theme.brightness == Brightness.dark;
     var hasGlobe = true;
     // A pinned style (see the map style menu on this tab's header button)
     // uses the same URL for both slots, so the light/dark machinery in the
@@ -286,11 +291,10 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     );
   }
 
-  void _ensureData(BuildContext context) {
+  void _ensureData(BuildContext context, {required bool isDark}) {
     final poloColors = HaLoColors.of(context);
     final miles = widget.settings.distanceUnits == DistanceUnits.miles;
     final locale = LocaleSettings.currentLocale;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (identical(_builtQsos, widget.qsos) &&
         _builtGrid == widget.operation.grid &&
         _builtQth == widget.operation.location &&
@@ -380,12 +384,13 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
 
   /// The current QSO's highlight, using the logging panel's accent colours —
   /// `colorScheme.tertiary` (orange) composing, `.secondary` (blue) editing.
-  ({List<MapMarkerData> markers, List<MapLineData> lines}) _buildHighlight(ThemeData theme) => buildHighlightData(
+  ({List<MapMarkerData> markers, List<MapLineData> lines}) _buildHighlight(ThemeData theme, {required bool isDark}) =>
+      buildHighlightData(
         callInfo: widget.callInfo,
         operationLocation: widget.operation.location,
         composingColor: mapHighlightColor(theme.colorScheme.tertiary),
         editingColor: mapHighlightColor(theme.colorScheme.secondary),
-        strokeColor: theme.brightness == Brightness.dark ? _qsoStrokeDark : _qsoStrokeLight,
+        strokeColor: isDark ? _qsoStrokeDark : _qsoStrokeLight,
       );
 
   MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors,

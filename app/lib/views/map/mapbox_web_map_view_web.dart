@@ -212,7 +212,10 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   }
 
   void _applyStyleUrls() {
-    _handle?.callMethod('updateStyles'.toJS, widget.styleUrl.toJS, widget.styleUrlDark.toJS);
+    // The tone travels with the URLs: this call replaces _applyDark for a
+    // style change (see didUpdateWidget), so it is the only chance the script
+    // gets to learn which slot the new pick should show.
+    _handle?.callMethod('updateStyles'.toJS, widget.styleUrl.toJS, widget.styleUrlDark.toJS, widget.isDark.toJS);
   }
 
   void _applyDark() {

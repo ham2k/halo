@@ -326,7 +326,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    // The BASEMAP's tone, not the app's — a pinned style keeps its own
+    // whatever the app's theme is doing (see mapStyleIsDark).
+    final isDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: theme.brightness == Brightness.dark);
     // Same stroke treatment as the Map tab's QSO circles: a dark ring reads
     // as a hole in a light basemap, a light one does the same job on a dark
     // one.
