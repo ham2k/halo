@@ -50,6 +50,12 @@ export interface ActivityExportRules {
   /// The ref type an operation carries while activating ('potaActivation').
   activationType: string
   icon?: string
+  /// Other extensions whose `adifFields` this program accepts in its own file,
+  /// by key — `['satellites']` for POTA, whose uploader reads `PROP_MODE` and
+  /// `SAT_NAME` and whose parks can be worked through a bird. Everything else
+  /// stays out: this file claims ONE program (see `generateExport`), and only
+  /// the program itself can say what else it reads.
+  includeFieldsFrom?: string[]
 }
 
 /// Separates the program's own exportType prefix from the reference it names.
@@ -154,17 +160,21 @@ export function activityExportHook(rules: ActivityExportRules) {
 
       // The whole point of the split: this file claims ONE reference, so the
       // operation the ADIF exporter sees carries only that one and every record
-      // names it. Other activities' refs are left alone — a park that is also a
-      // summit still says so in the POTA file.
+      // names it. Other activities' refs stay on the operation but say nothing
+      // in this file — `mainHandler` below makes this program's own hook the
+      // only one asked, so a park that is also a lighthouse owes two files and
+      // neither claims the other's reference.
       const refs = ((args.operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
         (r) => r?.type !== rules.activationType || r?.ref === wanted,
       )
       const operation = { ...args.operation, refs: refs as unknown as JSONValue }
 
-      const content = await adifFor({
+      const content = await adifForExport({
         operation,
         qsos: args.qsos,
         includePrivateData: args.includePrivateData,
+        mainHandler: rules.key,
+        includeFieldsFrom: rules.includeFieldsFrom,
       })
       return {
         filename: filenameFor(args.operation, args.qsos, wanted, args.compactFilenames),
@@ -198,6 +208,12 @@ export interface HuntingExportRules {
   /// the panel doesn't fetch) — so this hook has no `refType` to borrow a
   /// color from and has to be told directly.
   color?: string
+  /// Other extensions whose `adifFields` this program accepts in its own file,
+  /// by key — `['satellites']` for POTA, whose uploader reads `PROP_MODE` and
+  /// `SAT_NAME` and whose parks can be worked through a bird. Everything else
+  /// stays out: this file claims ONE program (see `generateExport`), and only
+  /// the program itself can say what else it reads.
+  includeFieldsFrom?: string[]
 }
 
 /// Shared by the option listing and the generated result, which must agree —
@@ -276,10 +292,16 @@ export function huntingExportHook(rules: HuntingExportRules) {
         throw new Error(`${rules.key}: operation now activates ${rules.activationType}; hunter export withdrawn`)
       }
 
-      const content = await adifFor({
+      const content = await adifForExport({
         operation: args.operation,
         qsos: huntedQsos(args.qsos ?? []),
         includePrivateData: args.includePrivateData,
+        // The hunter file is submitted to ONE program too — see
+        // `activityExportHook.generateExport`. `rules.key` is the ACTIVITY's
+        // key ('pota'), which is what its `adifFields` hook registers under;
+        // the '-hunter' suffix belongs to the export registration alone.
+        mainHandler: rules.key,
+        includeFieldsFrom: rules.includeFieldsFrom,
       })
       return {
         // The FULL qsos list, matching the option's filename — see
@@ -292,20 +314,35 @@ export function huntingExportHook(rules: HuntingExportRules) {
   }
 }
 
-/// Delegates to the core ADIF exporter inside the runtime (no bridge crossing),
-/// so an activity's file is byte-identical to a normal export of the same
-/// narrowed operation. `invokeOne`, not `invokeAll` — see the guard above.
-async function adifFor(
-  { operation, qsos, includePrivateData }: {
+/// Builds the ADIF for an export that belongs to ONE extension — an activity's
+/// per-reference file, a contest's log — by delegating to the core `adif`
+/// exporter inside the runtime (no bridge crossing), so the file is
+/// byte-identical to a normal export of the same operation plus this
+/// extension's own fields.
+///
+/// `mainHandler` is required, and is the caller's own key: the exporter asks
+/// that `adifFields` hook and no other, because a submitted file is one
+/// program's log (`ExportRequest.mainHandler`). Everything a program also
+/// accepts — POTA takes the satellite's `PROP_MODE`/`SAT_NAME` — goes in
+/// `includeFieldsFrom`.
+///
+/// `invokeOne`, NOT `invokeAll`: the fan-out over the `export` category
+/// includes the CALLER's own `generateExport`, which would take the same
+/// branch and delegate again, forever. Being await-based there is no stack
+/// overflow to stop it — the export simply never returns.
+export async function adifForExport(
+  { operation, qsos, includePrivateData, mainHandler, includeFieldsFrom }: {
     operation: Record<string, JSONValue>
     qsos: Record<string, JSONValue>[]
     includePrivateData?: boolean
+    mainHandler: string
+    includeFieldsFrom?: string[]
   },
 ): Promise<string> {
-  // Imported dynamically, as simple-contest does: a static import of the SDK
-  // barrel from inside the SDK is circular (the barrel re-exports this module),
-  // and it would drag `defineExtension` — which needs the kernel global — into
-  // this module's `node --test` runs.
+  // Imported dynamically: a static import of the SDK barrel from inside the SDK
+  // is circular (the barrel re-exports this module), and it would drag
+  // `defineExtension` — which needs the kernel global — into this module's
+  // `node --test` runs.
   const { hooks } = await import("@ham2k/halo-extension-sdk")
   const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
     operation,
@@ -314,7 +351,22 @@ async function adifFor(
     // Forwarded, or the delegate defaults to withholding and the user's
     // "include private info" setting silently does nothing here.
     includePrivateData,
+    mainHandler,
+    includeFieldsFrom,
   })
-  const adif = entries.find((e) => e.ok)
-  return ((adif?.value as ExportResult | undefined)?.content) ?? ''
+  const content = (entries.find((e) => e.ok)?.value as ExportResult | undefined)?.content
+  // A throw inside the delegate comes back as a not-ok entry, so a caller that
+  // shrugged here would hand the operator a 0-byte file under the name of the
+  // log they asked for — the failure looking exactly like a successful export.
+  // Every ADIF has a header, so empty is never a real answer either.
+  //
+  // The delegate's OWN message is what says which of the several ways this
+  // goes wrong actually did; the export panel shows this string to the
+  // operator, and "produced no file" alone would tell neither them nor a bug
+  // report anything.
+  if (!content) {
+    const failed = entries.find((e) => !e.ok)?.error
+    throw new Error(`${mainHandler}: the ADIF exporter produced no file${failed ? ` (${failed})` : ''}`)
+  }
+  return content
 }

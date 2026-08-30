@@ -13,7 +13,7 @@
 // arrl-vhf-tests already proved. `their` number has no placeholder to guess:
 // there is nothing to know about a number the other station hasn't sent yet.
 
-import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -300,21 +300,19 @@ const ExportHook = {
       return { filename: filenameFor(operation, args.qsos, event, 'edi', args.compactFilenames), mimeType: 'text/plain', content }
     }
 
-    const { hooks } = await import("@ham2k/halo-extension-sdk")
-    // invokeOne, NOT invokeAll: the fan-out includes this contest's own
-    // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion.
-    const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
+    const content = await adifForExport({
       operation: args.operation,
       qsos: args.qsos,
-      exportType: 'adif',
       includePrivateData: args.includePrivateData,
+      // This file is the CONTEST's log, so the core exporter asks this
+      // extension's `adifFields` hook and no other's — app-polo's main
+      // handler (see `ExportRequest.mainHandler`).
+      mainHandler: TYPE,
     })
-    const adif = entries.find((e) => e.ok)
     return {
       filename: filenameFor(operation, args.qsos, event, 'adi', args.compactFilenames),
       mimeType: 'text/plain',
-      content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
+      content,
     }
   },
 }

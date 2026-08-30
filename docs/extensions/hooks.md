@@ -542,6 +542,29 @@ returning several is describing individual records. Declaring both methods is
 fine and expected — a hook that does is asked only for its combinations, so
 its plain fields aren't written twice. Implemented by: `pota`.
 
+**Only the export's OWN hook is asked.** A file submitted to one program is
+that program's log, so an export that delegates the ADIF build names itself as
+`mainHandler` in the `ExportRequest` — app-polo's "main handler"
+(`qsonToADIF`'s `handler`) — and the `adif` extension invokes that hook alone,
+not the whole category. Activate a park that is also a lighthouse and each
+file claims its own reference; ask every hook and both programs'
+`MY_SIG`/`MY_SIG_INFO` pairs land in every record, leaving the receiving
+program to guess which is its. The delegate cannot work out who called it, so
+naming yourself is not optional.
+
+The full ADIF export names no `mainHandler` and every hook contributes —
+polo's `includeOtherRefs`, which only its full export sets. That is the export
+claiming no program: the complete copy the operator keeps.
+
+An export can also name a **list** of other hooks it accepts,
+`includeFieldsFrom` — polo's all-or-nothing flag narrowed to what the program
+itself says it reads. It is for what DESCRIBES a contact rather than claiming
+it: POTA's exports list `satellites`, because a park worked through a bird is
+still a park activation and POTA's uploader reads `PROP_MODE`/`SAT_NAME`. A
+listed key that answers nothing is fine — the operator may have that extension
+off — where a `mainHandler` that answers nothing is an error, since that file
+would claim no reference at all.
+
 ## ✅ `adifImport` — per-QSO reference recovery on import
 
 The inverse of `adifFields`. The core's ADIF parser

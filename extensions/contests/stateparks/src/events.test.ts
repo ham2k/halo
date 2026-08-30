@@ -127,13 +127,12 @@ test('each event honours its own band list — the rule polo carries and never r
   assert.equal(bandCounts(eventFor('GASP')!, '160m'), true)
 })
 
-test('only Ohio’s sponsor refuses an ADIF, and Ohio alone takes a Cabrillo', () => {
+test('Ohio alone takes a Cabrillo, which is the only file this extension writes', () => {
   // "No ADIF, no CSV, no Text files - send in a standard Cabrillo file only" —
   // OSPOTA-Rules-2026-Rev-1.pdf, which says it three times over. The other
-  // three upload a log FILE to their own site and name ADIF for it: Texas §8.2,
-  // Florida §7.1, Georgia §7.2.2. Offering a file the sponsor throws away is
-  // how a log goes unscored, and polo offers one for all four.
-  assert.deepEqual(EVENTS.filter((e) => !e.exportsAdif).map((e) => e.key), ['OHSP'])
+  // three upload a log FILE to their own site and name ADIF for it (Texas §8.2,
+  // Florida §7.1, Georgia §7.2.2), and that file is POTA's per-park export,
+  // not one from here — see `ExportHook` in index.ts.
   assert.deepEqual(EVENTS.filter((e) => e.exportsCabrillo).map((e) => e.key), ['OHSP'])
 })
 

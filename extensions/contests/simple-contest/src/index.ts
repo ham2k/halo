@@ -17,7 +17,7 @@
 //   adifFields          — CONTEST_ID / STX_STRING / SRX_STRING
 //   export              — contest ADIF options plus a Cabrillo file
 
-import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -274,7 +274,7 @@ const ExportHook = {
 
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes `suggestExportOptions` above offers. Belt and
-    // braces alongside the keyed `invokeOne` below: a hook that answers for an
+    // braces alongside `adifForExport`'s keyed delegation: a hook that answers for an
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
@@ -310,36 +310,23 @@ const ExportHook = {
       }
     }
 
-    // ADIF is produced by the core `adif` extension, which composes every
-    // `adifFields` contribution — including this contest's above — so there is
-    // nothing contest-specific to build here beyond naming the file.
-    const adif = await hooksInvokeAdif(args, ctx)
+    // ADIF is produced by the core `adif` extension, so there is nothing
+    // contest-specific to build here beyond naming the file.
+    const content = await adifForExport({
+      operation: args.operation,
+      qsos: args.qsos,
+      includePrivateData: args.includePrivateData,
+      // This file is the CONTEST's log, so the core exporter asks this
+      // extension's `adifFields` hook and no other's — app-polo's main
+      // handler (see `ExportRequest.mainHandler`).
+      mainHandler: TYPE,
+    })
     return {
       filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
       mimeType: 'text/plain',
-      content: adif,
+      content,
     }
   },
-}
-
-/// Delegates to the core ADIF exporter inside the runtime (no bridge crossing),
-/// so contest ADIF is byte-identical to a normal export plus this extension's
-/// CONTEST_ID/STX/SRX fields.
-async function hooksInvokeAdif(args: ExportRequest, _ctx: HookContext): Promise<string> {
-  const { hooks } = await import("@ham2k/halo-extension-sdk")
-  // invokeOne, NOT invokeAll: the fan-out includes this contest's own
-  // `generateExport`, which would take the same ADIF branch and delegate
-  // again — unbounded recursion.
-  const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
-    operation: args.operation,
-    qsos: args.qsos,
-    exportType: 'adif',
-    // Forwarded, or the delegate defaults to withholding and the user's
-    // "include private info" setting silently does nothing here.
-    includePrivateData: args.includePrivateData,
-  })
-  const adif = entries.find((e) => e.ok)
-  return ((adif?.value as ExportResult | undefined)?.content) ?? ''
 }
 
 defineExtension({

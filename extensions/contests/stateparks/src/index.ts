@@ -334,9 +334,12 @@ const AdifFieldsHook = {
     // for the same reason ('OHSP' vs 'OHSPOTA').
     const fields = [{ name: 'CONTEST_ID', value: event.key }]
 
-    // The park references themselves are POTA's fields (SIG/POTA_REF), already
-    // contributed by that extension. What belongs to this contest is the
-    // exchange, and only the events that have one.
+    // What belongs to this contest is the exchange; the park references are
+    // POTA's fields (SIG/POTA_REF) and are contributed by that extension.
+    // These reach only the FULL ADIF export now — this extension writes
+    // Ohio's Cabrillo and nothing else (`ExportHook`), and a program file
+    // carries one handler's fields — and that export asks every hook, so the
+    // parks are alongside these in the one file they both reach.
     if (event.usesParkAbbreviations) {
       const ours = ourParkAbbreviation(event, operation)
       const theirs = theirParkAbbreviation(event, qso)
@@ -375,51 +378,36 @@ const ExportHook = {
     const event = eventOn(args.operation)
     if (!event) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
 
-    // A contest ADIF, on a different axis from POTA's own.
+    // Cabrillo only, which is Ohio alone: they say so three times over — "No
+    // ADIF, no CSV, no Text files - send in a standard Cabrillo file only"
+    // (OSPOTA-Rules-2026-Rev-1.pdf).
     //
-    // polo leaves three of the four events to "regular POTA exports". HaLo now
-    // has those — `activityExportHook` gives POTA one ADIF per activated park —
-    // but they answer a different question: a park's file covers the stretch
-    // that park was being activated and claims the park. This one covers the
-    // stretch the EVENT was running and claims the event, which is what a
-    // sponsor asking for your log means, and is the only file that carries
-    // `CONTEST_ID`. An operator submitting to both programs wants both.
-    //
-    // Except where the sponsor has said they won't read one. Ohio takes a
-    // Cabrillo and nothing else (events.ts, `CABRILLO_ONLY`), and offering a
-    // file that gets a log rejected is worse than not offering it — polo offers
-    // it for all four. `generateExport` below still honours a contest-adif it is
-    // asked for: the sponsor's policy is which options exist, not what the
-    // generator can build.
-    const options: ExportOption[] = []
-    if (event.exportsAdif) {
-      options.push({
-        exportType: 'contest-adif',
-        format: 'adif',
-        label: t('adifExport', { contest: contestTag(args.operation) }),
-        filename: named('adi'),
-        selectedByDefault: true,
-        refType: TYPE,
-      })
-    }
-    if (event.exportsCabrillo) {
-      options.push({
-        exportType: 'cabrillo',
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: contestTag(args.operation) }),
-        filename: named('log'),
-        selectedByDefault: true,
-        refType: TYPE,
-      })
-    }
-    return options
+    // The other three upload an ADIF to their own site — Texas §8.2 ("Your log
+    // must be uploaded in ADIF format to the TSPOA website"), Florida §7.1
+    // ("ONLY ADIF formatted logs will be accepted"), Georgia §7.2.2 — and that
+    // file is POTA's own per-park export, as it is in polo. What those
+    // sponsors read is the PARK: Georgia's upload wants the worked one in
+    // `SIG_INFO`, and Florida wants one file per park ("Combined log files for
+    // multiple parks will not be accepted", §7.5.3), which is the very axis
+    // `activityExportHook` splits POTA's exports on. This extension's own
+    // fields are the exchange, and a file carries one handler's fields
+    // (`ExportRequest.mainHandler`) — so a contest ADIF from here would name
+    // `CONTEST_ID` and no park at all. (Hunters submit nothing to Florida or
+    // Georgia; their activators do.)
+    if (!event.exportsCabrillo) return []
+    return [{
+      exportType: 'cabrillo',
+      format: 'cabrillo',
+      label: t('cabrilloExport', { contest: contestTag(args.operation) }),
+      filename: filenameFor(args.operation, args.qsos ?? [], 'log', args.compactFilenames),
+      selectedByDefault: true,
+      refType: TYPE,
+    }]
   },
 
   async generateExport(args: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
-    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+    if (args.exportType !== 'cabrillo') {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -429,64 +417,44 @@ const ExportHook = {
 
     const ourCall = str(operation.stationCall)
 
-    if (args.exportType === 'cabrillo') {
-      // Ohio's own layout: no signal reports, and a park column each side. The
-      // other three events' sponsors take an ADIF, and polo's non-Ohio Cabrillo
-      // row is unreachable code there, so it isn't ported.
-      const ours = ourParkAbbreviation(event, operation) || NOT_IN_A_PARK
-      const category = configuredCategory(event, operation)
-      const content = qsonToCabrillo(args.qsos, {
-        // In the sponsor's own order, from their sample log
-        // (https://ospota.org/Files/OSPOTA_Sample-rev2.log): the checker is
-        // automated, and these four CATEGORY lines are what tells it which
-        // entry it is scoring. Empty values are dropped by the writer, so an
-        // operator who never opened the category field submits what polo does.
-        //
-        // `CATEGORY-MODE` is fixed: the sponsor's sample has MIXED written in
-        // rather than a placeholder, and their categories don't split by mode.
-        // CLUB-NAME is in that sample too and is NOT emitted — their rules never
-        // mention a club, so there is no field to fill it from.
-        headers: [
-          ['CONTEST', event.cabrilloName],
-          ['CALLSIGN', ourCall],
-          ['LOCATION', ours],
-          ['CATEGORY-OPERATOR', category?.value],
-          ['CATEGORY-TRANSMITTER', category?.transmitter],
-          ['CATEGORY-POWER', cabrilloPower(event, operation)],
-          ['CATEGORY-MODE', 'MIXED'],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
-        ],
-        qsoParts: (qso) => [
-          (ourCall || '-').padEnd(18, ' '),
-          ours.padEnd(12, ' '),
-          (str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-').padEnd(17, ' '),
-          theirCabrilloLocation(event, qso).padEnd(12, ' '),
-        ],
-      })
-      return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
-        content,
-      }
-    }
-
-    const { hooks } = await import("@ham2k/halo-extension-sdk")
-    // invokeOne, not invokeAll: the fan-out would include this hook, which
-    // would take the same branch and delegate again.
-    const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
-      operation: args.operation,
-      qsos: args.qsos,
-      exportType: 'adif',
-      // Forwarded, or the delegate defaults to withholding and the user's
-      // "include private info" setting silently does nothing here.
-      includePrivateData: args.includePrivateData,
+    // Ohio's own layout: no signal reports, and a park column each side. The
+    // other three events' sponsors take an ADIF, and polo's non-Ohio Cabrillo
+    // row is unreachable code there, so it isn't ported.
+    const ours = ourParkAbbreviation(event, operation) || NOT_IN_A_PARK
+    const category = configuredCategory(event, operation)
+    const content = qsonToCabrillo(args.qsos, {
+      // In the sponsor's own order, from their sample log
+      // (https://ospota.org/Files/OSPOTA_Sample-rev2.log): the checker is
+      // automated, and these four CATEGORY lines are what tells it which
+      // entry it is scoring. Empty values are dropped by the writer, so an
+      // operator who never opened the category field submits what polo does.
+      //
+      // `CATEGORY-MODE` is fixed: the sponsor's sample has MIXED written in
+      // rather than a placeholder, and their categories don't split by mode.
+      // CLUB-NAME is in that sample too and is NOT emitted — their rules never
+      // mention a club, so there is no field to fill it from.
+      headers: [
+        ['CONTEST', event.cabrilloName],
+        ['CALLSIGN', ourCall],
+        ['LOCATION', ours],
+        ['CATEGORY-OPERATOR', category?.value],
+        ['CATEGORY-TRANSMITTER', category?.transmitter],
+        ['CATEGORY-POWER', cabrilloPower(event, operation)],
+        ['CATEGORY-MODE', 'MIXED'],
+        ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+        ['GRID-LOCATOR', str(operation.grid)],
+      ],
+      qsoParts: (qso) => [
+        (ourCall || '-').padEnd(18, ' '),
+        ours.padEnd(12, ' '),
+        (str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-').padEnd(17, ' '),
+        theirCabrilloLocation(event, qso).padEnd(12, ' '),
+      ],
     })
-    const adif = entries.find((e) => e.ok)
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
+      filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
       mimeType: 'text/plain',
-      content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
+      content,
     }
   },
 }

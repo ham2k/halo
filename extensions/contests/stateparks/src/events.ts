@@ -47,24 +47,6 @@ export const WARC_BANDS = ['60m', '30m', '17m', '12m']
 /// How an event counts multipliers, from `options.multipliers`.
 export type MultiplierRule = 'none' | 'stateParksActivated' | 'stateParksActivatedAndHunted'
 
-/// The one sponsor that will not take an ADIF, by event key.
-///
-/// Ohio says so three times over: "No ADIF, no CSV, no Text files - send in a
-/// standard Cabrillo file only" (OSPOTA-Rules-2026-Rev-1.pdf). The other three
-/// all upload a log FILE to their own site and name ADIF for it — Texas §8.2
-/// ("Your log must be uploaded in ADIF format to the TSPOA website"), Florida
-/// §7.1 ("ONLY ADIF formatted logs will be accepted for this contest"), Georgia
-/// §7.2.2, whose upload wants the worked park in `SIG_INFO`. Hunters submit
-/// nothing at all to Florida and Georgia, but their activators do.
-///
-/// KNOWN LIMIT, Florida: this extension's ADIF covers the whole EVENT, and
-/// Florida wants one file per park — "One ADIF format log file must be submitted
-/// for each park activated. Combined log files for multiple parks will not be
-/// accepted" (§7.5.3). So the option is right for a single-park activation and
-/// wrong for two, where POTA's own per-park export is the file to send. Texas
-/// (§8.4.1.1) and Georgia (§7.2.2) both allow the combined file explicitly.
-const CABRILLO_ONLY = ['OHSP']
-
 /// A power class an event publishes: the value stored on our ref, and the
 /// sponsor's own ceiling for it.
 ///
@@ -202,10 +184,10 @@ export interface StateParkEvent {
   /// True when the exchange is a park abbreviation rather than nothing at all
   /// (`options.exchange === 'parkAbbreviation'`) — Ohio alone, today.
   usesParkAbbreviations: boolean
-  /// This event's own Cabrillo (`options.exportCabrillo`).
+  /// This event's own Cabrillo (`options.exportCabrillo`) — Ohio alone asks
+  /// for one, and the other three sponsors read POTA's own ADIF instead of
+  /// anything this extension writes (see `ExportHook` in index.ts).
   exportsCabrillo: boolean
-  /// Whether this event's sponsor accepts an ADIF at all (`CABRILLO_ONLY`).
-  exportsAdif: boolean
   /// CONTEST line for that Cabrillo.
   cabrilloName: string
 
@@ -316,7 +298,6 @@ function normalize(raw: RawEvent): StateParkEvent {
 
     usesParkAbbreviations,
     exportsCabrillo: raw.options?.exportCabrillo === true,
-    exportsAdif: !CABRILLO_ONLY.includes(raw.key),
     // Sponsors name their own Cabrillo contest; `<KEY>OTA` is what the three
     // whose sponsors don't take a Cabrillo would use if they started to.
     cabrilloName: raw.cabrilloName ?? `${raw.key}OTA`,

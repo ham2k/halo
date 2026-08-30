@@ -9,7 +9,7 @@
 // control. `loggingControls` gets the operation, so the descriptor is just
 // computed per call; nothing in the core is needed to support it.
 
-import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -282,7 +282,7 @@ const ExportHook = {
 
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes `suggestExportOptions` above offers. Belt and
-    // braces alongside the keyed `invokeOne` below: a hook that answers for an
+    // braces alongside `adifForExport`'s keyed delegation: a hook that answers for an
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
@@ -318,23 +318,19 @@ const ExportHook = {
       }
     }
 
-    const { hooks } = await import("@ham2k/halo-extension-sdk")
-    // invokeOne, NOT invokeAll: the fan-out includes this contest's own
-    // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion.
-    const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
+    const content = await adifForExport({
       operation: args.operation,
       qsos: args.qsos,
-      exportType: 'adif',
-      // Forwarded, or the delegate defaults to withholding and the user's
-      // "include private info" setting silently does nothing here.
       includePrivateData: args.includePrivateData,
+      // This file is the CONTEST's log, so the core exporter asks this
+      // extension's `adifFields` hook and no other's — app-polo's main
+      // handler (see `ExportRequest.mainHandler`).
+      mainHandler: TYPE,
     })
-    const adif = entries.find((e) => e.ok)
     return {
       filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
       mimeType: 'text/plain',
-      content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
+      content,
     }
   },
 }

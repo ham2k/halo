@@ -11,6 +11,7 @@
 // a suggestions list here; HaLo already has the control.
 
 import {
+  adifForExport,
   contestScorer,
   defineExtension,
   host,
@@ -416,19 +417,23 @@ const ExportHook = {
     const ourSection = str(opRef?.ourSection).toUpperCase()
     const stamp = `WFD-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
 
-    const { hooks } = await import("@ham2k/halo-extension-sdk")
-    // invokeOne, NOT invokeAll: the fan-out includes this contest's own
-    // `generateExport`, which would take this same branch and delegate again.
-    const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
+    const content = await adifForExport({
       operation: args.operation,
       qsos: args.qsos,
-      exportType: 'adif',
+      includePrivateData: args.includePrivateData,
+      // This file is the CONTEST's log, so the core exporter asks this
+      // extension's `adifFields` hook and no other's — app-polo's main
+      // handler (see `ExportRequest.mainHandler`).
+      mainHandler: TYPE,
+      // A satellite QSO earns this contest a bonus, and PROP_MODE/SAT_NAME
+      // describe the contact rather than claiming it — so they ride along
+      // in our file when the operator has that extension on.
+      includeFieldsFrom: ['satellites'],
     })
-    const adif = entries.find((e) => e.ok)
     return {
       filename: `${stamp}.adi`,
       mimeType: 'text/plain',
-      content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
+      content,
     }
   },
 }

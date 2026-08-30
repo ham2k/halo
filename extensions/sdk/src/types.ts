@@ -735,6 +735,37 @@ export interface ExportRequest {
   /// call the core `adif` generator) must forward this, or the delegate will
   /// default to withholding and the user's setting will silently not apply.
   includePrivateData?: boolean
+  /// The extension whose export this file IS — app-polo's "main handler"
+  /// (`qsonToADIF`'s `handler`). A file submitted to one program is that
+  /// program's log: the core `adif` generator asks THAT extension's
+  /// `adifFields` hook for the program fields and no one else's, the way polo
+  /// asks only its main handler. Activate a park that is also a lighthouse
+  /// and each file claims its own reference; ask every hook and both
+  /// programs' `MY_SIG`/`MY_SIG_INFO` pairs land in every record, leaving the
+  /// receiving program to guess which is its.
+  ///
+  /// A hook that DELEGATES the ADIF build must name itself here, since the
+  /// delegate cannot know who called it.
+  ///
+  /// Omitted, every `adifFields` hook contributes — polo's `includeOtherRefs`,
+  /// which only its full ADIF export sets. That is the export claiming no
+  /// program: the complete copy the operator keeps.
+  mainHandler?: string
+  /// Other extensions' `adifFields` hooks this file wants anyway, by key —
+  /// polo's `includeOtherRefs` narrowed from "everyone" to a named list.
+  ///
+  /// For what DESCRIBES the contact rather than claiming it: POTA takes
+  /// `satellites`, because a park worked through a bird is still a park
+  /// activation and POTA's uploader reads `PROP_MODE`/`SAT_NAME`. It is the
+  /// main handler's judgement about what its own program accepts, so the
+  /// listing lives with the export, not with the extension being listed.
+  ///
+  /// Unlike `mainHandler`, a key here that no hook answers is not an error:
+  /// the operator may simply have that extension turned off, and this file is
+  /// still the program's log without it.
+  ///
+  /// Ignored without a `mainHandler` — that export already has every hook.
+  includeFieldsFrom?: string[]
 }
 
 export interface ExportResult {

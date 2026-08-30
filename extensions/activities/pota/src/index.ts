@@ -717,6 +717,10 @@ defineExtension({
         label: 'POTA',
         activationType: ACTIVATION_TYPE,
         icon: 'pine-tree',
+        // A park worked through a bird is still a park activation, and POTA's
+        // uploader reads PROP_MODE/SAT_NAME — so the satellite's fields ride
+        // along in this file even though it is POTA's log.
+        includeFieldsFrom: ['satellites'],
       }),
       key: 'pota',
     })
@@ -730,6 +734,7 @@ defineExtension({
         activationType: ACTIVATION_TYPE,
         icon: 'pine-tree',
         color: manifest.accentColor,
+        includeFieldsFrom: ['satellites'],
       }),
       key: 'pota-hunter',
     })

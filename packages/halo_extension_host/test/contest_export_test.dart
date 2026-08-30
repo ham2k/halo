@@ -19,13 +19,39 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/bundles.dart';
 
+/// Hoisted so the shared host is reused rather than rebooted per call — a new
+/// closure each time is a new cache key (support/bundles.dart). An empty bird
+/// table is enough: the satellite's BAND_RX is the only field that needs a
+/// match in it, and a hook that could not read the table at all now fails the
+/// export outright (activity_export_test.dart).
+Future<Object?> _noBirds(String method, Map<String, dynamic> params) async =>
+    method == 'dbLookupSelectAll' ? const [] : null;
+
 void main() {
   requireBundles();
 
   // Every contest ships the same delegation, so every contest can recurse. The
   // list had drifted — iaru-hf and naqp shipped without being added, and this is
   // the only place the delegation is exercised at all.
-  const contests = ['simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'stateparks', 'cwt'];
+  // stateparks is absent deliberately: it writes a Cabrillo and nothing else
+  // (its sponsors read POTA's own ADIF), so it never delegates and has no
+  // recursion to guard against. Every OTHER contest belongs here — the list
+  // has drifted twice, and a contest missing from it ships its delegation
+  // untested.
+  const contests = [
+    'simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'cwt', 'fd', 'wfd',
+    'arrl-vhf-tests', 'r1-vhf-tests', 'rsgb-vhf-tests',
+  ];
+
+  /// The event a multi-event contest needs on its ref before it will export at
+  /// all — its `generateExport` returns an empty file for an event it cannot
+  /// resolve, which would make the assertions below pass while testing
+  /// nothing. Contests with a single event ignore the value.
+  const eventKeys = {
+    'arrl-vhf-tests': 'ARRL-VHF-JUN',
+    'r1-vhf-tests': 'R1-VHF-SUB1-MARCH',
+    'rsgb-vhf-tests': 'RSGB-BACKPACKERS-1',
+  };
 
   /// `ref` names WHICH event for a contest that has several (stateparks
   /// contributes nothing without one); the rest ignore the extra keys.
@@ -68,8 +94,13 @@ void main() {
   ];
 
   for (final key in contests) {
-    test('$key: contest-adif export terminates and produces ADIF', () async {
-      final host = await sharedHost(['adif', key]);
+    test('$key: contest-adif export terminates and carries only this contest', () async {
+      // `pota` is loaded so the file has something to leak: a contest run from
+      // a park would otherwise be the one place a missing `mainHandler` shows,
+      // and a contest that forgets it silently gets the old ask-every-hook
+      // behaviour — POTA's MY_SIG stamped on a contest log, no error anywhere.
+      final host = await sharedHost(['adif', key, 'pota']);
+      final contestOperation = operationFor(key, event: eventKeys[key] ?? 'OHSP');
       // A generous ceiling: the point is that it RETURNS, not how fast. Before
       // the fix this hung until the host's own timeout.
       final result = await host.invokeHook(
@@ -77,10 +108,13 @@ void main() {
         key: key,
         method: 'generateExport',
         args: {
-          // Texas, because Ohio is the one event that offers no contest ADIF at
-          // all — the recursion this guards against lives in the shared
-          // delegation, so exercise it on an operation that really reaches it.
-          'operation': operationFor(key, event: 'TXSP'),
+          'operation': {
+            ...contestOperation,
+            'refs': [
+              ...(contestOperation['refs'] as List),
+              {'type': 'potaActivation', 'ref': 'US-0001'},
+            ],
+          },
           'qsos': qsosFor(key),
           'exportType': 'contest-adif',
         },
@@ -92,6 +126,78 @@ void main() {
       expect(content, isNotNull);
       expect(content, contains('<CALL:'), reason: 'delegation must reach the core adif exporter');
       expect(result['filename'], endsWith('.adi'));
+      expect(content, isNot(contains('POTA')), reason: 'the park is POTA\'s own export, not this file');
+      expect(content, isNot(contains('US-0001')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // The private-data setting only reaches the ADIF generator if the contest
+    // FORWARDS it across the delegation, and nothing about the file's shape
+    // shows whether it did — a dropped forward silently strips the operator's
+    // notes from every file they export, whatever the setting says. `fd` and
+    // `wfd` both shipped without it.
+    test('$key: the private-data flag survives the delegation', () async {
+      final host = await sharedHost(['adif', key]);
+      Future<String> adifFor({required bool includePrivateData}) async {
+        final result = await host.invokeHook(
+          'export',
+          key: key,
+          method: 'generateExport',
+          args: {
+            'operation': operationFor(key, event: eventKeys[key] ?? 'OHSP'),
+            'qsos': [
+              {
+                ...qsosFor(key).first,
+                'their': {'call': 'W0AW', 'name': 'Alice', 'city': 'Dayton'},
+              },
+            ],
+            'exportType': 'contest-adif',
+            'includePrivateData': includePrivateData,
+          },
+          timeout: const Duration(seconds: 10),
+        ) as Map;
+        return result['content'] as String;
+      }
+
+      expect(await adifFor(includePrivateData: false), isNot(contains('Alice')));
+      expect(await adifFor(includePrivateData: true), contains('Alice'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  }
+
+  // Field Day and Winter FD both award a satellite bonus, so their ADIF lists
+  // `satellites` the way POTA's does — a separate literal in each file, which
+  // is the only thing making it right, and by design a listed key that answers
+  // nothing is silent. So a typo in either would be invisible without this.
+  for (final key in ['fd', 'wfd']) {
+    test('$key: the satellite fields it asked for are in the file', () async {
+      final host = await sharedHost(
+        ['adif', key, 'satellites'],
+        cacheKey: 'sat-birds-empty',
+        onHostCall: _noBirds,
+      );
+      final result = await host.invokeHook(
+        'export',
+        key: key,
+        method: 'generateExport',
+        args: {
+          'operation': operationFor(key),
+          'qsos': [
+            {
+              ...qsosFor(key).first,
+              'refs': [
+                ...(qsosFor(key).first['refs'] as List),
+                {'type': 'satellite', 'ref': 'SO-50'},
+              ],
+            },
+          ],
+          'exportType': 'contest-adif',
+        },
+        timeout: const Duration(seconds: 10),
+      ) as Map;
+      final content = result['content'] as String;
+
+      expect(content, contains('<CONTEST_ID:'), reason: 'still the contest\'s own log');
+      expect(content, contains('<PROP_MODE:3>SAT'));
+      expect(content, contains('<SAT_NAME:5>SO-50'));
     }, timeout: const Timeout(Duration(seconds: 60)));
   }
 
@@ -153,9 +259,12 @@ void main() {
 
   test('a state park event offers only the formats its own sponsor will read', () async {
     // Ohio refuses an ADIF in as many words — "No ADIF, no CSV, no Text files -
-    // send in a standard Cabrillo file only" — so offering one is offering a file
-    // that gets the log rejected. Texas requires the opposite (§8.2, upload an
-    // ADIF), and takes no Cabrillo. polo offers a contest ADIF for all four.
+    // send in a standard Cabrillo file only" — and is the only sponsor asking
+    // for a Cabrillo. The other three upload an ADIF (Texas §8.2, Florida §7.1,
+    // Georgia §7.2.2), and what they read is the PARK, which is POTA's own
+    // per-park export — a file from here would carry CONTEST_ID and no park at
+    // all, since a file carries one handler's fields. polo leaves those three
+    // to "regular POTA exports" the same way.
     final host = await sharedHost(['stateparks']);
     Future<List<String>> typesFor(String event) async {
       final options = await host.invokeHook(
@@ -169,9 +278,9 @@ void main() {
     }
 
     expect(await typesFor('OHSP'), ['cabrillo']);
-    expect(await typesFor('TXSP'), ['contest-adif']);
-    expect(await typesFor('FLSP'), ['contest-adif']);
-    expect(await typesFor('GASP'), ['contest-adif']);
+    expect(await typesFor('TXSP'), isEmpty);
+    expect(await typesFor('FLSP'), isEmpty);
+    expect(await typesFor('GASP'), isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the Ohio State Parks Cabrillo is written the way the sponsor reads it', () async {

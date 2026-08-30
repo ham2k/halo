@@ -200,24 +200,78 @@ function baseRowFor(
 /// A hook declaring BOTH methods is asked only for its combinations — the same
 /// way app-polo asks only its "main handler" — or its plain fields would be
 /// written a second time into every record.
+///
+/// [mainHandler] is the extension whose export this file is: named, it is the
+/// only hook asked — plus whatever it listed in [includeFieldsFrom] — because a
+/// file submitted to one program is that program's log
+/// (`ExportRequest.mainHandler`). Unnamed — the full ADIF export, which claims
+/// no program — every hook contributes, which is polo's `includeOtherRefs`.
+///
+/// The hooks are asked in that order, the main handler first, which is the
+/// order their fields land in a record — except where an included hook answers
+/// `fieldCombinationsForOneQSO` and the main handler only answers the plain
+/// method, since combinations are collected first. No current pairing does.
 async function fieldSetsPerHook(
   qso: Record<string, unknown>,
   operation: Record<string, unknown>,
+  mainHandler?: string,
+  includeFieldsFrom?: string[],
 ): Promise<AdifField[][][]> {
   const byHook = new Map<string, AdifField[][]>()
+  const keys = mainHandler ? [mainHandler, ...(includeFieldsFrom ?? [])] : undefined
+  const invoke = async (method: string) =>
+    keys
+      ? (await Promise.all(keys.map((key) => hooks.invokeOne('adifFields', key, method, { qso, operation })))).flat()
+      : hooks.invokeAll('adifFields', method, { qso, operation })
 
-  const combined = await hooks.invokeAll('adifFields', 'fieldCombinationsForOneQSO', { qso, operation })
+  const combined = await invoke('fieldCombinationsForOneQSO')
   for (const entry of combined) {
     if (!entry.ok || !Array.isArray(entry.value)) continue
     const sets = (entry.value as AdifField[][]).filter((set) => Array.isArray(set))
     if (sets.length > 0) byHook.set(entry.key, sets)
   }
 
-  const single = await hooks.invokeAll('adifFields', 'fieldsForOneQSO', { qso, operation })
+  const single = await invoke('fieldsForOneQSO')
   for (const entry of single) {
     if (byHook.has(entry.key)) continue
     if (!entry.ok || !Array.isArray(entry.value)) continue
     byHook.set(entry.key, [entry.value as AdifField[]])
+  }
+
+  // Nothing below applies to the full ADIF export, which asks everyone and
+  // takes what it gets — one activity's broken hook must not cost the operator
+  // the whole-log backup. A file that claims ONE program is the strict case.
+  if (keys) {
+    const asked = [...combined, ...single]
+    // A handler with no `adifFields` registration answers NEITHER method — the
+    // records above are filtered to hooks that implement the method, so an
+    // entry means the hook ran. Without its fields the file goes out with no
+    // MY_SIG, no MY_POTA_REF, no CONTEST_ID: submittable-looking and claiming
+    // nothing, the same failure `activityExportHook.generateExport` refuses a
+    // stale reference for, reached by a key misspelled or renamed on one of
+    // the two registrations that have to agree.
+    //
+    // Only the MAIN handler, though: a `includeFieldsFrom` key that answers
+    // nothing at all is an extension the operator turned off, and the file is
+    // still the program's log without it.
+    if (mainHandler && !asked.some((entry) => entry.key === mainHandler)) {
+      throw new Error(`adif: no adifFields hook registered for main handler '${mainHandler}'`)
+    }
+    // Whoever it was, a hook that ANSWERED and then threw is a bug, not a
+    // setting — and the collecting loops above skip it in silence, so the file
+    // would lose those fields and say so nowhere. It is the likelier road to
+    // an empty claim than a misspelled key, since a hook reading its data
+    // through the host fails on a bad day rather than on a bad build; and for
+    // a listed hook it is the difference between POTA's file recording a
+    // satellite contact and recording it as terrestrial. A hook that runs and
+    // finds nothing to say answers `ok` with an empty list, and is none of
+    // this — as is a hook that doesn't implement the method at all, which
+    // answers not at all.
+    const broken = asked.find((entry) => !entry.ok || !Array.isArray(entry.value))
+    if (broken) {
+      const why = broken.ok ? 'returned no field list' : `failed: ${broken.error ?? 'unknown error'}`
+      throw new Error(`adif: the '${broken.key}' adifFields hook ${why}`)
+    }
   }
 
   return [...byHook.values()]
@@ -257,7 +311,7 @@ const ExportHandler = {
   },
 
   async generateExport(
-    { operation, qsos, compactFilenames, includePrivateData }: ExportRequest,
+    { operation, qsos, compactFilenames, includePrivateData, mainHandler, includeFieldsFrom }: ExportRequest,
     ctx: HookContext,
   ): Promise<ExportResult> {
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
@@ -291,9 +345,11 @@ const ExportHandler = {
     })
 
     for (const qso of qsos) {
-      // Activity extensions contribute their program fields (SIG, POTA_REF…)
-      // via in-runtime hook composition — no bridge crossing.
-      const perHook = await fieldSetsPerHook(qso, operation)
+      // The program fields (SIG, POTA_REF…) come from an `adifFields` hook via
+      // in-runtime hook composition — no bridge crossing. Which hooks, see
+      // [fieldSetsPerHook]: this export's own alone, or every one of them when
+      // the file claims no program.
+      const perHook = await fieldSetsPerHook(qso, operation, mainHandler, includeFieldsFrom)
       // One record per QSO unless a hook expands it. In practice at most one
       // does — you are not activating an n-fer in two programs at once — so the
       // record count is simply the largest any hook asked for.

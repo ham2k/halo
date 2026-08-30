@@ -113,6 +113,25 @@ per ACTIVATED reference, ACROSS files. The two compose: activate two parks,
 work a station standing in two others, and you get two files of two records
 each.
 
+Each file also carries only its OWN program's fields. `generateExport` names
+the activity as the delegated request's `mainHandler` — app-polo's main handler
+— and the `adif` extension asks that one `adifFields` hook rather than the
+whole category. Activate a park that is also a lighthouse and you owe two
+files, and neither claims the other's reference, where asking every hook writes
+two `MY_SIG`/`MY_SIG_INFO` pairs into every record and leaves the receiving
+program to pick. Nobody else's fields reach the file either — the other
+program's hunted `SIG` pair, a contest's exchange, the satellite's `SAT_NAME` —
+because a submitted file is one program's log. The full ADIF export, which
+claims nothing, names no main handler and still gets every hook (polo's
+`includeOtherRefs`). Contest exports name themselves the same way.
+
+What a program says it ALSO reads is a list on the rules, `includeFieldsFrom`:
+POTA names `satellites`, since a park worked through a bird is still a park
+activation and `PROP_MODE`/`SAT_NAME` describe the contact rather than claiming
+it. That is the whole difference — a rival program's `MY_SIG` claims the log,
+a satellite's fields describe the QSO — and only the program itself can say
+which of the two another extension's fields are.
+
 POTA's combinations still write `MY_POTA_REF` comma-joined over every activated
 park, where app-polo names a single one. Inside an activity export that is now
 moot — §3.2 hands `generateExport` an operation carrying one activation ref, so

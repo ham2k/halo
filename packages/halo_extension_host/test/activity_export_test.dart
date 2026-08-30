@@ -17,6 +17,11 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
 
+/// Hoisted so the shared host is reused rather than rebooted per call — a new
+/// closure each time is a new cache key (support/bundles.dart).
+Future<Object?> _noBirds(String method, Map<String, dynamic> params) async =>
+    method == 'dbLookupSelectAll' ? const [] : null;
+
 void main() {
   requireBundles();
 
@@ -96,6 +101,216 @@ void main() {
     for (final content in [first, second]) {
       expect('<EOR>'.allMatches(content).length, 3);
     }
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A file uploaded to POTA is POTA's log. Activate a park that is also a
+  // lighthouse and an export that asks every `adifFields` hook writes both
+  // programs' MY_SIG pairs into every record — two SIG claims in one file,
+  // leaving the receiving program to guess which is its. The core exporter
+  // asks the hook whose export this IS and no other (`ExportRequest.
+  // mainHandler`, app-polo's main handler).
+  test('a POTA file carries no other program\'s fields, activated or hunted', () async {
+    final host = await sharedHost(['adif', 'pota', 'llota']);
+    final result = await host.invokeHook(
+      'export',
+      key: 'pota',
+      method: 'generateExport',
+      args: {
+        'operation': {
+          ...operation(['US-0001']),
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+            {'type': 'llotaActivation', 'ref': 'LLUS-0787'},
+          ],
+        },
+        'qsos': [
+          {
+            ...qsos.first,
+            'refs': [
+              {'type': 'pota', 'ref': 'US-9001'},
+              {'type': 'llota', 'ref': 'LLUS-9002'},
+            ],
+          },
+        ],
+        'exportType': 'pota-adif:US-0001',
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_SIG:4>POTA'));
+    expect(content, contains('<MY_POTA_REF:7>US-0001'));
+    expect(content, contains('<SIG_INFO:7>US-9001'));
+    // Not merely "no MY_SIG:LLOTA" — the lighthouse must leave no trace at
+    // all, on either side of the contact.
+    expect(content, isNot(contains('LLOTA')));
+    expect(content, isNot(contains('LLUS-0787')));
+    expect(content, isNot(contains('LLUS-9002')));
+    // One claim per record, not two.
+    expect('<MY_SIG:'.allMatches(content).length, 1);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // The main handler's key lives in two places — the `adifFields` registration
+  // and the export that names itself — and nothing but a matching string keeps
+  // them together. A rename on one side alone would otherwise write a file with
+  // no program fields at all: valid ADIF, claiming nothing, and indistinguishable
+  // from a good one until the program rejects the upload.
+  //
+  // The GENERATOR is what this pins, called the way a delegating export calls
+  // it. What the delegating export then does with the failure — the runtime
+  // hands it back as a not-ok entry, and `adifForExport` turns that into a
+  // throw rather than a 0-byte file under the log's own name — has no fixture
+  // that can break a real extension's key, so it rests on that one line.
+  test('a main handler with no adifFields hook fails the export, not the log', () async {
+    final host = await startHost();
+    await expectLater(
+      host.invokeHook(
+        'export',
+        key: 'adif',
+        method: 'generateExport',
+        args: {
+          'operation': operation(['US-0001']),
+          'qsos': qsos,
+          'exportType': 'adif',
+          'mainHandler': 'pota-typo',
+        },
+        timeout: const Duration(seconds: 20),
+      ),
+      throwsA(predicate((e) => '$e'.contains('pota-typo'))),
+    );
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // What DESCRIBES a contact is not what CLAIMS it. A park worked through a
+  // satellite is still a park activation and POTA's uploader reads
+  // PROP_MODE/SAT_NAME, so POTA lists `satellites` in `includeFieldsFrom` —
+  // narrowing polo's all-or-nothing `includeOtherRefs` to what the program
+  // itself says it accepts. A rival program's claim still stays out.
+  test('a POTA file carries the satellite fields POTA asked for, and nothing else', () async {
+    // The satellites hook reads its bird table through the host on every
+    // export; without an answer it throws, the whole hook's fields are lost,
+    // and this test would pass or fail on the harness rather than the
+    // whitelist. An empty table is enough — BAND_RX is the only field that
+    // needs a match in it.
+    final host = await sharedHost(
+      ['adif', 'pota', 'satellites', 'llota'],
+      cacheKey: 'sat-birds-empty',
+      onHostCall: _noBirds,
+    );
+    final result = await host.invokeHook(
+      'export',
+      key: 'pota',
+      method: 'generateExport',
+      args: {
+        'operation': {
+          ...operation(['US-0001']),
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+            {'type': 'llotaActivation', 'ref': 'LLUS-0787'},
+          ],
+        },
+        'qsos': [
+          {
+            ...qsos.first,
+            'refs': [{'type': 'satellite', 'ref': 'SO-50'}],
+          },
+        ],
+        'exportType': 'pota-adif:US-0001',
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_POTA_REF:7>US-0001'));
+    expect(content, contains('<PROP_MODE:3>SAT'));
+    expect(content, contains('<SAT_NAME:5>SO-50'));
+    // The whitelist is a list, not a door: the lighthouse is not on it.
+    expect(content, isNot(contains('LLOTA')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // The other half of the same claim: a hook that THREW answers the call, so a
+  // guard counting answers would wave it through and write the same
+  // reference-less file. `satellites` is the real case — its hook reads the
+  // bird table through the host on every contact, so it fails on a bad day
+  // rather than on a bad build, and this host deliberately answers nothing.
+  //
+  // A LISTED hook that throws is refused on the same terms, and this is where
+  // the two tolerances part: a listed extension that is turned off answers
+  // nothing and is fine, while one that answers and fails would otherwise cost
+  // POTA's file its satellite fields in silence — the contact recorded as
+  // terrestrial, the upload clean.
+  test('a hook that throws fails the export, main handler or listed', () async {
+    final host = await sharedHost(['adif', 'pota', 'satellites'], cacheKey: 'no-host-answers');
+    await expectLater(
+      host.invokeHook(
+        'export',
+        key: 'pota',
+        method: 'generateExport',
+        args: {
+          'operation': operation(['US-0001']),
+          'qsos': [
+            {...qsos.first, 'refs': [{'type': 'satellite', 'ref': 'SO-50'}]},
+          ],
+          'exportType': 'pota-adif:US-0001',
+        },
+        timeout: const Duration(seconds: 20),
+      ),
+      // The KEY has to reach the operator: the export panel shows this string
+      // and nothing else says which extension went wrong.
+      throwsA(predicate((e) => '$e'.contains('satellites'))),
+      reason: 'POTA lists satellites, and its hook cannot read its table here',
+    );
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a main handler whose hook throws fails the export too', () async {
+    final host = await sharedHost(['adif', 'satellites'], cacheKey: 'no-host-answers');
+    await expectLater(
+      host.invokeHook(
+        'export',
+        key: 'adif',
+        method: 'generateExport',
+        args: {
+          'operation': operation([]),
+          'qsos': [
+            {...qsos.first, 'refs': [{'type': 'satellite', 'ref': 'SO-50'}]},
+          ],
+          'exportType': 'adif',
+          'mainHandler': 'satellites',
+        },
+        timeout: const Duration(seconds: 20),
+      ),
+      throwsA(predicate((e) => '$e'.contains('satellites'))),
+    );
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // The mirror of the narrowing test above, on the same fixture: the FULL ADIF
+  // export names no main handler and every hook contributes, which is what
+  // makes it the complete copy the operator keeps. Requiring `mainHandler`,
+  // defaulting it, or dropping the `invokeAll` branch would quietly turn that
+  // file single-program, and nothing else would notice.
+  test('the full ADIF export claims no program, and so carries every one', () async {
+    final host = await sharedHost(['adif', 'pota', 'llota']);
+    final result = await host.invokeHook(
+      'export',
+      key: 'adif',
+      method: 'generateExport',
+      args: {
+        'operation': {
+          ...operation(['US-0001']),
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+            {'type': 'llotaActivation', 'ref': 'LLUS-0787'},
+          ],
+        },
+        'qsos': [qsos.first],
+        'exportType': 'adif',
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_SIG:4>POTA'));
+    expect(content, contains('<MY_SIG:5>LLOTA'));
+    expect('<MY_SIG:'.allMatches(content).length, 2);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an operation activating nothing offers no activity export', () async {
