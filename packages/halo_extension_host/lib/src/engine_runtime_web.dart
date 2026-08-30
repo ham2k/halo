@@ -75,6 +75,29 @@ self.onmessage = function (e) {
     case 'hostResponse':
       self.__polo.hostResponse(msg.callId, msg.ok, msg.resultJson);
       break;
+    case 'reload':
+      // The dev loop's per-extension reload. Mirrors engine_runtime_io's
+      // reloadBundle, including closing the bundle window in a finally so a
+      // source that throws part-way can't leave it open and get every later
+      // definition refused.
+      try {
+        self.__polo.unloadBundle(msg.key);
+        self.__polo.beginBundle(msg.key);
+        try {
+          (0, eval)(msg.source);
+        } finally {
+          self.__polo.endBundle();
+        }
+        self.__polo.activateReloaded(msg.key, msg.token);
+      } catch (err) {
+        self.sendMessage('polo', JSON.stringify({
+          type: 'reloadComplete',
+          token: msg.token,
+          ok: false,
+          error: String((err && err.stack) || err),
+        }));
+      }
+      break;
     case 'invalidateContext':
       self.__polo.invalidateContext();
       break;
@@ -156,6 +179,14 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
     });
     // On failure, _HostCore.init disposes us before rethrowing.
     await ready.future.timeout(const Duration(seconds: 30));
+  }
+
+  @override
+  void reloadBundle(ExtensionBundle bundle, int token) {
+    // Unlike the io backend, evaluation happens inside the worker and so
+    // cannot throw back to this call — the bootstrap reports a failed reload
+    // as a `reloadComplete` with ok:false instead.
+    _send({'kind': 'reload', 'key': bundle.key, 'source': bundle.source, 'token': token});
   }
 
   @override

@@ -978,12 +978,12 @@ methods are SYNCHRONOUS (`types.ts`: `startScoresheet`, `scoreQso`,
 `summarizeScore` all return plain values, not promises), while the only
 cross-extension call path — `hooks.invokeOne` → `kernel.invokeLocal` — is async.
 So a scorer can never await an option set. The one synchronous channel into a
-bundle is `__polo.sharedModules`, and `build.mjs` gates that on
+bundle is `__polo.sharedModules`, and `build-config.mjs` gates that on
 `/^(@ham2k\/lib-|i18next$)/`. The consequence is a hard split, and it is worth
 stating before someone designs against the wrong half:
 
 - **Scorer-visible reference data must live in an `@ham2k/lib-*` package** — for
-  which `@ham2k/lib-operation-data` is already allowlisted in `build.mjs`.
+  which `@ham2k/lib-operation-data` is already allowlisted in `build-config.mjs`.
 - **An `operation-data` EXTENSION can only back async UI lookups** — form fields
   and logging-control option lists. That is still worth having; it just isn't
   the "one copy the rest of the app draws on" this section imagined.

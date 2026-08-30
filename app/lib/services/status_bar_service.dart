@@ -231,6 +231,33 @@ class StatusBarService extends ChangeNotifier {
     if (_items.remove(key) != null) notifyListeners();
   }
 
+  /// Drops every item, and dismisses every active notice, posted under [ns] —
+  /// the namespace prefix an extension's own keys carry ('pota:sync').
+  ///
+  /// For when an extension stops existing in its current form: a dev-loop
+  /// reload (docs/extensions/development.md). Its transient state is the
+  /// previous code's, and nothing will ever clear it — a progress bar left at
+  /// 40% by a hook that no longer exists sits there for the rest of the
+  /// session. Notices are DISMISSED rather than deleted, so the operator's
+  /// Recent Notices history keeps them.
+  void clearNamespace(String ns) {
+    final prefix = '$ns:';
+    final keys = _items.keys.where((k) => k.startsWith(prefix)).toList();
+    for (final key in keys) {
+      _items.remove(key);
+    }
+    var dismissed = false;
+    for (var i = 0; i < _notices.length; i++) {
+      final notice = _notices[i];
+      if (notice.key.startsWith(prefix) && notice.dismissedAt == null) {
+        _notices[i] = notice.copyWith(dismissedAt: nowLocal());
+        dismissed = true;
+      }
+    }
+    if (dismissed) unawaited(_persistNotices());
+    if (keys.isNotEmpty || dismissed) notifyListeners();
+  }
+
   void showNotice({
     required String key,
     String? icon,

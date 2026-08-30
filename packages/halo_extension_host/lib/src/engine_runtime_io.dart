@@ -131,6 +131,21 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
+  void reloadBundle(ExtensionBundle bundle, int token) {
+    _evaluate('__polo.unloadBundle(${jsonEncode(bundle.key)})', name: 'unloadBundle');
+    _evaluate('__polo.beginBundle(${jsonEncode(bundle.key)})', name: 'beginBundle');
+    try {
+      _evaluate(bundle.source, name: bundle.key);
+    } finally {
+      // The window must close even when the source throws part-way through,
+      // or every later definition — the next reload's included — is refused
+      // as belonging to a bundle that never ended.
+      _evaluate('__polo.endBundle()', name: 'endBundle');
+    }
+    _evaluate('__polo.activateReloaded(${jsonEncode(bundle.key)}, $token)', name: 'activateReloaded');
+  }
+
+  @override
   void invoke(int id, String category, String? key, String method, String argsJson) {
     _evaluate(
       '__polo.invokeHook('

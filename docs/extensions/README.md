@@ -10,6 +10,8 @@ core knows nothing about any of them — it invokes **hooks** and renders
 - **[templates.md](templates.md)** — the templating engine and the values a
   template can name, for panels, filenames and ADIF fields.
 - **[cli.md](cli.md)** — `halo-ext`, which runs these hooks outside the app.
+- **[development.md](development.md)** — the dev loop: rebuild on save, and
+  reload one extension in a running app without restarting it.
 
 ## Anatomy of an extension
 
@@ -307,8 +309,12 @@ const summary = fmtInteger(tally.total)
 ```
 
 Adding an extension: create `extensions/<category>/<name>/src/index.ts`, add
-an entry to `bundles` in `extensions/build.mjs`, rebuild, and restart the app
-(bundles are baked into assets; runtime download/update channels come later).
+an entry to `bundles` in `extensions/build-config.mjs`, rebuild, and restart
+the app (bundles are baked into assets; runtime download/update channels come
+later).
+
+For iterating rather than adding, `npm run dev` rebuilds on save and reloads
+the one extension in a running app — see **[development.md](development.md)**.
 
 Integration testing without Flutter: see
 `packages/halo_extension_host/test/extension_host_test.dart`, which boots the

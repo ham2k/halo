@@ -367,7 +367,7 @@ Defined in [`mise.toml`](mise.toml):
 |---|---|
 | `app/` | The Flutter app. |
 | `packages/` | Local Dart packages: `halo_core`, `halo_widgets`, `halo_extension_host`, `halo_build_tools`. |
-| `extensions/` | TypeScript extensions + `build.mjs` (bundles → `app/assets/extensions/`). |
+| `extensions/` | TypeScript extensions. `build.mjs` bundles them into `app/assets/extensions/`; `dev-server.mjs` (`npm run dev`) rebuilds on save and reloads one in a running app ([docs/extensions/development.md](docs/extensions/development.md)); both build from `build-config.mjs`. |
 | `scripts/` | `test.sh`, `deploy-web.sh`, `apply-web-edition.sh`, and the Linux arm64 cross-build (`build-linux-arm64.sh`, `aarch64-linux-gnu.cmake` — see below). |
 | `docs/` | [Index](docs/README.md), [design/](docs/design/), [extensions/](docs/extensions/README.md), [quirks](docs/quirks.md), [releases](docs/releases.md). |
 | `.github/workflows/`, `codemagic.yaml` | CI (GitHub Actions) and release builds (Codemagic). |

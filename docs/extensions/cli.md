@@ -31,6 +31,26 @@ cd extensions && npm run build
 Run it from anywhere in the repo (it walks up for the bundle directory), or
 point `HALO_EXT_BUNDLES` / `--bundles` at one.
 
+### Against the extension you're editing
+
+`--dev-server` takes extensions from a running `npm run dev`
+([development.md](development.md)) instead of the last thing you built, so a
+hook can be exercised against an edit that has never been written to the app's
+assets:
+
+```sh
+mise run ext -- --dev-server 127.0.0.1:8787 ref pota US-1234
+```
+
+It OVERLAYS rather than replaces: the dev server serves no kernel and only the
+extensions it was asked to watch, so the built bundles are still required and
+everything the server isn't serving keeps coming from them. `--verbose` names
+what came from where.
+
+Dev-served extensions get **no secrets**, whatever key they claim — the same
+provenance rule the app applies, and it matters more here because
+`--dev-server` will happily name another machine.
+
 ## The commands
 
 `invoke` is the primitive, and it reaches **every** hook — including any added

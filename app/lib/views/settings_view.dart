@@ -48,6 +48,7 @@ import 'station_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
 import 'oauth_browser_login.dart';
+import '../services/extension_dev_client.dart';
 import 'operation_dialogs.dart';
 import 'release_overlay.dart';
 import 'switch_accounts_dialog.dart';
@@ -2624,6 +2625,11 @@ class _DeveloperPanel extends StatelessWidget {
                   );
                 },
               ),
+            // The extension dev loop (docs/extensions/development.md). Below
+            // the developer-mode switch because it is meaningless without it,
+            // and above the patch track because an author reaches for it far
+            // more often.
+            if (settings.developerMode) _ExtensionDevServerSection(services: services),
             // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
             // shown when the Shorebird engine is actually present — i.e. a
             // `shorebird release` build, not a local/debug/web one — so it's
@@ -3930,5 +3936,164 @@ class _AccountPaneState extends State<_AccountPane> {
         ),
       ],
     );
+  }
+}
+
+/// Settings → Developer → Extension Dev Server: connect the app to a running
+/// `npm run dev`, and see whether the loop is alive
+/// (docs/extensions/development.md).
+///
+/// Stateful only for the text field's controller — everything shown comes from
+/// the client, which is a ChangeNotifier.
+class _ExtensionDevServerSection extends StatefulWidget {
+  final HaLoServices services;
+
+  const _ExtensionDevServerSection({required this.services});
+
+  @override
+  State<_ExtensionDevServerSection> createState() => _ExtensionDevServerSectionState();
+}
+
+class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> {
+  late final TextEditingController _url =
+      TextEditingController(text: widget.services.settings.extensionDevServerUrl);
+
+  @override
+  void dispose() {
+    _url.dispose();
+    super.dispose();
+  }
+
+  Future<void> _connect() async {
+    final settings = widget.services.settings;
+    await settings.setExtensionDevServerUrl(_url.text);
+    // Remembered before the attempt, not after it succeeds: an author whose
+    // server is briefly down still wants the address kept.
+    await settings.setExtensionDevServerEnabled(true);
+    await widget.services.extensionDev.connect(_url.text);
+  }
+
+  Future<void> _disconnect() async {
+    await widget.services.settings.setExtensionDevServerEnabled(false);
+    await widget.services.extensionDev.disconnect();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = context.t.settings.developer;
+
+    return ListenableBuilder(
+      listenable: widget.services.extensionDev,
+      builder: (context, _) {
+        final client = widget.services.extensionDev;
+        final busy = client.state == DevServerState.connecting;
+        final connected = client.state == DevServerState.connected;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: Space.xl),
+            Text(
+              t.extDevServer,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: HaLoColors.of(context).onSurfaceAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs, bottom: Space.md),
+              child: Text(
+                t.extDevServerDescription,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+            TextField(
+              controller: _url,
+              enabled: !connected && !busy,
+              autocorrect: false,
+              keyboardType: TextInputType.url,
+              decoration: InputDecoration(
+                labelText: t.extDevServerAddress,
+                hintText: t.extDevServerHint,
+                // Hand-built decorations render their hint at full opacity
+                // without this, which reads as a filled-in value.
+                hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                ),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: busy || connected ? null : (_) => _connect(),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: Space.md),
+              child: Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: busy ? null : (connected ? _disconnect : _connect),
+                    child: Text(connected ? t.extDevServerDisconnect : t.extDevServerConnect),
+                  ),
+                  const SizedBox(width: Space.md),
+                  Expanded(child: _status(context, client)),
+                ],
+              ),
+            ),
+            if (connected)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.sm),
+                child: Text(
+                  t.extDevServerNoSecrets,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _status(BuildContext context, ExtensionDevClient client) {
+    final theme = Theme.of(context);
+    final t = context.t.settings.developer;
+    final subdued = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+    final error = client.lastError;
+    if (error != null) {
+      return Text(error, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error));
+    }
+    switch (client.state) {
+      case DevServerState.connecting:
+        return Text(t.extDevServerConnecting, style: subdued);
+      case DevServerState.disconnected:
+      case DevServerState.failed:
+        return Text(t.extDevServerDisconnected, style: subdued);
+      case DevServerState.connected:
+        final reload = client.lastReload;
+        final failing = client.buildErrors.length;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              t.extDevServerConnected(count: client.servedKeys.length, keys: client.servedKeys.join(', ')),
+              style: subdued,
+            ),
+            if (reload != null)
+              Text(
+                t.extDevServerLastReload(
+                  key: reload.key,
+                  time: TimeOfDay.fromDateTime(reload.at).format(context),
+                ),
+                style: subdued,
+              ),
+            if (failing > 0)
+              Text(
+                t.extDevServerBuildErrors(count: failing),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              ),
+          ],
+        );
+    }
   }
 }

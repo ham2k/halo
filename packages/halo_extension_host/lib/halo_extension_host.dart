@@ -12,6 +12,8 @@
 // Protocol with the JS side (see extensions/sdk/src/kernel.ts):
 //   Dart → JS   __polo.invokeHook(id, category, key|null, method, argsJson)
 //               __polo.hostResponse(callId, ok, resultJson)
+//               __polo.unloadBundle(key) + beginBundle/eval/endBundle +
+//               __polo.activateReloaded(token)  — the dev loop's reload
 //   JS → Dart   'polo' channel messages:
 //               {type:'result', id, ok, value|error, jsMillis}
 //               {type:'partial', id, keys}    — an invokeAll's roster, and
@@ -19,6 +21,7 @@
 //                                               both only when wantsPartials
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
+//               {type:'reloadComplete', token, ok, error?}
 
 import 'dart:async';
 import 'dart:convert';
@@ -470,6 +473,49 @@ class ExtensionHost {
     }
   }
 
+  /// Replaces one loaded bundle with a freshly built [bundle], without
+  /// restarting the runtime: its hooks are dropped, the new source is
+  /// evaluated, and whatever it defines is activated. Every other extension
+  /// keeps running, and so does the KV each one holds.
+  ///
+  /// For the extension dev loop (HALO-118), which iterates on one extension
+  /// while dozens stay live. The app never calls this in normal operation —
+  /// enabling or disabling an extension still replaces the whole runtime.
+  ///
+  /// [domains] replaces the extension's `host.fetch` allowlist, so a manifest
+  /// edited between builds takes effect here too; omit it to leave the
+  /// capability as it was. Build secrets are deliberately NOT re-resolved:
+  /// they are visible only to extensions baked into the app's assets, and a
+  /// reload never changes that (HALO-425).
+  ///
+  /// Completes once the new source has evaluated AND its activation settled.
+  /// Throws if the source failed to evaluate, in which case the extension is
+  /// left UNLOADED rather than reverted — the previous source is gone, and a
+  /// dev server that just failed to build has nothing to put back.
+  Future<void> reloadBundle(ExtensionBundle bundle, {List<String>? domains, Duration timeout = const Duration(seconds: 10)}) {
+    if (_dead) {
+      throw ExtensionHostException('extension runtime is dead (bundle ${bundle.key} not reloaded)');
+    }
+    final token = _nextId++;
+    final completer = Completer<void>();
+    _pendingReloads[token] = completer;
+    _dispatch({
+      'type': 'reloadBundle',
+      'token': token,
+      'key': bundle.key,
+      'source': bundle.source,
+      'domains': ?domains,
+    });
+    return completer.future.timeout(timeout, onTimeout: () {
+      _pendingReloads.remove(token);
+      throw HookTimeoutException('reloading ${bundle.key} timed out after ${timeout.inMilliseconds}ms');
+    });
+  }
+
+  /// Reload tokens awaiting their `reloadComplete`. Separate from [_pending]
+  /// because a reload is not a hook call: it carries no result and no sample.
+  final Map<int, Completer<void>> _pendingReloads = {};
+
   /// Seeds a value into an extension's key-value namespace (e.g. credentials).
   void setKV(String extensionKey, String key, Object? value) {
     _dispatch({'type': 'kvSet', 'ns': extensionKey, 'key': key, 'value': value});
@@ -543,6 +589,15 @@ class ExtensionHost {
         _log(msg['message'] as String? ?? '');
       case 'activationComplete':
         if (!_activated.isCompleted) _activated.complete();
+      case 'reloadComplete':
+        final completer = _pendingReloads.remove(msg['token']);
+        if (completer == null || completer.isCompleted) return; // already timed out
+        if (msg['ok'] == false) {
+          completer.completeError(
+              ExtensionHostException('reloading bundle failed: ${msg['error'] ?? 'unknown error'}'));
+        } else {
+          completer.complete();
+        }
       case 'updateInterpretation':
         final input = msg['input'] as String?;
         if (input == null) return;
@@ -574,6 +629,13 @@ class ExtensionHost {
         // finish; nothing may salvage them (the completers above threw
         // ExtensionHostException, not HookTimeoutException, so nothing tries).
         _partials.clear();
+        // A reload in flight when the engine died is never going to be told
+        // it finished, and its caller would wait out the full timeout for a
+        // runtime that no longer exists.
+        for (final completer in _pendingReloads.values) {
+          if (!completer.isCompleted) completer.completeError(ExtensionHostException(error));
+        }
+        _pendingReloads.clear();
         _fatalErrors.add(error);
         // A crash before activation ever finishes must not leave a caller
         // awaiting [activated] hanging forever.
@@ -768,7 +830,11 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
 class _HostCore {
   final void Function(Map<String, dynamic>) emit;
 
-  /// Per-extension fetch capability — see [ExtensionHost.start].
+  /// Per-extension fetch capability — see [ExtensionHost.start]. Copied into
+  /// a mutable map rather than held as given: a dev-loop reload carries the
+  /// extension's manifest `domains` with it, so a capability edited between
+  /// two builds takes effect without restarting the runtime, and callers
+  /// routinely pass an unmodifiable literal here.
   final Map<String, List<String>> fetchAllowlists;
 
   /// Extension key → its own build-time API key, resolved host-side.
@@ -804,14 +870,21 @@ class _HostCore {
   /// hook's own late result eventually arrives too.
   final Set<int> _outstandingIds = {};
 
+  /// Dev-loop reloads whose activation has not yet settled. Kept apart from
+  /// [_outstandingIds] because it holds tokens, not call ids, but read by the
+  /// same pump condition: a reload's activation can await a host round trip,
+  /// and nothing else need be outstanding to keep the job queue moving.
+  final Set<int> _reloadsInFlight = {};
+
   _HostCore(
       {required this.emit,
-      this.fetchAllowlists = const {},
+      Map<String, List<String>> fetchAllowlists = const {},
       this.secrets = const {},
       this.userAgent,
       this.userAgentOverrides = const {},
       http.Client? httpClient})
-      : _http = httpClient ?? http.Client(),
+      : fetchAllowlists = Map.of(fetchAllowlists),
+        _http = httpClient ?? http.Client(),
         _ownsHttpClient = httpClient == null;
 
   String get engineDescription => _js.engineDescription;
@@ -850,6 +923,29 @@ class _HostCore {
           _outstandingIds.remove(id);
           emit({'type': 'result', 'id': id, 'ok': false, 'error': '$e'});
         }
+      case 'reloadBundle':
+        final token = msg['token'] as int;
+        final key = msg['key'] as String;
+        // The manifest travels with the source: a dev build may have edited
+        // the extension's declared `domains`, and the allowlist is consulted
+        // per fetch, so replacing it here is all it takes for the new
+        // capability to apply. Absent means "leave it as it was".
+        final domains = (msg['domains'] as List?)?.cast<String>();
+        if (domains != null) fetchAllowlists[key] = domains;
+        _reloadsInFlight.add(token);
+        try {
+          _js.reloadBundle(ExtensionBundle(key: key, source: msg['source'] as String), token);
+          // Success is NOT reported here: the kernel's activateReloaded posts
+          // `reloadComplete` once activation has genuinely settled, which is
+          // strictly later than this call returning.
+        } catch (e) {
+          _reloadsInFlight.remove(token);
+          emit({'type': 'reloadComplete', 'token': token, 'ok': false, 'error': '$e'});
+        }
+        // The reload's own activation may await a host round trip (an
+        // extension calling getSettings() before it registers), and nothing
+        // else is outstanding to keep the queue moving.
+        _ensurePumping();
       case 'abandon':
         // The main-isolate side timed this call out and stopped waiting.
         _outstandingIds.remove(msg['id']);
@@ -887,7 +983,7 @@ class _HostCore {
   void _ensurePumping() {
     _pump ??= Timer.periodic(const Duration(milliseconds: 5), (_) {
       _js.pump();
-      if (_outstandingIds.isEmpty) {
+      if (_outstandingIds.isEmpty && _reloadsInFlight.isEmpty) {
         _pump?.cancel();
         _pump = null;
       }
@@ -899,6 +995,10 @@ class _HostCore {
   /// `ExtensionHost` fail every hook call still waiting on a result.
   void _onFatalError(String message) {
     _outstandingIds.clear();
+    for (final token in _reloadsInFlight.toList()) {
+      emit({'type': 'reloadComplete', 'token': token, 'ok': false, 'error': message});
+    }
+    _reloadsInFlight.clear();
     emit({'type': 'fatalError', 'error': message});
   }
 
@@ -915,6 +1015,9 @@ class _HostCore {
       case 'log':
         emit(msg);
       case 'activationComplete':
+        emit(msg);
+      case 'reloadComplete':
+        _reloadsInFlight.remove(msg['token']);
         emit(msg);
       case 'updateInterpretation':
         emit(msg);

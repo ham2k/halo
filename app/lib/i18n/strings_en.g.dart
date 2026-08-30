@@ -4014,6 +4014,51 @@ class Translations$settings$developer$en {
 
 	/// en: 'Core & Runtime'
 	String get categoryCore => 'Core & Runtime';
+
+	/// en: 'Extension Dev Server'
+	String get extDevServer => 'Extension Dev Server';
+
+	/// en: 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.'
+	String get extDevServerDescription => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.';
+
+	/// en: 'Server address'
+	String get extDevServerAddress => 'Server address';
+
+	/// en: '192.168.1.20:8787'
+	String get extDevServerHint => '192.168.1.20:8787';
+
+	/// en: 'Connect'
+	String get extDevServerConnect => 'Connect';
+
+	/// en: 'Disconnect'
+	String get extDevServerDisconnect => 'Disconnect';
+
+	/// en: 'Connecting…'
+	String get extDevServerConnecting => 'Connecting…';
+
+	/// en: '(one) {Serving ${count} extension: ${keys}} (other) {Serving ${count} extensions: ${keys}}'
+	String extDevServerConnected({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Serving ${count} extension: ${keys}',
+		other: 'Serving ${count} extensions: ${keys}',
+	);
+
+	/// en: 'Not connected'
+	String get extDevServerDisconnected => 'Not connected';
+
+	/// en: 'Reconnect at launch'
+	String get extDevServerReconnect => 'Reconnect at launch';
+
+	/// en: 'Last reload: ${key} at ${time}'
+	String extDevServerLastReload({required Object key, required Object time}) => 'Last reload: ${key} at ${time}';
+
+	/// en: '(one) {${count} extension failing to build} (other) {${count} extensions failing to build}'
+	String extDevServerBuildErrors({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} extension failing to build',
+		other: '${count} extensions failing to build',
+	);
+
+	/// en: 'Dev extensions never receive build secrets, so features that need one are inactive.'
+	String get extDevServerNoSecrets => 'Dev extensions never receive build secrets, so features that need one are inactive.';
 }
 
 // Path: settings.about
@@ -6416,6 +6461,19 @@ extension on Translations {
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.categoryCore' => 'Core & Runtime',
+			'settings.developer.extDevServer' => 'Extension Dev Server',
+			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
+			'settings.developer.extDevServerAddress' => 'Server address',
+			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
+			'settings.developer.extDevServerConnect' => 'Connect',
+			'settings.developer.extDevServerDisconnect' => 'Disconnect',
+			'settings.developer.extDevServerConnecting' => 'Connecting…',
+			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
+			'settings.developer.extDevServerDisconnected' => 'Not connected',
+			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
+			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
+			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
+			'settings.developer.extDevServerNoSecrets' => 'Dev extensions never receive build secrets, so features that need one are inactive.',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',

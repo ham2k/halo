@@ -70,8 +70,8 @@ still keep the HTTP `User-Agent` above as well.
 
 An extension that genuinely must send a specific `User-Agent` — a third-party
 API that rejects anything else — can opt into keeping its own. Add
-`allowUserAgentOverride: true` to its entry in
-[`extensions/build.mjs`](../../extensions/build.mjs) (alongside `domains`); it
+`allowUserAgentOverride: true` to the extension's own `manifest.json`
+(alongside `domains`); it
 flows to the host via the `index.json` manifest, exactly like the network
 allowlist. The host then keeps the `User-Agent` that extension sets, and only
 that extension's. A whitelisted extension that sets *no* `User-Agent` still gets

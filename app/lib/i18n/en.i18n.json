@@ -1336,7 +1336,26 @@
       "loading": "(loading…)",
       "runtimeNotAvailable": "Extension runtime not available.",
       "panelLoadFailed": "Could not load this settings panel.",
-      "categoryCore": "Core & Runtime"
+      "categoryCore": "Core & Runtime",
+      "extDevServer": "Extension Dev Server",
+      "extDevServerDescription": "Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.",
+      "extDevServerAddress": "Server address",
+      "extDevServerHint": "192.168.1.20:8787",
+      "extDevServerConnect": "Connect",
+      "extDevServerDisconnect": "Disconnect",
+      "extDevServerConnecting": "Connecting…",
+      "extDevServerConnected": {
+        "one": "Serving ${count} extension: ${keys}",
+        "other": "Serving ${count} extensions: ${keys}"
+      },
+      "extDevServerDisconnected": "Not connected",
+      "extDevServerReconnect": "Reconnect at launch",
+      "extDevServerLastReload": "Last reload: ${key} at ${time}",
+      "extDevServerBuildErrors": {
+        "one": "${count} extension failing to build",
+        "other": "${count} extensions failing to build"
+      },
+      "extDevServerNoSecrets": "Dev extensions never receive build secrets, so features that need one are inactive."
     },
     "about": {
       "notices": "Notices & Messages",

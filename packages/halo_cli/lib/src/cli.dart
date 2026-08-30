@@ -48,6 +48,10 @@ Future<int> runHaloExt(List<String> argv) async {
     ..addFlag('all-extensions',
         negatable: false, help: 'Also load extensions that are off by default.')
     ..addOption('bundles', help: 'Directory holding index.json and the built bundles.')
+    ..addOption('dev-server',
+        help: 'Take extensions from a running `npm run dev` instead of the built bundles,\n'
+            'e.g. --dev-server 127.0.0.1:8787. Overlays what that server serves onto\n'
+            'the built ones (it serves no kernel). Dev extensions get no secrets.')
     ..addOption('config', help: 'Config file (default: ${CliConfig.defaultPath}).')
     ..addOption('cache', help: 'Cache directory for downloaded reference data.')
     ..addMultiOption('only', help: 'Load only these extensions (repeatable, comma-separated).')
@@ -88,6 +92,9 @@ Future<int> runHaloExt(List<String> argv) async {
     stderr.writeln('halo-ext: $e');
     return 2;
   } on BundlesNotBuilt catch (e) {
+    stderr.writeln('halo-ext: $e');
+    return 2;
+  } on DevServerUnreachable catch (e) {
     stderr.writeln('halo-ext: $e');
     return 2;
   } on ExtensionHostException catch (e) {
@@ -197,6 +204,14 @@ abstract class ExtCommand extends Command<int> {
     final index = BundleIndex.load(
       dir: globalResults!.option('bundles') != null ? Directory(globalResults!.option('bundles')!) : null,
     );
+    final devServer = globalResults!.option('dev-server');
+    if (devServer != null && devServer.isNotEmpty) {
+      await index.overlayDevServer(normalizeDevServerUrl(devServer));
+      if (verbose) {
+        final served = index.extensions.where((e) => e.fromDevServer).map((e) => e.key).join(', ');
+        stderr.writeln('[dev-server] serving: $served');
+      }
+    }
     final lookups = _lookups = needsLookups ? LookupStore.open(globalResults!.option('cache') ?? defaultCacheDir()) : null;
 
     final hostCalls = CliHostCalls(

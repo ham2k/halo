@@ -59,7 +59,11 @@ class ExtRuntime {
 
     final secrets = {
       for (final entry in selected)
-        if (_secretsFor(entry.key, config) case final visible when visible.isNotEmpty) entry.key: visible,
+        // Dev-served extensions get nothing, whatever key they claim — the
+        // same provenance rule the app applies (HALO-425). `--dev-server` can
+        // name any machine, and a configured credential must not follow.
+        if (!entry.fromDevServer)
+          if (_secretsFor(entry.key, config) case final visible when visible.isNotEmpty) entry.key: visible,
     };
 
     final host = await ExtensionHost.start(

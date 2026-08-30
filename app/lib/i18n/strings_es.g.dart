@@ -1873,6 +1873,25 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	@override String get runtimeNotAvailable => 'El motor de extensiones no está disponible.';
 	@override String get panelLoadFailed => 'No se pudo cargar este panel de configuración.';
 	@override String get categoryCore => 'Núcleo y motor';
+	@override String get extDevServer => 'Servidor de desarrollo de extensiones';
+	@override String get extDevServerDescription => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.';
+	@override String get extDevServerAddress => 'Dirección del servidor';
+	@override String get extDevServerHint => '192.168.1.20:8787';
+	@override String get extDevServerConnect => 'Conectar';
+	@override String get extDevServerDisconnect => 'Desconectar';
+	@override String get extDevServerConnecting => 'Conectando…';
+	@override String extDevServerConnected({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Sirviendo ${count} extensión: ${keys}',
+		other: 'Sirviendo ${count} extensiones: ${keys}',
+	);
+	@override String get extDevServerDisconnected => 'Sin conexión';
+	@override String get extDevServerReconnect => 'Reconectar al iniciar';
+	@override String extDevServerLastReload({required Object key, required Object time}) => 'Última recarga: ${key} a las ${time}';
+	@override String extDevServerBuildErrors({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} extensión con errores de compilación',
+		other: '${count} extensiones con errores de compilación',
+	);
+	@override String get extDevServerNoSecrets => 'Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.';
 }
 
 // Path: settings.about
@@ -3666,6 +3685,19 @@ extension on TranslationsEs {
 			'settings.developer.runtimeNotAvailable' => 'El motor de extensiones no está disponible.',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			'settings.developer.categoryCore' => 'Núcleo y motor',
+			'settings.developer.extDevServer' => 'Servidor de desarrollo de extensiones',
+			'settings.developer.extDevServerDescription' => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.',
+			'settings.developer.extDevServerAddress' => 'Dirección del servidor',
+			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
+			'settings.developer.extDevServerConnect' => 'Conectar',
+			'settings.developer.extDevServerDisconnect' => 'Desconectar',
+			'settings.developer.extDevServerConnecting' => 'Conectando…',
+			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Sirviendo ${count} extensión: ${keys}', other: 'Sirviendo ${count} extensiones: ${keys}', ), 
+			'settings.developer.extDevServerDisconnected' => 'Sin conexión',
+			'settings.developer.extDevServerReconnect' => 'Reconectar al iniciar',
+			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Última recarga: ${key} a las ${time}',
+			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} extensión con errores de compilación', other: '${count} extensiones con errores de compilación', ), 
+			'settings.developer.extDevServerNoSecrets' => 'Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.',
 			'settings.about.notices' => 'Avisos y mensajes',
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',

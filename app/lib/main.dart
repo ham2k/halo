@@ -65,6 +65,7 @@ import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_policy.dart';
 
 import 'services/error_reporting_service.dart';
+import 'services/extension_dev_client.dart';
 import 'services/extension_service.dart';
 import 'services/geoshape_service.dart';
 import 'services/unclean_quit.dart';
@@ -974,6 +975,17 @@ Future<HaLoServices> bootstrap({
     debugPrint('[boot] failed to fetch feature flags: $e');
   }));
 
+  // Reconnect to the extension dev server the author last used
+  // (docs/extensions/development.md). Fire-and-forget and after first paint:
+  // it reboots the extension runtime, and a dev server that has since been
+  // stopped must cost a restarting app nothing but a failed status in
+  // Developer settings. Only ever with developer mode on AND the toggle set —
+  // no address is ever discovered, only typed.
+  if (settings.developerMode && settings.extensionDevServerEnabled &&
+      settings.extensionDevServerUrl.isNotEmpty) {
+    unawaited(services.extensionDev.connect(settings.extensionDevServerUrl));
+  }
+
   // Fire-and-forget like the boot steps above: neither the persistence
   // request nor the health warning is worth delaying first paint for.
   if (kIsWeb) unawaited(reportWebStorageHealth(services, () => webDbResult));
@@ -1267,6 +1279,12 @@ class HaLoServices {
   late final OperationsRepository operations = OperationsRepository(db, onChange: _onLocalWrite);
   late final SequencesRepository sequences = SequencesRepository(db);
   late final QsosRepository qsos = QsosRepository(db, onChange: _onLocalWrite, sequences: sequences);
+
+  /// The app end of the extension dev loop
+  /// (docs/extensions/development.md). Lazy, and inert until someone turns it
+  /// on in Developer settings and types a server address — an operator who
+  /// never writes an extension pays nothing for it.
+  late final ExtensionDevClient extensionDev = ExtensionDevClient(extensions: extensions);
 
   /// The peer-sync outbox (HALO-310). Owned here rather than inside
   /// [peerService] because the repositories' `onChange` reaches it on every

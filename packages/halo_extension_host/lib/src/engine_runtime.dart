@@ -55,6 +55,18 @@ abstract class EngineRuntime {
   Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
       {ClockTravelState clock = const ClockTravelState.real()});
 
+  /// Replaces one already-loaded bundle in place: unloads whatever it
+  /// contributed, evaluates [bundle]'s new source, and activates what that
+  /// defines — reporting completion as a `reloadComplete` message carrying
+  /// [token], since activation settles asynchronously.
+  ///
+  /// For the extension dev loop only (HALO-118). Throwing here means the new
+  /// source failed to evaluate, and the bundle is then UNLOADED rather than
+  /// reverted: nothing keeps the old source around to fall back to, and a dev
+  /// server that just failed to build has nothing to serve either. The
+  /// operator sees the build error and fixes it.
+  void reloadBundle(ExtensionBundle bundle, int token);
+
   void invoke(int id, String category, String? key, String method, String argsJson);
   /// [wantsPartials] asks the kernel to narrate the fan-out — a roster and
   /// one message per hook as it settles — so a caller that stops waiting can

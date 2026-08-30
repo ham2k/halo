@@ -121,6 +121,12 @@ interface PendingHostCall {
 const extensions: Record<string, ExtensionDefinition> = {}
 const activated = new Set<string>()
 const hooks: HookRecord[] = []
+// Which BUNDLE defined each extension key — the provenance `unloadBundle`
+// needs, since one bundle may define several extensions (`bundleMayDefine`
+// lets 'pota' define 'pota-all-parks') and unloading has to take all of them.
+// Null for the kernel's own definitions, made outside any bundle window:
+// nothing can unload those, which is the intent.
+const definingBundle: Record<string, string | null> = {}
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
 
@@ -348,8 +354,8 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
 /// complete: without that, an extension whose hook registration depends on
 /// an internal await isn't guaranteed to have finished by the time the host
 /// considers the runtime started.
-async function activateExtension(def: ExtensionDefinition): Promise<void> {
-  if (activated.has(def.key)) return
+async function activateExtension(def: ExtensionDefinition): Promise<string | null> {
+  if (activated.has(def.key)) return null
   activated.add(def.key)
   try {
     await def.onActivation({
@@ -426,9 +432,24 @@ async function activateExtension(def: ExtensionDefinition): Promise<void> {
       },
     })
     log(`activated extension ${def.key}@${def.version}`)
+    return null
   } catch (e) {
-    log(`ERROR activating extension ${def.key}: ${describeError(e)}`)
+    const message = describeError(e)
+    log(`ERROR activating extension ${def.key}: ${message}`)
+    // Returned as well as logged: boot tolerates a failed activation (one
+    // extension must not take the runtime down), but a dev-loop reload has to
+    // be able to SAY the save failed rather than reporting a reload that
+    // registered nothing as a success.
+    return `${def.key}: ${message}`
   }
+}
+
+/// Activates every extension not yet activated, settling only once each
+/// onActivation has. `activateExtension` no-ops on anything already marked, so
+/// this is equally the boot's "activate all" and a reload's "activate what the
+/// new bundle just defined".
+function activatePending(): Promise<Array<string | null>> {
+  return Promise.all(Object.values(extensions).map(activateExtension))
 }
 
 const kernel = {
@@ -446,6 +467,7 @@ const kernel = {
       return
     }
     extensions[def.key] = def
+    definingBundle[def.key] = currentBundleKey
   },
 
   /// Host-only bracketing of bundle evaluation — see the block comment on
@@ -471,9 +493,61 @@ const kernel = {
   activateAll() {
     void (async () => {
       try {
-        await Promise.allSettled(Object.values(extensions).map(activateExtension))
+        await activatePending()
       } finally {
         post({ type: 'activationComplete' })
+      }
+    })()
+  },
+
+  /// Removes everything one bundle contributed: every extension it defined,
+  /// each one's hooks (dynamic forms included — `registerDynamicForm` pushes
+  /// an ordinary `hooks` entry under the extension's key), and their
+  /// activation marks, so a re-evaluation of the bundle activates afresh.
+  ///
+  /// Only the DEV loop reloads a bundle (docs/extensions/development.md); the
+  /// app never unloads one at runtime. Two properties of this runtime are what
+  /// make it safe to drop an extension mid-session: every bundle is its own
+  /// IIFE closure, so re-evaluating gives genuinely fresh module state, and
+  /// there are no timers, so an unloaded extension has no pending work left to
+  /// fire. A hook call already in flight is the one loose end — its promise
+  /// may still resolve, and the host settles it by call id as usual.
+  ///
+  /// A bundle that defined nothing (never loaded, or failed to evaluate) is
+  /// not an error: reload calls this before every evaluation, including the
+  /// first one after a failure.
+  unloadBundle(bundleKey: string) {
+    const keys = Object.keys(extensions).filter((k) => definingBundle[k] === bundleKey)
+    for (const key of keys) {
+      for (let i = hooks.length - 1; i >= 0; i--) {
+        if (hooks[i].extensionKey === key) hooks.splice(i, 1)
+      }
+      delete extensions[key]
+      delete definingBundle[key]
+      activated.delete(key)
+    }
+    if (keys.length) log(`unloaded bundle ${bundleKey} (${keys.join(', ')})`)
+  },
+
+  /// Activates whatever a reloaded bundle just defined, and reports back under
+  /// [token] once it has genuinely settled. Distinct from `activateAll`'s
+  /// `activationComplete`, which means "the runtime finished booting" and is
+  /// awaited once, by everyone — a reload must not be able to answer that.
+  activateReloaded(bundleKey: string, token: number) {
+    void (async () => {
+      try {
+        const errors = (await activatePending()).filter((e): e is string => e !== null)
+        // Only THIS bundle's failures fail the reload. Another extension that
+        // was already broken is not this save's fault, and reporting it here
+        // would send the author looking in the wrong file.
+        const mine = errors.filter((e) => {
+          const key = e.slice(0, e.indexOf(':'))
+          return definingBundle[key] === bundleKey || key === bundleKey
+        })
+        if (mine.length) post({ type: 'reloadComplete', token, ok: false, error: mine.join('\n') })
+        else post({ type: 'reloadComplete', token, ok: true })
+      } catch (e) {
+        post({ type: 'reloadComplete', token, ok: false, error: describeError(e) })
       }
     })()
   },

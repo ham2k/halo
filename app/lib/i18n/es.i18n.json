@@ -1329,7 +1329,26 @@
       "loading": "(cargando…)",
       "runtimeNotAvailable": "El motor de extensiones no está disponible.",
       "panelLoadFailed": "No se pudo cargar este panel de configuración.",
-      "categoryCore": "Núcleo y motor"
+      "categoryCore": "Núcleo y motor",
+      "extDevServer": "Servidor de desarrollo de extensiones",
+      "extDevServerDescription": "Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.",
+      "extDevServerAddress": "Dirección del servidor",
+      "extDevServerHint": "192.168.1.20:8787",
+      "extDevServerConnect": "Conectar",
+      "extDevServerDisconnect": "Desconectar",
+      "extDevServerConnecting": "Conectando…",
+      "extDevServerConnected": {
+        "one": "Sirviendo ${count} extensión: ${keys}",
+        "other": "Sirviendo ${count} extensiones: ${keys}"
+      },
+      "extDevServerDisconnected": "Sin conexión",
+      "extDevServerReconnect": "Reconectar al iniciar",
+      "extDevServerLastReload": "Última recarga: ${key} a las ${time}",
+      "extDevServerBuildErrors": {
+        "one": "${count} extensión con errores de compilación",
+        "other": "${count} extensiones con errores de compilación"
+      },
+      "extDevServerNoSecrets": "Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas."
     },
     "about": {
       "notices": "Avisos y mensajes",

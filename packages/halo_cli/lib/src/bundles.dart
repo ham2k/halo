@@ -11,6 +11,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
 /// One entry of `index.json`, limited to what the CLI acts on.
 ///
 /// Not a copy of the app's `ExtensionInfo`: that class carries the panel's
@@ -31,10 +33,17 @@ class BundleEntry {
   /// reports.
   final List<String> hooks;
 
+  /// Served by a dev server rather than read from the built bundle directory
+  /// (docs/extensions/development.md). Carries the same consequence it does in
+  /// the app: no configured secret is visible to it, whatever key it claims
+  /// (HALO-425).
+  final bool fromDevServer;
+
   const BundleEntry({
     required this.key,
     required this.file,
     required this.name,
+    this.fromDevServer = false,
     this.domains = const [],
     this.core = true,
     this.enabledByDefault = true,
@@ -57,6 +66,7 @@ class BundleEntry {
         name: json['name'] as String? ?? json['key'] as String,
         category: json['category'] as String?,
         hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
+        fromDevServer: json['fromDevServer'] as bool? ?? false,
       );
 
   Map<String, Object?> toJson() => {
@@ -74,13 +84,18 @@ class BundleEntry {
 class BundleIndex {
   final Directory directory;
   final String kernelFile;
-  final List<BundleEntry> extensions;
+  List<BundleEntry> extensions;
 
   BundleIndex({required this.directory, required this.kernelFile, required this.extensions});
 
+  /// Sources fetched from a dev server, by extension key. Consulted before the
+  /// directory, so an overlaid extension never touches the built file — which
+  /// may not even exist for one the dev server invented.
+  final Map<String, String> _devSources = {};
+
   String get kernelSource => _read(kernelFile);
 
-  String sourceFor(BundleEntry entry) => _read(entry.file);
+  String sourceFor(BundleEntry entry) => _devSources[entry.key] ?? _read(entry.file);
 
   String _read(String file) {
     final source = File('${directory.path}/$file').readAsStringSync();
@@ -116,6 +131,60 @@ class BundleIndex {
           if (entry is Map) BundleEntry.fromJson(entry.cast<String, dynamic>()),
       ],
     );
+  }
+
+  /// Replaces this index's entries with what a running dev server is serving
+  /// (docs/extensions/development.md), so `halo-ext` exercises the code an
+  /// author is editing rather than the last thing they built.
+  ///
+  /// An OVERLAY, not a replacement: the dev server serves no kernel, and only
+  /// the extensions it was asked to watch — so the built bundles are still
+  /// needed for the kernel and for everything else. Matching keys are replaced
+  /// and new ones appended, exactly as the app merges them.
+  Future<void> overlayDevServer(Uri base, {http.Client? httpClient}) async {
+    final client = httpClient ?? http.Client();
+    try {
+      Future<String> get(String path) async {
+        final response = await client.get(base.resolve(path)).timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) {
+          throw DevServerUnreachable('HTTP ${response.statusCode} from ${base.resolve(path)}');
+        }
+        return response.body;
+      }
+
+      final Map<String, dynamic> ping;
+      try {
+        ping = jsonDecode(await get('ping')) as Map<String, dynamic>;
+      } catch (e) {
+        throw DevServerUnreachable('could not reach an extension dev server at $base — $e\n'
+            'Start one with `npm run dev` in extensions/.');
+      }
+      if (ping['server'] != 'halo-ext-dev') {
+        throw DevServerUnreachable('$base is not a HaLo extension dev server');
+      }
+      if ((ping['protocol'] as num?)?.toInt() != devServerProtocol) {
+        throw DevServerUnreachable(
+            'dev server speaks protocol ${ping['protocol']}, this build speaks $devServerProtocol');
+      }
+
+      final index = jsonDecode(await get('index.json')) as Map<String, dynamic>;
+      final served = <BundleEntry>[
+        for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>())
+          BundleEntry.fromJson({...entry, 'fromDevServer': true}),
+      ];
+      for (final entry in served) {
+        _devSources[entry.key] = await get(entry.file);
+      }
+
+      final byKey = {for (final entry in served) entry.key: entry};
+      final unplaced = {...byKey.keys}..removeAll(extensions.map((e) => e.key));
+      extensions = [
+        for (final entry in extensions) byKey[entry.key] ?? entry,
+        for (final key in unplaced) byKey[key]!,
+      ];
+    } finally {
+      if (httpClient == null) client.close();
+    }
   }
 
   /// Where the bundles are, in order of authority: an explicit
@@ -163,6 +232,34 @@ class BundleIndex {
 
   static String _buildHint(Directory? directory) =>
       'Run `npm run build` in extensions/, or scripts/test.sh, which builds them first.\n';
+}
+
+/// The dev-server protocol this build speaks (extensions/dev-server.mjs).
+const devServerProtocol = 1;
+
+/// Accepts what someone actually types for `--dev-server`: a bare host, a
+/// host:port, with or without a scheme or a trailing slash. The trailing slash
+/// matters — `Uri.resolve` against a path-less base drops the last segment.
+Uri normalizeDevServerUrl(String input) {
+  var text = input.trim();
+  if (text.isEmpty) throw DevServerUnreachable('--dev-server needs an address');
+  if (!text.contains('://')) text = 'http://$text';
+  final uri = Uri.parse(text);
+  if (uri.host.isEmpty) throw DevServerUnreachable('could not read a host from "$input"');
+  return uri.replace(path: uri.path.endsWith('/') ? uri.path : '${uri.path}/');
+}
+
+/// Thrown when `--dev-server` names something that isn't one, or isn't up.
+///
+/// Its own type for the same reason as [BundlesNotBuilt]: the everyday cause
+/// is a dev server that was never started, and that deserves a sentence rather
+/// than a stack trace.
+class DevServerUnreachable implements Exception {
+  final String message;
+  DevServerUnreachable(this.message);
+
+  @override
+  String toString() => message;
 }
 
 /// Thrown when the bundles are missing, empty, or not where we were told.

@@ -1520,24 +1520,20 @@ class ExtensionService implements PanelExtensionSource {
         loaded.add(info.key);
         bundles.add(ExtensionBundle(
           key: info.key,
-          source: await rootBundle.loadString('assets/extensions/${info.file}'),
+          source: _devBundles[info.key]?.source ?? await rootBundle.loadString('assets/extensions/${info.file}'),
         ));
-        // The manifest's declared network capabilities (build.mjs `domains`
-        // and `allowUserAgentOverride`).
+        // The manifest's declared network capabilities (`domains` and
+        // `allowUserAgentOverride`; see extensions/build-config.mjs).
         fetchAllowlists[info.key] = info.domains;
         if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
-        // The manifest's declared `getLocation` capability (build.mjs
-        // `requiresLocation`).
+        // The manifest's declared `getLocation` capability
+        // (`requiresLocation`; see extensions/build-config.mjs).
         if (info.requiresLocation) locationAllowlist.add(info.key);
         // Resolve what this extension is allowed to see, once, at load time —
         // the host then holds only that subset and needs no policy of its own.
         // A build without a value configured simply has none, and every
         // consumer degrades rather than failing: a fresh checkout must run.
-        final visible = <String, String>{
-          for (final entry in secrets.entries)
-            if (entry.value.isNotEmpty && extensionMaySeeSecret(info.key, entry.key))
-              entry.key: entry.value,
-        };
+        final visible = visibleSecretsFor(info, secrets);
         if (visible.isNotEmpty) extensionSecrets[info.key] = visible;
       }
       // Boot is a gating site too: an experiment can change between runs
@@ -1647,9 +1643,13 @@ class ExtensionService implements PanelExtensionSource {
   Future<List<ExtensionInfo>> loadAvailableExtensions({Map<String, dynamic>? index}) async {
     if (_availableExtensions != null) return _availableExtensions!;
     final parsed = index ?? jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
-    return _availableExtensions = [
+    final fromAssets = [
       for (final entry in (parsed['extensions'] as List).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson(entry),
     ];
+    return _availableExtensions = mergeDevExtensions(
+      fromAssets,
+      [for (final entry in _devBundles.values) entry.info],
+    );
   }
 
   /// The already-loaded metadata, or empty before [loadAvailableExtensions]
@@ -1663,6 +1663,65 @@ class ExtensionService implements PanelExtensionSource {
   /// Which extension keys the CURRENT runtime was started with — compared
   /// against the desired set to decide whether a toggle needs a restart.
   Set<String> _loadedExtensionKeys = const {};
+
+  /// Extensions currently served by a dev server, by key: the built source and
+  /// the manifest metadata that came with it. An entry here OVERRIDES the
+  /// asset extension of the same key, which is what lets an author iterate on
+  /// `pota` itself rather than only on something new.
+  final Map<String, ({String source, ExtensionInfo info})> _devBundles = {};
+
+  /// Whether [key] is currently being served by a dev server.
+  bool isDevExtension(String key) => _devBundles.containsKey(key);
+
+  /// Replaces the whole dev-served set and reboots the runtime. Used on
+  /// connect and disconnect — both change WHICH extensions exist, which a
+  /// per-extension reload cannot express.
+  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles) async {
+    _devBundles
+      ..clear()
+      ..addAll(bundles);
+    _availableExtensions = null; // the index it was memoized from just changed
+    await restartRuntime();
+  }
+
+  /// Swaps ONE dev extension's code in the running runtime — the hot path, on
+  /// every save.
+  ///
+  /// Falls back to a full restart when the extension isn't loaded yet: a key
+  /// the runtime has never seen has no hooks to replace, and its very
+  /// existence changes what the app offers (an activity in Operation Setup, a
+  /// settings panel), which only a reboot re-reads.
+  Future<void> applyDevBundle(String key, {required String source, required ExtensionInfo info}) async {
+    // Read BEFORE the insert below: what matters is how this key was loaded
+    // into the RUNNING runtime, not what it is about to become.
+    final previous = _devBundles[key];
+    _devBundles[key] = (source: source, info: info);
+    _availableExtensions = null;
+    final host = _host;
+    if (host == null ||
+        !canHotSwapDevBundle(
+          runtimeAlive: !host.isDead,
+          alreadyLoaded: _loadedExtensionKeys.contains(key),
+          alreadyDevServed: previous != null,
+          capabilitiesUnchanged: previous != null &&
+              previous.info.requiresLocation == info.requiresLocation &&
+              previous.info.allowUserAgentOverride == info.allowUserAgentOverride,
+        )) {
+      await restartRuntime();
+      return;
+    }
+    // The previous code's transient UI is nobody's to clear once its hooks are
+    // gone — a progress bar it left behind would sit there for the session.
+    statusBar?.clearNamespace(key);
+    await host.reloadBundle(
+      ExtensionBundle(key: key, source: source),
+      domains: info.domains,
+    );
+    // Panels, settings panels and the command catalog are all cached against
+    // this counter; the reloaded extension may contribute a different set.
+    _commandCatalog = null;
+    runtimeGeneration.value++;
+  }
 
   /// Bumped after every successful runtime (re)start — panels listen to
   /// re-fetch extension-contributed content (settings panels, listings).
@@ -3573,8 +3632,73 @@ class RefLink {
   final String? label;
 }
 
+/// Whether a dev-loop reload of one extension can be swapped into the running
+/// runtime, or whether the runtime has to be restarted around it.
+///
+/// [alreadyDevServed] is the one that is easy to leave out and expensive to get
+/// wrong. Build secrets are resolved ONCE, when the runtime starts, and a
+/// reload deliberately does not re-resolve them — so an extension whose slot
+/// was filled from the app's own assets is holding the secrets that come with
+/// that, and swapping dev code into it hands them over. The reachable path is
+/// not exotic: an extension that fails its FIRST build is left out of the dev
+/// server's index, so the app loads that key from assets, and the author's next
+/// successful save is a reload of a key that already holds real credentials
+/// (HALO-425). Restarting re-resolves them against the dev provenance, which is
+/// the only thing that makes them absent.
+///
+/// [capabilitiesUnchanged] covers the manifest flags a reload cannot carry:
+/// `domains` travels with the bundle, but `requiresLocation` and
+/// `allowUserAgentOverride` are start-time allowlists in the host.
+@visibleForTesting
+bool canHotSwapDevBundle({
+  required bool runtimeAlive,
+  required bool alreadyLoaded,
+  required bool alreadyDevServed,
+  required bool capabilitiesUnchanged,
+}) =>
+    runtimeAlive && alreadyLoaded && alreadyDevServed && capabilitiesUnchanged;
+
+/// Which build secrets [info] may read, out of everything the build has.
+///
+/// Two rules, and the first one overrules the second. A DEV-SERVED extension
+/// sees nothing, whatever key it claims: visibility follows where the code came
+/// from, not what it calls itself, so a bundle off a dev server calling itself
+/// `sota` cannot inherit `SOTA_*` and pointing the app at a server can never
+/// hand a credential over (HALO-425, docs/extensions/development.md). The same
+/// will hold for sideloaded extensions (HALO-422). Otherwise the name-prefix
+/// policy in secret_policy.dart decides.
+///
+/// Empty values are dropped rather than passed through: a build without the
+/// value configured must look identical to a build that never had it, so an
+/// extension's "expect null and degrade" path is the one that runs.
+Map<String, String> visibleSecretsFor(ExtensionInfo info, Map<String, String> secrets) {
+  if (info.fromDevServer) return const {};
+  return {
+    for (final entry in secrets.entries)
+      if (entry.value.isNotEmpty && extensionMaySeeSecret(info.key, entry.key)) entry.key: entry.value,
+  };
+}
+
+/// The extensions the app offers with a dev server connected: each [dev] entry
+/// REPLACES the asset extension of the same key — which is what lets an author
+/// iterate on `pota` itself rather than only on something new — and a dev
+/// extension with a key nothing ships is appended.
+///
+/// Asset order is preserved, so connecting a dev server does not reshuffle the
+/// Extensions panel under the operator. Two dev entries claiming one key cannot
+/// happen: they arrive from a map keyed by exactly that.
+List<ExtensionInfo> mergeDevExtensions(List<ExtensionInfo> fromAssets, List<ExtensionInfo> dev) {
+  if (dev.isEmpty) return fromAssets;
+  final byKey = {for (final info in dev) info.key: info};
+  final unplaced = {...byKey.keys}..removeAll(fromAssets.map((info) => info.key));
+  return [
+    for (final info in fromAssets) byKey[info.key] ?? info,
+    for (final key in unplaced) byKey[key]!,
+  ];
+}
+
 /// One entry of the build index (assets/extensions/index.json) — the static,
-/// user-facing metadata build.mjs emits so the app can describe every
+/// user-facing metadata the extensions build emits so the app can describe every
 /// extension (including disabled ones whose bundles never load). Core
 /// entries are always enabled and never listed in the Extensions panel;
 /// versions deliberately live only in the runtime (see listActiveExtensions).
@@ -3585,11 +3709,11 @@ class ExtensionInfo {
 
 
   /// Whether this extension may set its own `User-Agent` on host.fetch
-  /// (build.mjs `allowUserAgentOverride`). Off by default: the host stamps
+  /// (the manifest's `allowUserAgentOverride`). Off by default: the host stamps
   /// HaLo's canonical UA — see docs/design/network.md.
   final bool allowUserAgentOverride;
 
-  /// Whether this extension may call the `getLocation` host call (build.mjs
+  /// Whether this extension may call the `getLocation` host call (the manifest's
   /// `requiresLocation`) — the device's raw GPS fix. Off by default,
   /// same allowlist shape as [domains].
   final bool requiresLocation;
@@ -3629,9 +3753,17 @@ class ExtensionInfo {
   /// back to the English base value.
   final Map<String, Map<String, Object?>> translations;
 
+  /// Served by a dev server rather than baked into the app's assets
+  /// (docs/extensions/development.md). Two things turn on it: the source is
+  /// fetched over HTTP instead of read from `rootBundle`, and NO build secret
+  /// is ever visible to it — secrets belong to extensions that ship in the
+  /// app, and a key claimed by a dev bundle must not inherit them (HALO-425).
+  final bool fromDevServer;
+
   const ExtensionInfo({
     required this.key,
     required this.file,
+    this.fromDevServer = false,
     this.domains = const [],
     this.allowUserAgentOverride = false,
     this.requiresLocation = false,
@@ -3680,6 +3812,7 @@ class ExtensionInfo {
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
         key: json['key'] as String,
         file: json['file'] as String? ?? '${json['key']}.js',
+        fromDevServer: json['fromDevServer'] as bool? ?? false,
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
         allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
         requiresLocation: json['requiresLocation'] as bool? ?? false,

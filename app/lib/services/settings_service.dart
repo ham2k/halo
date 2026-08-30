@@ -42,6 +42,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _syncDeviceKeyKey = 'syncDeviceKey';
   static const _syncStateKey = 'syncState';
   static const _developerModeKey = 'developerMode';
+  static const _extensionDevServerUrlKey = 'extensionDevServerUrl';
+  static const _extensionDevServerEnabledKey = 'extensionDevServerEnabled';
   static const _automaticUpdateChecksKey = 'automaticUpdateChecks';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
@@ -820,6 +822,27 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   @override
   Future<void> setDeveloperMode(bool enabled) async {
     await _prefs.setBool(_developerModeKey, enabled);
+    notifyListeners();
+  }
+
+  /// The extension dev server to load extensions from
+  /// (docs/extensions/development.md). Typed by hand, never discovered: this
+  /// is code the app will run, so nothing on the network gets to volunteer
+  /// itself.
+  String get extensionDevServerUrl => _prefs.getString(_extensionDevServerUrlKey) ?? '';
+
+  Future<void> setExtensionDevServerUrl(String url) async {
+    await _prefs.setString(_extensionDevServerUrlKey, url.trim());
+    notifyListeners();
+  }
+
+  /// Whether to connect to [extensionDevServerUrl] at launch. Persisted so a
+  /// dev session survives a restart of the app, which is most of what an
+  /// author does with it.
+  bool get extensionDevServerEnabled => _prefs.getBool(_extensionDevServerEnabledKey) ?? false;
+
+  Future<void> setExtensionDevServerEnabled(bool enabled) async {
+    await _prefs.setBool(_extensionDevServerEnabledKey, enabled);
     notifyListeners();
   }
 
