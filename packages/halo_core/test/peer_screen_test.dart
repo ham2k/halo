@@ -207,6 +207,124 @@ void main() {
       expect(read.maxWidth, 800);
       expect(read.fps, 5);
     });
+
+    test('carries the crop and the quality a zoomed viewer asks for', () {
+      const request = PeerScreenSubscription(
+        sourceId: 'app:x',
+        maxWidth: 1280,
+        fps: 10,
+        quality: 0.8,
+        crop: PeerScreenCrop(left: 0.5, top: 0.25, width: 0.25, height: 0.25),
+      );
+      final read = PeerMessage.decode(PeerMessage.screenSubscribe(request).encode())!
+          .screenSubscriptionOrNull!;
+      expect(read.crop, request.crop);
+      expect(read.quality, 0.8);
+    });
+
+    test('a viewer that has never heard of either gets what it always got', () {
+      // The producer reads both ends of this wire. A missing quality that
+      // decoded as zero would encode an unreadable picture for every peer
+      // on an older build.
+      final old = PeerScreenSubscription.from({'id': 'display:1', 'maxWidth': 1280, 'fps': 10})!;
+      expect(old.quality, PeerScreenSubscription.defaultQuality);
+      expect(old.crop, isNull);
+    });
+
+    test('the terms a capture is configured with all count as terms', () {
+      // Equality is what decides whether a running capture must restart.
+      // A crop or a quality left out of it is a viewer asking for a
+      // sharper picture and being served the old one for ever.
+      const base = PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10);
+      expect(
+        base ==
+            const PeerScreenSubscription(
+                sourceId: 'display:1',
+                maxWidth: 1280,
+                fps: 10,
+                crop: PeerScreenCrop(left: 0, top: 0, width: 0.5, height: 0.5)),
+        isFalse,
+      );
+      expect(
+        base ==
+            const PeerScreenSubscription(
+                sourceId: 'display:1', maxWidth: 1280, fps: 10, quality: 0.9),
+        isFalse,
+      );
+      // Acking is how a viewer takes delivery, not a term of the capture:
+      // restarting the stream because one of two viewers acks would drop
+      // frames for the other.
+      expect(
+        base ==
+            const PeerScreenSubscription(
+                sourceId: 'display:1', maxWidth: 1280, fps: 10, acks: true),
+        isTrue,
+      );
+    });
+  });
+
+  group('PeerScreenCrop', () {
+    test('a crop of everything is no crop at all', () {
+      // Two spellings of one thing. Left as a distinct value, the terms a
+      // full-frame viewer sends stop matching the terms a running capture
+      // was started at, and every subscribe restarts a stream that was
+      // already serving exactly what was asked for.
+      expect(PeerScreenCrop.from([0.0, 0.0, 1.0, 1.0]), isNull);
+      expect(PeerScreenCrop.full.isFull, isTrue);
+    });
+
+    test('a rect panned off the edge is pulled back rather than refused', () {
+      // Panning past the picture is ordinary — the viewer clamps what it
+      // DRAWS, and the rect it asks for is arithmetic on the same numbers.
+      final crop = PeerScreenCrop.clamped(left: 0.9, top: -0.4, width: 0.5, height: 0.5);
+      expect(crop.left, closeTo(0.5, 1e-9));
+      expect(crop.top, 0.0);
+      expect(crop.right, lessThanOrEqualTo(1.0));
+    });
+
+    test('the union spans both viewers, and either one wanting it all wins', () {
+      const topLeft = PeerScreenCrop(left: 0.0, top: 0.0, width: 0.25, height: 0.25);
+      const bottomRight = PeerScreenCrop(left: 0.75, top: 0.75, width: 0.25, height: 0.25);
+      final both = topLeft.union(bottomRight);
+      // Two viewers zoomed into opposite corners: serving the smaller rect
+      // would show one of them a picture of somewhere else entirely.
+      expect(both.left, 0.0);
+      expect(both.top, 0.0);
+      expect(both.width, 1.0);
+      expect(both.height, 1.0);
+      expect(topLeft.union(PeerScreenCrop.full).isFull, isTrue);
+    });
+
+    test('a malformed rect is no crop, not a broken one', () {
+      // These numbers divide into a capture's scale on the far side. A NaN
+      // among them is a stream that never produces a frame, and the pane
+      // cannot tell that from a peer that went away.
+      expect(PeerScreenCrop.from([0.1, 0.1, double.nan, 0.5]), isNull);
+      expect(PeerScreenCrop.from([0.1, 0.1, 0.5]), isNull);
+      expect(PeerScreenCrop.from('half of it'), isNull);
+    });
+  });
+
+  group('a cropped frame says which part it is', () {
+    test('the rect survives the wire, and a full frame carries none', () {
+      const crop = PeerScreenCrop(left: 0.25, top: 0.5, width: 0.25, height: 0.25);
+      final decoded = PeerScreenFrame.decode(
+        PeerScreenFrame(
+          sourceId: 'display:1',
+          width: 640,
+          height: 360,
+          sequence: 3,
+          format: 'jpeg',
+          crop: crop,
+          image: Uint8List.fromList(const [1, 2, 3]),
+        ).encode(),
+      )!;
+      // Without this the viewer draws a frame captured for where the pane
+      // WAS over where it is now — the picture slides sideways for as long
+      // as the far device takes to restart at the new terms.
+      expect(decoded.crop, crop);
+      expect(PeerScreenFrame.decode(_frame().encode())!.crop, isNull);
+    });
   });
 
   group('PeerScreenGrant', () {

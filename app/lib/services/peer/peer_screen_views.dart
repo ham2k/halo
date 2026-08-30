@@ -133,6 +133,24 @@ class PeerScreenTarget {
   int get hashCode => Object.hash(peerDeviceId, sourceId);
 }
 
+/// What one pane is actually looking at, and how finely.
+///
+/// [maxWidth] is pixels across the CROP, so a pane asks for the same number
+/// of them however far it is zoomed in — the zoom shrinks the region those
+/// pixels are spent on.
+///
+/// [fullWidth] is what to ask for when the crop cannot be had: a producer
+/// on a build that predates cropping ignores the rect and serves the width
+/// across the WHOLE source, which for a zoomed pane is a fraction of the
+/// detail it asked for. The pane works this one out because the trade is
+/// its own — it knows both how far it is zoomed and how much of the link it
+/// may spend. Equal to [maxWidth] whenever there is no crop.
+///
+/// A record, for its structural equality: the whole point is comparing what
+/// a pane wants now against what it wanted a moment ago without a rebuild
+/// counting as a change.
+typedef PeerScreenDemand = ({int maxWidth, int fullWidth, PeerScreenCrop? crop});
+
 class PeerScreenViews extends ChangeNotifier {
   PeerScreenViews({
     required this.peers,
@@ -223,10 +241,142 @@ class PeerScreenViews extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// What this device asks producers for. A producer clamps these to what it
-  /// can do, so they are a preference rather than a demand.
+  /// What this device asks producers for when a pane has not said what it
+  /// needs. A producer clamps these to what it can do, so they are a
+  /// preference rather than a demand.
   final int maxWidth;
   final int fps;
+
+  /// What each pane wants of its target. Kept per PANE, not per target: two
+  /// panes on one source is the case this exists to get right, and the terms
+  /// actually asked for are the ones that satisfy both.
+  final Map<String, PeerScreenDemand> _demands = {};
+
+  /// Which target each pane's demand describes. A crop only means anything
+  /// against the picture it was measured on.
+  final Map<String, PeerScreenTarget> _demandTargets = {};
+
+  /// The terms last asked of each target, so a pane reporting the same thing
+  /// twice — every rebuild does — costs nothing, and only a real change
+  /// re-subscribes.
+  final Map<PeerScreenTarget, PeerScreenSubscription> _asked = {};
+
+  /// Pending re-subscribes, per target. Changing terms restarts the capture
+  /// on the far device: a resize dragged across the screen would otherwise
+  /// be a stop-and-start per frame of the drag.
+  final Map<PeerScreenTarget, Timer> _retermTimers = {};
+
+  /// Long enough to sit out a window drag, short enough that letting go of
+  /// one sharpens the picture while the operator is still looking at it.
+  static const Duration retermDelay = Duration(milliseconds: 400);
+
+  /// A pane says what it is looking at. Cheap to call from a layout pass:
+  /// an unchanged demand returns without touching the network.
+  void setDemand(String subscriberId, PeerScreenDemand demand) {
+    if (_demands[subscriberId] == demand) return;
+    _demands[subscriberId] = demand;
+    final target = _subscribers[subscriberId];
+    // Which picture this was measured against — see [subscribe].
+    if (target != null) _demandTargets[subscriberId] = target;
+    if (target != null) _scheduleReterm(target);
+  }
+
+  void _scheduleReterm(PeerScreenTarget target) {
+    if (_termsFor(target) == _asked[target]) {
+      // Back to what is already running — a pane that zoomed in and out
+      // again, or a second pane whose demand the first already covers.
+      _retermTimers.remove(target)?.cancel();
+      return;
+    }
+    _retermTimers[target]?.cancel();
+    _retermTimers[target] = Timer(retermDelay, () {
+      _retermTimers.remove(target);
+      if (!_views.containsKey(target)) return;
+      if (_termsFor(target) == _asked[target]) return;
+      // The far side restarts its capture at the new terms, which numbers
+      // frames from one again; a sequence that goes BACKWARDS is not loss,
+      // and counted as such it would paint "struggling" over a stream that
+      // just got sharper.
+      _resetDeliveryStats(target);
+      _ensure(target);
+    });
+  }
+
+  /// The terms that satisfy every pane watching [target] — the widest size,
+  /// and a crop covering all of them. Panes that have said nothing count as
+  /// wanting the whole source at the default size, which is what a build
+  /// before any of this asked for.
+  PeerScreenSubscription _termsFor(PeerScreenTarget target) {
+    var width = 0;
+    var fullWidth = 0;
+    PeerScreenCrop? crop;
+    var full = false;
+    for (final entry in _subscribers.entries) {
+      if (entry.value != target) continue;
+      final demand = _demands[entry.key];
+      if (demand == null) {
+        full = true;
+        width = width > maxWidth ? width : maxWidth;
+        fullWidth = fullWidth > maxWidth ? fullWidth : maxWidth;
+        continue;
+      }
+      width = width > demand.maxWidth ? width : demand.maxWidth;
+      fullWidth = fullWidth > demand.fullWidth ? fullWidth : demand.fullWidth;
+      final wanted = demand.crop;
+      if (wanted == null) {
+        full = true;
+      } else {
+        crop = crop == null ? wanted : crop.union(wanted);
+      }
+    }
+    if (width == 0) width = maxWidth;
+    if (fullWidth == 0) fullWidth = width;
+    // A union of two panes in opposite corners spans the whole source. That
+    // is a full frame however it was arrived at, and left as a crop it would
+    // be a full frame billed as a small one — the ceiling spent on every
+    // pixel of the screen, at the better quality a small picture earns.
+    if (full || (crop?.isFull ?? false)) crop = null;
+    // A producer that does not honour a crop serves the width asked for
+    // across the WHOLE source, so the rect is not worth sending — and a
+    // zoomed pane would come back blurrier from such a peer than it did
+    // before cropping existed.
+    if (crop != null && !_croppingTargets.contains(target)) {
+      crop = null;
+      // Only where a grant has actually come back without the word: terms
+      // are worked out before the first one arrives, and again after a LAN
+      // session bounces, and calling a peer an old build on that evidence
+      // sends whoever reads the console after the wrong thing.
+      if (_grantedTargets.contains(target) && _droppedCropFor.add(target)) {
+        // Once per target, like an unreadable frame: a mixed pair of builds
+        // is otherwise a pane that will not sharpen on ONE peer, with
+        // nothing anywhere saying why.
+        debugPrint('[peer] ${target.peerDeviceId} does not crop — '
+            '${target.sourceId} goes out at full-source terms');
+      }
+    }
+    // Every path above that discards a crop leaves [width] measured across
+    // one, which is a fraction of what the whole picture needs — a pane
+    // zoomed 4× would be handed a quarter of the detail it just had because
+    // a SECOND pane opened on the same source. What each pane says the whole
+    // picture is worth is what goes instead.
+    if (crop == null) width = fullWidth;
+    return PeerScreenSubscription(
+      sourceId: target.sourceId,
+      // Only the wire's own bounds here: how much a pane may spend is the
+      // PANE's, set in its own settings and already applied to the demand it
+      // reported. Re-imposing a ceiling at this level would silently
+      // override a pane the operator deliberately turned up.
+      maxWidth: width.clamp(160, 3840),
+      fps: fps,
+      // A cropped stream is a small picture of a small region, so the bytes
+      // a better encode costs are small too — and artefacts are most of what
+      // a zoomed-in viewer is actually looking at.
+      quality: crop == null ? PeerScreenSubscription.defaultQuality : 0.8,
+      crop: crop,
+      // This build answers, so the producer may pace it.
+      acks: true,
+    );
+  }
 
   /// What each peer says it is offering, latest-value-wins. A peer absent
   /// from this map has not said anything; a peer present with an empty list
@@ -247,6 +397,21 @@ class PeerScreenViews extends ChangeNotifier {
   /// Peers a dial is already in flight for — a second grant arriving while
   /// the first is connecting must not open a second socket.
   final Set<String> _dialling = {};
+
+  /// Targets a grant has been seen for, so "this producer does not crop" is
+  /// something the producer said rather than something not yet asked.
+  final Set<PeerScreenTarget> _grantedTargets = {};
+
+  /// Targets already reported as being served by a producer that does not
+  /// crop, so the line is written once rather than per change of terms.
+  final Set<PeerScreenTarget> _droppedCropFor = {};
+
+  /// Targets whose grant said the producer honours a crop.
+  ///
+  /// Per target and not per peer, for the reason [_pacedTargets] is: a grant
+  /// is per source. This device's own producer is in from the start — there
+  /// is no grant on that path, and it is this very build.
+  final Set<PeerScreenTarget> _croppingTargets = {};
 
   /// Targets whose grant said the producer reads acknowledgements.
   ///
@@ -342,7 +507,58 @@ class PeerScreenViews extends ChangeNotifier {
     });
   }
 
-  void _answered(PeerScreenTarget target) => _awaitingAnswer.remove(target)?.cancel();
+  void _answered(PeerScreenTarget target) {
+    _awaitingAnswer.remove(target)?.cancel();
+    _awaitingTerms.remove(target)?.cancel();
+    _termAttempts.remove(target);
+  }
+
+  /// Re-terms waiting to be answered, and how many times each has been asked.
+  ///
+  /// [_armAnswerDeadline] cannot cover these: it fires only on a view still
+  /// CONNECTING, and a re-term happens to one that is live and staying live.
+  /// A subscribe travels as an ephemeral message — best effort, unacked — so
+  /// one that is dropped would otherwise leave this side believing terms are
+  /// in force that the producer never heard, with `_asked` recording the
+  /// intent and nothing ever asking again. What the operator sees is a pane
+  /// they zoomed into that never sharpens, for the life of the session.
+  final Map<PeerScreenTarget, Timer> _awaitingTerms = {};
+  final Map<PeerScreenTarget, int> _termAttempts = {};
+
+  /// Long enough for a producer to restart a capture and answer, short
+  /// enough to be inside the time an operator waits before deciding the
+  /// zoom did nothing.
+  static const Duration termsDeadline = Duration(seconds: 5);
+
+  /// How many times a change of terms is re-sent before this gives up and
+  /// leaves the stream as it is. A producer that answers none of them is not
+  /// going to answer the fourth.
+  static const int termRetries = 2;
+
+  void _armTermsDeadline(PeerScreenTarget target) {
+    // A view that is not live has the connecting deadline instead, which
+    // says so on the pane; two deadlines over one subscribe would race to
+    // describe it.
+    if (_views[target]?.status != PeerScreenViewStatus.live) return;
+    _awaitingTerms.remove(target)?.cancel();
+    _awaitingTerms[target] = Timer(termsDeadline, () {
+      _awaitingTerms.remove(target);
+      if (!_views.containsKey(target)) return;
+      final attempts = (_termAttempts[target] ?? 0) + 1;
+      if (attempts > termRetries) {
+        _termAttempts.remove(target);
+        // Forgotten rather than left standing: the terms were never
+        // acknowledged, so recording them as asked would suppress the next
+        // attempt too. The stream carries on at whatever it is serving.
+        _asked.remove(target);
+        debugPrint('[peer] ${target.peerDeviceId} never answered new terms for '
+            '${target.sourceId} — leaving the stream as it is');
+        return;
+      }
+      _termAttempts[target] = attempts;
+      _ensure(target);
+    });
+  }
 
   Map<String, List<PeerScreenSource>> get offers => Map.unmodifiable(_offers);
 
@@ -393,13 +609,54 @@ class PeerScreenViews extends ChangeNotifier {
     final previous = _subscribers[subscriberId];
     if (previous == target) return;
     _subscribers[subscriberId] = target;
-    if (previous != null) _releaseIfUnwanted(previous);
+    // The CROP goes with the picture it was measured against — it says which
+    // part of THAT screen the pane could see, and against another one it
+    // asks the far device to capture the top-left quarter of something the
+    // operator has never framed. The width is about the pane and stays, so
+    // a pane repointed at a similar source re-terms nothing at all.
+    //
+    // Against the target the demand was MEASURED for, not against the one
+    // held a moment ago: a pane comes back from a dock tab having released
+    // its target, and dropping the framing there would cost the extra
+    // capture restart the demand is kept across a hide to avoid.
+    final demand = _demands[subscriberId];
+    if (demand != null && demand.crop != null && _demandTargets[subscriberId] != target) {
+      _demands[subscriberId] =
+          (maxWidth: demand.maxWidth, fullWidth: demand.fullWidth, crop: null);
+      _demandTargets[subscriberId] = target;
+    }
+    if (previous != null) {
+      _releaseIfUnwanted(previous);
+      // Still watched by other panes, whose own terms may now be all that
+      // has to be served — the mirror of what [unsubscribe] does, and
+      // without it a source keeps being captured at the terms of a pane
+      // that has gone somewhere else.
+      if (_views.containsKey(previous)) _scheduleReterm(previous);
+    }
     _ensure(target);
   }
 
+  /// A pane stops watching — which every hide edge does, not only a pane
+  /// being closed: a dock tab switched away from, the app sent to the
+  /// background. The DEMAND survives that, exactly as the pane's zoom and
+  /// pan do; see [forgetDemand].
   void unsubscribe(String subscriberId) {
     final target = _subscribers.remove(subscriberId);
-    if (target != null) _releaseIfUnwanted(target);
+    if (target != null) {
+      _releaseIfUnwanted(target);
+      // Still watched by someone else, whose own terms may now be all that
+      // has to be served.
+      if (_views.containsKey(target)) _scheduleReterm(target);
+    }
+  }
+
+  /// The pane is gone for good. Kept apart from [unsubscribe] because a
+  /// demand dropped on every hide costs two capture restarts per tab switch:
+  /// the first subscribe asks for the whole source at the default size, and
+  /// the pane's first layout then asks for its crop all over again.
+  void forgetDemand(String subscriberId) {
+    _demands.remove(subscriberId);
+    _demandTargets.remove(subscriberId);
   }
 
   /// A peer went away. Its views keep their last frame and say why — a blank
@@ -416,6 +673,19 @@ class PeerScreenViews extends ChangeNotifier {
     unawaited(_mediaLinks.remove(peerDeviceId)?.close());
     _dialling.remove(peerDeviceId);
     _pacedTargets.removeWhere((target) => target.peerDeviceId == peerDeviceId);
+    _croppingTargets.removeWhere((target) => target.peerDeviceId == peerDeviceId);
+    _droppedCropFor.removeWhere((target) => target.peerDeviceId == peerDeviceId);
+    _grantedTargets.removeWhere((target) => target.peerDeviceId == peerDeviceId);
+    // Pending work for a peer that has gone. A reterm that fires afterwards
+    // finds the view still there — kept, with its reason written over it —
+    // re-enters [_ensure] and records terms nothing ever sent.
+    for (final target in _retermTimers.keys.toList()) {
+      if (target.peerDeviceId == peerDeviceId) _retermTimers.remove(target)?.cancel();
+    }
+    for (final target in _awaitingTerms.keys.toList()) {
+      if (target.peerDeviceId == peerDeviceId) _awaitingTerms.remove(target)?.cancel();
+    }
+    _termAttempts.removeWhere((target, _) => target.peerDeviceId == peerDeviceId);
     _stalls.removeWhere((target, _) => target.peerDeviceId == peerDeviceId);
     for (final target in _views.keys.toList()) {
       if (target.peerDeviceId != peerDeviceId) continue;
@@ -453,7 +723,26 @@ class PeerScreenViews extends ChangeNotifier {
     } else {
       _pacedTargets.remove(target);
     }
-    _views[target] = (_views[target] ?? _blank(target))._with(status: PeerScreenViewStatus.connecting);
+    // Either way a reterm, because the terms now in force were worked out
+    // before this peer had said which it was. Upwards it buys a pane its
+    // rect; downwards it takes back a crop-scoped width the producer would
+    // otherwise spread across the whole source — and `_asked` already holds
+    // those terms, so nothing else would ever revisit them.
+    _grantedTargets.add(target);
+    if (grant.crops ? _croppingTargets.add(target) : _croppingTargets.remove(target)) {
+      _scheduleReterm(target);
+    }
+    final existing = _views[target];
+    // A grant for a view already LIVE is the answer to a change of terms —
+    // the far device is restarting its capture to serve a sharper picture,
+    // and the frames resume in a fraction of a second. Marking that
+    // "Connecting…" would dim and label a working pane every time the
+    // operator zoomed. Same rule as [_ensure], for the same reason.
+    _views[target] = existing == null
+        ? _blank(target)
+        : (existing.status == PeerScreenViewStatus.live
+            ? existing
+            : existing._with(status: PeerScreenViewStatus.connecting));
     notifyListeners();
     // Frames arrive on the media link, which is per peer — a grant for a
     // second source from a peer already connected needs no new socket.
@@ -506,6 +795,9 @@ class PeerScreenViews extends ChangeNotifier {
       // No grant, no ticket, no dial — the producer is right here. It still
       // goes through addWatcher, so this pane counts toward the rule that a
       // source captures only while somebody is watching it.
+      // No grant on this path — the producer is this same build, so it
+      // honours a crop by construction.
+      _croppingTargets.add(target);
       final producer = screens;
       if (producer == null) {
         _views[target] = _views[target]!._with(
@@ -514,10 +806,7 @@ class PeerScreenViews extends ChangeNotifier {
         return;
       }
       unawaited(producer
-          .addWatcher(
-            localViewerWatcher,
-            PeerScreenSubscription(sourceId: target.sourceId, maxWidth: maxWidth, fps: fps),
-          )
+          .addWatcher(localViewerWatcher, _recordTerms(target))
           .then((accepted) {
         if (!accepted) onRefused(localScreenPeerId, target.sourceId, 'notOffered');
       }));
@@ -531,16 +820,22 @@ class PeerScreenViews extends ChangeNotifier {
     }
     peers.sendEphemeralTo(
       target.peerDeviceId,
-      PeerMessage.screenSubscribe(PeerScreenSubscription(
-        sourceId: target.sourceId,
-        maxWidth: maxWidth,
-        fps: fps,
-        // This build answers, so the producer may pace it.
-        acks: true,
-      )),
+      PeerMessage.screenSubscribe(_recordTerms(target)),
     );
     _armAnswerDeadline(target);
+    _armTermsDeadline(target);
     notifyListeners();
+  }
+
+  /// The terms for [target], remembered as the ones now asked for. Every
+  /// path that sends a subscribe goes through here, so a re-subscribe for
+  /// some other reason — a peer reappearing, a media link recovering — also
+  /// settles the question of what is currently being asked for.
+  PeerScreenSubscription _recordTerms(PeerScreenTarget target) {
+    final terms = _termsFor(target);
+    _asked[target] = terms;
+    _retermTimers.remove(target)?.cancel();
+    return terms;
   }
 
   void _resubscribeWanted(String peerDeviceId) {
@@ -553,6 +848,17 @@ class PeerScreenViews extends ChangeNotifier {
     if (_subscribers.values.contains(target)) return;
     _views.remove(target);
     _resetDeliveryStats(target);
+    _asked.remove(target);
+    _retermTimers.remove(target)?.cancel();
+    _awaitingTerms.remove(target)?.cancel();
+    _termAttempts.remove(target);
+    // [_croppingTargets] deliberately SURVIVES: it is a fact about the
+    // producer, not about the subscription that learned it, and it stops
+    // being true only when that peer goes away or its next grant says
+    // otherwise. Forgotten here, every pane reopened on a source it was
+    // already watching asks for the whole picture, is granted, and then
+    // asks again for its crop — the second capture restart this feature
+    // spends its debounce avoiding.
     if (target.peerDeviceId == localScreenPeerId) {
       unawaited(screens?.removeWatcher(localViewerWatcher, target.sourceId) ?? Future<void>.value());
       notifyListeners();
@@ -729,6 +1035,14 @@ class PeerScreenViews extends ChangeNotifier {
       timer.cancel();
     }
     _awaitingAnswer.clear();
+    for (final timer in _retermTimers.values) {
+      timer.cancel();
+    }
+    _retermTimers.clear();
+    for (final timer in _awaitingTerms.values) {
+      timer.cancel();
+    }
+    _awaitingTerms.clear();
     screens?.removeListener(_onProducerChanged);
     unawaited(_localFrames?.cancel());
     unawaited(_localRefusals?.cancel());

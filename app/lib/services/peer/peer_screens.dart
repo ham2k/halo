@@ -35,7 +35,11 @@ import 'peer_service.dart';
 /// How wide a frame this device will ever encode, whatever a viewer asks
 /// for. A viewer names its own size (see [PeerScreenSubscription]) and this
 /// is the producer's own ceiling on top of that.
-const int _maxCaptureWidth = 1920;
+///
+/// It bounds the ENCODED frame, which under a crop covers only part of the
+/// source — so a zoomed viewer buys detail here without buying bytes, and
+/// this number stays a bound on what a frame costs to send.
+const int _maxCaptureWidth = 2560;
 
 /// A pane on THIS device, as a watcher. Not a device id, and it cannot
 /// collide with one: a peer device id is a UUID, which never contains a
@@ -563,7 +567,11 @@ class PeerScreens extends ChangeNotifier {
       peerDeviceId,
       PeerMessage.screenGrant(
         PeerScreenGrant(
-            sourceId: request.sourceId, ticket: ticket, port: port, paced: true),
+            sourceId: request.sourceId,
+            ticket: ticket,
+            port: port,
+            paced: true,
+            crops: true),
       ),
     );
   }
@@ -718,6 +726,8 @@ class PeerScreens extends ChangeNotifier {
         sourceId,
         maxWidth: terms.maxWidth.clamp(160, _maxCaptureWidth),
         fps: terms.fps,
+        quality: terms.quality,
+        crop: terms.crop,
       );
       // A restart builds a new capture session, which numbers its frames from
       // one again — so anything outstanding against the OLD numbering can
@@ -889,15 +899,32 @@ class PeerScreens extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The terms that satisfy both watchers — the larger size and the faster
-  /// rate. Being generous costs the producer; being stingy would leave one
-  /// viewer with a stream it cannot read.
+  /// The terms that satisfy both watchers — the larger size, the faster
+  /// rate, the better quality and a crop covering both. Being generous costs
+  /// the producer; being stingy would leave one viewer with a stream it
+  /// cannot read.
+  ///
+  /// The crop is a UNION and not the smaller rect: two viewers zoomed into
+  /// opposite corners must each see their own corner, and the one thing that
+  /// serves both is the region spanning them. It costs the zoomed-in viewer
+  /// the sharpness it asked for, which is the only part of this a second
+  /// watcher can take away.
   static PeerScreenSubscription _widest(PeerScreenSubscription? a, PeerScreenSubscription b) {
     if (a == null) return b;
+    final aCrop = a.crop ?? PeerScreenCrop.full;
+    final bCrop = b.crop ?? PeerScreenCrop.full;
+    final crop = aCrop.union(bCrop);
+    final quality = a.quality > b.quality ? a.quality : b.quality;
     return PeerScreenSubscription(
       sourceId: b.sourceId,
       maxWidth: a.maxWidth > b.maxWidth ? a.maxWidth : b.maxWidth,
       fps: a.fps > b.fps ? a.fps : b.fps,
+      // A union that covers everything is a full frame, and the extra
+      // quality a viewer asked for on the strength of a small picture is
+      // not owed on a whole screen — that is bandwidth neither of them
+      // asked for.
+      quality: crop.isFull ? PeerScreenSubscription.defaultQuality : quality,
+      crop: crop.isFull ? null : crop,
     );
   }
 

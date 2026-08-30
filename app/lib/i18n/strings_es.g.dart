@@ -2065,6 +2065,10 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get remoteScreenRefused => 'Ese dispositivo no quiso compartir esta pantalla.';
 	@override String get remoteScreenSettings => 'Ajustes del panel';
 	@override String get remoteScreenAdjust => 'Ajustar vista';
+	@override String get remoteScreenDetail => 'Detalle';
+	@override String get remoteScreenDetailStandard => 'Estándar';
+	@override String get remoteScreenDetailHigh => 'Alto';
+	@override String get remoteScreenDetailMaximum => 'Máximo';
 	@override String get remoteScreenAdjustDone => 'Listo';
 	@override String get remoteScreenZoomIn => 'Acercar';
 	@override String get remoteScreenZoomOut => 'Alejar';
@@ -2845,6 +2849,10 @@ extension on TranslationsEs {
 			'operation.layout.panels.remoteScreenRefused' => 'Ese dispositivo no quiso compartir esta pantalla.',
 			'operation.layout.panels.remoteScreenSettings' => 'Ajustes del panel',
 			'operation.layout.panels.remoteScreenAdjust' => 'Ajustar vista',
+			'operation.layout.panels.remoteScreenDetail' => 'Detalle',
+			'operation.layout.panels.remoteScreenDetailStandard' => 'Estándar',
+			'operation.layout.panels.remoteScreenDetailHigh' => 'Alto',
+			'operation.layout.panels.remoteScreenDetailMaximum' => 'Máximo',
 			'operation.layout.panels.remoteScreenAdjustDone' => 'Listo',
 			'operation.layout.panels.remoteScreenZoomIn' => 'Acercar',
 			'operation.layout.panels.remoteScreenZoomOut' => 'Alejar',
@@ -3085,12 +3093,12 @@ extension on TranslationsEs {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => '${kind} eliminado',
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.controlSettings' => 'Controles de registro',
 			'loggingControls.expandControls' => 'Expandir',
 			'loggingControls.collapseControls' => 'Contraer',
 			'loggingControls.spottingControl' => 'Spotting',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.spottingSelfControl' => 'Auto-spot',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Auto-spot en ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot a ${call} en ${freq}',
@@ -3599,12 +3607,12 @@ extension on TranslationsEs {
 			'settings.station.newKey' => 'Nuevo manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.whatToTrack' => '¿Qué registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador',
 			'settings.station.switchLayout' => 'Disposición',

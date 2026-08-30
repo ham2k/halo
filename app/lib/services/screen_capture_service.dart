@@ -160,11 +160,15 @@ class ScreenCaptureService {
   /// Starts (or restarts, at new terms) one source. Restarting is how a
   /// viewer changes size or rate, so this is deliberately idempotent on
   /// [sourceId] rather than refusing a second call.
+  /// [maxWidth] sizes the picture that is SENT — under a [crop] it is the
+  /// width of the cropped region, so the native side captures at whatever
+  /// scale puts that many pixels across the part being watched.
   Future<void> start(
     String sourceId, {
     int maxWidth = 1280,
     int fps = 10,
     double quality = 0.6,
+    PeerScreenCrop? crop,
   }) async {
     if (!isSupportedPlatform) {
       throw const ScreenCaptureException('This device cannot share its screen', code: 'unsupported');
@@ -174,6 +178,7 @@ class ScreenCaptureService {
       'maxWidth': maxWidth,
       'fps': fps,
       'quality': quality,
+      if (crop != null && !crop.isFull) 'crop': crop.toJson(),
     });
   }
 

@@ -206,8 +206,72 @@ class _RemoteScreenSettingsRowState extends State<RemoteScreenSettingsRow> {
             Navigator.of(context).maybePop();
           },
         ),
+        ListTile(
+          leading: Icon(MdiIcons.imageSizeSelectLarge),
+          title: Text(t.remoteScreenDetail),
+        ),
+        Padding(
+          // The list's own inset, read from the ambient theme rather than
+          // named again: a surface whose rows are shifted — a pane behind a
+          // resize strip — moves them all, and a hard-coded number would
+          // leave this one behind in the gutter.
+          padding: EdgeInsets.only(
+            left: _rowInset(context).left,
+            right: _rowInset(context).right,
+            bottom: Space.sm,
+          ),
+          child: SegmentedButton<int>(
+            // MDI-only UI: skip the framework's Material check on the
+            // selected segment (same as settings_view).
+            showSelectedIcon: false,
+            segments: [
+              for (final width in remoteScreenDetailChoices)
+                ButtonSegment(value: width, label: Text(_detailLabel(context, width))),
+            ],
+            selected: {_detailChoice(_config[remoteScreenDetailKey])},
+            onSelectionChanged: (selection) => unawaited(_setDetail(selection.first)),
+          ),
+        ),
       ],
     );
+  }
+
+  Future<void> _setDetail(int width) async {
+    // Optimistic, because the commit below is a settings write and a catalog
+    // notification: waiting on both leaves the segment the operator tapped
+    // unlit for as long as they take.
+    setState(() => _config = {..._config, remoteScreenDetailKey: width});
+    await saveRemoteScreenDetail(
+      services: widget.services, panelId: widget.panelId, detail: width);
+  }
+
+  /// Where a row in this list starts and ends — the ambient `ListTileTheme`
+  /// inset, which is what every `ListTile` here is already using.
+  static EdgeInsets _rowInset(BuildContext context) =>
+      ListTileTheme.of(context).contentPadding?.resolve(Directionality.of(context)) ??
+      const EdgeInsets.symmetric(horizontal: settingsRowInset);
+
+  /// The stored width as one of the offered choices — a value from a build
+  /// with different steps still has to light up a segment rather than none.
+  static int _detailChoice(Object? stored) {
+    final width = (stored as num?)?.toInt() ?? remoteScreenDetailDefault;
+    var closest = remoteScreenDetailChoices.first;
+    for (final choice in remoteScreenDetailChoices) {
+      if ((choice - width).abs() < (closest - width).abs()) closest = choice;
+    }
+    return closest;
+  }
+
+  /// Named rather than numbered: "1920 px" is a claim about a picture the
+  /// operator never sees at that size — what they are choosing is how much
+  /// of the link this pane may spend.
+  String _detailLabel(BuildContext context, int width) {
+    final t = context.t.operation.layout.panels;
+    return switch (width) {
+      <= 1280 => t.remoteScreenDetailStandard,
+      <= 1920 => t.remoteScreenDetailHigh,
+      _ => t.remoteScreenDetailMaximum,
+    };
   }
 
   Widget _screenRow(BuildContext context, dynamic t, PeerScreenTarget? target) {
@@ -269,4 +333,28 @@ Future<void> saveRemoteScreenView({
   // Deliberately NOT markConfigChanged: the pane already holds this framing
   // and reloading its config would only hand back what it just sent, one
   // rebuild later.
+}
+
+/// Stores how much a pane may spend on its picture.
+///
+/// Unlike the framing, this DOES notify: the setting is changed from a
+/// dialog and the pane is what has to act on it — it clamps its own demand
+/// by this number, and nothing else would tell it the number moved.
+Future<void> saveRemoteScreenDetail({
+  required HaLoServices services,
+  required String panelId,
+  required int detail,
+}) async {
+  final panel = services.panels[panelId];
+  if (panel == null) return;
+  await services.extensions.commitSettingsFieldValue(
+    kind: 'simple',
+    hookKey: panel.hookKey ?? panel.id,
+    panelKey: panel.id,
+    fieldKey: remoteScreenDetailKey,
+    value: detail,
+    state: {remoteScreenDetailKey: detail},
+    isSecret: false,
+  );
+  services.panels.markConfigChanged(panel.id);
 }

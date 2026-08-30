@@ -4440,6 +4440,18 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Adjust View'
 	String get remoteScreenAdjust => 'Adjust View';
 
+	/// en: 'Detail'
+	String get remoteScreenDetail => 'Detail';
+
+	/// en: 'Standard'
+	String get remoteScreenDetailStandard => 'Standard';
+
+	/// en: 'High'
+	String get remoteScreenDetailHigh => 'High';
+
+	/// en: 'Maximum'
+	String get remoteScreenDetailMaximum => 'Maximum';
+
 	/// en: 'OK'
 	String get remoteScreenAdjustDone => 'OK';
 
@@ -5615,6 +5627,10 @@ extension on Translations {
 			'operation.layout.panels.remoteScreenRefused' => 'That device wouldn\'t share this screen.',
 			'operation.layout.panels.remoteScreenSettings' => 'Panel settings',
 			'operation.layout.panels.remoteScreenAdjust' => 'Adjust View',
+			'operation.layout.panels.remoteScreenDetail' => 'Detail',
+			'operation.layout.panels.remoteScreenDetailStandard' => 'Standard',
+			'operation.layout.panels.remoteScreenDetailHigh' => 'High',
+			'operation.layout.panels.remoteScreenDetailMaximum' => 'Maximum',
 			'operation.layout.panels.remoteScreenAdjustDone' => 'OK',
 			'operation.layout.panels.remoteScreenZoomIn' => 'Zoom in',
 			'operation.layout.panels.remoteScreenZoomOut' => 'Zoom out',
@@ -5854,12 +5870,12 @@ extension on Translations {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.controlSettings' => 'Logging Controls',
 			'loggingControls.expandControls' => 'Expand',
 			'loggingControls.collapseControls' => 'Collapse',
 			'loggingControls.spottingControl' => 'Spotting',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} at ${freq}',
@@ -6368,12 +6384,12 @@ extension on Translations {
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
 			'settings.station.whatToTrack' => 'What to track?',
 			'settings.station.trackFieldRig' => 'Transceiver',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.trackFieldPower' => 'Power',
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
 			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			'settings.station.fakeDropAfter' => 'Drop after (seconds)',

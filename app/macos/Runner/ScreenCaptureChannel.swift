@@ -111,6 +111,10 @@ final class ScreenCaptureChannel: NSObject {
         maxWidth: args["maxWidth"] as? Int ?? 1280,
         fps: args["fps"] as? Int ?? 10,
         quality: args["quality"] as? Double ?? 0.6,
+        crop: ScreenCaptureSession.crop(from: args["crop"]),
+        // Read here, where this is: a method channel call arrives on the
+        // main thread and the enumeration this feeds does not.
+        scales: ScreenCaptureSession.backingScales(),
         result: result)
 
     case "stop":
@@ -293,7 +297,8 @@ final class ScreenCaptureChannel: NSObject {
 
   @available(macOS 12.3, *)
   private func start(
-    sourceId: String, maxWidth: Int, fps: Int, quality: Double, result: @escaping FlutterResult
+    sourceId: String, maxWidth: Int, fps: Int, quality: Double, crop: CGRect?,
+    scales: [CGDirectDisplayID: CGFloat], result: @escaping FlutterResult
   ) {
     // Restarting an already-running source is how the viewer changes rate or
     // size, so the old stream goes before the new one is built rather than
@@ -305,6 +310,8 @@ final class ScreenCaptureChannel: NSObject {
       maxWidth: maxWidth,
       fps: fps,
       quality: quality,
+      crop: crop,
+      scales: scales,
       onFrame: { [weak self] frame in
         // Raw Data, because the channel's codec is FlutterBinaryCodec:
         // it encodes NSData and throws an NSException on anything else,
@@ -406,7 +413,7 @@ final class ScreenCaptureChannel: NSObject {
         NSLog("[ham2k] thumbnail enumeration failed: %@", error.localizedDescription)
       }
       guard let content = content,
-        let (filter, size, _) = ScreenCaptureSession.filter(for: sourceId, in: content)
+        let (filter, size, _, _) = ScreenCaptureSession.filter(for: sourceId, in: content)
       else {
         settle(nil)
         return
@@ -535,6 +542,20 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
   private let maxWidth: Int
   private let fps: Int
   private let quality: Double
+
+  /// The part of the source being watched, in fractions of it, with a
+  /// top-left origin as it travels — nil for all of it.
+  ///
+  /// It buys resolution rather than bandwidth: the stream is configured so
+  /// that this region alone comes out [maxWidth] across, and everything
+  /// outside it is thrown away before the JPEG. A viewer zoomed 4× therefore
+  /// sends the same bytes it did at 1× and sees four times the detail.
+  private let crop: CGRect?
+
+  /// What each display's points are worth in pixels, sampled on the main
+  /// thread when the capture was asked for — see [backingScales].
+  private let scales: [CGDirectDisplayID: CGFloat]
+
   private let onFrame: (Data) -> Void
 
   /// Assigned by the owner after construction — see the identity check at
@@ -555,6 +576,11 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
   /// shared window is the one its operator is using.
   fileprivate var cursorOwner: String?
 
+  /// Whether the STREAM is delivering only the cropped region, so the frame
+  /// path must not crop it a second time. Decided in [begin] — see
+  /// [sourceRect] for when that is possible.
+  private var streamCrops = false
+
   /// Held so the cursor can be turned on and off without rebuilding the
   /// stream — `SCStream.updateConfiguration` takes a whole configuration,
   /// not one property.
@@ -570,15 +596,49 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
   private static let maxInFlight = 2
 
   init(
-    sourceId: String, maxWidth: Int, fps: Int, quality: Double,
-    onFrame: @escaping (Data) -> Void
+    sourceId: String, maxWidth: Int, fps: Int, quality: Double, crop: CGRect?,
+    scales: [CGDirectDisplayID: CGFloat], onFrame: @escaping (Data) -> Void
   ) {
     self.sourceId = sourceId
     self.maxWidth = max(160, maxWidth)
     self.fps = min(30, max(1, fps))
     self.quality = min(1.0, max(0.1, quality))
+    self.crop = crop
+    self.scales = scales
     self.onFrame = onFrame
   }
+
+  /// The `[left, top, width, height]` a subscription travels as, as a rect,
+  /// or nil for anything that is not one or that covers the whole source.
+  /// Sanitised HERE rather than trusted: these numbers size a capture and
+  /// divide into its scale, and a zero or a NaN among them is a stream that
+  /// never produces a frame.
+  fileprivate static func crop(from raw: Any?) -> CGRect? {
+    guard raw != nil else { return nil }
+    guard let values = raw as? [Double], values.count == 4,
+      values.allSatisfy({ $0.isFinite })
+    else {
+      // Nil means "all of it", and the viewer's width is a budget for the
+      // CROP — so a rect that arrives unreadable spreads a small budget
+      // across a whole display and reaches the operator as a picture far
+      // blurrier than the feature ever produced, with nothing wrong on
+      // either side to point at.
+      NSLog("[ham2k] a screen crop arrived unreadable: %@", String(describing: raw))
+      return nil
+    }
+    let width = min(1.0, max(minCropSize, values[2]))
+    let height = min(1.0, max(minCropSize, values[3]))
+    guard width < 1.0 || height < 1.0 else { return nil }
+    return CGRect(
+      x: min(max(0.0, values[0]), 1.0 - width),
+      y: min(max(0.0, values[1]), 1.0 - height),
+      width: width,
+      height: height)
+  }
+
+  /// Matches `PeerScreenCrop.minSize` — the two sanitise the same rect at
+  /// either end of the channel.
+  fileprivate static let minCropSize = 0.02
 
   func start(completion: @escaping (String?) -> Void) {
     // Answered exactly once, from whichever arrives first — the enumeration,
@@ -620,27 +680,127 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
         return
       }
       guard let content = content,
-        let (filter, size, cursorOwner) = Self.filter(for: self.sourceId, in: content)
+        let (filter, size, cursorOwner, displayID) = Self.filter(for: self.sourceId, in: content)
       else {
         settle("That screen or window is no longer available")
         return
       }
       self.cursorOwner = cursorOwner
-      self.begin(filter: filter, sourceSize: size, settle: settle)
+      // A display this app cannot find among the screens is treated as 1×
+      // rather than guessed at: over-guessing captures an upscale at double
+      // the cost, and the miss is worth a line, since what it costs is a
+      // zoom that stops sharpening on that Mac alone.
+      var sourceScale: CGFloat = 1
+      if let displayID = displayID, let known = self.scales[displayID] {
+        sourceScale = known
+      } else {
+        NSLog("[ham2k] no screen matches %@ — capturing it at 1x", self.sourceId)
+      }
+      // Where this display sits on the desktop. Only a display at the
+      // origin can take the `sourceRect` path — see [sourceRect].
+      let sourceOrigin = displayID
+        .flatMap { id in content.displays.first { $0.displayID == id } }?.frame.origin ?? .zero
+      self.begin(
+        filter: filter, sourceSize: size, sourceScale: sourceScale,
+        sourceOrigin: sourceOrigin, settle: settle)
     }
+  }
+
+  /// The region to ask SCK for, in the points of the source's own space, or
+  /// nil where the rect has to be applied to the frame instead.
+  ///
+  /// `sourceRect` is macOS 14 and this file's floor is 12.3, so the crop is
+  /// applied one of two ways and every older Mac keeps the one it has.
+  ///
+  /// A WINDOW deliberately never takes this path. A display's rect is read
+  /// in that display's own space, which is where [filter] measured
+  /// `sourceSize` too, so the two agree by construction; what a rect means
+  /// against a `desktopIndependentWindow` filter — the window's bounds or
+  /// the display behind it — is not something to find out by shipping it,
+  /// because getting it wrong shows a confidently wrong part of the screen
+  /// rather than failing. A window is also the small source: the cost this
+  /// path exists to avoid is a whole 5K display captured to send a corner
+  /// of one.
+  private func sourceRect(for crop: CGRect?, in sourceSize: CGSize, at sourceOrigin: CGPoint)
+    -> CGRect?
+  {
+    guard let crop = crop, !sourceId.hasPrefix("window:") else { return nil }
+    guard sourceSize.width > 1, sourceSize.height > 1 else { return nil }
+    // A display that does not sit at the origin is left to the frame-crop
+    // path. SCK documents this rect as points "in the display's logical
+    // coordinate system", which reads either as that display's own space or
+    // as the desktop's — and the two answers differ by exactly this origin.
+    // Where it is zero they agree, so a rect built here cannot be the wrong
+    // region; anywhere else it could be a confident picture of the OTHER
+    // screen, which is the failure this path is not worth risking. Lift the
+    // guard once a two-monitor Mac has said which reading is right.
+    guard sourceOrigin == .zero else { return nil }
+    // Top-left origin, matching the space `sourceSize` was measured in and
+    // the space the crop travels in.
+    let rect = CGRect(
+      x: crop.minX * sourceSize.width,
+      y: crop.minY * sourceSize.height,
+      width: crop.width * sourceSize.width,
+      height: crop.height * sourceSize.height
+    ).integral.intersection(CGRect(origin: .zero, size: sourceSize))
+    guard rect.width >= 2, rect.height >= 2 else { return nil }
+    return rect
   }
 
   fileprivate static let startTimeout: DispatchTimeInterval = .seconds(5)
 
   private func begin(
-    filter: SCContentFilter, sourceSize: CGSize, settle: @escaping (String?) -> Void
+    filter: SCContentFilter, sourceSize: CGSize, sourceScale: CGFloat, sourceOrigin: CGPoint,
+    settle: @escaping (String?) -> Void
   ) {
     let config = SCStreamConfiguration()
     // The default is 1920×1080 whatever the source measures, so a stream that
     // never sets these sends a letterboxed 1080p frame for a small window.
-    let scale = min(1.0, Double(maxWidth) / max(1.0, Double(sourceSize.width)))
-    config.width = max(2, Int((Double(sourceSize.width) * scale).rounded()))
-    config.height = max(2, Int((Double(sourceSize.height) * scale).rounded()))
+    //
+    // Under a crop the budget buys the CROPPED width — the whole point of
+    // asking for one — so the scale is worked out from the watched part
+    // rather than from the whole picture. Sizing the capture to `maxWidth`
+    // and cropping afterwards would hand the viewer FEWER pixels the further
+    // it zoomed in, which is the opposite of what a crop means.
+    //
+    // The ceiling is the source's own PIXELS, which on a Retina display is
+    // twice the points SCK measures it in — capped at 1.0 a zoomed viewer
+    // would be handed half the resolution the screen actually has, and the
+    // detail setting would stop meaning anything past the first step.
+    let cropWidth = crop.map { Double($0.width) } ?? 1.0
+    var scale = min(
+      max(1.0, Double(sourceScale)),
+      Double(maxWidth) / max(1.0, Double(sourceSize.width) * cropWidth))
+
+    if #available(macOS 14.0, *),
+      let region = sourceRect(for: crop, in: sourceSize, at: sourceOrigin)
+    {
+      // SCK delivers the region ALONE, so everything downstream — the
+      // surface, the copy, the encode — is proportional to what is being
+      // watched rather than to the screen it sits on.
+      config.sourceRect = region
+      // The output IS the region, so the aspect matches by construction and
+      // scaling to fit could only letterbox the rounding.
+      config.scalesToFit = false
+      config.width = max(2, Int((Double(region.width) * scale).rounded()))
+      config.height = max(2, Int((Double(region.height) * scale).rounded()))
+      streamCrops = true
+    } else {
+      // The frame is cropped after the fact, so the WHOLE source is captured
+      // at whatever scale the watched part needs — a tight crop on a large
+      // Retina display would otherwise pin a 5K stream at native resolution
+      // to send a small picture, and that cost lands on the sharing Mac
+      // where nothing in the viewer's UI accounts for it. Bounded here: a
+      // very zoomed pane on a very large screen sharpens up to this and no
+      // further.
+      let surfaceBudget = 8_000_000.0
+      let sourcePixels = Double(sourceSize.width) * Double(sourceSize.height) * scale * scale
+      if sourcePixels > surfaceBudget {
+        scale *= (surfaceBudget / sourcePixels).squareRoot()
+      }
+      config.width = max(2, Int((Double(sourceSize.width) * scale).rounded()))
+      config.height = max(2, Int((Double(sourceSize.height) * scale).rounded()))
+    }
     config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(fps))
     // The default depth of 8 buys smoothness at the cost of latency, which is
     // the wrong trade for a remote view of a radio's screen.
@@ -702,7 +862,7 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
   /// nil for a whole display, where the pointer is simply part of what is on
   /// that screen.
   fileprivate static func filter(for sourceId: String, in content: SCShareableContent)
-    -> (SCContentFilter, CGSize, String?)?
+    -> (SCContentFilter, CGSize, String?, CGDirectDisplayID?)?
   {
     let parts = sourceId.split(separator: ":", maxSplits: 1).map(String.init)
     guard parts.count == 2 else { return nil }
@@ -716,7 +876,8 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
       return (
         SCContentFilter(display: display, excludingWindows: []),
         CGSize(width: display.width, height: display.height),
-        nil
+        nil,
+        display.displayID
       )
 
     case "app":
@@ -736,7 +897,8 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
       return (
         SCContentFilter(display: display, including: apps, exceptingWindows: []),
         CGSize(width: display.width, height: display.height),
-        key
+        key,
+        display.displayID
       )
 
     case "window":
@@ -746,12 +908,42 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
       return (
         SCContentFilter(desktopIndependentWindow: window),
         window.frame.size,
-        window.owningApplication?.bundleIdentifier
+        window.owningApplication?.bundleIdentifier,
+        // The display the window is mostly on, resolved in SC's own
+        // coordinate space. `NSScreen.frame` is AppKit's — bottom-left
+        // origin against SC's top-left — and matching one against the other
+        // agrees only on a single-screen Mac, then silently picks the wrong
+        // screen on the desks this exists for.
+        ScreenCaptureChannel.displayHosting([window], in: content)?.displayID
       )
 
     default:
       return nil
     }
+  }
+
+  /// How many pixels each display puts behind one of the points SCK measures
+  /// it in — 2 on every Retina screen, 1 elsewhere.
+  ///
+  /// `SCDisplay.width` and `SCWindow.frame` are POINTS while
+  /// `SCStreamConfiguration.width` is PIXELS, so a stream capped at scale 1
+  /// throws away half of a Retina display's resolution in each direction.
+  /// That ceiling costs nothing while a viewer is watching a whole screen —
+  /// it asks for less than the points anyway — and everything once it zooms
+  /// in, which is the case the crop exists for.
+  ///
+  /// Read ONCE, on the main thread, and carried into the capture: `NSScreen`
+  /// is main-thread AppKit, and every caller that wants this number is
+  /// inside an `SCShareableContent` completion on a background queue.
+  fileprivate static func backingScales() -> [CGDirectDisplayID: CGFloat] {
+    var scales: [CGDirectDisplayID: CGFloat] = [:]
+    for screen in NSScreen.screens {
+      guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]
+        as? CGDirectDisplayID
+      else { continue }
+      scales[id] = screen.backingScaleFactor
+    }
+    return scales
   }
 
   // MARK: - SCStreamOutput
@@ -774,7 +966,10 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
       let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
     else { return }
 
-    let image = CIImage(cvPixelBuffer: pixelBuffer)
+    // Cropped by the stream or cropped here, never both — see [begin].
+    let (image, applied) = streamCrops
+      ? (CIImage(cvPixelBuffer: pixelBuffer), crop)
+      : Self.cropped(CIImage(cvPixelBuffer: pixelBuffer), to: crop)
     guard let jpeg = Self.jpeg(from: image, quality: quality) else { return }
 
     sequence += 1
@@ -783,6 +978,10 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
       width: Int(image.extent.width),
       height: Int(image.extent.height),
       sequence: sequence,
+      // What was CROPPED, never what was asked for: the two part company on
+      // a degenerate frame, and a whole picture stamped as a corner of one
+      // is drawn by the viewer as a small wrong tile floating in the pane.
+      crop: applied,
       jpeg: jpeg)
 
     inFlight += 1
@@ -793,6 +992,33 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
         self.inFlight = max(0, self.inFlight - 1)
       }
     }
+  }
+
+  /// The region of [image] a viewer asked for, moved back to the origin.
+  ///
+  /// The translation is not cosmetic: a `CIImage` keeps the offset of what
+  /// it was cropped from, and `jpegRepresentation` renders the extent it is
+  /// given — a cropped image left where it lay encodes as the right size
+  /// with the picture pushed out of it.
+  ///
+  /// [rect] has a top-left origin, as the wire and every UI on both sides of
+  /// it do; CoreImage's is bottom-left, hence the flip.
+  fileprivate static func cropped(_ image: CIImage, to rect: CGRect?) -> (CIImage, CGRect?) {
+    guard let rect = rect else { return (image, nil) }
+    let extent = image.extent
+    guard extent.width > 1, extent.height > 1 else { return (image, nil) }
+    let region = CGRect(
+      x: extent.minX + rect.minX * extent.width,
+      y: extent.minY + (1.0 - rect.minY - rect.height) * extent.height,
+      width: rect.width * extent.width,
+      height: rect.height * extent.height
+    ).integral.intersection(extent)
+    guard !region.isEmpty else { return (image, nil) }
+    return (
+      image.cropped(to: region).transformed(
+        by: CGAffineTransform(translationX: -region.minX, y: -region.minY)),
+      rect
+    )
   }
 
   /// Shared by the streaming path and the picker's thumbnails, so both
@@ -814,11 +1040,16 @@ private final class ScreenCaptureSession: NSObject, SCStreamOutput, SCStreamDele
   /// orders frames. Kept in step with ScreenFrame in
   /// packages/halo_core/lib/src/peer/peer_screen.dart.
   private static func wireFrame(
-    sourceId: String, width: Int, height: Int, sequence: Int, jpeg: Data
+    sourceId: String, width: Int, height: Int, sequence: Int, crop: CGRect?, jpeg: Data
   ) -> Data {
-    let header: [String: Any] = [
+    var header: [String: Any] = [
       "src": sourceId, "w": width, "h": height, "seq": sequence, "fmt": "jpeg",
     ]
+    // Which region this frame shows, so a viewer that has panned since it was
+    // captured draws it where it belongs rather than over what it now wants.
+    if let crop = crop {
+      header["crop"] = [crop.minX, crop.minY, crop.width, crop.height]
+    }
     let headerData =
       (try? JSONSerialization.data(withJSONObject: header)) ?? Data("{}".utf8)
     var out = Data(capacity: 3 + headerData.count + jpeg.count)

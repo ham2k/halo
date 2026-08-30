@@ -43,6 +43,21 @@ const String remoteScreenTargetKey = 'target';
 /// undeclared zoom would outlive the pane that set it and be inherited by
 /// whatever is placed in that slot next.
 const String remoteScreenZoomKey = 'zoom';
+
+/// How many pixels across this pane may ask a producer to spend on it.
+///
+/// Per PANE rather than per device: what a picture is worth costs the far
+/// device's encoder and this one's link, and an operator watching a rig's
+/// display in a small pane and a whole desktop in a large one is making two
+/// different bargains. Zooming in spends the budget on a smaller region
+/// rather than raising it, so this is a bandwidth choice, not a zoom one.
+const String remoteScreenDetailKey = 'detail';
+
+/// The budgets offered, and the one a pane that has never been told gets —
+/// which is what every pane asked for unconditionally before there was a
+/// choice.
+const List<int> remoteScreenDetailChoices = [1280, 1920, 2560];
+const int remoteScreenDetailDefault = 1280;
 const String remoteScreenPanXKey = 'panX';
 const String remoteScreenPanYKey = 'panY';
 
@@ -104,6 +119,19 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
   /// means owning its disposal too.
   ui.Image? _image;
 
+  /// Which part of the source [_image] shows — null for all of it. Read from
+  /// the frame rather than from what this pane last ASKED for: the two
+  /// disagree for as long as it takes the far device to restart its capture,
+  /// and drawing a frame in the rect it was captured for is what keeps the
+  /// picture where it belongs across that gap.
+  PeerScreenCrop? _imageCrop;
+
+  /// The source's own proportions, in its own pixels, which a cropped frame
+  /// does not carry directly. Held so the framing survives a change of
+  /// terms: layout is done in source space, and a pane that measured the
+  /// crop instead would re-fit the picture every time the operator zoomed.
+  Size? _sourceSize;
+
   /// The sequence number of the decode most recently STARTED. A decode whose
   /// number no longer matches lost a race to a newer frame and throws its
   /// result away — which is right for a live view, and does not depend on
@@ -124,6 +152,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
 
   double _zoom = 1.0;
   Offset _pan = Offset.zero;
+  int _detail = remoteScreenDetailDefault;
 
   /// The request count this pane has already acted on — see
   /// [PeerScreenViews.requestAdjust].
@@ -151,6 +180,10 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     // Unconditional: this pane's interest ends with it, and the far device
     // stops capturing once the last pane watching a source lets go.
     widget.views.unsubscribe(widget.panelId);
+    // Here and not in `unsubscribe`, which every hide edge calls: what this
+    // pane was looking at outlives a dock tab switch, exactly as its zoom
+    // and pan do.
+    widget.views.forgetDemand(widget.panelId);
     _image?.dispose();
     _image = null;
     super.dispose();
@@ -184,6 +217,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     }
     if (old.panelId != widget.panelId) {
       old.views.unsubscribe(old.panelId);
+      old.views.forgetDemand(old.panelId);
       _subscribedTo = null;
       _decodingSeq = null;
       _configRevision = widget.panels.configRevision(widget.panelId);
@@ -233,9 +267,16 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
         next.image.dispose();
         return;
       }
+      final crop = frame.crop;
+      final measured = Size(
+        next.image.width / (crop?.width ?? 1.0),
+        next.image.height / (crop?.height ?? 1.0),
+      );
       setState(() {
         _image?.dispose();
         _image = next.image;
+        _imageCrop = crop;
+        _sourceSize = _steadySize(measured);
       });
     } catch (_) {
       // One frame that will not decode is one frame. The pane keeps what it
@@ -250,13 +291,27 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     if (panel == null) return;
     final config = await widget.panels.configFor(panel);
     if (!mounted) return;
+    final was = _target;
     setState(() {
       _config = config;
+      if (_target != was) {
+        // A pane pointed somewhere else keeps nothing of where it was. The
+        // last frame is a picture of another screen, and drawn in the crop
+        // rect it arrived with it is a small tile of one floating in the
+        // pane until the first new frame lands.
+        _image?.dispose();
+        _image = null;
+        _imageCrop = null;
+        _sourceSize = null;
+        _decodingSeq = null;
+      }
       _zoom = ((config[remoteScreenZoomKey] as num?)?.toDouble() ?? 1.0).clamp(_minZoom, _maxZoom);
       _pan = Offset(
         (config[remoteScreenPanXKey] as num?)?.toDouble() ?? 0,
         (config[remoteScreenPanYKey] as num?)?.toDouble() ?? 0,
       );
+      _detail = ((config[remoteScreenDetailKey] as num?)?.toInt() ?? remoteScreenDetailDefault)
+          .clamp(320, 3840);
     });
     _syncSubscription();
     _publishTitle();
@@ -391,8 +446,12 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     return LayoutBuilder(builder: (context, constraints) {
       final paneWidth = constraints.maxWidth;
       final paneHeight = constraints.maxHeight;
-      final imageWidth = image.width.toDouble();
-      final imageHeight = image.height.toDouble();
+      // The SOURCE's size, not the frame's: under a crop the frame is a
+      // piece of it, and fitting the pane to that piece would jump the
+      // framing every time the terms changed.
+      final source = _sourceSize ?? Size(image.width.toDouble(), image.height.toDouble());
+      final imageWidth = source.width;
+      final imageHeight = source.height;
 
       // 1.0 IS "contain" — the scale below is a multiplier on top of what
       // BoxFit.contain already did, so a fresh pane needs no arithmetic and
@@ -415,12 +474,51 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
         _pan.dy.clamp(-maxPanY, maxPanY),
       );
 
+      // What this pane is actually looking at, told to the producer so its
+      // pixel budget is spent there. Reported from the layout because this
+      // is where the pane's size, the zoom and the pan are all known at
+      // once; `setDemand` is a no-op for a demand that has not changed, and
+      // a rebuild is not a change.
+      widget.views.setDemand(
+        widget.panelId,
+        _demandFor(
+          paneWidth: paneWidth,
+          paneHeight: paneHeight,
+          shownWidth: shownWidth,
+          shownHeight: shownHeight,
+          pan: pan,
+          pixelRatio: MediaQuery.devicePixelRatioOf(context),
+        ),
+      );
+
+      final crop = _imageCrop;
       final picture = ClipRect(
-        child: Transform.translate(
-          offset: pan,
-          child: Transform.scale(
-            scale: _zoom,
-            child: RawImage(image: image, fit: BoxFit.contain),
+        child: Center(
+          child: Transform.translate(
+            offset: pan,
+            child: Transform.scale(
+              scale: _zoom,
+              // A box the size of the whole SOURCE, with the frame drawn in
+              // its own rect inside it. At full-source terms that is the
+              // whole box and the result is what BoxFit.contain drew before
+              // any of this; under a crop it is what keeps a frame captured
+              // for where the pane WAS from sliding over where it is now.
+              child: SizedBox(
+                width: imageWidth * contain,
+                height: imageHeight * contain,
+                child: crop == null
+                    ? RawImage(image: image, fit: BoxFit.fill)
+                    : Stack(children: [
+                        Positioned(
+                          left: crop.left * imageWidth * contain,
+                          top: crop.top * imageHeight * contain,
+                          width: crop.width * imageWidth * contain,
+                          height: crop.height * imageHeight * contain,
+                          child: RawImage(image: image, fit: BoxFit.fill),
+                        ),
+                      ]),
+              ),
+            ),
           ),
         ),
       );
@@ -527,6 +625,105 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
         ],
       );
     });
+  }
+
+  /// The measured source size, or the one already held when the two differ
+  /// by less than a pixel or two.
+  ///
+  /// Both ends round: the producer rounds its configuration, then rounds the
+  /// cropped region to whole pixels, so dividing a frame's size back by its
+  /// crop lands a hair either side of the truth and moves with every change
+  /// of terms. That feeds the layout, which feeds the demand, which can
+  /// cross a quantization step and ask for terms again — a capture stop and
+  /// start on the far device, every few hundred milliseconds, with the
+  /// resulting frame loss forgiven each time as a fresh stream.
+  Size _steadySize(Size measured) {
+    final held = _sourceSize;
+    if (held == null) return measured;
+    const slack = 2.0;
+    final same = (held.width - measured.width).abs() <= slack &&
+        (held.height - measured.height).abs() <= slack;
+    return same ? held : measured;
+  }
+
+  /// The crop grid, in fractions of the source. Coarse on purpose: every
+  /// change of terms restarts the far device's capture, and a rect taken
+  /// straight from the layout would move on a pixel of resize.
+  static const double _cropSteps = 32;
+
+  /// Rounded outwards onto [_cropSteps], which is also where the margin
+  /// around what is strictly visible comes from — up to a step of it on
+  /// each side, so small movements land inside the rect already being
+  /// captured instead of asking for a new one.
+  static double _snapOut(double fraction, {required bool up}) {
+    final stepped = up ? (fraction * _cropSteps).ceil() : (fraction * _cropSteps).floor();
+    return (stepped / _cropSteps).clamp(0.0, 1.0);
+  }
+
+  /// What to ask the producer for, given how the picture is framed right now.
+  ///
+  /// The pane asks for pixels across WHAT IT CAN SEE. Zooming in therefore
+  /// buys detail rather than bandwidth: the same frame budget lands on a
+  /// smaller region of the source, which is the whole of why a zoomed pane
+  /// is sharp rather than merely bigger.
+  PeerScreenDemand _demandFor({
+    required double paneWidth,
+    required double paneHeight,
+    required double shownWidth,
+    required double shownHeight,
+    required Offset pan,
+    required double pixelRatio,
+  }) {
+    if (shownWidth <= 0 || shownHeight <= 0) {
+      // Quantized like every other answer, and never zero: a pane collapsed
+      // to nothing — a dock split dragged shut, a first layout pass —
+      // otherwise asks for a 160-px capture, and the merge takes the widest
+      // ask, so ONE collapsed pane would drop the stream every other watcher
+      // of that source is looking at.
+      final width = _quantizeWidth(paneWidth * pixelRatio);
+      return (maxWidth: width, fullWidth: width, crop: null);
+    }
+    final visibleW = (paneWidth / shownWidth).clamp(0.0, 1.0);
+    final visibleH = (paneHeight / shownHeight).clamp(0.0, 1.0);
+    // Where the pane's centre falls on the source: the pan slides the
+    // picture, so what is under the middle of the pane moves the other way.
+    final centreX = 0.5 - pan.dx / shownWidth;
+    final centreY = 0.5 - pan.dy / shownHeight;
+
+    final left = _snapOut(centreX - visibleW / 2, up: false);
+    final top = _snapOut(centreY - visibleH / 2, up: false);
+    final right = _snapOut(centreX + visibleW / 2, up: true);
+    final bottom = _snapOut(centreY + visibleH / 2, up: true);
+
+    // Never while framing: the operator is panning and zooming, so the
+    // region wanted changes with every gesture, and each change would stop
+    // and restart the far device's capture. The whole picture is also what
+    // they need in front of them to frame it.
+    final crop = (_adjusting || (right - left >= 1.0 && bottom - top >= 1.0))
+        ? null
+        : PeerScreenCrop.clamped(
+            left: left, top: top, width: right - left, height: bottom - top);
+
+    final across = (crop?.width ?? 1.0) * shownWidth * pixelRatio;
+    return (
+      maxWidth: _quantizeWidth(across),
+      // What the same picture costs from a producer that cannot crop: the
+      // whole source at the resolution this pane's slice of it needs,
+      // which its budget then caps. That cap is the point — a pane does not
+      // spend four times its budget because the other device is on an
+      // older build; it settles for the picture it used to get.
+      fullWidth: _quantizeWidth(shownWidth * pixelRatio),
+      crop: crop,
+    );
+  }
+
+  /// Widths asked for in steps, for the reason the crop is: a pane resized
+  /// by a pixel must not cost the far device a capture restart. Rounded UP,
+  /// so a step never asks for less than the pane can show.
+  int _quantizeWidth(double pixels) {
+    const step = 160;
+    if (!pixels.isFinite || pixels <= 0) return step * 2;
+    return (((pixels / step).ceil()) * step).clamp(320, _detail);
   }
 
   /// Applies a new zoom, snapping to the two framings worth landing on

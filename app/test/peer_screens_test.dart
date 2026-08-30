@@ -89,14 +89,28 @@ class _FakeCapture extends ScreenCaptureService {
   /// where the old capture session is still delivering.
   Completer<void>? startGate;
 
+  /// The crop and the quality each capture was started at, in the order the
+  /// starts happened — what a test asking whether a viewer's terms actually
+  /// reached the OS reads.
+  final List<PeerScreenCrop?> startedCrops = [];
+  final List<double> startedQualities = [];
+
   @override
-  Future<void> start(String sourceId, {int maxWidth = 1280, int fps = 10, double quality = 0.6}) async {
+  Future<void> start(
+    String sourceId, {
+    int maxWidth = 1280,
+    int fps = 10,
+    double quality = 0.6,
+    PeerScreenCrop? crop,
+  }) async {
     if (failStartWith case final message?) {
       throw ScreenCaptureException(message, code: 'capture');
     }
     if (startGate case final gate?) await gate.future;
     started.add(sourceId);
     startedWidths.add(maxWidth);
+    startedCrops.add(crop);
+    startedQualities.add(quality);
   }
 
   /// The OS ending a stream on its own — the shared window closed, or the
@@ -474,6 +488,202 @@ void main() {
     expect(shack.capture.startedWidths.last, 480,
         reason: 'the surviving watcher only ever asked for 480');
     expect(shack.screens.isWatched('display:1'), isTrue);
+  });
+
+  test('a zoomed pane is served its own corner, at the same cost', () async {
+    // The whole point of the crop: the pane asks for the pixels it can
+    // SHOW, so zooming in spends the same frame budget on a smaller region
+    // instead of asking for a bigger frame. Without it, zoom is an upscale
+    // of an already-downscaled JPEG and no amount of link is any help.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('capturing', () => shack.capture.started.isNotEmpty);
+    expect(shack.capture.startedCrops.last, isNull, reason: 'a pane at rest wants all of it');
+
+    tablet.views.setDemand('remoteScreen#1', (
+      maxWidth: 1280,
+      fullWidth: 1280,
+      crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25),
+    ));
+    await waitFor('the crop reaches the OS', () => shack.capture.startedCrops.last != null);
+    expect(shack.capture.startedCrops.last!.left, 0.5);
+    expect(shack.capture.startedWidths.last, 1280,
+        reason: 'the same pixels, spent on a quarter of the picture');
+    expect(shack.capture.startedQualities.last, greaterThan(0.6),
+        reason: 'a small picture can afford a better encode, and zoom shows artefacts');
+  });
+
+  test('a pane repeating what it already asked for costs nothing', () async {
+    // Every change of terms stops and restarts the far device's capture,
+    // dropping frames for everyone watching. A demand recomputed on each
+    // layout pass — which is where it comes from — must not be a change.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('capturing', () => shack.capture.started.isNotEmpty);
+    final starts = shack.capture.started.length;
+
+    for (var i = 0; i < 5; i++) {
+      tablet.views.setDemand('remoteScreen#1', (maxWidth: 1280, fullWidth: 1280, crop: null));
+    }
+    await Future<void>.delayed(PeerScreenViews.retermDelay * 3);
+    expect(shack.capture.started.length, starts,
+        reason: 'the terms never actually changed');
+  });
+
+  test('two viewers on one source are served a region covering both', () async {
+    // A crop is not merged like a size: taking the smaller rect would show
+    // one of the two a picture of somewhere else entirely. The zoomed-in
+    // viewer loses sharpness, which is the only part a second watcher can
+    // take away.
+    await paired();
+    await sharing([_display.id]);
+    await shack.screens.addWatcher(
+      'left',
+      const PeerScreenSubscription(
+        sourceId: 'display:1',
+        maxWidth: 1280,
+        fps: 10,
+        crop: PeerScreenCrop(left: 0, top: 0, width: 0.25, height: 0.25),
+      ),
+    );
+    expect(shack.capture.startedCrops.last!.width, 0.25);
+
+    await shack.screens.addWatcher(
+      'right',
+      const PeerScreenSubscription(
+        sourceId: 'display:1',
+        maxWidth: 1280,
+        fps: 10,
+        crop: PeerScreenCrop(left: 0.75, top: 0.75, width: 0.25, height: 0.25),
+      ),
+    );
+    expect(shack.capture.startedCrops.last, isNull,
+        reason: 'opposite corners span the whole source');
+
+    await shack.screens.removeWatcher('right', 'display:1');
+    expect(shack.capture.startedCrops.last!.width, 0.25,
+        reason: 'the surviving watcher gets its own corner back');
+  });
+
+  test('a peer that cannot crop is asked for the whole picture instead', () async {
+    // Its grant says nothing about crops, so it is a build that ignores the
+    // rect and serves the width asked for across the WHOLE source. That
+    // width is a budget for a quarter of the screen — sent as it stands, a
+    // zoomed pane comes back blurrier than it was before cropping existed.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('capturing', () => shack.capture.started.isNotEmpty);
+    // Undo what the real grant established, so this stands for a producer
+    // from a build that predates the crop.
+    tablet.views.onGrant('device-b',
+        const PeerScreenGrant(sourceId: 'display:1', ticket: 'x', port: 1, paced: true));
+
+    tablet.views.setDemand('remoteScreen#1', (
+      maxWidth: 640,
+      // What this pane says the same picture is worth from a producer that
+      // cannot crop — its own budget, not four times it.
+      fullWidth: 1920,
+      crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25),
+    ));
+    await waitFor('the terms are converted', () => shack.capture.startedWidths.last != 1280);
+    expect(shack.capture.startedCrops.last, isNull, reason: 'it would be ignored anyway');
+    expect(shack.capture.startedWidths.last, 1920,
+        reason: "the pane's own answer for a peer that cannot crop");
+  });
+
+  test('a pane hidden and shown again does not re-negotiate from scratch', () async {
+    // Every hide edge unsubscribes — a dock tab switched away from, the app
+    // backgrounded. A demand dropped there costs two capture restarts on the
+    // way back: the whole source at the default size, then the pane's own
+    // crop 400ms later.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('capturing', () => shack.capture.started.isNotEmpty);
+    tablet.views.setDemand('remoteScreen#1', (
+      maxWidth: 1280,
+      fullWidth: 1280,
+      crop: const PeerScreenCrop(left: 0.25, top: 0.25, width: 0.5, height: 0.5),
+    ));
+    await waitFor('the crop reaches the OS', () => shack.capture.startedCrops.last != null);
+
+    tablet.views.unsubscribe('remoteScreen#1');
+    await waitFor('the capture stops', () => shack.capture.stopCalls.isNotEmpty);
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('capturing again', () => shack.capture.startedCrops.length > 2);
+    expect(shack.capture.startedCrops.last?.width, 0.5,
+        reason: 'the pane is looking at what it was looking at');
+  });
+
+  test('a second pane does not cost the zoomed one its detail', () async {
+    // The union of a crop and the whole source IS the whole source, and the
+    // width that came with the crop was a budget for a quarter of the
+    // picture. Spent across all of it, the pane that was zoomed in loses
+    // three quarters of the detail it had a second earlier — because
+    // somebody opened a second pane.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('capturing', () => shack.capture.started.isNotEmpty);
+    tablet.views.setDemand('remoteScreen#1', (
+      maxWidth: 1280,
+      fullWidth: 2560,
+      crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25),
+    ));
+    await waitFor('zoomed in', () => shack.capture.startedCrops.last != null);
+
+    tablet.views.subscribe('remoteScreen#2', target);
+    tablet.views.setDemand('remoteScreen#2', (maxWidth: 1280, fullWidth: 1280, crop: null));
+    await waitFor('the crop is given up', () => shack.capture.startedCrops.last == null);
+    expect(shack.capture.startedWidths.last, 2560,
+        reason: 'the zoomed pane still needs that many pixels across the screen');
+    expect(shack.capture.startedQualities.last, 0.6,
+        reason: 'a whole screen is not owed the quality a small picture earns');
+  });
+
+  test('a pane pointed somewhere else takes no crop with it', () async {
+    // A crop says which part of THAT picture the pane could see. Carried to
+    // another source it asks the far device to capture the top-left quarter
+    // of something the operator never framed, and the first frame arrives as
+    // a quarter-size tile in the corner of the pane.
+    await paired();
+    await sharing([_display.id, _window.id]);
+    await waitFor('offered',
+        () => (tablet.views.offers['device-b']?.length ?? 0) > 1);
+
+    const first = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', first);
+    await waitFor('capturing', () => shack.capture.started.isNotEmpty);
+    tablet.views.setDemand('remoteScreen#1', (
+      maxWidth: 1280,
+      fullWidth: 2560,
+      crop: const PeerScreenCrop(left: 0, top: 0, width: 0.25, height: 0.25),
+    ));
+    await waitFor('zoomed in', () => shack.capture.startedCrops.last != null);
+
+    tablet.views.subscribe('remoteScreen#1', PeerScreenTarget('device-b', _window.id));
+    await waitFor('the other source starts',
+        () => shack.capture.started.last == _window.id);
+    expect(shack.capture.startedCrops.last, isNull,
+        reason: 'nothing has framed this picture yet');
   });
 
   test('a dropped media link recovers on its own', () async {

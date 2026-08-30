@@ -1890,6 +1890,15 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           {'type': 'field', 'key': remoteScreenZoomKey, 'fieldType': 'number', 'label': '', 'value': 1.0},
           {'type': 'field', 'key': remoteScreenPanXKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
           {'type': 'field', 'key': remoteScreenPanYKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
+          // Declared for the same reason, and rendered by the same widget:
+          // how much of the link this pane may spend on its picture.
+          {
+            'type': 'field',
+            'key': remoteScreenDetailKey,
+            'fieldType': 'number',
+            'label': '',
+            'value': remoteScreenDetailDefault,
+          },
         ],
       ));
     }
