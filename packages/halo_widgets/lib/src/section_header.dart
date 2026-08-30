@@ -29,7 +29,10 @@ class SectionHeader extends StatelessWidget {
 
   const SectionHeader(this.title, {super.key, this.subtitle, this.color});
 
-  static TextStyle _titleStyle(BuildContext context, Color? color) =>
+  /// The band title's face, public so a hand-built band that cannot be a
+  /// [SectionHeader] — one carrying its own controls and geometry — still
+  /// takes its title from here rather than restating it and drifting.
+  static TextStyle titleStyle(BuildContext context, {Color? color}) =>
       Theme.of(context).textTheme.titleSmall?.copyWith(
             fontFamily: 'RobotoSlab',
             fontWeight: FontWeight.w900,
@@ -53,7 +56,7 @@ class SectionHeader extends StatelessWidget {
   static double heightFor(BuildContext context, String title, {required double width}) {
     final padding = _padding(context).resolve(Directionality.of(context));
     final painter = TextPainter(
-      text: TextSpan(text: title, style: _titleStyle(context, null)),
+      text: TextSpan(text: title, style: titleStyle(context)),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout(maxWidth: (width - padding.horizontal).clamp(0.0, double.infinity));
@@ -106,7 +109,7 @@ class SectionHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: _titleStyle(context, color)),
+          Text(title, style: titleStyle(context, color: color)),
           if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
         ],
       ),

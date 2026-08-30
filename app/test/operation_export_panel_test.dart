@@ -30,7 +30,6 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/export_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
-import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/operation/operation_export_panel.dart';
 
 void main() {
@@ -170,6 +169,114 @@ void main() {
       expect(exports.generated, isEmpty);
     });
 
+    // The sync state is a report the operator did not open this pane for.
+    // Heading the list it pushed the formats — the reason they came — below
+    // the fold; riding at the end of it, a long list of formats buried it.
+    testWidgets('the sync report is pinned under the list, not scrolled with it', (tester) async {
+      await pump(tester);
+
+      final report = find.text('Operation has unsynced changes');
+      expect(find.descendant(of: find.byType(CustomScrollView), matching: report), findsNothing,
+          reason: 'inside the list it scrolls away, and the operator has to go find it');
+      expect(tester.getCenter(report).dy, greaterThan(tester.getCenter(find.text('POTA US-1234')).dy));
+      expect(tester.getCenter(report).dy, lessThan(tester.getCenter(find.text('Done')).dy),
+          reason: 'under the list, over the way out');
+    });
+
+    // Two rows made a routine "everything is synced" read as two separate
+    // reports to check, and the second appeared only when the operation had
+    // markers — moving nothing else on screen only sometimes.
+    testWidgets('event markers are counted in the sync row, not a row of their own', (tester) async {
+      final qsos = QsosRepository(db);
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 1000);
+      await pump(tester);
+
+      expect(find.textContaining('1 of 1 QSOs pending sync · 1 of 1 event markers pending'), findsOneWidget);
+      expect(find.byIcon(MdiIcons.flag), findsNothing, reason: 'the markers had their own tile and its own icon');
+    });
+
+    // On a phone the two Android verbs take nearly the whole band, and a Row
+    // would hand the count whatever was left — a few characters a line, or
+    // nothing. The band stacks instead: an overflow is a framework error, so
+    // laying out narrow is half the assertion, and the count's own geometry
+    // is the other half.
+    testWidgets('the batch band stacks rather than squeezing the count', (tester) async {
+      final qsos = QsosRepository(db);
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await pump(tester);
+      final oneLine = tester.getSize(find.text('1 QSO in this operation')).height;
+
+      tester.view.physicalSize = const Size(360, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Save 1 file'), findsOneWidget);
+      expect(find.text('Share 1 file'), findsOneWidget);
+      final count = find.text('1 QSO in this operation');
+      expect(tester.getSize(count).height, oneLine,
+          reason: 'the count keeps its line instead of wrapping into a column of characters');
+      expect(tester.getTopLeft(count).dy, lessThan(tester.getTopLeft(find.text('Save 1 file')).dy),
+          reason: 'the buttons took their own row under it');
+    });
+
+    // "Save 3 files" says nothing about the log until the operator has read
+    // the list; the count is what makes it mean something up front.
+    testWidgets('the batch band names what it acts on', (tester) async {
+      final qsos = QsosRepository(db);
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'K2ABC'},
+      });
+      // A marker is not a contact, and must not be counted as one.
+      await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 1000);
+      await pump(tester);
+
+      expect(find.text('2 QSOs in this operation'), findsOneWidget);
+      expect(
+        tester.getCenter(find.text('2 QSOs in this operation')).dx,
+        lessThan(tester.getCenter(find.text('Save 1 file')).dx),
+        reason: 'the count leads the band, the button closes it',
+      );
+    });
+
+    // A bare left-aligned button in the one-callsign panel and a banded
+    // right-aligned one in the many-callsign panel read as different
+    // controls; they are the same control over different lists.
+    testWidgets('the batch button sits in a band, right-aligned', (tester) async {
+      await pump(tester);
+
+      final button = find.widgetWithText(FilledButton, 'Save 1 file');
+      // The Wrap, not the button: Android puts Share beside Save, so it is
+      // the pair's trailing edge that is aligned, not the first button's.
+      final buttons = find.ancestor(of: button, matching: find.byType(Wrap)).first;
+      final band = find.ancestor(of: buttons, matching: find.byType(Container)).first;
+
+      expect(tester.widget<Container>(band).color, isNotNull, reason: 'a tinted band, not bare list ground');
+      expect(
+        tester.widget<Container>(band).color,
+        tester.widget<Container>(find.ancestor(
+          of: find.text('Operation has unsynced changes'),
+          matching: find.byType(Container),
+        ).first).color,
+        reason: 'the batch and the sync report are the two ends of one list, on one band',
+      );
+      expect(tester.getSize(band).width, 1000, reason: 'full-bleed, the way the group headers band');
+
+      // One unit clear of the pane's edge — INSIDE the row controls' own
+      // trailing edge, deliberately: a scrollbar rides there, and a button
+      // under it is one the operator has to aim around.
+      final panelRight = tester.getBottomRight(find.byType(OperationExportPanel)).dx;
+      expect(tester.getTopRight(buttons).dx, panelRight - Space.xl);
+      expect(tester.getTopRight(buttons).dx,
+          lessThan(tester.getTopRight(find.byType(Checkbox).first).dx));
+    });
+
     // The batch action moved out of the footer and up next to the ticks it
     // counts; the footer is now only the way out.
     testWidgets('the batch button sits above the list, and the footer is just Done', (tester) async {
@@ -203,9 +310,7 @@ void main() {
       expect(exports.generated.single.map((o) => o['exportType']), ['adif']);
       expect(exports.sharedFiles, hasLength(1));
 
-      // The success message's dismiss timer is still pending; left unflushed,
-      // the framework fails the test at teardown.
-      await tester.pump(StatusBarService.completedDismissDelay);
+      await readAndDismissResult(tester);
     });
 
     // Regression: with the button in CheckboxListTile's `secondary` slot, that
@@ -263,11 +368,9 @@ void main() {
 
       expect(exports.generated.single.map((o) => o['exportType']), ['pota-adif:US-1234']);
 
-      // Asserted, not just flushed: a bare pump passes whether or not the
-      // Save arm schedules its dismiss — this is what fails if it stops.
-      await tester.pump(StatusBarService.completedDismissDelay);
-      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty,
-          reason: 'the Save success message must dismiss itself');
+      // The whole point of the dialog over the old status-bar line: it names
+      // WHERE the files went, and the operator cannot miss it.
+      expect(await readAndDismissResult(tester), contains('Exported 1 file to /tmp/exports'));
     });
 
     testWidgets('flipping the filename setting relists, and keeps the ticks', (tester) async {
@@ -361,6 +464,65 @@ void main() {
       expect(find.text('N0CALL'), findsNothing);
     });
 
+    // The failure branch is the one an operator meets on a bad day, and no
+    // other surface reports it any more: the status-bar line it replaced is
+    // gone, so a dialog that fails to appear leaves them with nothing.
+    testWidgets('a failed export is reported, as a failure', (tester) async {
+      exports.generateThrows = ExportException('the runtime is not ready');
+      await pump(tester);
+
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pumpAndSettle();
+
+      final body = await readAndDismissResult(tester);
+      expect(body, contains('Export failed'));
+      expect(body, contains('the runtime is not ready'));
+      expect(body, isNot(contains('Exported')), reason: 'a failure must not read as a success');
+    });
+
+    // The save counterpart of the dismissed share sheet: a cancelled picker
+    // is the operator's own choice, not an outcome to announce.
+    testWidgets('a cancelled save picker is not reported at all', (tester) async {
+      exports.saveSucceeds = false;
+      await pump(tester);
+
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HaloDialog), findsNothing);
+    });
+
+    // Android's SAF never says WHERE the operator put anything, so the save
+    // reports the names it got back — and "to <those names>" would tell the
+    // operator their files went to their own filenames.
+    testWidgets('an Android save names the files, it does not call them a place', (tester) async {
+      exports.saveNamesFiles = true;
+      await pump(tester);
+
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pumpAndSettle();
+
+      final body = await readAndDismissResult(tester);
+      expect(body, contains('Exported 1 file: /tmp/exports'));
+      expect(body, isNot(contains('file to ')), reason: 'a list of names is not a destination');
+    });
+
+    // Android asks per file and takes a cancel partway, so the count the
+    // dialog states is the SAVE's, never the list's — "2 files" over one name
+    // sends the operator looking for one that was never written.
+    testWidgets('a partial save reports what landed, not what was asked for', (tester) async {
+      exports.saveCount = 1;
+      await pump(tester);
+
+      // Tick the ADIF export too, so two were asked for and one landed.
+      await tester.tap(find.byType(Checkbox).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save 2 files'));
+      await tester.pumpAndSettle();
+
+      expect(await readAndDismissResult(tester), contains('Exported 1 file to /tmp/exports'));
+    });
+
     // Reporting unconditionally announced a completed share for a sheet the
     // operator dismissed — worse than the silence it replaced, because it
     // asserts an outcome that didn't happen.
@@ -372,7 +534,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(exports.sharedFiles, hasLength(1), reason: 'the share sheet was opened');
-      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty);
+      expect(find.byType(HaloDialog), findsNothing);
     });
 
     testWidgets('a completed share is reported', (tester) async {
@@ -381,15 +543,10 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
       await tester.pumpAndSettle();
 
-      final message = services.statusBar.items.firstWhere((i) => i.key == 'export:status');
-      expect(message.text, contains('Shared 1 file'));
-
       expect(exports.sharedOrigin, isNotNull);
       expect(exports.sharedOrigin!.isEmpty, isFalse);
 
-      await tester.pump(StatusBarService.completedDismissDelay);
-      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty,
-          reason: 'a success is a result to notice, not a message to keep');
+      expect(await readAndDismissResult(tester), contains('Shared 1 file'));
     });
 
     // With developer mode on, the QSON dump used to arrive untagged and form
@@ -402,6 +559,14 @@ void main() {
       await pump(tester);
 
       expect(find.text('Developer Mode: QSON Export'), findsOneWidget);
+
+      // It belongs to no activity, so it declares no colour and was the one
+      // bare glyph in a column of circled ones.
+      final circle = tester.widget<CircleAvatar>(find.ancestor(
+        of: find.byIcon(MdiIcons.briefcaseUpload),
+        matching: find.byType(CircleAvatar),
+      ));
+      expect(circle.backgroundColor, HaLoColors.light.devMode.withValues(alpha: 0.6));
       expect(find.text('N0CALL'), findsNothing, reason: 'still a single-station operation');
       expect(find.text('Save 1 file'), findsOneWidget, reason: 'the batch button stays at the top');
       expect(find.textContaining('combined'), findsNothing);
@@ -472,9 +637,7 @@ void main() {
       expect(exports.generated.single.single['stationCall'], 'W1AW',
           reason: "N0CALL's ticked export must not ride along");
 
-      await tester.pump(StatusBarService.completedDismissDelay);
-      expect(services.statusBar.items.where((i) => i.key == 'export:status'), isEmpty,
-          reason: 'the group Save success message must dismiss itself');
+      await readAndDismissResult(tester);
     });
 
     // Both calls offer the same hookKey/exportType pair, so a selection key
@@ -495,14 +658,92 @@ void main() {
 
     // "Save 8 files" sitting above the first callsign read as that callsign's
     // — so the whole-panel batch moved under the groups it spans, and says so.
-    testWidgets('the combined batch closes the list, below every callsign', (tester) async {
+    // The operator who came to export everything should not have to reach the
+    // end of the formats to find the button that does it.
+    testWidgets('the combined batch opens the list, above every callsign', (tester) async {
       await pump(tester);
 
       final combinedY = tester.getCenter(find.text('Save combined 2 files')).dy;
-      expect(combinedY, greaterThan(tester.getCenter(find.text('N0CALL')).dy));
-      expect(combinedY, greaterThan(tester.getCenter(find.text('W1AW')).dy));
-      expect(combinedY, greaterThan(tester.getCenter(find.text('Full ADIF Export').last).dy),
-          reason: 'below the last export row, not merely the last header');
+      expect(combinedY, lessThan(tester.getCenter(find.text('N0CALL')).dy));
+      expect(combinedY, lessThan(tester.getCenter(find.text('W1AW')).dy));
+      expect(combinedY, lessThan(tester.getCenter(find.text('Full ADIF Export').first).dy),
+          reason: 'above the first export row, not merely the first header');
+    });
+
+    // Three bands a shade apart read as three unrelated things rather than as
+    // the frame around one list.
+    testWidgets('the callsign bands and the batch band paint the same ground', (tester) async {
+      await pump(tester);
+
+      Color? bandUnder(Finder text) => tester
+          .widget<Container>(find.ancestor(of: text, matching: find.byType(Container)).first)
+          .color;
+
+      final callsignBand = bandUnder(find.text('N0CALL'));
+      expect(callsignBand, isNotNull);
+      // Opaque, not a tint laid over the surface: this band pins, and the
+      // rows scrolling underneath show straight through a translucent one.
+      expect(callsignBand!.a, 1.0);
+      expect(bandUnder(find.text('Save combined 2 files')), callsignBand);
+      expect(bandUnder(find.text('Operation has unsynced changes')), callsignBand);
+    });
+
+    // A Row lays a non-flex child out with unbounded width, so the callsign's
+    // ellipsis cannot make room for two counted labels — it gives way first
+    // and the fixed-height band overflows. The count alone is what fits: the
+    // icon already carries the verb.
+    testWidgets('a narrow band shows the count alone, and still names itself', (tester) async {
+      await pump(tester);
+      tester.view.physicalSize = const Size(360, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Save 1 file'), findsNothing, reason: 'the label is what did not fit');
+      expect(find.descendant(of: find.byType(FilledButton), matching: find.text('1')),
+          findsNWidgets(2), reason: 'one per callsign');
+      // No tooltips in this app, so the accessible name is the only name the
+      // button has — "1" tells a screen-reader user nothing.
+      expect(find.bySemanticsLabel('Save 1 file'), findsWidgets);
+      expect(find.text('N0CALL'), findsOneWidget, reason: 'the callsign kept its room');
+    });
+
+    // The pinned band declares its height before its child is laid out and
+    // the SizedBox clamps whatever comes back, so the constant and the
+    // button's own 40 floor are coupled with zero slack: a button theme that
+    // adds a pixel of padding clips the band instead of growing it, silently.
+    testWidgets('the pinned band is exactly as tall as what it carries', (tester) async {
+      await pump(tester);
+
+      final band = find.ancestor(of: find.text('N0CALL'), matching: find.byType(Container)).first;
+      final button = find.widgetWithText(FilledButton, 'Save 1 file').first;
+      expect(
+        tester.getSize(band).height,
+        tester.getSize(button).height + Space.lg * 2,
+        reason: 'the declared extent must be what the band actually needs',
+      );
+    });
+
+    // Every group offers the same formats under a different callsign, so a
+    // band that scrolls away leaves rows the operator cannot tell apart.
+    testWidgets('a callsign band pins while its own exports scroll under it', (tester) async {
+      await pump(tester);
+      // Short enough that the list actually scrolls.
+      tester.view.physicalSize = const Size(1100, 300);
+      await tester.pumpAndSettle();
+
+      final firstRow = find.text('Full ADIF Export').first;
+      final rowBefore = tester.getTopLeft(firstRow).dy;
+
+      // Past the band's own place in the list, but well short of the end of
+      // its group — where the NEXT callsign's band takes over and pushes it
+      // off, which is the other half of pinning and not what this asserts.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -100));
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(firstRow).dy, lessThanOrEqualTo(rowBefore - 100), reason: 'the rows moved');
+      expect(find.text('N0CALL'), findsOneWidget, reason: 'its band did not go with them');
+      final band = find.ancestor(of: find.text('N0CALL'), matching: find.byType(Container)).first;
+      expect(tester.getTopLeft(band).dy, closeTo(0, 0.5),
+          reason: 'the band is stuck to the top of the viewport');
     });
 
     testWidgets('the combined batch is right-aligned, like the group buttons', (tester) async {
@@ -557,7 +798,9 @@ class _MultiCallExportService extends ExportService {
   }
 
   @override
-  Future<String?> saveToDisk(List<Map<String, dynamic>> files) async => '/tmp/exports';
+  Future<({String location, int count, bool namesFiles})?> saveToDisk(
+          List<Map<String, dynamic>> files) async =>
+      (location: '/tmp/exports', count: files.length, namesFiles: false);
 
   @override
   Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async =>
@@ -578,6 +821,21 @@ class _ExtensionsWithControls extends ExtensionService {
 
   @override
   Future<void> start() async {}
+}
+
+/// The confirmation the panel raises after every completed export, read and
+/// dismissed. Scoped to the [HaloDialog]: the pane's own footer carries a
+/// Done too, and a bare `find.text('Done')` would match it and pass with no
+/// dialog on screen at all.
+Future<String> readAndDismissResult(WidgetTester tester) async {
+  final body = tester
+      .widgetList<Text>(find.descendant(of: find.byType(HaloDialog), matching: find.byType(Text)))
+      .map((t) => t.data ?? '')
+      .join(' | ');
+  await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Done')));
+  await tester.pumpAndSettle();
+  expect(find.byType(HaloDialog), findsNothing, reason: 'Done dismisses the confirmation');
+  return body;
 }
 
 /// Stands in for the real service, which a widget test cannot use: its option
@@ -646,6 +904,7 @@ class _FakeExportService extends ExportService {
           'exportType': 'devmode-qson',
           'stationCall': operation.stationCalls.first,
           'label': 'Developer Mode: QSON Export',
+          'icon': 'briefcase-upload',
           'filename': '2026-07-15 N0CALL abcd1234.qson',
           'selectedByDefault': false,
           'priority': -100,
@@ -659,16 +918,36 @@ class _FakeExportService extends ExportService {
     List<Map<String, dynamic>> selectedOptions,
   ) async {
     generated.add(selectedOptions);
+    if (generateThrows != null) throw generateThrows!;
     return [
       for (final option in selectedOptions)
         {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},
     ];
   }
 
+  /// Null stands for the operator cancelling the picker, and [saveCount] for
+  /// a save that landed fewer files than it was handed — Android's per-file
+  /// dialogs, cancelled partway.
+  bool saveSucceeds = true;
+  int? saveCount;
+
+  /// Thrown by [generateExports], for the failure the panel has to report.
+  Object? generateThrows;
+
+  /// True for the Android shape, where `location` is the list of names the
+  /// platform gave back rather than a place the files went.
+  bool saveNamesFiles = false;
+
   @override
-  Future<String?> saveToDisk(List<Map<String, dynamic>> files) async {
+  Future<({String location, int count, bool namesFiles})?> saveToDisk(
+      List<Map<String, dynamic>> files) async {
     savedFiles.addAll(files);
-    return '/tmp/exports';
+    if (!saveSucceeds) return null;
+    return (
+      location: '/tmp/exports',
+      count: saveCount ?? files.length,
+      namesFiles: saveNamesFiles,
+    );
   }
 
   /// What the share sheet answered. False stands for the operator dismissing

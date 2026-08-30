@@ -21,6 +21,8 @@
 // which made the row do two unrelated things and left Android with no
 // per-row save at all.
 
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -28,7 +30,33 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
 import '../../i18n/strings.g.dart';
+import '../../services/error_reporting_service.dart';
+import '../../services/export_service.dart';
 import '../../services/status_bar_service.dart';
+
+/// The ground every band in this pane paints on — the callsign headers, the
+/// batch that opens the list and the sync report that closes it. ONE
+/// definition: three bands a shade apart read as three unrelated things
+/// rather than as the frame around one list.
+///
+/// OPAQUE — the tint already blended into the pane's own surface rather than
+/// laid over it. A pinned band has the list running underneath it, and a
+/// half-transparent one shows the rows sliding through the callsign.
+Color _bandColor(BuildContext context) {
+  final colors = Theme.of(context).colorScheme;
+  return Color.alphaBlend(colors.surfaceContainerHighest.withValues(alpha: 0.5), colors.surface);
+}
+
+/// The callsign band's height at text scale 1: [Space.lg] above and below a
+/// Material button's own 40, which is the tallest thing in it (the callsign
+/// and the tower glyph are both shorter).
+///
+/// A constant because the band rides in a pinned [SliverPersistentHeader],
+/// which cannot measure its child. The OS text-scale preference composes on
+/// top of the app's own Font Scale (ui-scaling.md rule 3) and grows the
+/// button inside the band, so the caller scales this rather than the band
+/// being written against one scale.
+const _groupHeaderHeight = Space.lg * 2 + 40;
 
 /// What this platform calls getting a file out of the app, and how it does
 /// it. The verbs are not interchangeable — "Save" on iOS would promise a
@@ -372,8 +400,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     if (options.isEmpty) return;
     final t = context.t;
     final exports = widget.services.exports;
-    final statusBar = widget.services.statusBar;
     setState(() => _busy = true);
+    String? outcome;
+    String? failure;
     try {
       // The iPad share sheet is a popover and needs an anchor rect; the
       // panel's own bounds serve for every share trigger in it. Captured
@@ -391,15 +420,19 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       });
       switch (action) {
         case ExportAction.save:
-          final path = await exports.saveToDisk(files);
+          final saved = await exports.saveToDisk(files);
           // Null means the operator cancelled the picker — their choice, not
-          // an outcome worth announcing.
-          if (path != null) {
-            statusBar.setMessage(
-              key: 'export:status',
-              text: t.operation.export.saveSuccess(path: path),
-              dismissAfter: StatusBarService.completedDismissDelay,
-            );
+          // an outcome worth announcing. The COUNT is the save's own, never
+          // `files.length`: Android asks per file and takes a cancel partway,
+          // so claiming the list's length names files that aren't there.
+          if (saved != null) {
+            // "to <path>" reads as a destination, which Android's answer is
+            // not — there it is the list of names the platform gave back, and
+            // the operator would be told their files went to their own
+            // filenames.
+            outcome = saved.namesFiles
+                ? t.operation.export.saveSuccessNamed(count: saved.count, path: saved.location)
+                : t.operation.export.saveSuccess(count: saved.count, path: saved.location);
           }
         case ExportAction.share:
         case ExportAction.export:
@@ -407,26 +440,74 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           // would announce a completed share for a sheet they dismissed —
           // asserting an outcome that didn't happen.
           if (await exports.shareFiles(files, sharePositionOrigin: shareOrigin)) {
-            statusBar.setMessage(
-              key: 'export:status',
-              text: t.operation.export.shareSuccess(count: files.length),
-              dismissAfter: StatusBarService.completedDismissDelay,
-            );
+            outcome = t.operation.export.shareSuccess(count: files.length);
           }
         case ExportAction.download:
           await exports.downloadFiles(files);
-          statusBar.setMessage(
-            key: 'export:status',
-            text: t.operation.export.downloadSuccess(count: files.length),
-            dismissAfter: StatusBarService.completedDismissDelay,
-          );
+          outcome = t.operation.export.downloadSuccess(count: files.length);
       }
-    } catch (e) {
-      statusBar.setMessage(key: 'export:status', text: t.operation.export.exportFailed(error: e.toString()));
+    } catch (e, stack) {
+      failure = e.toString();
+      // The dialog is the operator's copy; this is the developer's. An export
+      // that fails in the field leaves no other trace — the catch is where
+      // the stack ends.
+      debugPrint('[export] ${action.name} failed: $e\n$stack');
+      // An ExportException is an OUTCOME of this flow — a runtime that isn't
+      // up yet, a save the platform refused — reported to the operator and
+      // spent. Uploading one would file an expected answer as a crash, the
+      // way error-reporting.md rules out for `SyncEngine.onAuthError`.
+      // Anything else got here by surprise and is worth the event.
+      if (e is! ExportException) {
+        ErrorReportingService.report(e, stack, context: 'export:${action.name}');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+    final report = failure != null
+        ? (title: t.operation.export.resultFailedTitle, body: failure)
+        : outcome != null
+            ? (title: t.operation.export.resultTitle, body: outcome)
+            : null;
+    if (report == null) return;
+    // The pane can go while an export runs — its Done stays live, and the
+    // barrier is dismissible — and the dialog needs a context this State
+    // no longer has. The status bar outlives it, so the outcome still
+    // reaches the operator rather than being dropped for having taken too
+    // long.
+    if (!mounted) {
+      widget.services.statusBar.setMessage(
+        key: 'export:status',
+        // Titled: a bare "Extension runtime is not ready yet" persisting in
+        // the footer names no doer, and the operator has already left the
+        // pane that would have said "export".
+        text: '${report.title}: ${report.body}',
+        dismissAfter: failure == null ? StatusBarService.completedDismissDelay : null,
+      );
+      return;
+    }
+    await _showResult(report.title, report.body);
   }
+
+  /// The outcome, as a dialog over the panel rather than a line in the status
+  /// bar: exporting is the thing the operator opened this pane to do, and a
+  /// message in a far corner of the window is missable at exactly the moment
+  /// they need to know whether the files exist and where they landed.
+  ///
+  /// The pane stays open behind it — exporting one format and then another is
+  /// ordinary, and dismissing the confirmation is not a request to leave.
+  Future<void> _showResult(String title, String body) => showHaloDialog<void>(
+        context: context,
+        builder: (dialogContext) => HaloDialog(
+          title: Text(title),
+          content: Text(body),
+          // Nothing to abandon and nothing left to confirm: Done, in the
+          // cancel slot (docs/design/user-interface.md § Dialogs).
+          cancel: TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(dialogContext.t.common.done),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +529,13 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
                     )
                   : _buildList(context),
         ),
+        // The sync report is pinned under the list rather than riding at the
+        // end of it: it is a standing fact about the operation, not one more
+        // thing to scroll to, and a long list of formats would bury it.
+        if (!_loading && _error == null) ...[
+          const Divider(height: 1),
+          _buildSyncSummary(context, _syncCounts),
+        ],
         _buildFooter(context),
       ],
     );
@@ -456,89 +544,159 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   Widget _buildList(BuildContext context) {
     final t = context.t;
     final theme = Theme.of(context);
-    final syncCounts = _syncCounts;
     final rowAction = rowExportAction();
     // Computed once: it walks every option, and the layout branches on its
-    // length in three places below.
+    // length below.
     final groups = _groups;
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: Space.md),
-      children: [
-        ListTile(
-          leading: Icon(widget.operation.synced ? MdiIcons.cloudCheck : MdiIcons.cloudAlert),
-          title: Text(widget.operation.synced
-              ? t.operation.export.syncedOperation
-              : t.operation.export.unsyncedOperation),
-          subtitle: syncCounts == null
-              ? null
-              : Text(syncCounts.pending == 0
-                  ? t.operation.export.qsosSynced(total: syncCounts.total)
-                  : t.operation.export.qsosPending(pending: syncCounts.pending, total: syncCounts.total)),
-        ),
-        if (syncCounts != null && syncCounts.eventTotal > 0)
-          ListTile(
-            leading: Icon(MdiIcons.flag),
-            title: Text(syncCounts.eventPending == 0
-                ? t.operation.export.eventsSynced(total: syncCounts.eventTotal)
-                : t.operation.export.eventsPending(
-                    pending: syncCounts.eventPending, total: syncCounts.eventTotal)),
-          ),
-        const Divider(height: 1),
-        // ONE callsign: the batch action sits above the list it acts on, not
-        // in the footer — a button saying "Save 3 files" belongs next to the
-        // three ticks it counted rather than a scroll away from them.
-        //
-        // SEVERAL: it doesn't go here at all. Each group carries its own, and
-        // a whole-panel count sitting above the first group would read as
-        // that group's.
-        if (_options.isNotEmpty && groups.length == 1) ...[
-          _buildBulkActions(context, _selectedOptions),
-          const Divider(height: 1),
-        ],
+    return CustomScrollView(
+      slivers: [
+        // The batch OPENS the list, whether it spans one callsign or six: a
+        // button saying "Save 3 files" belongs with the ticks it counted, and
+        // the operator who came to export everything should not have to reach
+        // the end of the formats to find the button that does it.
+        if (_options.isNotEmpty)
+          SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
         if (_options.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(Space.xl),
-            child: Text(
-              // Two different empties, and saying the wrong one sends the
-              // operator looking for a fault: a log with no contacts yet has
-              // nothing to offer, where a log WITH contacts and no options
-              // means the formats themselves never arrived.
-              syncCounts != null && syncCounts.total == 0
-                  ? t.operation.export.nothingLogged
-                  : t.operation.export.noOptions,
-              style: theme.textTheme.bodyMedium,
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(Space.xl),
+              child: Text(
+                // Two different empties, and saying the wrong one sends the
+                // operator looking for a fault: a log with no contacts yet has
+                // nothing to offer, where a log WITH contacts and no options
+                // means the formats themselves never arrived.
+                _syncCounts != null && _syncCounts!.total == 0
+                    ? t.operation.export.nothingLogged
+                    : t.operation.export.noOptions,
+                style: theme.textTheme.bodyMedium,
+              ),
             ),
           )
         else
-          for (final group in groups) ...[
+          for (final group in groups)
             // A single-station operation is the common case and gets no
-            // header at all — grouping chrome around one group is just noise.
-            if (groups.length > 1) _buildGroupHeader(context, group),
-            for (final option in group.options) _buildOptionRow(context, option, rowAction),
-          ],
-        // …and the everything-at-once batch closes the list instead, after the
-        // callsigns it spans.
-        if (groups.length > 1) _buildCombinedActions(context),
+            // header at all — grouping chrome around one group is just noise,
+            // and with nothing to tell apart there is nothing to pin.
+            if (groups.length > 1)
+              SliverMainAxisGroup(slivers: [
+                // Pinned: the callsign a row belongs to is the one thing a
+                // multi-operator list cannot afford to scroll away, since
+                // every group offers the same formats under a different call.
+                // Only inside this group — pinned to the whole scroll view,
+                // every callsign's band would stack up at the top.
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _PinnedGroupHeader(
+                    // Never BELOW the unscaled height: 40 of those pixels are
+                    // a Material button's own floor, which an OS text scale
+                    // under 1 does not shrink — scaled down, the band clamps
+                    // the button instead of fitting it.
+                    height: math.max(
+                      _groupHeaderHeight,
+                      MediaQuery.textScalerOf(context).scale(_groupHeaderHeight),
+                    ),
+                    child: _buildGroupHeader(context, group),
+                  ),
+                ),
+                _optionRows(context, group.options, rowAction),
+              ])
+            else
+              _optionRows(context, group.options, rowAction),
+        const SliverToBoxAdapter(child: SizedBox(height: Space.md)),
       ],
     );
   }
 
-  /// The batch that spans every callsign, sitting under them all.
-  ///
-  /// Its own band, lighter than a group header's, so it reads as a footer to
-  /// the whole list rather than as one more callsign; right-aligned, since it
-  /// closes the list rather than labelling what follows.
-  Widget _buildCombinedActions(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget _optionRows(
+    BuildContext context,
+    List<Map<String, dynamic>> options,
+    ExportAction rowAction,
+  ) =>
+      SliverList(
+        delegate: SliverChildListDelegate([
+          for (final option in options) _buildOptionRow(context, option, rowAction),
+        ]),
+      );
+
+  /// The operation's sync state, in ONE row. Event markers are counted on the
+  /// same line rather than in a row of their own: a second tile would read as
+  /// a second report to check on a routine "everything is synced", and would
+  /// appear only when the operation has markers, moving everything under it.
+  Widget _buildSyncSummary(
+    BuildContext context,
+    ({int total, int pending, int eventTotal, int eventPending})? counts,
+  ) {
+    final t = context.t.operation.export;
+    final qsos = counts == null
+        ? null
+        : counts.pending == 0
+            ? t.qsosSynced(total: counts.total)
+            : t.qsosPending(pending: counts.pending, total: counts.total);
+    final events = counts == null || counts.eventTotal == 0
+        ? null
+        : counts.eventPending == 0
+            ? t.eventsSynced(total: counts.eventTotal)
+            : t.eventsPending(pending: counts.eventPending, total: counts.eventTotal);
     return Container(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
-      // Trailing inset matches the group headers' (8), so the combined
-      // button sits on the same edge as the per-callsign ones above it.
-      padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.md, Space.lg),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [_buildBulkActions(context, _selectedOptions, dense: true, combined: true)],
+      // The same band the batch at the top of the list takes: the two are the
+      // ends of one list, not a control at one end and a stray row at the
+      // other.
+      color: _bandColor(context),
+      child: ListTile(
+        leading: Icon(widget.operation.synced ? MdiIcons.cloudCheck : MdiIcons.cloudAlert),
+        title: Text(widget.operation.synced ? t.syncedOperation : t.unsyncedOperation),
+        subtitle: qsos == null ? null : Text([qsos, ?events].join(' · ')),
+      ),
+    );
+  }
+
+  /// The band the whole-panel batch sits in — the single-callsign panel's,
+  /// and the one that spans every callsign.
+  ///
+  /// What it acts on, named on the left, and the button that does it on the
+  /// right: a count of the log is the one thing that makes "Save 3 files"
+  /// mean something before the operator has read the list. On the callsign
+  /// bands' own ground, in the section title's face, so it and the sync
+  /// report that closes the pane read as the two ends of one list.
+  ///
+  /// ONE band for both cases: a bare left-aligned button in the one-callsign
+  /// panel and a banded right-aligned one in the many-callsign panel read as
+  /// different controls.
+  Widget _buildActionBand(BuildContext context, {bool combined = false}) {
+    final counts = _syncCounts;
+    // No count, no claim: the operator reads this band before the list, and
+    // an empty log is what the empty state below already says.
+    final count = counts == null || counts.total == 0
+        ? null
+        : Text(
+            context.t.operation.export.qsosInOperation(count: counts.total),
+            style: SectionHeader.titleStyle(context),
+          );
+    return Container(
+      color: _bandColor(context),
+      // Trailing inset matches the group headers', and both stand one unit
+      // clear of the edge: a scrollbar rides there, and a button under it is
+      // one the operator has to aim around.
+      padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.lg),
+      // An OverflowBar, not a Row: the buttons take their natural width and
+      // whatever a Row gave the count would be the leftover — which on a
+      // phone with two Android verbs is a few characters a line. Here the two
+      // sit side by side while they both fit and STACK when they don't, the
+      // buttons keeping the trailing edge on their own line. The dialog
+      // footers use it for the same reason.
+      child: OverflowBar(
+        // With a count, the two take the band's two ends; with none, the
+        // buttons still close it — `spaceBetween` would put a lone child at
+        // the START and swing them across the band whenever the log is empty.
+        alignment: count == null ? MainAxisAlignment.end : MainAxisAlignment.spaceBetween,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: Space.md,
+        overflowSpacing: Space.sm,
+        children: [
+          ?count,
+          _buildBulkActions(context, _selectedOptions, combined: combined),
+        ],
       ),
     );
   }
@@ -556,25 +714,44 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final selected = group.options.where((o) => _selected[_selectionKey(o)] == true).toList();
 
     return Container(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.md, Space.lg),
-      child: Row(
-        children: [
-          Icon(MdiIcons.radioTower, size: 20, color: colors.onSurfaceAccent),
-          const SizedBox(width: Space.lg),
-          Expanded(
-            child: Text(
-              // An operation with no callsign at all still groups; naming it
-              // by its emptiness would read worse than the fallback.
-              group.call.isEmpty ? context.t.operation.export.title : group.call,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colors.onSurfaceAccent,
+      color: _bandColor(context),
+      // Trailing inset one unit clear of the edge, out from under the
+      // scrollbar — see [_buildActionBand].
+      padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.lg),
+      // The BAND's width, not the window's: this pane is a dialog on a
+      // desktop, where `ShirtSize.of` reports a window wide enough for labels
+      // that its dialog has no room for.
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Icon(MdiIcons.radioTower, size: 20, color: colors.onSurfaceAccent),
+            const SizedBox(width: Space.lg),
+            Expanded(
+              child: Text(
+                // An operation with no callsign at all still groups; naming it
+                // by its emptiness would read worse than the fallback.
+                group.call.isEmpty ? context.t.operation.export.title : group.call,
+                // The band's height is declared up front, so nothing in it may
+                // take a second line: the callsign gives way to the buttons.
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurfaceAccent,
+                ),
               ),
             ),
-          ),
-          _buildBulkActions(context, selected, dense: true),
-        ],
+            _buildBulkActions(
+              context,
+              selected,
+              wrap: false,
+              // The shared breakpoints, not one invented here (layouts.md):
+              // S covers the 360 Android baseline, which is exactly where two
+              // counted labels and a callsign stop fitting on one line.
+              compact: ShirtSize.fromWidth(constraints.maxWidth).index <= ShirtSize.s.index,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -604,8 +781,14 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     // failing that, the theme's on-surface accent, which is the vetted one
     // for foreground use (an extension's hex is a background color in the
     // sheet, and can't be trusted to contrast as text or as a bare glyph).
-    final activityColor = resolveExtensionColor(option['color'] as String?) ??
-        colorForRefType(_controls, option['refType'] as String?);
+    // The developer QSON dump belongs to no activity and declares no colour
+    // of its own, so nothing here would circle it and it would read as the
+    // one bare glyph in a column. It takes the dev-mode orange every other
+    // developer-only surface is marked with instead.
+    final activityColor = widget.services.exports.isQsonOption(option)
+        ? colors.devMode
+        : resolveExtensionColor(option['color'] as String?) ??
+            colorForRefType(_controls, option['refType'] as String?);
 
     void toggle() => setState(() => _selected[key] = !selected);
 
@@ -681,16 +864,27 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     return CircleAvatar(backgroundColor: activityColor.withValues(alpha: 0.6), child: icon);
   }
 
-  /// The batch action(s) for [selected] — everything ticked in the panel when
-  /// it sits under the sync summary, or just one callsign's when [dense] puts
-  /// it in a group header.
+  /// The batch action(s) for [selected] — everything ticked in the panel, in
+  /// [_buildActionBand], or just one callsign's in its group header.
   Widget _buildBulkActions(
     BuildContext context,
     List<Map<String, dynamic>> selected, {
-    bool dense = false,
     bool combined = false,
+    bool wrap = true,
+    bool compact = false,
   }) {
     final actions = bulkExportActions();
+
+    /// The count alone where the label won't fit — the icon already carries
+    /// the verb, and "3" beside a save glyph is the same sentence shorter.
+    /// The full label stays as the accessible name: a screen reader given "3"
+    /// is told nothing, and this app has no tooltips to fall back on.
+    Widget labelFor(ExportAction action) {
+      final label = _bulkLabel(action, selected.length, combined: combined);
+      return compact
+          ? Text('${selected.length}', semanticsLabel: label)
+          : Text(label);
+    }
 
     final buttons = <Widget>[
       if (_busy)
@@ -707,24 +901,35 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
               ? FilledButton.icon(
                   onPressed: selected.isEmpty ? null : () => _run(action, selected),
                   icon: Icon(exportActionIcon(action), size: 18),
-                  label: Text(_bulkLabel(action, selected.length, combined: combined)),
+                  label: labelFor(action),
                 )
               : OutlinedButton.icon(
                   onPressed: selected.isEmpty ? null : () => _run(action, selected),
                   icon: Icon(exportActionIcon(action), size: 18),
-                  label: Text(_bulkLabel(action, selected.length, combined: combined)),
+                  label: labelFor(action),
                 ),
     ];
 
-    // Wrap, not Row: on Android there are two buttons, and in a group header
-    // beside a callsign they don't fit a phone's width side by side.
-    if (dense) {
-      return Wrap(spacing: 8, runSpacing: 4, alignment: WrapAlignment.end, children: buttons);
+    // The pinned callsign band declares its height before its child is laid
+    // out and cannot grow a second run, so its buttons stay on one line. On a
+    // pane narrow enough that counted labels wouldn't fit beside a callsign,
+    // [compact] is what makes the room — the ellipsis alone cannot, since a
+    // Row lays a non-flex child out unbounded and the callsign is what gives
+    // way first.
+    if (!wrap) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (index, button) in buttons.indexed) ...[
+            if (index > 0) const SizedBox(width: Space.md),
+            button,
+          ],
+        ],
+      );
     }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.lg),
-      child: Wrap(spacing: 8, runSpacing: 4, children: buttons),
-    );
+    // Wrap elsewhere: on Android there are two buttons, and on a phone at a
+    // large font scale they don't fit a row side by side.
+    return Wrap(spacing: 8, runSpacing: 4, alignment: WrapAlignment.end, children: buttons);
   }
 
   /// Just the way out. Everything that DOES something lives in the list,
@@ -741,4 +946,34 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           child: Text(context.t.common.done),
         ),
       );
+}
+
+/// The callsign band's pinned-sliver delegate — a fixed [height], since a
+/// SliverPersistentHeader can't size itself to its child.
+class _PinnedGroupHeader extends SliverPersistentHeaderDelegate {
+  final double height;
+  final Widget child;
+
+  _PinnedGroupHeader({required this.height, required this.child});
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  // A pinned sliver whose child paints shorter or taller than the extent it
+  // declared throws ("layoutExtent exceeds paintExtent"), so the child is
+  // held to exactly that box rather than trusted to match it.
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
+      SizedBox(height: height, child: child);
+
+  // Always true: [child] is rebuilt fresh by the enclosing build — it carries
+  // the group's live tick count — so the comparison would never match anyway,
+  // and a false here would leave a stale count banded on screen, since
+  // RenderSliverPersistentHeader only picks up a new delegate when this says
+  // so.
+  @override
+  bool shouldRebuild(_PinnedGroupHeader oldDelegate) => true;
 }

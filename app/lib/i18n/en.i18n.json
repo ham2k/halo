@@ -388,10 +388,14 @@
       "title": "Operation Exports",
       "syncedOperation": "Operation is synced",
       "unsyncedOperation": "Operation has unsynced changes",
+      "qsosInOperation": {
+        "one": "${count} QSO in this operation",
+        "other": "${count} QSOs in this operation"
+      },
       "qsosSynced": "All ${total} QSOs are synced",
       "qsosPending": "${pending} of ${total} QSOs pending sync",
-      "eventsSynced": "All ${total} event markers are synced",
-      "eventsPending": "${pending} of ${total} event markers pending sync",
+      "eventsSynced": "${total} event markers synced",
+      "eventsPending": "${pending} of ${total} event markers pending",
       "loading": "Loading export options…",
       "noOptions": "No export formats available (extension runtime still starting?)",
       "nothingLogged": "Nothing to export yet — this operation has no QSOs.",
@@ -446,7 +450,16 @@
         "descriptionOff": "Names, towns, gridsquares and notes are left out",
         "note": "The Full ADIF Export always includes everything"
       },
-      "saveSuccess": "Saved to ${path}",
+      "resultTitle": "Export complete",
+      "resultFailedTitle": "Export failed",
+      "saveSuccess": {
+        "one": "Exported ${count} file to ${path}",
+        "other": "Exported ${count} files to ${path}"
+      },
+      "saveSuccessNamed": {
+        "one": "Exported ${count} file: ${path}",
+        "other": "Exported ${count} files: ${path}"
+      },
       "shareSuccess": {
         "one": "Shared ${count} file",
         "other": "Shared ${count} files"

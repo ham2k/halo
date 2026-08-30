@@ -2289,17 +2289,23 @@ class Translations$operation$export$en {
 	/// en: 'Operation has unsynced changes'
 	String get unsyncedOperation => 'Operation has unsynced changes';
 
+	/// en: '(one) {${count} QSO in this operation} (other) {${count} QSOs in this operation}'
+	String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO in this operation',
+		other: '${count} QSOs in this operation',
+	);
+
 	/// en: 'All ${total} QSOs are synced'
 	String qsosSynced({required Object total}) => 'All ${total} QSOs are synced';
 
 	/// en: '${pending} of ${total} QSOs pending sync'
 	String qsosPending({required Object pending, required Object total}) => '${pending} of ${total} QSOs pending sync';
 
-	/// en: 'All ${total} event markers are synced'
-	String eventsSynced({required Object total}) => 'All ${total} event markers are synced';
+	/// en: '${total} event markers synced'
+	String eventsSynced({required Object total}) => '${total} event markers synced';
 
-	/// en: '${pending} of ${total} event markers pending sync'
-	String eventsPending({required Object pending, required Object total}) => '${pending} of ${total} event markers pending sync';
+	/// en: '${pending} of ${total} event markers pending'
+	String eventsPending({required Object pending, required Object total}) => '${pending} of ${total} event markers pending';
 
 	/// en: 'Loading export options…'
 	String get loading => 'Loading export options…';
@@ -2385,8 +2391,23 @@ class Translations$operation$export$en {
 	late final Translations$operation$export$compactFileNames$en compactFileNames = Translations$operation$export$compactFileNames$en.internal(_root);
 	late final Translations$operation$export$includePrivateData$en includePrivateData = Translations$operation$export$includePrivateData$en.internal(_root);
 
-	/// en: 'Saved to ${path}'
-	String saveSuccess({required Object path}) => 'Saved to ${path}';
+	/// en: 'Export complete'
+	String get resultTitle => 'Export complete';
+
+	/// en: 'Export failed'
+	String get resultFailedTitle => 'Export failed';
+
+	/// en: '(one) {Exported ${count} file to ${path}} (other) {Exported ${count} files to ${path}}'
+	String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Exported ${count} file to ${path}',
+		other: 'Exported ${count} files to ${path}',
+	);
+
+	/// en: '(one) {Exported ${count} file: ${path}} (other) {Exported ${count} files: ${path}}'
+	String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Exported ${count} file: ${path}',
+		other: 'Exported ${count} files: ${path}',
+	);
 
 	/// en: '(one) {Shared ${count} file} (other) {Shared ${count} files}'
 	String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
@@ -5791,10 +5812,11 @@ extension on Translations {
 			'operation.export.title' => 'Operation Exports',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
+			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO in this operation', other: '${count} QSOs in this operation', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'All ${total} QSOs are synced',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} QSOs pending sync',
-			'operation.export.eventsSynced' => ({required Object total}) => 'All ${total} event markers are synced',
-			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} of ${total} event markers pending sync',
+			'operation.export.eventsSynced' => ({required Object total}) => '${total} event markers synced',
+			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} of ${total} event markers pending',
 			'operation.export.loading' => 'Loading export options…',
 			'operation.export.noOptions' => 'No export formats available (extension runtime still starting?)',
 			'operation.export.nothingLogged' => 'Nothing to export yet — this operation has no QSOs.',
@@ -5821,7 +5843,10 @@ extension on Translations {
 			'operation.export.includePrivateData.descriptionOn' => 'Names, towns, gridsquares and notes are included',
 			'operation.export.includePrivateData.descriptionOff' => 'Names, towns, gridsquares and notes are left out',
 			'operation.export.includePrivateData.note' => 'The Full ADIF Export always includes everything',
-			'operation.export.saveSuccess' => ({required Object path}) => 'Saved to ${path}',
+			'operation.export.resultTitle' => 'Export complete',
+			'operation.export.resultFailedTitle' => 'Export failed',
+			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Exported ${count} file to ${path}', other: 'Exported ${count} files to ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Exported ${count} file: ${path}', other: 'Exported ${count} files: ${path}', ), 
 			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Shared ${count} file', other: 'Shared ${count} files', ), 
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Downloaded ${count} file', other: 'Downloaded ${count} files', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Export failed: ${error}',
@@ -5962,12 +5987,12 @@ extension on Translations {
 			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
 			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
 			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
 			'activitiesView.showResultsMap' => 'Show results on a map',
 			'activitiesView.showResultsList' => 'Show results as a list',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.addToOperation' => 'Add to Operation',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
@@ -6476,12 +6501,12 @@ extension on Translations {
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
 			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',

@@ -677,8 +677,11 @@ void main() {
         {'filename': 'N0CALL.adi', 'content': 'ADIF'}
       ]);
       // The platform renames around a collision, so the name it reports back is
-      // the one the status bar has to show — not the one we asked for.
-      expect(saved, 'saved-N0CALL.adi');
+      // the one the panel has to show — not the one we asked for.
+      expect(saved?.location, 'saved-N0CALL.adi');
+      expect(saved?.count, 1);
+      expect(saved?.namesFiles, isTrue,
+          reason: 'the SAF never says WHERE, so this names the files themselves');
     });
 
     test('every OTHER platform still goes to file_selector', () async {
@@ -725,7 +728,11 @@ void main() {
         {'filename': 'C.adi', 'content': 'c'},
       ]);
 
-      expect(saved, 'saved-A.adi, saved-B.adi');
+      expect(saved?.location, 'saved-A.adi, saved-B.adi');
+      // TWO, not the three that were offered: the caller announces this
+      // number, and "3 files saved" over two names sends the operator looking
+      // for one that was never written.
+      expect(saved?.count, 2);
       expect(saver.asked.map((f) => f['filename']), ['A.adi', 'B.adi'],
           reason: 'the abandoned file is not offered again after the cancel');
     });

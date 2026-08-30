@@ -53,7 +53,10 @@ class ExportService {
   static const _qsonHookKey = 'core-devmode';
   static const _qsonExportType = 'devmode-qson';
 
-  bool _isQsonOption(Map<String, dynamic> option) =>
+  /// Whether [option] is that dump. Public because the panel marks it in the
+  /// dev-mode accent, which is a theme colour rather than the hex string an
+  /// extension declares — so the option map can't carry it.
+  bool isQsonOption(Map<String, dynamic> option) =>
       option['hookKey'] == _qsonHookKey && option['exportType'] == _qsonExportType;
 
   Map<String, dynamic> _qsonOptionFor(Operation operation) {
@@ -278,7 +281,7 @@ class ExportService {
     List<Map<String, dynamic>> selectedOptions,
   ) async {
     final host = extensions.host;
-    if (host == null && selectedOptions.any((o) => !_isQsonOption(o))) {
+    if (host == null && selectedOptions.any((o) => !isQsonOption(o))) {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
     }
     final log = await _logFor(operation);
@@ -290,7 +293,7 @@ class ExportService {
     // ordering dependency, so run them concurrently rather than paying for
     // N sequential bridge round-trips.
     final results = await Future.wait(selectedOptions.map((option) async {
-      if (_isQsonOption(option)) {
+      if (isQsonOption(option)) {
         return {
           'filename': _qsonOptionFor(operation)['filename'],
           'mimeType': 'application/json',
@@ -385,10 +388,21 @@ class ExportService {
 
   /// Save flow: on desktop a single file opens a save dialog for that file and
   /// multiple files open a directory picker; on Android every file gets its own
-  /// dialog (see below). Returns something naming where the files went — a
-  /// path, a directory, or the names Android reported — or null if the operator
-  /// saved nothing.
-  Future<String?> saveToDisk(List<Map<String, dynamic>> files) async {
+  /// dialog (see below). Returns where the files went — a path, a directory,
+  /// or the names Android reported — with HOW MANY actually landed, or null if
+  /// the operator saved nothing.
+  ///
+  /// The count comes from here rather than from the caller's list because only
+  /// this knows: Android's per-file dialogs can be cancelled partway, and a
+  /// caller announcing "4 files saved" over two filenames sends the operator
+  /// looking for two that do not exist.
+  ///
+  /// `namesFiles` says what `location` IS. Android's SAF never tells the app
+  /// where the operator put anything, so there it is the list of FILENAMES —
+  /// and a caller phrasing that as a destination says the files went to their
+  /// own names. Everywhere else it is a path or a directory.
+  Future<({String location, int count, bool namesFiles})?> saveToDisk(
+      List<Map<String, dynamic>> files) async {
     if (files.isEmpty) return null;
 
     // Android has no `file_selector` save at all — `getSaveLocation` throws
@@ -409,17 +423,36 @@ class ExportService {
         ],
       );
       if (location == null) return null;
-      await File(location.path).writeAsString(file['content'] as String);
-      return location.path;
+      // Translated the way the Android loop translates its own: a full disk or
+      // a read-only folder is an answer the platform gave, which the caller
+      // reports and spends. Left raw it is an unclassified FileSystemException,
+      // which ErrorPolicy uploads as a crash on every retry.
+      try {
+        await File(location.path).writeAsString(file['content'] as String);
+      } catch (e) {
+        throw ExportException('$e');
+      }
+      return (location: location.path, count: 1, namesFiles: false);
     }
 
     final directory = await getDirectoryPath();
     if (directory == null) return null;
     final filenames = _uniqueFilenames(files);
+    final written = <String>[];
     for (var i = 0; i < files.length; i++) {
-      await File(p.join(directory, filenames[i])).writeAsString(files[i]['content'] as String);
+      try {
+        await File(p.join(directory, filenames[i])).writeAsString(files[i]['content'] as String);
+      } catch (e) {
+        // Names what already landed, as the Android loop does: a failure on
+        // the third of four leaves two on disk, and an error mentioning only
+        // the third sends the operator looking for files they already have.
+        throw ExportException(
+          written.isEmpty ? '$e' : '$e — ${written.join(', ')} had already been saved',
+        );
+      }
+      written.add(filenames[i]);
     }
-    return directory;
+    return (location: directory, count: files.length, namesFiles: false);
   }
 
   /// One "create document" dialog per file, in order — app-polo's Save loop
@@ -432,7 +465,8 @@ class ExportService {
   /// saved three files, and a write that fails on the third leaves two on
   /// disk — the operator has to be told which, in both cases, or they go
   /// looking for files that aren't there and re-export ones that are.
-  Future<String?> _saveOnAndroid(List<Map<String, dynamic>> files) async {
+  Future<({String location, int count, bool namesFiles})?> _saveOnAndroid(
+      List<Map<String, dynamic>> files) async {
     final names = _uniqueFilenames(files);
     final saved = <String>[];
     for (var i = 0; i < files.length; i++) {
@@ -452,7 +486,7 @@ class ExportService {
       if (name == null) break;
       saved.add(name);
     }
-    return saved.isEmpty ? null : saved.join(', ');
+    return saved.isEmpty ? null : (location: saved.join(', '), count: saved.length, namesFiles: true);
   }
 
   /// Web download flow: hands each file to the browser as its own download.

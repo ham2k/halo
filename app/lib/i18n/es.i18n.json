@@ -387,10 +387,14 @@
       "title": "Exportaciones de la operación",
       "syncedOperation": "La operación está sincronizada",
       "unsyncedOperation": "La operación tiene cambios sin sincronizar",
+      "qsosInOperation": {
+        "one": "${count} QSO en esta operación",
+        "other": "${count} QSOs en esta operación"
+      },
       "qsosSynced": "Los ${total} QSOs están sincronizados",
       "qsosPending": "${pending} de ${total} QSOs pendientes de sincronizar",
-      "eventsSynced": "Los ${total} marcadores de evento están sincronizados",
-      "eventsPending": "${pending} de ${total} marcadores de evento pendientes de sincronizar",
+      "eventsSynced": "${total} marcadores de evento sincronizados",
+      "eventsPending": "${pending} de ${total} marcadores de evento pendientes",
       "loading": "Cargando opciones de exportación…",
       "noOptions": "No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)",
       "nothingLogged": "Nada que exportar todavía — esta operación no tiene QSOs.",
@@ -445,7 +449,16 @@
         "descriptionOff": "Se omiten nombres, ciudades, cuadrículas y notas",
         "note": "La Exportación ADIF Completa siempre incluye todo"
       },
-      "saveSuccess": "Guardado en ${path}",
+      "resultTitle": "Exportación completa",
+      "resultFailedTitle": "Exportación fallida",
+      "saveSuccess": {
+        "one": "Se exportó ${count} archivo a ${path}",
+        "other": "Se exportaron ${count} archivos a ${path}"
+      },
+      "saveSuccessNamed": {
+        "one": "Se exportó ${count} archivo: ${path}",
+        "other": "Se exportaron ${count} archivos: ${path}"
+      },
       "shareSuccess": {
         "one": "Se compartió ${count} archivo",
         "other": "Se compartieron ${count} archivos"

@@ -1117,10 +1117,14 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	@override String get title => 'Exportaciones de la operación';
 	@override String get syncedOperation => 'La operación está sincronizada';
 	@override String get unsyncedOperation => 'La operación tiene cambios sin sincronizar';
+	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} QSO en esta operación',
+		other: '${count} QSOs en esta operación',
+	);
 	@override String qsosSynced({required Object total}) => 'Los ${total} QSOs están sincronizados';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendientes de sincronizar';
-	@override String eventsSynced({required Object total}) => 'Los ${total} marcadores de evento están sincronizados';
-	@override String eventsPending({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes de sincronizar';
+	@override String eventsSynced({required Object total}) => '${total} marcadores de evento sincronizados';
+	@override String eventsPending({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes';
 	@override String get loading => 'Cargando opciones de exportación…';
 	@override String get noOptions => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)';
 	@override String get nothingLogged => 'Nada que exportar todavía — esta operación no tiene QSOs.';
@@ -1166,7 +1170,16 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	@override String get settingsTitle => 'Ajustes de Exportación';
 	@override late final _Translations$operation$export$compactFileNames$es compactFileNames = _Translations$operation$export$compactFileNames$es._(_root);
 	@override late final _Translations$operation$export$includePrivateData$es includePrivateData = _Translations$operation$export$includePrivateData$es._(_root);
-	@override String saveSuccess({required Object path}) => 'Guardado en ${path}';
+	@override String get resultTitle => 'Exportación completa';
+	@override String get resultFailedTitle => 'Exportación fallida';
+	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se exportó ${count} archivo a ${path}',
+		other: 'Se exportaron ${count} archivos a ${path}',
+	);
+	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se exportó ${count} archivo: ${path}',
+		other: 'Se exportaron ${count} archivos: ${path}',
+	);
 	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'Se compartió ${count} archivo',
 		other: 'Se compartieron ${count} archivos',
@@ -2949,10 +2962,11 @@ extension on TranslationsEs {
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
+			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en esta operación', other: '${count} QSOs en esta operación', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Los ${total} QSOs están sincronizados',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendientes de sincronizar',
-			'operation.export.eventsSynced' => ({required Object total}) => 'Los ${total} marcadores de evento están sincronizados',
-			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes de sincronizar',
+			'operation.export.eventsSynced' => ({required Object total}) => '${total} marcadores de evento sincronizados',
+			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes',
 			'operation.export.loading' => 'Cargando opciones de exportación…',
 			'operation.export.noOptions' => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)',
 			'operation.export.nothingLogged' => 'Nada que exportar todavía — esta operación no tiene QSOs.',
@@ -2979,7 +2993,10 @@ extension on TranslationsEs {
 			'operation.export.includePrivateData.descriptionOn' => 'Se incluyen nombres, ciudades, cuadrículas y notas',
 			'operation.export.includePrivateData.descriptionOff' => 'Se omiten nombres, ciudades, cuadrículas y notas',
 			'operation.export.includePrivateData.note' => 'La Exportación ADIF Completa siempre incluye todo',
-			'operation.export.saveSuccess' => ({required Object path}) => 'Guardado en ${path}',
+			'operation.export.resultTitle' => 'Exportación completa',
+			'operation.export.resultFailedTitle' => 'Exportación fallida',
+			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se exportó ${count} archivo a ${path}', other: 'Se exportaron ${count} archivos a ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se exportó ${count} archivo: ${path}', other: 'Se exportaron ${count} archivos: ${path}', ), 
 			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se compartió ${count} archivo', other: 'Se compartieron ${count} archivos', ), 
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se descargó ${count} archivo', other: 'Se descargaron ${count} archivos', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
@@ -3121,12 +3138,12 @@ extension on TranslationsEs {
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
 			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
 			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
 			'activitiesView.showResultsMap' => 'Ver resultados en un mapa',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.showResultsList' => 'Ver resultados como lista',
 			'activitiesView.addToOperation' => 'Agregar a la operación',
 			'activitiesView.mapEmptyState' => 'No hay resultados que mostrar en el mapa',
@@ -3635,12 +3652,12 @@ extension on TranslationsEs {
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
 			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.fakeConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.fakeConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
 			'settings.station.fakeDropAfter' => 'Desconectar tras (segundos)',
