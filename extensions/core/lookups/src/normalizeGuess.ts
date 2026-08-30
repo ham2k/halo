@@ -13,7 +13,7 @@
 // stand behind in an uploaded log, not merely one that looks tidier on screen.
 
 import { capitalizeString } from "@ham2k/lib-format-tools"
-import type { CallInfo } from "@ham2k/halo-extension-sdk"
+import type { CallInfo } from "@ham2k/extension-sdk"
 
 // capitalizeString's own "already mixed case" test — a string that carries any
 // deliberate capitalization is left as its source wrote it (`force: false`), so

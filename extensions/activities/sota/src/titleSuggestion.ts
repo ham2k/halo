@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Pulled out of index.ts's RefHandler so it can be unit-tested directly (see
-// index.test.ts) without pulling in the `@ham2k/halo-extension-sdk` bare
+// index.test.ts) without pulling in the `@ham2k/extension-sdk` bare
 // specifier — a tsc-only path alias Node's own module resolver can't resolve
 // at runtime (same reason refFormatting.ts stays free of it).
 

@@ -8,7 +8,7 @@
 // them without importing @ham2k/lib-format-tools, which the node test runner
 // does not resolve.
 
-import type { HookContext } from "@ham2k/halo-extension-sdk"
+import type { HookContext } from "@ham2k/extension-sdk"
 
 /**
  * Just the two fields these need. Narrower than HookContext on purpose: a

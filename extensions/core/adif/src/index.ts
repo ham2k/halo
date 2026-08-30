@@ -11,8 +11,8 @@
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { defineExtension, hooks, qsoValues, renderTemplate, startMillisOf, templateContext } from "@ham2k/halo-extension-sdk"
-import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import { defineExtension, hooks, qsoValues, renderTemplate, startMillisOf, templateContext } from "@ham2k/extension-sdk"
+import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"

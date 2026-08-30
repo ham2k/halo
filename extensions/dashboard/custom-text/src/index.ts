@@ -20,8 +20,8 @@
 // never changes must not be re-rendered on every keystroke because the pane
 // beside it names the callsign being typed.
 
-import { TemplateError, defineExtension, renderTemplate, templateContext, triggersForTemplate } from "@ham2k/halo-extension-sdk"
-import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/halo-extension-sdk"
+import { TemplateError, defineExtension, renderTemplate, templateContext, triggersForTemplate } from "@ham2k/extension-sdk"
+import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json"
 

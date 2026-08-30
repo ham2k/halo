@@ -7,7 +7,7 @@
 // exchange, and per-band
 // multipliers accumulated from two different axes (zone and country).
 
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -18,7 +18,7 @@ import type {
   LoggingControlDescriptor,
   Ref,
   RefLink,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"

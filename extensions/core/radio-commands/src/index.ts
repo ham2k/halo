@@ -16,8 +16,8 @@ import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
 import { canonicalNumber, localizeFormattedNumber } from "./localizedNumbers.ts"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/extension-sdk"
 import { tFor } from "./i18n.ts"
 import { parsePowerCommand } from "./parsePowerCommand.ts"
 

@@ -73,7 +73,7 @@ test("the default name carries the key and version, so two builds are distinguis
 
 test("a bundle that externalises the host's shared modules is refused", async () => {
   // The subtle one, and the reason this check exists. A bundle built with this
-  // repo's sharedLibsPlugin resolves @ham2k/lib-*, i18next and liquidjs
+  // build preset resolves @ham2k/lib-*, i18next and liquidjs
   // against whatever versions that checkout happened to have, at BUILD time.
   // A distributed bundle cannot: the host makes no promise about what it
   // carries. Left in, it loads happily and then dies at the first call into a

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { cleanLocationParams } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
-import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
+import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 

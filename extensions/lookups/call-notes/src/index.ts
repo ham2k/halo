@@ -36,7 +36,7 @@
 //    `host.getSettings()`/`setSettings` — Tier 1 has no persistence an
 //    extension can read back at all (see docs/extensions/settings.md).
 
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   CallInfoLookup,
@@ -48,7 +48,7 @@ import type {
   JSONValue,
   LookupResult,
   SettingsPanelDescriptor,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { combineNotes, customIdentifier, expansionValueFor, parseCallNotes } from "./callNotes"
 import type { CallNotesIndex } from "./callNotes"

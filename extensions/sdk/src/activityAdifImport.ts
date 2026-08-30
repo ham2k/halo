@@ -11,7 +11,7 @@
 // files say something this shape cannot express registers its own
 // `adifImport` hook instead — the helper is a convenience, not the interface.
 //
-// Types come in by relative path, not the `@ham2k/halo-extension-sdk` alias,
+// Types come in by relative path, not the `@ham2k/extension-sdk` alias,
 // so this module's tests can run under plain `node --test` — the constraint
 // dxcc.ts and scoring.ts document.
 

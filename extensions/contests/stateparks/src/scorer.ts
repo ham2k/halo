@@ -80,7 +80,7 @@
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 import { powerMultiplier } from "./entry.ts"
 import { bandCounts, eventFor, type StateParkEvent } from "./events.ts"

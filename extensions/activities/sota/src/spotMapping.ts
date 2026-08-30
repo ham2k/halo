@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // SOTAwatch spot mapping — pulled out of index.ts so it can be unit-tested
-// directly (see spotMapping.test.ts). `@ham2k/halo-extension-sdk` is a
+// directly (see spotMapping.test.ts). `@ham2k/extension-sdk` is a
 // tsc-only path alias (see extensions/tsconfig.json) that Node's own module
 // resolver, used by `node --test`, can't resolve at runtime — so this file
 // may import types from it, which type stripping erases, but never values.
 
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
-import type { Spot } from "@ham2k/halo-extension-sdk"
+import type { Spot } from "@ham2k/extension-sdk"
 
 /// A spot as `api-db2.sota.org.uk` returns it. Three fields differ from the
 /// retired api2 shape and each one is silently wrong rather than absent if

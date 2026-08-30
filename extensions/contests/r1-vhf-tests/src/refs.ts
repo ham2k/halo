@@ -5,7 +5,7 @@
 // index.ts — both extensions store their exchange fields the same way, in a
 // ref keyed by the extension's own type.
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 export function str(value: JSONValue | undefined): string {
   return typeof value === 'string' ? value : ''

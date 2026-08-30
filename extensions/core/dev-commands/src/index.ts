@@ -22,14 +22,14 @@
 // app/experiments.yaml. All are just `command` hooks like radio-commands' —
 // see docs/extensions/hooks.md.
 
-import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
+import { defineExtension, hooks } from "@ham2k/extension-sdk"
 import type {
   CommandAction,
   CommandCatalogEntry,
   CommandInterpretation,
   HookContext,
   JSONValue,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import {
   FALLBACK_CALLS,

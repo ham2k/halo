@@ -11,8 +11,8 @@
 // operator callsign to the operation's shared data and the position to this
 // device's local data.
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
 import { parseOperatorCommand, parsePositionCommand, positionValueFor } from "./operationCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 

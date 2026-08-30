@@ -9,7 +9,7 @@
 // control. `loggingControls` gets the operation, so the descriptor is just
 // computed per call; nothing in the core is needed to support it.
 
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -20,7 +20,7 @@ import type {
   LoggingControlDescriptor,
   Ref,
   RefLink,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"

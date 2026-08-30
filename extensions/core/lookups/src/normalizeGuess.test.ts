@@ -5,7 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { normalizeGuess, normalizeName } from "./normalizeGuess.ts"
-import type { CallInfo } from "@ham2k/halo-extension-sdk"
+import type { CallInfo } from "@ham2k/extension-sdk"
 
 test("an all-caps name is recapitalized, reordered, and keeps its acronyms", () => {
   assert.equal(normalizeName("DELMONT, SEBASTIAN"), "Sebastian Delmont")

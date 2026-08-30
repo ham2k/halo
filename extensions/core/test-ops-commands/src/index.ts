@@ -10,8 +10,8 @@
 // through `HaLoServices.purgeOperation`, the same path a single Test
 // Operation's own delete confirmation uses.
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 

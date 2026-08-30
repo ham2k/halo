@@ -18,14 +18,14 @@
 //
 // The rules: https://field-day.arrl.org/
 
-import { tally } from "@ham2k/halo-extension-sdk"
+import { tally } from "@ham2k/extension-sdk"
 import type {
   ContestScorer,
   HookContext,
   JSONValue,
   QsoScoreVerdict,
   ScoreTally,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
 

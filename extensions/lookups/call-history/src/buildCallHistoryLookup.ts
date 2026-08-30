@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import type { CallInfoLookup, JSONValue } from "@ham2k/halo-extension-sdk"
+import type { CallInfoLookup, JSONValue } from "@ham2k/extension-sdk"
 
 /// Fields describing the station itself, not the contact it rode in on —
 /// a past QSO's `exchange`/`sent`/`notes`/`refs` belong to that QSO, and

@@ -7,7 +7,7 @@
 // from `ctx.locale` via `tFor`. "Spot" is untranslated ham jargon in
 // Spanish, matching the app's own es strings ("Auto-spot", "spotear").
 
-import { createCachedTranslator } from "@ham2k/halo-extension-sdk"
+import { createCachedTranslator } from "@ham2k/extension-sdk"
 
 import en from "./i18n/en.json" with { type: "json" }
 import es from "./i18n/es.json" with { type: "json" }

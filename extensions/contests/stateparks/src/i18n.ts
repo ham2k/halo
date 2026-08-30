@@ -9,7 +9,7 @@
 // sponsors' own proper names and the codes operators exchange on the air, so
 // they stay as the data files spell them (see events.ts).
 
-import { createCachedTranslator } from "@ham2k/halo-extension-sdk"
+import { createCachedTranslator } from "@ham2k/extension-sdk"
 
 import en from "./i18n/en.json" with { type: "json" }
 import es from "./i18n/es.json" with { type: "json" }

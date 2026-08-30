@@ -12,8 +12,8 @@
 // wants @ham2k/lib-callsigns or liquidjs says so in its manifest and uses the
 // host's copy, rather than carrying its own — see docs/extensions/distribution.md.
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/halo-extension-sdk"
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json"
 

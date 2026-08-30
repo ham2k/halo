@@ -35,7 +35,6 @@ import {
   loadHostSharedVersions,
   loadKnownExperiments,
   loadManifests,
-  loadRootDependencies,
   readManifest,
 } from './build-config.mjs'
 
@@ -63,7 +62,6 @@ const bindHost = argValue('--host', '0.0.0.0')
 const only = argValue('--only', null)?.split(',').map((s) => s.trim()).filter(Boolean)
 
 const hostSharedVersions = await loadHostSharedVersions()
-const rootDeps = await loadRootDependencies()
 
 const served = bundles.filter((b) => b.kind === 'extension' && (!only || only.includes(b.key)))
 if (only) {
@@ -168,7 +166,7 @@ function watchPlugin(bundle) {
 
 const contexts = []
 for (const bundle of served) {
-  const options = buildOptionsFor(bundle, { hostSharedVersions, rootDeps })
+  const options = buildOptionsFor(bundle, { hostSharedVersions })
   options.plugins = [...(options.plugins ?? []), watchPlugin(bundle)]
   // Errors must not abort the server — an author saves broken code constantly,
   // and the loop's job is to report it and stay up.

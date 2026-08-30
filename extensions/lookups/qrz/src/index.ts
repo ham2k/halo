@@ -6,8 +6,8 @@
 // kept across calls, and re-login on session expiry.
 
 import { cleanLocationParams } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
-import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
+import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/extension-sdk"
 
 // User-visible strings live in i18n.ts / i18n/<locale>.json. The account
 // definition members follow the locale by being functions of ctx — see the

@@ -21,7 +21,7 @@
 // a break from claiming the whole day's log.
 //
 // Types and `hooks` come in by relative path, not the
-// `@ham2k/halo-extension-sdk` alias, so this module's tests can run under plain
+// `@ham2k/extension-sdk` alias, so this module's tests can run under plain
 // `node --test` — the constraint dxcc.ts and scoring.ts document.
 
 import type {
@@ -343,7 +343,7 @@ export async function adifForExport(
   // is circular (the barrel re-exports this module), and it would drag
   // `defineExtension` — which needs the kernel global — into this module's
   // `node --test` runs.
-  const { hooks } = await import("@ham2k/halo-extension-sdk")
+  const { hooks } = await import("@ham2k/extension-sdk")
   const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
     operation,
     qsos,

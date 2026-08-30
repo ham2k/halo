@@ -24,13 +24,13 @@
 import {
   activityExportHook,
   defineExtension,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import type {
   HookContext,
   JSONValue,
   Ref,
   TitleSuggestion,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
 

@@ -24,7 +24,7 @@
 // exchange never reaches the dupe check at all — it exits earlier as
 // `missingExchange` and is never recorded into `worked`.
 
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { distanceOnEarth, gridToLocation } from "@ham2k/lib-geo-tools"
 

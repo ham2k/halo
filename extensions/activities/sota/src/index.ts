@@ -13,7 +13,7 @@
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -36,7 +36,7 @@ import type {
   ActivitySuggestion,
   LookupRow,
   TitleSuggestion,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import { activationZoneUrl, REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 import { tFor } from "./i18n.ts"

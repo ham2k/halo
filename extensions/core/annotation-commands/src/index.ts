@@ -25,8 +25,8 @@
 // one, else the device's GPS fix via `host.getLocation()` (same fallback
 // app-polo's WEATHER uses).
 
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
-import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
 import { gridToLocation } from "@ham2k/lib-geo-tools"
 
 import { parseSolarXml, solarMessage, weatherMessage } from "../../../shared/spaceWeather.ts"

@@ -18,8 +18,8 @@ import {
   contestScorer,
   defineExtension,
   referenceActivity,
-} from "@ham2k/halo-extension-sdk"
-import type { DataFileDefinition, HookContext, PostResult, PostSelfSpotRequest, Ref, SpotEligibility } from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
+import type { DataFileDefinition, HookContext, PostResult, PostSelfSpotRequest, Ref, SpotEligibility } from "@ham2k/extension-sdk"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
 import { postSelfSpotToGMA } from "../../../shared/gmaSpots.ts"

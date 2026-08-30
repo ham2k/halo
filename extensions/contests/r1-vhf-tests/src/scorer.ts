@@ -22,7 +22,7 @@
 // contact. Only a repeat of the exact (call, band, our grid, their grid)
 // tuple is a dupe.
 
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { distanceForRegion1VHFContests } from "@ham2k/lib-geo-tools"
 

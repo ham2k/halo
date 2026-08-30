@@ -10,7 +10,7 @@ wrapper: it owns the option set, and a second engine built elsewhere would
 disagree about timezones without anyone noticing.
 
 ```ts
-import { renderTemplate, templateContext, triggersForTemplate } from "@ham2k/halo-extension-sdk"
+import { renderTemplate, templateContext, triggersForTemplate } from "@ham2k/extension-sdk"
 
 const text = renderTemplate("{{ op.station }} — {{ op.qsoCount }} QSOs", templateContext({ operation, qsoCount }))
 ```

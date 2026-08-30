@@ -15,7 +15,7 @@ import assert from "node:assert/strict"
 import { normalizeLocation } from "./exchange.ts"
 import { NAQPScorer } from "./scorer.ts"
 import { VALID_LOCATIONS, isMultiplier } from "./locations.ts"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 const ctx = { online: false } as never
 

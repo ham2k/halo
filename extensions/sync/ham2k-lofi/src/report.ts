@@ -6,7 +6,7 @@
 // plain `node --test`, which cannot resolve the SDK package specifier outside
 // the esbuild bundle, so anything importing `host` is untestable here.
 
-import type { JSONValue, VersionInfo } from "@ham2k/halo-extension-sdk"
+import type { JSONValue, VersionInfo } from "@ham2k/extension-sdk"
 
 const TITLE_MAX = 120
 

@@ -19,12 +19,10 @@ import {
   indexEntryFor,
   loadHostSharedVersions,
   loadManifests,
-  loadRootDependencies,
   outDir,
 } from './build-config.mjs'
 
 const hostSharedVersions = await loadHostSharedVersions()
-const rootDeps = await loadRootDependencies()
 await loadManifests()
 
 await mkdir(outDir, { recursive: true })
@@ -32,7 +30,6 @@ await mkdir(outDir, { recursive: true })
 for (const bundle of bundles) {
   const result = await build(buildOptionsFor(bundle, {
     hostSharedVersions,
-    rootDeps,
     outfile: join(outDir, `${bundle.key}.js`),
   }))
   const bytes = Object.values(result.metafile.outputs)[0].bytes

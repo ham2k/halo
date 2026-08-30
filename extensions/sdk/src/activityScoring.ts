@@ -26,7 +26,7 @@
 // (`DUPE RECORDS`).
 //
 // Types, the translator and `contestScorer` come in by relative path, not the
-// `@ham2k/halo-extension-sdk` alias, so this module's tests can run under plain
+// `@ham2k/extension-sdk` alias, so this module's tests can run under plain
 // `node --test` — the same constraint dxcc.ts and core/scoring document.
 
 import { createCachedTranslator, createTranslator } from "./i18n.ts"

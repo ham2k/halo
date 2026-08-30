@@ -19,7 +19,7 @@
 // unset means `sync`'s fallback capture (below) is a no-op, same shape as
 // the LoFi secret.
 
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
 import type {
   CommandCatalogEntry,
   CommandInterpretation,
@@ -27,7 +27,7 @@ import type {
   JSONValue,
   SyncPayload,
   SyncResponse,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
 import { clientIdentityFrom, requireWebhookIdentity } from './clientIdentity.ts'

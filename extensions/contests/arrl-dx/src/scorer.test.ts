@@ -9,7 +9,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { ARRLDXScorer, POWER_PATTERN, isWveCall, weAreWve } from "./scorer.ts"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 const ctx = { online: false } as never
 const cwRef = { type: 'arrl-dx', mode: 'CW' }

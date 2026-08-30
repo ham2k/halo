@@ -18,7 +18,7 @@
 // out. A POTA reference is the fallback, and for the three events with no
 // exchange at all it is the only source.
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 import type { StateParkEvent } from "./events.ts"
 

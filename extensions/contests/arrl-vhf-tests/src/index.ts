@@ -15,7 +15,7 @@
 // infra (docs/design/contests.md's segments model), not something this
 // extension tracks itself.
 
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -30,7 +30,7 @@ import type {
   RefLink,
   SuggestArgs,
   TitleSuggestion,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { EVENTS, eventFor, type VhfEvent } from "./events.ts"

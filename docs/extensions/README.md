@@ -137,7 +137,7 @@ Worth reading first: this file, `hooks.md`, `docs/design/activities.md` §3.4,
 and `app/lib/services/flags_service.dart`.
 
 ```ts
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
 import manifest from "../manifest.json" with { type: "json" }
 
 defineExtension({
@@ -179,7 +179,7 @@ Rules of the road:
 
 ## The host API
 
-Available via `import { host } from "@ham2k/halo-extension-sdk"`:
+Available via `import { host } from "@ham2k/extension-sdk"`:
 
 | Function | Purpose |
 |---|---|
@@ -229,7 +229,7 @@ Cross-extension composition (calling other extensions' hooks *inside* the
 runtime, without a bridge round-trip):
 
 ```ts
-import { hooks } from "@ham2k/halo-extension-sdk"
+import { hooks } from "@ham2k/extension-sdk"
 const entries = await hooks.invokeAll('adifFields', 'fieldsForOneQSO', { qso, operation })
 // entries: [{key, ok, value|error}, ...] in priority order
 ```
@@ -255,7 +255,7 @@ Extensions running in the QuickJS isolate have access to the shared `i18next` li
 You can define localized strings in your extension as a JSON/JS map and load them using the SDK's `createTranslator` helper alongside the `locale` passed in the `HookContext`:
 
 ```ts
-import { createTranslator, HookContext } from "@ham2k/halo-extension-sdk"
+import { createTranslator, HookContext } from "@ham2k/extension-sdk"
 
 const resources = {
   en: {

@@ -18,7 +18,7 @@ import {
   host,
   huntingExportHook,
   referenceActivity,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import type {
   DataFileDefinition,
   HookContext,
@@ -29,7 +29,7 @@ import type {
   Ref,
   Spot,
   SpotEligibility,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 

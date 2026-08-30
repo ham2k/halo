@@ -9,7 +9,7 @@
 // `defineExtension` at import time, so nothing in it is reachable from
 // `node --test`.
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// Member number or QTH, as typed: digits for a member, letters otherwise.

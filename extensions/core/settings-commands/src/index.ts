@@ -24,13 +24,13 @@
 // writes `false` to `showNumbersRow` while a hypothetical `hideFoo` would get
 // `true` — the verb means what it says regardless of how the setting was named.
 
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
 import type {
   CommandCatalogEntry,
   CommandInterpretation,
   HookContext,
   SettingsSearchResult,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
 

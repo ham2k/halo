@@ -28,7 +28,7 @@
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { ADIF_MODE_FOR_SUBMODE, superModeForMode } from "@ham2k/lib-operation-data"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 import { normalizeLocation } from "./exchange.ts"
 import { isMultiplier } from "./locations.ts"

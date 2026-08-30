@@ -188,16 +188,16 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   return problems
 }
 
-/// The mark of a bundle built with this repo's `sharedLibsPlugin`, which
-/// replaces `@ham2k/lib-*`, `i18next` and `liquidjs` with lookups into the
-/// kernel's `sharedModules` — resolved at BUILD time against whatever versions
-/// that checkout happened to have.
+/// Every library a bundle takes from the host rather than carrying its own
+/// copy — the `globalThis.__polo.sharedModules[...]` lookups its build emitted.
 ///
-/// A distributed bundle cannot do that: it has no way to know what the host
-/// carries, and the host makes no promise. Left in, the bundle loads happily
-/// and then dies at the first call into a library that is absent or a different
-/// major — far from the cause, and in someone else's app. So it is refused
-/// here, where the fix ("build with your dependencies inlined") is still cheap.
+/// Taking them is the supported path and worth roughly thirty times the bundle
+/// size. What the caller checks is that each one was DECLARED: the host carries
+/// whatever version its build shipped with and makes no promise, so an
+/// undeclared lookup is a bundle the app cannot version-check before loading.
+/// It loads happily and then dies at the first call into a library that turned
+/// out to be absent or a different major — far from the cause, and in someone
+/// else's app.
 export function findSharedModuleReferences(source) {
   const hits = []
   const pattern = /__polo\s*\.\s*sharedModules\s*\[\s*["']([^"']+)["']\s*\]/g

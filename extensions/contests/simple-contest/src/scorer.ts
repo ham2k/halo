@@ -17,7 +17,7 @@
 // `node --test` without resolving the tsc/esbuild-only package alias.
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 /// What the scorer accumulates while working through the log. A type alias
 /// rather than an interface so it stays assignable to `Scoresheet` (JSONValue),

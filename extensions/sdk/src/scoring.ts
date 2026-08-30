@@ -17,7 +17,7 @@
 // DESIGN.md §4's "score 500 QSOs in one call, not 500 calls". A per-QSO
 // `scoreQso` method does not mean a per-QSO bridge crossing.
 //
-// Types come in by relative path, not the `@ham2k/halo-extension-sdk` alias, so
+// Types come in by relative path, not the `@ham2k/extension-sdk` alias, so
 // this module's tests can run under plain `node --test` (which can't resolve
 // that tsc/esbuild-only bare specifier) — the same constraint dxcc.ts documents.
 

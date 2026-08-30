@@ -11,7 +11,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { R1VHFScorer } from "./scorer.ts"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 import { distanceOnEarth, gridToLocation } from "@ham2k/lib-geo-tools"
 
 const ctx = { online: false } as never

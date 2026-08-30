@@ -5,7 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { collectRefsFromSpots } from "./collectRefs.ts"
-import type { Spot } from "@ham2k/halo-extension-sdk"
+import type { Spot } from "@ham2k/extension-sdk"
 
 function spot(refs: { type: string; ref: string }[], call = "KI2D"): Spot {
   return { their: { call }, refs, spot: { timeInMillis: 0, source: "test" } }

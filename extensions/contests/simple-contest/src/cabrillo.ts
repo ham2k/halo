@@ -10,7 +10,7 @@
 // contest needs it, rather than being copied.
 
 import { fmtCabrilloDate, fmtCabrilloTime } from "@ham2k/lib-format-tools"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 /// VHF+ Cabrillo logs name their band rather than a kHz frequency; HF logs use
 /// kHz. Values match app-polo's table, including the entries it flags as

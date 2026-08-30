@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { AnnotatedCallInfo, HookContext, JSONValue, LookupResult } from "@ham2k/halo-extension-sdk"
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { AnnotatedCallInfo, HookContext, JSONValue, LookupResult } from "@ham2k/extension-sdk"
 
 import { buildCallHistoryTiers, mergeHistory } from "./buildCallHistoryLookup"
 import type { CallHistoryTiers } from "./buildCallHistoryLookup"

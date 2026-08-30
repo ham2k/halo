@@ -18,7 +18,7 @@
 // either: PGA scores nothing at all in app-polo.
 //
 // Types and helpers come in by relative path, not the
-// `@ham2k/halo-extension-sdk` alias, so this module's tests can run under plain
+// `@ham2k/extension-sdk` alias, so this module's tests can run under plain
 // `node --test` — the constraint dxcc.ts and scoring.ts document.
 
 import { distanceOnEarth } from "@ham2k/lib-geo-tools"
@@ -40,7 +40,7 @@ import type {
 /// would be circular. Imported once on first use, then cached by the module
 /// system — the same dance activityExports.ts does for `hooks`.
 async function hostApi() {
-  const { host } = await import("@ham2k/halo-extension-sdk")
+  const { host } = await import("@ham2k/extension-sdk")
   return host
 }
 

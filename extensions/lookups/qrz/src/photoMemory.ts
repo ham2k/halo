@@ -29,7 +29,7 @@
 // Pure, and its own module, so the rules below are testable without the host
 // bridge index.ts pulls in.
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 /// How long an answer stands, whether remembered in this session or read back
 /// off a past QSO. A ham who adds a photo should be found again without

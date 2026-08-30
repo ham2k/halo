@@ -15,7 +15,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { IARUHFScorer, normalizeZone, ourExchange, parseExchange } from "./scorer.ts"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 const ctx = { online: false } as never
 

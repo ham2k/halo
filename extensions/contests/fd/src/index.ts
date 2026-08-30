@@ -15,7 +15,7 @@ import {
   contestScorer,
   defineExtension,
   host,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -29,7 +29,7 @@ import type {
   RefLink,
   SuggestArgs,
   TitleSuggestion,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 // The Cabrillo writer every contest here shares — `@ham2k/lib-qson-cabrillo`
 // has no writer, so it was ported into `simple-contest` and imported from

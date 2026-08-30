@@ -8,6 +8,22 @@
   "enabledByDefault": true,
   "icon": "hand-wave-outline",
   "api": 1,
-  "keywords": ["sample", "example", "hello"],
-  "hooks": ["panel"]
+  "keywords": [
+    "sample",
+    "example",
+    "hello"
+  ],
+  "hooks": [
+    "panel"
+  ],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.2",
+    "@ham2k/lib-country-files": "^1.0.202605301",
+    "@ham2k/lib-dxcc-data": "^1.0.1",
+    "@ham2k/lib-format-tools": "^1.1.3",
+    "@ham2k/lib-geo-tools": "^1.1.1",
+    "@ham2k/lib-operation-data": "^1.1.3",
+    "i18next": "^23.16.8",
+    "liquidjs": "^10.28.0"
+  }
 }

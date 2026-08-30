@@ -7,8 +7,8 @@
 // this is the highest-defect-risk piece of the whole feature.
 
 import { gridToLocation, locationToGrid6 } from "@ham2k/lib-geo-tools"
-import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
-// Relative (not the `@ham2k/halo-extension-sdk` alias) so this file's own
+import type { CallInfo, CallInfoLookup } from "@ham2k/extension-sdk"
+// Relative (not the `@ham2k/extension-sdk` alias) so this file's own
 // `mergeLookup.test.ts` — run via plain `node --test`, which can't resolve
 // that tsc-only bare specifier — stays runnable; same constraint as
 // annotate.ts's dxcc import.

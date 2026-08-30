@@ -3,7 +3,7 @@
 //
 // POTA reference validation/formatting — pulled out of index.ts so it can be
 // unit-tested directly (see index.test.ts): this file only imports real npm
-// packages and relative file paths, never the `@ham2k/halo-extension-sdk` *bare
+// packages and relative file paths, never the `@ham2k/extension-sdk` *bare
 // specifier* (a tsc-only path alias — see extensions/tsconfig.json — that
 // Node's own module resolver, used by `node --test`, can't resolve at
 // runtime). `sdk/src/dxcc.ts` only imports real npm packages itself, so

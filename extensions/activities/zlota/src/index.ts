@@ -18,8 +18,8 @@ import {
   host,
   huntingExportHook,
   referenceActivity,
-} from "@ham2k/halo-extension-sdk"
-import type { DataFileDefinition, HookContext, Spot } from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
+import type { DataFileDefinition, HookContext, Spot } from "@ham2k/extension-sdk"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { tFor } from "./i18n.ts"

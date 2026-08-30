@@ -15,7 +15,8 @@
 import { readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import semver from 'semver'
+
+import { buildOptionsFor as extensionBuildOptions } from './tools/h2kext-build.mjs'
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, '../app/assets/extensions')
@@ -47,46 +48,26 @@ export async function loadHostSharedVersions() {
   return versions
 }
 
-export async function loadRootDependencies() {
-  const rootPackageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf-8'))
-  return rootPackageJson.dependencies || {}
-}
-
-export function sharedLibsPlugin(extensionDependencies = {}, hostSharedVersions = {}) {
-  return {
-    name: 'shared-libs',
-    setup(build) {
-      build.onResolve({ filter: /^(@ham2k\/lib-|i18next$|liquidjs$)/ }, (args) => {
-        const packageName = args.path
-        // NOTE: today every extension shares the workspace-root package.json
-        // (there are no per-extension manifests), so `extensionDependencies`
-        // is always the root deps and this range check is effectively "the
-        // host has it" — it can't currently catch a version mismatch because
-        // there's only one declared version. The machinery stays for when
-        // per-extension dependency ranges are introduced (the OTA-extension
-        // story in DESIGN.md §3), at which point pass that extension's own
-        // `dependencies` here instead of the root's.
-        const requestedRange = extensionDependencies[packageName] || '*'
-        const hostVersion = hostSharedVersions[packageName]
-
-        // Externalize only if host has it and it satisfies the requested range
-        if (hostVersion && semver.satisfies(hostVersion, requestedRange)) {
-          return { path: packageName, namespace: 'shared-libs-external' }
-        }
-
-        // Version mismatch: let esbuild bundle it inline
-        return null
-      })
-
-      build.onLoad({ filter: /.*/, namespace: 'shared-libs-external' }, (args) => {
-        return {
-          contents: `module.exports = globalThis.__polo.sharedModules["${args.path}"];`,
-          loader: 'js',
-        }
-      })
-    }
-  }
-}
+/// What a built-in bundle declares it takes from the host: the host's whole
+/// list, because for a built-in the two lists are the same thing. It ships
+/// inside the app beside the kernel that holds the instances, so there is no
+/// subset it could name that would mean anything — and naming one would make
+/// adding an import to an extension a build failure in a second file.
+///
+/// Which of them a given bundle actually resolves is decided by its imports,
+/// not by this: every extension imports the SDK barrel, whose modules reach 8
+/// of the 12, and the rest appear only where something imports them directly.
+///
+/// Declared HERE rather than in 49 manifests. A third party's declaration is
+/// read twice: by their build, and by the app at install, which refuses a
+/// bundle whose ranges this build cannot satisfy. A built-in's would be read
+/// only by this build — built-ins are assets, and never take the install path
+/// — so 49 identical copies would be a field nothing reads, drifting the
+/// moment one was missed.
+///
+/// The range is `*` and means it: a built-in ships inside the app, so whatever
+/// version the host holds is by construction the version it was built against.
+export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((pkg) => [pkg, '*']))
 
 // `domains` is each extension's declared network capability (DESIGN.md §3's
 // manifest allowlist, in embryo): the Dart host refuses host.fetch calls to
@@ -243,41 +224,28 @@ export async function loadManifests(forBundles = bundles) {
 /// which builds in memory (`write: false`) rather than into the app's assets —
 /// serving a bundle must never overwrite the one the app ships, or a dev
 /// session would quietly leave the working tree carrying its output.
-export function buildOptionsFor(bundle, { hostSharedVersions, rootDeps, outfile }) {
-  const options = {
-    entryPoints: [join(root, bundle.entry)],
-    bundle: true,
-    format: 'iife',
-    platform: 'neutral',
-    mainFields: ['module', 'main'],
-    target: 'es2020',
+export function buildOptionsFor(bundle, { hostSharedVersions, outfile }) {
+  // The kernel is the one bundle that must NOT reach for `sharedModules`: it
+  // IS what holds them, so it inlines every shared library and publishes the
+  // instances the others then look up.
+  const isKernel = bundle.kind === 'kernel'
+
+  return extensionBuildOptions({
+    entry: join(root, bundle.entry),
+    outfile,
+    dir: root,
+    manifest: isKernel ? {} : { sharedDependencies: builtInSharedDependencies },
+    inline: isKernel ? sharedPackages : [],
     alias: {
-      '@ham2k/halo-extension-sdk': join(root, 'sdk/src/index.ts'),
+      '@ham2k/extension-sdk': join(root, 'sdk/src/index.ts'),
       // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) is a unicode-aware
       // package doing an ASCII job: Cabrillo tags are ASCII by specification.
       // shims/camelcase.ts covers that job without the dependency.
       'camelcase': join(root, 'shims/camelcase.ts'),
-      // liquidjs's `main`/`module` are its NODE builds, which import node:fs
-      // and node:path for `{% include %}`'s filesystem loader. Its browser
-      // build is reachable only through the `browser` field, and
-      // `platform: 'neutral'` ignores that field — so without this alias the
-      // kernel fails to bundle. Nothing is lost: filesystem partials have no
-      // meaning in a runtime with no filesystem, so `{% include %}` throws
-      // either way (docs/extensions/templates.md).
-      'liquidjs': join(root, 'node_modules/liquidjs/dist/liquid.browser.mjs'),
     },
-    logLevel: 'warning',
+    ...(isKernel ? { define: { '__SHARED_VERSIONS__': JSON.stringify(hostSharedVersions) } } : {}),
     metafile: true,
-  }
-  if (outfile) options.outfile = outfile
-  else options.write = false
-
-  if (bundle.kind === 'kernel') {
-    options.define = { '__SHARED_VERSIONS__': JSON.stringify(hostSharedVersions) }
-  } else {
-    options.plugins = [sharedLibsPlugin(rootDeps, hostSharedVersions)]
-  }
-  return options
+  })
 }
 
 /// One extension's entry in index.json — the metadata the Dart host reads

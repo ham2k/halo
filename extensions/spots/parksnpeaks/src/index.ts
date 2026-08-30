@@ -12,7 +12,7 @@
 // activator twice, in two sources, with no way for the operator to tell they
 // are the same person.
 
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
 import type {
   HookContext,
   JSONValue,
@@ -22,7 +22,7 @@ import type {
   Ref,
   Spot,
   SpotEligibility,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import { bandForFrequency, modeForFrequency } from "@ham2k/lib-operation-data"
 
 import { tFor } from "./i18n.ts"

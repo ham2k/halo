@@ -20,7 +20,7 @@
 // entity they haven't worked is worth a pill.
 //
 // `entityPrefixForCall`, the translator and the scoring harness all come in by
-// relative path, not the `@ham2k/halo-extension-sdk` alias, so this module's
+// relative path, not the `@ham2k/extension-sdk` alias, so this module's
 // tests can run under plain `node --test` (which can't resolve that
 // tsc/esbuild-only bare specifier). `index.ts` keeps the alias for
 // `defineExtension` and is the one module the tests don't import.
@@ -34,7 +34,7 @@ import { DXCC_BY_PREFIX } from "@ham2k/lib-dxcc-data"
 // Frequency-ordered, and the same list the runtime itself uses — the breakdown
 // reads top-down like a band plan rather than in whatever order QSOs arrived.
 import { EXTENDED_BANDS } from "@ham2k/lib-operation-data"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 // User-visible tally labels; the per-locale catalogs live in
 // i18n/<locale>.json (flat key → string maps). Singular/plural is

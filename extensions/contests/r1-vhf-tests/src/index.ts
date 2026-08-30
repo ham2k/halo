@@ -13,7 +13,7 @@
 // arrl-vhf-tests already proved. `their` number has no placeholder to guess:
 // there is nothing to know about a number the other station hasn't sent yet.
 
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -28,7 +28,7 @@ import type {
   RefLink,
   SuggestArgs,
   TitleSuggestion,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { EVENTS, eventFor, type R1VhfEvent } from "./events.ts"
 import { GRID_PATTERN, guessedGrid, trimmedGrid } from "./exchange.ts"

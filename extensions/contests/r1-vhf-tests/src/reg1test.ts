@@ -9,7 +9,7 @@
 // copy.
 
 import { fmtTimestamp } from "@ham2k/lib-format-tools"
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 /// REG1TEST's numeric mode codes. CW/SSB/FM/AM/RTTY only — no split-mode
 /// codes, matching every REG1TEST contest HaLo ports. USB/LSB both read as

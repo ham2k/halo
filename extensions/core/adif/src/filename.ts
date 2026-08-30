@@ -5,7 +5,7 @@
 // value imports (`defineExtension`, `hooks`, …) that only resolve under tsc —
 // this file's own filename.test.ts runs under plain `node --test`.
 
-// Relative import, not the `@ham2k/halo-extension-sdk` alias — same
+// Relative import, not the `@ham2k/extension-sdk` alias — same
 // constraint mergeLookup.ts documents.
 import { exportFilename, startMillisOf } from "../../../sdk/src/exportNames.ts"
 import type { JSONValue } from "../../../sdk/src/types.ts"

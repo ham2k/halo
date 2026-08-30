@@ -17,7 +17,7 @@
 //   adifFields          — CONTEST_ID / STX_STRING / SRX_STRING
 //   export              — contest ADIF options plus a Cabrillo file
 
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -27,7 +27,7 @@ import type {
   JSONValue,
   LoggingControlDescriptor,
   Ref,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { qsonToCabrillo } from "./cabrillo.ts"
 import { tFor } from "./i18n.ts"

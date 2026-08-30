@@ -102,11 +102,50 @@ outside that list you bundle yourself, as normal.
 Which versions a particular build carries are in its
 `assets/extensions/index.json`, under `sharedModules`.
 
-**Not yet reachable from outside this repo.** Declaring the ranges works and is
-checked at install, but emitting the lookups needs an esbuild plugin that
-currently only lives here, so a bundle built elsewhere inlines whether it wants
-to or not — [HALO-442](https://cabo.ham2k.com/halo/c/442). Until that lands,
-the sizes above are what our own build achieves rather than what you can.
+Emitting the lookups is the build preset's job — see **Building** below.
+
+## Building
+
+```js
+import { build } from 'esbuild'
+import { buildExtension } from '@ham2k/extension-tools'
+
+await buildExtension(build, { dir: import.meta.dirname })
+```
+
+That reads `manifest.json`, compiles `src/index.ts` into `build/index.js`, and
+copies the manifest alongside it, ready for the packer. The esbuild settings it
+applies are requirements of the runtime rather than preferences: one IIFE
+because the sandbox evaluates a script and has no module loader, `neutral`
+because there is no Node and no DOM, and `es2020` because that is what
+QuickJS-NG speaks.
+
+esbuild is yours to bring — the preset takes your `build` function rather than
+importing its own, so there is only ever one copy of it.
+
+Everything `sharedDependencies` names becomes a lookup on the host's instance.
+Anything else you use is bundled, as normal.
+
+**Using one of the host's libraries without declaring it fails the build**,
+naming the library and the two ways out. That is deliberate: the alternative is
+a bundle that silently carries its own copy — thirty times the size, with its
+own module state — and nothing anywhere that says so. If the second copy is
+what you want, which is how you use a version the host does not carry, say so:
+
+```js
+await buildExtension(build, { dir: import.meta.dirname, inline: ['liquidjs'] })
+```
+
+`extensions/samples/hello-world` is the shortest complete example. Declaring
+what it uses rather than carrying it took the packaged bundle from 185 KB to
+**4 KB**.
+
+The preset also settles a trap every author would otherwise hit: the SDK
+reaches `liquidjs`, whose `main`/`module` are its **Node** builds, and
+`platform: 'neutral'` ignores the `browser` field that would pick the right
+one, so a hand-written esbuild config fails on unresolvable Node built-ins
+before it compiles anything — even for an extension that never renders a
+template.
 
 ## Packaging
 
@@ -131,25 +170,14 @@ manifest.json: missing 'api' — declare the extension API this was built agains
 packaging, which builds the extensions that ship inside the app under bare keys
 and the reserved prefix; it does not waive what the runtime needs of a key.
 
-`extensions/tools/h2kext.mjs` holds the format and its rules, deliberately with
-no dependency on anything else in this repo, so it can be published as its own
-package when there is someone outside to use it.
-
-### One trap, before you get that far
-
-The SDK reaches `liquidjs`, whose `main`/`module` are its **Node** builds, and
-`platform: 'neutral'` ignores the `browser` field that would pick the right
-one. So an ordinary esbuild config fails to resolve `fs`, `path`, `stream`,
-`module` and `crypto` before it compiles anything — even for an extension that
-never renders a template. Alias it:
-
-```js
-alias: { liquidjs: '.../node_modules/liquidjs/dist/liquid.browser.mjs' }
-```
-
-`extensions/samples/hello-world/build.mjs` does exactly this, and is the
-shortest complete example of building an extension.
-[HALO-443](https://cabo.ham2k.com/halo/c/443) is the fix.
+`extensions/tools/h2kext.mjs` holds the format and its rules, and
+`h2kext-build.mjs` the build preset. Both are deliberately free of any
+dependency on the rest of this repo, so they can be published together as
+`@ham2k/extension-tools` when there is someone outside to use them — the
+toolchain half, separate from the `@ham2k/extension-sdk` an extension imports
+and bundles. This repo's own
+build uses the same plugin, which is what keeps the path you take from being
+the untested one.
 
 ## Keys
 

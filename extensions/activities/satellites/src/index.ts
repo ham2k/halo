@@ -24,7 +24,7 @@
 import {
   defineExtension,
   host,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import type {
   CommandCatalogEntry, CommandInterpretation,
   DataFileDefinition,
@@ -32,7 +32,7 @@ import type {
   JSONValue,
   LookupRow,
   Ref,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { capitalizeString } from "@ham2k/lib-format-tools"
 

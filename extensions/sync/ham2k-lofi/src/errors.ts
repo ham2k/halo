@@ -5,7 +5,7 @@
 // Split from index.ts only so it can be tested without booting the
 // extension host, the same way report.ts is.
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 import { LoFiRequestError } from "./backupCapture.ts"
 

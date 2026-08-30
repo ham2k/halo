@@ -11,7 +11,7 @@
 // class either, so a `QRP` left behind by Texas must not become a Cabrillo
 // header for a sponsor whose own rules offer two classes.
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 import type { EntryCategory, StateParkEvent } from "./events.ts"
 import { refOfType } from "./parks.ts"

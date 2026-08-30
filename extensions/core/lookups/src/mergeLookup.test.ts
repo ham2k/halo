@@ -5,7 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { mergeLookupIntoGuess, runLookupPipeline } from "./mergeLookup.ts"
-import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
+import type { CallInfo, CallInfoLookup } from "@ham2k/extension-sdk"
 // Relative import (the SDK bare specifier is tsc-only, unresolvable under
 // `node --test` — see annotate.ts).
 import { LOCATION_ACCURACY } from "../../../sdk/src/location.ts"

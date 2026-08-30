@@ -16,7 +16,7 @@
 // place for all of them rather than in this one scorer.
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
 

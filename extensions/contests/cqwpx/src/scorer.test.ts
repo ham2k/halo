@@ -12,7 +12,7 @@
 import { strict as assert } from "node:assert"
 import { describe, it } from "node:test"
 
-import type { JSONValue } from "@ham2k/halo-extension-sdk"
+import type { JSONValue } from "@ham2k/extension-sdk"
 
 import { CQWPXScorer, wpxPrefix } from "./scorer.ts"
 import type { CQWPXScoresheet } from "./scorer.ts"

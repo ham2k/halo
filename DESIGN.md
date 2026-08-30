@@ -77,7 +77,7 @@ boundary. The only hooks that don't cross cleanly are the UI ones — solved in
 ├────────────────────────────────────────────────────────────┤
 │ TypeScript extension runtime — "the knowledge"            │
 │  • QuickJS engine on a background isolate                  │
-│  • @ham2k/halo-extension-sdk (typed hook contracts, host API)        │
+│  • @ham2k/extension-sdk (typed hook contracts, host API)        │
 │  • Extensions: activities, contests, lookups, spots,      │
 │    exporters, scoring, sync transports, commands           │
 │  • Reuses existing @ham2k JS libs (callsigns, country      │
@@ -337,7 +337,7 @@ app-halo/
     halo_widgets/         # Dart: widget catalog + modules
     halo_extension_host/     # Dart: QuickJS binding, bridge, manifests
   extensions/                # TypeScript workspace
-    sdk/                  # @ham2k/halo-extension-sdk — hook types + host API
+    sdk/                  # @ham2k/extension-sdk — hook types + host API
     activities/           # pota, sota, wwff, ...
     contests/             # naqp, qp, cqwpx, ...
     lookups/              # qrz, hamdb, hamqth

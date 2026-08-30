@@ -5,7 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { dxccBreakdown, scoreQso, scoreQsos } from "./scoring.ts"
-import type { HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import type { HookContext, JSONValue } from "@ham2k/extension-sdk"
 
 // A minimal HookContext whose getQsos returns the given log — the only field
 // scoreQso reads. All callsigns below resolve against the bundled country file

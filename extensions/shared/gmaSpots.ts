@@ -16,8 +16,8 @@
 // failures, so a non-200 is the only signal there is.
 
 import { parseCallsign } from "@ham2k/lib-callsigns"
-import { host } from "@ham2k/halo-extension-sdk"
-import type { PostResult, Ref } from "@ham2k/halo-extension-sdk"
+import { host } from "@ham2k/extension-sdk"
+import type { PostResult, Ref } from "@ham2k/extension-sdk"
 
 const GMA_SPOT_URL = 'https://www.cqgma.org/spotsmart2.php'
 

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import type { RefInfo, Spot } from "@ham2k/halo-extension-sdk"
+import type { RefInfo, Spot } from "@ham2k/extension-sdk"
 
 /// Reduces a station's recent spots to the activity references worth
 /// proposing for the QSO being logged. Pure, so the hook itself stays a thin

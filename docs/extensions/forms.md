@@ -177,7 +177,7 @@ extension's ad hoc `host.showForm` call or a `settingsPanel`.
 An extension can prompt the user at any time using a modal dialog:
 
 ```ts
-import { host } from "@ham2k/halo-extension-sdk";
+import { host } from "@ham2k/extension-sdk";
 
 const result = await host.showForm({
   title: "Setup Contest",

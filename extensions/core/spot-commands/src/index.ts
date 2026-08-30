@@ -17,8 +17,8 @@
 // spotCommandParsing.ts so it's unit-testable without the extension-runtime
 // globals `defineExtension` depends on.
 
-import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
 import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 

@@ -17,7 +17,7 @@
 // ~50-entry class table plus its per-event `classes` restriction is its own
 // increment on top of the exchange/scoring/writer core this port proves.
 
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -32,7 +32,7 @@ import type {
   RefLink,
   SuggestArgs,
   TitleSuggestion,
-} from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
 
 import { EVENTS, eventFor, hasDistrictExchange, type RsgbVhfEvent } from "./events.ts"
 import { GRID_PATTERN, guessedGrid, trimmedGrid } from "./exchange.ts"

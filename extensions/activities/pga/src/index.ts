@@ -13,8 +13,8 @@ import {
   activityExportHook,
   defineExtension,
   referenceActivity,
-} from "@ham2k/halo-extension-sdk"
-import type { DataFileDefinition, HookContext } from "@ham2k/halo-extension-sdk"
+} from "@ham2k/extension-sdk"
+import type { DataFileDefinition, HookContext } from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
 
