@@ -1571,8 +1571,9 @@ class _QsoListHeaderRow extends StatelessWidget {
           _ => id,
         };
 
-    Widget handle(String column) => _ColumnResizeHandle(
+    Widget handle(String column, {bool asOverlay = false}) => _ColumnResizeHandle(
           width: Space.lg,
+          asOverlay: asOverlay,
           onDragUpdate: (delta) => onResize(column, delta),
           onDragEnd: onResizeEnd,
           onDoubleTap: () => onAutoFit(column),
@@ -1607,20 +1608,50 @@ class _QsoListHeaderRow extends StatelessWidget {
       );
     }
 
+    // Transparent, touch-sized grab strips overlaid on the handles — empty
+    // off a touch platform. The handle itself is only [Space.lg] wide and
+    // can't grow: it is the very gap [_LogQsoSummaryRow] leaves between its
+    // own columns, so widening it would slide the header out of line with
+    // every QSO row under it. A strip can't merely overhang the handle
+    // either — hit-testing runs in reverse child order, so the column cell
+    // to its right would take back everything on that side.
+    final touchSlop = paneDividerTouchSlop();
+    final strips = <Widget>[];
+    // Where in the row the next child starts, for placing those strips.
+    var offset = 0.0;
+
     // Every visible column is draggable, including Name — whichever ends up
     // LAST (the loop's own [tableWidth.flexId]) skips the trailing handle,
     // since there's nothing after it left to resize against, and takes
     // [tableWidth.flexWidth] instead of its own stored width.
-    final children = <Widget>[
-      for (final id in columnOrder)
-        if (visibleColumns.contains(id))
-          if (id == tableWidth.flexId)
-            draggableColumn(id, tableWidth.flexWidth)
-          else ...[
-            draggableColumn(id, widths.widthOf(id)),
-            handle(id),
-          ],
-    ];
+    final children = <Widget>[];
+    for (final id in columnOrder) {
+      if (!visibleColumns.contains(id)) continue;
+      if (id == tableWidth.flexId) {
+        children.add(draggableColumn(id, tableWidth.flexWidth));
+        offset += tableWidth.flexWidth;
+      } else {
+        children.add(draggableColumn(id, widths.widthOf(id)));
+        offset += widths.widthOf(id);
+        // Where a strip is overlaid, the strip IS the handle — it paints the
+        // line as well as owning the gesture, so hover and drag feedback stay
+        // in the one widget that sees the pointer. The row keeps the gap the
+        // line sits in and nothing else.
+        children.add(touchSlop > 0 ? const SizedBox(width: Space.lg) : handle(id));
+        if (touchSlop > 0) {
+          strips.add(
+            Positioned(
+              left: offset - touchSlop,
+              top: 0,
+              bottom: 0,
+              width: Space.lg + touchSlop * 2,
+              child: handle(id, asOverlay: true),
+            ),
+          );
+        }
+        offset += Space.lg;
+      }
+    }
 
     return GestureDetector(
       onSecondaryTapUp: (details) => onShowMenu(details.globalPosition),
@@ -1634,7 +1665,12 @@ class _QsoListHeaderRow extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.xs),
-          child: Row(children: children),
+          // Passthrough so the row is laid out under exactly the constraints
+          // it gets without the Stack — the strips are placed from column
+          // widths this row was already built from.
+          child: strips.isEmpty
+              ? Row(children: children)
+              : Stack(fit: StackFit.passthrough, children: [Row(children: children), ...strips]),
         ),
       ),
     );
@@ -1651,6 +1687,19 @@ class _QsoListHeaderRow extends StatelessWidget {
 /// stuck "active" forever with no `onDragEnd` ever firing.
 class _ColumnResizeHandle extends StatefulWidget {
   final double width;
+
+  /// Laid over the header row rather than sized inside it, and
+  /// [paneDividerTouchSlop] wider on each side than [width], so a fingertip
+  /// can hit it. It paints the same line — the row leaves a plain gap where
+  /// this one is used, so that the widget the pointer reaches is the widget
+  /// that draws the feedback.
+  ///
+  /// It takes presses OPAQUELY: a translucent one would leave the column cell
+  /// underneath in the gesture arena, and the drag that resizes the column
+  /// would start dragging the column itself too. The cost is that a column
+  /// REORDER can't be started from within a slop of a boundary.
+  final bool asOverlay;
+
   final ValueChanged<double> onDragUpdate;
   final VoidCallback onDragEnd;
   final VoidCallback onDoubleTap;
@@ -1660,6 +1709,7 @@ class _ColumnResizeHandle extends StatefulWidget {
     required this.onDragUpdate,
     required this.onDragEnd,
     required this.onDoubleTap,
+    this.asOverlay = false,
   });
 
   @override
@@ -1757,21 +1807,24 @@ class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final active = _hovered || _dragging;
+    final behavior = widget.asOverlay ? HitTestBehavior.opaque : HitTestBehavior.translucent;
     return MouseRegion(
       cursor: SystemMouseCursors.resizeLeftRight,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
+        behavior: behavior,
         onDoubleTap: widget.onDoubleTap,
         child: Listener(
-          behavior: HitTestBehavior.translucent,
+          behavior: behavior,
           onPointerDown: _handlePointerDown,
           onPointerMove: _handlePointerMove,
           onPointerUp: _handlePointerUp,
           onPointerCancel: _handlePointerCancel,
+          // The overlay takes the size its Positioned gives it; the line
+          // centres in either, and the boundary is the centre of both.
           child: SizedBox(
-            width: widget.width,
+            width: widget.asOverlay ? null : widget.width,
             child: Center(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),

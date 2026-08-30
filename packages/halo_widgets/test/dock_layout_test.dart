@@ -1128,9 +1128,13 @@ void main() {
     addTearDown(tester.view.reset);
     final spec = twoGroups();
     await tester.pumpWidget(harness(spec: spec));
-    final divider = find.byWidgetPredicate(
-      (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight,
-    );
+    // `.first` is the painted bar: on a touch platform (which the test
+    // binding's default target platform is) a transparent, wider grab strip
+    // is stacked over it, carrying the same cursor and the same callbacks.
+    // Dragging the bar's centre goes through that strip, which is the point.
+    final divider = find
+        .byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight)
+        .first;
     await tester.drag(divider, const Offset(-40, 0));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -1582,9 +1586,9 @@ void main() {
       final snapshot = spec.toJson();
       await tester.pumpWidget(harness(spec: spec, editing: true));
 
-      final divider = find.byWidgetPredicate(
-        (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight,
-      );
+      final divider = find
+          .byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight)
+          .first;
       await tester.drag(divider, const Offset(-100, 0));
       await tester.pumpAndSettle();
 
@@ -2018,13 +2022,71 @@ void main() {
     });
   });
 
+  testWidgets('a pointer platform drags the bar itself, with no strip in the way', (tester) async {
+    // The desktop path, which the default (mobile) test platform no longer
+    // exercises: every other divider drag here now dispatches into the touch
+    // strip, so without this one a broken bar would fail nothing.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    final spec = twoGroups() as DockSplit;
+    DockNode? reported;
+    await tester.pumpWidget(harness(spec: spec, onChanged: (s) => reported = s));
+    await tester.pumpAndSettle();
+
+    final divider = find.byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight);
+    expect(divider, findsOneWidget, reason: 'no strip is built off a touch platform');
+    await tester.drag(divider, const Offset(-100, 0));
+    await tester.pumpAndSettle();
+
+    expect(spec.weights[0], lessThan(spec.weights[1]));
+    expect(reported, isNotNull, reason: 'resize persists via onSpecChanged at drag end');
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('a touch platform grabs a divider from a slop either side of it', (tester) async {
+    // The point of the overlaid grab strip: the bar is a few pixels wide and
+    // a fingertip is not. A press that lands short of the bar — on the pane
+    // BEFORE it, which the bar's own box can never reach past, since
+    // hit-testing runs in reverse child order — still drags the boundary.
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    // The default target platform under test is already a mobile one; said
+    // out loud so this test can't be quietly disarmed by that changing.
+    expect(paneDividerTouchSlop(), greaterThan(0), reason: 'a touch platform, or there is no strip to test');
+
+    final spec = twoGroups() as DockSplit;
+    DockNode? reported;
+    await tester.pumpWidget(harness(spec: spec, onChanged: (s) => reported = s));
+    await tester.pumpAndSettle();
+
+    final bar = tester.getRect(find.byType(SolidPaneDivider));
+    await tester.timedDragFrom(
+      Offset(bar.left - paneDividerTouchSlop() + 1, bar.center.dy),
+      const Offset(-100, 0),
+      const Duration(milliseconds: 100),
+    );
+    await tester.pumpAndSettle();
+
+    expect(spec.weights[0], lessThan(spec.weights[1]), reason: 'the press short of the bar still grabbed it');
+    expect(reported, isNotNull, reason: 'and it was a real drag, persisted on release');
+  });
+
   testWidgets('dragging a divider shifts the sibling weights and reports on drag end', (tester) async {
     final spec = twoGroups() as DockSplit;
     DockNode? reported;
     await tester.pumpWidget(harness(spec: spec, onChanged: (s) => reported = s));
-    final divider = find.byWidgetPredicate(
-      (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight,
-    );
+    // `.first` is the painted bar: on a touch platform (which the test
+    // binding's default target platform is) a transparent, wider grab strip
+    // is stacked over it, carrying the same cursor and the same callbacks.
+    // Dragging the bar's centre goes through that strip, which is the point.
+    final divider = find
+        .byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight)
+        .first;
     await tester.drag(divider, const Offset(-100, 0));
     await tester.pumpAndSettle();
     expect(spec.weights[0], lessThan(spec.weights[1]));

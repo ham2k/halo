@@ -839,6 +839,14 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   // docs/design/layouts.md.
   double get _dividerExtent => paneDividerWidth(editing: widget.editing);
 
+  /// The boundary whose touch strip the pointer is over, keyed as
+  /// `(split, index)` like [_dragOvershoot] — null the rest of the time, and
+  /// always null off a touch platform, where no strip is built. The strip
+  /// covers the bar, so the bar's own hover never fires while it exists;
+  /// this is how the grab line still lights under a trackpad cursor on an
+  /// iPad.
+  (DockSplit, int)? _hoveredDivider;
+
   /// Publishes a pane's own density when it is genuinely shorter than what it
   /// inherited — a vertical split halves the height without the window
   /// changing at all, and a pane spending the window's room it does not have
@@ -1782,14 +1790,18 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         final ambientRight = ambient?.right ?? 0;
         final ambientBottom = ambient?.bottom ?? 0;
         final children = <Widget>[];
+        // Transparent, touch-sized grab strips overlaid on the boundaries —
+        // empty off a touch platform. See [paneDividerTouchSlop] for why the
+        // widening can't happen on the bar itself.
+        final touchStrips = <Widget>[];
+        final touchSlop = paneDividerTouchSlop();
+        // The leading edge of the element about to be added, along the
+        // split's own axis: the SNAPPED extents in `flat`, summed as they are
+        // consumed, which is where the strips have to sit.
+        var runOffset = 0.0;
         for (var i = 0; i < split.children.length; i++) {
           if (i > 0) {
-            children.add(
-              SolidPaneDivider(
-                axis: split.axis,
-                extent: flat[2 * i - 1],
-                onDragStart: () => _dragOvershoot[(split, i)] = 0,
-                onDragUpdate: (delta) => setState(() {
+            void handleDividerDrag(double delta) => setState(() {
                   // A run with no room, or weights that sum to nothing, cannot
                   // convert pixels to weight at all — so the travel IS
                   // overshoot and is banked rather than dropped. Guarding
@@ -1845,7 +1857,14 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                     // already IS `split.weights` (no floor was lifted).
                     weights[k] = base[k];
                   }
-                }),
+                });
+            children.add(
+              SolidPaneDivider(
+                axis: split.axis,
+                extent: flat[2 * i - 1],
+                onDragStart: () => _dragOvershoot[(split, i)] = 0,
+                onDragUpdate: handleDividerDrag,
+                hovered: _hoveredDivider == (split, i),
                 onDragEnd: () => _handleDividerDragEnd(split, i),
                 // Weights were mutated live during the drag — a cancelled
                 // gesture (pointer lost to another recognizer) must persist
@@ -1854,6 +1873,47 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                 onDragCancel: () => _handleDividerDragEnd(split, i),
               ),
             );
+            if (touchSlop > 0) {
+              final stripStart = runOffset - touchSlop;
+              final stripExtent = flat[2 * i - 1] + touchSlop * 2;
+              touchStrips.add(
+                Positioned(
+                  left: horizontal ? stripStart : 0,
+                  right: horizontal ? null : 0,
+                  top: horizontal ? 0 : stripStart,
+                  bottom: horizontal ? 0 : null,
+                  width: horizontal ? stripExtent : null,
+                  height: horizontal ? null : stripExtent,
+                  // Same callbacks as the bar it covers, which is the whole
+                  // point: the strip hit-tests first, so on a touch platform
+                  // this is the object that actually drags. It carries the
+                  // resize cursor for the same reason: covering the bar takes
+                  // the bar's own MouseRegion out of the hit path, and a
+                  // mobile build with a trackpad (an iPad's) would otherwise
+                  // show a plain arrow over every boundary.
+                  child: MouseRegion(
+                    cursor: horizontal ? SystemMouseCursors.resizeLeftRight : SystemMouseCursors.resizeUpDown,
+                    onEnter: (_) => setState(() => _hoveredDivider = (split, i)),
+                    // Unconditionally, without checking that the exit is the
+                    // strip that entered: `DockSplit` has no `==`, so a spec
+                    // rebuilt into fresh instances under a resting pointer
+                    // would leave this pinned to a split nothing can match
+                    // again, and no divider would ever light after that. Only
+                    // one strip can be hovered at a time regardless.
+                    onExit: (_) => setState(() => _hoveredDivider = null),
+                    child: PaneDividerDragTarget(
+                      axis: split.axis,
+                      onDragStart: () => _dragOvershoot[(split, i)] = 0,
+                      onDragUpdate: handleDividerDrag,
+                      onDragEnd: () => _handleDividerDragEnd(split, i),
+                      onDragCancel: () => _handleDividerDragEnd(split, i),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ),
+              );
+            }
+            runOffset += flat[2 * i - 1];
           }
           final isFirst = i == 0;
           final isLast = i == split.children.length - 1;
@@ -1877,10 +1937,17 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
               ),
             ),
           );
+          runOffset += flat[2 * i];
         }
-        return horizontal
+        final run = horizontal
             ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)
             : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+        if (touchStrips.isEmpty) return run;
+        // Passthrough, so the run is laid out under exactly the constraints
+        // it gets without the Stack — every extent above was derived from
+        // them, and a loosened one would re-derive nothing but still let the
+        // run size itself to its children.
+        return Stack(fit: StackFit.passthrough, children: [run, ...touchStrips]);
       },
     );
   }

@@ -301,6 +301,30 @@ is being **edited** the bar fattens further, 11 on desktop and 16 on mobile,
 because there a divider drag competes with pane drags for the same pointer
 and has to read as a grab target rather than as furniture.
 
+**A touch platform grabs from a slop either side of the bar.** A fingertip
+is wider than any thickness the panes can afford to give up, so the extra
+target isn't painted at all: on `isMobilePlatform`, each boundary carries a
+transparent grab strip `paneDividerTouchSlop()` (8pt) wider on each side,
+stacked over the run and wired to the same drag callbacks as the bar it
+covers — a resting solid divider is a 9pt bar in a 25pt target. It costs no
+layout space; it costs presses, since the strip takes them opaquely: within
+that slop of a boundary, pane content gets no tap at all, and a gesture the
+content owns can't be started there either — in the logs table, a column
+REORDER drag can't begin within a slop of a column boundary. Only travel
+ALONG the divider's axis arms a resize, so a swipe across the strip is at
+least not silently turned into one — see `PaneDividerDragTarget`. The strip has to be placed by the owning layout
+(`DockLayoutView`'s split runs and `ResizableSplitView`, which covers the
+surfaces style too), never by the divider overflowing its own box:
+hit-testing runs in reverse child order, so a self-overflowing bar would lose
+every point on its trailing side to the pane after it. Covering the bar also
+takes the bar's own `MouseRegion` out of the hit path, which matters on an
+iPad with a trackpad — so the strip carries the resize cursor and forwards
+hover into the bar (`SolidPaneDivider.hovered`). The same mechanism widens
+the logs table's column-resize handles, which can't grow either: that handle
+IS the gap the QSO rows leave between columns. There the strip paints the
+line as well, and the row leaves a plain gap — whichever widget the pointer
+reaches is the one that draws the feedback.
+
 The editing width is granted unconditionally — the panes give it up, and
 nothing rations it against what they can spare. A group is a Column of its
 tab strip over an Expanded body, so a pane shorter than its own strip

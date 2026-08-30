@@ -7,6 +7,7 @@
 // user actually dragged to; and a null secondary keeps the primary subtree
 // mounted at full width so state survives shirt-size flips.
 
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,10 +26,15 @@ void main() {
   double primaryWidth(WidgetTester tester) => tester.getSize(find.byKey(const Key('primary'))).width;
 
   // The divider handle, found by its one distinguishing trait (the resize
-  // cursor) rather than its visuals, which are free to change.
-  final dividerHandle = find.byWidgetPredicate(
+  // cursor) rather than its visuals, which are free to change. `.first` is
+  // the painted one: on a touch platform (which the test binding's default
+  // target platform is) a transparent, wider grab strip is stacked over it,
+  // carrying the same cursor and the same callbacks — so a gesture aimed
+  // here goes through the strip, which is the point of it.
+  final dividerHandles = find.byWidgetPredicate(
     (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight,
   );
+  final dividerHandle = dividerHandles.first;
 
   const primary = SizedBox(key: Key('primary'), child: Text('primary'));
   const secondary = SizedBox(key: Key('secondary'), child: Text('secondary'));
@@ -143,7 +149,7 @@ void main() {
 
     // 1000 * 0.4 = 400 — tracks the window width, not a persisted preference.
     expect(primaryWidth(tester), 400);
-    expect(dividerHandle, findsNothing, reason: 'a fixed split has nothing to drag');
+    expect(dividerHandles, findsNothing, reason: 'a fixed split has nothing to drag');
 
     // Widening the window keeps the primary at 40%, unlike a resizable
     // split which would hold its preferred width steady.
@@ -405,6 +411,17 @@ void main() {
     // pixel past the grab strip (shadowWidth 12 vs strip 11) — a tap in
     // that shadow-only sliver must reach the button (the shadow is
     // paint-only; ONLY the strip intercepts).
+    //
+    // On a POINTER platform, which is what this is about: a touch platform
+    // stacks a strip `paneDividerTouchSlop` wider again over the whole
+    // boundary, and that band is deliberately taken from the pane — see the
+    // touch case below.
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    // A net for an assertion failing before the clear at the end of the body:
+    // the binding's own check fires first and fails THIS test either way, but
+    // without this every test after it would silently run as macOS.
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
     var taps = 0;
     await tester.pumpWidget(
       harness(
@@ -425,6 +442,111 @@ void main() {
     // x = 500 (primary) + 11.5: inside the shadow band, outside the strip.
     await tester.tapAt(const Offset(500 + 11.5, 300));
     expect(taps, 1, reason: 'the shadow overlay must be paint-only');
+    // Cleared inside the body, not in a tearDown: the binding asserts every
+    // foundation debug variable is back to null before the test ends.
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('a pointer platform drags the bar itself, with no strip in the way', (tester) async {
+    // The desktop path, which the default (mobile) test platform no longer
+    // exercises: every other drag test here now dispatches into the touch
+    // strip, so without this one a broken bar would fail nothing.
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    final reported = <double>[];
+    await tester.pumpWidget(
+      harness(
+        child: ResizableSplitView(
+          primary: primary,
+          secondary: secondary,
+          preferredPrimaryWidth: 500,
+          onPreferredPrimaryWidthChanged: reported.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(dividerHandles, findsOneWidget, reason: 'no strip is built off a touch platform');
+    await tester.drag(dividerHandle, const Offset(-60, 0));
+    await tester.pumpAndSettle();
+
+    expect(primaryWidth(tester), 440);
+    expect(reported, [440.0], reason: 'persisted once, on release');
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('a swipe ACROSS the strip is not a resize, and persists nothing', (tester) async {
+    // The strip puts a band of the panes' own content inside the divider's
+    // target, and a vertical swipe over pane content is how a list is
+    // scrolled. On undirected slop that swipe arms a drag that moves the
+    // boundary by nothing and then writes it back — turning the adaptive
+    // default (which tracks the window) into a fixed persisted width.
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    expect(paneDividerTouchSlop(), greaterThan(0), reason: 'a touch platform, or there is no strip to test');
+
+    final reported = <double>[];
+    await tester.pumpWidget(
+      harness(
+        child: ResizableSplitView(
+          primary: primary,
+          secondary: secondary,
+          onPreferredPrimaryWidthChanged: reported.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final before = primaryWidth(tester);
+
+    // Down on the strip, straight up the screen and well past kTouchSlop.
+    await tester.timedDragFrom(
+      Offset(before + 2, 300),
+      const Offset(0, -120),
+      const Duration(milliseconds: 200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(primaryWidth(tester), before, reason: 'a cross-axis swipe moves no boundary');
+    expect(reported, isEmpty, reason: 'and writes no preference back');
+  });
+
+  testWidgets('a touch platform grabs the divider from a slop either side of it', (tester) async {
+    // The point of the strip: the bar is a few pixels wide and a fingertip
+    // is not. A press that lands short of the bar — on the PRIMARY pane,
+    // which the bar's own box can never reach past — still drags it.
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    // The default target platform under test is already a mobile one; said
+    // out loud so this test can't be quietly disarmed by that changing.
+    expect(paneDividerTouchSlop(), greaterThan(0), reason: 'a touch platform, or there is no strip to test');
+
+    final reported = <double>[];
+    await tester.pumpWidget(
+      harness(
+        child: ResizableSplitView(
+          primary: primary,
+          secondary: secondary,
+          preferredPrimaryWidth: 500,
+          onPreferredPrimaryWidthChanged: reported.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Just inside the strip's leading edge, and well clear of the bar (which
+    // starts at 500) — a press the pane would otherwise have taken.
+    final short = 500 - paneDividerTouchSlop() + 1;
+    await tester.timedDragFrom(Offset(short, 300), const Offset(-60, 0), const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(primaryWidth(tester), lessThan(500), reason: 'the press short of the bar still grabbed it');
+    expect(reported, isNotEmpty, reason: 'and it was a real drag, persisted on release');
   });
 
   testWidgets('null secondary gives primary the full width and keeps its state', (tester) async {

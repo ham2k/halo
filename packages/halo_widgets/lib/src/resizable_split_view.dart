@@ -225,6 +225,12 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     });
   }
 
+  /// Whether the pointer is over the touch strip (mobile only). The strip
+  /// covers the divider, so the divider's own hover never fires while it
+  /// exists — this is how the grab line still lights under a trackpad
+  /// cursor on an iPad.
+  bool _stripHovered = false;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -308,7 +314,19 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         final ambientTop = ambient?.top ?? 0;
         final ambientRight = ambient?.right ?? 0;
         final ambientBottom = ambient?.bottom ?? 0;
-        return Row(
+        // A transparent, touch-sized grab strip straddling the boundary —
+        // zero off a touch platform, and off a fixed (non-resizable) split,
+        // which has nothing to grab. It overlays BOTH panes, so it lives in a
+        // Stack around the whole Row rather than inside either one: a strip
+        // parked in one pane's subtree can't be hit past that pane's edge.
+        //
+        // Clamped like the pane it straddles: in a window too small for both
+        // minimums the primary is laid out at `primaryCap`, and a strip
+        // reading the unclamped preference would sit over arbitrary pane
+        // content with the real divider left bare.
+        final touchSlop = widget.resizable ? paneDividerTouchSlop() : 0.0;
+        final boundary = twoPane ? math.min(effectiveWidth, primaryCap) : total;
+        final row = Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TweenAnimationBuilder<double>(
@@ -341,6 +359,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                 onDragEnd: _handleDragEnd,
                 onDragCancel: _handleDragCancel,
                 dragging: _dragging,
+                hovered: _stripHovered,
               ),
             Expanded(
               child: widget.secondary == null
@@ -416,6 +435,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                             bottom: 0,
                             width: ResizableSplitView.dividerWidth,
                             child: _DividerHandle(
+                              hovered: _stripHovered,
                               onDragStart: _handleDragStart,
                               onDragUpdate: _handleDragUpdate,
                               onDragEnd: _handleDragEnd,
@@ -425,6 +445,53 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                           ),
                       ],
                     ),
+            ),
+          ],
+        );
+        if (touchSlop <= 0) return row;
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            row,
+            // Mounted even single-pane, where it has nothing to grab and
+            // ignores the pointer: the flip to two panes is an ANIMATION, and
+            // a strip that mounted only at the end of it would jump to the
+            // final boundary while the divider was still travelling there,
+            // leaving a band of pane content grabbing at nothing for the whole
+            // tween. Kept, it retargets on the same frame the primary's tween
+            // does, with the same duration and curve, so the two stay in step.
+            AnimatedPositioned(
+              left: boundary - touchSlop,
+              top: 0,
+              bottom: 0,
+              // Solid keeps its bar between the panes; surfaces overlays the
+              // secondary's leading edge and reserves nothing. Either way the
+              // strip is the divider's own thickness plus a slop on each side.
+              width: (solid ? dividerExtent : ResizableSplitView.dividerWidth) + touchSlop * 2,
+              duration: duration,
+              curve: layoutAnimationCurve,
+              // The same callbacks the divider it covers uses: this strip hit-
+              // tests first, so on a touch platform it is what actually drags.
+              // It carries the resize cursor for the same reason: covering the
+              // divider takes the divider's own MouseRegion out of the hit
+              // path, and a mobile build with a trackpad (an iPad's) would
+              // otherwise show a plain arrow over the boundary.
+              child: IgnorePointer(
+                ignoring: !twoPane,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeLeftRight,
+                  onEnter: (_) => setState(() => _stripHovered = true),
+                  onExit: (_) => setState(() => _stripHovered = false),
+                  child: PaneDividerDragTarget(
+                    axis: Axis.horizontal,
+                    onDragStart: _handleDragStart,
+                    onDragUpdate: _handleDragUpdate,
+                    onDragEnd: _handleDragEnd,
+                    onDragCancel: _handleDragCancel,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
             ),
           ],
         );
@@ -520,6 +587,11 @@ class PaneSafeArea extends InheritedWidget {
 }
 
 class _DividerHandle extends StatefulWidget {
+  /// Lights the line as if the pointer were over the strip — forwarded by
+  /// the owner from the touch strip that covers this one on a touch
+  /// platform. See [SolidPaneDivider.hovered], same arrangement.
+  final bool hovered;
+
   final VoidCallback onDragStart;
   final ValueChanged<double> onDragUpdate;
   final VoidCallback onDragEnd;
@@ -530,6 +602,7 @@ class _DividerHandle extends StatefulWidget {
   final bool dragging;
 
   const _DividerHandle({
+    required this.hovered,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
@@ -591,7 +664,7 @@ class _DividerHandleState extends State<_DividerHandle> {
               child: Builder(
                 builder: (context) {
                   final dark = Theme.of(context).brightness == Brightness.dark;
-                  final active = _hovered || widget.dragging;
+                  final active = _hovered || widget.hovered || widget.dragging;
                   final opacity = active || dark ? 1.0 : _DividerHandle.restingLineOpacity;
                   final lineColor = dark && !active ? Colors.black : colors.onSurfaceVariant;
                   return AnimatedOpacity(
