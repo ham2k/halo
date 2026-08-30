@@ -1196,6 +1196,91 @@ REF-002,Summit Two,45.56,-122.78
       await offline.close();
     });
   });
+  group('a replaced runtime re-loads the raw cache (HALO-429)', () {
+    test('a generation tick loads the cache BEFORE syncing', () async {
+      final manager = _RecordingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost(const {})),
+        prefs: prefs,
+      );
+
+      manager.extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
+
+      // Both, and in this order. The raw cache-to-runtime import is
+      // per-generation state that nothing else replays, and the sync cannot
+      // stand in for it: an unchanged file answers 304 and the 304 path
+      // returns before _processRaw, so the fresh runtime would keep running
+      // without data the old one had, for the whole session.
+      expect(manager.calls, ['load', 'sync']);
+    });
+
+    test('rapid replacements still coalesce to one follow-up pass', () async {
+      final manager = _RecordingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost(const {})),
+        prefs: prefs,
+      );
+
+      manager.blockNextSync = Completer<void>();
+      manager.extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
+      manager.extensions.runtimeGeneration.value++; // lands mid-pass
+      manager.extensions.runtimeGeneration.value++; // and another
+      manager.blockNextSync!.complete();
+      manager.blockNextSync = null;
+      await pumpEventQueue();
+
+      // The reload must be consumed INSIDE the serialized region. Awaiting it
+      // before the `_syncRunning` check would let each of these ticks slip
+      // past the coalescing and start its own pass — double-downloading every
+      // stale file, which is exactly what the coalescing exists to prevent.
+      expect(manager.calls, ['load', 'sync', 'load', 'sync']);
+    });
+
+    test('a failing re-load still lets the sync run, and does not escape', () async {
+      final manager = _RecordingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost(const {})),
+        prefs: prefs,
+      )..loadThrows = true;
+
+      manager.extensions.runtimeGeneration.value++;
+      await pumpEventQueue();
+
+      // Nothing awaits this listener, so an escaping throw would become an
+      // unhandled zone error — an operator notice and an upload — for a cache
+      // re-import whose correct degradation is "the sync still runs".
+      expect(manager.calls, ['sync']);
+    });
+  });
+
+  group('loadRawDataFiles abandons a superseded pass (HALO-429)', () {
+    test('a host that died mid-pass stops the loop instead of reporting each file', () async {
+      final host = MockExtensionHost({
+        'dataFile:*:getDefinition': [
+          {'ok': true, 'value': {'key': 'one', 'fetchType': 'raw'}},
+          {'ok': true, 'value': {'key': 'two', 'fetchType': 'raw'}},
+        ],
+      })
+        ..dead = true;
+      final manager = DataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(host),
+        prefs: prefs,
+        isWeb: false,
+      );
+
+      // Returns without touching the filesystem at all. The guard has to
+      // precede `appDataDirectory()`, not just the import loop: a pass whose
+      // runtime has gone should cost nothing, and in a test environment that
+      // call is the first thing to blow up. Without it, every remaining file
+      // is imported into a disposed host and reported once each — noise for
+      // work the generation listener is already going to redo.
+      await manager.loadRawDataFiles();
+    });
+  });
+
 }
 
 class _SyncCountingDataFileManager extends DataFileManager {
@@ -1248,6 +1333,7 @@ class _BlockingDownloadManager extends DataFileManager {
     if (block != null) await block.future;
     return null;
   }
+
 }
 
 class MockExtensionHost implements ExtensionHost {
@@ -1288,6 +1374,13 @@ class MockExtensionHost implements ExtensionHost {
     return const [];
   }
 
+  /// Settable so a test can stand the host down mid-pass, which is what a
+  /// runtime replacement looks like from inside a load already running.
+  bool dead = false;
+
+  @override
+  bool get isDead => dead;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -1303,6 +1396,32 @@ class MockExtensionService extends ExtensionService {
 
   @override
   bool get activationIncomplete => activationIncompleteOverride;
+}
+
+/// Records which halves of the post-restart sequence ran, and in what order.
+class _RecordingDataFileManager extends DataFileManager {
+  final List<String> calls = [];
+  bool loadThrows = false;
+
+  /// Holds a sync open, so a test can land further generation ticks inside a
+  /// running pass.
+  Completer<void>? blockNextSync;
+
+  _RecordingDataFileManager({required super.lookups, required super.extensions, required super.prefs});
+
+  @override
+  Future<void> loadRawDataFiles() async {
+    if (loadThrows) throw StateError('no data directory');
+    calls.add('load');
+  }
+
+  @override
+  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
+    calls.add('sync');
+    final blocker = blockNextSync;
+    if (blocker != null) await blocker.future;
+    return 0;
+  }
 }
 
 class TestDataFileManager extends DataFileManager {

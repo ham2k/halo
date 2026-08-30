@@ -144,7 +144,41 @@ class DataFileManager {
   /// would have to maintain by hand.
   bool? _queuedNotify;
 
-  void _onRuntimeReplaced() => unawaited(_runSerializedSync(notifyOnFailure: true));
+  /// A runtime replacement has happened whose raw cache re-load has not run
+  /// yet — see [_reloadRawIfPending]. Set BEFORE entering the sync coalescer
+  /// and consumed inside it, so a tick landing mid-pass leaves the reload for
+  /// that pass's follow-up instead of racing one of its own: anything awaited
+  /// before the `_syncRunning` check would let extra ticks slip past the
+  /// coalescing and double-download every stale file.
+  bool _rawReloadPending = false;
+
+  void _onRuntimeReplaced() {
+    _rawReloadPending = true;
+    unawaited(_runSerializedSync(notifyOnFailure: true));
+  }
+
+  /// Re-imports the cached raw files into the runtime, if a replacement has
+  /// left that owing.
+  ///
+  /// A fresh runtime holds no raw data at all: the cache-to-runtime import is
+  /// per-generation state, and nothing else replays it. The sync cannot stand
+  /// in for it — an unchanged file answers 304, and the 304 path returns
+  /// before `_processRaw`, correctly, since the FILE has not changed — so
+  /// without this the new runtime runs the whole session without data the old
+  /// one had, with a single `logOnly` line to show for it (HALO-429).
+  Future<void> _reloadRawIfPending() async {
+    if (!_rawReloadPending) return;
+    _rawReloadPending = false;
+    try {
+      await loadRawDataFiles();
+    } catch (e) {
+      // Caught, not propagated: the only caller runs unawaited from a
+      // ValueNotifier listener, so a throw would surface as an unhandled zone
+      // error — an operator notice and an upload — for a cache re-import whose
+      // correct degradation is "the sync still runs".
+      debugPrint('[data-file] raw re-load after runtime replacement failed: $e');
+    }
+  }
 
   void _onOfflineChanged(bool offline) {
     if (offline) return;
@@ -172,6 +206,10 @@ class DataFileManager {
     try {
       bool? notify = notifyOnFailure;
       while (notify != null) {
+        // Cache before network, the same order boot uses, and inside the
+        // serialized region so a replacement mid-pass is picked up by the
+        // follow-up rather than starting a concurrent one.
+        await _reloadRawIfPending();
         await syncAllDataFiles(notifyOnFailure: notify);
         notify = _queuedNotify;
         _queuedNotify = null;
@@ -761,24 +799,39 @@ class DataFileManager {
   }
 
   /// Triggers loading cached raw files at startup/activation.
+  ///
+  /// Re-run on every runtime generation (see [_afterRuntimeReplaced]) because
+  /// what this loads lives in the runtime, and a replacement starts empty.
   Future<void> loadRawDataFiles() async {
     if (kIsWeb) return;
     final host = extensions.host;
     if (host == null) return;
+    // The generation this pass belongs to. A replacement mid-loop means every
+    // remaining file would be imported into a host that has been disposed —
+    // reported once each, and all of it pointless, since the generation
+    // listener is already going to run this again against the new runtime.
+    final generation = extensions.runtimeGeneration.value;
+    bool superseded() => host.isDead || extensions.runtimeGeneration.value != generation;
 
     final List<dynamic> entries;
     try {
       entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
     } catch (e, st) {
+      // Not worth reporting when the runtime was simply replaced under us: the
+      // generation listener runs this again against the new one.
+      if (superseded()) return;
       ErrorReportingService.report(e, st, context: 'data-files:load-raw-fetch-definitions');
       return;
     }
+
+    if (superseded()) return;
 
     final dir = await appDataDirectory();
     final dataFilesDir = Directory(p.join(dir.path, kDataFilesDirName));
     if (!await dataFilesDir.exists()) return;
 
     for (final entry in entries) {
+      if (superseded()) return;
       if (entry is Map && entry['ok'] == true && entry['value'] != null) {
         final def = Map<String, dynamic>.from(entry['value'] as Map);
         final key = def['key'] as String;

@@ -946,6 +946,21 @@ Future<HaLoServices> bootstrap({
 
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {
+    // BEFORE the data files, and awaited: connecting replaces the runtime, and
+    // a replacement landing mid-load kills it against a disposed host — after
+    // which the sync behind it fetches a 304, finds nothing to import, and the
+    // session simply runs without that data (HALO-429). Sequenced here so
+    // there is one runtime swap and then one load, against the runtime that
+    // will actually serve it. Only ever with developer mode on AND the toggle
+    // set — no address is ever discovered, only typed.
+    if (settings.developerMode &&
+        settings.extensionDevServerEnabled &&
+        settings.extensionDevServerUrl.isNotEmpty) {
+      // Never throws — the client records a failed connection as status
+      // rather than an error, so a dev server that has since been stopped
+      // costs a restarting app nothing but a line in Developer settings.
+      await services.extensionDev.connect(settings.extensionDevServerUrl);
+    }
     await services.dataFiles.loadRawDataFiles();
     // Unattended (no user action prompted this): a persistent failure notice
     // here would repeat on every single offline boot.
@@ -974,17 +989,6 @@ Future<HaLoServices> bootstrap({
   }).catchError((e) {
     debugPrint('[boot] failed to fetch feature flags: $e');
   }));
-
-  // Reconnect to the extension dev server the author last used
-  // (docs/extensions/development.md). Fire-and-forget and after first paint:
-  // it reboots the extension runtime, and a dev server that has since been
-  // stopped must cost a restarting app nothing but a failed status in
-  // Developer settings. Only ever with developer mode on AND the toggle set —
-  // no address is ever discovered, only typed.
-  if (settings.developerMode && settings.extensionDevServerEnabled &&
-      settings.extensionDevServerUrl.isNotEmpty) {
-    unawaited(services.extensionDev.connect(settings.extensionDevServerUrl));
-  }
 
   // Fire-and-forget like the boot steps above: neither the persistence
   // request nor the health warning is worth delaying first paint for.
