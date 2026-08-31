@@ -107,12 +107,15 @@ any hunted ref on the current QSO), `call-notes` (`scope: 'general'`,
 offline — combined `note`/`emoji` extra fields from the Hams of Note file,
 issue #17), and `call-history` (`scope: 'general'`, offline — the most
 recent past QSO's own identity fields, from `ctx.getHistoryForCall`).
-Registers **twice**, at opposite ends of the priority range, because a
-field the operator actually TYPED on the past QSO and a field that was
-only ever a GUESS on it deserve opposite trust: the typed tier registers
-above every other lookup source (a human verified it), the guessed tier
-below all of them (a stale automated guess must not outrank a fresh live
-one) — see `extensions/lookups/call-history/src/index.ts`.
+Registers at **priority -1** — below every other lookup source, and below
+the 0 an undeclared hook defaults to: the log is a fallback, filling only
+what nothing else answered, and that holds even for a field the operator
+TYPED on the past QSO — a live source describes the station today, the log
+describes it whenever it was last worked. It still labels a carried-forward
+field by where it came from (`Call History` for a typed one, `Call History
+(guess)` for a guessed one), and a station's whole location travels in one
+of the two so the merge's grid/city reconciliation cannot split it — see
+`extensions/lookups/call-history/src/index.ts`.
 
 ## ✅ `recentContextLookup` — live-context lookups
 

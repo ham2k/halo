@@ -56,6 +56,33 @@ test("one past QSO can split across both tiers — a corrected name, an unverifi
   assert.equal((guessed[0] as Record<string, unknown>).name, undefined)
 })
 
+test("a typed location field pulls the whole location into the manual tier", () => {
+  // The trap: assigning each location field its own tier. `mergeLookupIntoGuess`
+  // deletes the location fields a result did not itself write, so a location
+  // split across two results has the second clear the first's half — and the
+  // typed field is exactly what disappears. One result carries all of it.
+  const { manual, guessed } = buildCallHistoryTiers("KI2D", [
+    qso({ grid: "FN31pr", guess: { name: "Sebastian", city: "Ossining", state: "NY", locationScope: "qth" } }),
+  ])
+  assert.deepEqual(
+    { grid: manual[0].grid, city: manual[0].city, state: manual[0].state },
+    { grid: "FN31pr", city: "Ossining", state: "NY" },
+  )
+  // The name was never typed, so it stays guessed — only the LOCATION travels
+  // as a group.
+  assert.equal(guessed[0].name, "Sebastian")
+  assert.equal((guessed[0] as Record<string, unknown>).city, undefined)
+})
+
+test("a location nobody typed stays wholly in the guessed tier", () => {
+  const { manual, guessed } = buildCallHistoryTiers("KI2D", [
+    qso({ name: "Corrected Name", guess: { grid: "CM87", city: "Ossining", locationScope: "qth" } }),
+  ])
+  assert.equal(manual[0].name, "Corrected Name")
+  assert.equal((manual[0] as Record<string, unknown>).grid, undefined)
+  assert.deepEqual({ grid: guessed[0].grid, city: guessed[0].city }, { grid: "CM87", city: "Ossining" })
+})
+
 test("the photo comes forward from the last time the station was worked", () => {
   // Guessed tier, deliberately: it fills the slot when nothing live answered
   // — a call worked before shows a face with no network at all — while a

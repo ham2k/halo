@@ -51,9 +51,11 @@ async function lookupCall(
   const call = (callInfo.call || '').trim().toUpperCase()
   if (call.length < 3 || !ctx.online) return [] // no offline data source
 
-  // The service doesn't report grid/lat/lon today, but may start to — so,
-  // unlike HamDB's equivalent check, skipping the round-trip also requires a
-  // grid already on the guess, not just a name (+ city/portable scope).
+  // The service answers a US or Canadian record with a grid (never a
+  // lat/lon pair, and never a grid for a German one), so — unlike HamDB's
+  // equivalent check — skipping the round-trip requires a grid already on
+  // the guess as well as a name (+ city/portable scope): there is a grid
+  // here worth fetching.
   const isPortable = callInfo.locationScope === 'portable'
   if (has(callInfo.name) && has(callInfo.grid) && (isPortable || has(callInfo.city))) return []
 

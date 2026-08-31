@@ -5,7 +5,6 @@ import { defineExtension } from "@ham2k/extension-sdk"
 import type { AnnotatedCallInfo, HookContext, JSONValue, LookupResult } from "@ham2k/extension-sdk"
 
 import { buildCallHistoryTiers, mergeHistory } from "./buildCallHistoryLookup"
-import type { CallHistoryTiers } from "./buildCallHistoryLookup"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -17,35 +16,41 @@ defineExtension({
     // enrichment of an already-saved QSO too, not only a contact in
     // progress.
     //
-    // Registered TWICE, at opposite ends of the priority range, because the
-    // two tiers `buildCallHistoryTiers` produces deserve opposite trust: a
-    // field the operator actually TYPED on the past QSO was verified by a
-    // human and should win over a live QRZ/Ham2K Lookup answer, so it
-    // registers ABOVE every other lookup source (qrz/pota/sota/call-notes
-    // top out at 100). A field that was only ever a GUESS on that QSO —
-    // never typed, never verified — stays at the bottom (below
-    // ham2k-lookup's 10) and only fills a gap nothing else answered; a
-    // stale automated guess must not outrank a fresh live lookup.
-    registerHook('lookup', { hook: { lookupCall: lookupCallManual }, priority: 150 })
-    registerHook('lookup', { hook: { lookupCall: lookupCallGuessed }, key: 'call-history_guessed', priority: 1 })
+    // LAST, below every other lookup source (qrz/pota/sota/call-notes top
+    // out at 100, ham2k-lookup sits at 10): the log is a fallback, never a
+    // preference. A live callbook answer describes the station today; the
+    // log describes it whenever it was last worked — so history fills only
+    // what nothing else answered. That holds even for a field the operator
+    // TYPED on the past QSO: a hand-corrected value is evidence about that
+    // contact, not a standing override of a fresher source.
+    //
+    // -1, not the 0 an undeclared hook defaults to (`kernel.ts`): every
+    // lookup source in this repo names a priority, but a third party's need
+    // not, and a tie at 0 would leave "last" to activation order.
+    //
+    // The cost of running last is that neither qrz nor ham2k-lookup can see
+    // the log when they decide whether to skip their network round-trip, so
+    // a station worked before is fetched afresh every time. That is the
+    // price of the rule above, not an oversight.
+    //
+    // Both tiers `buildCallHistoryTiers` produces ride this one
+    // registration, keeping their distinct `source` labels — which the
+    // operator reads and the queue's degradation guard compares. At most one
+    // of them carries a location (see there), so the merge's grid/city
+    // reconciliation — which deletes the location fields a result did not
+    // itself write — has nothing of ours to delete, and the order the two
+    // are returned in decides nothing.
+    registerHook('lookup', { hook: { lookupCall }, priority: -1 })
   },
 })
 
-async function historyTiers(
+async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
-): Promise<CallHistoryTiers | null> {
+): Promise<LookupResult> {
   const call = (callInfo.call || '').trim().toUpperCase()
-  if (call.length < 3 || !ctx.getHistoryForCall) return null
+  if (call.length < 3 || !ctx.getHistoryForCall) return []
 
-  // The manual/guessed registrations both call this independently — a
-  // request-scoped cache would need something to key it on, and nothing
-  // distinguishes "this lookup pass" from "a later, unrelated one for the
-  // same call" (module state outlives any one pass). `getHistoryForCall`
-  // is capped to a handful of rows host-side (extension_service.dart) for
-  // exactly this reason: paying for a cheap, small read twice per pass is
-  // fine; caching it wrong and serving stale history after new QSOs land
-  // is not.
   // A portable/mobile/DX-prefixed call (`KI2D/P`, `F/KI2D`) is worked as
   // itself, but the station behind it is the same one worked plain — so its
   // history is worth searching too, same as PoLo's `findQSOHistory`
@@ -62,23 +67,8 @@ async function historyTiers(
   ])
 
   const merged = mergeHistory(history ?? [], baseHistory ?? [])
-  if (merged.length === 0) return null
+  if (merged.length === 0) return []
 
-  return buildCallHistoryTiers(call, merged, qso?.uuid as string | undefined)
-}
-
-async function lookupCallManual(
-  args: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
-  ctx: HookContext,
-): Promise<LookupResult> {
-  const tiers = await historyTiers(args, ctx)
-  return tiers?.manual ?? []
-}
-
-async function lookupCallGuessed(
-  args: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
-  ctx: HookContext,
-): Promise<LookupResult> {
-  const tiers = await historyTiers(args, ctx)
-  return tiers?.guessed ?? []
+  const tiers = buildCallHistoryTiers(call, merged, qso?.uuid as string | undefined)
+  return [...tiers.manual, ...tiers.guessed]
 }

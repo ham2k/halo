@@ -9,9 +9,9 @@ import type { CallInfoLookup, JSONValue } from "@ham2k/extension-sdk"
 /// contest exchange, or a park worked once).
 ///
 /// `locSource` is deliberately excluded, same as `annotate.ts`'s offline
-/// pre-step: at priority 150 a stale provenance tag from the past QSO would
-/// block whichever source actually resolves the CURRENT location from
-/// recording where its own data came from.
+/// pre-step: a stale provenance tag from the past QSO describes where THAT
+/// contact's location came from, and carrying it forward would label this
+/// contact's location with a source that never answered for it.
 const LOCATION_FIELDS = [
   'city',
   'state',
@@ -28,15 +28,14 @@ const LOCATION_FIELDS = [
   'continent',
 ] as const
 
-/// The two results [buildCallHistoryTiers] produces, fed to two differently
-/// -prioritized `lookup` hook registrations (see index.ts) so they compete
-/// against other sources on their own merits: a field the operator actually
-/// TYPED on the past QSO outranks a live QRZ/Ham2K Lookup answer (they
-/// verified it themselves), while a field that was only ever a GUESS on
-/// that QSO — never typed, so never verified — stays lowest priority and
-/// only fills a gap no live source answered. Both distinctions collapse to
-/// one field-level split, since one past QSO can carry a manually-corrected
-/// name alongside a merely-guessed grid.
+/// The two results [buildCallHistoryTiers] produces. Both ride the single
+/// lowest-priority `lookup` registration (see index.ts) — the log never
+/// outranks a live source — and they are field-disjoint, since [pick]
+/// assigns each field to exactly one tier. What the split still buys is the
+/// distinct `source` label below: whether a field the log carried forward
+/// was one the operator TYPED on the past QSO or one that was only ever a
+/// GUESS on it, which the operator reads and the queue's degradation guard
+/// compares.
 export type CallHistoryTiers = { manual: CallInfoLookup[]; guessed: CallInfoLookup[] }
 
 function hasValue(value: unknown): boolean {
@@ -109,10 +108,10 @@ export function buildCallHistoryTiers(
   if (name) fields[name.tier].name = name.value
 
   // The station's photo, remembered from the last time they were worked. It
-  // rides the GUESSED tier (nobody types a photo URL), which is what makes it
-  // safe to carry: a live QRZ answer still wins, so a profile picture that
-  // changed is not frozen at whatever URL this QSO happened to store, while a
-  // call worked before still shows a face with no network at all. Not tied to
+  // rides the GUESSED tier (nobody types a photo URL). Safe to carry because
+  // every live source outranks this one, so a profile picture that changed is
+  // not frozen at whatever URL this QSO happened to store, while a call worked
+  // before still shows a face with no network at all. Not tied to
   // the location rules below — a photo describes the operator, not where this
   // variant of their call is operating from today.
   const image = pick(mostRecent, guess, 'image')
@@ -135,13 +134,28 @@ export function buildCallHistoryTiers(
   // `entityPrefix` still rides along, and the centroid is resolved from it at
   // read time, correctly signed.
   const isCentroid = (info: Record<string, JSONValue>) => info.locSource === 'prefix'
+  // Every location field this QSO contributes travels in ONE result, and the
+  // tier is decided for the group rather than per field. `mergeLookupIntoGuess`
+  // reconciles grid against city/state/country by DELETING whichever of them
+  // the result being folded did not itself write — so a station's location
+  // split across two results has the second clear the first's half of it, and
+  // the operator's typed city or grid is exactly what disappears. Splitting a
+  // name from a grid is safe; splitting a location is not.
+  //
+  // Any typed member makes the whole group typed: a hand-corrected field is
+  // what the `Call History` label is FOR, and a group carrying one has been
+  // verified by a human at least in part.
   if (!isPortableGuess && isExactCallMatch) {
+    const location: Record<string, JSONValue> = {}
+    let locationTier: keyof CallHistoryTiers = 'guessed'
     for (const field of LOCATION_FIELDS) {
       const picked = pick(mostRecent, guess, field)
       if (!picked) continue
       if ((field === 'lat' || field === 'lon') && isCentroid(picked.tier === 'manual' ? mostRecent : guess)) continue
-      fields[picked.tier][field] = picked.value
+      location[field] = picked.value
+      if (picked.tier === 'manual') locationTier = 'manual'
     }
+    Object.assign(fields[locationTier], location)
     if (typeof guess.locationScope === 'string') locationScope = guess.locationScope
   }
 
@@ -170,8 +184,13 @@ export function buildCallHistoryTiers(
       scope: 'general',
       ...fields[tier],
     }
-    if (locationScope !== undefined && LOCATION_FIELDS.some((f) => f in fields[tier])) {
-      lookup.locationScope = locationScope as CallInfoLookup['locationScope']
+    if (LOCATION_FIELDS.some((f) => f in fields[tier])) {
+      // Stated, never left undefined — `mergeLookupIntoGuess`'s scope
+      // comparisons all short-circuit on a null scope. A past QSO predating
+      // the annotation pre-step carries no `guess.locationScope`, and 'qth'
+      // is what the guard above already established to get here: a
+      // non-portable, exact-call match is the station's own QTH.
+      lookup.locationScope = (locationScope ?? 'qth') as CallInfoLookup['locationScope']
     }
     tiers[tier] = [lookup]
   }
