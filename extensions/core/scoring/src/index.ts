@@ -18,9 +18,16 @@ import manifest from "../manifest.json" with { type: "json" }
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    // The hook carries `scope: 'always'` — core scoring applies to every
-    // operation and keeps running alongside whatever contest scorers that
-    // operation's refs select (docs/design/contests.md §5.1).
+    // The hook carries `scope: 'always'` — core scoring runs for every
+    // operation, alongside whatever contest scorers that operation's refs
+    // select. It is the LOWEST priority of them on the worked-before axis: for
+    // a QSO another scorer has RULED on as worked-before, the app drops this
+    // one's dupe alert and its newBand/newMode notices, so the call+band+mode
+    // rule never contradicts an activity's. A scorer that merely answered —
+    // `invalidBand`, a VHF test's `missingExchange` — has ruled on nothing, and
+    // this scorer's dupe warning is then the only one the operator gets. The
+    // entity and state notices, which nothing else in the app reports, always
+    // survive (docs/design/contests.md §5.1).
     registerHook('scoring', { hook: coreScoringHook, key: 'core' })
   },
 })

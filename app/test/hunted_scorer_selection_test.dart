@@ -7,6 +7,10 @@
 // is call+band+mode, which knows nothing about references. A station worked at
 // one park then read as a duplicate when spotted at another, in the spot list
 // and in the call-info pills alike.
+//
+// The other half of the contract is priority, not selection: core is selected
+// for every operation, flagged `fallback`, and the merge sites drop its verdict
+// per QSO. `scorer_priority_test.dart` covers that half.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -32,8 +36,7 @@ const _scopes = {
   },
 };
 
-Set<String> _keys(List<({String key, Map<String, dynamic>? ref})> scorers) =>
-    scorers.map((s) => s.key).toSet();
+Set<String> _keys(List<Scorer> scorers) => scorers.map((s) => s.key).toSet();
 
 Qso _qso({List<Map<String, dynamic>> refs = const []}) =>
     Qso(uuid: 'q', operationUuid: 'op-1', data: {'refs': refs});
@@ -105,6 +108,27 @@ void main() {
         alsoRefTypes: const {'sota'},
       );
       expect(_keys(scorers), {'core', 'sota'});
+    });
+
+    // Core is not displaced — it is the only thing covering a QSO the contest
+    // skips — but it is marked and sorted LAST, which is what the merge sites
+    // read to drop its verdict for a QSO another scorer scored.
+    test('the always scorer is selected last and flagged as the fallback', () {
+      final scorers = ExtensionService.scorersFor(
+        {
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+            {'type': 'cqww'},
+          ],
+        },
+        _scopes,
+      );
+      expect(_keys(scorers), {'core', 'pota', 'cqww'});
+      expect(scorers.last.key, 'core');
+      expect(scorers.last.fallback, isTrue);
+      // Ref-gated scorers do not yield to each other: an operator running a
+      // park during a contest wants both scored.
+      expect(scorers.where((s) => s.fallback), hasLength(1));
     });
 
     // The trap this whole `huntingRefTypes` split exists for. A contest writes

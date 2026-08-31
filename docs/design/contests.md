@@ -161,8 +161,15 @@ catalog and scoring model; it does not change direction.
 ### 5.1 Multi-scorer fan-out
 
 **Requirement:** an operation may carry several contests **and** activities, and
-core scoring (dupe/DXCC/bands, later US-states) should keep running *alongside*
-any contest — they are additive, not mutually exclusive.
+each of them scores it. Core scoring (dupe/DXCC/bands, US-states) runs for every
+operation — it is the only thing covering a QSO no contest claims, and its
+tallies are the QSO count, DXCC and bands that no contest reports — but it is
+the **lowest priority on the worked-before axis**: for any QSO another scorer
+has JUDGED on that axis, core says nothing about duplicates. Its dupe rule is call+band+mode,
+which knows nothing about references, so beside an activity it contradicts it —
+a station worked at a second park is fresh credit to POTA and a duplicate to
+core — and the entry row can show only one. Its entity and state notices are
+another matter: nothing else in the app reports them, so they stand.
 
 **Proposal:** the `ScoringService` stops calling one hardcoded key and instead
 selects the **relevant** scorers for this operation and invokes only those.
@@ -188,16 +195,50 @@ The core then:
    operation and every segment** (see below), not just `operation.refs`.
 2. Invokes `scope: 'always'` scorers plus those whose `refTypes` intersect that
    set. Nothing else is called at all.
-3. Passes the **matching ref** to the scorer alongside the operation, since a
+3. **Merges per QSO by priority.** An `always` scorer is a `fallback`: on a QSO
+   another scorer has judged on the worked-before axis, its own judgement of
+   that QSO yields — the `dupe` flag, the alerts in `{duplicate}` and the
+   notices in `{newBand, newMode, newDay, newRef, newPark}`. Everything else it says
+   stands: `newDXCC`, `newState` and `newProvince` come from core alone, no
+   activity or contest emits them, and they contradict nothing — dropping them
+   would cost an activation its entity and state pills on every contact. Both
+   lists name the keys that yield rather than the keys that survive, so a rule
+   added to core later keeps its notice by default.
+
+   **Judging that axis is the test, not answering.** A verdict counts as a
+   judgement when it carries `dupe`, a `duplicate` alert, or one of those
+   notices. Those notices are a vocabulary a scorer must use rather than a
+   survey of what ships: a contest that spells "worked before, but this one
+   counts" its own way is not recognized, and its credit lands beside core's
+   `duplicate` on the same row (`newPark` is state-parks' spelling, which is
+   why it is on the list). Every contest scorer's validity checks return above its dupe test —
+   `invalidMode`, `invalidBand`, `invalidCategory`, a VHF test's
+   `missingExchange`, which is what it says about every SPOT, since a spot
+   carries no exchange — and an activity's `judge` returns nothing when its ref
+   filter empties the candidates and the contact carries no reference of its
+   own. Each of those is a scorer with no opinion on whether the station was
+   worked before, so core keeps its. Reading them as judgements takes the dupe
+   warning away with nothing put in its place: no striking on the spots board
+   for a whole VHF contest, and no warning when the same station is worked
+   twice off-band during ARRL DX.
+
+   Per QSO rather than per operation because a ref-gated scorer skips whole
+   segments it wasn't running for (§5.1.3): an operation that breaks out of its
+   contest and keeps logging casually needs core's dupe rule for that stretch
+   and only that stretch. A scorer that FAILED judged nothing, so the fallback
+   speaks in full for its QSOs rather than the rows going bare. Summaries never
+   yield — every scorer's `daySections` and `operationSummary` are kept.
+4. Passes the **matching ref** to the scorer alongside the operation, since a
    scorer may be relevant more than once (two parks, two contests).
 
 This is app-polo's proven model: `scoringHandlersForOperation`
 (`src/extensions/scoring/index.js:19-60`) walks `operation.refs`, resolves each
 to its `ref:<type>` handler that implements `scoringForQSO`, pairs them as
 `{handler, ref}`, and then unconditionally appends DXCC, US-States, Canadian
-Provinces and Bands-and-Modes. The declaration above just makes that
+Provinces and Bands-and-Modes. The declaration above makes that
 always-vs-ref-gated split explicit instead of hardcoding the always-on list in
-the core.
+the core, and **diverges** in letting the appended ones lose the worked-before
+argument rather than speak over a contest's verdict.
 
 > **Segments.** An operation isn't a single set of refs: app-polo splits a log
 > into segments with `break`/`start` event rows whose `qso.event.operation`
@@ -707,7 +748,9 @@ next to the summary in `local_data.scoring`:
   tells the display which resets. No new concept.
 - **Multi-scorer merge composes:** scorers are independent, so fan-out is "run K
   scorers over the same batch." Core dupe/DXCC/bands scoring is *just another
-  scorer* registered under `core`, so it keeps running alongside any contest.
+  scorer* registered under `core` — an `always`-scoped one, which runs for every
+  operation but yields its worked-before judgement on any QSO another scorer has
+  judged on that axis (§5.1).
 - **`ourInfo`** (our continent/country/zone, needed by cqww/arrl-dx) is
   operation-scoped — read in `startScoresheet` off `ctx`/`operation`, not carried
   per-QSO.
@@ -733,7 +776,7 @@ several mult keys. Nothing needs lookahead or a second pass.
 
 **Risk note.** M0 exercises this contract before anything depends on it: refactor
 `core/scoring` into the `ContestScorer` shape (it already is one internally) and
-run it alongside `simple-contest` as a real second scorer. If the shape proves
+run it against the same log as `simple-contest`. If the shape proves
 wrong there, that is the moment to revisit — before 11 more contests are written
 against it.
 
@@ -1599,7 +1642,7 @@ exchange, two setup fields, no data files, no serials, no multipliers.
   relevant scorers by declared scope and fan out to those; drive the per-QSO loop
   with day-boundary checkpoints and resume.
 - `extensions/core/scoring/src/*` — adapt the existing fold to `ContestScorer`,
-  so core scoring runs as a peer scorer alongside the contest.
+  so core scoring runs through the same harness as any contest.
 - New export hook using `lib-qson-cabrillo`, scoring internally when the cache is
   cold (§5.5) + Dart export-picker acceptance.
 - `app/lib/views/extensions_panel.dart` + `settings_view.dart` + i18n — a

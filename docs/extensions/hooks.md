@@ -935,7 +935,22 @@ registerHook('scoring', {
 *before* invoking anything: `'always'` (core dupe/DXCC/bands) or a `refTypes`
 list, so an operation that doesn't carry the ref never crosses the bridge.
 Several scorers run on one operation — contests alongside core — and their
-results are namespaced per scorer.
+results are namespaced per scorer. An `'always'` scorer is the **lowest priority
+on the worked-before axis**: for a QSO some other scorer has judged on that axis
+— a verdict carrying `dupe`, a `duplicate` alert, or a
+`newBand`/`newMode`/`newDay`/`newRef` notice — the host drops the `always`
+scorer's own `dupe`, `duplicate` and those notices, so core's call+band+mode
+rule never contradicts an activity's. What core alone reports — `newDXCC`,
+`newState`, `newProvince` — always survives, and a verdict that says nothing
+about a prior contact (`invalidBand`, `missingExchange`, a bare `{value}`)
+displaces nothing: core's dupe warning is then the only one there is.
+
+So emit `dupe` whenever your dupe test actually ran, `dupe: false` included —
+that is what tells the host you have ruled on the question. And when your
+verdict means "worked before, and this one counts anyway", say it in one of
+those notice keys (`newPark` is state-parks' spelling of `newRef`) rather than
+inventing a spelling of your own: an unrecognized key leaves core's `duplicate`
+standing beside your credit, on the one row that can show only one.
 
 A scorer's internal *rules* stay private to its scoresheet: contests don't
 share a rule vocabulary, so only notices, alerts, points and summary tallies
@@ -952,7 +967,7 @@ interface ScoringHook {
 }
 // ScoreQsosRequest: {operation, qsos, ref?, resumeFrom?}
 // ScoreQsosResult:  {
-//   qsoScores: Record<uuid, QsoScoreVerdict>,   // one verdict per QSO
+//   qsoScores: Record<uuid, QsoScoreVerdict>,   // one per QSO claimed; see above
 //   daySections: {day, count, scores: Record<tallyKey, ScoreTally>}[],
 //   operationSummary: Record<tallyKey, ScoreTally>,
 //   scoresheet,                                  // checkpoint to resume from

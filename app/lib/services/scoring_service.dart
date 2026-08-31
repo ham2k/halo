@@ -87,13 +87,21 @@ class ScoringService {
           scorerKey: scorer.key,
           args: {...payload, 'ref': ?scorer.ref},
         );
-        return (key: scorer.key, result: result);
+        return (key: scorer.key, fallback: scorer.fallback, result: result);
       }));
 
       // Per-QSO verdicts are namespaced by scorer — `{core: {...}, cqww: {...}}`
       // — so several scorers can annotate the same QSO without colliding.
       final scoresByUuid = <String, Map<String, dynamic>>{};
       final scoringByScorer = <String, dynamic>{};
+      // A fallback scorer's verdicts are held back per QSO: on a contact
+      // another scorer has judged on the worked-before axis, only what it says
+      // apart from that is written (see [Scorer],
+      // [ExtensionService.judgesWorkedBefore]). Per QSO rather than per
+      // operation because a contest skips whole SEGMENTS it wasn't running for,
+      // and those contacts still need core's dupe rule.
+      final fallbackScores = <String, Map<String, dynamic>>{};
+      final judgedByOther = <String>{};
 
       for (final entry in results) {
         final result = entry.result;
@@ -101,7 +109,18 @@ class ScoringService {
 
         final qsoScores = (result['qsoScores'] as Map?) ?? const {};
         for (final score in qsoScores.entries) {
-          (scoresByUuid[score.key as String] ??= <String, dynamic>{})[entry.key] = score.value;
+          // A verdict that isn't a map is one this scorer never made: the live
+          // paths read it the same way, and the three must agree about which
+          // QSOs a scorer has spoken for.
+          if (score.key is! String || score.value is! Map) continue;
+          final uuid = score.key as String;
+          final verdict = (score.value as Map).cast<String, dynamic>();
+          if (entry.fallback) {
+            (fallbackScores[uuid] ??= <String, dynamic>{})[entry.key] = verdict;
+          } else {
+            if (ExtensionService.judgesWorkedBefore(verdict)) judgedByOther.add(uuid);
+            (scoresByUuid[uuid] ??= <String, dynamic>{})[entry.key] = verdict;
+          }
         }
         scoringByScorer[entry.key] = {
           'daySections': result['daySections'],
@@ -112,6 +131,17 @@ class ScoringService {
         };
       }
       if (scoringByScorer.isEmpty) return;
+
+      for (final entry in fallbackScores.entries) {
+        final judged = judgedByOther.contains(entry.key);
+        for (final verdict in entry.value.entries) {
+          final value = judged
+              ? ExtensionService.withoutWorkedBefore(verdict.value as Map)
+              : verdict.value;
+          if (value == null) continue;
+          (scoresByUuid[entry.key] ??= <String, dynamic>{})[verdict.key] = value;
+        }
+      }
 
       await qsos.updateScoreCache({
         for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value),

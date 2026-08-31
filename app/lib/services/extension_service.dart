@@ -55,6 +55,44 @@ typedef LofiClientRegistration = ({String pushChannelName, String webhookClientT
 /// to the operator.
 typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, bool allSourcesFailed});
 
+/// One scorer selected for an operation: its hook key, the operation ref that
+/// selected it (null for a `fallback` scorer, and for a hunt-only selection),
+/// and whether it is the DEFAULT rather than a scorer this operation asked for.
+///
+/// [fallback] is the priority: wherever another scorer has judged the same QSO
+/// on the worked-before axis, a fallback scorer's own judgement of it yields
+/// (see [kWorkedBeforeNotices] and `ExtensionService.judgesWorkedBefore`), so
+/// the entry row states the worked-before rules of whatever the operator is
+/// actually doing. Its tallies are kept — they are the operation's QSO count,
+/// DXCC and bands, which no contest reports (see
+/// `ExtensionService.scorersFor`).
+typedef Scorer = ({String key, Map<String, dynamic>? ref, bool fallback});
+
+/// The scoring vocabulary that is a judgement about a PRIOR contact — the one
+/// axis on which two scorers contradict each other. A station worked at a
+/// second park is `newRef` to POTA and `duplicate` to core's call+band+mode
+/// rule, and one row cannot say both, so a fallback scorer drops these the
+/// moment another scorer has judged the same QSO on this axis.
+///
+/// Everything else it says stands: `newDXCC`, `newState` and `newProvince` come
+/// from core alone, no activity or contest emits them, and they contradict
+/// nothing — an activation that silenced them would cost the operator the
+/// entity and state pills for the whole operation.
+///
+/// Both lists state the keys that YIELD rather than the keys that survive: a
+/// rule added to core later then keeps its notice by default, where a keep-list
+/// would silently swallow it.
+///
+/// The notices are a VOCABULARY, not a survey of what ships: any scorer whose
+/// verdict means "worked before, and this one counts anyway" has to say so in
+/// one of these keys, or carry `dupe: false`. A contest that invents its own
+/// spelling for it goes unrecognized here, and the row shows that contest's
+/// credit beside core's `duplicate` — the contradiction this whole priority
+/// exists to end. `newPark` is state-parks' spelling of `newRef`
+/// (docs/extensions/hooks.md).
+const kWorkedBeforeNotices = {'newBand', 'newMode', 'newDay', 'newRef', 'newPark'};
+const kWorkedBeforeAlerts = {'duplicate'};
+
 /// The control descriptors an activity fan-out produced, and whether any
 /// source failed to answer. [loadFailed] separates "no extension declares
 /// controls" from "an extension that does declare them could not answer" —
@@ -2641,6 +2679,17 @@ class ExtensionService implements PanelExtensionSource {
   /// listed once per matching ref TYPE — two refs of one type are ONE
   /// invocation, carrying the first, so an operation running two events of the
   /// same contest scores only one of them.
+  ///
+  /// An `'always'` scorer is marked `fallback` and sorted last. It still runs —
+  /// it is the only thing covering a QSO no ref-gated scorer claims, and its
+  /// tallies are the operation's QSO count, DXCC and bands — but its per-QSO
+  /// verdict yields to any other scorer that scored the same QSO (the merge in
+  /// `ScoringService.rescoreOperation`, [scoreQso] and [scoreCandidates]).
+  /// Core's rule is call+band+mode, which knows nothing about references, so
+  /// beside an activity it contradicts it: a station worked at a second park is
+  /// fresh credit to POTA and a duplicate to core, and the entry row can show
+  /// only one. Ref-gated scorers do NOT yield to each other — a POTA activation
+  /// during CQ WW gets both, which is the operator running both.
   /// [segments] resolves the operation's `break`/`start` overrides. Selection
   /// spans EVERY segment: a contest that only covers the back half of a log
   /// would never be invoked if this read the base operation alone
@@ -2673,7 +2722,7 @@ class ExtensionService implements PanelExtensionSource {
   /// each scorer is a bridge crossing carrying the log. Matching on ref types
   /// actually present adds at most one scorer per type hunted, rather than one
   /// per installed activity.
-  static List<({String key, Map<String, dynamic>? ref})> scorersFor(
+  static List<Scorer> scorersFor(
     Map<String, dynamic> operation,
     Map<String, dynamic> scopes, {
     SegmentedOperation? segments,
@@ -2688,11 +2737,15 @@ class ExtensionService implements PanelExtensionSource {
             .map((r) => r.cast<String, dynamic>()),
     ];
 
-    final selected = <({String key, Map<String, dynamic>? ref})>[];
+    final selected = <Scorer>[];
+    // Collected apart and appended last so the returned order reads as the
+    // priority it is. The merge sites decide on the flag alone — `Future.wait`
+    // gives no completion ordering, so position cannot be load-bearing.
+    final fallback = <Scorer>[];
     for (final entry in scopes.entries) {
       final scope = entry.value;
       if (scope == 'always') {
-        selected.add((key: entry.key, ref: null));
+        fallback.add((key: entry.key, ref: null, fallback: true));
         continue;
       }
       final refTypes = ((scope is Map ? scope['refTypes'] : null) as List?)?.whereType<String>().toSet();
@@ -2702,7 +2755,7 @@ class ExtensionService implements PanelExtensionSource {
         final type = ref['type'];
         if (type is! String || !refTypes.contains(type)) continue;
         // One selection per type, however many segments carry it.
-        if (seen.add(type)) selected.add((key: entry.key, ref: ref));
+        if (seen.add(type)) selected.add((key: entry.key, ref: ref, fallback: false));
       }
       // A scorer the operation names is already selected, with the ref that
       // named it — this only reaches the ones it doesn't, so a hunt-only
@@ -2710,11 +2763,54 @@ class ExtensionService implements PanelExtensionSource {
       final huntingTypes =
           ((scope is Map ? scope['huntingRefTypes'] : null) as List?)?.whereType<String>() ?? const <String>[];
       if (seen.isEmpty && huntingTypes.any(alsoRefTypes.contains)) {
-        selected.add((key: entry.key, ref: null));
+        selected.add((key: entry.key, ref: null, fallback: false));
       }
     }
-    return selected;
+    return [...selected, ...fallback];
   }
+
+  /// Whether [verdict] says anything about a PRIOR contact — the test that
+  /// decides whether a fallback scorer's own worked-before judgement yields to
+  /// it.
+  ///
+  /// Answering at all is NOT the test, and the difference is a missed
+  /// duplicate: every contest scorer's validity checks return above its dupe
+  /// test (`invalidBand`, `invalidCategory`, a VHF test's `missingExchange` —
+  /// which is every spot candidate, since a spot carries no exchange), and an
+  /// activity's `judge` returns nothing when its ref filter empties the
+  /// candidates and the contact carries no reference of its own. Each of those
+  /// is a scorer with no opinion on whether this station was worked before,
+  /// and core's is then the only one there is.
+  static bool judgesWorkedBefore(Map verdict) =>
+      verdict.containsKey('dupe') ||
+      _stringsIn(verdict['alerts']).any(kWorkedBeforeAlerts.contains) ||
+      _stringsIn(verdict['notices']).any(kWorkedBeforeNotices.contains);
+
+  /// [verdict] with its worked-before judgement taken out: `dupe`, the alerts
+  /// in [kWorkedBeforeAlerts] and the notices in [kWorkedBeforeNotices]. Null
+  /// when nothing but empty lists is left, so the caller writes no entry at all
+  /// rather than an empty one.
+  ///
+  /// Every OTHER key is copied through, `value` included — the verdict shape is
+  /// open, and core's point contribution is its own bookkeeping, not a claim
+  /// about this QSO having been worked before.
+  static Map<String, dynamic>? withoutWorkedBefore(Map verdict) {
+    final kept = <String, dynamic>{
+      for (final entry in verdict.entries)
+        if (entry.key is String && entry.key != 'dupe') entry.key as String: entry.value,
+    };
+    final notices = _stringsIn(verdict['notices']).where((n) => !kWorkedBeforeNotices.contains(n)).toList();
+    final alerts = _stringsIn(verdict['alerts']).where((a) => !kWorkedBeforeAlerts.contains(a)).toList();
+    notices.isEmpty ? kept.remove('notices') : kept['notices'] = notices;
+    alerts.isEmpty ? kept.remove('alerts') : kept['alerts'] = alerts;
+    return kept.isEmpty ? null : kept;
+  }
+
+  /// A verdict's `notices`/`alerts`, defensively: a scorer that puts something
+  /// other than a list of strings there must not take an operation's whole
+  /// rescore down with a cast error.
+  static List<String> _stringsIn(Object? value) =>
+      value is List ? value.whereType<String>().toList() : const [];
 
   /// The activity reference types appearing on [qsos] — what an operation is
   /// HUNTING, as opposed to the refs on the operation itself, which is what it
@@ -2795,7 +2891,11 @@ class ExtensionService implements PanelExtensionSource {
     List<Map<String, dynamic>>? segments,
     Set<String> huntedRefTypes = const {},
   }) async {
-    final host = _host;
+    // The public accessor rather than `_host`, as in [scoreCandidates]: the
+    // priority merge below is the thing worth a test, and a private field
+    // can't be stood in for. Identical in production — the getter returns
+    // `_host`.
+    final host = this.host;
     if (host == null) return null;
 
     final scorers = scorersFor(
@@ -2811,6 +2911,13 @@ class ExtensionService implements PanelExtensionSource {
     final notices = SplayTreeSet<String>();
     final alerts = SplayTreeSet<String>();
     var any = false;
+    // The fallback scorer's own verdict, held back until every other scorer has
+    // answered: once one of them has judged this QSO on the worked-before axis,
+    // the fallback's judgement of it yields (see [Scorer],
+    // [judgesWorkedBefore]).
+    final fallbackNotices = SplayTreeSet<String>();
+    final fallbackAlerts = SplayTreeSet<String>();
+    var judgedByOther = false;
 
     await Future.wait(scorers.map((scorer) async {
       try {
@@ -2829,14 +2936,26 @@ class ExtensionService implements PanelExtensionSource {
         );
         if (result is! Map) return;
         any = true;
-        notices.addAll(((result['notices'] as List?) ?? const []).whereType<String>());
-        alerts.addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
+        if (!scorer.fallback && judgesWorkedBefore(result)) judgedByOther = true;
+        (scorer.fallback ? fallbackNotices : notices)
+            .addAll(((result['notices'] as List?) ?? const []).whereType<String>());
+        (scorer.fallback ? fallbackAlerts : alerts)
+            .addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
       } catch (e, stackTrace) {
+        // A scorer that FAILED judged nothing, so the fallback speaks for this
+        // QSO after all rather than the row going bare.
         _reportScorerFailure(scorer.key, 'scoreQso', e, stackTrace);
       }
     }));
 
     if (!any) return null;
+    if (judgedByOther) {
+      notices.addAll(fallbackNotices.where((n) => !kWorkedBeforeNotices.contains(n)));
+      alerts.addAll(fallbackAlerts.where((a) => !kWorkedBeforeAlerts.contains(a)));
+    } else {
+      notices.addAll(fallbackNotices);
+      alerts.addAll(fallbackAlerts);
+    }
     return {'notices': notices.toList(), 'alerts': alerts.toList()};
   }
 
@@ -2905,6 +3024,14 @@ class ExtensionService implements PanelExtensionSource {
     // across refreshes and the panel's styling doesn't flicker between two
     // scorers' orderings.
     final merged = <String, ({SplayTreeSet<String> notices, SplayTreeSet<String> alerts})>{};
+    // Per CANDIDATE, not per pass: the fallback yields only on the candidates
+    // another scorer has judged on the worked-before axis (see [Scorer],
+    // [judgesWorkedBefore]). A whole spots board answered with
+    // `missingExchange` — which is what a VHF test says about every spot, since
+    // a spot carries no exchange — has been judged on no such thing, and the
+    // board would otherwise lose its dupe striking outright.
+    final fallbackMerged = <String, ({SplayTreeSet<String> notices, SplayTreeSet<String> alerts})>{};
+    final judgedByOther = <String>{};
     var any = false;
     // Tracked apart from [any] because the two mean opposite things to the
     // caller. No scorer answering can be a pass that had nothing to say, or a
@@ -2936,7 +3063,9 @@ class ExtensionService implements PanelExtensionSource {
           final key = entry.key;
           final value = entry.value;
           if (key is! String || value is! Map) continue;
-          final into = merged.putIfAbsent(
+          if (!scorer.fallback && judgesWorkedBefore(value)) judgedByOther.add(key);
+          final target = scorer.fallback ? fallbackMerged : merged;
+          final into = target.putIfAbsent(
             key,
             () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()),
           );
@@ -2959,6 +3088,22 @@ class ExtensionService implements PanelExtensionSource {
     // un-struck worked spot costs a glance, a struck unworked one costs the
     // contact.
     if (!any && !failed) return null;
+    for (final entry in fallbackMerged.entries) {
+      final judged = judgedByOther.contains(entry.key);
+      final notices = judged
+          ? entry.value.notices.where((n) => !kWorkedBeforeNotices.contains(n))
+          : entry.value.notices;
+      final alerts = judged
+          ? entry.value.alerts.where((a) => !kWorkedBeforeAlerts.contains(a))
+          : entry.value.alerts;
+      if (notices.isEmpty && alerts.isEmpty) continue;
+      final into = merged.putIfAbsent(
+        entry.key,
+        () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()),
+      );
+      into.notices.addAll(notices);
+      into.alerts.addAll(alerts);
+    }
     return {
       for (final entry in merged.entries)
         if (entry.value.notices.isNotEmpty || entry.value.alerts.isNotEmpty)
