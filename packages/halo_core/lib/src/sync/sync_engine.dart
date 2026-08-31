@@ -243,6 +243,21 @@ class SyncEngine {
   /// stuck-cursor handling.
   static const maxBackfillLimitBoost = 64;
 
+  /// Where each side's opaque server cursor lives in [SyncSettings.state]
+  /// (LOFI-41). Four, not two: a cursor names a row's position in ONE sort,
+  /// and backfill pages `synced_until` descending while forward mode pages
+  /// `synced_since` ascending. The server refuses a cursor minted for the
+  /// other window, so a shared key would cost a round every time the phase
+  /// flips — and a phase flips back on every forced resync.
+  static const backfillCursorKeys = {
+    'operations': 'backfillOperationCursor',
+    'qsos': 'backfillQSOCursor',
+  };
+  static const forwardCursorKeys = {
+    'operations': 'forwardOperationCursor',
+    'qsos': 'forwardQSOCursor',
+  };
+
   int _largeBatchSize = defaultLargeBatchSize;
   Duration _loopDelay = defaultLoopDelay;
   int _errorCount = 0;
@@ -402,6 +417,7 @@ class SyncEngine {
       'earliestQSOSyncedAtMillis': null,
       'latestOperationSyncedAtMillis': null,
       'latestQSOSyncedAtMillis': null,
+      for (final key in [...backfillCursorKeys.values, ...forwardCursorKeys.values]) key: null,
     });
     _scheduleLoop(Duration.zero);
     return true;
@@ -470,6 +486,7 @@ class SyncEngine {
       'earliestQSOSyncedAtMillis': null,
       'latestOperationSyncedAtMillis': null,
       'latestQSOSyncedAtMillis': null,
+      for (final key in [...backfillCursorKeys.values, ...forwardCursorKeys.values]) key: null,
     });
     _scheduleLoop(Duration.zero);
     return true;
@@ -584,6 +601,15 @@ class SyncEngine {
       if (batch.isEmpty && smallBatch) return;
 
       final pull = !smallBatch;
+      // Which cursor each side went out with, if any. The response alone cannot answer this: the
+      // millisecond path hands back a cursor too (that is how a client enters cursor mode), so
+      // `next_cursor` in the reply says nothing about how the page that carried it was built.
+      // Read from the same state `_buildPayload` reads a line below.
+      final sentCursors = <String, String?>{
+        if (pull)
+          for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries)
+            entry.key: settings.state[entry.value] as String?,
+      };
       final response = await _callTransport(
         'sync',
         await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
@@ -688,6 +714,7 @@ class SyncEngine {
         pull: pull,
         backfilling: backfilling,
         limit: pullLimit,
+        sentCursors: sentCursors,
         inboundOperationsCount: inboundOperations.length,
         inboundQsosCount: inboundQsos.length,
         opWatermark: opWatermark,
@@ -754,6 +781,35 @@ class SyncEngine {
     }
   }
 
+  /// The server's row cursor for one side, or null.
+  ///
+  /// Both spellings, like every other server-supplied key in this file (see `_processResponseMeta`'s
+  /// knobs and `sideDone`'s counts): reading only one would leave a client that gets the other on
+  /// the millisecond path with no signal — which is the stall this cursor exists to fix, failing
+  /// silently. Type-tolerant for the same reason a throw here is worse than a miss: it would land
+  /// after the merge but before the state write, losing the round's cursor AND watermark and
+  /// re-pulling the identical page every round forever.
+  static String? _cursorFrom(Map<String, dynamic> meta, String side) {
+    final value = (meta[side] as Map?)?['next_cursor'] ?? (meta[side] as Map?)?['nextCursor'];
+    return value is String && value.isNotEmpty ? value : null;
+  }
+
+  /// True when the server refused the cursor we sent for [side] (malformed, or minted for a
+  /// different window — see LoFi's `decode_pagination_cursor`). It answers on the millisecond
+  /// window instead, so the round is still useful; what must not happen is holding the refused
+  /// cursor and re-sending it forever.
+  static bool _cursorRefused(Map<String, dynamic> response, String side) {
+    // Every hop is checked rather than cast: this runs after the merge and before the state
+    // write, so a `TypeError` on an unexpected error shape would lose the round's cursor AND
+    // watermark and then re-throw on the identical page every round — see [_cursorFrom].
+    final errors = response['errors'];
+    if (errors is! Map) return false;
+    final forSide = errors[side];
+    if (forSide is! Map) return false;
+    final pagination = forSide['pagination'];
+    return pagination is Map && pagination['cursor'] != null;
+  }
+
   Future<Map<String, dynamic>> _buildPayload(
     SyncBatch batch, {
     required bool pull,
@@ -814,11 +870,14 @@ class SyncEngine {
               ? {
                   'operations': {
                     'syncedUntilMillis': (state['earliestOperationSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
+                    if (state[backfillCursorKeys['operations']!] != null)
+                      'cursor': state[backfillCursorKeys['operations']!],
                     'limit': limit,
                     'anyClient': true,
                   },
                   'qsos': {
                     'syncedUntilMillis': (state['earliestQSOSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
+                    if (state[backfillCursorKeys['qsos']!] != null) 'cursor': state[backfillCursorKeys['qsos']!],
                     'limit': limit,
                     'anyClient': true,
                   },
@@ -826,11 +885,14 @@ class SyncEngine {
               : {
                   'operations': {
                     'syncedSinceMillis': (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0,
+                    if (state[forwardCursorKeys['operations']!] != null)
+                      'cursor': state[forwardCursorKeys['operations']!],
                     'limit': limit,
                     'anyClient': false,
                   },
                   'qsos': {
                     'syncedSinceMillis': (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0,
+                    if (state[forwardCursorKeys['qsos']!] != null) 'cursor': state[forwardCursorKeys['qsos']!],
                     'limit': limit,
                     'anyClient': false,
                   },
@@ -843,6 +905,7 @@ class SyncEngine {
     Map<String, dynamic> response, {
     required bool pull,
     required bool backfilling,
+    Map<String, String?> sentCursors = const {},
     required int limit,
     required int inboundOperationsCount,
     required int inboundQsosCount,
@@ -881,46 +944,115 @@ class SyncEngine {
     // other devices synced *while* this backfill ran (their
     // stamps fall between the backfill cursor and "now"), and anything in a
     // local-vs-server clock-skew window. Server stamps only, app-polo style.
-    final newOpWatermark = opWatermark?.latestSyncedAtMillis;
-    if (newOpWatermark != null) {
-      final current = (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0;
-      if (newOpWatermark > current) updates['latestOperationSyncedAtMillis'] = newOpWatermark;
+    //
+    // A forward page built from a CURSOR is the one case where the highest stamp delivered is not
+    // safe to bank: such a page stops exactly at the limit, mid-millisecond included, so records
+    // sharing that last stamp may not have been sent. The fallback window is `> watermark`, which
+    // would skip them silently and count them nowhere. Banking one millisecond lower re-covers
+    // that stamp; the re-delivery is idempotent, and it is only ever read if the cursor is lost.
+    // The millisecond path needs no such care — it extends over its whole edge millisecond.
+    void bankForward(String key, int? latest, String side) {
+      if (latest == null) return;
+      final candidate = (!backfilling && sentCursors[side] != null) ? latest - 1 : latest;
+      final current = (state[key] as num?)?.toInt() ?? 0;
+      if (candidate > current) updates[key] = candidate;
     }
-    final newQsoWatermark = qsoWatermark?.latestSyncedAtMillis;
-    if (newQsoWatermark != null) {
-      final current = (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0;
-      if (newQsoWatermark > current) updates['latestQSOSyncedAtMillis'] = newQsoWatermark;
+
+    bankForward('latestOperationSyncedAtMillis', opWatermark?.latestSyncedAtMillis, 'operations');
+    bankForward('latestQSOSyncedAtMillis', qsoWatermark?.latestSyncedAtMillis, 'qsos');
+
+    // Forward mode pages `synced_since` ascending, and carries exactly the same tie hazard the
+    // backfill hit — a millisecond holding more records than a page can never be paged past.
+    // Rarer (it needs that many records to arrive in one millisecond after this device caught
+    // up) but identical in shape, and the server offers the cursor on both windows.
+    if (!backfilling) {
+      for (final side in forwardCursorKeys.keys) {
+        final cursor = _cursorFrom(meta, side);
+        final inbound = side == 'operations' ? inboundOperationsCount : inboundQsosCount;
+        if (cursor != null) {
+          updates[forwardCursorKeys[side]!] = cursor;
+        } else if (inbound > 0 || _cursorRefused(response, side)) {
+          // A page came back and named no position, or the one we sent was refused. Keeping the
+          // old cursor would pin us there: the server ignores `syncedSinceMillis` entirely once a
+          // valid cursor arrives, so we would be served the same tail every round until a page
+          // happened to land exactly on the limit. Dropping it falls back to the watermark, which
+          // this round has just advanced.
+          //
+          // `inbound > 0`, not "no cursor": a cooldown-gated response carries counts and NO page
+          // at all, and clearing a live cursor for that would throw away a good position.
+          updates[forwardCursorKeys[side]!] = null;
+        }
+      }
     }
 
     if (backfilling) {
       var cursorAdvanced = false;
       var timestampTieStuck = false;
+      var cursorStuck = false;
 
-      // The next cursor is the page's earliest stamp *plus one*, not the
-      // stamp itself: several records can share one syncedAtMillis (server
-      // bulk imports), and a page can end mid-tie. Asking "older than
-      // earliest" next would silently skip the tie's remaining records;
-      // "older than earliest+1" re-covers every record sharing that stamp
-      // (idempotent — mergeFromSync skips what's already current) under
-      // both `<` and `<=` server paging semantics.
-      void advanceCursor(String key, SyncWatermark? watermark, int inboundCount) {
+      // Advances one side's backfill position.
+      //
+      // The server's own cursor (LOFI-41) names a ROW — `(syncedAtMillis, id)`, opaque — rather
+      // than a millisecond, and is the only thing that can resume inside a tie. Deriving one
+      // from the page instead is what stalled N4TRD's backfill: a millisecond cannot address a
+      // position within itself, so once a tie grew past a page the same records came back
+      // forever.
+      //
+      // The millisecond watermark is tracked beside it as the fallback for a server that stops
+      // honouring cursors — a rolling deploy landing on an older node, a refused cursor after a
+      // format bump — and is what `_reportProgress` and a forced resync read.
+      //
+      // Which value is safe depends on how the page was built, and the two are opposites:
+      //
+      //   - No cursor sent: `earliest`. The server extends such a page over its whole edge
+      //     millisecond, so `< earliest` skips nothing. `earliest + 1` here asks for
+      //     `< earliest + 1`, re-requesting that millisecond every round — which is precisely
+      //     what stalled N4TRD. app-polo has always stored the stamp as-is.
+      //   - Cursor sent: `earliest + 1`. Such a page stops at the limit wherever that lands, so
+      //     records sharing `earliest` may not have been delivered, and a fallback to `< earliest`
+      //     would skip them permanently while `records_left` counted down to zero around them.
+      //     `+ 1` re-covers the stamp idempotently. It cannot reintroduce the stall, because it
+      //     is read only when the cursor is already gone.
+      void advanceCursor(String side, String millisKey, String cursorKey, SyncWatermark? watermark, int inboundCount) {
+        final serverCursor = _cursorFrom(meta, side);
+        if (serverCursor != null) {
+          updates[cursorKey] = serverCursor;
+          if (serverCursor == sentCursors[side] && inboundCount >= limit) {
+            // The server handed back the very cursor we sent, on a full page: the next round
+            // would re-request this same page. Nothing else bounds that — `timestampTieStuck`
+            // cannot fire while a cursor exists, and `_scheduleLoop` runs a full page at zero
+            // delay — so say so here, or a server echoing a stuck cursor spins the loop as fast
+            // as its own cooldown allows.
+            cursorStuck = true;
+          } else {
+            cursorAdvanced = true;
+          }
+        } else if (inboundCount > 0 || _cursorRefused(response, side)) {
+          // See the forward branch: a page that named no position, or a refused cursor, must not
+          // leave us pinned to a stale one. Not on an empty page — that is a cooldown-gated
+          // response, and the cursor we hold is still the right place to resume.
+          updates[cursorKey] = null;
+        }
+
         final earliest = watermark?.earliestSyncedAtMillis;
         if (earliest == null) return;
-        final newCursor = earliest + 1;
-        final current = (state[key] as num?)?.toInt();
-        if (current == null || newCursor < current) {
-          updates[key] = newCursor;
-          cursorAdvanced = true;
-        } else if (inboundCount >= limit && earliest == watermark?.latestSyncedAtMillis) {
-          // A full page of one single timestamp that can't move the cursor:
-          // the tie is larger than the page and only a bigger page reaches
-          // its remainder.
+        final fallback = sentCursors[side] != null ? earliest + 1 : earliest;
+        final current = (state[millisKey] as num?)?.toInt();
+        if (current == null || fallback < current) {
+          updates[millisKey] = fallback;
+          if (serverCursor == null) cursorAdvanced = true;
+        } else if (serverCursor == null && inboundCount >= limit && earliest == watermark?.latestSyncedAtMillis) {
+          // A full page of one single timestamp that cannot move the cursor: the tie is larger
+          // than the page and, with no row-level cursor to resume from, only a bigger page
+          // reaches its remainder. Unreachable once the server offers a cursor, which is the
+          // point of asking for one.
           timestampTieStuck = true;
         }
       }
 
-      advanceCursor('earliestOperationSyncedAtMillis', opWatermark, inboundOperationsCount);
-      advanceCursor('earliestQSOSyncedAtMillis', qsoWatermark, inboundQsosCount);
+      advanceCursor('operations', 'earliestOperationSyncedAtMillis', backfillCursorKeys['operations']!, opWatermark,
+          inboundOperationsCount);
+      advanceCursor('qsos', 'earliestQSOSyncedAtMillis', backfillCursorKeys['qsos']!, qsoWatermark, inboundQsosCount);
 
       // Trust the server's own records-left counts to decide whether older
       // history remains: a cooldown-gated or otherwise
@@ -938,8 +1070,19 @@ class SyncEngine {
         // Nothing older is left server-side. Backfill is done — forward
         // mode picks up from the largest server stamp accumulated above.
         updates['completedFullSync'] = true;
+        // These name a position in the descending `synced_until` sort, which forward mode does
+        // not page. The server refuses a cursor minted for the other window, so leaving them
+        // behind would cost a round (and an error in the response) on the first forward pull.
+        for (final key in backfillCursorKeys.values) {
+          updates[key] = null;
+        }
         _backfillLimitBoost = 1;
         _backfillStuckAtCap = false;
+      } else if (cursorStuck) {
+        // A cursor that will not move is not a page-size problem, so growing the limit is not the
+        // answer — only backing off is.
+        _backfillStuckAtCap = true;
+        log?.call('[sync] backfill cursor came back unchanged; retrying at the loop delay');
       } else if (timestampTieStuck) {
         if (_backfillLimitBoost < maxBackfillLimitBoost) {
           _backfillLimitBoost *= 2;

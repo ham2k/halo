@@ -727,29 +727,58 @@ void main() {
       expect(await qsos.watchForOperation('op1').first, hasLength(5));
     });
 
-    test('backfill survives a page-sized timestamp tie without skipping records or hot-looping', () async {
+    // LOFI-41. Against a server that offers no cursor the client is still on the millisecond
+    // window - and that only works because the server extends a page to cover its whole edge
+    // millisecond. The fake here does that, which the real one has always done; a fake that
+    // simply takes `limit` models a server that does not exist, and would make
+    // `syncedUntilMillis = earliest + 1` look necessary when it is the thing that stalls a real
+    // backfill.
+    test('backfill on the millisecond window loses nothing to a page-sized tie', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
-      // 120 QSOs all sharing syncedAtMillis 100 — a server-side bulk import
-      // larger than a full page (100). The server pages with strict `<`
-      // semantics: once the cursor reaches the tie's own stamp, a naive
-      // client would get an empty page and conclude backfill was complete,
-      // silently missing the tie's remaining 20 records.
-      const totalAvailable = 120;
+      // 40 newer records at distinct stamps, then 120 sharing stamp 100 - a bulk import whose
+      // tie is larger than a full page (100). Mixed stamps on purpose: with a single stamp
+      // throughout, a fake that mismodels the extension still passes.
+      const totalAvailable = 160;
       transport.responder = (method, args) {
         final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
         final until = sync['syncedUntilMillis'] as int;
         final limit = sync['limit'] as int;
-        final page = [
-          if (100 < until)
-            for (var i = 0; i < totalAvailable; i++)
-              {
-                'uuid': 'tie-$i',
-                'operation': 'op1',
-                'their': {'call': 'W1AW$i'},
-                'startAtMillis': i,
-                'syncedAtMillis': 100,
-              },
-        ].take(limit).toList();
+        final all = [
+          for (var i = 0; i < 40; i++)
+            {
+              'uuid': 'new-$i',
+              'operation': 'op1',
+              'their': {'call': 'K1AA$i'},
+              'startAtMillis': 500 + i,
+              'syncedAtMillis': 200 - i,
+            },
+          for (var i = 0; i < 120; i++)
+            {
+              'uuid': 'tie-$i',
+              'operation': 'op1',
+              'their': {'call': 'W1AW$i'},
+              'startAtMillis': i,
+              'syncedAtMillis': 100,
+            },
+        ];
+        final matching = [
+          for (final q in all)
+            if ((q['syncedAtMillis'] as int) < until) q,
+        ];
+        // The edge extension, exactly as `process_pagination` builds it: the first `limit`
+        // records, PLUS the rest of the millisecond the last of them falls in. Keeping only the
+        // edge millisecond would drop every newer record in the page - which happens to be
+        // invisible while they all share one stamp, and wrong the moment they do not.
+        final List<Map<String, dynamic>> page;
+        if (matching.length > limit) {
+          final edgeStamp = matching[limit - 1]['syncedAtMillis'];
+          page = [
+            ...matching.take(limit).where((q) => q['syncedAtMillis'] != edgeStamp),
+            ...matching.where((q) => q['syncedAtMillis'] == edgeStamp),
+          ];
+        } else {
+          page = matching;
+        }
         return {'qsos': page};
       };
 
@@ -761,6 +790,355 @@ void main() {
 
       expect(settings.state['completedFullSync'], isTrue);
       expect(await qsos.watchForOperation('op1').first, hasLength(totalAvailable));
+      expect(settings.state['earliestQSOSyncedAtMillis'], 100,
+          reason: 'with no cursor sent, the watermark is the page\'s earliest stamp and not one '
+              'past it - `+ 1` asks the server for `< 101`, which re-requests the whole tie '
+              'every round, forever');
+    });
+
+    // The N4TRD regression. A tie larger than a page cannot be paged by a millisecond cursor at
+    // all: the page is entirely that tie, its edge never moves, and the same records come back
+    // every round. Driven the way a real backfill runs - follow the server's cursor, stop when it
+    // says nothing is left - because the bug was never a wrong page, it was a correct page forever.
+    test('backfill follows the server cursor through a tie larger than any page', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      // The server caps a page at its own maximum however large a limit the client asks for
+      // (`Paginable::MAX_LIMIT`), which is what puts a big enough tie permanently out of reach:
+      // `_backfillLimitBoost` can grow the request, but not the answer. N4TRD's 7804 sat behind
+      // that cap. Scaled down here - the ratio is what matters, not the size.
+      const serverMaxLimit = 200;
+      final all = [
+        for (var i = 0; i < 300; i++)
+          {
+            'uuid': 'tie-$i',
+            'operation': 'op1',
+            'their': {'call': 'W1AW$i'},
+            'startAtMillis': i,
+            'syncedAtMillis': 100,
+          },
+        for (var i = 0; i < 30; i++)
+          {
+            'uuid': 'old-$i',
+            'operation': 'op1',
+            'their': {'call': 'K1AA$i'},
+            'startAtMillis': 400 + i,
+            'syncedAtMillis': 90 - i,
+          },
+      ];
+
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        final limit = (sync['limit'] as int).clamp(1, serverMaxLimit);
+        // Opaque, as far as the client is concerned - it must echo this back untouched rather
+        // than deriving a position of its own. Without one every round starts over at the top of
+        // the tie, which is the stall.
+        final from = sync['cursor'] == null ? 0 : int.parse((sync['cursor'] as String).split(':').last);
+        final page = all.skip(from).take(limit).toList();
+        final next = from + page.length;
+        return {
+          'qsos': page,
+          'meta': {
+            'qsos': {
+              // A cursor names where the page stopped, however short it was; only an EMPTY page
+              // has no record to name. A fake that emits one unconditionally cannot catch a
+              // client that holds a stale cursor forever.
+              if (page.isNotEmpty) 'next_cursor': 'row:$next',
+              'records_left': all.length - next,
+            },
+            'operations': {'records_left': 0},
+          },
+        };
+      };
+
+      var guard = 0;
+      while (settings.state['completedFullSync'] != true && guard < 20) {
+        await engine.runOneRound();
+        guard++;
+      }
+
+      expect(settings.state['completedFullSync'], isTrue,
+          reason: 'a tie wider than any page the server will return must still terminate - '
+              'this is the stall itself');
+      expect(await qsos.watchForOperation('op1').first, hasLength(all.length));
+      expect(settings.state[SyncEngine.backfillCursorKeys['qsos']], isNull,
+          reason: 'a finished backfill clears its descending cursor, which forward mode cannot use');
+    });
+
+    // A cursor replaces the millisecond bound rather than accompanying it — LoFi's
+    // `apply_pagination_param!` returns early and never looks at `syncedSinceMillis` once a valid
+    // cursor arrives. So a cursor that stops advancing pins the window open: the same tail comes
+    // back every round, forever, while `latestQSOSyncedAtMillis` climbs and is never consulted.
+    test('a forward round that names no position drops its cursor rather than re-sending it', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      final cursorsSent = <String?>[];
+      var round = 0;
+
+      List<Map<String, dynamic>> rows(int count, int from) => [
+            for (var i = 0; i < count; i++)
+              {
+                'uuid': 'fwd-${from + i}',
+                'operation': 'op1',
+                'their': {'call': 'W1AW${from + i}'},
+                'startAtMillis': from + i,
+                'syncedAtMillis': 1000 + from + i,
+              },
+          ];
+
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        cursorsSent.add(sync['cursor'] as String?);
+        round++;
+        if (round == 1) {
+          // A full page, so the server names where it stopped.
+          return {
+            'qsos': rows(100, 0),
+            'meta': {
+              'qsos': {'next_cursor': 'fwd:100', 'records_left': 3},
+              'operations': {'records_left': 0},
+            },
+          };
+        }
+        // Short pages from here on: records, but no cursor naming them.
+        return {
+          'qsos': rows(3, 100),
+          'meta': {
+            'qsos': {'records_left': 0},
+            'operations': {'records_left': 0},
+          },
+        };
+      };
+
+      await engine.runOneRound();
+      await engine.runOneRound();
+      await engine.runOneRound();
+
+      expect(cursorsSent, [null, 'fwd:100', null],
+          reason: 'the short page named no position, so the cursor is dropped and the watermark '
+              'takes over - holding it re-requests the same tail every round');
+    });
+
+    // The other half of the rule above, and the reason it cannot simply be "no cursor means drop
+    // it": a cooldown-gated response carries counts and NO page at all. The cursor we hold is
+    // still exactly where to resume, and throwing it away would restart the walk from the
+    // millisecond bound - re-reading everything back to it.
+    test('a cooldown-gated round with no page at all keeps the cursor it holds', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final cursorsSent = <String?>[];
+      var round = 0;
+
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        cursorsSent.add(sync['cursor'] as String?);
+        round++;
+        if (round == 1) {
+          return {
+            'qsos': [
+              {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 100},
+            ],
+            'meta': {
+              'qsos': {'next_cursor': 'row:1', 'records_left': 5},
+              'operations': {'records_left': 0},
+            },
+          };
+        }
+        // Cooldown: counts only, no `qsos` key whatsoever.
+        return {
+          'meta': {
+            'qsos': {'records_left': 5},
+            'operations': {'records_left': 0},
+          },
+        };
+      };
+
+      await engine.runOneRound();
+      await engine.runOneRound();
+      await engine.runOneRound();
+
+      expect(cursorsSent, [null, 'row:1', 'row:1'],
+          reason: 'a gated round returned no page, so it says nothing about where we are - the '
+              'cursor has to survive it');
+    });
+
+    // Finding from review: the millisecond watermark is a FALLBACK, read only when the cursor
+    // stops working - a rolling deploy landing on an older node, or a cursor refused after a
+    // format bump. A cursor page stops mid-millisecond by design, so banking `earliest` there
+    // means the fallback window `< earliest` skips the rest of that stamp permanently, with
+    // `records_left` counting down to zero around the hole. Banking `earliest + 1` re-covers it.
+    test('a cursor page banks a millisecond fallback that re-covers the stamp it stopped in', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        final sentCursor = sync['cursor'] as String?;
+        if (sentCursor == null) {
+          // Round 1, the millisecond path: distinct stamps, so it ends cleanly on a boundary.
+          return {
+            'qsos': [
+              for (var i = 0; i < 40; i++)
+                {
+                  'uuid': 'new-$i',
+                  'operation': 'op1',
+                  'their': {'call': 'K1AA$i'},
+                  'startAtMillis': 500 + i,
+                  'syncedAtMillis': 200 - i,
+                },
+            ],
+            'meta': {
+              'qsos': {'next_cursor': 'row:40', 'records_left': 200},
+              'operations': {'records_left': 0},
+            },
+          };
+        }
+        // Round 2, cursor mode: a page that stops INSIDE stamp 100, with more of it behind.
+        return {
+          'qsos': [
+            for (var i = 0; i < 100; i++)
+              {
+                'uuid': 'tie-$i',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$i'},
+                'startAtMillis': i,
+                'syncedAtMillis': 100,
+              },
+          ],
+          'meta': {
+            'qsos': {'next_cursor': 'row:140', 'records_left': 100},
+            'operations': {'records_left': 0},
+          },
+        };
+      };
+
+      await engine.runOneRound();
+      expect(settings.state['earliestQSOSyncedAtMillis'], 161,
+          reason: 'no cursor was sent, so the server extended over its edge stamp and `< 161` '
+              'skips nothing - `+ 1` here is what stalls a real backfill');
+
+      await engine.runOneRound();
+      expect(settings.state['earliestQSOSyncedAtMillis'], 101,
+          reason: 'this page stopped mid-stamp, so the fallback must re-cover 100 - banking 100 '
+              'would ask for `< 100` and lose the rest of the tie for good, silently, with '
+              'records_left counting down around the hole');
+    });
+
+    // `errors.<side>.pagination.cursor` is how the server says it refused a cursor (malformed, or
+    // minted for another window) and answered the millisecond window instead. Holding the refused
+    // cursor and re-sending it every round is the failure this prevents.
+    test('a refused cursor is dropped rather than re-sent every round', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'stale:9'};
+      final cursorsSent = <String?>[];
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        cursorsSent.add(sync['cursor'] as String?);
+        return {
+          'qsos': const [],
+          'meta': {
+            'qsos': {'records_left': 7},
+            'operations': {'records_left': 0},
+          },
+          'errors': {
+            'qsos': {
+              'pagination': {'cursor': 'Unsupported cursor version'},
+            },
+          },
+        };
+      };
+
+      await engine.runOneRound();
+      await engine.runOneRound();
+
+      expect(cursorsSent, ['stale:9', null],
+          reason: 'the server said it refused this cursor, so re-sending it just repeats the '
+              'refusal - and an empty page alone must NOT clear one, or a cooldown round would');
+    });
+
+    // The error block is server-supplied and lands after the merge but before the state write, so
+    // an unexpected shape must not throw: that would lose the round's cursor and watermark and
+    // then re-throw on the identical page every round.
+    test('an unrecognizable errors block is ignored rather than thrown on', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'held:3'};
+      transport.responder = (method, args) => {
+            'qsos': [
+              {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 500},
+            ],
+            'meta': {
+              'qsos': {'next_cursor': 'row:1', 'records_left': 2},
+              'operations': {'records_left': 0},
+            },
+            // Not the documented `{side: {pagination: {...}}}` shape at all.
+            'errors': 'something went wrong',
+          };
+
+      await engine.runOneRound();
+
+      // A throw inside _processResponseMeta is swallowed by runOneRound's catch, so "no
+      // exception escaped" proves nothing. These two only get written if it ran to the end.
+      expect(settings.state['latestQSOSyncedAtMillis'], 500,
+          reason: 'the watermark is written after the errors block is read - a throw there loses '
+              'this round entirely and re-throws on the identical page every round after');
+      expect(settings.state['backfillQSOCursor'], 'row:1');
+    });
+
+    // Nothing else bounds a cursor that will not move: `timestampTieStuck` cannot fire while a
+    // cursor exists, and a full page is otherwise rescheduled at zero delay.
+    test('a server echoing back the cursor it was sent stops the zero-delay rescheduling', () async {
+      final logs = <String>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: transport.call,
+        log: logs.add,
+      );
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
+      transport.responder = (method, args) => {
+            'qsos': [
+              for (var i = 0; i < 100; i++)
+                {
+                  'uuid': 'q$i',
+                  'operation': 'op1',
+                  'their': {'call': 'W1AW$i'},
+                  'startAtMillis': i,
+                  'syncedAtMillis': 400 - i,
+                },
+            ],
+            'meta': {
+              // The same cursor back, on a full page: the next round would re-request this page.
+              'qsos': {'next_cursor': 'row:7', 'records_left': 99},
+              'operations': {'records_left': 0},
+            },
+          };
+
+      await engine.runOneRound();
+
+      expect(logs.where((l) => l.contains('came back unchanged')), isNotEmpty,
+          reason: 'an unmoving cursor has to back off to the loop delay, or the round repeats as '
+              'fast as the server cooldown allows');
+    });
+
+    // The ascending mirror of the backfill fallback: a forward cursor page also stops at the
+    // limit wherever that lands, and the fallback window is `> watermark`, so banking the last
+    // stamp delivered would skip whatever else shares it.
+    test('a forward cursor page banks a watermark that re-covers the stamp it stopped in', () async {
+      settings.state = {
+        'lastSyncAccountUUID': 'acct-1',
+        'completedFullSync': true,
+        'forwardQSOCursor': 'fwd:5',
+      };
+      transport.responder = (method, args) => {
+            'qsos': [
+              {'uuid': 'f1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 900},
+            ],
+            'meta': {
+              'qsos': {'next_cursor': 'fwd:6', 'records_left': 4},
+              'operations': {'records_left': 0},
+            },
+          };
+
+      await engine.runOneRound();
+
+      expect(settings.state['latestQSOSyncedAtMillis'], 899,
+          reason: 'the page stopped inside stamp 900, so banking 900 would ask for `> 900` and '
+              'skip the rest of it with nothing counting the loss');
     });
 
     test('backfill rounds report server counts as progress, ending with a terminal update', () async {
