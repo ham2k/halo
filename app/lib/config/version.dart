@@ -44,7 +44,7 @@ const kStageLabel = 'ALPHA';
 /// it per release from the `v<version>+<build>` tag ledger and writes it here
 /// (§2.2). Must stay small enough to fit every platform's field —
 /// Windows/Linux cap it at 16 bits.
-const kBuildNumber = 157;
+const kBuildNumber = 158;
 
 /// The short git SHA of the commit this build was cut from, baked in at build
 /// time via `--dart-define=HALO_GIT_SHA=…` (CI). Empty for local/dev builds.
@@ -59,8 +59,8 @@ const kGitSha = String.fromEnvironment('HALO_GIT_SHA');
 /// install nags on every launch to go get a newer build (the dialog in
 /// views/staleness_dialog.dart). Like [kBuildNumber] these live in
 /// compiled Dart so a Shorebird patch can rewrite them.
-const kDevExpirationDate = '2026-09-12';
-const kNextExpirationDate = '2026-09-12';
+const kDevExpirationDate = '2026-09-14';
+const kNextExpirationDate = '2026-09-14';
 const kProdExpirationDate = '';
 
 /// When THIS build expires: the running edition's date from above, or null

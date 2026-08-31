@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"158":
   changes:
     - "State Parks exports: Ohio's Cabrillo, and Texas/Georgia per-park ADIFs named as their rules require"
     - Each QSO now records the operator and position that logged it; ADIF exports say so
