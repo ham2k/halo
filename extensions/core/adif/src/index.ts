@@ -16,27 +16,12 @@ import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, H
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
+import { field, renderRow } from "./fields.ts"
+import type { AdifField } from "./fields.ts"
 import { filenameFor } from "./filename.ts"
 
 const ADIF_VERSION = '3.1.5'
 const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
-
-/// Characters HaLo itself puts into a field, folded back to the ASCII a
-/// forty-year-old logging program can read. The typographic quotes come from
-/// the lookup layer's `First “Nick” Last` (see normalizeGuess.ts); this table
-/// is meant to grow as other Unicode punctuation finds its way in.
-///
-/// Not a general sanitizer: a correspondent's name in its own script stays as
-/// they spell it. lib-format-tools' `sanitizeToISO8859` is the blunter tool —
-/// it replaces everything outside Latin-1 with `·`, which would mangle those.
-const SUBSTITUTIONS: [RegExp, string][] = [
-  [/[“”]/g, '"'],
-  [/[‘’]/g, "'"],
-]
-
-function sanitizeAdifText(text: string): string {
-  return SUBSTITUTIONS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text)
-}
 
 /// The other station's coordinate, in the same precedence the app's own model
 /// uses (`Qso.theirExactLocation`): an entered pair wins; an ENTERED grid
@@ -69,12 +54,6 @@ function coarseGrid(grid: string | undefined): string | undefined {
   return typeof grid === 'string' ? grid.slice(0, 6) : undefined
 }
 
-function field(name: string, value: unknown): string {
-  if (value === undefined || value === null || value === '') return ''
-  const text = sanitizeAdifText(String(value))
-  return `<${name}:${text.length}>${text} `
-}
-
 /// ADIF's three free-text fields, as templates over the standard vocabulary
 /// (docs/extensions/templates.md) — the same engine that names the file.
 /// app-polo templates exactly these three (`ADIFNotesTemplate`,
@@ -96,11 +75,6 @@ const TEXT_FIELD_TEMPLATES: { name: string; template: string; private: boolean }
   { name: 'QSLMSG', template: '', private: false },
 ]
 
-interface AdifField {
-  name: string
-  value: string
-}
-
 /// The QSO's own fields, shared by every ADIF record it produces.
 /// `timeOffsetMillis` shifts this record's timestamp off the contact's — see
 /// the caller for why.
@@ -111,7 +85,7 @@ interface AdifField {
 /// own notes about who they met. Same set app-polo gates
 /// (`qsonToADIF.js:217-232`) — including the gridsquare, which is a location
 /// the other operator did not necessarily publish.
-function baseRowFor(
+function baseFieldsFor(
   qso: Record<string, unknown>,
   operation: Record<string, unknown>,
   stationCall: string,
@@ -121,7 +95,7 @@ function baseRowFor(
   /// only `qso` changes per contact, and rebuilding the rest ten thousand
   /// times would be the expensive half of a large export.
   exportContext: Record<string, unknown>,
-): string {
+): AdifField[] {
   const our = (qso.our ?? {}) as Record<string, unknown>
   const their = (qso.their ?? {}) as Record<string, unknown>
   // The merged lookup guess
@@ -133,19 +107,20 @@ function baseRowFor(
   const [mode, submode] = adifModeAndSubmodeForMode(String(qso.mode ?? 'SSB'))
   const freqKHz = Number(qso.freq ?? 0)
 
-  let row = ''
-  row += field('CALL', their.call)
+  const fields: AdifField[] = []
+  const add = (name: string, value: unknown) => fields.push({ name, value })
+  add('CALL', their.call)
   if (startAtMillis > 0) {
-    row += field('QSO_DATE', fmtADIFDate(startAtMillis + timeOffsetMillis))
-    row += field('TIME_ON', fmtADIFTime(startAtMillis + timeOffsetMillis))
+    add('QSO_DATE', fmtADIFDate(startAtMillis + timeOffsetMillis))
+    add('TIME_ON', fmtADIFTime(startAtMillis + timeOffsetMillis))
   }
-  row += field('BAND', qso.band)
-  if (freqKHz > 0) row += field('FREQ', (freqKHz / 1000).toFixed(6).replace(/0+$/, '').replace(/\.$/, ''))
-  row += field('MODE', mode)
-  row += field('SUBMODE', submode)
-  row += field('RST_SENT', our.sent)
-  row += field('RST_RCVD', their.sent)
-  row += field('STATION_CALLSIGN', stationCall)
+  add('BAND', qso.band)
+  if (freqKHz > 0) add('FREQ', (freqKHz / 1000).toFixed(6).replace(/0+$/, '').replace(/\.$/, ''))
+  add('MODE', mode)
+  add('SUBMODE', submode)
+  add('RST_SENT', our.sent)
+  add('RST_RCVD', their.sent)
+  add('STATION_CALLSIGN', stationCall)
   // Only when it says something STATION_CALLSIGN doesn't: a single operator
   // running their own call would otherwise write their call twice into every
   // record. A deliberate divergence from app-polo, which writes OPERATOR on
@@ -156,17 +131,17 @@ function baseRowFor(
   // spelled, and `ki2d` against a station running `KI2D` is the same operator.
   const operatorCall = String(our.operatorCall ?? '').trim()
   if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
-    row += field('OPERATOR', operatorCall)
+    add('OPERATOR', operatorCall)
   }
   if (includePrivateData) {
-    row += field('NAME', their.name ?? theirGuess.name)
-    row += field('QTH', their.city ?? theirGuess.city)
+    add('NAME', their.name ?? theirGuess.name)
+    add('QTH', their.city ?? theirGuess.city)
   }
   // STATE and COUNTRY stay: awards are claimed on them, and both are
   // implied by the callsign anyway. app-polo draws the line in the same
   // place.
-  row += field('STATE', their.state ?? theirGuess.state)
-  row += field('COUNTRY', their.country ?? theirGuess.country)
+  add('STATE', their.state ?? theirGuess.state)
+  add('COUNTRY', their.country ?? theirGuess.country)
   // Our own location always goes out, at SIX characters — the field award
   // programs read, and a ~9 x 5 km square, which is what an operator has always
   // put on the air. The finer forms below ride `includePrivateData`, so the
@@ -179,24 +154,24 @@ function baseRowFor(
   // the station to move mid-operation, and the contact records where it was
   // actually made from.
   const ourGrid = (our.grid ?? operation.grid) as string | undefined
-  row += field('MY_GRIDSQUARE', includePrivateData ? ourGrid : coarseGrid(ourGrid))
+  add('MY_GRIDSQUARE', includePrivateData ? ourGrid : coarseGrid(ourGrid))
 
   if (includePrivateData) {
     // ADIF names no field for a multi-station operating position, so this is
     // ours (`adif_to_qson.dart` reads it back). Private: which of a station's
     // positions made the contact is its internal layout, not something the
     // contact itself says, and no program asks for it.
-    row += field('APP_HAM2K_POSITION', our.multiIdentifier)
-    row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
+    add('APP_HAM2K_POSITION', our.multiIdentifier)
+    add('GRIDSQUARE', their.grid ?? theirGuess.grid)
     // Coordinates ride with the gridsquare, and for the same reason: where the
     // other operator is, to a few hundred metres, is not something the contact
     // itself says. Ours goes out under the same switch — a log uploaded to a
     // program's servers would otherwise publish the operator's own address.
     const theirs = theirCoordinate(their, theirGuess)
-    row += field('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
-    row += field('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
-    row += field('MY_LAT', formatAdifCoordinate(our.lat ?? operation.lat, 'lat'))
-    row += field('MY_LON', formatAdifCoordinate(our.lon ?? operation.lon, 'lon'))
+    add('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
+    add('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
+    add('MY_LAT', formatAdifCoordinate(our.lat ?? operation.lat, 'lat'))
+    add('MY_LON', formatAdifCoordinate(our.lon ?? operation.lon, 'lon'))
   }
 
   // Built once, on the first field that will actually render — `qsoValues`
@@ -212,9 +187,9 @@ function baseRowFor(
     // of them and belongs in front of whoever changed it. An operator's own
     // template reaching this table is a later feature, and the settings
     // screen that accepts it is where a typo has to be reported.
-    row += field(textField.name, renderTemplate(textField.template, textContext, `ADIF ${textField.name}`))
+    add(textField.name, renderTemplate(textField.template, textContext, `ADIF ${textField.name}`))
   }
-  return row
+  return fields
 }
 
 /// Each `adifFields` hook's contribution, as a list of field sets — one per
@@ -234,10 +209,20 @@ function baseRowFor(
 /// (`ExportRequest.mainHandler`). Unnamed — the full ADIF export, which claims
 /// no program — every hook contributes, which is polo's `includeOtherRefs`.
 ///
-/// The hooks are asked in that order, the main handler first, which is the
-/// order their fields land in a record — except where an included hook answers
-/// `fieldCombinationsForOneQSO` and the main handler only answers the plain
-/// method, since combinations are collected first. No current pairing does.
+/// A NAMED handler's sets come back in the order it asked, itself first — the
+/// order their fields land in a record, and so, since a field name is written
+/// once ([renderRow]), the order that decides a collision. That holds whichever
+/// METHOD each hook answered: stateparks names `pota` in `includeFieldsFrom`,
+/// and pota answers combinations where the contest answers plain fields, so
+/// returning the combinations first would put the included hook ahead of the
+/// file's own program.
+///
+/// The FULL export has no such order to restore. `invokeAll` answers in hook
+/// priority order per method, but the two methods are two calls and a hook
+/// answers only one of them, so the combination-answering hooks come first as a
+/// group and nothing here can interleave them by priority. Which of two
+/// programs keeps a shared MY_SIG is therefore not a decision anyone made — see
+/// the file's own note on what that export cannot represent.
 async function fieldSetsPerHook(
   qso: Record<string, unknown>,
   operation: Record<string, unknown>,
@@ -245,7 +230,9 @@ async function fieldSetsPerHook(
   includeFieldsFrom?: string[],
 ): Promise<AdifField[][][]> {
   const byHook = new Map<string, AdifField[][]>()
-  const keys = mainHandler ? [mainHandler, ...(includeFieldsFrom ?? [])] : undefined
+  // A handler that also lists itself is asked once: the map below would collapse
+  // the second answer anyway, but not before running the hook a second time.
+  const keys = mainHandler ? [...new Set([mainHandler, ...(includeFieldsFrom ?? [])])] : undefined
   const invoke = async (method: string) =>
     keys
       ? (await Promise.all(keys.map((key) => hooks.invokeOne('adifFields', key, method, { qso, operation })))).flat()
@@ -301,7 +288,7 @@ async function fieldSetsPerHook(
     }
   }
 
-  return [...byHook.values()]
+  return (keys ? keys.filter((key) => byHook.has(key)) : [...byHook.keys()]).map((key) => byHook.get(key)!)
 }
 
 const ExportHandler = {
@@ -386,16 +373,18 @@ const ExportHandler = {
         // Records split out of one contact would otherwise be identical, and a
         // log processor is entitled to read that as a duplicate. app-polo
         // shifts each by a second (`qsonToADIF.js:144`); so do we.
-        let row = baseRowFor(qso, operation, stationCall, n * 1000, includePrivateData === true, exportContext)
+        const fields = baseFieldsFor(qso, operation, stationCall, n * 1000, includePrivateData === true, exportContext)
         for (const sets of perHook) {
           // A hook with a single set describes the contact rather than one of
           // its records, so it belongs on all of them.
           const set = sets.length === 1 ? sets[0] : sets[n]
           if (!set) continue
-          for (const extra of set) row += field(extra.name, extra.value)
+          fields.push(...set)
         }
-        row += '<EOR>'
-        lines.push(row)
+        // Assembled and then rendered, rather than appended field by field, so
+        // that two hooks naming the same field — an operation activating a park
+        // and a summit both answer MY_SIG — write it once ([renderRow]).
+        lines.push(renderRow(fields) + '<EOR>')
       }
     }
 

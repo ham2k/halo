@@ -677,6 +677,10 @@ export interface ActivityHook {
 }
 
 /// Contributes extra ADIF fields per QSO (registered under 'adifFields').
+///
+/// A field NAME is written once per record: where two hooks answer the same
+/// one, the first to carry a value wins and the rest are dropped, the contact's
+/// own fields ahead of any hook's. Same rule app-polo applies.
 export interface AdifFieldsHook {
   fieldsForOneQSO(
     args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },

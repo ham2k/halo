@@ -215,19 +215,27 @@ const adifFieldsHook = {
     const program = textOf((activationRef as Record<string, unknown>).mySig)
     const reference = referenceOf(activationRef)
 
-    const mine: { name: string; value: string }[] = []
-    if (program) mine.push({ name: 'MY_SIG', value: program })
-    if (reference) mine.push({ name: 'MY_SIG_INFO', value: reference })
+    // BOTH halves or neither: a program name with no reference names nothing,
+    // and — since the exporter writes each field once, first hook to answer it
+    // wins — a lone MY_SIG would take the name away from the POTA park also
+    // being activated and leave POTA's MY_SIG_INFO under it, claiming the park
+    // for whatever the operator typed here. The fields on this form are two
+    // free-text boxes and either can be left empty.
+    const mine: { name: string; value: string }[] =
+      program && reference
+        ? [
+            { name: 'MY_SIG', value: program },
+            { name: 'MY_SIG_INFO', value: reference },
+          ]
+        : []
 
     const huntedRefs = refsOfType(qso, HUNTING_TYPE)
     if (huntedRefs.length === 0) return [mine]
 
     return huntedRefs.map((huntedRef) => {
-      const fields = [...mine]
-      if (program) fields.push({ name: 'SIG', value: program })
       const huntedReference = textOf(huntedRef.ref)
-      if (huntedReference) fields.push({ name: 'SIG_INFO', value: huntedReference })
-      return fields
+      if (!program || !huntedReference) return [...mine]
+      return [...mine, { name: 'SIG', value: program }, { name: 'SIG_INFO', value: huntedReference }]
     })
   },
 }

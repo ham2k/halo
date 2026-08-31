@@ -574,6 +574,24 @@ listed key that answers nothing is fine — the operator may have that extension
 off — where a `mainHandler` that answers nothing is an error, since that file
 would claim no reference at all.
 
+**A field name is written once per record, and the first to carry a value
+wins.** ADIF gives no meaning to a repeated field, so where two hooks answer
+the same name — the full export asks everyone, and a park and a summit both
+answer `MY_SIG` — the later one is dropped, and the contact's own fields
+outrank all of them. Hooks are asked main handler first, then each
+`includeFieldsFrom` key in the order given, so that order decides — whichever
+of the two methods each hook answered. app-polo resolves a collision the same
+way ("keep the first one defined"). The **full export**, which asks everyone,
+has no such order: hooks answering `fieldCombinationsForOneQSO` are asked as one
+group and hooks answering `fieldsForOneQSO` as another, so which of two programs
+keeps a shared `MY_SIG` there is not something either of them chose.
+
+Because the winner is picked per field name, **answer a pair whole or not at
+all**: a hook offering `MY_SIG` without `MY_SIG_INFO` takes the name and leaves
+the next hook's reference under it, which claims another program's park for
+yours. `custom` is the one activity whose two halves are free text, and it
+drops both when either is empty.
+
 ## ✅ `adifImport` — per-QSO reference recovery on import
 
 The inverse of `adifFields`. The core's ADIF parser

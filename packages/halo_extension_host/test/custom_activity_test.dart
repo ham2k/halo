@@ -96,16 +96,28 @@ void main() {
       expect(records.every((r) => r['SIG'] == 'COTA'), isTrue);
     });
 
-    test('an unnamed program writes no SIG rather than an empty one', () async {
-      // The program field is optional. An empty MY_SIG in a submitted file is
-      // worse than an absent one: it reads as a claim about a program named "".
+    test('an unnamed program writes NEITHER half of the pair', () async {
+      // Both fields on the form are optional free text, so either can come back
+      // empty — and a half pair is worse than nothing on both counts. Alone in
+      // a file it is a reference under no program, or a program naming nothing.
+      // Beside another activity it is worse still: the exporter writes a field
+      // name once and the first hook to answer it wins, so a lone MY_SIG_INFO
+      // lands under the POTA park's MY_SIG and claims a park for this activity
+      // — or a lone MY_SIG takes the name and adopts POTA's reference.
       final host = await start();
       final records = await adif(host, operation: activation(program: null), qso: qsoHunting(['AB-9']));
 
-      expect(records.single.containsKey('MY_SIG'), isFalse);
-      expect(records.single.containsKey('SIG'), isFalse);
-      expect(records.single['MY_SIG_INFO'], 'XY-1234');
-      expect(records.single['SIG_INFO'], 'AB-9');
+      expect(records.single, isEmpty);
+    });
+
+    test('a program with no reference of our own still credits the one we worked', () async {
+      // The two pairs stand or fall separately: MY_SIG/MY_SIG_INFO is what we
+      // activated, SIG/SIG_INFO is what we worked, and the hunted pair is whole
+      // — the program names it — however empty our own reference box was left.
+      final host = await start();
+      final records = await adif(host, operation: activation(reference: ''), qso: qsoHunting(['AB-9']));
+
+      expect(records.single, {'SIG': 'COTA', 'SIG_INFO': 'AB-9'});
     });
 
     test('no activation means this extension claims nothing', () async {

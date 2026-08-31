@@ -287,7 +287,7 @@ void main() {
   // makes it the complete copy the operator keeps. Requiring `mainHandler`,
   // defaulting it, or dropping the `invokeAll` branch would quietly turn that
   // file single-program, and nothing else would notice.
-  test('the full ADIF export claims no program, and so carries every one', () async {
+  test('the full ADIF export asks every hook, and a shared field is written once', () async {
     final host = await sharedHost(['adif', 'pota', 'llota']);
     final result = await host.invokeHook(
       'export',
@@ -308,9 +308,16 @@ void main() {
     ) as Map;
     final content = result['content'] as String;
 
-    expect(content, contains('<MY_SIG:4>POTA'));
-    expect(content, contains('<MY_SIG:5>LLOTA'));
-    expect('<MY_SIG:'.allMatches(content).length, 2);
+    // Both hooks ran: the lighthouse's own field is in the record next to the
+    // park's, which is what "every hook contributes" buys.
+    expect(content, contains('<MY_POTA_REF:7>US-0001'));
+    expect(content, contains('<MY_LLOTA_REF:9>LLUS-0787'));
+    // MY_SIG they BOTH answer, and ADIF gives no meaning to a field written
+    // twice in one record — so the first hook asked keeps it, whole: the pair
+    // that lands must be one program's, never POTA's name against the
+    // lighthouse's reference.
+    expect('<MY_SIG:'.allMatches(content).length, 1);
+    expect(content, contains('<MY_SIG:4>POTA <MY_SIG_INFO:7>US-0001'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an operation activating nothing offers no activity export', () async {
