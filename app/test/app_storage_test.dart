@@ -207,4 +207,141 @@ void main() {
       expect(await prefsIn(target).readAsString(), '{"live":true}');
     });
   });
+
+  // The plugin decodes its file with a bare `json.decode` and has no recovery
+  // of any kind, so one truncated write ends EVERY later launch at the boot
+  // error screen — with deleting the file by hand the only way out, and every
+  // setting in it gone with it. These tests are about that: the trap is a
+  // guard that "handles" a bad file by deleting it, which trades a launch
+  // that never completes for settings that silently never come back.
+  group('guardPreferencesFile', () {
+    File prefs() => File(p.join(target.path, kPreferencesFileName));
+    File backup() => File(p.join(target.path, kPreferencesBackupFileName));
+
+    Future<List<String>> quarantined() async => target
+        .list()
+        .map((e) => p.basename(e.path))
+        .where((name) => name.startsWith(kPreferencesQuarantinePrefix))
+        .toList();
+
+    test('takes a backup of a file it can read', () async {
+      await prefs().writeAsString('{"flutter.call":"N0DEV"}');
+
+      expect(await guardPreferencesFile(target), PreferencesRecovery.none);
+      // Without this the restore below has nothing to restore FROM: the good
+      // launches are the only chance to capture a good copy.
+      expect(await backup().readAsString(), '{"flutter.call":"N0DEV"}');
+    });
+
+    test('restores the backup over a truncated file, and keeps the bad one', () async {
+      await backup().writeAsString('{"flutter.call":"N0DEV"}');
+      await prefs().writeAsString('{"flutter.call":"N0D');
+
+      expect(await guardPreferencesFile(target), PreferencesRecovery.restoredFromBackup);
+      expect(await prefs().readAsString(), '{"flutter.call":"N0DEV"}');
+      // Moved aside, never deleted: it is both the evidence of what went
+      // wrong and the only remaining copy of whatever the backup predates.
+      expect(await quarantined(), hasLength(1));
+    });
+
+    test('a zero-byte file is a dead write, not an empty settings file', () async {
+      await backup().writeAsString('{"flutter.call":"N0DEV"}');
+      await prefs().writeAsString('');
+
+      // The plugin tolerates an empty file and starts from defaults, so
+      // treating it as readable here would be the worse of two silent
+      // failures: it would copy the emptiness over the backup and destroy
+      // the last good settings this launch could have restored.
+      expect(await guardPreferencesFile(target), PreferencesRecovery.restoredFromBackup);
+      expect(await prefs().readAsString(), '{"flutter.call":"N0DEV"}');
+    });
+
+    test('an unusable backup means defaults, not a second bad file', () async {
+      await backup().writeAsString('{"flutter.ca');
+      await prefs().writeAsString('{"flutter.call":"N0D');
+
+      expect(await guardPreferencesFile(target), PreferencesRecovery.reset);
+      // No file at all is what the plugin reads as a fresh install. Putting
+      // the corrupt backup back would reproduce the launch failure exactly.
+      expect(await prefs().exists(), isFalse);
+      expect(await quarantined(), hasLength(1));
+    });
+
+    test('a missing file is a first run, and never triggers a restore', () async {
+      await backup().writeAsString('{"flutter.call":"N0DEV"}');
+
+      expect(await guardPreferencesFile(target), PreferencesRecovery.none);
+      // An operator who deleted the file — following exactly the advice this
+      // exists to retire — has to stay deleted, or the workaround stops
+      // working before the fix has reached them.
+      expect(await prefs().exists(), isFalse);
+    });
+
+    test('a restore that cannot be written destroys nothing', () async {
+      await backup().writeAsString('{"flutter.call":"N0DEV"}');
+      await prefs().writeAsString('{"flutter.call":"N0D');
+      // Squats the name the restore stages through, so writing it throws —
+      // a full disk or a lock on the temporary, mid-repair.
+      await Directory('${prefs().path}.restore.tmp').create();
+
+      await expectLater(guardPreferencesFile(target), throwsA(isA<FileSystemException>()));
+      // The bad file is still where it was. Quarantining it first would leave
+      // the live file gone with nothing put back — a state no later launch
+      // can see, because a missing file reads as a first run and the backup
+      // is never consulted again.
+      expect(await prefs().readAsString(), '{"flutter.call":"N0D');
+      expect(await quarantined(), isEmpty);
+    });
+
+    test('a write cut mid-character is corruption, not a file we cannot read', () async {
+      await backup().writeAsString('{"flutter.call":"N0DEV"}');
+      // '{"flutter.call":"ñ' with the second byte of the ñ missing — the
+      // ordinary shape of a torn write, reachable from any accented callsign
+      // or note. dart:io reports the failed UTF-8 decode as a
+      // FileSystemException, indistinguishable from a permission or a lock,
+      // so classifying on `readAsString` sends this file down the
+      // leave-it-alone path and the launch stays broken forever.
+      await prefs().writeAsBytes([0x7b, 0x22, 0x63, 0x22, 0x3a, 0x22, 0xc3]);
+
+      expect(await guardPreferencesFile(target), PreferencesRecovery.restoredFromBackup);
+      expect(await prefs().readAsString(), '{"flutter.call":"N0DEV"}');
+      expect(await quarantined(), hasLength(1));
+    });
+
+    test('a staging file an earlier write died holding is swept', () async {
+      await prefs().writeAsString('{"flutter.call":"N0DEV"}');
+      await File('${prefs().path}.tmp').writeAsString('half a write');
+
+      await guardPreferencesFile(target);
+      // The atomic write only ever overwrites this name, so nothing else
+      // would clear it; it would sit in the operator's data folder looking
+      // like a file that means something.
+      expect(await File('${prefs().path}.tmp').exists(), isFalse);
+    });
+
+    test('a file the OS will not let us read is left alone, not replaced', () async {
+      await backup().writeAsString('{"flutter.call":"STALE"}');
+      await prefs().writeAsString('{"flutter.call":"N0DEV"}');
+      await Process.run('chmod', ['000', prefs().path]);
+      addTearDown(() => Process.run('chmod', ['644', prefs().path]));
+
+      // Unreadable is not corrupt. A lock, a permission or an antivirus hook
+      // can refuse a perfectly good file, and a rename would often SUCCEED
+      // anyway — on POSIX it needs write permission on the DIRECTORY, not on
+      // the file — so repairing here would swap live settings for stale ones
+      // over a failure that clears by itself.
+      await expectLater(guardPreferencesFile(target), throwsA(isA<FileSystemException>()));
+      expect(await quarantined(), isEmpty);
+      expect(await backup().readAsString(), '{"flutter.call":"STALE"}');
+    }, skip: Platform.isWindows ? 'chmod has no effect on Windows ACLs' : false);
+
+    test('a second failure does not erase the first one it quarantined', () async {
+      await prefs().writeAsString('{"a');
+      await guardPreferencesFile(target);
+      await prefs().writeAsString('{"b');
+      await guardPreferencesFile(target);
+
+      expect(await quarantined(), hasLength(2));
+    });
+  });
 }

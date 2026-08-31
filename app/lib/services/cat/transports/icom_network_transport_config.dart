@@ -51,7 +51,9 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
       case 'username':
         // A blank username fails at login with a timeout that looks like a
         // network problem, so catch it in the editor.
-        return (value as String? ?? '').trim().isEmpty ? t.settings.station.radioUserRequired : null;
+        return stringFromConfig({...config, key: value}, key).trim().isEmpty
+            ? t.settings.station.radioUserRequired
+            : null;
       default:
         return null;
     }
@@ -60,8 +62,8 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
   @override
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
         'host': trimmedHost(config),
-        'username': (config['username'] as String? ?? '').trim(),
-        'password': config['password'] as String? ?? '',
+        'username': stringFromConfig(config, 'username').trim(),
+        'password': stringFromConfig(config, 'password'),
       };
 
   @override

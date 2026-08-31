@@ -650,9 +650,13 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// A JSON map stored under one prefs key. Corrupt or missing data reads
   /// as empty — callers own their defaults.
   Map<String, dynamic> _jsonMapPref(String key) {
-    final raw = _prefs.getString(key);
-    if (raw == null || raw.isEmpty) return const {};
     try {
+      // getString INSIDE the try, not before it: it is a cast over the
+      // plugin's cache, so a prefs file holding a number (or an object) under
+      // this key throws a TypeError rather than returning null — and this is
+      // read during CatService's construction, where nothing catches.
+      final raw = _prefs.getString(key);
+      if (raw == null || raw.isEmpty) return const {};
       return (jsonDecode(raw) as Map).cast<String, dynamic>();
     } catch (_) {
       return const {};

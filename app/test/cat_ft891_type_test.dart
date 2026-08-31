@@ -110,6 +110,16 @@ void main() {
     expect(type.validate({'port': 'COM3', 'baudRate': 4800}), isNull);
   });
 
+  test('a port stored as a number is refused, not thrown over', () {
+    // validate() is called by CatService._connect OUTSIDE the try that
+    // guards the connect, and boot's auto-reconnect calls that unawaited —
+    // so a cast here escapes as an unhandled async error rather than as this
+    // node failing. Stored config is free-form JSON nothing checks on the
+    // way in, which is what makes the wrong shape reachable at all.
+    expect(type.validate({'port': 4800, 'baudRate': 4800}), isNotNull);
+    expect(type.describeTarget({'port': 4800, 'baudRate': 9600}), ' @ 9600');
+  });
+
   test('the registry offers it alongside FlexRadio, over its own transport', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ft891-serial')?.key, 'ft891-serial');

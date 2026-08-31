@@ -100,7 +100,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     if (key != 'port') return null;
-    return (value as String? ?? '').isEmpty ? t.settings.station.serialPortRequired : null;
+    return serialPort({...config, 'port': value}).isEmpty ? t.settings.station.serialPortRequired : null;
   }
 
   @override
@@ -112,7 +112,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
   @override
   String describeTarget(Map<String, dynamic> config) => '${serialPort(config)} @ ${serialBaudRate(config)}';
 
-  static String serialPort(Map<String, dynamic> config) => (config['port'] as String? ?? '').trim();
+  static String serialPort(Map<String, dynamic> config) => stringFromConfig(config, 'port').trim();
 
   static int serialBaudRate(Map<String, dynamic> config) =>
       numberFromConfig(config, 'baudRate', supportedBaudRates.first);

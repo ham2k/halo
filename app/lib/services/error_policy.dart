@@ -34,6 +34,7 @@ import 'connectivity_service.dart' show ConnectivityService;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
+import 'app_storage.dart' show PreferencesFileUnreadable;
 import 'unclean_quit.dart' show UncleanDatabaseQuit;
 import 'website_panel_error.dart' show WebsitePanelError;
 
@@ -333,6 +334,16 @@ class ErrorPolicy {
           'rate across installs that says whether the quit path is sound',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is UncleanDatabaseQuit,
+    ),
+    ErrorRule(
+      id: 'preferences-file-unreadable',
+      reason: 'the preferences file could not be parsed and was repaired at boot. Uploaded '
+          'rather than noticed only because the operator has ALREADY been told, in a status '
+          'notice that names what was lost and where the bad file went — the generic notice '
+          'on top of it would say strictly less. The rate is what says whether the atomic '
+          'write actually closed the window',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is PreferencesFileUnreadable,
     ),
   ];
 

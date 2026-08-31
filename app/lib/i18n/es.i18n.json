@@ -1593,7 +1593,11 @@
   "notices": {
     "emptyHistory": "Aún no hay avisos",
     "webStorageInMemory": "Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.",
-    "webStorageUnreliable": "Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado."
+    "webStorageUnreliable": "Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.",
+    "preferencesRestoredTitle": "Ajustes restaurados desde una copia",
+    "preferencesRestored": "No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.",
+    "preferencesResetTitle": "Ajustes reiniciados",
+    "preferencesReset": "No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json."
   },
   "syncAccount": {
     "anonymous": "Cuenta anónima (#${id})",

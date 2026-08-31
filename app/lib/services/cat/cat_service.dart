@@ -937,7 +937,27 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
     final config = await _configWithSecrets(node);
 
-    final invalid = type.validate(config);
+    // Guarded, unlike the transport's own connect below, because validate()
+    // reads the stored config directly: a value of the wrong shape that gets
+    // past every reader in config_field_helpers would otherwise escape as an
+    // unhandled async error from a fire-and-forget reconnect. A node whose
+    // config cannot even be read is exactly a node to ignore and say so about.
+    final String? invalid;
+    try {
+      invalid = type.validate(config);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:validate-config');
+      _setState(
+        uuid,
+        EquipmentState(
+          status: EquipmentStatus.error,
+          error: t.settings.station.configUnreadable,
+          errorDetail: '$e',
+        ),
+      );
+      _trackFailure(node, 'invalid_config', extra: _baudExtra(config));
+      return _ConnectOutcome.failed;
+    }
     if (invalid != null) {
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: invalid));
       _trackFailure(node, 'invalid_config', extra: _baudExtra(config));

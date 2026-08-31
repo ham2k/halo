@@ -1326,7 +1326,8 @@
       "switchCurrentStateHeader": "Current State",
       "switchCurrentStateDescription": "Which antenna each radio port is on right now. Changes take effect immediately.",
       "switchWiringHeader": "Wiring",
-      "switchPortInhibitedHint": "transmit inhibited"
+      "switchPortInhibitedHint": "transmit inhibited",
+      "configUnreadable": "This radio's saved settings could not be read. Open its settings and enter them again, or remove it and add it back."
     },
     "offlineData": {
       "title": "Offline Data",
@@ -1600,7 +1601,11 @@
   "notices": {
     "emptyHistory": "No notices yet",
     "webStorageInMemory": "This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.",
-    "webStorageUnreliable": "This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on."
+    "webStorageUnreliable": "This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.",
+    "preferencesRestoredTitle": "Settings restored from a backup",
+    "preferencesRestored": "The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.",
+    "preferencesResetTitle": "Settings reset",
+    "preferencesReset": "The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app's data folder, named shared_preferences.corrupt-….json."
   },
   "syncAccount": {
     "anonymous": "Anonymous Account (#${id})",

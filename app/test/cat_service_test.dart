@@ -1388,6 +1388,16 @@ void main() {
       expect(reloaded.nodes.map((n) => n.uuid), ['good']);
     });
 
+    test('a stationEquipment pref of the wrong type reads as no equipment', () async {
+      // Nothing validates what lands in a preferences file, and the plugin's
+      // getString is a CAST over its cache — so a number here throws a
+      // TypeError, not a null. _load() runs inside CatService's constructor,
+      // which is built during boot: an escape from here ends the launch.
+      SharedPreferences.setMockInitialValues({'stationEquipment': 5});
+      final reloaded = await makeService();
+      expect(reloaded.nodes, isEmpty);
+    });
+
     test('a node whose type is gone stays listed rather than vanishing', () async {
       SharedPreferences.setMockInitialValues({
         'stationEquipment': jsonEncode({

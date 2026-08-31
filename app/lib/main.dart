@@ -904,7 +904,9 @@ Future<HaLoServices> bootstrap({
   // Before everything else: settles where the app's files live and moves any
   // left in an older location, which SettingsService.load() below depends on
   // — once shared_preferences has read its file, it caches it.
-  await initializeAppStorage();
+  // Held for the notice below: the operator has to be told when settings they
+  // had made are gone, and this is the only moment anything knows it.
+  final preferencesRecovery = await initializeAppStorage();
   // What drift's web worker actually negotiated — read by
   // [reportWebStorageHealth] once the (lazy) database has opened, so boot
   // can warn when the browser degraded to storage that can lose the log.
@@ -1024,6 +1026,7 @@ Future<HaLoServices> bootstrap({
   // threw, but saying so out loud keeps the notice tied to the fact it reports
   // instead of to one caller's control flow.
   if (settings.secureStorageUnavailable) maybeShowNoKeyringNotice(services);
+  showPreferencesRecoveryNotice(services, preferencesRecovery);
 
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout. Gated on
@@ -1218,6 +1221,25 @@ void maybeShowNoKeyringNotice(HaLoServices services) {
     icon: 'key-alert',
     title: t.settings.accounts.noKeyringTitle,
     text: t.settings.accounts.noKeyringText,
+  );
+}
+
+/// Tells the operator that this launch had to repair an unreadable
+/// preferences file. The upload happens back in [initializeAppStorage], where
+/// the fact is first known and cannot be lost to a later boot failure.
+///
+/// Posted every time rather than once, unlike [maybeShowNoKeyringNotice]:
+/// this describes something that happened on THIS launch, and a second
+/// occurrence is a second loss of settings, not a repeat of the first.
+@visibleForTesting
+void showPreferencesRecoveryNotice(HaLoServices services, PreferencesRecovery recovery) {
+  if (recovery == PreferencesRecovery.none) return;
+  final restored = recovery == PreferencesRecovery.restoredFromBackup;
+  services.statusBar.showNotice(
+    key: 'preferencesRecovery',
+    icon: 'cog-refresh',
+    title: restored ? t.notices.preferencesRestoredTitle : t.notices.preferencesResetTitle,
+    text: restored ? t.notices.preferencesRestored : t.notices.preferencesReset,
   );
 }
 

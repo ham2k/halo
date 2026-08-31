@@ -1598,6 +1598,18 @@ class Translations$notices$en {
 
 	/// en: 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.'
 	String get webStorageUnreliable => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.';
+
+	/// en: 'Settings restored from a backup'
+	String get preferencesRestoredTitle => 'Settings restored from a backup';
+
+	/// en: 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.'
+	String get preferencesRestored => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.';
+
+	/// en: 'Settings reset'
+	String get preferencesResetTitle => 'Settings reset';
+
+	/// en: 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app's data folder, named shared_preferences.corrupt-….json.'
+	String get preferencesReset => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.';
 }
 
 // Path: syncAccount
@@ -3936,6 +3948,9 @@ class Translations$settings$station$en {
 
 	/// en: 'transmit inhibited'
 	String get switchPortInhibitedHint => 'transmit inhibited';
+
+	/// en: 'This radio's saved settings could not be read. Open its settings and enter them again, or remove it and add it back.'
+	String get configUnreadable => 'This radio\'s saved settings could not be read. Open its settings and enter them again, or remove it and add it back.';
 }
 
 // Path: settings.offlineData
@@ -6582,6 +6597,7 @@ extension on Translations {
 			'settings.station.switchCurrentStateDescription' => 'Which antenna each radio port is on right now. Changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'Wiring',
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
+			'settings.station.configUnreadable' => 'This radio\'s saved settings could not be read. Open its settings and enter them again, or remove it and add it back.',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -6795,6 +6811,10 @@ extension on Translations {
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
 			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
+			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
+			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
+			'notices.preferencesResetTitle' => 'Settings reset',
+			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',

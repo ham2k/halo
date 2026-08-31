@@ -5,10 +5,12 @@
 // the preferences file, in one directory per edition.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
+import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -24,6 +26,15 @@ const kDataFilesDirName = 'data_files';
 
 /// What the shared_preferences plugin calls its file on desktop.
 const kPreferencesFileName = 'shared_preferences.json';
+
+/// The known-good copy [guardPreferencesFile] takes of a preferences file it
+/// found readable, and restores from when it finds an unreadable one.
+const kPreferencesBackupFileName = 'shared_preferences.backup.json';
+
+/// Prefix of the name an unreadable preferences file is moved aside under.
+/// The rest is a UTC timestamp, so a second failure cannot erase the evidence
+/// of the first.
+const kPreferencesQuarantinePrefix = 'shared_preferences.corrupt-';
 
 /// The app's directory under `%LOCALAPPDATA%`, per edition so that a Next or
 /// Dev build never writes into the log the operator flies with. Spelled the
@@ -50,16 +61,107 @@ String get windowsDataFolderName => switch (kEdition) {
 /// and the answer is "we're still on the old location".
 Future<Directory> appDataDirectory() async => (await _storage()).directory;
 
-/// Resolves [appDataDirectory] and moves the preferences file to match, so
-/// that everything the app owns sits together.
+/// What [guardPreferencesFile] had to do to hand the plugin a file it can
+/// read. Anything but [none] is worth telling the operator about, because
+/// settings they had made are missing.
+enum PreferencesRecovery {
+  /// The file parsed, or there wasn't one yet.
+  none,
+
+  /// The file was unreadable and the backup took its place. The operator
+  /// loses whatever changed after the backup was taken — one session at most.
+  restoredFromBackup,
+
+  /// The file was unreadable and there was no usable backup, so preferences
+  /// start from defaults.
+  reset,
+}
+
+/// A launch that found an unreadable preferences file and had to repair it.
 ///
-/// Call this before anything awaits `SharedPreferences.getInstance()` —
-/// see [redirectPreferencesDirectory].
-Future<void> initializeAppStorage() async {
+/// Its own type rather than a StateError with a recognizable message, for the
+/// reason [UncleanDatabaseQuit] gives: this is the payload of an ErrorPolicy
+/// rule, and a rule that matches on message text eventually claims a real
+/// error that merely reads the same.
+class PreferencesFileUnreadable implements Exception {
+  const PreferencesFileUnreadable(this.recovery);
+
+  final PreferencesRecovery recovery;
+
+  @override
+  String toString() => 'PreferencesFileUnreadable: the preferences file could not be parsed '
+      '(${recovery.name})';
+}
+
+/// Resolves [appDataDirectory], moves the preferences file to match so that
+/// everything the app owns sits together, and makes sure the plugin is handed
+/// a file it can actually parse.
+///
+/// Call this before anything awaits `SharedPreferences.getInstance()` — the
+/// store caches what it first read, so every repair here has exactly one
+/// moment to happen in.
+Future<PreferencesRecovery> initializeAppStorage() async {
   final storage = await _storage();
+  if (kIsWeb) return PreferencesRecovery.none;
+
+  // FIRST, and on its own: this is the half that stops the file being
+  // truncated in the first place, and it depends on nothing below. Sequenced
+  // after the repair — or inside its try — a launch that cannot resolve its
+  // directory, or cannot write a backup, would spend the whole session
+  // writing preferences the old unsafe way. Those are exactly the hostile
+  // environments most likely to be force-quit mid-write.
+  try {
+    await installAtomicPreferenceWrites();
+  } catch (e, st) {
+    ErrorReportingService.report(e, st, context: 'app-storage:atomic-writes-unavailable');
+  }
+
+  try {
+    final directory = await _preferencesDirectory(storage);
+    if (directory == null) return PreferencesRecovery.none;
+    final recovery = await guardPreferencesFile(directory);
+    if (recovery != PreferencesRecovery.none) {
+      // Uploaded HERE rather than beside the notice, which boot does not
+      // reach for another hundred-odd steps: anything that throws in between
+      // would lose the only record that an operator's settings were just
+      // quarantined. The notice can wait for a screen; the fact cannot.
+      ErrorReportingService.report(
+        PreferencesFileUnreadable(recovery),
+        StackTrace.current,
+        context: 'app-storage:preferences-recovered',
+      );
+    }
+    return recovery;
+  } catch (e, st) {
+    // Boot outranks every repair here: a guard that throws must not become
+    // the very failure it exists to prevent. Note this covers resolving the
+    // directory too — `getApplicationSupportDirectory` creates the directory
+    // it names and throws when it cannot, and the branch that calls it is
+    // reached precisely because that family of calls has ALREADY failed once.
+    ErrorReportingService.report(e, st, context: 'app-storage:guard-preferences');
+    return PreferencesRecovery.none;
+  }
+}
+
+/// The directory the shared_preferences plugin will read its file from, after
+/// any relocation this launch performs — or null on the platforms that keep
+/// preferences in a store of the system's own.
+Future<Directory?> _preferencesDirectory(_Storage storage) async {
+  // macOS, iOS and Android hand preferences to NSUserDefaults or Android's
+  // SharedPreferences, which write atomically and own their own storage.
+  // Only the two Dart, file-backed stores are ours to guard.
+  if (!Platform.isWindows && !Platform.isLinux) return null;
+
   // A failed relocation leaves us running from Documents; dragging the
   // preferences file there too would spread the mess rather than contain it.
-  if (!storage.relocated || kIsWeb || !Platform.isWindows) return;
+  // The file is still wherever the plugin has always put it, which is where
+  // the guard has to look.
+  if (!storage.relocated) return getApplicationSupportDirectory();
+
+  // On Linux the target IS the plugin's own directory, so the relocation is
+  // the database moving to join the preferences file rather than the reverse:
+  // nothing to migrate, and nothing to redirect.
+  if (Platform.isLinux) return storage.directory;
 
   try {
     // Asking where the preferences file used to live has a side effect on
@@ -68,18 +170,158 @@ Future<void> initializeAppStorage() async {
     // the empty tree the migration removed, on every single launch.
     if (await File(p.join(storage.directory.path, kPreferencesFileName)).exists()) {
       await redirectPreferencesDirectory(storage.directory.path);
-      return;
+      return storage.directory;
     }
     final legacy = await getApplicationSupportDirectory();
-    if (p.equals(legacy.path, storage.directory.path)) return;
+    if (p.equals(legacy.path, storage.directory.path)) return storage.directory;
     if (await migratePreferencesFile(legacy: legacy, target: storage.directory)) {
       await redirectPreferencesDirectory(storage.directory.path);
+      return storage.directory;
     }
+    return legacy;
   } catch (e, st) {
     // Preferences keep working from wherever the plugin puts them; the app
     // must still boot.
     ErrorReportingService.report(e, st, context: 'app-storage:initialize-preferences');
+    return null;
   }
+}
+
+/// Makes sure the preferences file in [directory] is one the plugin can parse,
+/// and keeps a spare of the last one that was.
+///
+/// The plugin decodes its file with a bare `json.decode` and no recovery of
+/// any kind, so a single truncated write ends every launch from then on at the
+/// boot error screen — with deleting the file by hand the only way back, and
+/// every setting in it gone. Both halves of that are unacceptable, so an
+/// unreadable file is moved aside (never deleted: it is the evidence, and the
+/// only remaining copy of those settings) and the backup takes its place.
+///
+/// A MISSING file is a first run — or an operator who deleted it deliberately,
+/// following exactly the advice this exists to retire — so it never triggers a
+/// restore.
+@visibleForTesting
+Future<PreferencesRecovery> guardPreferencesFile(Directory directory) async {
+  final file = File(p.join(directory.path, kPreferencesFileName));
+  final backup = File(p.join(directory.path, kPreferencesBackupFileName));
+
+  // Nothing is mid-write at boot, so any staging file here is one an earlier
+  // write or repair died holding. Left alone it stays in the operator's data
+  // folder forever — the atomic write only ever overwrites it, never clears
+  // it — looking exactly like a file that means something.
+  await _deleteQuietly([File('${file.path}.tmp'), File('${file.path}.restore.tmp'), File('${backup.path}.tmp')]);
+
+  if (!await file.exists()) return PreferencesRecovery.none;
+
+  switch (await _readPreferences(file)) {
+    case _PreferencesRead(:final text?):
+      // Through a temporary, so that a kill during the copy cannot leave the
+      // backup itself truncated — the failure this whole function is about.
+      await _writeAtomically(backup, text);
+      return PreferencesRecovery.none;
+    case _PreferencesRead(unreadable: true):
+      // Read as text but not parseable is corruption; refused by the OS is
+      // not. A lock, a permission, an antivirus hook — the file may be
+      // perfectly good, and quarantining it would replace it with a stale
+      // backup and destroy settings over a failure that clears by itself.
+      // (Renaming would often SUCCEED here: on POSIX a rename needs write
+      // permission on the directory, not readability of the file.)
+      throw FileSystemException('preferences unreadable', file.path);
+    case _:
+      break;
+  }
+
+  // Staged BEFORE the bad file is moved aside, and renamed into place after:
+  // a restore that throws — a full disk, a lock on the temporary — must not
+  // leave the live file gone with nothing put back. That state is invisible
+  // and permanent, because the next launch reads a missing file as a first
+  // run and never looks at the backup again.
+  final replacement = await _readPreferences(backup);
+  final restore = File('${file.path}.restore.tmp');
+  if (replacement.text != null) await restore.writeAsString(replacement.text!, flush: true);
+
+  await file.rename((await _quarantineName(directory)).path);
+
+  // Past the rename the live file is GONE, so every later failure still has
+  // to answer `reset`. Letting one propagate would have the caller swallow it
+  // into `none`: the session starts on defaults, the operator is told
+  // nothing, and no later launch can tell either — a missing file reads as a
+  // first run. That silence is the whole failure the notice exists to end.
+  try {
+    if (replacement.text != null) {
+      await restore.rename(file.path);
+      return PreferencesRecovery.restoredFromBackup;
+    }
+  } catch (e, st) {
+    ErrorReportingService.report(e, st, context: 'app-storage:preferences-restore');
+  }
+  // No file at all, which is what the plugin treats as a fresh install.
+  return PreferencesRecovery.reset;
+}
+
+/// The outcome of reading a preferences file: its [text] when it holds a JSON
+/// object, and otherwise whether the file could be read at all — the one
+/// distinction that decides between repairing it and leaving it alone.
+typedef _PreferencesRead = ({String? text, bool unreadable});
+
+/// A name no quarantined file already has.
+///
+/// The timestamp alone is not enough: two failures inside the same
+/// millisecond — which a test, or a boot loop, reaches easily — would rename
+/// onto each other, and a rename that lands on an existing file DELETES it.
+/// Losing the first bad file loses the settings only it still holds.
+Future<File> _quarantineName(Directory directory) async {
+  final stamp = realNowUtc().toIso8601String().replaceAll(RegExp('[:-]'), '').replaceFirst('.', '');
+  File named(String suffix) =>
+      File(p.join(directory.path, '$kPreferencesQuarantinePrefix$stamp$suffix.json'));
+  var candidate = named('');
+  for (var n = 2; await candidate.exists(); n++) {
+    candidate = named('-$n');
+  }
+  return candidate;
+}
+
+/// Reads [file] if it holds what the plugin expects: a JSON object.
+///
+/// An EMPTY file counts as corrupt even though the plugin tolerates one. The
+/// plugin writes `{}` for empty preferences and never a zero-byte file, so
+/// zero bytes means a write that died between `createSync` and the write
+/// itself — the same interrupted write as a truncation, and the same answer.
+/// Letting it pass would instead copy nothing over a good backup and lose the
+/// only surviving settings.
+Future<_PreferencesRead> _readPreferences(File file) async {
+  final List<int> bytes;
+  try {
+    // BYTES, not `readAsString`: dart:io reports a UTF-8 decode failure as a
+    // FileSystemException, exactly like a permission or a lock. Deciding
+    // "the OS refused us" from that call would classify the most ordinary
+    // torn write there is — one cut mid-multi-byte sequence, which any
+    // accented callsign or note in the file makes reachable — as a file to
+    // leave alone, and leaving it alone is the permanent boot failure this
+    // whole guard exists to end. Reading bytes cannot fail on content.
+    bytes = await file.readAsBytes();
+  } catch (_) {
+    // Includes the file simply not being there, which is not a failure —
+    // callers distinguish by whether they expected one.
+    return (text: null, unreadable: await file.exists());
+  }
+  try {
+    final text = utf8.decode(bytes);
+    if (text.isNotEmpty && jsonDecode(text) is Map) return (text: text, unreadable: false);
+  } catch (_) {
+    // Malformed UTF-8 or malformed JSON, which is what a truncated or
+    // half-written file gives: corrupt rather than unreadable, and the case
+    // worth repairing.
+  }
+  return (text: null, unreadable: false);
+}
+
+/// Writes [contents] to [file] via a temporary and a rename, which is the
+/// atomic replace this file's whole problem is the absence of.
+Future<void> _writeAtomically(File file, String contents) async {
+  final temp = File('${file.path}.tmp');
+  await temp.writeAsString(contents, flush: true);
+  await temp.rename(file.path);
 }
 
 /// [directory] is where the app's files are; [relocated] is false when that's
