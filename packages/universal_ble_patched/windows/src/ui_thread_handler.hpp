@@ -17,6 +17,10 @@ public:
     explicit UniversalBleUiThreadHandler(flutter::PluginRegistrarWindows *registrar)
         : registrar_(registrar)
     {
+        // Members initialize in declaration order and this is the plugin's
+        // first non-trivial one, so this line and "06" bracket the whole of
+        // member construction -- the one stretch no arm could ever reach.
+        ham2k::Ham2kBleTrace(L"[ham2k] 05 UiThreadHandler ctor entered\n");
         // HALO-290 `nodelegate`: the one arm that subtracts. Everything else
         // about the plugin is built; only the top-level window proc hook is
         // absent. `mtx_do_lock` is reached through a window message, so this
@@ -31,6 +35,7 @@ public:
                 return HandleWindowMessage(hwnd, message, wparam, lparam);
             });
         registered_ = true;
+        ham2k::Ham2kBleTrace(L"[ham2k] 05b delegate registered\n");
     }
 
     ~UniversalBleUiThreadHandler()

@@ -48,6 +48,7 @@ enum class BleMode {
   kNoDelegate,
   kNoChannels,
   kRegistrarOnly,
+  kConstructOnly,
   kOff,
 };
 
@@ -114,6 +115,12 @@ inline BleMode Ham2kBleMode() {
           L"channels\n");
       return BleMode::kNoChannels;
     }
+    if (::_wcsicmp(value, L"construct") == 0) {
+      AnnounceBleMode(
+          L"[ham2k] BLE mode: construct - plugin built and leaked, no "
+          L"AddPlugin\n");
+      return BleMode::kConstructOnly;
+    }
     if (::_wcsicmp(value, L"registrar") == 0) {
       AnnounceBleMode(
           L"[ham2k] BLE mode: registrar - GetRegistrar only, plugin never "
@@ -122,10 +129,37 @@ inline BleMode Ham2kBleMode() {
     }
     AnnounceBleMode(
         L"[ham2k] BLE mode: normal (HAM2K_BLE_MODE not recognised; "
-        L"expected off/registrar/nochannels/nodelegate/noinit)\n");
+        L"expected off/registrar/construct/nochannels/nodelegate/noinit)\n");
     return BleMode::kNormal;
   }();
   return mode;
+}
+
+// Step tracing through registration, for HALO-290.
+//
+// Four release cycles of arm-flipping bought one bit each and narrowed the
+// crash to two lines: constructing `UniversalBlePlugin` and `AddPlugin`. That
+// window is small enough to print through instead of bisecting, so the last
+// line reached on the operator's console names the statement that dies.
+//
+// Gated on its own variable, independent of `HAM2K_BLE_MODE`, because the arm
+// that matters most is the CONTROL one -- the crash has to be traced with no
+// mode set at all. Silent unless `HAM2K_BLE_TRACE` is set, so an ordinary
+// launch is unaffected.
+inline bool Ham2kBleTraceEnabled() {
+  static const bool enabled = [] {
+    wchar_t value[8] = {};
+    const DWORD length =
+        ::GetEnvironmentVariableW(L"HAM2K_BLE_TRACE", value, ARRAYSIZE(value));
+    return length > 0 && length < ARRAYSIZE(value) && value[0] != L'0';
+  }();
+  return enabled;
+}
+
+inline void Ham2kBleTrace(const wchar_t *message) {
+  if (Ham2kBleTraceEnabled()) {
+    AnnounceBleMode(message);
+  }
 }
 
 }  // namespace ham2k

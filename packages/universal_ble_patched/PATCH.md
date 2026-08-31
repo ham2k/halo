@@ -48,70 +48,75 @@ Prior passes on HALO-290 shipped three separate fixes reasoned out from
 Sentry's nearest-export symbolication, and none of them stopped the crash. The
 switch exists so the next one is decided by evidence.
 
-### What it does
+### What the arms established
 
-Build 155 ran the first three arms on a machine that reproduces the crash:
+Builds 155 and 157, run on a machine that reproduces:
 
-| Arm | Result |
-| --- | --- |
-| unset (control) | crashes at boot, no window |
-| `off` | **launches** |
-| `noinit` | crashes at boot, no window |
+| Arm | Plugin built | Delegate | Channels | InitializeAsync | Result |
+| --- | --- | --- | --- | --- | --- |
+| `off` | no | - | - | - | launches |
+| `registrar` | no | - | - | - | launches |
+| `construct` | yes | yes | no | yes | ? |
+| `nochannels` | yes | yes | no | yes | crashes |
+| `nodelegate` | yes | **no** | yes | yes | crashes, and EARLIER -- before Sentry initialises |
+| `noinit` | yes | yes | yes | **no** | crashes |
+| unset | yes | yes | yes | yes | crashes |
 
-That confirms `universal_ble` as the cause and puts the fault in **registration**,
-not in the Bluetooth work — `noinit` skips only `InitializeAsync()` and still
-dies. It also rules out lazy initialization as a fix: `noinit` *is* lazy init's
-boot behaviour.
+Each of the plausible culprits has now been excluded by an arm that skips it
+and dies anyway: the window proc delegate (`nodelegate`), the four channel
+`SetUp` calls (`nochannels`), the WinRT radio enumeration (`noinit`), and
+`GetRegistrar<>()` (`registrar`, which runs it and launches).
 
-`src/ham2k_ble_mode.h` now reads `HAM2K_BLE_MODE` as a ladder from the
-known-good arm to the known-bad one. Each rung adds one step, so the first arm
-that fails names the culprit:
+**Every arm that constructs `UniversalBlePlugin` crashes; every arm that does
+not, launches.** What is left is two statements in `RegisterWithRegistrar`:
+`std::make_unique<UniversalBlePlugin>(registrar)` and `AddPlugin`.
 
-| Value | Runs | 155 |
-| --- | --- | --- |
-| `off` | nothing | launches |
-| `registrar` | + `GetRegistrar<PluginRegistrarWindows>()` | ? |
-| `nochannels` | + construct the plugin (delegate hooked) and `AddPlugin`, no channel `SetUp` | ? |
-| `nodelegate` | everything EXCEPT registering the window proc delegate | ? |
-| `noinit` | everything except `InitializeAsync()` | crashes |
-| unset | upstream | crashes |
+The `construct` arm splits those two -- it builds the plugin and returns before
+`AddPlugin`, leaking it deliberately, because running the destructor there
+would fold teardown into the answer.
 
-`nodelegate` is deliberately off the spine: it is the only arm that subtracts
-rather than adds, and it is the direct test of the window proc hook that
-`mtx_do_lock` is reached through. Its destructor must skip
-`UnregisterTopLevelWindowProcDelegate` — handing the engine an id it never
-issued is its own crash, in exactly the arm whose result we most need to
-trust, and it would read as "the delegate IS the problem".
+### Step tracing
 
-Each arm announces itself on `CONOUT$` and via `OutputDebugStringW` —
-deliberately not `printf`, which goes nowhere from this GUI-subsystem binary on
-a normal `cmd` launch, since the runner only reattaches the CRT's stdout when
-`AttachConsole` *fails* and a debugger is present. Build 155 confirmed the
-announcement reaches the console.
+Bisecting bought one bit per release cycle, and the remaining window is two
+statements plus a stretch **no arm can reach**: member initialisation runs
+before the constructor's body, so nothing gated inside `RegisterWithRegistrar`
+can probe it.
 
-### Reading the result
+`HAM2K_BLE_TRACE=1` prints each step to `CONOUT$` and the debugger, so the last
+line on the operator's console names the statement that dies:
 
-Whichever arm first fails, going down the ladder, contains the crash:
+```
+01 c_api entered
+02 calling GetRegistrar
+03 GetRegistrar returned
+04 constructing UniversalBlePlugin
+05 UiThreadHandler ctor entered     <- opens the member-construction bracket
+05b delegate registered
+06 plugin ctor body reached         <- closes it: every member survived
+07 plugin constructed
+08 setting up channels
+09 calling AddPlugin
+10 registration complete
+```
 
-- **`registrar` fails** -> the Flutter wrapper's own registrar map, not this
-  plugin's code at all.
-- **`nochannels` fails** -> constructing the plugin or hooking the delegate.
-  Cross-check against `nodelegate`.
-- **`nodelegate` launches** (while `noinit` crashes) -> the window proc
-  delegate registration is the crash, and the fix belongs in
-  `ui_thread_handler.hpp`.
-- **`nodelegate` also fails** -> the delegate is innocent and the crash is in
-  the channel `SetUp` calls or plugin construction.
+`05` and `06` are the pair that matters: `ui_thread_handler_` is the plugin's
+first non-trivial member and members initialise in declaration order, so
+everything between those two lines is the WinRT handles, the `ThreadSafeMap`s
+with their `shared_mutex`es, and `peripheral_mutex_`.
+
+Two properties of the gate are load-bearing. It is **silent unless asked for**,
+or every Windows operator gets probe output on an ordinary launch. And it keys
+off its **own** variable rather than `HAM2K_BLE_MODE`, because the arm that
+most needs tracing is the control one -- with no mode set at all.
 
 ### What this is not
 
-Not a fix, and not a theory about the mechanism. The observed fault is
-`EXCEPTION_ACCESS_VIOLATION_READ / 0x0` inside `mtx_do_lock` — a null mutex —
+Not a fix, and still no claimed mechanism. The fault is
+`EXCEPTION_ACCESS_VIOLATION_READ / 0x0` inside `mtx_do_lock` -- a null mutex --
 and this plugin has no static or global mutex that could be null at
 registration time. `mtx_do_lock` lives in MSVCP140, shared by every module, so
-the caller is genuinely unknown. Three earlier rounds on HALO-290 were lost to
-inventing a mechanism from a stack like this one; the ladder exists to avoid a
-fourth.
+the caller remains unknown. `nodelegate` dying earlier than every other arm is
+unexplained and worth keeping in view.
 
 ## Release PDBs
 

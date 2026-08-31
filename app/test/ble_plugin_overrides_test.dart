@@ -81,6 +81,7 @@ void main() {
     for (final arm in [
       'kOff',
       'kRegistrarOnly',
+      'kConstructOnly',
       'kNoChannels',
       'kNoDelegate',
       'kNoInit',
@@ -118,6 +119,63 @@ void main() {
       contains('kNoDelegate'),
       reason: 'the nodelegate arm gates RegisterTopLevelWindowProcDelegate, '
           'the window proc hook mtx_do_lock is reached through',
+    );
+  });
+
+  test('the trace brackets member construction, the stretch no arm can reach', () {
+    // Every arm so far could only bisect between STATEMENTS in
+    // RegisterWithRegistrar. The crash is now known to be inside constructing
+    // the plugin or AddPlugin, and member initialisation happens before the
+    // constructor's body — so no arm can reach into it and only these two
+    // trace points bracket it. Lose either and the trace still prints, still
+    // looks complete, and silently skips the very region it was added for.
+    final handler = _vendored('windows/src/ui_thread_handler.hpp');
+    expect(
+      handler,
+      contains('05 UiThreadHandler ctor entered'),
+      reason: 'the plugin\'s first non-trivial member; this opens the bracket',
+    );
+    final plugin = _vendored('windows/src/universal_ble_plugin.cpp');
+    expect(
+      plugin,
+      contains('06 plugin ctor body reached'),
+      reason: 'reaching the ctor body means every member survived; this '
+          'closes the bracket',
+    );
+  });
+
+  test('tracing is off unless asked for, and independent of the mode', () {
+    // Two properties, both load-bearing. It must be silent by default, or
+    // every Windows operator gets probe output on an ordinary launch. And it
+    // must key off its OWN variable, because the arm that most needs tracing
+    // is the CONTROL one — with no mode set at all.
+    final source = _vendored('windows/src/ham2k_ble_mode.h');
+    expect(source, contains('HAM2K_BLE_TRACE'));
+    final body = source.substring(source.indexOf('inline void Ham2kBleTrace'));
+    expect(
+      body.substring(0, body.indexOf('\n}')),
+      contains('Ham2kBleTraceEnabled()'),
+      reason: 'an ungated trace prints on every launch for every operator',
+    );
+    expect(
+      body.substring(0, body.indexOf('\n}')),
+      isNot(contains('Ham2kBleMode()')),
+      reason: 'gating the trace on the mode would make the control arm — the '
+          'one that crashes — the one arm that cannot be traced',
+    );
+  });
+
+  test('the construct arm leaks rather than destroying the plugin', () {
+    // It isolates construction. Letting the unique_ptr run the destructor
+    // would fold teardown into the result, so a crash there would read as
+    // "construction is the problem" when it was the destructor.
+    final source = _vendored('windows/src/universal_ble_plugin.cpp');
+    final body = source.substring(source.indexOf('kConstructOnly'));
+    expect(
+      body.substring(0, body.indexOf('\n  }')),
+      contains('plugin.release()'),
+      reason: 'without release() the destructor runs and the arm answers a '
+          'different question than the one it is asked',
     );
   });
 
