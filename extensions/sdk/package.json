@@ -1,6 +1,6 @@
 {
   "name": "@ham2k/extension-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Write extensions for the Ham2K Logger: typed hook contracts and the host API",
   "keywords": [
     "ham2k",
@@ -19,11 +19,18 @@
     "directory": "extensions/sdk"
   },
   "type": "module",
+  "//exports": [
+    "`./package.json` is exported because an `exports` map without it makes the",
+    "file unreadable through package resolution: Node refuses an undeclared",
+    "subpath, so a tool asking this package its own version is told the package",
+    "does not exist. Common enough that npm's own docs call it out."
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",

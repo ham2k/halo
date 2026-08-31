@@ -16,8 +16,8 @@
 // `n0call-my-extension` VALIDATES — N0CALL is a well-formed callsign — so it
 // would ship, which is the one outcome the naming convention exists to stop.
 
+import { readFileSync } from 'node:fs'
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -85,12 +85,21 @@ const { version: toolsVersion } = JSON.parse(await readFile(join(here, 'package.
 /// read, and `latest` is the honest answer — the author's `npm install` then
 /// fetches whatever the current SDK is, which is what a new project wants.
 function sdkRange(projectDir) {
-  for (const from of [join(projectDir, 'noop.js'), join(here, 'noop.js')]) {
-    try {
-      const { version } = createRequire(from)('@ham2k/extension-sdk/package.json')
-      return `^${version}`
-    } catch {
-      // Not installed there; try the next.
+  // READ the file; do not `require` it. A package's own package.json is not a
+  // subpath its `exports` map declares, and Node refuses an undeclared subpath
+  // — `createRequire(...)('@ham2k/extension-sdk/package.json')` throws
+  // ERR_PACKAGE_PATH_NOT_EXPORTED for a package sitting right there in
+  // node_modules, so every scaffold would silently fall through to `latest`.
+  for (const start of [projectDir, here]) {
+    for (let dir = start; ; dir = dirname(dir)) {
+      try {
+        const path = join(dir, 'node_modules/@ham2k/extension-sdk/package.json')
+        const { version } = JSON.parse(readFileSync(path, 'utf8'))
+        if (version) return `^${version}`
+      } catch {
+        // Not here; walk up to the next node_modules.
+      }
+      if (dirname(dir) === dir) break
     }
   }
   return 'latest'

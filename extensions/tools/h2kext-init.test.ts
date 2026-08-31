@@ -175,12 +175,54 @@ test("pins the SDK by the SDK's own version, never the tools' one", async () => 
   // version, a tools-only patch scaffolds `^0.1.1` of an SDK with no such
   // release and the very next `npm install` dies with ETARGET — and the
   // opposite pairing installs an old SDK behind new docs, silently.
+  //
+  // Installed as the REAL package.json with a version swapped in, never as a
+  // hand-written `{name, version}`. A minimal stand-in has no `exports` map,
+  // and `exports` is the whole difficulty here: it decides whether the file
+  // can be reached at all. A fake without one passes against a reader that
+  // cannot read the real thing.
   await mkdir(join(dir, "node_modules/@ham2k/extension-sdk"), { recursive: true })
+  const real = JSON.parse(await readFile(join(sdkDir, "package.json"), "utf8"))
   await writeFile(join(dir, "node_modules/@ham2k/extension-sdk/package.json"),
-    JSON.stringify({ name: "@ham2k/extension-sdk", version: "0.4.2" }))
+    JSON.stringify({ ...real, version: "0.4.2" }))
 
   await init_(["w7abc-notes"], dir)
   assert.equal((await readJson(dir, "package.json")).dependencies["@ham2k/extension-sdk"], "^0.4.2")
+})
+
+test("reads the version out of an SDK whose exports map does not offer it", async () => {
+  const dir = await emptyDir()
+  // @ham2k/extension-sdk 0.1.0 is published with an `exports` map naming only
+  // ".", and an undeclared subpath is REFUSED — `require`ing that package's own
+  // package.json throws ERR_PACKAGE_PATH_NOT_EXPORTED for a package sitting
+  // right there in node_modules. Every author who installed the SDK before the
+  // map gained `./package.json` still has one, so a reader that resolves rather
+  // than reads answers `latest` for all of them, silently.
+  await mkdir(join(dir, "node_modules/@ham2k/extension-sdk"), { recursive: true })
+  const real = JSON.parse(await readFile(join(sdkDir, "package.json"), "utf8"))
+  await writeFile(join(dir, "node_modules/@ham2k/extension-sdk/package.json"), JSON.stringify({
+    ...real,
+    version: "0.1.0",
+    exports: { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } },
+  }))
+
+  await init_(["w7abc-notes"], dir)
+  assert.equal((await readJson(dir, "package.json")).dependencies["@ham2k/extension-sdk"], "^0.1.0")
+})
+
+test("finds the SDK installed above the project, as a workspace puts it", async () => {
+  // npm hoists, so a project inside a workspace has its dependencies one or
+  // more directories up rather than beside it.
+  const root = await emptyDir()
+  await mkdir(join(root, "node_modules/@ham2k/extension-sdk"), { recursive: true })
+  const real = JSON.parse(await readFile(join(sdkDir, "package.json"), "utf8"))
+  await writeFile(join(root, "node_modules/@ham2k/extension-sdk/package.json"),
+    JSON.stringify({ ...real, version: "0.3.1" }))
+
+  const dir = join(root, "packages", "my-extension")
+  await mkdir(dir, { recursive: true })
+  await init_(["w7abc-notes"], dir)
+  assert.equal((await readJson(dir, "package.json")).dependencies["@ham2k/extension-sdk"], "^0.3.1")
 })
 
 test("refuses a package.json that is not a package description, writing nothing", async () => {
