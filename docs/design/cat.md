@@ -1035,7 +1035,7 @@ every one of polo's connection races), BLE, Bluetooth Classic, and iOS.
 
 ### IC-705 over WiFi: SOLVED, with one robustness gap
 
-Bench session 2026-07-29 with a real IC-705, `app/tool/ic705_spike.dart`. **A complete CI-V exchange
+Bench session 2026-07-29 with a real IC-705, `app/tool/ic705_spike.dart` (dist-only: the tool and its capture are a photograph of one bench, so the publish filter drops both). **A complete CI-V exchange
 over WiFi now works** — connect, login, auth, stream request, serial open, read frequency, decode —
 in **292 ms**, returning the radio's true frequency. app-polo never reached this and deleted its
 attempt; the protocol is no longer the unknown.
@@ -1080,7 +1080,7 @@ known mechanism, not an unknown protocol — a very different position from wher
 callers should offer manual entry — but a **unicast `pkt3` sweep of the subnet** finds it instantly
 and it answers with a valid `pkt4`.
 
-`ic705-spike-capture.log` holds an annotated exchange.
+`docs/design/ic705-spike-capture.log` holds an annotated exchange (dist-only, as above).
 
 ### Known, not fixed here
 

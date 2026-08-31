@@ -974,17 +974,17 @@ fixed name.
 
 - The per-platform edition/signing fragments above (`next`/`prod` bundle ids,
   names, certs, provisioning).
-- The **official CI build logic**, `app_dist/ci/build-macos.sh`. Codemagic only
-  reads a `codemagic.yaml` at the repo **root** (no custom path, no includes),
-  and that root file is a non-`app_dist` path shared verbatim with the public
-  repo. So the root `codemagic.yaml` keeps the `macos-next-release`/`macos-prod-release`
-  workflows as thin declarations that just run `bash app_dist/ci/build-macos.sh`
-  — the actual signing/notarization steps live in that dist-only script. It is
-  fine for the public root to *reference* `app_dist/` (a public checkout has no
-  such file, so those two workflows fail fast there — by design); what stays out
-  of public is the script's *contents*. No split special-case is needed for
-  `codemagic.yaml`. The script carries no secrets either — certs live in
-  Codemagic's encrypted env groups, the team in `app_dist/macos/Signing.xcconfig`.
+- The **official CI build logic**, `app_dist/ci/build-macos.sh`, and the
+  `codemagic.yaml` that calls it. Codemagic only reads a `codemagic.yaml` at the
+  repo **root** (no custom path, no includes), so that file has to live there
+  even though it is dist-only; the publish filter drops it by name rather than
+  by prefix. Its workflows are thin declarations that just run
+  `bash app_dist/ci/build-macos.sh` — the signing and notarization steps live in
+  that dist-only script — but the file still enumerates every credential group
+  and release channel, which is what keeps it out of public. It is fine for a
+  public file to *reference* `app_dist/`; what stays out is the contents. No
+  secrets sit in either — certs live in Codemagic's encrypted env groups, the
+  team in `app_dist/macos/Signing.xcconfig`.
 - **Shorebird** config — the two Shorebird app ids (Next, Regular) and their track
   setup (§4.3).
 - **Appcast** feed configuration/URLs for desktop auto-update (§3.2), per edition.
