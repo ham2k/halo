@@ -1,0 +1,43 @@
+{
+  "name": "@ham2k/extension-tools",
+  "version": "0.1.0",
+  "description": "Build and package extensions for the Ham2K Logger",
+  "keywords": ["ham2k", "ham radio", "amateur radio", "extension", "esbuild", "h2kext"],
+  "license": "MPL-2.0",
+  "author": "Sebastian Delmont <sd@ham2k.com>",
+  "homepage": "https://ham2k.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ham2k/halo.git",
+    "directory": "extensions/tools"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./h2kext-build.mjs",
+    "./format": "./h2kext.mjs"
+  },
+  "bin": {
+    "h2kext-pack": "./h2kext-pack.mjs"
+  },
+  "files": [
+    "h2kext.mjs",
+    "h2kext-build.mjs",
+    "h2kext-pack.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@ham2k/lib-callsigns": "^1.0.2",
+    "yazl": "^3.3.1"
+  },
+  "peerDependencies": {
+    "esbuild": ">=0.20"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    }
+  }
+}

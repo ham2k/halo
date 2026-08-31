@@ -1,0 +1,110 @@
+{
+  "name": "@ham2k/extension-sdk",
+  "version": "0.1.0",
+  "description": "Write extensions for the Ham2K Logger: typed hook contracts and the host API",
+  "keywords": [
+    "ham2k",
+    "ham radio",
+    "amateur radio",
+    "extension",
+    "sdk",
+    "logging"
+  ],
+  "license": "MPL-2.0",
+  "author": "Sebastian Delmont <sd@ham2k.com>",
+  "homepage": "https://ham2k.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ham2k/halo.git",
+    "directory": "extensions/sdk"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "//sideEffects": [
+    "Importing any of these modules does nothing observable, so a bundler may",
+    "drop whichever ones an extension never reaches. dxcc is the exception and",
+    "is named rather than waved through: it registers the built-in country file",
+    "at import time, and a bundler that dropped it would leave callsign",
+    "annotation quietly answering with nothing."
+  ],
+  "sideEffects": [
+    "./dist/dxcc.js"
+  ],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "//peerDependencies": [
+    "The libraries the extension host carries. An extension does NOT need these",
+    "installed: the build preset rewrites each one the manifest declares into a",
+    "lookup on the host's single instance, before esbuild ever resolves it, and",
+    "the published .d.ts carries their types rolled in. They are here, optional,",
+    "for the one case that does reach the filesystem \u2014 `inline: [...]`, which",
+    "ships your own copy because you need a version the host does not carry."
+  ],
+  "peerDependencies": {
+    "@ham2k/lib-callsigns": "*",
+    "@ham2k/lib-country-files": "*",
+    "@ham2k/lib-cqmag-data": "*",
+    "@ham2k/lib-dxcc-data": "*",
+    "@ham2k/lib-format-tools": "*",
+    "@ham2k/lib-geo-tools": "*",
+    "@ham2k/lib-operation-data": "*",
+    "@ham2k/lib-qson-adif": "*",
+    "@ham2k/lib-qson-cabrillo": "*",
+    "@ham2k/lib-qson-tools": "*",
+    "i18next": "*",
+    "liquidjs": "*"
+  },
+  "peerDependenciesMeta": {
+    "@ham2k/lib-callsigns": {
+      "optional": true
+    },
+    "@ham2k/lib-country-files": {
+      "optional": true
+    },
+    "@ham2k/lib-cqmag-data": {
+      "optional": true
+    },
+    "@ham2k/lib-dxcc-data": {
+      "optional": true
+    },
+    "@ham2k/lib-format-tools": {
+      "optional": true
+    },
+    "@ham2k/lib-geo-tools": {
+      "optional": true
+    },
+    "@ham2k/lib-operation-data": {
+      "optional": true
+    },
+    "@ham2k/lib-qson-adif": {
+      "optional": true
+    },
+    "@ham2k/lib-qson-cabrillo": {
+      "optional": true
+    },
+    "@ham2k/lib-qson-tools": {
+      "optional": true
+    },
+    "i18next": {
+      "optional": true
+    },
+    "liquidjs": {
+      "optional": true
+    }
+  }
+}

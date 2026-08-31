@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
+    "build:packages": "node sdk/build.mjs",
     "dev": "node dev-server.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test '**/*.test.ts'"
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
+    "dts-bundle-generator": "^9.5.1",
     "esbuild": "^0.25.5",
     "typescript": "^5.8.0",
     "yazl": "^3.3.1"

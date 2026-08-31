@@ -106,6 +106,11 @@ Emitting the lookups is the build preset's job — see **Building** below.
 
 ## Building
 
+```sh
+npm install @ham2k/extension-sdk
+npm install --save-dev @ham2k/extension-tools esbuild
+```
+
 ```js
 import { build } from 'esbuild'
 import { buildExtension } from '@ham2k/extension-tools'
@@ -171,11 +176,26 @@ packaging, which builds the extensions that ship inside the app under bare keys
 and the reserved prefix; it does not waive what the runtime needs of a key.
 
 `extensions/tools/h2kext.mjs` holds the format and its rules, and
-`h2kext-build.mjs` the build preset. Both are deliberately free of any
-dependency on the rest of this repo, so they can be published together as
-`@ham2k/extension-tools` when there is someone outside to use them — the
-toolchain half, separate from the `@ham2k/extension-sdk` an extension imports
-and bundles. This repo's own
+`h2kext-build.mjs` the build preset. Both are free of any dependency on the
+rest of this repo, and ship together as **`@ham2k/extension-tools`** — the
+toolchain half, separate from the **`@ham2k/extension-sdk`** an extension
+imports and bundles.
+
+Two things about the SDK package are load-bearing rather than incidental, and
+`extensions/sdk/build.mjs` asserts both:
+
+- It ships as **one file per module**, not one bundle. Rolled into a single
+  file, your bundler can no longer tell which parts your extension reaches, and
+  Hello World comes out five times larger carrying an ADIF importer it cannot
+  call.
+- Its JavaScript keeps the shared libraries as **bare specifiers**. The build
+  preset can only rewrite an import it can see; resolved inside the SDK, they
+  would be gone before it ran, and every extension would carry private copies
+  again.
+
+`kernel.ts` lives in the SDK's source directory and is never published. It is
+the host — it defines the runtime and holds the one instance of every shared
+library that extensions look up. This repo's own
 build uses the same plugin, which is what keeps the path you take from being
 the untested one.
 
