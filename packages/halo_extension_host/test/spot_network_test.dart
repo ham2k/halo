@@ -16,6 +16,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
@@ -367,11 +368,22 @@ void main() {
       expect(body['source'], isNotEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('tota reads callsign/frequency/tower_ref/time_utc from its feed', () async {
-      // Read `call`/`freq`/`ref`/`time` instead and every spot comes back
-      // blank — which is exactly what happened.
-      final rec = recorder('[{"callsign":"ok1abc","frequency":14285,"mode":"ssb",'
-          '"tower_ref":"OKR-0001","time_utc":"2026-07-01T12:00:00Z","comment":"hi"}]');
+    test('tota reads its spots out of the feed envelope, not off a bare array', () async {
+      // The trap the port fell into: `cluster.php` answers
+      // `{api, version, generated_utc, count, spots, error}`, and mapping the
+      // parsed body directly throws `not a function` before a single spot is
+      // read — the whole source reports failed and the board shows no TOTA at
+      // all. The field-by-field mapping and the age/QRT/dedupe chain are
+      // covered by extensions/activities/tota/src/spotMapping.test.ts; this
+      // one exists to hold the SHAPE the live award actually sends.
+      //
+      // A live timestamp, because the mapping drops anything over an hour old
+      // and a fixed date would age past the cutoff the day after it was
+      // written.
+      final recent = nowUtc().subtract(const Duration(minutes: 5)).toIso8601String();
+      final rec = recorder('{"api":"TOTA Cluster","version":"1.0","count":1,"error":null,'
+          '"spots":[{"callsign":"ok1abc","frequency":14285,"mode":"ssb",'
+          '"tower_ref":"OKR-0001","time_utc":"$recent","comment":"hi"}]}');
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
@@ -389,6 +401,36 @@ void main() {
       expect(spots.single['freq'], 14285);
       expect((spots.single['refs'] as List).single, {'ref': 'OKR-0001', 'type': 'tota'});
       expect((spots.single['spot'] as Map)['timeInMillis'], isNot(0));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('tota reports a refusal the cluster dresses as success', () async {
+      // The cluster answers a missing or expired key with HTTP **200** and an
+      // `error` code — the tower list 401s, this one does not. Reading only
+      // `spots` turns a dead key into a permanently quiet band: the panel
+      // treats a source that answered with no spots as a genuinely empty one,
+      // clears what it held and reports the source healthy, so nothing on
+      // either side of the bridge ever says the key stopped working. Exactly
+      // the silence this card was opened for.
+      final rec = recorder('{"api":"TOTA Cluster","version":"1.0","count":0,'
+          '"spots":[],"error":"invalid_api_key"}');
+      final host = await ExtensionHost.start(
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
+        secrets: const {'tota': {'TOTA_API_KEY': 'k'}},
+        fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
+        httpClient: rec.client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+
+      await expectLater(
+        host.invokeHook('spots', key: 'tota', method: 'fetchSpots',
+            args: {'online': true}, timeout: const Duration(seconds: 20)),
+        throwsA(predicate((e) => '$e'.contains('invalid_api_key'))),
+      );
+      // The key rides in the query string, so the refusal may name the award's
+      // own code but never the URL that carried it.
+      expect('${rec.sent.single.url}', isNot(contains('invalid_api_key')));
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('tota self-spots with a POST body, one per tower', () async {

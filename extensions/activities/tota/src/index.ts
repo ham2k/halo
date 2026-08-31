@@ -22,7 +22,6 @@ import {
 import type {
   DataFileDefinition,
   HookContext,
-  JSONValue,
   PostOtherSpotRequest,
   PostResult,
   PostSelfSpotRequest,
@@ -30,11 +29,11 @@ import type {
   Spot,
   SpotEligibility,
 } from "@ham2k/extension-sdk"
-import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
 import { formEncode } from "../../../shared/gmaSpots.ts"
 import { tFor } from "./i18n.ts"
+import { spotsFromTOTAApi, type TOTAApiSpot } from "./spotMapping.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -84,16 +83,6 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
 
-interface TOTAApiSpot {
-  callsign?: string
-  tower_ref?: string
-  frequency?: number | string
-  mode?: string
-  time_utc?: string
-  comment?: string
-  spotter?: string
-}
-
 const SpotsHook = {
   sourceName: 'TOTA',
 
@@ -108,32 +97,27 @@ const SpotsHook = {
     })
     // Deliberately NOT reporting the URL: it carries the key.
     if (response.status !== 200) throw new Error(`TOTA API returned HTTP ${response.status}`)
-    const apiSpots = JSON.parse(response.body) as TOTAApiSpot[]
+    // An ENVELOPE, not a bare array: `{api, version, generated_utc, count,
+    // spots, error}`. Calling `.map` on the parsed body throws before a single
+    // spot is read, and the whole source comes back as failed — app-polo reads
+    // `data.spots` for the same reason.
+    const feed = JSON.parse(response.body) as { spots?: TOTAApiSpot[]; error?: string | null } | null
 
-    return apiSpots.map((spot) => {
-      const parsed = typeof spot.frequency === 'string' ? Number.parseFloat(spot.frequency) : spot.frequency
-      const freq = parsed && !Number.isNaN(parsed) ? parsed : undefined
-      const sourceInfo: Record<string, JSONValue> = {}
-      if (spot.comment != null) sourceInfo.comments = spot.comment
-      if (spot.spotter != null) sourceInfo.spotter = spot.spotter
+    // The cluster refuses a key with HTTP **200** and an `error` field —
+    // `missing_api_key`, `invalid_api_key` — where the tower list answers 401.
+    // Read only `spots` and a build whose key has expired shows a permanently
+    // quiet band instead of a failed source: the panel treats a source that
+    // answered with no spots as a genuinely empty band, clears what it had and
+    // reports success, so nothing anywhere says the key is dead. The code is
+    // the award's own token and names no secret; the URL still may not be
+    // quoted, since it carries the key.
+    if (feed?.error) throw new Error(`TOTA API refused the request: ${feed.error}`)
 
-      return {
-        their: { call: (spot.callsign ?? '').toUpperCase() },
-        freq,
-        band: freq ? bandForFrequency(freq) : undefined,
-        mode: spot.mode?.toUpperCase(),
-        refs: spot.tower_ref ? [{ ref: spot.tower_ref, type: HUNTING_TYPE }] : [],
-        spot: {
-          timeInMillis: Date.parse(spot.time_utc ?? ''),
-          source: 'tota',
-          // The tower's NAME comes from the local list, which the spots panel
-          // resolves from the ref — app-polo looks it up here, but that is a
-          // database round trip per spot.
-          label: spot.tower_ref ?? '',
-          sourceInfo,
-        },
-      }
-    })
+    const { spots, undated } = spotsFromTOTAApi(feed?.spots ?? [])
+    // A feed whose timestamps we can no longer read empties the board while
+    // still reporting a healthy source; this is the only place that says so.
+    if (undated) host.log(`TOTA: dropped ${undated} spot(s) with an unreadable time_utc`)
+    return spots
   },
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
