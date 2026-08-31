@@ -1,0 +1,24 @@
+{
+  "key": "k2hrc-cqww",
+  "name": "CQ WW DX (sample)",
+  "shortName": "CQWW*",
+  "version": "1.0.0",
+  "description": "CQ WW DX points and multipliers, as a worked example",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "earth",
+  "accentColor": "#B03A2E",
+  "api": 1,
+  "keywords": ["contest", "cqww", "dx", "sample"],
+  "hooks": ["activity", "ref:k2hrcCqww", "scoring"],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.0",
+    "@ham2k/lib-country-files": "^1.0.0",
+    "@ham2k/lib-dxcc-data": "^1.0.0",
+    "@ham2k/lib-format-tools": "^1.0.0",
+    "@ham2k/lib-geo-tools": "^1.0.0",
+    "@ham2k/lib-operation-data": "^1.0.0",
+    "i18next": "^23.0.0",
+    "liquidjs": "^10.0.0"
+  }
+}

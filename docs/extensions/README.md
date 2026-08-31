@@ -15,6 +15,12 @@ core knows nothing about any of them — it invokes **hooks** and renders
 - **[distribution.md](distribution.md)** — the `.h2kext` bundle format,
   packaging an extension, and installing one someone else made.
 
+Those are the docs for working **in this repo**. An extension built outside it
+gets the same references inside `@ham2k/extension-sdk` — `AGENTS.md`, `docs/`
+and the worked `samples/` (`extensions/samples/k2hrc-*` here), all pinned to
+that version — and starts with
+`npx -p @ham2k/extension-tools h2kext-init <callsign>-<name>` ([distribution.md](distribution.md)).
+
 ## Anatomy of an extension
 
 An extension is one directory under `extensions/` with two required pieces:

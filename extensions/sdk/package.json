@@ -39,6 +39,9 @@
   ],
   "files": [
     "dist",
+    "docs",
+    "samples",
+    "AGENTS.md",
     "README.md"
   ],
   "engines": {

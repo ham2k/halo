@@ -118,6 +118,34 @@ export const SHARED_MODULES_BY_API = {
   ],
 }
 
+/// What a scaffolded extension declares on day one: the eight modules the SDK
+/// barrel itself reaches, so a project that has written no code yet still
+/// builds. Importing anything from `@ham2k/extension-sdk` pulls them in —
+/// `dxcc`, `i18n` and `templates` are on the barrel — which makes declaring
+/// them a starting condition rather than a choice the author makes later.
+///
+/// Ranges at the MAJOR, which is the grain the check is really about and the
+/// one the docs model. They are a starting point the author owns from the
+/// moment it is written: narrowing one to the version actually tested against
+/// is a normal thing to do before publishing.
+///
+/// Versions here and nowhere else in this file. `SHARED_MODULES_BY_API` is the
+/// host's OFFER, which must stay version-free; this is one author's opening
+/// DECLARATION, which the format requires to carry ranges. A test in the repo
+/// asserts every range here is satisfied by the versions this build's host
+/// actually holds, so a major bump there fails a build rather than shipping a
+/// scaffold that cannot install.
+export const SCAFFOLD_SHARED_DEPENDENCIES = {
+  '@ham2k/lib-callsigns': '^1.0.0',
+  '@ham2k/lib-country-files': '^1.0.0',
+  '@ham2k/lib-dxcc-data': '^1.0.0',
+  '@ham2k/lib-format-tools': '^1.0.0',
+  '@ham2k/lib-geo-tools': '^1.0.0',
+  '@ham2k/lib-operation-data': '^1.0.0',
+  'i18next': '^23.0.0',
+  'liquidjs': '^10.0.0',
+}
+
 /// What the host offers a bundle declaring [api].
 export function sharedModulesFor(api) {
   return SHARED_MODULES_BY_API[api] ?? SHARED_MODULES_BY_API[H2KEXT_API_VERSION]

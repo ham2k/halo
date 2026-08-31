@@ -26,7 +26,7 @@ const HelloPanel: PanelHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('panel', { key: 'ki2d-hello-world', hook: HelloPanel })
+    registerHook('panel', { key: manifest.key, hook: HelloPanel })
   },
 })
 ```
@@ -34,9 +34,24 @@ defineExtension({
 A panel returns *content*, not widgets — which is what keeps extensions out of
 the app's UI toolkit.
 
-`@ham2k/extension-tools` builds and packages it into a `.h2kext` the app can
-install. See [the extension docs](https://github.com/ham2k/halo/tree/main/docs/extensions)
-for hooks, forms, templates and distribution.
+`npx -p @ham2k/extension-tools h2kext-init <yourcallsign>-<name>` writes
+all of that and the build script; the same package packages the result into a
+`.h2kext` the app can install.
+
+## The reference is in this package
+
+`samples/` holds one worked extension per shape — a callsign lookup with the
+credentials it needs, an award program, a contest and its scorer, an HTML
+panel. Each builds and packs; each says in its header what it leaves out.
+
+`AGENTS.md` beside this file is the map — the manifest, the sandbox's limits,
+and which of `docs/` answers what. `docs/` holds the references themselves:
+every hook category, forms, settings panels, templates, and the bundle format.
+
+They travel in the package rather than being linked to, so they are readable
+offline and describe the version installed here rather than whatever the
+repository says today. If an agent is writing your extension, point it at
+`node_modules/@ham2k/extension-sdk/AGENTS.md` — `h2kext-init` does that for you.
 
 ## About the peer dependencies
 

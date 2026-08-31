@@ -25,6 +25,22 @@ import { dirname, join, resolve } from 'node:path'
 
 import { H2KEXT_API_VERSION, MANIFEST_ENTRY, sharedModulesFor } from './h2kext.mjs'
 
+/// What an extension's own `build.mjs` says, for everything that has to write
+/// one: `h2kext-init`'s scaffold, and the samples the SDK ships.
+///
+/// Here rather than in either of them because two copies of a file whose whole
+/// job is to be correct on someone else's machine would drift, and neither
+/// copy is exercised by this repo's own build — the extensions here are built
+/// through `build-config.mjs`, which takes a different path into the same
+/// preset.
+export const EXAMPLE_BUILD_SCRIPT = `import { build } from 'esbuild'
+import { buildExtension } from '@ham2k/extension-tools'
+
+await buildExtension(build, { dir: import.meta.dirname })
+
+console.log('built build/index.js')
+`
+
 export class BuildError extends Error {}
 
 /// Rewrites imports of the libraries the host carries into lookups on the

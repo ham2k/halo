@@ -1,0 +1,24 @@
+{
+  "key": "k2hrc-radio",
+  "name": "Radio Readout",
+  "shortName": "Radio",
+  "version": "1.0.0",
+  "description": "A big band, mode and frequency readout across the room",
+  "category": "dashboard",
+  "enabledByDefault": true,
+  "icon": "radio-tower",
+  "accentColor": "#4C6EF5",
+  "api": 1,
+  "keywords": ["radio", "frequency", "band", "panel", "sample"],
+  "hooks": ["panel"],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.0",
+    "@ham2k/lib-country-files": "^1.0.0",
+    "@ham2k/lib-dxcc-data": "^1.0.0",
+    "@ham2k/lib-format-tools": "^1.0.0",
+    "@ham2k/lib-geo-tools": "^1.0.0",
+    "@ham2k/lib-operation-data": "^1.0.0",
+    "i18next": "^23.0.0",
+    "liquidjs": "^10.0.0"
+  }
+}

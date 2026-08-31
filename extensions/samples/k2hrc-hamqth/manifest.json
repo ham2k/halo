@@ -1,0 +1,25 @@
+{
+  "key": "k2hrc-hamqth",
+  "name": "HamQTH Lookups",
+  "shortName": "HamQTH",
+  "version": "1.0.0",
+  "description": "Looks up callsign details with a free HamQTH.com account",
+  "category": "lookup",
+  "enabledByDefault": true,
+  "icon": "card-account-details-outline",
+  "accentColor": "#1E6F5C",
+  "api": 1,
+  "keywords": ["callsign", "lookup", "hamqth", "sample"],
+  "hooks": ["account", "lookup"],
+  "domains": ["www.hamqth.com"],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.0",
+    "@ham2k/lib-country-files": "^1.0.0",
+    "@ham2k/lib-dxcc-data": "^1.0.0",
+    "@ham2k/lib-format-tools": "^1.0.0",
+    "@ham2k/lib-geo-tools": "^1.0.0",
+    "@ham2k/lib-operation-data": "^1.0.0",
+    "i18next": "^23.0.0",
+    "liquidjs": "^10.0.0"
+  }
+}

@@ -111,6 +111,10 @@ npm install @ham2k/extension-sdk
 npm install --save-dev @ham2k/extension-tools esbuild
 ```
 
+`npx -p @ham2k/extension-tools h2kext-init <yourcallsign>-<name>` writes a working one of everything
+below — manifest, source, build script — so the rest of this section is what to
+change rather than what to type.
+
 ```js
 import { build } from 'esbuild'
 import { buildExtension } from '@ham2k/extension-tools'

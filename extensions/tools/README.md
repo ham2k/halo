@@ -6,6 +6,27 @@ Build and package extensions for the [Ham2K Logger](https://ham2k.com).
 npm install --save-dev @ham2k/extension-tools esbuild
 ```
 
+## Starting one
+
+```sh
+npx h2kext-init w7abc-notes
+```
+
+Writes a whole small extension — manifest, a panel that says hello, the build
+script, a tsconfig — into the working directory, and refuses rather than
+overwrite anything already there. An existing `package.json` is added to, never
+replaced.
+
+It takes the key rather than defaulting one: a placeholder like
+`n0call-my-extension` validates, so it would ship, which is the one outcome the
+naming convention exists to stop.
+
+The `AGENTS.md` it writes points at `@ham2k/extension-sdk`'s own — the hook
+reference, the sandbox's limits, and what to read for what. That matters most
+if something other than you is writing the code: an agent reads a project's
+`AGENTS.md` unprompted, and otherwise never learns the reference is sitting in
+`node_modules`.
+
 ## Building
 
 ```js

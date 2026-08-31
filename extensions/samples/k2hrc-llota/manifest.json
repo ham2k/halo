@@ -1,0 +1,25 @@
+{
+  "key": "k2hrc-llota",
+  "name": "Lakes on the Air (sample)",
+  "shortName": "LLOTA*",
+  "version": "1.0.0",
+  "description": "Lake references and activation scoring, as a worked example",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "waves",
+  "accentColor": "#2F7FA6",
+  "api": 1,
+  "keywords": ["lakes", "activation", "hunting", "sample"],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "ref:k2hrcLlota", "ref:k2hrcLlotaActivation", "scoring"],
+  "domains": ["llota.app"],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.0",
+    "@ham2k/lib-country-files": "^1.0.0",
+    "@ham2k/lib-dxcc-data": "^1.0.0",
+    "@ham2k/lib-format-tools": "^1.0.0",
+    "@ham2k/lib-geo-tools": "^1.0.0",
+    "@ham2k/lib-operation-data": "^1.0.0",
+    "i18next": "^23.0.0",
+    "liquidjs": "^10.0.0"
+  }
+}

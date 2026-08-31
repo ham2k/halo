@@ -17,11 +17,13 @@
     "./format": "./h2kext.mjs"
   },
   "bin": {
+    "h2kext-init": "./h2kext-init.mjs",
     "h2kext-pack": "./h2kext-pack.mjs"
   },
   "files": [
     "h2kext.mjs",
     "h2kext-build.mjs",
+    "h2kext-init.mjs",
     "h2kext-pack.mjs",
     "README.md"
   ],

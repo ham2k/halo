@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 import { sharedPackages } from '../build-config.mjs'
+import { EXAMPLE_BUILD_SCRIPT } from '../tools/h2kext-build.mjs'
 
 const run = promisify(execFile)
 const here = dirname(fileURLToPath(import.meta.url))
@@ -144,5 +145,145 @@ if (leaked.length) {
 const { version } = JSON.parse(await readFile(join(here, 'package.json'), 'utf8'))
 await writeFile(dts, `// @ham2k/extension-sdk ${version}\n${declared}`)
 
+/// The reference an author — or the agent writing the extension for them —
+/// reads, carried IN the tarball rather than linked to.
+///
+/// Installed, they are local, greppable, offline, and pinned to the version of
+/// the SDK sitting beside them; a link to the repository is none of those, and
+/// answers with whatever `main` says today about a package published months
+/// ago. `AGENTS.md` is the map into them.
+///
+/// Curated, because this repo's own inner loop is not an author's. The dev
+/// server and `halo-ext` need a checkout, `mise` and the app's built bundles —
+/// documented, they would send a reader after tooling they cannot run.
+const shippedDocs = ['hooks.md', 'forms.md', 'templates.md', 'settings.md', 'distribution.md']
+
+const docsSrc = join(here, '../../docs/extensions')
+const docsOut = join(here, 'docs')
+const PUBLIC_BLOB = 'https://github.com/ham2k/halo/blob/main'
+
+/// `](target)`, ignoring absolute URLs, anchors and mail links.
+const RELATIVE_LINK = /\]\((?!https?:|#|mailto:)([^)\s]+)\)/g
+
+await rm(docsOut, { recursive: true, force: true })
+await mkdir(docsOut, { recursive: true })
+
+for (const name of shippedDocs) {
+  const text = await readFile(join(docsSrc, name), 'utf8')
+
+  const rewritten = text.replace(RELATIVE_LINK, (whole, target) => {
+    const [path, anchor] = target.split('#')
+    if (shippedDocs.includes(path.replace(/^\.\//, ''))) return whole
+    // Resolved against the docs directory it came from, so `../design/x.md`
+    // and `../../extensions/sdk/src/types.ts` both land on a repo path.
+    const repoPath = `docs/extensions/${path}`.split('/').reduce((parts, part) => {
+      if (part === '..') parts.pop()
+      else if (part !== '.' && part !== '') parts.push(part)
+      return parts
+    }, []).join('/')
+    return `](${PUBLIC_BLOB}/${repoPath}${anchor ? `#${anchor}` : ''})`
+  })
+
+  // The link forms RELATIVE_LINK does NOT match, scanned in the SOURCE. Those
+  // are the ones that ship broken: the rewriter never sees them, so they leave
+  // here as relative paths pointing at files the package does not carry —
+  // followed, a dead relative path reads as a local file, and the reader
+  // concludes it exists and starts inventing what is in it.
+  //
+  // Checking the rewriter's OWN pattern against its output would prove
+  // nothing: it returns either an absolute URL or a path in `shippedDocs`, so
+  // that scan passes by construction.
+  const UNHANDLED_LINKS = [
+    // `](x.md "title")` — the space ends RELATIVE_LINK's target early.
+    /\]\((?!https?:|#|mailto:)[^)\s]+\s+[^)]*\)/g,
+    // `[x]: y.md` — a reference-style definition is not a `](…)` at all.
+    /^\[[^\]]+\]:\s*(?!https?:|#|mailto:)\S+/gm,
+  ]
+  for (const pattern of UNHANDLED_LINKS) {
+    const [found] = text.match(pattern) ?? []
+    if (found) {
+      throw new Error(
+        `docs/${name} has a link the shipping rewrite cannot follow: ${found.trim()}`)
+    }
+  }
+
+  await writeFile(join(docsOut, name), rewritten)
+}
+
+/// How to run one. Short on purpose: the samples themselves are the document,
+/// and the only thing a reader cannot work out from them is that a project
+/// needs a package.json and a tsconfig, which `h2kext-init` writes.
+const SAMPLES_README = `# Samples
+
+One extension per shape, each one real: it builds, it packs, and it does what
+it says against the live service. Read the one whose shape matches what you are
+building — the header comment in each \`src/index.ts\` says what it leaves out.
+
+| | |
+| --- | --- |
+| \`k2hrc-hamqth\` | A callsign lookup, and the \`account\` hook that asks for a password |
+| \`k2hrc-llota\` | An award program: references, an offline list, activation scoring |
+| \`k2hrc-cqww\` | A contest: an exchange to type, and a score to keep |
+| \`k2hrc-radio\` | An HTML panel, and why you should probably write markdown instead |
+
+## Running one
+
+\`\`\`sh
+mkdir my-extension && cd my-extension
+npx -p @ham2k/extension-tools h2kext-init <yourcallsign>-<name>
+npm install
+\`\`\`
+
+Then copy a sample's \`manifest.json\` and \`src/\` over the scaffolded ones,
+change the \`key\` back to yours, and:
+
+\`\`\`sh
+npm run build && npm run pack
+\`\`\`
+
+The key must stay \`<yourcallsign>-<name>\` — it namespaces your extension's
+storage, and the packer refuses anything else. The \`k2hrc-\` keys here belong
+to the samples, so leaving one in place would collide with them.
+
+See \`../AGENTS.md\` for the map, and \`../docs/\` for the references.
+`
+
+/// The worked examples, carried in the tarball beside the reference.
+///
+/// One per shape an extension can take, because the question an author arrives
+/// with is "what does a lookup/contest/panel actually look like", and the
+/// answer is code rather than prose. They are real: each builds, each would
+/// pack, and `samples/samples.test.ts` in this repo holds them to it.
+///
+/// `build.mjs` is REPLACED on the way out. In this repo a sample reaches the
+/// SDK and the tools through workspace paths; an author's copy reaches them
+/// through npm, and shipping the workspace form would hand every reader a
+/// build script that cannot resolve its own imports.
+const shippedSamples = ['k2hrc-hamqth', 'k2hrc-llota', 'k2hrc-cqww', 'k2hrc-radio']
+
+const samplesOut = join(here, 'samples')
+await rm(samplesOut, { recursive: true, force: true })
+
+for (const name of shippedSamples) {
+  const from = join(here, '../samples', name)
+  const to = join(samplesOut, name)
+  await cp(from, to, { recursive: true })
+  await writeFile(join(to, 'build.mjs'), EXAMPLE_BUILD_SCRIPT)
+
+  // A sample that names a shared library its manifest does not declare fails
+  // an author's first build, on code they did not write and cannot fix from
+  // the error. The repo's test builds these, so reaching here with one is not
+  // expected — this is the check that the thing being COPIED is the thing that
+  // was tested.
+  const manifest = JSON.parse(await readFile(join(to, 'manifest.json'), 'utf8'))
+  if (!manifest.sharedDependencies || !manifest.key?.startsWith('k2hrc-')) {
+    throw new Error(`samples/${name} does not look like a packaged sample (key, sharedDependencies)`)
+  }
+}
+
+await writeFile(join(samplesOut, 'README.md'), SAMPLES_README)
+
 const shipped = (await readdir(dist)).filter((n) => n.endsWith('.js')).length
-console.log(`built @ham2k/extension-sdk ${version} — ${shipped} modules + rolled-up types`)
+console.log(
+  `built @ham2k/extension-sdk ${version} — ${shipped} modules + rolled-up types + ` +
+  `${shippedDocs.length} docs + ${shippedSamples.length} samples`)
