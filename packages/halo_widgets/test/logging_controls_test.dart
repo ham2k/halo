@@ -666,7 +666,7 @@ void main() {
       }
     });
 
-    test('a leading "." converts only when a letter or a second "." follows', () {
+    test('a leading "." converts only when a letter or another separator follows', () {
       // The mistyped "/" can open a call too — a suffix typed on its own, or
       // the "//" of a prefix not yet known. What must NOT move is a lone "."
       // or one before a digit: that is a frequency being typed, and rewriting
@@ -687,6 +687,28 @@ void main() {
       // above). Read it as "a period is safe after a digit" and the guard
       // simplifies into a regression.
       expect(run('14.2P'), '14.2P');
+    });
+
+    test('a leading "/" keeps later periods converting', () {
+      // Every keystroke re-runs this on text the PREVIOUS one already
+      // rewrote, so a call that opens with a slash is this formatter's own
+      // output: gate the prefix on "." alone and "//KI..KN" stops converting
+      // the moment its leading ".." becomes "//".
+      String run(String text) => MobileDotToSlashFormatter()
+          .formatEditUpdate(const TextEditingValue(text: ''), TextEditingValue(text: text))
+          .text;
+
+      expect(run('//KI..KN'), '//KI//KN');
+      expect(run('/P.QRP'), '/P/QRP');
+      // A suffix-first call reaches "/P" one keystroke at a time too, so the
+      // conversion has to survive its own output at every length.
+      expect(run('/P'), '/P');
+      expect(run('/P.'), '/P/');
+      // The digit rule holds after a slash exactly as it does after a period
+      // — the prefix decides, and it never reads a digit as a call. Pin it on
+      // text that HOLDS a period, or the early "no period, nothing to do"
+      // return answers and the prefix is never consulted.
+      expect(run('/2.85'), '/2.85');
     });
   });
 
