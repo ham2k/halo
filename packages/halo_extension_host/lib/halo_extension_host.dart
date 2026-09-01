@@ -36,6 +36,19 @@ import 'src/js_engine.dart';
 
 export 'src/engine_runtime.dart'
     show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
+// `show`n rather than exported wholesale: this library is imported unprefixed
+// across the app, and a bare `stringsIn` in its public surface turns any
+// same-named helper written later into an ambiguous-import error reported at
+// the use site, nowhere near the cause.
+export 'src/scoring_priority.dart'
+    show
+        Scorer,
+        judgesWorkedBefore,
+        kWorkedBeforeAlerts,
+        kWorkedBeforeNotices,
+        refTypesOf,
+        scorersFor,
+        withoutWorkedBefore;
 
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
 

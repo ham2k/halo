@@ -295,6 +295,12 @@ abstract class ExtCommand extends Command<int> {
   }) =>
       runtime.host.invokeHookAll(category, method: method, args: _withOnline(args), timeout: hookTimeout);
 
+  /// The flag every hook call carries, on its own — for a caller that builds
+  /// its own args rather than going through [invoke] (`scoring.dart`, which is
+  /// testable against a bare host precisely because it does not need this
+  /// class).
+  Map<String, Object?> get onlineArgs => offline ? const {'online': false} : const {};
+
   /// `--offline` reaches hooks as `args.online`, which is where the kernel
   /// reads it from (kernel.ts builds HookContext per call).
   Map<String, Object?> _withOnline(Map<String, Object?> args) => offline ? {...args, 'online': false} : args;

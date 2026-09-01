@@ -237,7 +237,11 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
   /// band reports `newDay`, not both.
   ///
   /// Returns the notice, or `'duplicate'` when candidates survive every enabled
-  /// filter. `undefined` means this station has not been worked before at all.
+  /// filter. `undefined` has TWO exits: this station has not been worked before
+  /// at all, or it has and the ref filter emptied the candidates while this
+  /// contact carries no reference of its own — worked before, with nothing to
+  /// report about it. The caller tells them apart by what it credited, which is
+  /// what decides whether it rules on the worked-before axis at all.
   function judge(priors: string[], now: Contact): 'duplicate' | UniqueAxis | undefined {
     if (priors.length === 0) return undefined
 
@@ -353,6 +357,31 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
         score.alerts = ['duplicate']
       } else if (verdict) {
         score.notices = [NOTICE_KEYS[verdict]]
+      } else if (priors.length > 0 && score.value > 0 && freshRefRescuesActivation) {
+        // Worked before, and this contact counts anyway — the ref filter kept
+        // nothing and there is no `newRef` to report, because this contact
+        // carries no reference at all (an activator who has packed up, a hunter
+        // chip not logged that time). Said out loud as `dupe: false`, or the
+        // host reads our silence as having no opinion and lets the core
+        // scorer's call+band+mode rule call it a duplicate — over the top of a
+        // contact we have just credited (docs/design/contests.md §5.1).
+        //
+        // A program that says a fresh REFERENCE does not rescue a repeat
+        // contact's activation (MOTA, SiOTA: "doesn't count towards
+        // activation") is saying a station it has already worked on this band
+        // and day is a duplicate. A contact carrying no reference at all cannot
+        // be worth more than one that carries a new reference, so it rules on
+        // nothing and core's duplicate stands.
+        //
+        // BOTH the other halves earn the ruling. Having seen the station is what makes
+        // this a statement about a prior contact at all: a scorer folds only
+        // the segments it was running for, so a station absent from its history
+        // may have been worked in a stretch it skipped, and core holds the
+        // whole log. Having CREDITED the contact is what gives it a stake: a
+        // chaser's operation activates nothing, so a bare repeat contact earns
+        // this scorer zero, and a scorer that awarded nothing has no business
+        // overruling the only duplicate warning that operator gets.
+        score.dupe = false
       }
 
       const packed = packContact(day, band, mode, huntedRefs)

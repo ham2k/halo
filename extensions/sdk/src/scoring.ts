@@ -263,7 +263,11 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         { scoresheet: sheet, qso: args.qso, operation: args.operation, ref: args.ref, isNewDay: false },
         ctx,
       )
-      return { notices: score.notices ?? [], alerts: score.alerts ?? [] }
+      // `dupe` travels with them: it is how a scorer says its duplicate test
+      // ran at all, which is what the host's priority merge reads (§5.1).
+      // Dropping it here left the live paths judging on notices alone, so a
+      // scorer's silence and its considered "not a duplicate" looked the same.
+      return { notices: score.notices ?? [], alerts: score.alerts ?? [], ...(score.dupe !== undefined && { dupe: score.dupe }) }
     },
 
     /// The same live judgement as `scoreQso`, for many candidates at once —
@@ -291,7 +295,11 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
           },
           ctx,
         )
-        result[candidate.key] = { notices: score.notices ?? [], alerts: score.alerts ?? [] }
+        result[candidate.key] = {
+          notices: score.notices ?? [],
+          alerts: score.alerts ?? [],
+          ...(score.dupe !== undefined && { dupe: score.dupe }),
+        }
       }
       return result
     },

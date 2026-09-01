@@ -73,7 +73,7 @@ reinterprets a hook's answer:
 | `command <TEXT> [--execute]`, `command --catalog` | every `command` hook's `interpret` / `catalog` |
 | `spots [--source K]` | `spots.fetchSpots` |
 | `export [--list] [--type T] [--out F]` | `export.suggestExportOptions` / `generateExport` |
-| `score [summaries\|sections\|qsos] [--key K] [--ref JSON]` | `scoring.scoreQsos` |
+| `score [summaries\|sections\|qsos] [--key K] [--ref JSON]` | `scoring.scoreQsos`, merged across the operation's scorers unless `--key` |
 | `suggest [TERM] [--callsign C]` | every `activity` hook's `suggest` |
 | `ref <TYPE> <REF> [--validate\|--title]` | `ref:<type>.decorateRef` / `validateRef` / `suggestOperationTitle` |
 | `adif-fields [--combinations]` | every `adifFields` hook |
@@ -82,9 +82,9 @@ reinterprets a hook's answer:
 
 ### Scoring
 
-`scoreQsos` scores a whole operation in one hook call, so the subcommands
-differ only in which piece of that one answer they print — none of them scores
-less, and none re-scores:
+`scoreQsos` scores a whole operation in one hook call per scorer, so the
+subcommands differ only in which piece of that answer they print — none of them
+scores less, and none re-scores:
 
 ```sh
 halo-ext score           --qson mylog.qson    # everything, as the hook returned it
@@ -93,14 +93,28 @@ halo-ext score sections  --qson mylog.qson    # the 24h UTC day buckets
 halo-ext score qsos      --qson mylog.qson    # the per-QSO verdicts
 ```
 
-`--key` picks the scorer (`core` by default; `cqww`, `fd`, … for contests) and
-`--ref` gives it the contest reference it scopes to. Both work on either side
-of the subcommand.
+By default this selects the scorers the OPERATION needs — core plus whatever
+its refs and its log's hunted references call for — and merges their per-QSO
+verdicts by the priority the app applies (contests.md §5.1), keying the output
+by scorer. That is deliberate: this is the tool to reach for when the app's
+scoring looks wrong, so it has to describe the program that is actually
+running. A CLI answering `duplicate` for a contact the app credits is the most
+confusing answer it could give.
+
+`--key` asks ONE scorer instead (`core`, `cqww`, `fd`, …) and prints its raw,
+unmerged result under that key alone — the view for looking at a single
+scorer's own rules — and `--ref` gives it the contest reference it scopes to.
+`--ref` belongs to `--key` and is refused without it: a merged pass hands each
+scorer the ref that selected it, so there is nowhere for one you typed to go.
+Both work on either side of the subcommand.
+
+A scorer that fails is reported as `{"error": …}` in its own place rather than
+taking the run down, since a misbehaving scorer is usually why you are here.
 
 Add **`--md`** for a report instead of JSON:
 
 ```
-$ halo-ext score summaries --md --qson mylog.qson
+$ halo-ext score summaries --md --key core --qson mylog.qson
 
 ## Summary
 
@@ -111,6 +125,9 @@ $ halo-ext score summaries --md --qson mylog.qson
 | `bandsAndModes` | 1 | **20m**: 44 — SSB 44 |
 | `statesAndProvinces` | 15 | 15 States · states: NC 8, VA 6, GA 2, … |
 ```
+
+Without `--key` each scorer's section is printed under its own `## \`key\``
+heading, in the priority order the app applies.
 
 `score qsos --md` joins the verdicts back to the log you passed, so the table
 reads by callsign and time rather than by uuid. Everything in these reports is

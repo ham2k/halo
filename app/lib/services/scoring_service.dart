@@ -12,6 +12,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'error_reporting_service.dart';
 import 'extension_service.dart';
@@ -118,7 +119,7 @@ class ScoringService {
           if (entry.fallback) {
             (fallbackScores[uuid] ??= <String, dynamic>{})[entry.key] = verdict;
           } else {
-            if (ExtensionService.judgesWorkedBefore(verdict)) judgedByOther.add(uuid);
+            if (judgesWorkedBefore(verdict)) judgedByOther.add(uuid);
             (scoresByUuid[uuid] ??= <String, dynamic>{})[entry.key] = verdict;
           }
         }
@@ -136,7 +137,7 @@ class ScoringService {
         final judged = judgedByOther.contains(entry.key);
         for (final verdict in entry.value.entries) {
           final value = judged
-              ? ExtensionService.withoutWorkedBefore(verdict.value as Map)
+              ? withoutWorkedBefore(verdict.value as Map)
               : verdict.value;
           if (value == null) continue;
           (scoresByUuid[entry.key] ??= <String, dynamic>{})[verdict.key] = value;

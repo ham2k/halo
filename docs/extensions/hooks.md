@@ -964,7 +964,12 @@ about a prior contact (`invalidBand`, `missingExchange`, a bare `{value}`)
 displaces nothing: core's dupe warning is then the only one there is.
 
 So emit `dupe` whenever your dupe test actually ran, `dupe: false` included —
-that is what tells the host you have ruled on the question. And when your
+that is what tells the host you have ruled on the question. It travels on the
+live paths too (`scoreQso`, `scoreCandidates`), not just in `qsoScores`. Rule
+only on what you have seen: a scorer folds only the segments it was running
+for, so a station absent from YOUR history may have been worked in a stretch
+you skipped, and staying silent there hands the question to the scorer holding
+the whole log. And when your
 verdict means "worked before, and this one counts anyway", say it in one of
 those notice keys (`newPark` is state-parks' spelling of `newRef`) rather than
 inventing a spelling of your own: an unrecognized key leaves core's `duplicate`

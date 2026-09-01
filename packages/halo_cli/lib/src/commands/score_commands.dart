@@ -3,10 +3,18 @@
 //
 // `score` and its parts.
 //
-// One hook call answers all of it — `scoreQsos` scores a whole operation at
-// once (DESIGN.md §4: "score 500 QSOs in one call, not 500 calls") — so the
-// subcommands differ only in which piece of that answer they print. None of
-// them scores less, and none re-scores.
+// One hook call per scorer answers all of it — `scoreQsos` scores a whole
+// operation at once (DESIGN.md §4: "score 500 QSOs in one call, not 500
+// calls") — so the subcommands differ only in which piece of that answer they
+// print. None of them scores less, and none re-scores.
+//
+// By default this selects the scorers the OPERATION needs and merges their
+// per-QSO verdicts by the same priority the app applies (contests.md §5.1),
+// because this is the tool an operator is pointed at when the app's scoring
+// looks wrong: a CLI that ran one scorer in isolation answered a question
+// about a program that wasn't the one running, and its `duplicate` for a
+// contact the app counts is the most confusing possible answer.
+// `--key` keeps the raw single-scorer view, for looking at one scorer alone.
 
 import 'package:args/args.dart';
 
@@ -14,6 +22,7 @@ import '../cli.dart';
 import '../json_args.dart';
 import '../runtime.dart' show CliUsageError;
 import '../score_report.dart';
+import '../scoring.dart';
 
 /// `score` — the whole result, and the parent of the part-wise subcommands.
 class ScoreCommand extends ScoreCommandBase {
@@ -28,7 +37,9 @@ class ScoreCommand extends ScoreCommandBase {
     // up to the parent parser for an option a subcommand does not define, and
     // one declaration cannot disagree with itself about the default.
     argParser
-      ..addOption('key', defaultsTo: 'core', help: 'Which scorer (core, cqww, fd…).')
+      ..addOption('key',
+          help: 'Look at ONE scorer, raw and unmerged (core, cqww, fd…). '
+              'Omitted, the scorers this operation needs are selected and merged as the app merges them.')
       ..addOption('ref', help: 'The contest ref this scorer scopes to, as JSON.');
 
     addSubcommand(_ScoreSummariesCommand());
@@ -106,7 +117,9 @@ abstract class ScoreCommandBase extends ExtCommand {
   /// from there — and the parent reads its own.
   ArgResults get _scoreArgs => parent is ScoreCommandBase ? parent!.argResults! : argResults!;
 
-  String get scorerKey => _scoreArgs.option('key') ?? 'core';
+  /// One scorer, raw — or null for the merged pass over whatever this
+  /// operation actually needs.
+  String? get scorerKey => _scoreArgs.option('key');
 
   @override
   Future<int> run() async {
@@ -118,19 +131,66 @@ abstract class ScoreCommandBase extends ExtCommand {
 
     final rawRef = _scoreArgs.option('ref');
     return withRuntime((runtime) async {
-      final result = await invoke(runtime, 'scoring', key: scorerKey, method: 'scoreQsos', args: {
-        'operation': op,
-        'qsos': contacts,
-        if (rawRef != null) 'ref': readJsonArg(rawRef, label: '--ref'),
-      });
-      if (result is! Map) {
-        // A scorer that answers with something else is a bug in that scorer,
-        // and slicing `null` for a part would report it as an empty score.
-        throw CliUsageError('scoring/$scorerKey returned ${result.runtimeType}, not a result object');
+      final ref = rawRef == null ? null : readJsonArg(rawRef, label: '--ref');
+      final single = scorerKey;
+      // A merged pass hands each scorer the ref that SELECTED it, so there is
+      // nowhere for one the caller typed to go. Refused rather than quietly
+      // dropped: this is the tool for finding out why scoring said something,
+      // and an ignored argument is the worst possible answer from it.
+      if (ref != null && single == null) {
+        throw CliUsageError('--ref applies to --key: a merged pass gives each scorer the ref that selected it');
       }
-      final scored = result.cast<String, Object?>();
-      emit(part(scored), markdown: () => markdown(scored));
+      final scored = single != null
+          ? {
+              single: await scoreWithOneScorer(
+                runtime.host,
+                key: single,
+                operation: op,
+                qsos: contacts,
+                ref: ref,
+                // The same segments the merged pass resolves. Without them this
+                // scorer folds across stretches it was not running for, so the
+                // one view an operator is told to reach for to see a scorer's
+                // own rules shows something the app never does.
+                segments: segmentsOf(op, contacts),
+                extraArgs: onlineArgs,
+                timeout: hookTimeout,
+              )
+            }
+          : await scoreOperation(
+              runtime.host,
+              operation: op,
+              qsos: contacts,
+              extraArgs: onlineArgs,
+              timeout: hookTimeout,
+            );
+
+      // One scorer keeps the bare result it always printed; several are keyed
+      // by scorer, the shape the app caches them in.
+      if (single != null) {
+        final only = scored[single]!;
+        emit(part(only), markdown: () => markdown(only));
+      } else {
+        // A scorer that failed carries `error` instead of a result, and the
+        // parts would slice `null` out of it — printing nothing, which reads
+        // exactly like a scorer with nothing to say. This is the tool someone
+        // reaches for BECAUSE a scorer is misbehaving, so the failure is
+        // passed through whichever view they asked for.
+        emit(
+          {
+            for (final entry in scored.entries)
+              entry.key: entry.value['error'] == null ? part(entry.value) : entry.value,
+          },
+          // Each scorer's section under its own heading: in a merged pass the
+          // parts alone would run together with nothing saying whose they are.
+          markdown: () => [
+            for (final entry in scored.entries)
+              '## `${entry.key}`\n\n${entry.value['error'] == null ? markdown(entry.value) : '**failed:** ${entry.value['error']}'}',
+          ].join('\n\n'),
+        );
+      }
       return 0;
     });
   }
+
 }

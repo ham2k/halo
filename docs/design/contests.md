@@ -206,8 +206,9 @@ The core then:
    added to core later keeps its notice by default.
 
    **Judging that axis is the test, not answering.** A verdict counts as a
-   judgement when it carries `dupe`, a `duplicate` alert, or one of those
-   notices. Those notices are a vocabulary a scorer must use rather than a
+   judgement when it carries `dupe` — `false` included, which is a scorer
+   saying its dupe test ran and cleared the contact — a `duplicate` alert, or
+   one of those notices. Those notices are a vocabulary a scorer must use rather than a
    survey of what ships: a contest that spells "worked before, but this one
    counts" its own way is not recognized, and its credit lands beside core's
    `duplicate` on the same row (`newPark` is state-parks' spelling, which is
@@ -221,6 +222,12 @@ The core then:
    warning away with nothing put in its place: no striking on the spots board
    for a whole VHF contest, and no warning when the same station is worked
    twice off-band during ARRL DX.
+
+   The selection and the merge are `halo_extension_host`'s
+   `scoring_priority.dart`, not the app's: `halo ext score` applies both, so
+   the tool an operator is pointed at when scoring looks wrong describes the
+   program that is actually running. `--key` still asks one scorer in
+   isolation.
 
    Per QSO rather than per operation because a ref-gated scorer skips whole
    segments it wasn't running for (§5.1.3): an operation that breaks out of its

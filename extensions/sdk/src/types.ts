@@ -958,6 +958,11 @@ export interface ScoreQsoRequest {
 export interface QsoScoreNotices {
   notices: string[]
   alerts: string[]
+  /// Whether this scorer's duplicate test ran, and what it concluded. Omitted
+  /// means it never ran — an early return on an invalid band or a missing
+  /// exchange — and the host then leaves the core scorer's own dupe rule
+  /// standing, since nobody else has ruled (docs/design/contests.md §5.1).
+  dupe?: boolean
 }
 
 /// Scores MANY not-yet-logged candidates in one call — the Spots Panel, which

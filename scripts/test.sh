@@ -399,7 +399,14 @@ run_subset() {
       app) run_all_app=1; need_bundles=1; need_hostlib=1 ;;
       quickjs) need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       extension-host) need_bundles=1; need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
-      core | build-tools | widgets | cli) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      core | build-tools | widgets) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      # halo_cli boots the REAL QuickJS host against the built bundles
+      # (runtime_test.dart, scoring_merge_test.dart), so it belongs with
+      # extension-host rather than with the pure-Dart packages: without these
+      # it tests whatever bundles were lying around, which is the exact gap
+      # this script exists to close — and a subset run is where a scorer
+      # change is checked.
+      cli) need_bundles=1; need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       *)
         # A package group added to PKG_GROUP_NAMES without a case arm above
         # must not fall through here and silently run nothing.

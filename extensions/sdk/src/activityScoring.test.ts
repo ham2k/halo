@@ -510,3 +510,92 @@ test("the running scoresheet is a valid checkpoint", async () => {
   const result = await score(POTA, operation, manyCalls(3))
   assert.deepEqual(JSON.parse(JSON.stringify(result.scoresheet)), result.scoresheet)
 })
+
+// --- Saying so, rather than staying silent ---------------------------------
+//
+// The host runs core scoring (call+band+mode dupes, DXCC, bands) under every
+// operation, and lets its worked-before verdict stand for any QSO no other
+// scorer has RULED on (docs/design/contests.md §5.1). Silence therefore has to
+// mean "no opinion" and nothing else: where this scorer has decided a contact
+// counts, it has to say so, or core calls that contact a duplicate over the top
+// of the credit just awarded.
+
+test("a contact worked before that this scorer CREDITS says so with dupe: false", async () => {
+  // Worked at a park this morning; he has packed up, and this contact carries
+  // no reference. The ref axis keeps no candidate, and there is no `newRef` to
+  // report either — the one path where this scorer credits a QSO while having
+  // no notice to describe it with. Silent, the host reads that as no opinion
+  // and lets core call the contact a duplicate.
+  const result = await score(POTA, operationActivating('potaActivation', 'US-0001'), [
+    qso('W1AW', { hunting: ['US-1234'] }),
+    qso('W1AW', { at: DAY_1 + 3600_000, uuid: 'bare' }),
+  ])
+  const verdict = result.qsoScores['bare']
+  assert.equal(verdict.dupe, false)
+  assert.equal(verdict.notices, undefined)
+  assert.ok(verdict.value > 0, 'the contact is credited, which is why core must not strike it')
+})
+
+test("a duplicate says so too", async () => {
+  const result = await score(POTA, operationActivating('potaActivation', 'US-0001'), [
+    qso('W1AW'),
+    qso('W1AW', { at: DAY_1 + 3600_000, uuid: 'again' }),
+  ])
+  assert.equal(result.qsoScores['again'].dupe, true)
+  assert.deepEqual(result.qsoScores['again'].alerts, ['duplicate'])
+})
+
+// A station this scorer has never seen is NOT a station it can clear: it folds
+// only the segments it was running for, so an unknown call may well have been
+// worked in a stretch it skipped. Core holds the whole log, so silence here
+// hands the question to the scorer that can answer it.
+// The ordinary chaser: the operation activates nothing, so a bare repeat
+// contact earns this scorer zero. A ruling there would strip core's duplicate
+// — the only warning that operator gets — off a contact nobody credited.
+test("a contact this scorer credits nothing for makes no claim about it", async () => {
+  const result = await score(POTA, {'refs': []}, [
+    qso('W1AW', { hunting: ['US-1234'] }),
+    qso('W1AW', { at: DAY_1 + 3600_000, uuid: 'bare' }),
+  ]);
+  const verdict = result.qsoScores['bare']
+  assert.equal(verdict.value, 0)
+  assert.equal(verdict.dupe, undefined, 'silence hands the question to the scorer holding the whole log')
+})
+
+// SiOTA and MOTA hold that a repeat contact does not advance an activation
+// even when it hands over a silo the station had not given before. A contact
+// bringing no reference at all is worth less than that, so this scorer has
+// nothing to say about it and core's duplicate rule is left standing.
+test("a program where a fresh ref does not rescue activation rules on nothing", async () => {
+  const SIOTA = { ...POTA, freshRefRescuesActivation: false }
+  const result = await score(SIOTA, operationActivating('potaActivation', 'US-0001'), [
+    qso('W1AW', { hunting: ['US-1234'] }),
+    qso('W1AW', { at: DAY_1 + 3600_000, uuid: 'bare' }),
+  ])
+  assert.equal(result.qsoScores['bare'].dupe, undefined)
+})
+
+test("a first contact stays silent rather than claiming not-a-duplicate", async () => {
+  const result = await score(POTA, operationActivating('potaActivation', 'US-0001'), [
+    qso('W1AW', { uuid: 'first' }),
+  ])
+  assert.equal(result.qsoScores['first'].dupe, undefined)
+})
+
+test("the live paths carry the ruling, not just the batch", async () => {
+  const hook = contestScorer(activityScorer(POTA), { scope: { refTypes: ['potaActivation', 'pota'] } })
+  const operation = operationActivating('potaActivation', 'US-0001')
+  const args = {
+    operation,
+    ref: (operation.refs as Record<string, JSONValue>[])[0],
+    resumeFrom: undefined as unknown as JSONValue,
+  }
+  // Cold cache with no log reachable: nothing worked, so nothing to rule on.
+  const fresh = await hook.scoreQso!({ ...args, qso: qso('W1AW') }, ctx)
+  assert.equal(fresh.dupe, undefined)
+
+  // Resuming from a sheet that already holds the station, contacted at a park.
+  const priorSheet = (await score(POTA, operation, [qso('W1AW', { hunting: ['US-1234'] })])).scoresheet
+  const known = await hook.scoreQso!({ ...args, resumeFrom: priorSheet, qso: qso('W1AW', { uuid: 'bare' }) }, ctx)
+  assert.equal(known.dupe, false, 'a live verdict says the dupe test ran, as the batch one does')
+})
