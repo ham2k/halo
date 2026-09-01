@@ -9,11 +9,14 @@
 // SECURITY, STATED PLAINLY. This protocol authenticates nothing. A peer is
 // admitted on the strength of the [PeerHello.deviceId] it claims plus the
 // operator having confirmed that id once (trust-on-first-use, `PeerTrust`),
-// and anything on the same network segment can claim any id it has seen.
-// That is an accepted v1 limit for a LAN of the operator's own devices, NOT
-// a design to extend to the server relay or to an untrusted network. Binding
-// trust to a key the peer must prove it holds is what [peerProtocolVersion]
-// exists to be bumped for.
+// and anything on the same network segment can claim any id it has seen —
+// the `PeerBeacon` broadcasts that id in the clear, so observing one to replay is
+// trivial. The stakes are physical, not only data: a trusted peer can tune
+// the addressee's rig ([catSet]), so a device that spoofs a confirmed id on
+// the segment can move a real transmitter's VFO. That is an accepted v1 limit
+// for a LAN of the operator's own devices, NOT a design to extend to the
+// server relay or to an untrusted network. Binding trust to a key the peer
+// must prove it holds is what [peerProtocolVersion] exists to be bumped for.
 
 import 'dart:convert';
 import 'dart:typed_data';
