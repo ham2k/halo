@@ -170,12 +170,23 @@ interface LookupServiceHook {
   least as specific as the guess's current scope — a more general-scoped
   result can never populate a slot a more specific one already claimed,
   even if that slot is currently empty.
+- Location fields merge as a group, never per field. A same-scope result
+  bringing a pin (a grid, or a full lat/lon pair) to a guess that has none
+  replaces the established city/state/county/country/location with its own
+  values (or just clears them, if it carries only the pin) — even where
+  per-field priority would have kept the earlier town. A result whose own
+  pin loses to an already-established one contributes no location fields at
+  all, and a pinless result's town is used only where the higher-priority
+  lookups left no town or pin (an entity-level `country` alone doesn't
+  count as located): a town is never spliced with a pin — or a town half —
+  it wasn't reported with.
 - Grid/lat-lon reconciliation, scoped to fields the result actually set:
   grid-only → lat/lon computed from the grid; lat/lon-only → a 6-digit grid
   computed from them; both given → taken verbatim. Setting grid/lat/lon
   clears city/state/country/county unless the *same* result also supplies
-  them; conversely, setting city/state/country (without county, and without
-  also setting grid/lat/lon in the same result) clears grid/lat/lon.
+  them. The converse clause — a town write clearing grid/lat/lon — can only
+  sweep a leftover half lat/lon pair: the group rule above blocks a town
+  from landing at all where a full pin already stands.
 - `notes`/`history` are per-`CallInfoLookup` fields, not part of the merged
   `guess` — they simply accumulate, unconditionally, in the returned
   `lookups[]` array.

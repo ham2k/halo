@@ -112,13 +112,26 @@ test("a grid update clears prior city/state/country/county unless the same resul
   assert.equal(keptSameResultFields.state, undefined)
 })
 
-test("a city/state/country update (without county, and without grid/lat/lon in the same result) clears grid/lat/lon", () => {
-  const guess: CallInfo = { call: "X", grid: "FN21rq", lat: 1, lon: 2 }
+test("a pinless result's town lands only on a guess with no location at all — it neither replaces nor completes an established town or pin", () => {
+  // Established pin: the city-only result contributes nothing (deleting the
+  // pin for it — a vaguer answer destroying a precise one — is the trap).
+  const withPin = mergeLookupIntoGuess({ call: "X", grid: "FN21rq", lat: 41.5, lon: -74.5 }, { call: "X", source: "a", scope: "general", city: "New City" })
+  assert.equal(withPin.grid, "FN21rq")
+  assert.equal(withPin.city, undefined)
 
-  const cleared = mergeLookupIntoGuess(guess, { call: "X", source: "a", scope: "general", city: "New City" })
-  assert.equal(cleared.grid, undefined)
-  assert.equal(cleared.lat, undefined)
-  assert.equal(cleared.lon, undefined)
+  // Established town: a second pinless town must not complete it per-field —
+  // filling only the empty state slot would put b's state under a's city.
+  // Its country is refused with the rest of its group, though country counts
+  // as neither town nor pin on the landing side.
+  const withTown = mergeLookupIntoGuess({ call: "X", city: "Springfield" }, { call: "X", source: "b", scope: "general", city: "Shelbyville", state: "TX", country: "Canada" })
+  assert.equal(withTown.city, "Springfield")
+  assert.equal(withTown.state, undefined)
+  assert.equal(withTown.country, undefined)
+
+  // Unlocated ground — an entity-level country alone doesn't count: lands.
+  const onEmpty = mergeLookupIntoGuess({ call: "X", country: "United States" }, { call: "X", source: "c", scope: "general", city: "Newington", state: "CT" })
+  assert.equal(onEmpty.city, "Newington")
+  assert.equal(onEmpty.state, "CT")
 })
 
 test("a result setting both a new grid AND a new city in the same call clears neither family", () => {
@@ -224,6 +237,89 @@ test("regression: a result whose grid/city are REJECTED by priority order (alrea
   const merged = mergeLookupIntoGuess(guess, { call: "X", source: "b", scope: "general", grid: "FN21rq", city: "Shelbyville" })
   assert.equal(merged.grid, "FN21rq")
   assert.equal(merged.city, "Springfield") // must survive — this result wrote nothing
+})
+
+test("regression: free-tier QRZ (town, no pin) then the Ham2K service — the pin-bearing record takes over the whole location", () => {
+  // Free-tier QRZ answers name/city/state/country but no grid or lat/lon.
+  // Without the pin takeover, the service's grid write either wipes the
+  // established town (clearing keyed on written fields — the guess collapses
+  // to flag+name+grid) or leaves QRZ's town sitting under the service's pin;
+  // instead the service's own town/county/pin replace QRZ's town together.
+  const qrzFree: CallInfoLookup = { call: "X", source: "qrz.com", scope: "general", locationScope: "qth", name: "Some Op", location: "Newington, CT", city: "Newington", state: "CT", country: "United States" }
+  const ham2k: CallInfoLookup = { call: "X", source: "services.ham2k.net", scope: "general", locationScope: "qth", name: "SOME OP", location: "Newington, CT", city: "Newington", state: "CT", county: "Hartford", country: "United States", grid: "FN31pr", lat: 41.71, lon: -72.72 }
+
+  // The initial guess carries the annotation's entity-level country — which
+  // must not count as "already located" and block QRZ's pinless town.
+  const { guess } = runLookupPipeline({ call: "X", locationScope: "qth", country: "United States" }, [qrzFree, ham2k])
+  assert.equal(guess.city, "Newington")
+  assert.equal(guess.state, "CT")
+  assert.equal(guess.country, "United States")
+  assert.equal(guess.location, "Newington, CT")
+  assert.equal(guess.county, "Hartford")
+  assert.equal(guess.grid, "FN31pr")
+  assert.equal(guess.name, "Some Op") // non-location field: first-wins, untouched by the takeover
+})
+
+test("a pin-bearing result replaces a pinless established town wholesale, even where per-field first-wins would keep it", () => {
+  // Per-field first-wins would keep Springfield and accept only the grid,
+  // labeling source b's pin with source a's town.
+  let guess: CallInfo = { call: "X", locationScope: "qth" }
+  guess = mergeLookupIntoGuess(guess, { call: "X", source: "a", scope: "general", locationScope: "qth", city: "Springfield", state: "IL", country: "United States" })
+  guess = mergeLookupIntoGuess(guess, { call: "X", source: "b", scope: "general", locationScope: "qth", grid: "FN31pr", city: "Newington", state: "CT" })
+  assert.equal(guess.city, "Newington")
+  assert.equal(guess.state, "CT")
+  assert.equal(guess.grid, "FN31pr")
+  assert.equal(guess.country, undefined) // b carries none — a's town went with a's country
+})
+
+test("a result whose own pin loses to an established one contributes no location fields — its town describes the pin that lost", () => {
+  // Accepting the city here would put a Dallas label on a Connecticut pin.
+  let guess: CallInfo = { call: "X", locationScope: "qth" }
+  guess = mergeLookupIntoGuess(guess, { call: "X", source: "a", scope: "general", locationScope: "qth", grid: "FN31pr" })
+  guess = mergeLookupIntoGuess(guess, { call: "X", source: "b", scope: "general", locationScope: "qth", grid: "EM12ab", city: "Dallas", state: "TX" })
+  assert.equal(guess.grid, "FN31pr")
+  assert.equal(guess.city, undefined)
+  assert.equal(guess.state, undefined)
+})
+
+test("the takeover respects the accuracy lock — a vaguer pin-bearing result must not clear a locked pinless location", () => {
+  // The group clear runs on the promise the per-field loop refills it; a
+  // locked result writes nothing, so a bad guard here erases the location
+  // outright instead of leaving it alone.
+  const guess = { call: "X", locationScope: "portable", location: "W2/GC-001 Summit", locAccuracy: LOCATION_ACCURACY.ACCURATE } as CallInfo
+  const merged = mergeLookupIntoGuess(guess, { call: "X", source: "qrz.com", scope: "general", locationScope: "portable", grid: "EM64mn", city: "Hartselle" })
+  assert.equal(merged.location, "W2/GC-001 Summit")
+  assert.equal(merged.grid, undefined)
+  assert.equal(merged.city, undefined)
+})
+
+test("the takeover respects scope — a qth-scoped pin-bearing result must not clear a portable pinless location", () => {
+  // Same trap as the accuracy lock: the clear must be gated by the same
+  // conditions that gate the writes, or it clears for writes that never come.
+  const guess: CallInfo = { call: "X", locationScope: "portable", location: "US-1 Park" }
+  const merged = mergeLookupIntoGuess(guess, { call: "X", source: "qrz.com", scope: "general", locationScope: "qth", grid: "FN21rq", city: "Woodridge" })
+  assert.equal(merged.location, "US-1 Park")
+  assert.equal(merged.grid, undefined)
+  assert.equal(merged.city, undefined)
+})
+
+test("a junk grid grants no takeover authority — an invalid pin degrades its result to the pinless rules", () => {
+  // "NOT_FOUND" passes a presence check and fails gridToLocation. Judged a
+  // pin by presence, it wipes the established town, installs the junk
+  // source's own, and then delivers no pin at all.
+  const guess: CallInfo = { call: "X", city: "Springfield", state: "IL" }
+  const merged = mergeLookupIntoGuess(guess, { call: "X", source: "b", scope: "general", grid: "NOT_FOUND", city: "Dallas", state: "TX" })
+  assert.equal(merged.city, "Springfield")
+  assert.equal(merged.state, "IL")
+  assert.equal(merged.grid, undefined)
+})
+
+test("half a lat/lon pair is not a pin", () => {
+  // A lone lat places nothing, so it must earn its result no takeover or
+  // blocking authority — the pinless rules apply.
+  const merged = mergeLookupIntoGuess({ call: "X", city: "Springfield" }, { call: "X", source: "b", scope: "general", lat: 41.5, city: "Dallas" })
+  assert.equal(merged.city, "Springfield")
+  assert.equal(merged.lat, undefined)
 })
 
 // ── issue #185: keep the most precise same-scope location ──────────────────

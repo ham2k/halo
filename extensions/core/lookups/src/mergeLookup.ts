@@ -49,7 +49,10 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
   // like `flag`. Absent means "unknown" — treated as the least precise.
   const resultAccuracy = typeof res.locAccuracy === 'number' ? res.locAccuracy : undefined
   const currentAccuracy = typeof next.locAccuracy === 'number' ? next.locAccuracy : LOCATION_ACCURACY.NO_LOCATION
-  const resultHasLocation = LOCATION_FIELDS.some((f) => hasValue((res as Record<string, unknown>)[f]))
+  // Whether this result CARRIES a value for a field, whatever becomes of it
+  // in the per-field merge below.
+  const carries = (field: LocationField) => hasValue((res as Record<string, unknown>)[field])
+  const resultHasLocation = LOCATION_FIELDS.some(carries)
 
   // 1. This result takes over the location — clearing every existing location
   //    field so its own values fill them below, and adopting its scope — when
@@ -82,6 +85,51 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
     scopeRank(resultScope) === scopeRank(next.locationScope) &&
     (resultAccuracy ?? LOCATION_ACCURACY.NO_LOCATION) > currentAccuracy
 
+  // A "pin": a grid gridToLocation can place, or a full lat/lon pair — half
+  // a pair places nothing, and a junk grid ("NOT_FOUND") earns no authority:
+  // an invalid pin degrades its result to the pinless rules rather than
+  // letting it take a town over on the strength of a value the
+  // reconciliation below then throws away. A "town": the human-readable side
+  // of a location. `country` counts as neither — the annotation pre-step
+  // stamps an entity-level country on nearly every call, and that must not
+  // make the guess read as located. (A blocked result's country is refused
+  // along with the rest of its group.) Judged after the takeover clearing
+  // above, so a scope/accuracy takeover that just emptied the location reads
+  // as unlocated here.
+  const placeable = (grid: unknown): boolean => {
+    if (typeof grid !== 'string' || grid.trim() === '') return false
+    try {
+      gridToLocation(grid)
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+  const guessHasPin = hasValue(next.grid) || (hasValue(next.lat) && hasValue(next.lon))
+  const resultHasPin = placeable(res.grid) || (carries('lat') && carries('lon'))
+  const guessHasTown = (['city', 'state', 'county', 'location'] as const).some((f) => hasValue(next[f]))
+  const scopeEligible = !locationLocked && scopeRank(resultScope) >= scopeRank(next.locationScope)
+
+  // 1b. Location fields merge as a GROUP, never per field — a splice of two
+  //     sources' halves names a place neither of them reported:
+  //     - A result bringing a pin to a guess that has none takes over the
+  //       whole location: the pinless town established so far is replaced by
+  //       the pin-source's own town (or just cleared, for a grid-only
+  //       result), never kept alongside the new pin. Without this, a
+  //       free-tier QRZ answer (city/state, no grid) followed by a full
+  //       record leaves one source's town under another source's pin.
+  if (scopeEligible && resultHasPin && !guessHasPin) {
+    for (const field of LOCATION_FIELDS) delete next[field]
+  }
+  //     - A result whose own pin loses to an already-established one
+  //       contributes no location fields at all: its town describes the pin
+  //       that lost. And a PINLESS result's town lands only where the
+  //       higher-priority lookups left no town or pin — it neither replaces
+  //       nor completes an established location (filling just its empty
+  //       slots would put, e.g., its state under another source's city).
+  //       (Both enforced in the per-field merge below.)
+  const locationBlocked = resultHasPin ? guessHasPin : guessHasPin || guessHasTown
+
   // 2. Priority order: fields already present in `next` are never
   //    overwritten (higher-priority/earlier results win). Location fields
   //    additionally require this result's own scope to be at least as
@@ -99,6 +147,7 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
     if (isLocationField(field)) {
       if (scopeRank(resultScope) < scopeRank(next.locationScope)) continue
       if (locationLocked) continue
+      if (locationBlocked) continue
       if (hasValue(next[field])) continue
       ;(next as Record<string, unknown>)[field] = value
       written.add(field)
@@ -135,14 +184,17 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
 
   if (setGrid || setLatLon) {
     // Clear city/state/country/county/location unless THIS result also
-    // supplied them.
+    // supplied them. (A pin write only happens into a pinless guess — rule
+    // 1b already replaced the established town — so this clears at most the
+    // writer's own leftovers, keeping town and pin from one source.)
     for (const field of ['city', 'state', 'country', 'county', 'location'] as const) {
       if (!written.has(field)) delete next[field]
     }
   } else if (setCityStateCountry && !written.has('county')) {
     // City/state/country/location updated (without county, and without
-    // this result also touching grid/lat/lon — the two reconciliation
-    // rules are mutually exclusive per result) clears grid/lat/lon.
+    // this result also touching grid/lat/lon) clears grid/lat/lon. A town
+    // only lands where rule 1b found no full pin, so all this can still
+    // sweep is a leftover half lat/lon pair — kept for exactly that.
     delete next.grid
     delete next.lat
     delete next.lon
