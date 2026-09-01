@@ -272,20 +272,26 @@ Future<Operation?> editOperationDetails(
   final localPatch = {
     if (newMultiIdentifier != multiIdentifier) multiIdentifierKey: newMultiIdentifier,
   };
-  // Where the seat is unchanged, written whenever the operator EDITED the
-  // field — clearing included, which has to reach the slot or the legacy
-  // device-local value keeps showing through.
+  // The operator FOLLOWS the position: changing the seat number moves whoever
+  // the field names into the new seat, because the person at this key is the
+  // same person who was at it a moment ago — they have said which seat they
+  // are now in, not who somebody else is. It overwrites an operator the new
+  // seat already named, and that is the point: that name came from a device
+  // that is not the one sitting here.
   //
-  // A seat CHANGE is different: the field was showing the OLD seat's
-  // operator, so nothing typed there is a statement about the new one. Only a
-  // named operator moving into a seat that names nobody is written, and never
-  // a blank — the field the operator emptied belongs to the seat they left,
-  // and carrying that erasure across would wipe somebody else's operator off
-  // every device.
+  // A blank field carries nothing across. There is no operator to move, and
+  // writing the empty string would erase the new seat's name on every device
+  // on the strength of a field the operator never filled in.
+  //
+  // With the seat unchanged, the field is written whenever it was EDITED —
+  // clearing included, which has to reach the slot or the legacy device-local
+  // value keeps showing through — and when a named operator lands in a seat
+  // that names nobody, which is what promotes that legacy value into the
+  // operation's own data.
   final seatOperatorCall = (asQsonString(operation.data[operatorCallKeyFor(newMultiIdentifier)]) ?? '').trim();
-  final movedIntoEmptySeat = newOperatorCall.isNotEmpty && seatOperatorCall.isEmpty;
-  final writeOperator =
-      newMultiIdentifier != multiIdentifier ? movedIntoEmptySeat : newOperatorCall != operatorCall || movedIntoEmptySeat;
+  final writeOperator = newMultiIdentifier != multiIdentifier
+      ? newOperatorCall.isNotEmpty
+      : newOperatorCall != operatorCall || (newOperatorCall.isNotEmpty && seatOperatorCall.isEmpty);
   final updated = Operation(
     uuid: operation.uuid,
     data: {

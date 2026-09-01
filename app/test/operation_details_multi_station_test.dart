@@ -161,15 +161,35 @@ void main() {
     expect(stored.data.containsKey('operatorCall'), isFalse);
   });
 
-  testWidgets('changing seat never carries an edit onto the seat being joined', (tester) async {
-    // The Operator field was showing seat 1's operator, so nothing typed
-    // there is a statement about seat 2 — and an emptied field least of all.
-    // Written through, it would erase W2ABC on every device logging the
-    // operation.
+  testWidgets('the operator follows the operator to the seat they move to', (tester) async {
+    // The same person is still at this key; they have said which seat they
+    // are now in. Seat 2's old name came from a device that is not this one,
+    // so it is what gives way — and the seat being left keeps its name, for
+    // whoever sits down there next.
     await operations.updateLocalData(operation.uuid, {'multiIdentifier': '1'});
     await operations.saveData(Operation(
       uuid: operation.uuid,
       data: {...operation.data, 'operator1': 'KI2D', 'operator2': 'W2ABC'},
+    ));
+    operation = (await operations.get(operation.uuid))!;
+
+    await openDialog(tester, developerMode: true);
+    await tester.enterText(multiField(), '2');
+    await tester.tap(find.text(t.common.save));
+    await tester.pumpAndSettle();
+
+    final stored = await operations.get(operation.uuid);
+    expect(stored!.data['operator2'], 'KI2D');
+    expect(stored.data['operator1'], 'KI2D', reason: 'the seat being left is not edited');
+  });
+
+  testWidgets('a blank operator carries nothing onto the seat being joined', (tester) async {
+    // Nothing to move. Written through, the empty field would erase the new
+    // seat's operator on every device logging the operation.
+    await operations.updateLocalData(operation.uuid, {'multiIdentifier': '1'});
+    await operations.saveData(Operation(
+      uuid: operation.uuid,
+      data: {...operation.data, 'operator2': 'W2ABC'},
     ));
     operation = (await operations.get(operation.uuid))!;
 
@@ -179,9 +199,7 @@ void main() {
     await tester.tap(find.text(t.common.save));
     await tester.pumpAndSettle();
 
-    final stored = await operations.get(operation.uuid);
-    expect(stored!.data['operator2'], 'W2ABC');
-    expect(stored.data['operator1'], 'KI2D', reason: 'the seat being left is not edited either');
+    expect((await operations.get(operation.uuid))!.data['operator2'], 'W2ABC');
   });
 
   testWidgets('clearing the field stores an empty identifier, turning the suffix off', (tester) async {
