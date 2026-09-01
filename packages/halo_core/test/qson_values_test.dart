@@ -151,6 +151,27 @@ void main() {
       expect(violations, isEmpty);
     });
 
+    test('a value that coerces cleanly is not reported, however wrong its type', () {
+      // `asQsonNum` takes a numeric string on purpose — `power: '5'` and
+      // `freq: '14.074'` are documented as shapes that legitimately reach us
+      // from older imports and from polo. Reporting those sent every device
+      // holding one to the crash backend, burying the drops this exists to
+      // catch under records behaving exactly as specified.
+      final violations = <QsonTypeViolation>[];
+      final normalized = normalizeQsoQson({
+        'power': '5',
+        'freq': '14.074',
+        'our': {'lat': '41.71'},
+      }, violations: violations);
+
+      expect(violations, isEmpty, reason: 'a lossless coercion is not a defect to report');
+      // The coercion itself must still happen — silence here has to mean
+      // "handled", never "ignored".
+      expect(normalized['power'], 5);
+      expect(normalized['freq'], 14.074);
+      expect((normalized['our'] as Map)['lat'], 41.71);
+    });
+
     test('reports each wrong-typed field by dotted path, without the value', () {
       // The path is what lets a report name the field; the value is withheld
       // deliberately — these fields carry callsigns, names and notes, and a

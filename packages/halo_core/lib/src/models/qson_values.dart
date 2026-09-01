@@ -62,8 +62,9 @@ Map<String, dynamic>? asQsonMap(Object? value) {
 /// A list, or null.
 List<Object?>? asQsonList(Object? value) => value is List ? value : null;
 
-/// A wrong-typed QSON field, as reported to the crash backend — the shape
-/// [onQsonTypeViolation]'s wiring hands to `ErrorReportingService`. Mirrors
+/// A QSON field whose value was dropped as unusable, as reported to the crash
+/// backend — the shape [onQsonTypeViolation]'s wiring hands to
+/// `ErrorReportingService`. Mirrors
 /// `MalformedSpotDataException`, which does the same job for the extension
 /// bridge.
 ///
@@ -78,21 +79,24 @@ class MalformedQsonDataException implements Exception {
   String toString() => 'MalformedQsonDataException: $writePath — $violation';
 }
 
-/// Called once per wrong-typed field found while normalizing a record on its
-/// way into storage. Null until the app wires it up at boot; `halo_core` is
-/// pure Dart and cannot reach the app's crash backend itself.
+/// Called once per field whose value was DROPPED while normalizing a record
+/// on its way into storage. Null until the app wires it up at boot;
+/// `halo_core` is pure Dart and cannot reach the app's crash backend itself.
 ///
-/// The point is to learn what WRITES a wrong-typed value — coercion alone
-/// fixes the symptom and leaves the source of a `bool` mode unknown. Wired
-/// through `ErrorReportingService.reportIfRepeated`, so a device holding one
-/// bad record reports it once rather than once per sync round.
+/// The point is to learn what WRITES a value nothing can use — dropping it
+/// fixes the symptom and leaves the source of a `bool` mode unknown. A wrong
+/// type that COERCES is not reported: `asQsonNum` takes a numeric string by
+/// design, so reporting those would drown this signal in records behaving as
+/// documented. Wired through `ErrorReportingService.reportIfRepeated`, so a
+/// device holding one bad record reports it once rather than once per sync
+/// round.
 void Function(String context, QsonTypeViolation violation)? onQsonTypeViolation;
 
 /// What [normalizeQsoQson] expects one field to hold.
 enum QsonFieldType { string, number, map, list }
 
-/// One wrong-typed field [normalizeQsoQson] found, for a caller that wants to
-/// report it. [path] is dotted from the record root (`their.guess.grid`), so
+/// One field [normalizeQsoQson] could not use and dropped, for a caller that
+/// wants to report it. [path] is dotted from the record root (`their.guess.grid`), so
 /// a report names the field without the caller reassembling it.
 class QsonTypeViolation {
   final String path;
@@ -245,9 +249,17 @@ Map<String, dynamic> _normalize(
     // getter already handles — only a PRESENT wrong type is a violation.
     if (value == null || _isClean(value, entry.value)) continue;
 
-    found?.add(QsonTypeViolation('$prefix$key', entry.value, value.runtimeType.toString()));
+    // Reported only when the value is LOST, which is why this sits after the
+    // coercion rather than before it. A wrong type that coerces cleanly is
+    // not a defect to report: [asQsonNum] accepts a numeric string on
+    // purpose, naming `freq: '14.074'` and `power: '5'` as shapes that
+    // legitimately reach us from older imports and from polo — so reporting
+    // those buries the case the report exists for (a `mode: true` that is
+    // DROPPED, taking the operator's data with it) under thousands of
+    // records behaving exactly as documented.
     final coerced = _coerce(value, entry.value);
     if (coerced == null) {
+      found?.add(QsonTypeViolation('$prefix$key', entry.value, value.runtimeType.toString()));
       mutable().remove(key);
     } else {
       mutable()[key] = coerced;

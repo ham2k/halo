@@ -194,12 +194,13 @@ void _mainBody({
   // Off in release, so nothing is emitted or buffered there.
   DevLog.instance.enabled = !kReleaseMode;
   // `halo_core` normalizes wrong-typed QSON on its way into storage but is
-  // pure Dart and cannot reach the crash backend itself. Coercion alone
-  // fixes the symptom and leaves the WRITER of a bool mode unknown, which is
-  // the thing worth learning — so route what it finds here. Reported at the
-  // first occurrence (like malformed spot data), keyed by write path and
-  // field so a device holding one bad record reports once rather than once
-  // per sync round.
+  // pure Dart and cannot reach the crash backend itself. Dropping a value
+  // nothing can use fixes the symptom and leaves the WRITER of a bool mode
+  // unknown, which is the thing worth learning — so route what it finds here.
+  // Only DROPPED values arrive: a numeric string coerces by design. Reported
+  // at the first occurrence (like malformed spot data), keyed by write path
+  // and field so a device holding one bad record reports once rather than
+  // once per sync round.
   onQsonTypeViolation = (context, violation) {
     ErrorReportingService.reportIfRepeated(
       'qson:malformed:$context:${violation.path}',

@@ -257,6 +257,277 @@ void main() {
     expect((await qsos.get('inbound-absent'))?.operationUuid, '');
   });
 
+  group('records the server refuses', () {
+    Future<Set<String>> unsyncedQsoUuids() async =>
+        (await qsos.unsyncedBatch(100)).map((q) => q.uuid).toSet();
+
+    test('stay dirty instead of being marked sent', () async {
+      // Marking a refused record synced is how a local edit diverges from the
+      // server forever: "pending" is the only thing that makes a later round
+      // send anything, so a record flagged sent that the server never took is
+      // offered again by nothing, ever.
+      final op = await operations.create(stationCall: 'KI2D');
+      final kept = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'errors': {
+              'qsos': {
+                refused.uuid: [
+                  {'operation': [{'error': 'forbidden'}]},
+                ],
+              },
+            },
+          };
+
+      await engine.runOneRound();
+
+      expect(await unsyncedQsoUuids(), contains(refused.uuid), reason: 'a refused record must stay offerable');
+      // The rest of the batch is unaffected — one refusal must not hold back
+      // every record that WAS accepted, or a single bad row stalls the log.
+      expect(await unsyncedQsoUuids(), isNot(contains(kept.uuid)));
+    });
+
+    test('are reported once, not once per round', () async {
+      // A refused record is re-sent and re-refused every round by design, so
+      // reporting on each one would upload thousands of copies of one fact.
+      final op = await operations.create(stationCall: 'KI2D');
+      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+
+      final reported = <Object>[];
+      final engineWithReporting = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: transport.call,
+        settings: settings,
+        onError: (error, stack, {context}) => reported.add(error),
+      );
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'errors': {
+              'qsos': {
+                // `value:` is what Rails' own `:taken` and `:inclusion`
+                // validators merge into the error options — the record's
+                // field contents, in the payload, exactly where a walker that
+                // takes any string would pick them up.
+                refused.uuid: [
+                  {'their': [{'error': 'taken', 'value': 'K2ABC'}]},
+                ],
+              },
+            },
+          };
+
+      await engineWithReporting.runOneRound();
+      await engineWithReporting.runOneRound();
+
+      expect(reported, hasLength(1));
+      expect(reported.single, isA<SyncRecordsRejected>());
+      final rejection = reported.single as SyncRecordsRejected;
+      expect(rejection.reasonsByUuid.keys, [refused.uuid]);
+      // The server's error KEYS travel; the record's own field values must
+      // not — they hold callsigns, names and notes, and this string leaves
+      // the device.
+      expect(rejection.toString(), contains('taken'), reason: 'the error name is the diagnostic');
+      expect(rejection.toString(), isNot(contains('K2ABC')),
+          reason: 'a field value must never reach the crash backend');
+    });
+
+    test('a round where nothing was accepted does not re-run at zero delay', () async {
+      // The zero-delay reschedule exists to drain a backlog fast. A record
+      // the server will never accept is pending forever, so without this a
+      // single `forbidden` edit spins the loop against the server for as long
+      // as the app runs.
+      final op = await operations.create(stationCall: 'KI2D');
+      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'errors': {
+              'qsos': {
+                refused.uuid: [
+                  {'operation': [{'error': 'forbidden'}]},
+                ],
+              },
+              'operations': {
+                op.uuid: [
+                  {'operation': [{'error': 'forbidden'}]},
+                ],
+              },
+            },
+          };
+
+      await engine.runOneRound();
+      expect(transport.calls, hasLength(1));
+
+      // Observed the way the full-page test above observes it: a zero-delay
+      // reschedule lands inside 50ms, while `_loopDelay` (20s) does not.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Still pending — that is the point of leaving it dirty — but the round
+      // made no progress, so the next one waits rather than firing instantly.
+      expect(await qsos.hasUnsynced(), isTrue);
+      expect(transport.calls, hasLength(1), reason: 'a stalled push must not spin the loop');
+    });
+
+    test('a refused record steps aside so the records behind it still go', () async {
+      // `unsyncedBatch` is a LIMIT ordered newest-first, so a refused record
+      // that sorts early would refill the batch every round and nothing behind
+      // it would ever be sent again — for the life of the install. Keeping it
+      // dirty without holding it back trades one silent loss for a worse one.
+      final op = await operations.create(stationCall: 'KI2D');
+      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 9000});
+
+      final sent = <List<String>>[];
+      transport.responder = (method, args) {
+        sent.add([for (final q in (args['qsos'] as List? ?? []).cast<Map>()) q['uuid'] as String]);
+        return {
+          'account': {'uuid': 'acct-1'},
+          'errors': {
+            'qsos': {
+              refused.uuid: [
+                {'operation': [{'error': 'forbidden'}]},
+              ],
+            },
+          },
+        };
+      };
+
+      await engine.runOneRound();
+      expect(sent.single, contains(refused.uuid));
+
+      // Logged after the refusal, so it sorts BEHIND the refused record and is
+      // exactly what a starved queue would never deliver.
+      final behind = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      await engine.runOneRound();
+
+      expect(sent.last, contains(behind.uuid), reason: 'the queue must keep moving');
+      expect(sent.last, isNot(contains(refused.uuid)), reason: 'the refused record steps aside');
+      // Still dirty — stepping aside is not being marked sent.
+      expect(await unsyncedQsoUuids(), contains(refused.uuid));
+    });
+
+    test('a refused record is offered again once its quarantine passes', () async {
+      // Stepping aside must not become "never again": a refusal is often
+      // temporary — a permission granted, an owner adding this device — and a
+      // record parked for good is the silent loss this all exists to end.
+      final op = await operations.create(stationCall: 'KI2D');
+      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 9000});
+
+      // The real clock cannot be wound forward, so the window is driven
+      // instead — zero means every round is past it.
+      final impatient = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: transport.call,
+        settings: settings,
+        refusalQuarantine: Duration.zero,
+      );
+
+      final sent = <List<String>>[];
+      transport.responder = (method, args) {
+        sent.add([for (final q in (args['qsos'] as List? ?? []).cast<Map>()) q['uuid'] as String]);
+        return {
+          'account': {'uuid': 'acct-1'},
+          'errors': {
+            'qsos': {
+              refused.uuid: [
+                {'operation': [{'error': 'forbidden'}]},
+              ],
+            },
+          },
+        };
+      };
+
+      await impatient.runOneRound();
+      await impatient.runOneRound();
+
+      expect(sent, hasLength(2));
+      expect(sent.last, contains(refused.uuid), reason: 'the window passed, so try it again');
+    });
+
+    test('a count of unreadable entries is reported, not discarded', () async {
+      // `_malformed` says N records this device sent were unreadable and
+      // stored nowhere. No uuid comes with it, so none can be held dirty and
+      // all of them are marked sent — which makes this the one refusal that
+      // still loses data silently, and the only trace it happened. An
+      // unusable payload is a fault in what this app WROTE.
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+
+      final reported = <Object>[];
+      final engineWithReporting = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: transport.call,
+        settings: settings,
+        onError: (error, stack, {context}) => reported.add(error),
+      );
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'errors': {
+              'qsos': {
+                '_malformed': [
+                  {'error': 'unusable_payload', 'count': 2},
+                ],
+              },
+            },
+          };
+
+      await engineWithReporting.runOneRound();
+
+      expect(reported.whereType<SyncPayloadUnreadable>(), hasLength(1));
+      expect((reported.single as SyncPayloadUnreadable).count, 2);
+    });
+
+    test('the pagination and _malformed keys are not reported as refused records', () async {
+      // `errors.qsos` carries both alongside real uuids: `pagination` is the
+      // cursor refusal `_cursorRefused` reads, and `_malformed` is a COUNT of
+      // entries the server could not read — neither is a record.
+      //
+      // Asserting the REPORT, not the synced flag: neither key matches a real
+      // uuid, so nothing stays dirty either way and a test watching `synced`
+      // passes with the guard deleted. What breaks is the crash backend being
+      // told records were refused when none were, naming a "uuid" no record
+      // has.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+
+      final reported = <Object>[];
+      final engineWithReporting = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: transport.call,
+        settings: settings,
+        onError: (error, stack, {context}) => reported.add(error),
+      );
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'errors': {
+              'qsos': {
+                'pagination': {'cursor': 'refused'},
+                '_malformed': [
+                  {'error': 'unusable_payload', 'count': 2},
+                ],
+              },
+            },
+          };
+
+      await engineWithReporting.runOneRound();
+
+      // The unreadable COUNT is reported (see the test above) — what must not
+      // happen is either key being read as a refused record, which would name
+      // a "uuid" no record has.
+      expect(reported.whereType<SyncRecordsRejected>(), isEmpty,
+          reason: 'neither key names a record that was refused');
+      expect(await unsyncedQsoUuids(), isNot(contains(qso.uuid)),
+          reason: 'nothing in that block named this record');
+    });
+  });
+
   test('a failing round reports the error via onError, in addition to log', () async {
     final loggedLines = <String>[];
     final reported = <(Object, StackTrace?, String?)>[];

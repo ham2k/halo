@@ -403,9 +403,11 @@ class OperationsRepository {
   /// Up to `limit` dirty operations, most-recently-active first — the same
   /// selection app-polo's sync loop uses for its "large batch" round
   /// (`sync.js`'s `queryOperations('WHERE synced IS false ...')`).
-  Future<List<Operation>> unsyncedBatch(int limit) async {
+  Future<List<Operation>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
     final query = (db.select(db.operations)
-      ..where((op) => op.synced.equals(false))
+      ..where((op) => excluding.isEmpty
+          ? op.synced.equals(false)
+          : op.synced.equals(false) & op.uuid.isNotIn(excluding.toList()))
       ..orderBy([
         (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first),
       ])
@@ -1691,9 +1693,16 @@ class QsosRepository {
 
   /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s
   /// `queryQSOs("WHERE synced IS false ... ORDER BY startAtMillis DESC")`.
-  Future<List<Qso>> unsyncedBatch(int limit) async {
+  /// [excluding] holds records back WITHOUT marking them clean — the sync
+  /// engine's refusal quarantine (see `SyncEngine.refusalQuarantine`). Skipped
+  /// in the query rather than filtered after it: this is a `LIMIT`, so a
+  /// refused record that sorts early would otherwise fill the batch every
+  /// round and nothing behind it would ever be offered again.
+  Future<List<Qso>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
     final query = (db.select(db.qsos)
-      ..where((q) => q.synced.equals(false))
+      ..where((q) => excluding.isEmpty
+          ? q.synced.equals(false)
+          : q.synced.equals(false) & q.uuid.isNotIn(excluding.toList()))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)])
       ..limit(limit));
     return (await query.get()).map(_qsoFromRow).toList();

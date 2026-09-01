@@ -25,7 +25,13 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart'
     show ExtensionHostException, HookTimeoutException;
-import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, WriteRefused;
+import 'package:halo_core/halo_core.dart'
+    show
+        LogFromNewerBuild,
+        MalformedQsonDataException,
+        SyncPayloadUnreadable,
+        SyncRecordsRejected,
+        WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -142,6 +148,18 @@ class ErrorPolicy {
           'what the console line is for',
       disposition: ErrorDisposition.logOnly,
       matches: (error, _) => error is WriteRefused,
+    ),
+    ErrorRule(
+      id: 'sync-records-rejected',
+      reason: 'the sync server accepted the round but refused individual records (a guest editing '
+          'an operation they do not own, a validation failure), or could not read some of what was '
+          'sent at all. Worth knowing about in aggregate — '
+          'it means data sitting on a device the server does not have — but "the server refused '
+          'this QSO" names nothing the operator can do mid-contact, and the record stays dirty and '
+          'keeps being offered, so the generic notice would recur against a state they cannot '
+          'clear',
+      disposition: ErrorDisposition.report,
+      matches: (error, _) => error is SyncRecordsRejected || error is SyncPayloadUnreadable,
     ),
     ErrorRule(
       id: 'web-focus-traversal-null',

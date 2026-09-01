@@ -51,6 +51,48 @@ class SyncTransportNotReady implements Exception {
   String toString() => 'SyncTransportNotReady: $message';
 }
 
+/// Records the server accepted the round but refused individually, so the app
+/// layer can report them somewhere a developer will see.
+///
+/// An exception rather than a plain callback argument so it travels the same
+/// `onError` path every other sync failure does, and `ErrorPolicy` classifies
+/// it in the one place that decision belongs.
+///
+/// Carries uuids and the server's error KEYS only — never a rejected record's
+/// field values, which hold callsigns, names and notes.
+class SyncRecordsRejected implements Exception {
+  SyncRecordsRejected(this.side, this.reasonsByUuid);
+
+  /// `operations` or `qsos`.
+  final String side;
+  final Map<String, String> reasonsByUuid;
+
+  @override
+  String toString() =>
+      'SyncRecordsRejected: the server refused ${reasonsByUuid.length} $side — '
+      '${reasonsByUuid.entries.map((e) => '${e.key}: ${e.value}').join('; ')}';
+}
+
+/// Records the server could not read at all, so it stored none of them and
+/// can name none of them.
+///
+/// Distinct from [SyncRecordsRejected] because there is no uuid to hold dirty:
+/// the entries were unreadable, so this device cannot tell which of the ones
+/// it sent are missing, and they are all marked sent. That makes this the one
+/// refusal that still loses data silently — which is exactly why it must be
+/// reported. An unusable payload is a fault in what this app WROTE, so the
+/// count is the whole signal.
+class SyncPayloadUnreadable implements Exception {
+  SyncPayloadUnreadable(this.side, this.count);
+
+  /// `operations` or `qsos`.
+  final String side;
+  final int count;
+
+  @override
+  String toString() => 'SyncPayloadUnreadable: the server could not read $count $side this device sent';
+}
+
 /// Sync-related state the engine reads/writes, backed by the app's
 /// SettingsService (SharedPreferences) rather than a drift table — see the
 /// design note in DESIGN.md §6: it's a handful of scalars, not per-row data.
@@ -147,6 +189,10 @@ class SyncEngine {
 
   /// Diagnostic sink (e.g. `debugPrint` in the app). Sync failures degrade
   /// silently into backoff by design, but they must not be *invisible*.
+  /// See [defaultRefusalQuarantine]. Injectable so a test can drive the
+  /// window; the real clock behind it cannot be wound forward.
+  final Duration refusalQuarantine;
+
   final void Function(String message)? log;
 
   /// Reports a round failure to crash reporting, in addition to [log]'s
@@ -259,6 +305,40 @@ class SyncEngine {
   };
 
   int _largeBatchSize = defaultLargeBatchSize;
+
+  /// How long a refused record is held out of the push batch before being
+  /// offered again.
+  ///
+  /// Not "never again": a refusal is frequently temporary — a permission
+  /// granted, an operation's owner adding this device, a server-side fix — and
+  /// a record parked for good would be exactly the silent loss this whole
+  /// change exists to end. Not "immediately" either: `unsyncedBatch` is a
+  /// LIMIT ordered by time, so a refused record that sorts early refills the
+  /// batch every round and starves everything behind it.
+  static const defaultRefusalQuarantine = Duration(minutes: 10);
+
+  /// `<side>:<uuid>:<reason>` for every refusal already sent to the crash
+  /// backend this session — see [_reportRejections]. Session-scoped on
+  /// purpose: a relaunch is the developer's cue that the state may have
+  /// changed, and an unbounded lifetime would be a leak on a device stuck
+  /// refusing a large batch.
+  final Set<String> _reportedRejections = {};
+
+  /// Refused record uuids, to the real-clock millisecond their quarantine
+  /// ends. Two maps because the two sides are selected by separate queries.
+  ///
+  /// The REAL clock, never the app clock: this is a retry interval, and a
+  /// travelled session would otherwise either expire every quarantine at once
+  /// or never expire one (docs/design/time.md §4).
+  final Map<String, int> _quarantinedOperations = {};
+  final Map<String, int> _quarantinedQsos = {};
+
+  /// A ceiling on each quarantine map, so the `NOT IN` these build stays a
+  /// statement SQLite will accept. Past it the oldest entries are dropped and
+  /// simply get offered again — a device refusing more records than this has a
+  /// systemic problem the log already names, and starving its queue further
+  /// would not help.
+  static const _maxQuarantined = 400;
   Duration _loopDelay = defaultLoopDelay;
   int _errorCount = 0;
   int _authErrorStreak = 0;
@@ -312,6 +392,7 @@ class SyncEngine {
     required this.qsos,
     required this.transport,
     required this.settings,
+    this.refusalQuarantine = defaultRefusalQuarantine,
     this.log,
     this.onProgress,
     this.onError,
@@ -400,6 +481,13 @@ class SyncEngine {
     if (settings.state['pendingAccountUUID'] == null) return false;
 
     _generation++; // invalidate any round whose transport call is in flight
+    // A reconciliation re-pushes everything, possibly against a different
+    // account, so what was refused before says nothing about what will be
+    // refused now — and a refusal already reported must be heard again if it
+    // survives the change.
+    _reportedRejections.clear();
+    _quarantinedOperations.clear();
+    _quarantinedQsos.clear();
     if (choice == SyncAccountChoice.replace) {
       await _backupAndClearAll();
     } else {
@@ -475,7 +563,10 @@ class SyncEngine {
     // live tables empty with no UI onto the backups and nothing that would ever
     // refill them.
     if (travelRefusesSync) return false;
-    _generation++; // see resolveAccountChange
+    _generation++;
+    _reportedRejections.clear(); // see resolveAccountChange
+    _quarantinedOperations.clear();
+    _quarantinedQsos.clear();
     await _backupAndClearAll();
 
     final state = settings.state;
@@ -509,7 +600,9 @@ class SyncEngine {
   /// operations alone when there are no pending QSOs — same shape as
   /// `sync.js`'s batch selection.
   Future<SyncBatch> selectBatch({required int qsoBatchSize, required int operationBatchSize}) async {
-    final pendingQsos = await qsos.unsyncedBatch(qsoBatchSize);
+    final skipQsos = _activeQuarantine(_quarantinedQsos);
+    final skipOperations = _activeQuarantine(_quarantinedOperations);
+    final pendingQsos = await qsos.unsyncedBatch(qsoBatchSize, excluding: skipQsos);
     if (pendingQsos.isNotEmpty) {
       final operationUuids = {for (final q in pendingQsos) q.operationUuid}.toList();
       var pendingOperations = await operations.byUuids(operationUuids, onlyUnsynced: true);
@@ -518,7 +611,33 @@ class SyncEngine {
       }
       return SyncBatch(operations: pendingOperations, qsos: pendingQsos);
     }
-    return SyncBatch(operations: await operations.unsyncedBatch(operationBatchSize));
+    return SyncBatch(operations: await operations.unsyncedBatch(operationBatchSize, excluding: skipOperations));
+  }
+
+  /// The uuids still inside their quarantine window, dropping the ones whose
+  /// window has passed so they are offered again.
+  Set<String> _activeQuarantine(Map<String, int> quarantine) {
+    if (quarantine.isEmpty) return const {};
+    final now = realNowMillis();
+    quarantine.removeWhere((_, until) => until <= now);
+    return quarantine.keys.toSet();
+  }
+
+  /// Holds refused uuids out of the next batches — see [refusalQuarantine].
+  /// Re-refusing an already-quarantined record restarts its window, which is
+  /// what keeps a permanently refused one out of the way while a transient one
+  /// comes back on its own.
+  void _quarantine(Iterable<String> uuids, Map<String, int> quarantine) {
+    if (uuids.isEmpty) return;
+    final until = realNowMillis() + refusalQuarantine.inMilliseconds;
+    for (final uuid in uuids) {
+      quarantine[uuid] = until;
+    }
+    if (quarantine.length <= _maxQuarantined) return;
+    final byExpiry = quarantine.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
+    for (final entry in byExpiry.take(quarantine.length - _maxQuarantined)) {
+      quarantine.remove(entry.key);
+    }
   }
 
   /// Runs one round of syncing.
@@ -668,11 +787,37 @@ class SyncEngine {
         return;
       }
 
+      // Records the server refused, per uuid. Marking one synced would leave
+      // it flagged as sent while the server holds nothing of it — the local
+      // copy then diverges permanently, and no later round ever offers it
+      // again, because "pending" is the only thing that makes a round send
+      // anything. So a refused record stays dirty.
+      final rejectedOperations = _rejectedUuids(response, 'operations');
+      final rejectedQsos = _rejectedUuids(response, 'qsos');
+      _reportRejections(rejectedOperations, 'operations');
+      _reportRejections(rejectedQsos, 'qsos');
+      _reportUnreadable(response, 'operations');
+      _reportUnreadable(response, 'qsos');
+      _quarantine(rejectedOperations.keys, _quarantinedOperations);
+      _quarantine(rejectedQsos.keys, _quarantinedQsos);
+
       // Passes the sent models, not just uuids: markSynced compares each
       // row's revision stamp against the copy that actually went out, so an
       // edit made during the network await above stays dirty and re-pushes.
-      await operations.markSynced(batch.operations);
-      await qsos.markSynced(batch.qsos);
+      final acceptedOperations = [for (final o in batch.operations) if (!rejectedOperations.containsKey(o.uuid)) o];
+      final acceptedQsos = [for (final q in batch.qsos) if (!rejectedQsos.containsKey(q.uuid)) q];
+      await operations.markSynced(acceptedOperations);
+      await qsos.markSynced(acceptedQsos);
+
+      // Whether this round moved the push forward at all. Two ways it did not,
+      // and they need the same answer: nothing was sent (everything still
+      // pending is quarantined), or everything sent came back refused. In both
+      // cases only WAITING changes the outcome, and the zero-delay drain below
+      // would otherwise loop against the server for as long as the app runs —
+      // records stay dirty by design here, so "something is pending" is no
+      // longer evidence that trying again immediately can achieve anything.
+      final pushProgressed =
+          !batch.isEmpty && (acceptedOperations.isNotEmpty || acceptedQsos.isNotEmpty);
 
       // The deferred half of a Test Operation purge (`OperationsRepository.
       // purge`): sweeps every operation that is confirmed both `purged` and
@@ -740,7 +885,8 @@ class SyncEngine {
       _errorCount = 0;
 
       if (!smallBatch) {
-        final morePending = await operations.hasUnsynced() || await qsos.hasUnsynced();
+        final morePending =
+            pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced());
         final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
         _scheduleLoop((morePending || (fullPage && !_backfillStuckAtCap)) ? Duration.zero : _loopDelay);
       }
@@ -792,6 +938,124 @@ class SyncEngine {
   static String? _cursorFrom(Map<String, dynamic> meta, String side) {
     final value = (meta[side] as Map?)?['next_cursor'] ?? (meta[side] as Map?)?['nextCursor'];
     return value is String && value.isNotEmpty ? value : null;
+  }
+
+  /// Keys inside `errors[<side>]` that are NOT a record uuid.
+  ///
+  /// `pagination` is the cursor refusal [_cursorRefused] reads, and
+  /// `_malformed` is the server's count of payload entries it could not read
+  /// at all (never a uuid, because the entries it names had none it could
+  /// trust). Treating either as a rejected record would hold a row dirty
+  /// forever against a uuid nothing will ever match.
+  static const _nonRecordErrorKeys = {'pagination', '_malformed'};
+
+  /// Which records of [side] the server refused, uuid to its reported reason.
+  ///
+  /// Every hop is checked rather than cast, for the reason [_cursorFrom]
+  /// gives: this runs before the state write, so a `TypeError` on an error
+  /// block shaped differently than expected would cost the round its cursor
+  /// AND its watermark, and then throw again on the identical page every
+  /// round after.
+  static Map<String, String> _rejectedUuids(Map<String, dynamic> response, String side) {
+    final errors = response['errors'];
+    if (errors is! Map) return const {};
+    final forSide = errors[side];
+    if (forSide is! Map) return const {};
+    final rejected = <String, String>{};
+    for (final entry in forSide.entries) {
+      final key = entry.key;
+      if (key is! String || _nonRecordErrorKeys.contains(key)) continue;
+      rejected[key] = _describeRejection(entry.value);
+    }
+    return rejected;
+  }
+
+  /// The only keys whose VALUE may travel: they name the error, never the
+  /// record. An allowlist rather than a denylist because this string leaves
+  /// the device — Rails' `errors.details` is `{field: [{error: :symbol, ...}]}`
+  /// and several stock validators merge the offending value into those
+  /// options (`:taken` carries `value:`, `:inclusion` likewise), so anything
+  /// not named here is assumed to be the operator's own data.
+  static const _rejectionReasonKeys = {'error', 'type'};
+
+  /// A rejection reason flattened to one short line for the log and the crash
+  /// report. Keeps the server's error names and the FIELD names it attached
+  /// them to; never a field's contents, which are callsigns, names and notes.
+  static String _describeRejection(Object? detail) {
+    final reasons = <String>{};
+    void walk(Object? node) {
+      if (node is List) {
+        for (final item in node) {
+          walk(item);
+        }
+      } else if (node is Map) {
+        for (final entry in node.entries) {
+          final key = entry.key;
+          if (key is String && _rejectionReasonKeys.contains(key)) {
+            reasons.add('${entry.value}');
+            continue;
+          }
+          // The key names a field of the record; its value is that field's
+          // content and must not be added, only descended into.
+          reasons.add('$key');
+          walk(entry.value);
+        }
+      }
+    }
+
+    // A scalar detail IS the reason — the server naming it directly rather
+    // than in Rails' `{field: [{error: ...}]}` shape. Taken before the walk,
+    // which only descends collections: without this it yields nothing, and
+    // every distinct reason for one record would collapse onto the same
+    // 'refused' dedupe key, so a refusal that CHANGED would never be heard.
+    if (detail is String) return detail;
+    walk(detail);
+    return reasons.isEmpty ? 'refused' : reasons.join(', ');
+  }
+
+  /// The server's count of entries it could not read in what this device
+  /// sent. Reported once per session per side and count: the records behind it
+  /// are marked sent like any other, because nothing here says which they
+  /// were, so this line is the only trace they existed.
+  void _reportUnreadable(Map<String, dynamic> response, String side) {
+    final errors = response['errors'];
+    if (errors is! Map) return;
+    final forSide = errors[side];
+    if (forSide is! Map) return;
+    final entries = forSide['_malformed'];
+    if (entries is! List) return;
+    var count = 0;
+    for (final entry in entries) {
+      if (entry is Map) count += (entry['count'] as num?)?.toInt() ?? 0;
+    }
+    if (count == 0) return;
+    log?.call('[sync] server could not read $count $side this device sent');
+    if (!_reportedRejections.add('$side:_malformed:$count')) return;
+    onError?.call(SyncPayloadUnreadable(side, count), null, context: 'sync:unreadable:$side');
+  }
+
+  /// Console and crash reporting, never the operator: "the server refused
+  /// this QSO" names nothing they can do about it, and a notice that cannot
+  /// be answered is worse than none. `onError` carries it so `ErrorPolicy`
+  /// decides its disposition in the one place that decision is made.
+  void _reportRejections(Map<String, String> rejected, String side) {
+    if (rejected.isEmpty) return;
+    final summary = rejected.entries.map((e) => '${e.key}: ${e.value}').join('; ');
+    // The log takes every round's refusals: a developer watching the console
+    // is watching it live, and silence there would hide a loop.
+    log?.call('[sync] server refused ${rejected.length} $side (left dirty): $summary');
+    // The crash backend takes each one ONCE. A refused record stays dirty by
+    // design, so it is re-sent and re-refused every round for as long as the
+    // app runs — reporting each time would upload thousands of copies of one
+    // fact. Keyed by reason as well as uuid, so a record whose refusal
+    // CHANGES (a permission granted, a different validation failing) is heard
+    // again.
+    final fresh = {
+      for (final entry in rejected.entries)
+        if (_reportedRejections.add('$side:${entry.key}:${entry.value}')) entry.key: entry.value,
+    };
+    if (fresh.isEmpty) return;
+    onError?.call(SyncRecordsRejected(side, fresh), null, context: 'sync:rejected:$side');
   }
 
   /// True when the server refused the cursor we sent for [side] (malformed, or minted for a
