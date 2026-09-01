@@ -118,7 +118,12 @@ Everything here fails at build or install time, often confusingly:
 
 - **Apple Developer ID** certificate — expires; renewal changes the identity.
 - **Notarization** credentials (App Store Connect API key).
-- **Windows Trusted Signing** — see [releases.md](releases.md).
+- **Windows Artifact Signing** (formerly Trusted Signing) — the signing
+  certificate itself is issued per-signature and never needs renewing, so the
+  two things that do expire are easy to forget: the Azure service principal's
+  **client secret** (24 months at most, and Windows releases fail the moment it
+  lapses) and the **identity validation** behind the certificate profile, which
+  is renewed separately. See [releases.md](releases.md).
 - **Sparkle / WinSparkle appcasts** — the feeds macOS/Windows self-update
   from. A published appcast pointing at a missing or unsigned artifact breaks
   updates for people who already installed.

@@ -1,7 +1,8 @@
 ; Ham2K Logger — Windows per-user installer (Inno Setup 6)
 ; ---------------------------------------------------------------------------
 ; Compiled in CI after `flutter build windows`, then Authenticode-signed
-; (Azure Trusted Signing) as a post-step — see codemagic.yaml. Per-EDITION via
+; (Azure Artifact Signing) as a post-step by the Windows build script that
+; invokes this file. Per-EDITION via
 ; /DHaloEdition=dev|next|prod, mirroring the macOS/iOS HALO_EDITION seam and the
 ; Windows runner's own halo_edition.h (docs/releases.md §2.6).
 ;
