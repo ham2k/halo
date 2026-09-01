@@ -3857,55 +3857,55 @@ class Translations$settings$station$en {
 	String get trackFieldKey => 'CW Key';
 
 	/// en: 'Connect delay (ms)'
-	String get fakeConnectDelay => 'Connect delay (ms)';
+	String get placeholderConnectDelay => 'Connect delay (ms)';
 
 	/// en: 'How long the simulated handshake takes. Blank or 0 connects instantly.'
-	String get fakeConnectDelayDescription => 'How long the simulated handshake takes. Blank or 0 connects instantly.';
+	String get placeholderConnectDelayDescription => 'How long the simulated handshake takes. Blank or 0 connects instantly.';
 
 	/// en: 'Drop after (seconds)'
-	String get fakeDropAfter => 'Drop after (seconds)';
+	String get placeholderDropAfter => 'Drop after (seconds)';
 
 	/// en: 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.'
-	String get fakeDropAfterDescription => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.';
+	String get placeholderDropAfterDescription => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.';
 
 	/// en: 'Always fail to connect'
-	String get fakeFailConnect => 'Always fail to connect';
+	String get placeholderFailConnect => 'Always fail to connect';
 
-	/// en: 'The fake radio was told to refuse this connection'
-	String get fakeConnectFailure => 'The fake radio was told to refuse this connection';
+	/// en: 'The placeholder radio was told to refuse this connection'
+	String get placeholderConnectFailure => 'The placeholder radio was told to refuse this connection';
 
 	/// en: 'Frequency (kHz)'
-	String get fakeFreq => 'Frequency (kHz)';
+	String get placeholderFreq => 'Frequency (kHz)';
 
-	/// en: 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.'
-	String get fakeFreqDescription => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.';
+	/// en: 'Where the placeholder radio starts. It reports back whatever the app tunes it to afterwards.'
+	String get placeholderFreqDescription => 'Where the placeholder radio starts. It reports back whatever the app tunes it to afterwards.';
 
 	/// en: 'Mode'
-	String get fakeMode => 'Mode';
+	String get placeholderMode => 'Mode';
 
-	/// en: 'The mode the fake radio starts on, e.g. USB, CW, FT8.'
-	String get fakeModeDescription => 'The mode the fake radio starts on, e.g. USB, CW, FT8.';
+	/// en: 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.'
+	String get placeholderModeDescription => 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.';
 
 	/// en: 'Power (watts)'
-	String get fakePower => 'Power (watts)';
+	String get placeholderPower => 'Power (watts)';
 
 	/// en: 'Reply delay (ms)'
-	String get fakeReplyDelay => 'Reply delay (ms)';
+	String get placeholderReplyDelay => 'Reply delay (ms)';
 
-	/// en: 'How long the fake radio takes to report a change back. Blank or 0 replies at once.'
-	String get fakeReplyDelayDescription => 'How long the fake radio takes to report a change back. Blank or 0 replies at once.';
+	/// en: 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.'
+	String get placeholderReplyDelayDescription => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.';
 
 	/// en: 'Simulated'
-	String get fakeDiagnostic => 'Simulated';
+	String get placeholderDiagnostic => 'Simulated';
 
 	/// en: 'Must be a whole number, 0 or more'
-	String get fakeWholeNumberInvalid => 'Must be a whole number, 0 or more';
+	String get placeholderWholeNumberInvalid => 'Must be a whole number, 0 or more';
 
 	/// en: 'Must be a frequency in kHz, greater than zero'
-	String get fakeFreqInvalid => 'Must be a frequency in kHz, greater than zero';
+	String get placeholderFreqInvalid => 'Must be a frequency in kHz, greater than zero';
 
 	/// en: 'Must be a mode name, e.g. USB, CW, FT8'
-	String get fakeModeInvalid => 'Must be a mode name, e.g. USB, CW, FT8';
+	String get placeholderModeInvalid => 'Must be a mode name, e.g. USB, CW, FT8';
 
 	/// en: 'Layout'
 	String get switchLayout => 'Layout';
@@ -5313,8 +5313,8 @@ class Translations$settings$station$models$en {
 	/// en: 'CW Key'
 	String get key => 'CW Key';
 
-	/// en: 'Fake Radio'
-	String get fakeRadio => 'Fake Radio';
+	/// en: 'Generic Placeholder Radio (no control)'
+	String get placeholderRadio => 'Generic Placeholder Radio (no control)';
 
 	/// en: '4O3A Antenna Genius'
 	String get antennaGenius => '4O3A Antenna Genius';
@@ -6515,7 +6515,7 @@ extension on Translations {
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
-			'settings.station.models.fakeRadio' => 'Fake Radio',
+			'settings.station.models.placeholderRadio' => 'Generic Placeholder Radio (no control)',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.transports.network' => 'Network',
@@ -6587,23 +6587,23 @@ extension on Translations {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
-			'settings.station.fakeConnectDelay' => 'Connect delay (ms)',
-			'settings.station.fakeConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
-			'settings.station.fakeDropAfter' => 'Drop after (seconds)',
-			'settings.station.fakeDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
-			'settings.station.fakeFailConnect' => 'Always fail to connect',
-			'settings.station.fakeConnectFailure' => 'The fake radio was told to refuse this connection',
-			'settings.station.fakeFreq' => 'Frequency (kHz)',
-			'settings.station.fakeFreqDescription' => 'Where the fake radio starts. It reports back whatever the app tunes it to afterwards.',
-			'settings.station.fakeMode' => 'Mode',
-			'settings.station.fakeModeDescription' => 'The mode the fake radio starts on, e.g. USB, CW, FT8.',
-			'settings.station.fakePower' => 'Power (watts)',
-			'settings.station.fakeReplyDelay' => 'Reply delay (ms)',
-			'settings.station.fakeReplyDelayDescription' => 'How long the fake radio takes to report a change back. Blank or 0 replies at once.',
-			'settings.station.fakeDiagnostic' => 'Simulated',
-			'settings.station.fakeWholeNumberInvalid' => 'Must be a whole number, 0 or more',
-			'settings.station.fakeFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
-			'settings.station.fakeModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
+			'settings.station.placeholderConnectDelay' => 'Connect delay (ms)',
+			'settings.station.placeholderConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
+			'settings.station.placeholderDropAfter' => 'Drop after (seconds)',
+			'settings.station.placeholderDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
+			'settings.station.placeholderFailConnect' => 'Always fail to connect',
+			'settings.station.placeholderConnectFailure' => 'The placeholder radio was told to refuse this connection',
+			'settings.station.placeholderFreq' => 'Frequency (kHz)',
+			'settings.station.placeholderFreqDescription' => 'Where the placeholder radio starts. It reports back whatever the app tunes it to afterwards.',
+			'settings.station.placeholderMode' => 'Mode',
+			'settings.station.placeholderModeDescription' => 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.',
+			'settings.station.placeholderPower' => 'Power (watts)',
+			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
+			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
+			'settings.station.placeholderDiagnostic' => 'Simulated',
+			'settings.station.placeholderWholeNumberInvalid' => 'Must be a whole number, 0 or more',
+			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
+			'settings.station.placeholderModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
 			'settings.station.switchLayout' => 'Layout',
 			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',

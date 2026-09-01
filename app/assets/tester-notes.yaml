@@ -9,6 +9,7 @@ upcoming:
     - The operator callsign now travels with the operation, stored per operating position
     - "Edit QSO can now set the operator, and the position at a multi-station"
     - "New optional Power control in the logging row: turn it on to log the watts of each QSO"
+    - "Add a Generic Placeholder Radio to log with no rig connected"
 
 "158":
   changes:

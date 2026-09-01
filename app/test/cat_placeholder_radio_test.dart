@@ -1,17 +1,16 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Fake Radio pairing: a rig that isn't there, for exercising everything
-// above a driver on a build with no socket and no serial port.
+// The Placeholder Radio pairing: a rig that isn't there, for exercising
+// everything above a driver on a build with no socket and no serial port.
 //
 // What these tests defend is the pairing's usefulness rather than a
 // protocol, because there is no protocol. Three of its properties are load
-// bearing and each fails silently: it must connect on EVERY platform (a fake
-// borrowing the TCP transport would be absent from the one build it exists
-// for), it must report every set straight back (a rig that stores and stays
-// quiet looks exactly like a dead one), and it must stay in the registry
-// when developer mode goes off (a filtered registry orphans a node the
-// operator already configured, with its settings unreachable inside it).
+// bearing and each fails silently: it must connect on EVERY platform (a
+// placeholder borrowing the TCP transport would be absent from the one
+// build it exists for), it must report every set straight back (a rig that
+// stores and stays quiet looks exactly like a dead one), and it must be
+// findable in the Add dialog, which is the only way an operator meets it.
 
 import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
@@ -24,49 +23,50 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
-import 'package:ham2k_logger/services/cat/drivers/fake_radio_driver.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/radio_service.dart';
+import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
-import 'package:ham2k_logger/services/cat/transports/fake_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/placeholder_transport.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final registry = EquipmentRegistry();
-  final type = registry.typeFor('fake-radio')!;
+  final type = registry.typeFor('placeholder-radio')!;
 
   group('the catalogue entry', () {
     test('is a transceiver on a transport of its own', () {
       expect(type.category, kCategoryTransceiver);
-      expect(type.transportKey, FakeTransport.transportKey);
-      expect(type.driver.key, 'fake-radio');
+      expect(type.transportKey, PlaceholderTransport.transportKey);
+      expect(type.driver.key, 'placeholder-radio');
     });
 
     test('connects on every platform, unlike every other socket-shaped rig', () {
       // The reason this pairing has its own transport instead of borrowing
-      // TCP: the TCP stub reports false on web, so a fake built on it would
-      // be filtered out of the Add dialog in the build that has no other way
-      // to connect a radio at all.
+      // TCP: the TCP stub reports false on web, so a placeholder built on
+      // it would be filtered out of the Add dialog in the build that has no
+      // other way to connect a radio at all.
       expect(type.isSupportedOnThisPlatform, isTrue);
-      expect(const FakeTransport().isSupportedOnThisPlatform, isTrue);
+      expect(const PlaceholderTransport().isSupportedOnThisPlatform, isTrue);
     });
 
-    test('is offered only under developer mode, but never removed from the registry', () {
-      // Both halves matter. The flag off would put a fake rig in every
-      // operator's catalogue; a registry that filtered instead would strip
-      // an already-configured node of the type it resolves through the
-      // moment developer mode was switched back off.
-      final model = registry.modelFor('fake-radio')!;
-      expect(model.developerOnly, isTrue);
-      expect(registry.typeFor('fake-radio'), isNotNull);
-      expect(registry.models.map((m) => m.key), contains('fake-radio'));
+    test('is in the searchable catalogue, like a radio with a name on it', () {
+      // Not [EquipmentModel.hiddenFromCatalog] like the generic antenna and
+      // key nodes: an operator with no rig on the desk is the audience, and
+      // an entry they cannot find in the Add dialog reaches none of them.
+      final model = registry.modelFor('placeholder-radio')!;
+      expect(model.hiddenFromCatalog, isFalse);
+      expect(registry.typeFor('placeholder-radio'), isNotNull);
+      expect(registry.models.map((m) => m.key), contains('placeholder-radio'));
     });
 
     test('comes up somewhere plausible rather than reporting nothing', () {
-      expect(type.defaultConfig['fakeFreq'], fakeRadioDefaultFreqKHz);
-      expect(type.defaultConfig['fakeMode'], fakeRadioDefaultMode);
-      expect(type.defaultConfig['fakePower'], fakeRadioDefaultWatts);
+      expect(type.defaultConfig['placeholderFreq'], placeholderRadioDefaultFreqKHz);
+      expect(type.defaultConfig['placeholderMode'], placeholderRadioDefaultMode);
+      expect(type.defaultConfig['placeholderPower'], placeholderRadioDefaultWatts);
     });
 
     test('every simulation knob it offers is a key it actually reads', () {
@@ -78,13 +78,13 @@ void main() {
           if (e['type'] == 'field') e['key'] as String,
       };
       expect(fieldKeys, {
-        'fakeConnectDelay',
-        'fakeDropAfter',
-        'fakeFailConnect',
-        'fakeFreq',
-        'fakeMode',
-        'fakePower',
-        'fakeReplyDelay',
+        'placeholderConnectDelay',
+        'placeholderDropAfter',
+        'placeholderFailConnect',
+        'placeholderFreq',
+        'placeholderMode',
+        'placeholderPower',
+        'placeholderReplyDelay',
       });
       expect(type.validate(type.defaultConfig), isNull,
           reason: 'the prefilled form must be submittable as it opens');
@@ -98,19 +98,26 @@ void main() {
       // the operator did set; refusing it without a prefill would make an
       // untouched form refuse to submit. This is the reachable case, not the
       // String 'abc' the form can never produce.
-      for (final key in ['fakeConnectDelay', 'fakeDropAfter', 'fakeReplyDelay', 'fakePower', 'fakeFreq']) {
+      const numericKeys = [
+        'placeholderConnectDelay',
+        'placeholderDropAfter',
+        'placeholderReplyDelay',
+        'placeholderPower',
+        'placeholderFreq',
+      ];
+      for (final key in numericKeys) {
         expect(type.defaultConfig, contains(key), reason: '$key would open blank and refuse to submit');
         expect(type.validate({...type.defaultConfig, key: null}), isNotNull,
             reason: '$key accepts the null an unparseable entry arrives as');
       }
-      expect(type.validate({...type.defaultConfig, 'fakeConnectDelay': -1}), isNotNull);
-      expect(type.validate({...type.defaultConfig, 'fakeFreq': 0}), isNotNull);
+      expect(type.validate({...type.defaultConfig, 'placeholderConnectDelay': -1}), isNotNull);
+      expect(type.validate({...type.defaultConfig, 'placeholderFreq': 0}), isNotNull);
       // The mode is a `text` field, so its blank really is blank — no
       // ambiguity to refuse, and the default covers it.
-      expect(type.validate({...type.defaultConfig, 'fakeMode': ''}), isNull);
+      expect(type.validate({...type.defaultConfig, 'placeholderMode': ''}), isNull);
       // But a typo must not reach a reading: it goes through RadioService
       // onto logged QSOs and out to ADIF.
-      expect(type.validate({...type.defaultConfig, 'fakeMode': 'US B'}), isNotNull);
+      expect(type.validate({...type.defaultConfig, 'placeholderMode': 'US B'}), isNotNull);
     });
 
     test('a mode stored as something other than a String does not throw', () {
@@ -118,10 +125,10 @@ void main() {
       // with the connection already open and its drop timer running. Config
       // is round-tripped through JSON, which is why nothing else in this
       // layer casts.
-      expect(modeFromConfig(const {'fakeMode': 7200}), '7200');
-      expect(modeFromConfig(const {}), fakeRadioDefaultMode);
-      expect(freqFromConfig(const {'fakeFreq': '7200'}), 7200.0);
-      expect(freqFromConfig(const {'fakeFreq': 'nonsense'}), isNull);
+      expect(modeFromConfig(const {'placeholderMode': 7200}), '7200');
+      expect(modeFromConfig(const {}), placeholderRadioDefaultMode);
+      expect(freqFromConfig(const {'placeholderFreq': '7200'}), 7200.0);
+      expect(freqFromConfig(const {'placeholderFreq': 'nonsense'}), isNull);
     });
   });
 
@@ -133,7 +140,7 @@ void main() {
       // A transceiver's session, so the tuning half of the interface is
       // reachable — createSession answers with the connection half alone.
       final session =
-          const FakeRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig))
+          const PlaceholderRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig))
               as TransceiverSession;
       session.startUpdates();
       expect(sink.readings.last, const VfoReading(freqKHz: 7200.0, mode: 'LSB'));
@@ -148,7 +155,7 @@ void main() {
       session.setPower(100);
       expect(sink.watts.last, 100);
 
-      // The one thing on screen that tells a fake rig from a real one: a
+      // What tells a placeholder rig from a real one in developer mode: a
       // green row cycling through frequencies is exactly what a working
       // radio looks like.
       expect(sink.diagnostic, isNotNull);
@@ -159,23 +166,23 @@ void main() {
       // Null is not "unknown" here: `_snapQuietPeriod` adds a polling
       // session's interval to the operator's debounce and adds nothing for a
       // pushing one. A stand-in interval would silently lengthen every snap.
-      final session = const FakeRadioDriver().createSession(sinkFor(), const {});
+      final session = const PlaceholderRadioDriver().createSession(sinkFor(), const {});
       expect(session.expectedUpdateInterval, isNull);
       session.teardown();
     });
 
     test('keeps restating itself, so a rig left alone never reads as silent', () {
       // CatService marks a connected radio stale after 30s without a
-      // reading. A fake rig is precisely the one an operator leaves
+      // reading. A placeholder rig is precisely the one an operator leaves
       // connected while checking something else on screen.
       fakeAsync((async) {
         final sink = sinkFor();
-        final session = const FakeRadioDriver().createSession(sink, const {});
+        final session = const PlaceholderRadioDriver().createSession(sink, const {});
         session.startUpdates();
         final atStart = sink.readings.length;
         async.elapse(const Duration(seconds: 29));
         expect(sink.readings.length, greaterThan(atStart));
-        expect(sink.readings.last.freqKHz, fakeRadioDefaultFreqKHz);
+        expect(sink.readings.last.freqKHz, placeholderRadioDefaultFreqKHz);
 
         // And stops the moment the session is done: a heartbeat outliving
         // its connection reports a reading for a radio that is gone.
@@ -190,7 +197,7 @@ void main() {
       fakeAsync((async) {
         final sink = sinkFor();
         final session =
-            const FakeRadioDriver().createSession(sink, {'fakeReplyDelay': 500}) as TransceiverSession;
+            const PlaceholderRadioDriver().createSession(sink, {'placeholderReplyDelay': 500}) as TransceiverSession;
         session.setFrequency(10136.0);
         expect(sink.readings, isEmpty, reason: 'the whole point of the knob is the round trip taking time');
         async.elapse(const Duration(milliseconds: 500));
@@ -206,14 +213,14 @@ void main() {
       // reports it — so a knob meant to exercise the silent retry loop would
       // instead exercise the crash backend.
       expect(
-        () => const FakeTransport().connect({'fakeFailConnect': true}, cancel: CatCancelToken()),
+        () => const PlaceholderTransport().connect({'placeholderFailConnect': true}, cancel: CatCancelToken()),
         throwsA(isA<CatUnreachable>()),
       );
     });
 
     test('a cancelled connect gives up instead of holding the attempt open', () async {
       final cancel = CatCancelToken();
-      final pending = const FakeTransport().connect({'fakeConnectDelay': 60000}, cancel: cancel);
+      final pending = const PlaceholderTransport().connect({'placeholderConnectDelay': 60000}, cancel: cancel);
       cancel.cancel();
       await expectLater(pending, throwsA(isA<CatCancelledException>()));
     });
@@ -221,8 +228,8 @@ void main() {
     test('a drop closes the connection on its own', () {
       fakeAsync((async) {
         var closed = false;
-        const FakeTransport()
-            .connect({'fakeDropAfter': 5}, cancel: CatCancelToken())
+        const PlaceholderTransport()
+            .connect({'placeholderDropAfter': 5}, cancel: CatCancelToken())
             .then((connection) => connection.closed.then((_) => closed = true));
         async.elapse(const Duration(seconds: 4));
         expect(closed, isFalse);
@@ -232,11 +239,37 @@ void main() {
     });
   });
 
-  group('the developer-mode gate, as the Add dialog actually applies it', () {
-    // The flag alone proves nothing: deleting the one line that reads it in
-    // station_panel.dart leaves every assertion above green, and the
-    // regression it hides — a fake rig in every operator's catalogue — is
-    // exactly what the flag exists to prevent.
+  group('the node left behind by the rename', () {
+    // This change renamed the stored key with no migration, so an operator
+    // who had the old entry configured keeps a node nothing can resolve.
+    // That is approved — orphaning it QUIETLY is not, and the error the app
+    // shows for it is not merely a diagnostic: the Radio panel renders
+    // `EquipmentState.error` as its primary text and its Semantics label, in
+    // the slot a frequency belongs in.
+    test('reports an unrecognized type in the operator\'s own language', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final settings = SettingsService(prefs);
+      final cat = CatService(settings, radio: RadioService(prefs, writeDelay: Duration.zero));
+      addTearDown(cat.dispose);
+
+      final node = await cat.addNode(typeKey: 'fake-radio', config: const {});
+      await cat.connect(node.uuid);
+
+      final state = cat.stateFor(node.uuid);
+      expect(state.status, EquipmentStatus.error);
+      expect(state.error, t.settings.station.unknownType(typeKey: 'fake-radio'));
+      // The raw key is what an equipment report needs, and what the operator
+      // must not be handed instead of a sentence.
+      expect(state.errorDetail, contains('fake-radio'));
+    });
+  });
+
+  group('the Add dialog, which is where an operator actually meets it', () {
+    // The registry assertions above prove nothing about what the dialog
+    // shows: station_panel.dart filters the catalogue itself, so a filter
+    // that dropped this entry would leave every one of them green while the
+    // operator it exists for never sees it.
     late HaLoServices services;
 
     setUp(() async {
@@ -261,17 +294,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    testWidgets('offers Fake Radio once developer mode is on', (tester) async {
-      await services.settings.setDeveloperMode(true);
+    testWidgets('offers it alongside every real radio', (tester) async {
       await openAddDialog(tester);
-      expect(find.text(t.settings.station.models.fakeRadio), findsOneWidget);
-    });
-
-    testWidgets('and not otherwise, while every real radio stays', (tester) async {
-      await openAddDialog(tester);
-      expect(find.text(t.settings.station.models.fakeRadio), findsNothing);
-      // The other half of the same assertion: a gate that filtered the whole
-      // catalogue would pass the line above and be catastrophically wrong.
+      // Narrowed with the search box rather than scrolled: the catalogue is
+      // a lazy list, so a row an assertion names can simply never be built.
+      await tester.enterText(find.byType(TextField).first, 'generic');
+      await tester.pump();
+      expect(find.text(t.settings.station.models.placeholderRadio), findsOneWidget);
+      // A dialog showing nothing at all would pass the line above only by
+      // accident, so one real rig anchors it.
       expect(find.text(t.settings.station.models.rigctld), findsOneWidget);
     });
   });
@@ -285,7 +316,7 @@ class _RecordingSink implements EquipmentSink {
   String? diagnostic;
 
   @override
-  void send(List<int> bytes) => fail('the fake radio must not put bytes on a wire');
+  void send(List<int> bytes) => fail('the placeholder radio must not put bytes on a wire');
 
   @override
   void report(VfoReading reading) => readings.add(reading);

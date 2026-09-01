@@ -3,7 +3,7 @@
 //
 // A radio that is only ever as far away as this object: it holds frequency,
 // mode and power, accepts every set, and reports each one straight back.
-// Paired with fake_transport.dart, which explains why the pair exists.
+// Paired with placeholder_transport.dart, which explains why the pair exists.
 //
 // It speaks no protocol and puts nothing on the wire, so it proves nothing
 // about any real driver — what it exercises is everything ABOVE a driver,
@@ -23,18 +23,19 @@ import '../driver.dart';
 import '../equipment.dart';
 import '../transports/config_field_helpers.dart';
 
-/// Where a new fake rig comes up, so it lands somewhere plausible rather
-/// than reporting nothing at all — 40m phone, at a typical barefoot output.
-const fakeRadioDefaultFreqKHz = 7200.0;
-const fakeRadioDefaultMode = 'LSB';
-const fakeRadioDefaultWatts = 75;
+/// Where a new placeholder rig comes up, so it lands somewhere plausible
+/// rather than reporting nothing at all — 40m phone, at a typical barefoot
+/// output.
+const placeholderRadioDefaultFreqKHz = 7200.0;
+const placeholderRadioDefaultMode = 'LSB';
+const placeholderRadioDefaultWatts = 75;
 
 /// Null for a value no parse accepts, rather than the default: the caller
 /// that READS applies the default, the caller that VALIDATES rejects the
 /// null. One parse for both, so a frequency that passes the editor is the
 /// frequency the session comes up on.
 double? freqFromConfig(Map<String, dynamic> config) {
-  final raw = config['fakeFreq'];
+  final raw = config['placeholderFreq'];
   if (raw is num) return raw.toDouble();
   return double.tryParse('$raw'.trim());
 }
@@ -45,28 +46,28 @@ double? freqFromConfig(Map<String, dynamic> config) {
 /// guard, so the throw would escape with the connection already open and
 /// its drop timer still running.
 String modeFromConfig(Map<String, dynamic> config) {
-  final raw = '${config['fakeMode'] ?? ''}'.trim().toUpperCase();
-  return raw.isEmpty ? fakeRadioDefaultMode : raw;
+  final raw = '${config['placeholderMode'] ?? ''}'.trim().toUpperCase();
+  return raw.isEmpty ? placeholderRadioDefaultMode : raw;
 }
 
 /// A mode token this driver will hand upward. Deliberately a shape rather
-/// than the app's mode list: the point of a fake rig is trying modes,
+/// than the app's mode list: the point of a placeholder rig is trying modes,
 /// including ones no catalogue radio supports. But a reading goes through
 /// `RadioService` onto logged QSOs and out to ADIF, so a fat-fingered
 /// `US B` must not get that far.
 final _modeToken = RegExp(r'^[A-Z0-9][A-Z0-9/-]*$');
 
-class FakeRadioDriver extends EquipmentDriver {
-  const FakeRadioDriver();
+class PlaceholderRadioDriver extends EquipmentDriver {
+  const PlaceholderRadioDriver();
 
   @override
-  String get key => 'fake-radio';
+  String get key => 'placeholder-radio';
 
   /// First word is what an equipment report prefills as the manufacturer,
   /// so it stays a plain word with no protocol or parenthesis in it — see
   /// equipment_report_test.dart.
   @override
-  String get name => 'Fake Radio';
+  String get name => 'Placeholder Radio';
 
   /// True, not because a radio was ever on the bench but because there is
   /// none to be: the picker's caveat is about a driver that might not work
@@ -76,7 +77,7 @@ class FakeRadioDriver extends EquipmentDriver {
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      FakeRadioSession(sink, config);
+      PlaceholderRadioSession(sink, config);
 
   @override
   List<Map<String, dynamic>> configElements({
@@ -84,66 +85,66 @@ class FakeRadioDriver extends EquipmentDriver {
     Map<String, dynamic> restrictions = const {},
   }) =>
       [
-        if (!overrides.containsKey('fakeFreq'))
+        if (!overrides.containsKey('placeholderFreq'))
           {
             'type': 'field',
             'fieldType': 'number',
-            'key': 'fakeFreq',
-            'label': t.settings.station.fakeFreq,
-            'description': t.settings.station.fakeFreqDescription,
+            'key': 'placeholderFreq',
+            'label': t.settings.station.placeholderFreq,
+            'description': t.settings.station.placeholderFreqDescription,
           },
-        if (!overrides.containsKey('fakeMode'))
+        if (!overrides.containsKey('placeholderMode'))
           {
             'type': 'field',
             'fieldType': 'text',
-            'key': 'fakeMode',
-            'label': t.settings.station.fakeMode,
-            'description': t.settings.station.fakeModeDescription,
+            'key': 'placeholderMode',
+            'label': t.settings.station.placeholderMode,
+            'description': t.settings.station.placeholderModeDescription,
           },
-        if (!overrides.containsKey('fakePower'))
+        if (!overrides.containsKey('placeholderPower'))
           {
             'type': 'field',
             'fieldType': 'number',
-            'key': 'fakePower',
-            'label': t.settings.station.fakePower,
+            'key': 'placeholderPower',
+            'label': t.settings.station.placeholderPower,
           },
-        if (!overrides.containsKey('fakeReplyDelay'))
+        if (!overrides.containsKey('placeholderReplyDelay'))
           {
             'type': 'field',
             'fieldType': 'number',
-            'key': 'fakeReplyDelay',
-            'label': t.settings.station.fakeReplyDelay,
-            'description': t.settings.station.fakeReplyDelayDescription,
+            'key': 'placeholderReplyDelay',
+            'label': t.settings.station.placeholderReplyDelay,
+            'description': t.settings.station.placeholderReplyDelayDescription,
           },
       ];
 
   /// Blank is rejected on every numeric field, and prefilled by
   /// [EquipmentVariant.defaultConfig] so it never comes up unasked — see
-  /// FakeTransport.validateField for why null cannot be waved through.
+  /// PlaceholderTransport.validateField for why null cannot be waved through.
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     switch (key) {
-      case 'fakeFreq':
+      case 'placeholderFreq':
         final freq = freqFromConfig({...config, key: value});
-        return (freq == null || freq <= 0) ? t.settings.station.fakeFreqInvalid : null;
-      case 'fakePower':
-      case 'fakeReplyDelay':
+        return (freq == null || freq <= 0) ? t.settings.station.placeholderFreqInvalid : null;
+      case 'placeholderPower':
+      case 'placeholderReplyDelay':
         return numberFromConfig({...config, key: value}, key, -1) < 0
-            ? t.settings.station.fakeWholeNumberInvalid
+            ? t.settings.station.placeholderWholeNumberInvalid
             : null;
-      case 'fakeMode':
+      case 'placeholderMode':
         // Blank IS allowed here, and means the default: a `text` field hands
         // over the string the operator typed, so an empty box is empty and
         // nothing else — none of the number field's ambiguity.
         final mode = '${value ?? ''}'.trim().toUpperCase();
-        return (mode.isEmpty || _modeToken.hasMatch(mode)) ? null : t.settings.station.fakeModeInvalid;
+        return (mode.isEmpty || _modeToken.hasMatch(mode)) ? null : t.settings.station.placeholderModeInvalid;
       default:
         return null;
     }
   }
 }
 
-class FakeRadioSession implements TransceiverSession {
+class PlaceholderRadioSession implements TransceiverSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports
@@ -161,7 +162,7 @@ class FakeRadioSession implements TransceiverSession {
   final _pending = <Timer>[];
 
   /// Restates the current reading often enough that `CatService`'s silence
-  /// watch never fires (`_staleAfter`, 30s). Without it a fake rig left
+  /// watch never fires (`_staleAfter`, 30s). Without it a placeholder rig left
   /// alone turns stale in half a minute and the panel says the radio has
   /// stopped answering — which is exactly the state an operator leaves it
   /// sitting in while checking something else. A restated frequency is a
@@ -171,11 +172,11 @@ class FakeRadioSession implements TransceiverSession {
 
   static const _heartbeatInterval = Duration(seconds: 10);
 
-  FakeRadioSession(this._sink, Map<String, dynamic> config)
-      : _replyDelay = Duration(milliseconds: numberFromConfig(config, 'fakeReplyDelay', 0)),
-        _freqKHz = freqFromConfig(config) ?? fakeRadioDefaultFreqKHz,
+  PlaceholderRadioSession(this._sink, Map<String, dynamic> config)
+      : _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
+        _freqKHz = freqFromConfig(config) ?? placeholderRadioDefaultFreqKHz,
         _mode = modeFromConfig(config),
-        _watts = numberFromConfig(config, 'fakePower', fakeRadioDefaultWatts);
+        _watts = numberFromConfig(config, 'placeholderPower', placeholderRadioDefaultWatts);
 
   void _afterDelay(void Function() report) {
     if (_replyDelay == Duration.zero) {
@@ -192,7 +193,7 @@ class FakeRadioSession implements TransceiverSession {
 
   void _reportVfo() => _afterDelay(() => _sink.report(VfoReading(freqKHz: _freqKHz, mode: _mode)));
 
-  /// Nothing ever arrives: the fake transport's connection never emits.
+  /// Nothing ever arrives: the placeholder transport's connection never emits.
   @override
   void handleData(Uint8List chunk) {}
 
@@ -200,10 +201,11 @@ class FakeRadioSession implements TransceiverSession {
   void startUpdates() {
     // One word, in the equipment row's developer-mode slot between the
     // frequency and the status pill: a green row moving through frequencies
-    // is exactly what a real rig looks like, and this is the only thing on
-    // screen that says none is attached. A sentence would crowd out the
+    // is exactly what a real rig looks like. It is the developer's tell only
+    // — the slot is hidden outside developer mode, and what says "no rig" to
+    // everyone else is the catalogue name. A sentence would crowd out the
     // reading it sits beside.
-    _sink.reportDiagnostic(t.settings.station.fakeDiagnostic);
+    _sink.reportDiagnostic(t.settings.station.placeholderDiagnostic);
     _reportVfo();
     _afterDelay(() => _sink.reportPower(_watts));
     _heartbeat?.cancel();

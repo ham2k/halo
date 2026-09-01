@@ -710,7 +710,7 @@ void main() {
     // without anything else being edited.
     expect(registry.types, hasLength(23));
     expect(registry.models, hasLength(22));
-    expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network', 'fake']));
+    expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network', 'placeholder']));
   });
 
   group('what the driver is told, versus what the user typed', () {

@@ -200,7 +200,7 @@ void main() {
         'ic705-serial',
         'rigctld-tcp',
         'flrig-tcp',
-        'fake-radio',
+        'placeholder-radio',
         'antenna-genius-tcp',
         'sierra-coax-serial',
         'antenna-none',
@@ -379,7 +379,7 @@ void main() {
     // CI-V belongs on the polling side HERE and only here: transceive can't
     // be read back, so a fresh session assumes the poll and drops the claim
     // once the radio announces on its own (cat_icom_civ_test.dart).
-    const pushes = {'flexradio', 'fake-radio', 'antenna-genius'};
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.

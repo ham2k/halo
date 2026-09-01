@@ -217,9 +217,10 @@ what the user configured; everything about a connection is rebuilt at runtime.
 3. **Loopback** — a real `ServerSocket` on 127.0.0.1 playing a scripted dialogue against
    `CatService`. This is the only tier that catches framing across chunk boundaries, cancellation,
    and the ordering races above.
-4. **Fake Radio** — a catalogue entry, not a test fixture: a transport with no I/O at all and a
-   driver that holds frequency, mode and power and reports every set straight back
-   (`fake_transport.dart`, `fake_radio_driver.dart`). Developer mode only, in every edition. It
+4. **Placeholder Radio** — a catalogue entry, not a test fixture: a transport with no I/O at all
+   and a driver that holds frequency, mode and power and reports every set straight back
+   (`placeholder_transport.dart`, `placeholder_radio_driver.dart`). Offered to every operator, in
+   every edition — its name, "Generic Placeholder Radio (no control)", is the whole warning. It
    proves nothing about any driver — what it makes reachable is everything *above* one, on a build
    where §Platforms leaves no other radio connectable: the Station panel, Smart VFO Snap, zero
    beat, the radio1/radio2 assignment, power. Its knobs (connect delay, drop-after, refuse to

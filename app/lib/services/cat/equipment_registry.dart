@@ -27,7 +27,7 @@ import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/antenna_driver.dart';
 import 'drivers/antenna_genius_driver.dart';
-import 'drivers/fake_radio_driver.dart';
+import 'drivers/placeholder_radio_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
@@ -38,7 +38,7 @@ import 'drivers/rigctld_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
-import 'transports/fake_transport.dart';
+import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_protocol.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/none_transport.dart';
@@ -166,26 +166,14 @@ class EquipmentModel {
   /// Not localized: a brand is spelled the same in every language.
   final String? manufacturer;
 
-  /// True for a model that is a generic placeholder rather than something to
-  /// pick from a catalogue of makes and models — [antennaModel] and
+  /// True for a model that is a nameless category node rather than something
+  /// to pick from a catalogue of makes and models — [antennaModel] and
   /// [keyModel] today. The Add dialog's searchable list excludes these; they
   /// are offered only from its "Other Equipment" rows, under whatever name
   /// the operator gives the resulting node. A real antenna switch or
   /// automatic keyer added later belongs in the searchable list like any
   /// other radio, so it leaves this false.
   final bool hiddenFromCatalog;
-
-  /// True for a model the Add dialog offers only under developer mode —
-  /// [fakeRadioModel] today.
-  ///
-  /// A catalogue flag rather than a filtered registry: the model stays in
-  /// [EquipmentRegistry.models] in every build and whatever the setting
-  /// says, so a node already configured against it still resolves, still
-  /// connects, and still appears in the equipment list after developer mode
-  /// is switched back off. Hiding the model would take the node with it —
-  /// silently, since an unresolvable typeKey renders as "unknown type" with
-  /// the operator's configuration unreachable inside it.
-  final bool developerOnly;
 
   const EquipmentModel({
     required this.key,
@@ -194,7 +182,6 @@ class EquipmentModel {
     required this.variants,
     this.manufacturer,
     this.hiddenFromCatalog = false,
-    this.developerOnly = false,
   }) : _nameBuilder = name;
 
   String get name => _nameBuilder();
@@ -343,7 +330,7 @@ String? transportLabelFor(String transportKey) {
     TcpTransport.transportKey => labels.network,
     SerialTransport.transportKey => labels.usbSerial,
     IcomNetworkTransport.transportKey => labels.wifi,
-    FakeTransport.transportKey => labels.simulated,
+    PlaceholderTransport.transportKey => labels.simulated,
     _ => null,
   };
 }
@@ -366,7 +353,7 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
       TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
       // Not a way of plugging anything in — the exception the rule above
       // allows for, because what this transport connects to is nothing.
-      FakeTransport.transportKey => 'flask-outline',
+      PlaceholderTransport.transportKey => 'flask-outline',
       _ => null,
     };
 
@@ -388,7 +375,7 @@ const _ic7760SerialKey = 'ic7760-serial';
 const _x6100SerialKey = 'x6100-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
-const _fakeRadioKey = 'fake-radio';
+const _placeholderRadioKey = 'placeholder-radio';
 const _antennaGeniusTcpKey = 'antenna-genius-tcp';
 const _sierraCoaxSerialKey = 'sierra-coax-serial';
 
@@ -953,38 +940,39 @@ List<Map<String, dynamic>> _ic705NetworkNotes() => [
       },
     ];
 
-/// A radio that isn't there — see fake_radio_driver.dart and
-/// fake_transport.dart for what it is for and what it deliberately isn't.
+/// A radio that isn't there — see placeholder_radio_driver.dart and
+/// placeholder_transport.dart for what it is for and what it deliberately isn't.
 ///
-/// Developer mode only, but present in every edition: a Dev-edition gate
-/// would put it out of reach of exactly the build handed round for checking.
-const fakeRadioModel = EquipmentModel(
-  key: 'fake-radio',
+/// In the catalogue for every operator, in every edition. Its name says
+/// "(no control)" because that is the whole warning it needs: an operator
+/// who picks it gets a radio pill and a frequency to type into, and no rig
+/// is ever touched.
+const placeholderRadioModel = EquipmentModel(
+  key: 'placeholder-radio',
   category: kCategoryTransceiver,
-  name: _fakeRadioName,
-  developerOnly: true,
+  name: _placeholderRadioName,
   variants: [
     EquipmentVariant(
-      key: _fakeRadioKey,
-      driver: FakeRadioDriver(),
-      transport: FakeTransport(),
+      key: _placeholderRadioKey,
+      driver: PlaceholderRadioDriver(),
+      transport: PlaceholderTransport(),
       // Every numeric knob is prefilled, not just the three that describe
-      // the rig: their validators reject a blank box (fake_transport.dart
+      // the rig: their validators reject a blank box (placeholder_transport.dart
       // says why), so a form that opened with one empty would refuse to
       // submit until the operator typed a zero nobody asked them for.
       defaultConfig: {
-        'fakeFreq': fakeRadioDefaultFreqKHz,
-        'fakeMode': fakeRadioDefaultMode,
-        'fakePower': fakeRadioDefaultWatts,
-        'fakeConnectDelay': 0,
-        'fakeDropAfter': 0,
-        'fakeReplyDelay': 0,
+        'placeholderFreq': placeholderRadioDefaultFreqKHz,
+        'placeholderMode': placeholderRadioDefaultMode,
+        'placeholderPower': placeholderRadioDefaultWatts,
+        'placeholderConnectDelay': 0,
+        'placeholderDropAfter': 0,
+        'placeholderReplyDelay': 0,
       },
     ),
   ],
 );
 
-String _fakeRadioName() => t.settings.station.models.fakeRadio;
+String _placeholderRadioName() => t.settings.station.models.placeholderRadio;
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///
@@ -1109,7 +1097,7 @@ const _defaultModels = [
   kenwoodGenericModel,
   rigctldModel,
   flrigModel,
-  fakeRadioModel,
+  placeholderRadioModel,
   antennaGeniusModel,
   sierraCoaxModel,
   antennaModel,
@@ -1136,7 +1124,7 @@ class EquipmentRegistry {
               TcpTransport.transportKey: const TcpTransport(),
               SerialTransport.transportKey: const SerialTransport(),
               IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
-              FakeTransport.transportKey: const FakeTransport(),
+              PlaceholderTransport.transportKey: const PlaceholderTransport(),
             };
 
   /// Every config key that is a credential for ANY pairing in the catalogue.

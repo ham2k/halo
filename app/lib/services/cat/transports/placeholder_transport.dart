@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // A connection to nothing, for exercising everything that sits above a
-// driver without a radio on the bench — see fake_radio_driver.dart for the
-// half that holds the state.
+// driver without a radio on the bench — see placeholder_radio_driver.dart
+// for the half that holds the state.
 //
 // It exists because of the platform table in docs/design/cat.md § Platforms:
 // TCP and the Icom network have no web implementation, so on a web build the
@@ -23,25 +23,25 @@ import '../../../i18n/strings.g.dart';
 import '../transport.dart';
 import 'config_field_helpers.dart';
 
-/// Thrown by a [FakeTransport] the operator asked to fail. Tagged
+/// Thrown by a [PlaceholderTransport] the operator asked to fail. Tagged
 /// [CatUnreachable] so it takes the same path a rig that is switched off
 /// takes — silent, retried — which is the path being exercised.
-class FakeUnreachable implements CatUnreachable {
-  const FakeUnreachable();
+class PlaceholderUnreachable implements CatUnreachable {
+  const PlaceholderUnreachable();
 
   @override
-  String toString() => t.settings.station.fakeConnectFailure;
+  String toString() => t.settings.station.placeholderConnectFailure;
 }
 
-class _FakeConnection implements EquipmentConnection {
-  /// Never emits: the fake radio's state lives in its session, not on a
+class _PlaceholderConnection implements EquipmentConnection {
+  /// Never emits: the placeholder radio's state lives in its session, not on a
   /// wire. Present because [EquipmentConnection] promises a stream and
   /// `CatService` subscribes to it.
   final _data = StreamController<Uint8List>();
   final _closed = Completer<void>();
   Timer? _dropTimer;
 
-  _FakeConnection({required Duration? dropAfter}) {
+  _PlaceholderConnection({required Duration? dropAfter}) {
     if (dropAfter != null) _dropTimer = Timer(dropAfter, close);
   }
 
@@ -65,17 +65,17 @@ class _FakeConnection implements EquipmentConnection {
 /// Reaches a radio that isn't there. Every field is a knob for the failure
 /// this transport is standing in for, not a connection parameter — there is
 /// nothing to address.
-class FakeTransport extends EquipmentTransport {
-  static const transportKey = 'fake';
+class PlaceholderTransport extends EquipmentTransport {
+  static const transportKey = 'placeholder';
 
-  const FakeTransport();
+  const PlaceholderTransport();
 
   @override
   String get key => transportKey;
 
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
-    final delay = Duration(milliseconds: numberFromConfig(target, 'fakeConnectDelay', 0));
+    final delay = Duration(milliseconds: numberFromConfig(target, 'placeholderConnectDelay', 0));
     if (delay > Duration.zero) {
       // Raced rather than awaited, so a superseded attempt releases at once
       // instead of holding the slot for the whole simulated handshake —
@@ -84,9 +84,9 @@ class FakeTransport extends EquipmentTransport {
       await Future.any([Future<void>.delayed(delay), cancel.whenCancelled]);
     }
     if (cancel.isCancelled) throw const CatCancelledException();
-    if (target['fakeFailConnect'] == true) throw const FakeUnreachable();
-    final dropAfter = numberFromConfig(target, 'fakeDropAfter', 0);
-    return _FakeConnection(dropAfter: dropAfter > 0 ? Duration(seconds: dropAfter) : null);
+    if (target['placeholderFailConnect'] == true) throw const PlaceholderUnreachable();
+    final dropAfter = numberFromConfig(target, 'placeholderDropAfter', 0);
+    return _PlaceholderConnection(dropAfter: dropAfter > 0 ? Duration(seconds: dropAfter) : null);
   }
 
   @override
@@ -95,36 +95,36 @@ class FakeTransport extends EquipmentTransport {
     Map<String, dynamic> restrictions = const {},
   }) =>
       [
-        if (!overrides.containsKey('fakeConnectDelay'))
+        if (!overrides.containsKey('placeholderConnectDelay'))
           {
             'type': 'field',
             'fieldType': 'number',
-            'key': 'fakeConnectDelay',
-            'label': t.settings.station.fakeConnectDelay,
-            'description': t.settings.station.fakeConnectDelayDescription,
+            'key': 'placeholderConnectDelay',
+            'label': t.settings.station.placeholderConnectDelay,
+            'description': t.settings.station.placeholderConnectDelayDescription,
           },
-        if (!overrides.containsKey('fakeDropAfter'))
+        if (!overrides.containsKey('placeholderDropAfter'))
           {
             'type': 'field',
             'fieldType': 'number',
-            'key': 'fakeDropAfter',
-            'label': t.settings.station.fakeDropAfter,
-            'description': t.settings.station.fakeDropAfterDescription,
+            'key': 'placeholderDropAfter',
+            'label': t.settings.station.placeholderDropAfter,
+            'description': t.settings.station.placeholderDropAfterDescription,
           },
-        if (!overrides.containsKey('fakeFailConnect'))
+        if (!overrides.containsKey('placeholderFailConnect'))
           {
             'type': 'field',
             'fieldType': 'checkbox',
-            'key': 'fakeFailConnect',
-            'label': t.settings.station.fakeFailConnect,
+            'key': 'placeholderFailConnect',
+            'label': t.settings.station.placeholderFailConnect,
           },
       ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     switch (key) {
-      case 'fakeConnectDelay':
-      case 'fakeDropAfter':
+      case 'placeholderConnectDelay':
+      case 'placeholderDropAfter':
         // Blank is NOT waved through, though 0 is what both fields usually
         // hold. A `number` field hands over `num.tryParse(text)`, so an
         // entry the formatter allows but no parse accepts — `1.5.0`, `3-`,
@@ -139,7 +139,7 @@ class FakeTransport extends EquipmentTransport {
         // `tryParse` written here, so a value that validates is the value
         // that gets read. -1 is a sentinel no valid entry can produce.
         return numberFromConfig({...config, key: value}, key, -1) < 0
-            ? t.settings.station.fakeWholeNumberInvalid
+            ? t.settings.station.placeholderWholeNumberInvalid
             : null;
       default:
         return null;

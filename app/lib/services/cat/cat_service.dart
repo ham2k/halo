@@ -948,7 +948,18 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     final type = registry.typeFor(node.typeKey);
     final transport = registry.transportFor(type?.transportKey);
     if (type == null || transport == null) {
-      _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: 'Unknown equipment type "${node.typeKey}"'));
+      // Translated like every other error this sets, because [error] is not
+      // only a diagnostic: the Radio panel renders it as its primary text and
+      // its Semantics label, in the slot a frequency belongs in. The raw key
+      // survives in [errorDetail] for an equipment report.
+      _setState(
+        uuid,
+        EquipmentState(
+          status: EquipmentStatus.error,
+          error: t.settings.station.unknownType(typeKey: node.typeKey),
+          errorDetail: 'Unknown equipment type "${node.typeKey}"',
+        ),
+      );
       _trackFailure(node, 'unknown_type');
       return _ConnectOutcome.failed;
     }
