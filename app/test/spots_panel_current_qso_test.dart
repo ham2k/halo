@@ -215,13 +215,22 @@ void main() {
   });
 
   group('spotScrollTarget', () {
-    // Viewport 300 tall, scrolled to 100, so 100..400 is on screen.
-    double? target(double top, double bottom, {double pixels = 100, double maxExtent = 1000}) =>
+    // Viewport 300 tall, scrolled to 100, so 100..400 is on screen. No header
+    // by default, so each case below states the geometry it is about; the
+    // pinned inset gets its own test.
+    double? target(
+      double top,
+      double bottom, {
+      double pixels = 100,
+      double maxExtent = 1000,
+      double headerHeight = 0,
+    }) =>
         spotScrollTarget(
           top: top,
           bottom: bottom,
           pixels: pixels,
           viewport: 300,
+          headerHeight: headerHeight,
           minExtent: 0,
           maxExtent: maxExtent,
         );
@@ -248,6 +257,15 @@ void main() {
     test('clamps to the scrollable range', () {
       expect(target(2000, 2040, maxExtent: 500), 500);
       expect(target(-50, -10), 0);
+    });
+
+    // Section headers PIN, so the top of the viewport is covered by one: a row
+    // brought flush against it is behind the header, which is the same as not
+    // revealing it at all. Both halves matter — the row hidden under the header
+    // has to move, and the one already clear of it must not.
+    test('leaves room for the pinned header above the row', () {
+      expect(target(120, 160, headerHeight: 40), 80, reason: 'under the header, so it moves clear of it');
+      expect(target(140, 180, headerHeight: 40), isNull, reason: 'already below the header');
     });
 
     // Sub-pixel moves read as jitter, not as a reveal.

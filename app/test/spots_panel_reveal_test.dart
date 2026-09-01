@@ -159,8 +159,12 @@ void main() {
 
   tearDown(() async => db.close());
 
-  double offsetOf(WidgetTester tester) =>
-      tester.widget<ListView>(find.byType(ListView)).controller!.offset;
+  /// The spots list itself. Scoped to the panel's own subtree because the
+  /// filters dialog builds a CustomScrollView of its own — it lands in the
+  /// navigator's overlay rather than under the panel, so this cannot match it.
+  final spotsList = find.descendant(of: find.byType(SpotsPanel), matching: find.byType(CustomScrollView));
+
+  double offsetOf(WidgetTester tester) => tester.widget<CustomScrollView>(spotsList).controller!.offset;
 
   /// Pumps until the list stops moving. A reveal is up to two chained scrolls
   /// — the estimate, then the measured correction — and a fixed frame budget
@@ -323,6 +327,75 @@ void main() {
 
       expect(offsetOf(tester), greaterThan(0));
       expect(find.text('K0050'), findsOneWidget, reason: 'the row is now built and on screen');
+    });
+
+    // Section headers PIN, so the top of the list is covered by one: a reveal
+    // that brings the row flush with the viewport top puts it BEHIND the
+    // header, hiding the very row it went to find. Reached by revealing UPWARDS
+    // — a row below the fold comes to the BOTTOM edge, which the header cannot
+    // cover, so a downward reveal proves nothing about the inset. Both halves
+    // are asserted: that the header is up there at all with its own rows
+    // scrolled under it, and that the row landed clear of it.
+    testWidgets('lands a row revealed upwards below the pinned header', (tester) async {
+      final services = await servicesWith(_board(60));
+      final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      // Scrolled a few rows down by hand, then a call entered for a row above
+      // the fold. Close to the top on purpose: the summed offsets are still
+      // exact there, so where the row lands is the inset's doing and not a
+      // drift the measured correction happened to leave behind.
+      tester.widget<CustomScrollView>(spotsList).controller!.jumpTo(400);
+      await tester.pump();
+      await setCall(_entering('K0003'));
+
+      // The band itself, not the label inside it: what has to clear the header
+      // is the whole row, and the callsign sits low enough in its tile to clear
+      // the band even when the tile does not.
+      final band = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_SpotsSectionHeader');
+      expect(band, findsOneWidget, reason: 'the band header is still on screen with its rows scrolled under it');
+      final bandRect = tester.getRect(band);
+      // Held AT the top, not merely somewhere above the row: an unpinned band
+      // that has scrolled off is still laid out in the viewport's cache, and a
+      // one-sided "above" check would pass for it too.
+      expect(bandRect.top, closeTo(tester.getRect(spotsList).top, 0.5),
+          reason: 'pinned at the top of the list, not scrolled away with its rows');
+      final row = find.ancestor(
+        of: find.text('K0003'),
+        matching: find.byWidgetPredicate((w) => w.runtimeType.toString() == '_SpotTile'),
+      );
+      expect(tester.getRect(row).top, greaterThanOrEqualTo(bandRect.bottom),
+          reason: 'the revealed row is below the header, not behind it');
+    });
+
+    // What the SliverMainAxisGroup buys, and the reason each band is grouped
+    // with its own rows rather than listed as a sibling sliver: pinning is
+    // coordinated inside a group, so the band of the section being read is the
+    // only one holding the top. Sibling pinned slivers stick independently —
+    // scroll past a short section and its band stays up there alongside the
+    // next one's, stacking a header per section scrolled through.
+    testWidgets('only the section being read keeps its band at the top', (tester) async {
+      final services = await servicesWith([
+        ..._board(20),
+        for (var i = 0; i < 20; i++) _spot('W${i.toString().padLeft(4, '0')}', band: '40m', freq: 7100.0 + i),
+      ]);
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      // Deep into the second band, with the first band's rows all above.
+      tester.widget<CustomScrollView>(spotsList).controller!.jumpTo(1400);
+      await tester.pump();
+
+      final listTop = tester.getRect(spotsList).top;
+      final atTheTop = [
+        for (final band in find.byWidgetPredicate((w) => w.runtimeType.toString() == '_SpotsSectionHeader').evaluate())
+          if ((tester.getRect(find.byWidget(band.widget)).top - listTop).abs() < 1.0)
+            (band.widget as dynamic).label as String,
+      ];
+      expect(atTheTop, hasLength(1), reason: 'one band at the top, not one per section scrolled through');
+      // And it is the band whose rows are actually being read: this board's
+      // 20m spots are called K…, its 40m spots W….
+      final reading = atTheTop.single.startsWith('20m') ? 'K' : 'W';
+      expect(find.textContaining(RegExp('^$reading[0-9]{4}\$')).hitTestable(), findsWidgets,
+          reason: 'the pinned band names the rows on screen');
     });
 
     // The contract that makes this bearable to use: a spot the operator can
@@ -1476,7 +1549,7 @@ void main() {
       // Scrolled off a row boundary, the way a board the operator has scanned
       // sits: without this every row lands whole inside the viewport and no
       // reveal would move the list even with the suppression taken out.
-      final controller = tester.widget<ListView>(find.byType(ListView)).controller!;
+      final controller = tester.widget<CustomScrollView>(spotsList).controller!;
       controller.jumpTo(25);
       await tester.pump();
 
@@ -1676,7 +1749,7 @@ void main() {
       expect(revealed, greaterThan(0), reason: 'the reveal happened at all');
 
       // The operator scrolls elsewhere, then flips to another pane and back.
-      tester.widget<ListView>(find.byType(ListView)).controller!.jumpTo(0);
+      tester.widget<CustomScrollView>(spotsList).controller!.jumpTo(0);
       await tester.pump();
       await tester.pumpWidget(host(dockVisible: false, callInfo: _entering('K0050')));
       await tester.pump();

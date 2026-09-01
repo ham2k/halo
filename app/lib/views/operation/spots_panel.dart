@@ -514,8 +514,8 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
 /// worth long before the target and puts it outside what the correction pass
 /// can even measure.
 ///
-/// Deliberately NOT derived from the list's scroll extent either: a `ListView`
-/// lays its children out lazily, so `maxScrollExtent` is itself an estimate
+/// Deliberately NOT derived from the list's scroll extent either: the list
+/// lays its rows out lazily, so `maxScrollExtent` is itself an estimate
 /// built from whichever rows happen to be laid out, and reading a row height
 /// back out of it gives a different answer on two runs of the same code.
 ///
@@ -552,21 +552,23 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
 /// Not moving an already-visible row is the contract: typing a call whose spot
 /// happens to be on screen must not yank the list out from under the operator.
 ///
-/// Unlike the QSO list's counterpart there is no leading inset for a section
-/// header — those headers scroll with this list rather than pinning above it,
-/// so a row flush against the top of the viewport is visible. Public for
+/// The leading edge is inset by [headerHeight], like the QSO list's
+/// counterpart and for the same reason: section headers are **pinned**, so a
+/// row flush against the top of the viewport sits underneath one and the
+/// operator cannot see what was revealed. Public for
 /// `spots_panel_current_qso_test.dart`.
 double? spotScrollTarget({
   required double top,
   required double bottom,
   required double pixels,
   required double viewport,
+  required double headerHeight,
   required double minExtent,
   required double maxExtent,
 }) {
   final double target;
-  if (top < pixels) {
-    target = top;
+  if (top - headerHeight < pixels) {
+    target = top - headerHeight;
   } else if (bottom > pixels + viewport) {
     target = bottom - viewport;
   } else {
@@ -1554,6 +1556,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
         ? null
         : currentQsoHighlight(theme.colorScheme, editing: widget.callInfo!.isEditing);
     _locateCurrentRow(sections, currentCall);
+    // The height every section header is FORCED into, and the same figure
+    // [_locateCurrentRow] counts a header as — a pinned sliver states its
+    // extent before its child is laid out, so the two cannot be allowed to
+    // disagree.
+    final headerExtent = _sectionHeaderExtent;
     // Registered before the reveal's own callback so it runs first: a reveal
     // armed this frame is then measured against a scale learned from this
     // frame, rather than spending its one arm on the previous one's.
@@ -1587,147 +1594,157 @@ class _SpotsPanelState extends State<SpotsPanel> {
           // is reading, not abandoning the peek, and a row that snapped shut
           // under the scroll took its suggestion out of the logging fields
           // with it.
-          : ListView(
+          : CustomScrollView(
               controller: _scrollController,
-              children: [
-                for (final (sectionIndex, section) in sections.indexed) ...[
-                  _SpotsSectionHeader(section.label),
-                  for (final (index, spot) in section.spots.indexed)
-                    if (_flagsFor(spot) case final flags)
-                      if (_isWorked(spot, scored: flags.worked) case final worked)
-                      // The SAME predicate the pinned section is built from,
-                      // so a row under "Your Spots" can never fall through to
-                      // the suggest/log affordances — and vice versa.
-                      if (spotIsSelfOnly(spot, ourCall: _ourCall) case final selfOnly)
-                      // The slide wraps the tile rather than living inside it,
-                      // and carries a key of its OWN that never changes. The
-                      // tile's key does change — it takes `_currentRowKey` on
-                      // becoming the current QSO, which is exactly what a
-                      // slide causes — and a widget whose key changes has its
-                      // subtree discarded. A gesture in there dies mid-drag.
-                      _SlidableSpotRow(
-                        // Keyed on the SECTION's key, not its label: the label
-                        // carries the section's spot count, so keying on it
-                        // would change every row's key on any poll that adds
-                        // or drops one spot — discarding the slide State of
-                        // every row in the section, which is the failure this
-                        // wrapper exists to prevent. The spot's own time
-                        // separates two rows for one call on one frequency,
-                        // which the merge passes allow when they are more
-                        // than 30 minutes apart.
-                        key: ValueKey('${section.key}|${_callOf(spot)}|${_freqOf(spot)}|${_timeOf(spot)}'),
-                        group: _slideGroup,
-                        background: theme.colorScheme.surface,
-                        // Our own station is not a contact to log — no
-                        // slide-to-log on a row that is ours alone, same
-                        // reasoning as the tap below.
-                        leading: widget.onLogQso == null || selfOnly
-                            ? null
-                            : _SlideAction(
-                                icon: MdiIcons.upload,
-                                label: t.operation.spots.slideLogIt,
-                                // The logging panel's own submit accent and
-                                // glyph: the gesture ends in the act that
-                                // button performs, so it may not look like a
-                                // different one.
-                                background: theme.colorScheme.tertiary,
-                                foreground: theme.colorScheme.onTertiary,
-                                // The peek is SPENT here, not withdrawn (see
-                                // [_SlidableSpotRowState._fire]), so nothing
-                                // fires `onWithdrawn` on this path and the
-                                // call has to be given up by hand — otherwise
-                                // it stays this panel's peek for the session,
-                                // and meeting the same station again on
-                                // another band would silently reveal nothing.
-                                onPressed: () {
-                                  _peekedCall = null;
-                                  _logSpot(spot);
-                                },
-                                // Opening fills the logging fields with this
-                                // spot, so what the commit is about to log is
-                                // on screen before it is logged.
-                                onRevealed: widget.onSuggestQso == null
-                                    ? null
-                                    : () {
-                                        _peekedCall = _callOf(spot)?.toUpperCase();
-                                        widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false);
-                                      },
-                                // The fill lasts as long as the row is open —
-                                // a spot the operator dragged back or set
-                                // aside is not the station they are working,
-                                // and leaving it in the fields makes the next
-                                // Log a contact with whoever was slid last.
-                                // Scrolling is not one of those: it leaves the
-                                // row open, and so leaves the fill alone.
-                                // Unconditional, unlike the suggestion it
-                                // reports: [_peekedCall] is this panel's own
-                                // state, and hanging its clearing off an
-                                // optional callback would leave the peek
-                                // standing for good wherever that callback is
-                                // absent.
-                                onWithdrawn: () {
-                                  // Only its own: dragging out through the
-                                  // middle and back out the other side
-                                  // withdraws before the incoming side
-                                  // reveals, and a blind clear there would
-                                  // drop the new peek.
-                                  if (_peekedCall == _callOf(spot)?.toUpperCase()) _peekedCall = null;
-                                  widget.onWithdrawSuggestion?.call(_callOf(spot));
-                                },
-                                onSettled: widget.onSuggestionSettled,
-                              ),
-                        // Always the reverse of what the row currently says, so
-                        // the gesture reads the same whether the row was dimmed
-                        // by scoring or by an earlier slide: undo puts a worked
-                        // spot back on the board, backspace takes a live one off
-                        // it.
-                        trailing: _SlideAction(
-                          icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
-                          label: worked
-                              ? t.operation.spots.slideRestore
-                              : t.operation.spots.slideIgnore,
-                          background: theme.colorScheme.surfaceContainerHighest,
-                          foreground: theme.colorScheme.onSurface,
-                          onPressed: () => _toggleWorked(spot, worked: worked),
-                        ),
-                        child: _SpotTile(
-                          key: _isCurrentRow(sectionIndex, index)
-                              ? _currentRowKey
-                              : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
-                          spot: spot,
-                          noteEmoji: _noteEmojiOf(spot),
-                          hzDigits: hzDigits,
-                          leftWidth: leftWidth,
-                          sortByAge: _sortBy == 'time',
-                          activityControls: _activityControls,
-                          // A spot set aside by a slide dims like one scoring
-                          // calls worked, and a slide can equally put a scored
-                          // duplicate back on the board — but neither gesture
-                          // touches the strikethrough, which answers only
-                          // "is this call in the log" — see [_isWorked].
-                          worked: worked,
-                          logged: flags.worked,
-                          isSelf: flags.isSelf,
-                          notices: flags.notices,
-                          highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
-                          // A spot that is ours alone suggests no QSO — there
-                          // is no one to work. Tapping it re-tunes instead:
-                          // the VFO goes back to the spotted state, which is
-                          // what the operator wants back after wandering off
-                          // to hunt.
-                          // Every tap closes whatever is open first: a tap is
-                          // the operator choosing a station outright, which
-                          // answers the question the open row was asking. The
-                          // close runs BEFORE the suggestion so the row's own
-                          // withdrawal cannot land on top of it.
-                          onTap: selfOnly
-                              ? _closingFirst(_retuneActionFor(spot))
-                              : widget.onSuggestQso == null
-                                  ? null
-                                  : _closingFirst(() => widget.onSuggestQso!(suggestedQsoFromSpot(spot))),
-                        ),
-                      ),
-                ],
+              slivers: [
+                // Each section's header is grouped with its OWN rows, not
+                // listed as a sibling sliver: pinning is coordinated within a
+                // group, so a short section's header is pushed off by the next
+                // section's instead of both staying stuck at the top at once.
+                for (final (sectionIndex, section) in sections.indexed)
+                  SliverMainAxisGroup(slivers: [
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _SpotsSectionHeaderDelegate(label: section.label, extent: headerExtent),
+                    ),
+                    SliverList.list(children: [
+                      for (final (index, spot) in section.spots.indexed)
+                        if (_flagsFor(spot) case final flags)
+                          if (_isWorked(spot, scored: flags.worked) case final worked)
+                          // The SAME predicate the pinned section is built from,
+                          // so a row under "Your Spots" can never fall through to
+                          // the suggest/log affordances — and vice versa.
+                          if (spotIsSelfOnly(spot, ourCall: _ourCall) case final selfOnly)
+                          // The slide wraps the tile rather than living inside it,
+                          // and carries a key of its OWN that never changes. The
+                          // tile's key does change — it takes `_currentRowKey` on
+                          // becoming the current QSO, which is exactly what a
+                          // slide causes — and a widget whose key changes has its
+                          // subtree discarded. A gesture in there dies mid-drag.
+                          _SlidableSpotRow(
+                            // Keyed on the SECTION's key, not its label: the label
+                            // carries the section's spot count, so keying on it
+                            // would change every row's key on any poll that adds
+                            // or drops one spot — discarding the slide State of
+                            // every row in the section, which is the failure this
+                            // wrapper exists to prevent. The spot's own time
+                            // separates two rows for one call on one frequency,
+                            // which the merge passes allow when they are more
+                            // than 30 minutes apart.
+                            key: ValueKey('${section.key}|${_callOf(spot)}|${_freqOf(spot)}|${_timeOf(spot)}'),
+                            group: _slideGroup,
+                            background: theme.colorScheme.surface,
+                            // Our own station is not a contact to log — no
+                            // slide-to-log on a row that is ours alone, same
+                            // reasoning as the tap below.
+                            leading: widget.onLogQso == null || selfOnly
+                                ? null
+                                : _SlideAction(
+                                    icon: MdiIcons.upload,
+                                    label: t.operation.spots.slideLogIt,
+                                    // The logging panel's own submit accent and
+                                    // glyph: the gesture ends in the act that
+                                    // button performs, so it may not look like a
+                                    // different one.
+                                    background: theme.colorScheme.tertiary,
+                                    foreground: theme.colorScheme.onTertiary,
+                                    // The peek is SPENT here, not withdrawn (see
+                                    // [_SlidableSpotRowState._fire]), so nothing
+                                    // fires `onWithdrawn` on this path and the
+                                    // call has to be given up by hand — otherwise
+                                    // it stays this panel's peek for the session,
+                                    // and meeting the same station again on
+                                    // another band would silently reveal nothing.
+                                    onPressed: () {
+                                      _peekedCall = null;
+                                      _logSpot(spot);
+                                    },
+                                    // Opening fills the logging fields with this
+                                    // spot, so what the commit is about to log is
+                                    // on screen before it is logged.
+                                    onRevealed: widget.onSuggestQso == null
+                                        ? null
+                                        : () {
+                                            _peekedCall = _callOf(spot)?.toUpperCase();
+                                            widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false);
+                                          },
+                                    // The fill lasts as long as the row is open —
+                                    // a spot the operator dragged back or set
+                                    // aside is not the station they are working,
+                                    // and leaving it in the fields makes the next
+                                    // Log a contact with whoever was slid last.
+                                    // Scrolling is not one of those: it leaves the
+                                    // row open, and so leaves the fill alone.
+                                    // Unconditional, unlike the suggestion it
+                                    // reports: [_peekedCall] is this panel's own
+                                    // state, and hanging its clearing off an
+                                    // optional callback would leave the peek
+                                    // standing for good wherever that callback is
+                                    // absent.
+                                    onWithdrawn: () {
+                                      // Only its own: dragging out through the
+                                      // middle and back out the other side
+                                      // withdraws before the incoming side
+                                      // reveals, and a blind clear there would
+                                      // drop the new peek.
+                                      if (_peekedCall == _callOf(spot)?.toUpperCase()) _peekedCall = null;
+                                      widget.onWithdrawSuggestion?.call(_callOf(spot));
+                                    },
+                                    onSettled: widget.onSuggestionSettled,
+                                  ),
+                            // Always the reverse of what the row currently says, so
+                            // the gesture reads the same whether the row was dimmed
+                            // by scoring or by an earlier slide: undo puts a worked
+                            // spot back on the board, backspace takes a live one off
+                            // it.
+                            trailing: _SlideAction(
+                              icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
+                              label: worked
+                                  ? t.operation.spots.slideRestore
+                                  : t.operation.spots.slideIgnore,
+                              background: theme.colorScheme.surfaceContainerHighest,
+                              foreground: theme.colorScheme.onSurface,
+                              onPressed: () => _toggleWorked(spot, worked: worked),
+                            ),
+                            child: _SpotTile(
+                              key: _isCurrentRow(sectionIndex, index)
+                                  ? _currentRowKey
+                                  : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
+                              spot: spot,
+                              noteEmoji: _noteEmojiOf(spot),
+                              hzDigits: hzDigits,
+                              leftWidth: leftWidth,
+                              sortByAge: _sortBy == 'time',
+                              activityControls: _activityControls,
+                              // A spot set aside by a slide dims like one scoring
+                              // calls worked, and a slide can equally put a scored
+                              // duplicate back on the board — but neither gesture
+                              // touches the strikethrough, which answers only
+                              // "is this call in the log" — see [_isWorked].
+                              worked: worked,
+                              logged: flags.worked,
+                              isSelf: flags.isSelf,
+                              notices: flags.notices,
+                              highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
+                              // A spot that is ours alone suggests no QSO — there
+                              // is no one to work. Tapping it re-tunes instead:
+                              // the VFO goes back to the spotted state, which is
+                              // what the operator wants back after wandering off
+                              // to hunt.
+                              // Every tap closes whatever is open first: a tap is
+                              // the operator choosing a station outright, which
+                              // answers the question the open row was asking. The
+                              // close runs BEFORE the suggestion so the row's own
+                              // withdrawal cannot land on top of it.
+                              onTap: selfOnly
+                                  ? _closingFirst(_retuneActionFor(spot))
+                                  : widget.onSuggestQso == null
+                                      ? null
+                                      : _closingFirst(() => widget.onSuggestQso!(suggestedQsoFromSpot(spot))),
+                            ),
+                          ),
+                    ]),
+                  ]),
               ],
             ),
     );
@@ -1838,6 +1855,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// Every declared height goes through [_rowHeightScale], headers included:
   /// the headers are text in constant padding like the rows, and a sum that
   /// scaled only one of the two would drift by a header on every section.
+  /// For the header that is not an estimate but the extent the sliver is
+  /// pinned at — see [_sectionHeaderExtent].
   void _locateCurrentRow(
     List<({String key, String label, List<Map<String, dynamic>> spots})> sections,
     String? currentCall,
@@ -1845,7 +1864,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final found = locateCurrentSpotRow(
       [for (final section in sections) section.spots],
       currentCall: currentCall,
-      headerHeight: _metrics.sectionHeaderHeight * _rowHeightScale,
+      headerHeight: _sectionHeaderExtent,
       heightOf: (spot) => _spotRowHeightOf(spot) * _rowHeightScale,
     );
     _currentRowAt = found == null ? null : (section: found.section, index: found.index);
@@ -1934,9 +1953,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// sat, and both read as a confident, wrong position.
   ///
   /// [locateCurrentSpotRow] does the arithmetic and says what it is exact
-  /// about; [_correctRevealFor] closes the rest — a wrapped section-header
-  /// label, an emoji the note lookup had not yet reported when the offsets
-  /// were summed.
+  /// about; [_correctRevealFor] closes the rest — an emoji the note lookup had
+  /// not yet reported when the offsets were summed.
   ///
   /// [call] is passed in rather than read back off [_revealedCall]: this runs a
   /// frame after it was scheduled, and reading the latch here means a reveal
@@ -1965,9 +1983,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// One measured pass over whatever the summed offsets got wrong, once the
   /// row is close enough to measure honestly. That sum is exact for the row
   /// shapes [spotRowHeightFor] knows, so this is a safety net rather than the
-  /// thing that lands the scroll: a section-header label long enough to wrap,
-  /// a note emoji the lookup had not reported when the offsets were summed,
-  /// or a tile that grew without those constants growing with it.
+  /// thing that lands the scroll: a note emoji the lookup had not reported when
+  /// the offsets were summed, or a tile that grew without those constants
+  /// growing with it. Not the headers — those are pinned at a stated extent,
+  /// which is the same figure the sum counts.
   ///
   /// Latches [_correctedRevealFor] where it ACTS, not where it is scheduled:
   /// every return below is a reason it could not measure at all, and retiring
@@ -1998,6 +2017,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _scrollTo(position.pixels + top, position.pixels + top + box.size.height);
   }
 
+  /// A section header's height: the extent every one of them is pinned at, and
+  /// the figure both the reveal's arithmetic and its leading inset count with.
+  /// Scaled like the rows for the reasons [_rowHeightScale] gives.
+  double get _sectionHeaderExtent => _metrics.sectionHeaderHeight * _rowHeightScale;
+
   /// Scrolls to [spotScrollTarget]'s answer, or not at all when there is none.
   /// Returns the scroll's future, or null when nothing moved.
   Future<void>? _scrollTo(double top, double bottom) {
@@ -2005,6 +2029,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final target = spotScrollTarget(
       top: top,
       bottom: bottom,
+      headerHeight: _sectionHeaderExtent,
       pixels: position.pixels,
       viewport: position.viewportDimension,
       minExtent: position.minScrollExtent,
@@ -2035,6 +2060,34 @@ class _SpotsPanelState extends State<SpotsPanel> {
   bool get _isSingleBandFilter => _bandFilter != 'auto' && _bandFilter != 'any';
 }
 
+/// Pins a [_SpotsSectionHeader] to the top of the spots list while its own
+/// section's rows scroll under it, the way `qso_list.dart` pins its day
+/// headers.
+class _SpotsSectionHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final String label;
+
+  /// Resolved by the caller: `minExtent`/`maxExtent` are asked for outside
+  /// [build], where there is no context to read a metric from.
+  final double extent;
+
+  const _SpotsSectionHeaderDelegate({required this.label, required this.extent});
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
+      // Forced to exactly [extent]: a pinned header that paints taller than it
+      // declared trips Flutter's "layoutExtent exceeds paintExtent" assertion.
+      SizedBox(height: extent, child: _SpotsSectionHeader(label));
+
+  @override
+  bool shouldRebuild(_SpotsSectionHeaderDelegate old) => old.label != label || old.extent != extent;
+}
+
 /// A section group row (a band or "Calls of Note"), styled to match
 /// `qso_list.dart`'s `DayHeaderRow` (same height,
 /// background, and bottom border) so the two lists read as the same kind
@@ -2048,10 +2101,8 @@ class _SpotsSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      // As tall as a QSO list day header, read from the shared metric rather
-      // than copied: the two read as one list, and a private constant here
-      // went stale the moment either side moved.
-      constraints: BoxConstraints(minHeight: LayoutDensity.metricsOf(context).sectionHeaderHeight),
+      // No height of its own: [_SpotsSectionHeaderDelegate] imposes the one it
+      // declared to the sliver protocol, which is a QSO list day header's.
       alignment: Alignment.centerLeft,
       color: theme.colorScheme.surfaceContainerHighest,
       foregroundDecoration: BoxDecoration(
@@ -2069,6 +2120,12 @@ class _SpotsSectionHeader extends StatelessWidget {
       ),
       child: Text(
         label,
+        // The band is what the operator is looking for, and the row is exactly
+        // one line tall: a label too long for a narrow pane gives up its spot
+        // count rather than wrapping into a second line the pinned extent
+        // would clip off.
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: theme.colorScheme.onSurface,
           fontWeight: FontWeight.w700,
@@ -2900,11 +2957,11 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
             if (_downPointers.isEmpty) _cancelled = true;
           },
           child: RawGestureDetector(
-            // Horizontal only — the enclosing ListView keeps the vertical axis,
-            // and the narrow layout's TabBarView has page-swiping disabled, so
-            // nothing else is competing for this drag. Raw rather than a
-            // `GestureDetector` for the sake of the recognizer, which is the
-            // one thing keeping a scroll from opening a row.
+            // Horizontal only — the enclosing scroll view keeps the vertical
+            // axis, and the narrow layout's TabBarView has page-swiping
+            // disabled, so nothing else is competing for this drag. Raw rather
+            // than a `GestureDetector` for the sake of the recognizer, which is
+            // the one thing keeping a scroll from opening a row.
             gestures: <Type, GestureRecognizerFactory>{
               _AxisLockedHorizontalDragGestureRecognizer:
                   GestureRecognizerFactoryWithHandlers<_AxisLockedHorizontalDragGestureRecognizer>(
