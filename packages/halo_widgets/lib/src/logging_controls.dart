@@ -657,6 +657,8 @@ class LoggingControls extends StatefulWidget {
   final String Function(String kind)? pendingDeleteEventWarning;
   final String Function(String kind)? deletedEventWarning;
   final String? qsoEditFormTitle;
+  final String? operatorCallLabel;
+  final String? positionLabel;
   final String? theirNameLabel;
   final String? theirGridLabel;
   final String? theirStateLabel;
@@ -672,6 +674,18 @@ class LoggingControls extends StatefulWidget {
   /// caret (icon-only, and the app has no hover tooltips).
   final String? expandControlsLabel;
   final String? collapseControlsLabel;
+
+  /// Who the operation says is at the key, and which position this device is
+  /// logging as — what the full-edit pane offers as the placeholder for a
+  /// contact that carries neither, since that is what the stamp at save time
+  /// would put on it.
+  final String defaultOperatorCall;
+  final String defaultPosition;
+
+  /// Whether the pane offers a Position field at all. Only an operation
+  /// actually run by operating positions has seats to choose between; on any
+  /// other, the field is a number that means nothing.
+  final bool showPositionField;
 
   /// Localized chrome for the "More" full-edit pane's form renderer
   /// (Cancel/Save buttons, close button, error prefixes — see
@@ -867,6 +881,11 @@ class LoggingControls extends StatefulWidget {
     this.pendingDeleteEventWarning,
     this.deletedEventWarning,
     this.qsoEditFormTitle,
+    this.operatorCallLabel,
+    this.positionLabel,
+    this.defaultOperatorCall = '',
+    this.defaultPosition = '',
+    this.showPositionField = false,
     this.theirNameLabel,
     this.theirGridLabel,
     this.theirStateLabel,
@@ -1181,6 +1200,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Timer? _executeMessageTimer;
   String? _commandMessage;
   final Map<String, dynamic> _currentQsoExtra = {};
+
+  /// Fields of the contact's `our` block the full-edit pane overrides — who
+  /// was at the key, and which position logged it. Kept apart from
+  /// [_currentQsoExtra], which carries only TOP-LEVEL keys: these two live
+  /// inside `our`, beside the station call the controls own.
+  ///
+  /// An override is written only when the pane's field was actually edited,
+  /// so a contact left alone still takes the stamp the save path applies
+  /// (`qsoWithOperator`), and an emptied field stays empty rather than being
+  /// re-stamped — the stamp fills what is ABSENT, and this key is present.
+  final Map<String, dynamic> _ourExtra = {};
 
   /// Refs entered via activity controls for the QSO being composed,
   /// keyed by control key.
@@ -2607,6 +2637,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // A wholesale repopulate — a spot tapped, a QSO opened for editing —
     // replaces every field, so nothing in a dropdown survives it either.
     _resyncDropdownFieldsToSelection();
+    // Restore the More pane's operator/position overrides for the same reason
+    // the name above is restored: wipe-then-undo, and stepping into an edit
+    // and back out, both round-trip the draft through here, and a dropped
+    // override would silently hand the contact back to the operation's stamp.
+    //
+    // Only for a DRAFT (no `uuid`). A record already in the log carries its
+    // own `our` block, which `_getCurrentQsoData` reads straight from
+    // `editingQso` — recording it as an override too would mark an untouched
+    // record as composed.
+    _ourExtra.clear();
+    if ((asQsonString(data['uuid']) ?? '').isEmpty) {
+      for (final key in const ['operatorCall', 'multiIdentifier']) {
+        if (our.containsKey(key)) _ourExtra[key] = asQsonString(our[key]) ?? '';
+      }
+    }
     _currentQsoExtra
       ..clear()
       ..addAll(data)
@@ -2882,6 +2927,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _unmatchedRefs = [];
     _clearTextControls();
     _currentQsoExtra.clear();
+    _ourExtra.clear();
     _manualStartAtMillis = null;
     _manualBand = null;
     _selectedControlKey = null;
@@ -6518,6 +6564,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         ...?(base['our'] as Map<String, dynamic>?),
         'call': widget.operation.stationCall,
         'sent': _rstOrDefault(_sentController.text.trim()),
+        ..._ourExtra,
       },
       'their': {
         ...?(base['their'] as Map<String, dynamic>?),
@@ -6572,6 +6619,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   // table, which is compared by exact equality).
 
   Map<String, dynamic> _buildQsoEditFormDefinition() {
+    // A new contact, not one already in the log — see the operator field.
+    final composing = widget.editingQso == null;
     // Guessed values ride along as faint placeholders (the FormRenderer maps a
     // field's `placeholder` to poloFieldDecoration's hintText) — same "guess as
     // a hint, never a pre-filled value" behaviour as the primary Grid/State.
@@ -6606,6 +6655,30 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         },
         {'type': 'field', 'key': 'date', 'fieldType': 'text', 'label': widget.dateLabel ?? 'Date'},
         {'type': 'field', 'key': 'time', 'fieldType': 'text', 'label': widget.timeLabel ?? 'Time (UTC)'},
+        // Who was at the key, and — only where the operation is run by
+        // positions — which one logged this contact.
+        //
+        // The placeholder is the operation's own answer, and only while
+        // COMPOSING: that is what the save path will stamp on a new contact,
+        // so the pane is showing what is about to happen. An existing record
+        // takes no stamp (`qsoWithOperator`), so the same hint over an old
+        // contact would promise a callsign that will never be written, and a
+        // log made before anyone was named would read as if it had been.
+        {
+          'type': 'field',
+          'key': 'operatorCall',
+          'fieldType': 'callsign',
+          'label': widget.operatorCallLabel ?? 'Operator',
+          'placeholder': composing && widget.defaultOperatorCall.isNotEmpty ? widget.defaultOperatorCall : null,
+        },
+        if (widget.showPositionField)
+          {
+            'type': 'field',
+            'key': 'multiIdentifier',
+            'fieldType': 'text',
+            'label': widget.positionLabel ?? 'Position',
+            'placeholder': composing && widget.defaultPosition.isNotEmpty ? widget.defaultPosition : null,
+          },
         {'type': 'field', 'key': 'notes', 'fieldType': 'multiline', 'label': widget.notesLabel ?? 'Notes'},
       ],
     };
@@ -6627,6 +6700,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // not turn it into a manual override that freezes auto-timestamping.
     final dateBeforePane = _fmtDate(dt);
     final timeBeforePane = _fmtTime(dt);
+    // What the contact itself says, override included — never the operation's
+    // stand-in, which is only ever a placeholder here.
+    final ourBeforePane = {...?asQsonMap(widget.editingQso?.data['our']), ..._ourExtra};
+    final operatorBeforePane = (asQsonString(ourBeforePane['operatorCall']) ?? '').trim();
+    final positionBeforePane = (asQsonString(ourBeforePane['multiIdentifier']) ?? '').trim();
 
     final result = await showFormPane(
       context,
@@ -6649,6 +6727,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'date': _fmtDate(dt),
         'time': _fmtTime(dt),
         'notes': (_currentQsoExtra['notes'] as String?) ?? '',
+        'operatorCall': operatorBeforePane,
+        if (widget.showPositionField) 'multiIdentifier': positionBeforePane,
       },
       onChange: (key, value, state) async {
         // Freq wins over a manually-typed band, matching _onFreqChanged's
@@ -6717,6 +6797,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _currentQsoExtra.remove('notes');
       } else {
         _currentQsoExtra['notes'] = notes;
+      }
+
+      // Recorded only where the pane actually changed them, so a contact
+      // merely opened and saved keeps taking the operation's stamp — and an
+      // emptied field records the empty string, which the stamp then leaves
+      // alone (it fills what is absent).
+      // Compared uppercased on both sides, like the grid two blocks up: the
+      // pane's callsign field rewrites the whole field in uppercase, so a
+      // record whose stored operator came in lowercase (an ADIF import's
+      // OPERATOR, a peer from another client) would otherwise record an
+      // override — and read as composed — from merely being opened.
+      final operatorCall = ((result['operatorCall'] as String?) ?? '').trim().toUpperCase();
+      if (operatorCall != operatorBeforePane.toUpperCase()) _ourExtra['operatorCall'] = operatorCall;
+      if (widget.showPositionField) {
+        // Digits only, and no leading zeros: `/OP` plus anything else is a
+        // callsign no hunter can use, and `02` and `2` are the same seat.
+        final typed = ((result['multiIdentifier'] as String?) ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+        final parsed = int.tryParse(typed);
+        final position = parsed == null || parsed <= 0 ? '' : parsed.toString();
+        if (position != positionBeforePane) _ourExtra['multiIdentifier'] = position;
       }
 
       _seedTimeFields();
@@ -7229,6 +7329,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _guessedRefsForCall = null;
     _clearTextControls();
     _currentQsoExtra.clear();
+    _ourExtra.clear();
     _manualStartAtMillis = null;
     _selectedControlKey = null;
     if (focusCall) _callFocus.requestFocus();
@@ -7270,6 +7371,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _controlTextValues.values.any((v) => v.trim().isNotEmpty) ||
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
+      _ourExtra.isNotEmpty ||
       _gridController.text.trim().isNotEmpty ||
       _stateController.text.trim().isNotEmpty;
 

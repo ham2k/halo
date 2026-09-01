@@ -64,7 +64,11 @@ void main() {
     // rather than from a header that had nothing to shed.
     final operation = Operation(
       uuid: created.uuid,
-      data: {...created.data, 'operatorCall': operatorCall, 'notes': 'some notes'},
+      // The operator goes in the slot the POSITION names, which is where the
+      // header reads it from — left on `operatorCall`, a positioned operation
+      // would show no operator pill and the sweeps below would be measuring a
+      // header one pill short.
+      data: {...created.data, operatorCallKeyFor(multiIdentifier): operatorCall, 'notes': 'some notes'},
     );
     await services.operations.saveData(operation);
     if (multiIdentifier.isNotEmpty) {

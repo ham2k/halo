@@ -35,7 +35,6 @@ import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/operation_import_panel.dart';
 import 'operation/spots_panel.dart';
-import '../tools/operation_operator.dart';
 import 'operation/positions_panel.dart';
 import 'peers_panel.dart';
 import '../tools/operation_title.dart';
@@ -827,10 +826,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     ));
   }
 
-  /// Both device-local, and read fresh every time: the operator can set
-  /// either from the command bar mid-contact, and a value captured once when
-  /// the view mounted would name the wrong position for the rest of the
-  /// session.
+  /// Read fresh every time: the operator can set either from the command bar
+  /// mid-contact, and a value captured once when the view mounted would name
+  /// the wrong position for the rest of the session.
   (String, String) _peerHeaderFor(Operation operation) => (
         multiIdentifierFor(operation),
         operatorCallFor(operation),

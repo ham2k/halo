@@ -118,7 +118,6 @@ import 'services/update_notices.dart';
 import 'services/shorebird_update_service.dart';
 import 'services/data_file_manager.dart';
 import 'services/flags_service.dart';
-import 'tools/operation_operator.dart';
 import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -2789,18 +2788,30 @@ class HaLoServices {
     final operation = uuid.isEmpty ? null : await operations.get(uuid);
     if (operation == null) return (text: t.commands.noOperationOpen, failed: true);
 
-    // Both device-local, so both are `updateLocalData` writes — who is at the
-    // key is per-device for the same reason the position beside it is (see
-    // `operatorCallFor`). Guarded on the change because a local_data write
-    // rebuilds the Operation View — see the details dialog's own write.
-    final operatorCall = params['operatorCall']?.toString();
+    // The position lands first, and the operator goes into the slot it names.
+    // Both writes are guarded on the change — a local_data write rebuilds the
+    // Operation View (see the details dialog's own write), and a data write
+    // pushes a revision to every other device — and the operator's guard reads
+    // the DESTINATION seat, not the one this device is leaving: a command
+    // carrying both fields would otherwise compare against the old seat's
+    // operator and skip a write the new seat needs.
+    // Trimmed and uppercased at the boundary, like the details dialog: this
+    // is public SDK surface (`updateOperation`), and a value arriving with
+    // stray space would never equal the trimmed slot it is compared against —
+    // so every repeat of the same command would push another revision.
+    final operatorCall = params['operatorCall']?.toString().trim().toUpperCase();
     final raw = params['multiIdentifier']?.toString();
     final multiIdentifier = raw == null ? null : normalizedMultiIdentifier(raw);
-    final localPatch = {
-      if (operatorCall != null && operatorCall != operatorCallFor(operation)) operatorCallKey: operatorCall,
-      if (multiIdentifier != null && multiIdentifier != multiIdentifierFor(operation)) multiIdentifierKey: multiIdentifier,
-    };
-    if (localPatch.isNotEmpty) await operations.updateLocalData(operation.uuid, localPatch);
+    if (multiIdentifier != null && multiIdentifier != multiIdentifierFor(operation)) {
+      await operations.updateLocalData(operation.uuid, {multiIdentifierKey: multiIdentifier});
+    }
+    if (operatorCall != null) {
+      final key = operatorCallKeyFor(multiIdentifier ?? multiIdentifierFor(operation));
+      final seatOperatorCall = (asQsonString(operation.data[key]) ?? '').trim();
+      if (operatorCall != seatOperatorCall) {
+        await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, key: operatorCall}));
+      }
+    }
     return null;
   }
 

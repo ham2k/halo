@@ -911,6 +911,12 @@ class Translations$qsoEditForm$en {
 	/// en: 'Edit QSO'
 	String get title => 'Edit QSO';
 
+	/// en: 'Operator'
+	String get operatorCall => 'Operator';
+
+	/// en: 'Position'
+	String get position => 'Position';
+
 	/// en: 'Name'
 	String get theirName => 'Name';
 
@@ -6101,6 +6107,8 @@ extension on Translations {
 			'formChrome.removeItem' => 'Remove',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
 			'qsoEditForm.title' => 'Edit QSO',
+			'qsoEditForm.operatorCall' => 'Operator',
+			'qsoEditForm.position' => 'Position',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
@@ -6514,10 +6522,10 @@ extension on Translations {
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
-			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
-			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
+			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
 			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',

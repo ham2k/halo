@@ -4,6 +4,11 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - The operator callsign now travels with the operation, stored per operating position
+    - "Edit QSO can now set the operator, and the position at a multi-station"
+
 "158":
   changes:
     - "State Parks exports: Ohio's Cabrillo, and Texas/Georgia per-park ADIFs named as their rules require"

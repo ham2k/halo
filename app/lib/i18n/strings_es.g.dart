@@ -439,6 +439,8 @@ class _Translations$qsoEditForm$es extends Translations$qsoEditForm$en {
 
 	// Translations
 	@override String get title => 'Editar QSO';
+	@override String get operatorCall => 'Operador';
+	@override String get position => 'Posición';
 	@override String get theirName => 'Nombre';
 	@override String get theirGrid => 'Locador';
 	@override String get theirState => 'Estado/Provincia';
@@ -3241,6 +3243,8 @@ extension on TranslationsEs {
 			'formChrome.removeItem' => 'Quitar',
 			'formChrome.storageUnavailable' => 'Cuentas no disponibles',
 			'qsoEditForm.title' => 'Editar QSO',
+			'qsoEditForm.operatorCall' => 'Operador',
+			'qsoEditForm.position' => 'Posición',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
 			'qsoEditForm.theirState' => 'Estado/Provincia',
@@ -3654,10 +3658,10 @@ extension on TranslationsEs {
 			'settings.station.x6100PortNote' => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
-			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
-			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
+			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',

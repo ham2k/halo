@@ -38,7 +38,6 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import 'link_opener.dart';
 import '../tools/backoff.dart';
-import '../tools/operation_operator.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
@@ -113,8 +112,9 @@ enum ControlsLoadState { loading, loaded, failed }
 /// with `uuid` folded in, plus each QSO's raw QSON `data`.
 ///
 /// The operator is RESOLVED here rather than left to `operation.data`, because
-/// who is at the key is device-local now (see [operatorCallFor]) and only this
-/// side can answer it. It is written under both names the extensions read:
+/// with a position set it lives in that position's own slot (see
+/// [operatorCallFor]) and only this side knows which seat this device is in.
+/// It is written under both names the extensions read:
 /// `operation.operatorCall` for the REG1TEST/EDI writers, and
 /// `operation.local.operatorCall` for the ADIF `OPERATORS` header — without
 /// which those exports name nobody, or fall back to the station call.

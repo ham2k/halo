@@ -19,7 +19,6 @@ import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/form_chrome_labels.dart';
-import '../../tools/operation_operator.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
@@ -890,6 +889,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 context.t.loggingControls.pendingDeleteEventWarning(kind: kind),
             deletedEventWarning: (kind) => context.t.loggingControls.deletedEventWarning(kind: kind),
             qsoEditFormTitle: context.t.qsoEditForm.title,
+            operatorCallLabel: context.t.qsoEditForm.operatorCall,
+            positionLabel: context.t.qsoEditForm.position,
+            // What the save path would stamp on a contact that names neither
+            // — the pane offers them as placeholders, not as values.
+            defaultOperatorCall: operatorCallFor(widget.operation),
+            defaultPosition: multiIdentifierFor(widget.operation),
+            showPositionField: operationHasPositions(widget.operation),
             theirNameLabel: context.t.qsoEditForm.theirName,
             theirGridLabel: context.t.qsoEditForm.theirGrid,
             theirStateLabel: context.t.qsoEditForm.theirState,

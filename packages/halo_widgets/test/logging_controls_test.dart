@@ -89,6 +89,9 @@ void main() {
     SendSpot? sendSpot,
     bool showStateField = false,
     bool showGridField = false,
+    String defaultOperatorCall = '',
+    String defaultPosition = '',
+    bool showPositionField = false,
     bool showNumbersRow = false,
     bool showExtraInNumbersRow = true,
     bool vibrateNumbersRow = true,
@@ -154,6 +157,9 @@ void main() {
       sendSpot: sendSpot,
       showStateField: showStateField,
       showGridField: showGridField,
+      defaultOperatorCall: defaultOperatorCall,
+      defaultPosition: defaultPosition,
+      showPositionField: showPositionField,
       defaultReportCW: defaultReportCW,
       switchSentRcvd: switchSentRcvd,
       jumpAfterRST: jumpAfterRST,
@@ -1806,6 +1812,100 @@ void main() {
     expect(w1aw.theirName, 'Hiram');
     // The log-then-wipe must clear the override — K1ABC is a different human.
     expect(k1abc.theirName, isNull);
+  });
+
+  // Who was at the key rides on the CONTACT, stamped at save time from the
+  // operation. The pane is how a contact gets one of its own — the operator
+  // who worked a guest at their station, or a record being corrected long
+  // after the fact.
+  testWidgets('an operator typed into the More pane is logged onto the contact', (tester) async {
+    await tester.pumpWidget(host(defaultOperatorCall: 'N0DEV'));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    // The field shows the operation's answer as a placeholder only, so what
+    // is typed here is the operator's own statement about this contact.
+    await tester.enterText(find.widgetWithText(TextField, 'Operator'), 'w1abc');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+
+    expect((logged.single.data['our'] as Map)['operatorCall'], 'W1ABC');
+  });
+
+  // A contact merely opened and saved must keep taking the operation's stamp
+  // (`qsoWithOperator`, applied by the app after this widget hands the QSO
+  // over). Writing the placeholder through as a value would freeze whoever
+  // happened to be at the key onto every record anyone ever opens.
+  testWidgets('the More pane records no operator when its field was not touched', (tester) async {
+    await tester.pumpWidget(host(defaultOperatorCall: 'N0DEV'));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+
+    expect((logged.single.data['our'] as Map).containsKey('operatorCall'), isFalse);
+  });
+
+  // Wipe-then-undo round-trips the draft through `_applyFieldsFromData`, the
+  // same path that would otherwise drop a name set in the pane. Dropped here,
+  // the restored contact silently goes back to taking the operation's stamp.
+  testWidgets('an operator set in the More pane survives wipe-then-undo', (tester) async {
+    await tester.pumpWidget(host(defaultOperatorCall: 'N0DEV'));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Operator'), 'W1ABC');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
+    await tester.pump();
+    await tester.tap(find.byIcon(MdiIcons.undo));
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect((logged.single.data['our'] as Map)['operatorCall'], 'W1ABC');
+  });
+
+  testWidgets('the Position field is offered only where the operation is run by positions', (tester) async {
+    await tester.pumpWidget(host());
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, 'Position'), findsNothing,
+        reason: 'a single-operator station has no seats to choose between');
+  });
+
+  testWidgets('a position typed into the More pane is logged in its canonical form', (tester) async {
+    await tester.pumpWidget(host(showPositionField: true, defaultPosition: '1'));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    // Leading zeros and stray characters are the same seat as plain digits —
+    // `/OP02` is a callsign no hunter can use.
+    await tester.enterText(find.widgetWithText(TextField, 'Position'), '0x2');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+
+    expect((logged.single.data['our'] as Map)['multiIdentifier'], '2');
   });
 
   testWidgets('onCommandMessageChanged does not fire on every keystroke when the message is unchanged', (tester) async {

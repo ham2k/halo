@@ -11,7 +11,6 @@ import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
 import '../i18n/strings.g.dart';
-import 'operation_operator.dart';
 
 /// Assembles [fragments] into the localized "for X at Y" sentence — the
 /// generated (non-user) part of an operation's title. `ActivitiesView.

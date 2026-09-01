@@ -729,6 +729,8 @@
   },
   "qsoEditForm": {
     "title": "Edit QSO",
+    "operatorCall": "Operator",
+    "position": "Position",
     "theirName": "Name",
     "theirGrid": "Grid",
     "theirState": "State",

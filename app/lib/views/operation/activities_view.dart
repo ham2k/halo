@@ -41,7 +41,6 @@ import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
 import '../../i18n/strings.g.dart';
 import '../../tools/distance_format.dart';
-import '../../tools/operation_operator.dart';
 import '../../tools/operation_title.dart';
 import '../map/map_zoom_controller.dart';
 import 'activities_results_map.dart';

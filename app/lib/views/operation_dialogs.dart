@@ -12,7 +12,6 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
-import '../tools/operation_operator.dart';
 import '../tools/operation_title.dart';
 
 const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -266,17 +265,27 @@ Future<Operation?> editOperationDetails(
   if (result == null || result.$1.trim().isEmpty) return null;
 
   final newMultiIdentifier = normalizedMultiIdentifier(result.$5);
-  // Both device-local, so both ride the same guarded `updateLocalData` write
-  // below rather than the operation's shared data. The stale synced
-  // `data['operatorCall']` on an operation that predates this is deliberately
-  // left where it is: `operatorCallFor` stops consulting it the moment this
-  // device writes its own, and CLEARING it here would push that removal to
-  // every other device, which is exactly the shared-operator behaviour this
-  // is undoing.
+  final newOperatorCall = result.$2.trim().toUpperCase();
+  // The position is the only device-local field here, so it alone rides the
+  // guarded `updateLocalData` write below; the operator is the operation's
+  // shared data, stored in the slot of the position being SAVED.
   final localPatch = {
-    if (newMultiIdentifier != multiIdentifier) 'multiIdentifier': newMultiIdentifier,
-    if (result.$2.trim().toUpperCase() != operatorCall) operatorCallKey: result.$2.trim().toUpperCase(),
+    if (newMultiIdentifier != multiIdentifier) multiIdentifierKey: newMultiIdentifier,
   };
+  // Where the seat is unchanged, written whenever the operator EDITED the
+  // field — clearing included, which has to reach the slot or the legacy
+  // device-local value keeps showing through.
+  //
+  // A seat CHANGE is different: the field was showing the OLD seat's
+  // operator, so nothing typed there is a statement about the new one. Only a
+  // named operator moving into a seat that names nobody is written, and never
+  // a blank — the field the operator emptied belongs to the seat they left,
+  // and carrying that erasure across would wipe somebody else's operator off
+  // every device.
+  final seatOperatorCall = (asQsonString(operation.data[operatorCallKeyFor(newMultiIdentifier)]) ?? '').trim();
+  final movedIntoEmptySeat = newOperatorCall.isNotEmpty && seatOperatorCall.isEmpty;
+  final writeOperator =
+      newMultiIdentifier != multiIdentifier ? movedIntoEmptySeat : newOperatorCall != operatorCall || movedIntoEmptySeat;
   final updated = Operation(
     uuid: operation.uuid,
     data: {
@@ -284,6 +293,7 @@ Future<Operation?> editOperationDetails(
       'stationCall': result.$1.trim().toUpperCase(),
       'userTitle': result.$3.trim(),
       'notes': result.$4.trim(),
+      if (writeOperator) operatorCallKeyFor(newMultiIdentifier): newOperatorCall,
     },
     qsoCount: operation.qsoCount,
     startAtMillisMin: operation.startAtMillisMin,
@@ -292,8 +302,8 @@ Future<Operation?> editOperationDetails(
   );
   if (save) await operations.saveData(updated);
   // Written whatever `save` says: `save: false` stages the operation's SHARED
-  // data in the sheet's draft until it closes, and neither of these is that
-  // — both are device-local, and the row already exists (the sheet only ever
+  // data in the sheet's draft until it closes, and the position is not that
+  // — it is device-local, and the row already exists (the sheet only ever
   // opens on a created operation). Guarded on the change, because a
   // local_data write is a UI event: it rebuilds the Operation View.
   if (localPatch.isNotEmpty) {

@@ -203,9 +203,12 @@ void main() {
     // the key and which device this is. A list is not: two operations of the
     // same station must still be told apart by their titles, not by a
     // parenthetical that is the same on both.
+    // The operator goes in the slot the POSITION names — `operatorCall` with
+    // no position, `operator2` at position 2 — which is where the header
+    // reads it from.
     Operation withCalls(String stationCall, {String operatorCall = '', String position = ''}) => Operation(
           uuid: 'u',
-          data: {'stationCall': stationCall, 'operatorCall': operatorCall},
+          data: {'stationCall': stationCall, operatorCallKeyFor(position): operatorCall},
           localData: position.isEmpty ? const {} : {'multiIdentifier': position},
         );
 
@@ -226,17 +229,15 @@ void main() {
       expect(headerCallsignFor(withCalls('K2SUL', position: '2')), 'K2SUL (/OP2)');
     });
 
-    // The header reads the operator through `operatorCallFor`, so it names
-    // whoever is at THIS device's key. The cases above set the operator in the
-    // operation's synced data and so cover the fallback; this one covers the
-    // per-device value that outranks it — without it, two positions sharing an
-    // operation would both keep showing the same operator and nothing here
-    // would notice.
-    test("names this device's own operator over the operation's", () {
+    // The header reads the operator through `operatorCallFor`, so at a
+    // position it names that position's operator and not the operation's
+    // positionless one — without this, two devices sharing an operation would
+    // both show whoever wrote `operatorCall` last.
+    test("a position's own operator outranks the operation's", () {
       final operation = Operation(
         uuid: 'u',
-        data: {'stationCall': 'K2SUL', 'operatorCall': 'KI2D'},
-        localData: const {'operatorCall': 'W2ABC', 'multiIdentifier': '2'},
+        data: {'stationCall': 'K2SUL', 'operatorCall': 'KI2D', 'operator2': 'W2ABC'},
+        localData: const {'multiIdentifier': '2'},
       );
       expect(headerCallsignFor(operation), 'K2SUL (op W2ABC /OP2)');
     });

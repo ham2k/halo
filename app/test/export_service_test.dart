@@ -596,21 +596,21 @@ void main() {
     });
   });
 
-  // The payload every coarse hook reads an operation through. The operator
-  // moved to device-local storage (HALO-395), and nothing in Dart reads it
-  // back out — the readers are on the far side of the extension bridge, so a
-  // Dart-only search comes up clean while REG1TEST's RCall and ADIF's
-  // OPERATORS quietly name nobody.
+  // The payload every coarse hook reads an operation through. The operator is
+  // RESOLVED into it, because at a position it lives in that position's own
+  // slot and nothing in Dart reads it back out — the readers are on the far
+  // side of the extension bridge, so a Dart-only search comes up clean while
+  // REG1TEST's RCall and ADIF's OPERATORS quietly name the wrong operator.
   group('the operator reaches an export hook', () {
     Map<String, dynamic> operationIn(Map<String, dynamic> payload) =>
         (payload['operation'] as Map).cast<String, dynamic>();
 
-    test("this device's own operator is what an export sees", () {
+    test("the seat's operator is what an export sees, not the operation's", () {
       final payload = qsonPayloadFor(
         operation: Operation(
           uuid: 'u',
-          data: {'stationCall': 'K2SUL'},
-          localData: const {'operatorCall': 'W2ABC'},
+          data: {'stationCall': 'K2SUL', 'operatorCall': 'KI2D', 'operator2': 'W2ABC'},
+          localData: const {'multiIdentifier': '2'},
         ),
         qsos: const [],
       );
@@ -620,13 +620,21 @@ void main() {
       expect((operationIn(payload)['local'] as Map)['operatorCall'], 'W2ABC');
     });
 
-    test('an operation from before the move still names its operator', () {
+    test('an operation with no position names its own operator', () {
       final payload = qsonPayloadFor(
         operation: Operation(uuid: 'u', data: {'stationCall': 'K2SUL', 'operatorCall': 'KI2D'}),
         qsos: const [],
       );
       expect(operationIn(payload)['operatorCall'], 'KI2D');
       expect((operationIn(payload)['local'] as Map)['operatorCall'], 'KI2D');
+    });
+
+    test('an operation from before the operator was synced still names it', () {
+      final payload = qsonPayloadFor(
+        operation: Operation(uuid: 'u', data: {'stationCall': 'K2SUL'}, localData: const {'operatorCall': 'W2ABC'}),
+        qsos: const [],
+      );
+      expect(operationIn(payload)['operatorCall'], 'W2ABC');
     });
 
     // localData also holds the scoring cache and the title fragments, which

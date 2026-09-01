@@ -26,7 +26,6 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
 import '../i18n/strings.g.dart';
-import '../tools/operation_operator.dart';
 import 'cat/transports/udp_broadcast.dart';
 import 'error_reporting_service.dart';
 import 'lookup_queue_service.dart';

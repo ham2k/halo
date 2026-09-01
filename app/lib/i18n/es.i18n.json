@@ -729,6 +729,8 @@
   },
   "qsoEditForm": {
     "title": "Editar QSO",
+    "operatorCall": "Operador",
+    "position": "Posición",
     "theirName": "Nombre",
     "theirGrid": "Locador",
     "theirState": "Estado/Provincia",

@@ -7,7 +7,8 @@
 // things about it are promises rather than cosmetics — it is developer-mode
 // only, it takes digits and nothing else, and it is stored as DEVICE-LOCAL
 // data, so a value typed on one device must never travel to another through
-// the operation's synced data.
+// the operation's synced data — while the operator beside it does travel, in
+// the slot the position names.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -127,6 +128,60 @@ void main() {
     await tester.pumpAndSettle();
 
     expect((await operations.get(operation.uuid))!.localData['multiIdentifier'], '');
+  });
+
+  Finder operatorField() => find.widgetWithText(TextField, t.settings.operatorCall);
+
+  // The operator is SHARED data, unlike the position beside it: every device
+  // logging the operation should be able to name who is in each seat.
+  testWidgets('the operator is stored on the operation, not device-locally', (tester) async {
+    await openDialog(tester, developerMode: true);
+    await tester.enterText(operatorField(), 'ki2d');
+    await tester.tap(find.text(t.common.save));
+    await tester.pumpAndSettle();
+
+    final stored = await operations.get(operation.uuid);
+    expect(stored!.data['operatorCall'], 'KI2D');
+    expect(stored.localData.containsKey('operatorCall'), isFalse);
+  });
+
+  testWidgets("with a position, the operator lands in that position's own slot", (tester) async {
+    // Seat 2's operator has to be stored apart from seat 1's, or the devices
+    // converge on one callsign and every log names the same operator.
+    await operations.updateLocalData(operation.uuid, {'multiIdentifier': '2'});
+    operation = (await operations.get(operation.uuid))!;
+
+    await openDialog(tester, developerMode: true);
+    await tester.enterText(operatorField(), 'W2ABC');
+    await tester.tap(find.text(t.common.save));
+    await tester.pumpAndSettle();
+
+    final stored = await operations.get(operation.uuid);
+    expect(stored!.data['operator2'], 'W2ABC');
+    expect(stored.data.containsKey('operatorCall'), isFalse);
+  });
+
+  testWidgets('changing seat never carries an edit onto the seat being joined', (tester) async {
+    // The Operator field was showing seat 1's operator, so nothing typed
+    // there is a statement about seat 2 — and an emptied field least of all.
+    // Written through, it would erase W2ABC on every device logging the
+    // operation.
+    await operations.updateLocalData(operation.uuid, {'multiIdentifier': '1'});
+    await operations.saveData(Operation(
+      uuid: operation.uuid,
+      data: {...operation.data, 'operator1': 'KI2D', 'operator2': 'W2ABC'},
+    ));
+    operation = (await operations.get(operation.uuid))!;
+
+    await openDialog(tester, developerMode: true);
+    await tester.enterText(operatorField(), '');
+    await tester.enterText(multiField(), '2');
+    await tester.tap(find.text(t.common.save));
+    await tester.pumpAndSettle();
+
+    final stored = await operations.get(operation.uuid);
+    expect(stored!.data['operator2'], 'W2ABC');
+    expect(stored.data['operator1'], 'KI2D', reason: 'the seat being left is not edited either');
   });
 
   testWidgets('clearing the field stores an empty identifier, turning the suffix off', (tester) async {

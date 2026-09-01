@@ -19,6 +19,7 @@ import '../db/database.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
+import '../models/operation_operator.dart';
 import '../models/qso_merge.dart';
 import '../models/qson_values.dart';
 import 'write_policy.dart';
@@ -469,6 +470,58 @@ class OperationsRepository {
     );
   }
 
+  /// The revision stamp a repaired record goes back out under: this device's
+  /// real clock, but never below the stamp it is rejecting. A sender whose
+  /// clock runs ahead would otherwise get a repair that compares OLDER than
+  /// what it sent, and `_inboundIsStale` drops it on arrival — the seat's own
+  /// operator would be corrected here and nowhere else. Real clock, not the
+  /// app's: a revision stamp persists, so it must not travel (time.md §1).
+  int _repairedStamp(int? incomingUpdatedAtMillis) {
+    final now = realNowMillis();
+    if (incomingUpdatedAtMillis == null || incomingUpdatedAtMillis < now) return now;
+    return incomingUpdatedAtMillis + 1;
+  }
+
+  /// [data] with this device's own operator restored, when the device sits in
+  /// an operating position and [existing] already names somebody in it.
+  ///
+  /// An operation's `data` merges whole-blob, last writer wins: two seats that
+  /// name their operators inside one sync window each push a full copy built
+  /// from their own snapshot, and the later push carries the other seat's slot
+  /// as it was BEFORE that seat was filled. Whoever loses that race would find
+  /// their own seat empty again, and every contact logged afterwards stamped
+  /// with nobody. Who is at THIS key is the one thing this device knows better
+  /// than any record arriving from elsewhere, so it survives the merge.
+  ///
+  /// Only the seat this device occupies, and only where the stored row HAS
+  /// that slot — presence, not a non-empty value, exactly as `operatorCallFor`
+  /// reads it. Every other seat is somebody else's to state, a device that has
+  /// never named its own has nothing to defend and takes what the record
+  /// brings, and a seat deliberately emptied here stays empty rather than
+  /// having the name it just removed pushed back onto it.
+  ///
+  /// Returns the same map, unchanged and identical, when nothing was defended
+  /// — the callers compare by identity to decide whether the row now differs
+  /// from what the sender has.
+  Map<String, dynamic> _keepingOwnSeatOperator(Map<String, dynamic> data, OperationRow? existing) {
+    if (existing == null || existing.localData == null) return data;
+    final Object? localData;
+    try {
+      localData = jsonDecode(existing.localData!);
+    } catch (_) {
+      return data;
+    }
+    if (localData is! Map) return data;
+    final position = normalizedMultiIdentifier(asQsonString(localData['multiIdentifier']) ?? '');
+    if (position.isEmpty) return data;
+    final key = operatorCallKeyFor(position);
+    final existingData = jsonDecode(existing.data);
+    if (existingData is! Map || !existingData.containsKey(key)) return data;
+    final ours = existingData[key];
+    if (data.containsKey(key) && data[key] == ours) return data;
+    return {...data, key: ours};
+  }
+
   /// Upserts operations received from the sync server. Leaves the locally
   /// derived counters (`qsoCount`, `startAtMillisMin/Max`) alone — they get
   /// recomputed from this device's own QSOs once any of this operation's
@@ -481,6 +534,9 @@ class OperationsRepository {
   /// mirroring app-polo's `mergeSyncOperations`.
   Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> operations) async {
     final watermark = SyncWatermark();
+    // Whether anything in this batch came out of the merge differing from
+    // what the sender sent — see the seat-operator splice below.
+    var repaired = false;
     final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
       final existingRows = incomingUuids.isEmpty
@@ -523,18 +579,31 @@ class OperationsRepository {
           continue;
         }
 
+        // A defended seat operator is a CHANGE this device is making to the
+        // record the sender holds, not a copy of it: written `synced: true`
+        // it would never reach `pendingOperations`, so the server and every
+        // other device would keep naming the operator this device just
+        // rejected — for good, and into their exports. It goes out as this
+        // device's own newer revision instead, which is what the stamp bump
+        // says (a revision stamp reads the real clock — time.md §1).
+        final merged = _keepingOwnSeatOperator(data, existing);
+        final defended = !identical(merged, data);
+        if (defended) merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
+        repaired = repaired || defended;
         await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
               uuid: Value(uuid),
-              data: Value(_encodeOperationData(data, 'operations:mergeFromSync')),
+              data: Value(_encodeOperationData(merged, 'operations:mergeFromSync')),
               deleted: Value(deleted),
               purged: Value(purged),
-              synced: const Value(true),
-              updatedAtMillis: Value(asQsonNum(data['updatedAtMillis'])?.toInt()),
+              synced: Value(!defended),
+              updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
             ));
       }
     });
-    // No onChange() here: everything just written is already marked
-    // synced, so there's nothing new for the outbound side to react to.
+    // Only when a row came out dirty: everything merged untouched is already
+    // marked synced, and there is nothing new for the outbound side to react
+    // to (which is why this path stays silent in the ordinary case).
+    if (repaired) onChange?.call();
     return watermark;
   }
 
@@ -584,13 +653,21 @@ class OperationsRepository {
           continue;
         }
 
+        // The row already goes out dirty on this path, but a DEFENDED seat
+        // still needs its own revision stamp: left at the sender's, this
+        // device's version compares equal everywhere it lands, and
+        // `_inboundIsStale` (>=) drops it — the repair would never leave here.
+        final merged = _keepingOwnSeatOperator(data, existing);
+        if (!identical(merged, data)) {
+          merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
+        }
         await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
               uuid: Value(uuid),
-              data: Value(_encodeOperationData(data, 'operations:mergeFromPeer')),
+              data: Value(_encodeOperationData(merged, 'operations:mergeFromPeer')),
               deleted: Value(deleted),
               purged: Value(purged),
               synced: const Value(false),
-              updatedAtMillis: Value(asQsonNum(data['updatedAtMillis'])?.toInt()),
+              updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
             ));
       }
     });
